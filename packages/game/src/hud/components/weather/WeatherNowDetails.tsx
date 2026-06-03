@@ -22,7 +22,7 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { type FC, useMemo, useState } from 'react';
+import { type FC, useEffect, useMemo, useState } from 'react';
 import {
     pushNotificationPreferenceUpdate,
     useNotificationPreferences,
@@ -39,6 +39,24 @@ import {
     type WeatherPopoverView,
     WeatherViewToggle,
 } from './WeatherViewToggle';
+
+const weatherAlertPromptChoiceKey = 'game:weather-alerts:prompt-choice';
+
+function readWeatherAlertPromptChoice(): boolean | null {
+    if (typeof window === 'undefined') return null;
+    const value = window.localStorage.getItem(weatherAlertPromptChoiceKey);
+    if (value === 'enabled') return true;
+    if (value === 'disabled') return false;
+    return null;
+}
+
+function writeWeatherAlertPromptChoice(enabled: boolean) {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(
+        weatherAlertPromptChoiceKey,
+        enabled ? 'enabled' : 'disabled',
+    );
+}
 
 export const windDirectionIcons: Record<string, FC> = {
     N: ArrowUp,
@@ -91,6 +109,13 @@ function WeatherAlertPreferencePrompt() {
     const preferencesQuery = useNotificationPreferences();
     const savePreferencesMutation = useSaveNotificationPreferences();
     const [localChoice, setLocalChoice] = useState<boolean | null>(null);
+    const [storedChoice, setStoredChoice] = useState<
+        boolean | null | undefined
+    >(undefined);
+
+    useEffect(() => {
+        setStoredChoice(readWeatherAlertPromptChoice());
+    }, []);
 
     const weatherAlertPreference = preferencesQuery.data?.find(
         (preference) =>
@@ -99,9 +124,13 @@ function WeatherAlertPreferencePrompt() {
             preference.channel === 'push',
     );
     const weatherAlertsEnabled =
-        weatherAlertPreference?.enabled ?? localChoice === true;
+        weatherAlertPreference?.enabled === true || localChoice === true;
+    const hasStoredWeatherAlertChoice =
+        storedChoice !== undefined && storedChoice !== null;
     const hasWeatherAlertChoice =
-        Boolean(weatherAlertPreference) || localChoice !== null;
+        weatherAlertsEnabled ||
+        localChoice !== null ||
+        hasStoredWeatherAlertChoice;
     const busy =
         preferencesQuery.isPending || savePreferencesMutation.isPending;
 
@@ -115,6 +144,8 @@ function WeatherAlertPreferencePrompt() {
                 enabled,
             }),
         ]);
+        writeWeatherAlertPromptChoice(enabled);
+        setStoredChoice(enabled);
         setLocalChoice(enabled);
     };
 
@@ -137,7 +168,11 @@ function WeatherAlertPreferencePrompt() {
         );
     }
 
-    if (hasWeatherAlertChoice || preferencesQuery.isPending) {
+    if (
+        hasWeatherAlertChoice ||
+        preferencesQuery.isPending ||
+        storedChoice === undefined
+    ) {
         return null;
     }
 
