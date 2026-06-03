@@ -64,6 +64,35 @@ async function createScheduledOperation({
     return operationId;
 }
 
+async function createUnscheduledPlannedOperation({
+    accountId,
+    gardenId,
+    raisedBedId,
+}: {
+    accountId: string;
+    gardenId: number;
+    raisedBedId: number;
+}) {
+    const operationId = await createOperation({
+        accountId,
+        entityId: 1,
+        entityTypeName: 'operation',
+        gardenId,
+        raisedBedId,
+    });
+
+    await createEvent({
+        type: knownEvents.operations.scheduledV1(operationId.toString(), {
+            scheduledDate: new Date(0).toISOString(),
+        }).type,
+        version: 1,
+        aggregateId: operationId.toString(),
+        data: {},
+    });
+
+    return operationId;
+}
+
 async function createScheduledField({
     raisedBedId,
     positionIndex,
@@ -89,6 +118,29 @@ async function createScheduledField({
     );
 }
 
+async function createUnscheduledField({
+    raisedBedId,
+    positionIndex,
+}: {
+    raisedBedId: number;
+    positionIndex: number;
+}) {
+    await upsertRaisedBedField({
+        raisedBedId,
+        positionIndex,
+    });
+
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(
+            `${raisedBedId.toString()}|${positionIndex.toString()}`,
+            {
+                plantSortId: '101',
+                scheduledDate: null,
+            },
+        ),
+    );
+}
+
 test('rescheduleGardenDiaryOperation moves planned future operations', async () => {
     createTestDb();
     const { accountId, gardenId, raisedBedId } =
@@ -98,6 +150,31 @@ test('rescheduleGardenDiaryOperation moves planned future operations', async () 
         gardenId,
         raisedBedId,
         scheduledDate: '2026-06-04T00:00:00.000Z',
+    });
+
+    await rescheduleGardenDiaryOperation({
+        accountId,
+        gardenId,
+        operationId,
+        scheduledDate: '2026-06-05',
+        referenceDate: new Date('2026-06-03T12:00:00.000Z'),
+    });
+
+    const operation = await getOperationById(operationId);
+    assert.equal(
+        operation.scheduledDate?.toISOString(),
+        '2026-06-05T00:00:00.000Z',
+    );
+});
+
+test('rescheduleGardenDiaryOperation schedules planned operations without a date', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createDiaryRescheduleContext();
+    const operationId = await createUnscheduledPlannedOperation({
+        accountId,
+        gardenId,
+        raisedBedId,
     });
 
     await rescheduleGardenDiaryOperation({
@@ -149,6 +226,34 @@ test('rescheduleGardenDiaryRaisedBedField moves planned future sowing', async ()
         raisedBedId,
         positionIndex: 0,
         scheduledDate: '2026-06-04T00:00:00.000Z',
+    });
+
+    await rescheduleGardenDiaryRaisedBedField({
+        accountId,
+        gardenId,
+        raisedBedId,
+        positionIndex: 0,
+        scheduledDate: '2026-06-06',
+        referenceDate: new Date('2026-06-03T12:00:00.000Z'),
+    });
+
+    const raisedBed = await getRaisedBed(raisedBedId);
+    const field = raisedBed?.fields.find(
+        (candidate) => candidate.positionIndex === 0,
+    );
+    assert.equal(
+        field?.plantScheduledDate?.toISOString(),
+        '2026-06-06T00:00:00.000Z',
+    );
+});
+
+test('rescheduleGardenDiaryRaisedBedField schedules planned sowing without a date', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createDiaryRescheduleContext();
+    await createUnscheduledField({
+        raisedBedId,
+        positionIndex: 0,
     });
 
     await rescheduleGardenDiaryRaisedBedField({

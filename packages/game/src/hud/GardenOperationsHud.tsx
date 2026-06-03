@@ -44,6 +44,7 @@ import { useOperations } from '../hooks/useOperations';
 import { useSorts } from '../hooks/usePlantSorts';
 import {
     type DiaryRescheduleTarget,
+    getDiaryRescheduleDisabledReason,
     isDiaryRescheduleTargetEligible,
 } from '../hooks/useRescheduleDiaryEntry';
 import {
@@ -599,7 +600,6 @@ export function getGardenOperationRescheduleTarget(
     garden: CurrentGardenData | null | undefined,
 ): DiaryRescheduleTarget | null {
     if (
-        !operation.scheduledDate ||
         !reschedulableActiveStatuses.has(operation.status) ||
         operation.completedAt ||
         operation.verifiedAt ||
@@ -722,6 +722,71 @@ export function GardenOperationRescheduleAction({
             gardenId={garden.id}
             target={target}
             triggerLabel={triggerLabel}
+        />
+    );
+}
+
+function isFinishedOperation(operation: GardenOperationHudItem) {
+    return Boolean(
+        operation.completedAt ||
+            operation.verifiedAt ||
+            operation.status === 'completed',
+    );
+}
+
+function OperationScheduleText({ label }: { label: string }) {
+    return (
+        <Row spacing={1} className="min-w-0 text-muted-foreground">
+            <Calendar className="size-3.5 shrink-0" />
+            <Typography level="body3" noWrap className="min-w-0">
+                {label}
+            </Typography>
+        </Row>
+    );
+}
+
+export function GardenOperationScheduleAction({
+    entryName,
+    garden,
+    operation,
+    referenceDate,
+}: {
+    entryName: string;
+    garden: CurrentGardenData | null | undefined;
+    operation: GardenOperationHudItem;
+    referenceDate: Date;
+}) {
+    const scheduledDateLabel = formatDate(operation.scheduledDate);
+
+    if (isFinishedOperation(operation)) {
+        return scheduledDateLabel ? (
+            <OperationScheduleText label={scheduledDateLabel} />
+        ) : null;
+    }
+
+    if (!garden) {
+        return scheduledDateLabel ? (
+            <OperationScheduleText label={scheduledDateLabel} />
+        ) : null;
+    }
+
+    const target = getGardenOperationRescheduleTarget(operation, garden);
+    if (!target) {
+        return scheduledDateLabel ? (
+            <OperationScheduleText label={scheduledDateLabel} />
+        ) : null;
+    }
+
+    return (
+        <RaisedBedDiaryRescheduleAction
+            disabledReason={getDiaryRescheduleDisabledReason(
+                target,
+                referenceDate,
+            )}
+            entryName={entryName}
+            gardenId={garden.id}
+            target={target}
+            triggerLabel={scheduledDateLabel ?? 'Zakaži'}
         />
     );
 }
@@ -979,12 +1044,12 @@ function OperationSchedule({
 }) {
     const scheduledDate = formatDate(operation.scheduledDate);
 
-    if (!scheduledDate) {
-        return null;
-    }
-
     if (scheduleAction) {
         return <div className="w-fit max-w-full">{scheduleAction}</div>;
+    }
+
+    if (!scheduledDate) {
+        return null;
     }
 
     return (
@@ -1762,31 +1827,20 @@ export function GardenOperationsHud() {
                                             : undefined;
                                     const operationName =
                                         operationData?.information.label;
-                                    const scheduledDateLabel = formatDate(
-                                        operation.scheduledDate,
-                                    );
                                     const entryName = getActiveOperationName({
                                         operation,
                                         operationName,
                                         plantSortName:
                                             plantSortData?.information.name,
                                     });
-                                    const scheduleAction =
-                                        canRescheduleGardenOperation(
-                                            operation,
-                                            currentGarden,
-                                            referenceDate,
-                                        ) && scheduledDateLabel ? (
-                                            <GardenOperationRescheduleAction
-                                                entryName={entryName}
-                                                garden={currentGarden}
-                                                operation={operation}
-                                                referenceDate={referenceDate}
-                                                triggerLabel={
-                                                    scheduledDateLabel
-                                                }
-                                            />
-                                        ) : undefined;
+                                    const scheduleAction = (
+                                        <GardenOperationScheduleAction
+                                            entryName={entryName}
+                                            garden={currentGarden}
+                                            operation={operation}
+                                            referenceDate={referenceDate}
+                                        />
+                                    );
 
                                     return (
                                         <GardenOperationCard
