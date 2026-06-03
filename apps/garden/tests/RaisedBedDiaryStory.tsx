@@ -15,6 +15,13 @@ type DiaryEntry = {
     timestamp: Date;
     imageUrls?: string[] | null;
     isMarkdown?: boolean;
+    rescheduleTarget?: {
+        type: 'operation';
+        operationId: number;
+        raisedBedId: number;
+        raisedBedFieldId: number | null;
+        scheduledDate: string;
+    };
 };
 
 const singleImageUrls = ['/web-app-manifest-192x192.png'];
@@ -28,14 +35,32 @@ const imageUrls = [
 const longWord =
     'SuperdugacakNazivDnevnickogUnosaBezRazmakaKojiMoraOstatiUnutarListe';
 
+function todayUtcIso() {
+    const today = new Date();
+    return new Date(
+        Date.UTC(
+            today.getUTCFullYear(),
+            today.getUTCMonth(),
+            today.getUTCDate(),
+        ),
+    ).toISOString();
+}
+
 const diaryEntries: DiaryEntry[] = [
     {
         id: 1,
         name: `${longWord} 1`,
         description: `${longWord} with a long description and enough words to wrap inside a narrow mobile raised bed diary card.`,
         status: 'Planirano',
-        timestamp: new Date('2026-05-13T12:00:00.000Z'),
+        timestamp: new Date('2040-01-05T00:00:00.000Z'),
         imageUrls: singleImageUrls,
+        rescheduleTarget: {
+            type: 'operation',
+            operationId: 1,
+            raisedBedId: TEST_RAISED_BED_ID,
+            raisedBedFieldId: null,
+            scheduledDate: '2040-01-05T00:00:00.000Z',
+        },
     },
     {
         id: 2,
@@ -52,8 +77,15 @@ const diaryEntries: DiaryEntry[] = [
         name: 'Watering and checkup',
         description:
             'Shorter entry without images keeps the same row constraints.',
-        status: 'Novo',
-        timestamp: new Date('2026-05-11T12:00:00.000Z'),
+        status: 'Planirano',
+        timestamp: new Date(todayUtcIso()),
+        rescheduleTarget: {
+            type: 'operation',
+            operationId: 3,
+            raisedBedId: TEST_RAISED_BED_ID,
+            raisedBedFieldId: null,
+            scheduledDate: todayUtcIso(),
+        },
     },
 ];
 

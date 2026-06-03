@@ -4,6 +4,7 @@ import {
     RAISED_BED_ABANDON_OPERATION_ENTITY_ID,
     RAISED_BED_OPERATION_ENTITY_TYPE_NAME,
 } from '@gredice/js/raisedBeds';
+import { notifyOperationUpdate } from '@gredice/notifications';
 import { signalcoClient } from '@gredice/signalco';
 import {
     abandonRaisedBed,
@@ -20,6 +21,7 @@ import {
     deleteGardenStack,
     deleteSandboxGardenCompletely,
     GardenBoxInventoryLimitError,
+    GardenDiaryRescheduleError,
     getAccount,
     getAccountGardens,
     getEvents,
@@ -38,6 +40,8 @@ import {
     getSandboxGardenDeletionCandidate,
     knownEvents,
     knownEventTypes,
+    rescheduleGardenDiaryOperation,
+    rescheduleGardenDiaryRaisedBedField,
     sowSandboxField,
     spendSunflowers,
     storage,
@@ -47,7 +51,7 @@ import {
     updateGardenStack,
     updateRaisedBed,
 } from '@gredice/storage';
-import { Hono } from 'hono';
+import { type Context, Hono } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
@@ -106,6 +110,10 @@ const storeBlockInGardenBoxBodySchema = z.object({
     blockIndex: z.number().int().min(0),
 });
 
+const rescheduleDiaryItemBodySchema = z.object({
+    scheduledDate: z.string().trim().min(1),
+});
+
 function normalizeAnalysisImageUrls(body: AnalyzeImageBody) {
     const imageUrls = body.imageUrls?.length
         ? body.imageUrls
@@ -118,6 +126,20 @@ function normalizeAnalysisImageUrls(body: AnalyzeImageBody) {
 
 function getAnalysisReferenceDate(body: AnalyzeImageBody) {
     return normalizeAnalysisReferenceDate(body.referenceDate);
+}
+
+function diaryRescheduleErrorResponse(
+    context: Context,
+    error: GardenDiaryRescheduleError,
+) {
+    switch (error.statusCode) {
+        case 400:
+            return context.json({ error: error.message }, 400);
+        case 404:
+            return context.json({ error: error.message }, 404);
+        case 409:
+            return context.json({ error: error.message }, 409);
+    }
 }
 
 const aiTextStreamResponseInit = {
@@ -553,6 +575,65 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 nextCursor: operationsPage.nextCursor,
                 total: operationsPage.total,
             });
+        },
+    )
+    .post(
+        '/:gardenId/operations/:operationId/reschedule',
+        describeRoute({
+            description:
+                'Reschedule a planned in-game diary operation for the current user',
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+                operationId: z.string(),
+            }),
+        ),
+        zValidator('json', rescheduleDiaryItemBodySchema),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, operationId } = context.req.valid('param');
+            const { scheduledDate } = context.req.valid('json');
+            const gardenIdNumber = Number.parseInt(gardenId, 10);
+            const operationIdNumber = Number.parseInt(operationId, 10);
+
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+            if (Number.isNaN(operationIdNumber)) {
+                return context.json({ error: 'Invalid operation ID' }, 400);
+            }
+
+            const { accountId } = context.get('authContext');
+
+            try {
+                const result = await rescheduleGardenDiaryOperation({
+                    accountId,
+                    gardenId: gardenIdNumber,
+                    operationId: operationIdNumber,
+                    scheduledDate,
+                });
+
+                await notifyOperationUpdate(operationIdNumber, 'rescheduled', {
+                    scheduledDate: result.scheduledDate.toISOString(),
+                });
+
+                return context.json(
+                    { scheduledDate: result.scheduledDate.toISOString() },
+                    200,
+                );
+            } catch (error) {
+                if (error instanceof GardenDiaryRescheduleError) {
+                    return diaryRescheduleErrorResponse(context, error);
+                }
+
+                console.error('Error rescheduling diary operation:', error);
+                return context.json(
+                    { error: 'Failed to reschedule operation' },
+                    500,
+                );
+            }
         },
     )
     .get(
@@ -2503,6 +2584,71 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 type,
                 values: history.data?.values || [],
             });
+        },
+    )
+    .post(
+        '/:gardenId/raised-beds/:raisedBedId/fields/:positionIndex/reschedule',
+        describeRoute({
+            description:
+                'Reschedule a planned in-game diary raised-bed field sowing for the current user',
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+                raisedBedId: z.string(),
+                positionIndex: z.string(),
+            }),
+        ),
+        zValidator('json', rescheduleDiaryItemBodySchema),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, raisedBedId, positionIndex } =
+                context.req.valid('param');
+            const { scheduledDate } = context.req.valid('json');
+            const gardenIdNumber = Number.parseInt(gardenId, 10);
+            const raisedBedIdNumber = Number.parseInt(raisedBedId, 10);
+            const positionIndexNumber = Number.parseInt(positionIndex, 10);
+
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+            if (Number.isNaN(raisedBedIdNumber)) {
+                return context.json({ error: 'Invalid raised bed ID' }, 400);
+            }
+            if (Number.isNaN(positionIndexNumber) || positionIndexNumber < 0) {
+                return context.json({ error: 'Invalid position index' }, 400);
+            }
+
+            const { accountId } = context.get('authContext');
+
+            try {
+                const result = await rescheduleGardenDiaryRaisedBedField({
+                    accountId,
+                    gardenId: gardenIdNumber,
+                    raisedBedId: raisedBedIdNumber,
+                    positionIndex: positionIndexNumber,
+                    scheduledDate,
+                });
+
+                return context.json(
+                    { scheduledDate: result.scheduledDate.toISOString() },
+                    200,
+                );
+            } catch (error) {
+                if (error instanceof GardenDiaryRescheduleError) {
+                    return diaryRescheduleErrorResponse(context, error);
+                }
+
+                console.error(
+                    'Error rescheduling diary raised bed field:',
+                    error,
+                );
+                return context.json(
+                    { error: 'Failed to reschedule raised bed field' },
+                    500,
+                );
+            }
         },
     )
     .patch(

@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import type { Locator } from '@playwright/test';
+import { getMinimumDiaryRescheduleDateInput } from '../../../packages/game/src/hooks/useRescheduleDiaryEntry';
 import { RaisedBedDiaryOverflowStory } from './RaisedBedDiaryStory';
 
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
@@ -68,4 +69,26 @@ test('single-image diary entries keep text close to the thumbnail', async ({
     const textGap = (contentBox?.x ?? 0) - imageRight;
 
     expect(textGap).toBeLessThanOrEqual(24);
+});
+
+test('future planned diary entries expose the in-game reschedule action', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(MOBILE_VIEWPORT);
+    await mount(<RaisedBedDiaryOverflowStory />);
+
+    const rescheduleButtons = page.getByRole('button', {
+        name: 'Prerasporedi',
+    });
+    await expect(rescheduleButtons).toHaveCount(1);
+
+    await rescheduleButtons.first().click();
+
+    const dateInput = page.getByLabel('Novi datum');
+    await expect(dateInput).toBeVisible();
+    await expect(dateInput).toHaveAttribute(
+        'min',
+        getMinimumDiaryRescheduleDateInput(),
+    );
 });
