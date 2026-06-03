@@ -17,12 +17,15 @@ import { HarvestLabelPreviewCanvas } from '../../../components/labels/HarvestLab
 import { DebugFieldLabel } from './DebugFieldLabel';
 import { DebugTextInput } from './DebugTextInput';
 
+const DEMO_TRACE_URL = 'https://www.gredice.com/trag/demo-berba-2026';
+
 const DEFAULT_LABEL_DATA: HarvestLabelData = {
     raisedBedPhysicalId: '12B',
     fieldIndex: 4,
     operationLabel: 'Berba',
     plantSortName: 'Salata Batavia',
     dateLabel: '02.06.2026.',
+    traceUrl: DEMO_TRACE_URL,
 };
 
 const LABEL_SAMPLES: Array<{
@@ -30,11 +33,11 @@ const LABEL_SAMPLES: Array<{
     data: HarvestLabelData;
 }> = [
     {
-        label: 'Salata',
+        label: 'Salata s QR',
         data: DEFAULT_LABEL_DATA,
     },
     {
-        label: 'Špinat',
+        label: 'Bez QR traga',
         data: {
             raisedBedPhysicalId: '3A',
             fieldIndex: 2,
@@ -44,13 +47,15 @@ const LABEL_SAMPLES: Array<{
         },
     },
     {
-        label: 'Rajčica',
+        label: 'Dugi nazivi',
         data: {
             raisedBedPhysicalId: '18',
             fieldIndex: 7,
-            operationLabel: 'Berba zrelih plodova',
-            plantSortName: 'Cherry rajčica',
+            operationLabel: 'Branje 25% najzrelijih plodova',
+            plantSortName: 'Grah mahunar Meraviglia di Veneya a grano nero',
             dateLabel: '02.06.2026.',
+            traceUrl:
+                'https://www.gredice.com/trag/demo-berba-cherry-rajcica-polje-18-7-2026',
         },
     },
 ];
@@ -155,6 +160,44 @@ export function HarvestLabelDebugPage() {
                                         }))
                                     }
                                 />
+                                <DebugTextInput
+                                    label="QR trag URL"
+                                    value={labelData.traceUrl ?? ''}
+                                    onChange={(value) =>
+                                        setLabelData((current) => ({
+                                            ...current,
+                                            traceUrl: value.trim()
+                                                ? value
+                                                : undefined,
+                                        }))
+                                    }
+                                />
+                                <div className="flex flex-wrap gap-2">
+                                    <Button
+                                        variant="outlined"
+                                        type="button"
+                                        onClick={() =>
+                                            setLabelData((current) => ({
+                                                ...current,
+                                                traceUrl: DEMO_TRACE_URL,
+                                            }))
+                                        }
+                                    >
+                                        Uključi QR
+                                    </Button>
+                                    <Button
+                                        variant="outlined"
+                                        type="button"
+                                        onClick={() =>
+                                            setLabelData((current) => ({
+                                                ...current,
+                                                traceUrl: undefined,
+                                            }))
+                                        }
+                                    >
+                                        Ukloni QR
+                                    </Button>
+                                </div>
 
                                 <Stack spacing={3}>
                                     <DebugFieldLabel title="Brzi primjeri" />

@@ -1,3 +1,4 @@
+import { create as createQrCode } from "qrcode";
 import type {
 	FieldOperationLabelData,
 	HarvestLabelData,
@@ -89,7 +90,7 @@ function wrapText(
 			index += 1;
 		}
 
-		lines.push(line);
+		lines.push(clampWithEllipsis(context, line, maxWidth));
 	}
 
 	if (index < words.length && lines.length > 0) {
@@ -144,6 +145,51 @@ function fitWrappedFont(
 	};
 }
 
+function drawQrCode(
+	context: CanvasRenderingContext2D,
+	payload: string,
+	x: number,
+	y: number,
+	size: number,
+) {
+	const qrCode = createQrCode(payload, {
+		errorCorrectionLevel: "M",
+	});
+	const moduleCount = qrCode.modules.size;
+	const quietModules = 4;
+	const totalModules = moduleCount + quietModules * 2;
+	const moduleSize = Math.max(1, Math.floor(size / totalModules));
+	const renderedSize = moduleSize * totalModules;
+	const offsetX = x + Math.floor((size - renderedSize) / 2);
+	const offsetY = y + Math.floor((size - renderedSize) / 2);
+
+	context.save();
+	context.fillStyle = "#ffffff";
+	context.fillRect(x, y, size, size);
+	context.fillStyle = "#000000";
+
+	for (let row = 0; row < moduleCount; row += 1) {
+		for (let column = 0; column < moduleCount; column += 1) {
+			if (!qrCode.modules.data[row * moduleCount + column]) {
+				continue;
+			}
+
+			context.fillRect(
+				offsetX + (column + quietModules) * moduleSize,
+				offsetY + (row + quietModules) * moduleSize,
+				moduleSize,
+				moduleSize,
+			);
+		}
+	}
+
+	context.restore();
+
+	return {
+		contentRight: offsetX + (quietModules + moduleCount) * moduleSize,
+	};
+}
+
 export function getHarvestLabelCanvasSize(
 	preset = DEFAULT_HARVEST_LABEL_PRESET,
 ) {
@@ -177,7 +223,7 @@ function drawGrediceLogomark(
 	context.restore();
 }
 
-export function renderFieldOperationLabel(
+function renderFieldOperationLabelWithoutTraceQr(
 	canvas: HTMLCanvasElement,
 	data: FieldOperationLabelData,
 	preset = DEFAULT_HARVEST_LABEL_PRESET,
@@ -316,6 +362,190 @@ export function renderFieldOperationLabel(
 	}
 }
 
+function renderFieldOperationLabelWithTraceQr(
+	canvas: HTMLCanvasElement,
+	data: FieldOperationLabelData & { traceUrl: string },
+	preset = DEFAULT_HARVEST_LABEL_PRESET,
+) {
+	const { width, height } = getHarvestLabelCanvasSize(preset);
+	canvas.width = width;
+	canvas.height = height;
+
+	const context = canvas.getContext("2d");
+	if (!context) {
+		throw new Error("Unable to render label preview.");
+	}
+
+	const paddingX = Math.round(width * 0.04);
+	const paddingY = Math.round(height * 0.07);
+	const qrSize = Math.round(Math.min(height * 0.55, width * 0.33));
+	const qrX = width - Math.round(width * 0.03) - qrSize;
+	const qrY = Math.round(height * 0.04);
+	const headerContentRight = qrX - Math.round(width * 0.025);
+	const logoSize = Math.round(height * 0.21);
+	const logoY = paddingY + Math.round(height * 0.01);
+	const headerTextX = paddingX + logoSize + Math.round(width * 0.025);
+	const headerTop = paddingY + Math.round(height * 0.015);
+	const headerLineHeight = Math.round(height * 0.11);
+	const topBedText = sanitizeText(data.raisedBedPhysicalId);
+	const topFieldText = sanitizeText(data.fieldLabel);
+	const detailText = sanitizeText(data.detailLabel);
+	const plantSortName = sanitizeText(data.plantSortName);
+	const dateLabel = data.dateLabel ? sanitizeText(data.dateLabel) : "";
+	const bottomY = height - paddingY;
+
+	context.clearRect(0, 0, width, height);
+	context.fillStyle = "#ffffff";
+	context.fillRect(0, 0, width, height);
+	drawGrediceLogomark(context, paddingX, logoY, logoSize);
+	const qrMetrics = drawQrCode(context, data.traceUrl, qrX, qrY, qrSize);
+
+	context.fillStyle = "#000000";
+	context.textBaseline = "alphabetic";
+	context.textAlign = "left";
+
+	const headerLabelFontSize = fitSingleLineFont(
+		context,
+		"Gredica",
+		Math.max(width * 0.16, headerContentRight - headerTextX - width * 0.18),
+		Math.round(height * 0.085),
+		Math.round(height * 0.06),
+		500,
+	);
+	context.font = `500 ${headerLabelFontSize}px ${FONT_FAMILY}`;
+	context.fillText("Gredica", headerTextX, headerTop + headerLabelFontSize);
+	context.fillText(
+		"Polje",
+		headerTextX,
+		headerTop + headerLabelFontSize + headerLineHeight,
+	);
+
+	const headerValueMaxWidth = Math.max(
+		width * 0.12,
+		headerContentRight - headerTextX - Math.round(width * 0.21),
+	);
+	const bedFontSize = fitSingleLineFont(
+		context,
+		topBedText,
+		headerValueMaxWidth,
+		Math.round(height * 0.095),
+		Math.round(height * 0.065),
+		800,
+	);
+	context.font = `800 ${bedFontSize}px ${FONT_FAMILY}`;
+	context.textAlign = "right";
+	context.fillText(topBedText, headerContentRight, headerTop + bedFontSize);
+
+	const fieldFontSize = fitSingleLineFont(
+		context,
+		topFieldText,
+		headerValueMaxWidth,
+		Math.round(height * 0.09),
+		Math.round(height * 0.06),
+		800,
+	);
+	context.font = `800 ${fieldFontSize}px ${FONT_FAMILY}`;
+	context.fillText(
+		topFieldText,
+		headerContentRight,
+		headerTop + bedFontSize + headerLineHeight,
+	);
+
+	let dateTextLeft = qrMetrics.contentRight;
+	if (dateLabel) {
+		const dateFontSize = fitSingleLineFont(
+			context,
+			dateLabel,
+			qrSize + Math.round(width * 0.02),
+			Math.round(height * 0.06),
+			Math.round(height * 0.045),
+			500,
+		);
+		context.font = `500 ${dateFontSize}px ${FONT_FAMILY}`;
+		context.textAlign = "right";
+		dateTextLeft =
+			qrMetrics.contentRight - context.measureText(dateLabel).width;
+		context.fillText(
+			dateLabel,
+			qrMetrics.contentRight,
+			qrY + qrSize + dateFontSize - Math.round(height * 0.015),
+		);
+	}
+
+	const bottomContentRight = dateLabel
+		? Math.max(headerContentRight, dateTextLeft - Math.round(width * 0.035))
+		: qrMetrics.contentRight;
+	const bottomContentWidth = bottomContentRight - paddingX;
+	const detailLayout = fitWrappedFont(
+		context,
+		detailText,
+		bottomContentWidth,
+		Math.round(height * 0.25),
+		2,
+		Math.round(height * 0.09),
+		Math.round(height * 0.052),
+		700,
+	);
+	const detailLineHeight = detailLayout.fontSize * DEFAULT_LINE_HEIGHT;
+
+	const sortLayout = fitWrappedFont(
+		context,
+		plantSortName,
+		bottomContentWidth,
+		Math.round(height * 0.34),
+		4,
+		Math.round(height * 0.085),
+		Math.round(height * 0.05),
+		500,
+	);
+	const sortLineHeight = sortLayout.fontSize * DEFAULT_LINE_HEIGHT;
+	const contentBlockGap = Math.round(height * 0.025);
+	const contentBlockHeight =
+		detailLayout.lines.length * detailLineHeight +
+		contentBlockGap +
+		sortLayout.lines.length * sortLineHeight;
+	const contentBlockTop = Math.max(
+		Math.round(height * 0.38),
+		bottomY - contentBlockHeight,
+	);
+	let detailBaseline = contentBlockTop + detailLayout.fontSize;
+
+	context.font = `700 ${detailLayout.fontSize}px ${FONT_FAMILY}`;
+	context.textAlign = "left";
+	for (const line of detailLayout.lines) {
+		context.fillText(line, paddingX, detailBaseline);
+		detailBaseline += detailLineHeight;
+	}
+
+	let sortBaseline =
+		contentBlockTop +
+		detailLayout.lines.length * detailLineHeight +
+		contentBlockGap +
+		sortLayout.fontSize;
+	context.font = `500 ${sortLayout.fontSize}px ${FONT_FAMILY}`;
+	for (const line of sortLayout.lines) {
+		context.fillText(line, paddingX, sortBaseline);
+		sortBaseline += sortLineHeight;
+	}
+}
+
+export function renderFieldOperationLabel(
+	canvas: HTMLCanvasElement,
+	data: FieldOperationLabelData,
+	preset = DEFAULT_HARVEST_LABEL_PRESET,
+) {
+	if (data.traceUrl) {
+		renderFieldOperationLabelWithTraceQr(
+			canvas,
+			{ ...data, traceUrl: data.traceUrl },
+			preset,
+		);
+		return;
+	}
+
+	renderFieldOperationLabelWithoutTraceQr(canvas, data, preset);
+}
+
 export function renderHarvestLabel(
 	canvas: HTMLCanvasElement,
 	data: HarvestLabelData,
@@ -329,6 +559,7 @@ export function renderHarvestLabel(
 			detailLabel: data.operationLabel ?? "BERBA",
 			plantSortName: data.plantSortName,
 			dateLabel: data.dateLabel,
+			traceUrl: data.traceUrl,
 		},
 		preset,
 	);

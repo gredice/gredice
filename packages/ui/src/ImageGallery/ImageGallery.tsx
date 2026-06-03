@@ -28,7 +28,8 @@ interface ImageGalleryProps {
     previewWidth?: number;
     previewHeight?: number;
     previewAs?: 'button' | 'div';
-    previewVariant?: 'carousel' | 'stacked';
+    previewVariant?: 'carousel' | 'grid' | 'stacked';
+    previewLimitBeforeStack?: number;
 }
 
 export function ImageGallery({
@@ -37,6 +38,7 @@ export function ImageGallery({
     previewHeight = 200,
     previewAs = 'button',
     previewVariant = 'carousel',
+    previewLimitBeforeStack,
 }: ImageGalleryProps) {
     const imageInstructionsId = useId();
     const lastFocusedElementRef = useRef<Element | null>(null);
@@ -70,7 +72,25 @@ export function ImageGallery({
     const resolveAlt = (imageAlt: string | null | undefined, index: number) =>
         imageAlt?.trim() || `Slika ${index + 1}`;
 
-    const stackedImages = useMemo(() => images.slice(0, 4), [images]);
+    const stackedPreviewLimit = Math.max(1, previewLimitBeforeStack ?? 4);
+    const stackedImages = useMemo(
+        () => images.slice(0, stackedPreviewLimit),
+        [images, stackedPreviewLimit],
+    );
+    const gridPreviewLimit = Math.max(
+        1,
+        previewLimitBeforeStack ?? images.length,
+    );
+    const shouldShowGridStack = images.length > gridPreviewLimit + 1;
+    const gridImages = shouldShowGridStack
+        ? images.slice(0, gridPreviewLimit)
+        : images;
+    const gridStackImages = shouldShowGridStack
+        ? images.slice(gridPreviewLimit, gridPreviewLimit + 4).reverse()
+        : [];
+    const gridStackCount = shouldShowGridStack
+        ? images.length - gridPreviewLimit
+        : 0;
 
     const resetTransform = useCallback(() => {
         resetZoomLevel();
@@ -426,6 +446,127 @@ export function ImageGallery({
                             <div className="absolute inset-0 bg-white/30 opacity-0 transition-opacity group-hover:opacity-100" />
                         </PreviewComponent>
                     ))}
+                </div>
+            ) : previewVariant === 'grid' ? (
+                <div className="grid gap-2 sm:grid-cols-3">
+                    {gridImages.map((image, index) => (
+                        <PreviewComponent
+                            key={image.src}
+                            {...(previewAs === 'button'
+                                ? { type: 'button' as const }
+                                : {
+                                      role: 'button' as const,
+                                      tabIndex: 0,
+                                  })}
+                            aria-label={`Otvori sliku ${index + 1} u punoj veličini: ${resolveAlt(image.alt, index)}`}
+                            title="Otvori u punoj veličini"
+                            className="group relative aspect-[4/3] w-full overflow-hidden rounded-lg bg-muted transition-shadow duration-200 hover:cursor-zoom-in hover:shadow-md"
+                            onClick={(event: React.MouseEvent) => {
+                                event.stopPropagation();
+                                openModal(index, event.currentTarget);
+                            }}
+                            onKeyDown={(event: React.KeyboardEvent) => {
+                                if (previewAs === 'button') return;
+                                event.stopPropagation();
+                                if (
+                                    event.key === 'Enter' ||
+                                    event.key === ' '
+                                ) {
+                                    event.preventDefault();
+                                    openModal(index, event.currentTarget);
+                                }
+                            }}
+                        >
+                            <Image
+                                src={image.src}
+                                alt={resolveAlt(image.alt, index)}
+                                fill
+                                sizes={`(min-width: 640px) ${previewWidth}px, 100vw`}
+                                className="h-full w-full object-cover"
+                            />
+                            {image.dateLabel && (
+                                <span className="absolute inset-x-0 bottom-0 z-10 bg-black/55 px-2 py-1 text-left text-[11px] leading-none text-white/90 backdrop-blur-sm">
+                                    {image.dateLabel}
+                                </span>
+                            )}
+                            <div className="absolute inset-0 bg-white/30 opacity-0 transition-opacity group-hover:opacity-100" />
+                        </PreviewComponent>
+                    ))}
+                    {gridStackImages.length > 0 ? (
+                        <PreviewComponent
+                            key={`stack-${gridPreviewLimit}`}
+                            {...(previewAs === 'button'
+                                ? { type: 'button' as const }
+                                : {
+                                      role: 'button' as const,
+                                      tabIndex: 0,
+                                  })}
+                            aria-label={`Otvori preostale slike u punoj veličini (${gridStackCount})`}
+                            title="Otvori preostale slike"
+                            className="group relative aspect-[4/3] w-full overflow-visible rounded-lg bg-transparent transition-shadow duration-200 hover:cursor-zoom-in"
+                            onMouseEnter={() => setIsStackHovered(true)}
+                            onMouseLeave={() => setIsStackHovered(false)}
+                            onFocus={() => setIsStackHovered(true)}
+                            onBlur={() => setIsStackHovered(false)}
+                            onClick={(event: React.MouseEvent) => {
+                                event.stopPropagation();
+                                openModal(
+                                    gridPreviewLimit,
+                                    event.currentTarget,
+                                );
+                            }}
+                            onKeyDown={(event: React.KeyboardEvent) => {
+                                if (previewAs === 'button') return;
+                                event.stopPropagation();
+                                if (
+                                    event.key === 'Enter' ||
+                                    event.key === ' '
+                                ) {
+                                    event.preventDefault();
+                                    openModal(
+                                        gridPreviewLimit,
+                                        event.currentTarget,
+                                    );
+                                }
+                            }}
+                        >
+                            {gridStackImages.map((image, index) => {
+                                const reverseIndex =
+                                    gridStackImages.length - index - 1;
+                                const originalIndex =
+                                    gridPreviewLimit + reverseIndex;
+
+                                return (
+                                    <span
+                                        key={image.src}
+                                        className="absolute inset-0 block overflow-hidden rounded-lg border border-black/10 bg-muted shadow-md transition-all duration-300 group-hover:shadow-lg"
+                                        style={{
+                                            zIndex: index + 1,
+                                            transform: `translate(${reverseIndex * (isStackHovered ? 11 : 5)}px, ${reverseIndex * (isStackHovered ? -8 : -4)}px) rotate(${reverseIndex * 2.5}deg)`,
+                                        }}
+                                    >
+                                        <span
+                                            className="absolute inset-0 transition-transform duration-300 group-hover:scale-105"
+                                            style={{
+                                                transform: `translate(${reverseIndex * -1}px, ${reverseIndex * 1}px)`,
+                                            }}
+                                        >
+                                            <Image
+                                                src={image.src}
+                                                alt={resolveAlt(
+                                                    image.alt,
+                                                    originalIndex,
+                                                )}
+                                                fill
+                                                sizes={`(min-width: 640px) ${previewWidth}px, 100vw`}
+                                                className="h-full w-full object-cover"
+                                            />
+                                        </span>
+                                    </span>
+                                );
+                            })}
+                        </PreviewComponent>
+                    ) : null}
                 </div>
             ) : (
                 <PreviewComponent

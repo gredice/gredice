@@ -1,6 +1,7 @@
 import { Printer } from '@gredice/ui/icons';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import { markHarvestTraceLabelsPrintedAction } from './actions';
 import { FieldOperationPrintModal } from './FieldOperationPrintModal';
 import type {
     FarmScheduleDayData,
@@ -31,6 +32,7 @@ function formatLabelCount(count: number) {
 function formatLabelSummary(
     sowingLabelCount: number,
     harvestLabelCount: number,
+    traceLabelCount: number,
 ) {
     const parts = [];
     if (sowingLabelCount > 0) {
@@ -38,6 +40,9 @@ function formatLabelSummary(
     }
     if (harvestLabelCount > 0) {
         parts.push(`berba: ${formatLabelCount(harvestLabelCount)}`);
+    }
+    if (traceLabelCount > 0) {
+        parts.push(`QR trag: ${formatLabelCount(traceLabelCount)}`);
     }
 
     return parts.join(' · ');
@@ -54,7 +59,7 @@ export async function ScheduleLabelPrintSection({
         operationsDataPromise,
         plantSortsPromise,
     ]);
-    const printData = buildScheduleLabelPrintData(
+    const printData = await buildScheduleLabelPrintData(
         dayData,
         plantSorts,
         operationsData,
@@ -68,6 +73,7 @@ export async function ScheduleLabelPrintSection({
     const labelSummary = formatLabelSummary(
         printData.sowingLabelCount,
         printData.harvestLabelCount,
+        printData.traceLabelCount,
     );
 
     return (
@@ -80,6 +86,7 @@ export async function ScheduleLabelPrintSection({
             triggerSize="sm"
             triggerClassName="whitespace-nowrap"
             printButtonLabel="Ispiši sve etikete"
+            onPrintSuccess={markHarvestTraceLabelsPrintedAction}
             description={
                 <Stack spacing={1}>
                     <Typography>

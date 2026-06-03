@@ -4,10 +4,12 @@ import {
     buildRaisedBedFieldPlantUpdatePayload,
     createEvent,
     getFarmUserAcceptedOperationById,
+    getFarmUserPrintableHarvestTraceLinkIds,
     getFarmUserRaisedBeds,
     getOperationById,
     getRaisedBed,
     knownEvents,
+    markHarvestTraceLinksPrinted,
 } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
 import { auth } from '../../lib/auth/auth';
@@ -192,6 +194,28 @@ export async function completeFarmPlanting(
         ),
     );
 
+    revalidateSchedule();
+
+    return { success: true };
+}
+
+export async function markHarvestTraceLabelsPrintedAction(
+    traceLinkIds: number[],
+) {
+    const {
+        user: { role },
+        userId,
+    } = await auth(['admin', 'farmer']);
+
+    const printableTraceLinkIds =
+        role === 'admin'
+            ? traceLinkIds
+            : await getFarmUserPrintableHarvestTraceLinkIds(
+                  userId,
+                  traceLinkIds,
+              );
+
+    await markHarvestTraceLinksPrinted(printableTraceLinkIds);
     revalidateSchedule();
 
     return { success: true };

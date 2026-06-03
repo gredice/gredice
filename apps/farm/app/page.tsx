@@ -70,7 +70,6 @@ function formatCoordinate(value?: number | null) {
 async function FarmerDashboard() {
     const { userId } = await auth(['farmer', 'admin']);
     const [dbUser, farms] = await Promise.all([getUser(userId), getFarms()]);
-    const showDebugTools = process.env.NODE_ENV === 'development';
 
     if (!dbUser) {
         return (
@@ -198,17 +197,6 @@ async function FarmerDashboard() {
                             >
                                 Isplate
                             </Button>
-                            {showDebugTools && (
-                                <Button
-                                    variant="outlined"
-                                    size="lg"
-                                    fullWidth
-                                    className="h-24 flex-col text-center text-base"
-                                    href="/debug"
-                                >
-                                    Debug
-                                </Button>
-                            )}
                         </div>
                     </CardOverflow>
                 </Card>

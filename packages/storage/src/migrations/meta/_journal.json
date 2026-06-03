@@ -309,6 +309,13 @@
       "when": 1780420050748,
       "tag": "0043_hard_nocturne",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1780435935069,
+      "tag": "0044_oval_avengers",
+      "breakpoints": true
     }
   ]
 }
