@@ -201,6 +201,10 @@ export type GameState = {
     setEditHitboxDebugVisible: (visible: boolean) => void;
     entityRenderModeDebugVisible: boolean;
     setEntityRenderModeDebugVisible: (visible: boolean) => void;
+    animalPathfindingDebugVisible: boolean;
+    setAnimalPathfindingDebugVisible: (visible: boolean) => void;
+    animalTargetsDebugVisible: boolean;
+    setAnimalTargetsDebugVisible: (visible: boolean) => void;
     weather?: WeatherOverride;
     setWeather: (weather: WeatherOverride | undefined) => void;
     clearEnvironmentOverrides: () => void;
@@ -487,6 +491,12 @@ export function createGameState({
         entityRenderModeDebugVisible: false,
         setEntityRenderModeDebugVisible: (entityRenderModeDebugVisible) =>
             set({ entityRenderModeDebugVisible }),
+        animalPathfindingDebugVisible: false,
+        setAnimalPathfindingDebugVisible: (animalPathfindingDebugVisible) =>
+            set({ animalPathfindingDebugVisible }),
+        animalTargetsDebugVisible: false,
+        setAnimalTargetsDebugVisible: (animalTargetsDebugVisible) =>
+            set({ animalTargetsDebugVisible }),
         setWeather: (weather) => set({ weather }),
         clearEnvironmentOverrides: () => {
             const referenceTime = new Date();

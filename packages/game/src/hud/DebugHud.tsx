@@ -295,6 +295,18 @@ export function DebugHud() {
     const setEntityRenderModeDebugVisible = useGameState(
         (s) => s.setEntityRenderModeDebugVisible,
     );
+    const animalPathfindingDebugVisible = useGameState(
+        (s) => s.animalPathfindingDebugVisible,
+    );
+    const setAnimalPathfindingDebugVisible = useGameState(
+        (s) => s.setAnimalPathfindingDebugVisible,
+    );
+    const animalTargetsDebugVisible = useGameState(
+        (s) => s.animalTargetsDebugVisible,
+    );
+    const setAnimalTargetsDebugVisible = useGameState(
+        (s) => s.setAnimalTargetsDebugVisible,
+    );
     const gameQualitySetting = useGameState((s) => s.gameQualitySetting);
     const setGameQualitySetting = useGameState((s) => s.setGameQualitySetting);
     const gameCamera = useGameState((s) => s.gameCamera);
@@ -1021,6 +1033,44 @@ export function DebugHud() {
                                     }
                                 >
                                     Render modes
+                                </Button>
+                                <Button
+                                    size="xs"
+                                    className="flex-1"
+                                    startDecorator={
+                                        <Graph className="size-3.5" />
+                                    }
+                                    variant={
+                                        animalPathfindingDebugVisible
+                                            ? 'solid'
+                                            : 'outlined'
+                                    }
+                                    onClick={() =>
+                                        setAnimalPathfindingDebugVisible(
+                                            !animalPathfindingDebugVisible,
+                                        )
+                                    }
+                                >
+                                    Pathfinding
+                                </Button>
+                                <Button
+                                    size="xs"
+                                    className="flex-1"
+                                    startDecorator={
+                                        <MapPin className="size-3.5" />
+                                    }
+                                    variant={
+                                        animalTargetsDebugVisible
+                                            ? 'solid'
+                                            : 'outlined'
+                                    }
+                                    onClick={() =>
+                                        setAnimalTargetsDebugVisible(
+                                            !animalTargetsDebugVisible,
+                                        )
+                                    }
+                                >
+                                    Animal targets
                                 </Button>
                             </Row>
                             {entityRenderModeDebugVisible && (

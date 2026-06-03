@@ -27,6 +27,7 @@ import {
     type RaisedBedOrientation,
 } from '../../utils/raisedBedOrientation';
 import { useGameGLTF } from '../../utils/useGameGLTF';
+import { AnimalTargetDebugMarker } from '../animals/AnimalDebugIndicators';
 import { getCactusVariantConfig } from '../Cactus';
 import { getBlockSurfaceDecorations } from '../groundDecorations/getBlockSurfaceDecorations';
 import { resolveGroundDecorationSurface } from '../groundDecorations/groundDecorationConfig';
@@ -1154,11 +1155,15 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
     const { enableDebugHudFlag = false } = useGameFlags();
     const clock = useThree((state) => state.clock);
     const groupRef = useRef<Group>(null);
+    const targetDebugRef = useRef<Group>(null);
     const randomRef = useRef(createRandom(habitat.seed));
     const runtimeRef = useRef<BeeRuntimeState | null>(null);
     const lastAnimalDebugUpdateRef = useRef(0);
     const lastDebugCommandSequenceRef = useRef(0);
     const lastDisturbanceSequenceRef = useRef(0);
+    const animalTargetsDebugVisible = useGameState(
+        (state) => state.animalTargetsDebugVisible,
+    );
     const animalDebugCommand = useGameState(
         (state) => state.animalDebugCommand,
     );
@@ -1203,6 +1208,24 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
 
         return () => removeAnimalDebugEntry(habitat.id);
     }, [enableDebugHudFlag, habitat.id, removeAnimalDebugEntry]);
+
+    useEffect(() => {
+        if (!animalTargetsDebugVisible && targetDebugRef.current) {
+            targetDebugRef.current.visible = false;
+        }
+    }, [animalTargetsDebugVisible]);
+
+    const syncDebugTarget = (runtime: BeeRuntimeState | null) => {
+        const targetDebug = targetDebugRef.current;
+        if (!targetDebug) {
+            return;
+        }
+
+        targetDebug.visible = animalTargetsDebugVisible && runtime !== null;
+        if (targetDebug.visible && runtime) {
+            targetDebug.position.copy(runtime.target.position);
+        }
+    };
 
     function handlePointerDown(event: ThreeEvent<PointerEvent>) {
         event.stopPropagation();
@@ -1315,6 +1338,8 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
             }
         }
 
+        syncDebugTarget(runtime);
+
         if (runtime.phase === 'moving') {
             const progress = MathUtils.clamp(
                 (now - runtime.startedAt) / runtime.duration,
@@ -1413,15 +1438,18 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
     });
 
     return (
-        // biome-ignore lint/a11y/noStaticElementInteractions: Three.js element is interactive
-        <group
-            ref={groupRef}
-            scale={beeScale}
-            onPointerDown={handlePointerDown}
-            onClick={handleClick}
-        >
-            <primitive object={beeModel.scene} />
-        </group>
+        <>
+            {/* biome-ignore lint/a11y/noStaticElementInteractions: Three.js element is interactive */}
+            <group
+                ref={groupRef}
+                scale={beeScale}
+                onPointerDown={handlePointerDown}
+                onClick={handleClick}
+            >
+                <primitive object={beeModel.scene} />
+            </group>
+            <AnimalTargetDebugMarker ref={targetDebugRef} color="#facc15" />
+        </>
     );
 }
 
