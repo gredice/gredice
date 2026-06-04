@@ -19,6 +19,7 @@ type PlantRelationshipName =
     (typeof plantRelationshipAttributeNames)[PlantRelationshipKind];
 
 export type PlantRelationshipDirection = 'outgoing' | 'incoming';
+type PlantRelationshipSourceEntityTypeName = 'plant' | 'plantSort';
 
 export type PlantRelationshipSummary = {
     id: number;
@@ -83,6 +84,14 @@ const plantRelationshipNamesByKind = new Map<
         kind as PlantRelationshipKind,
     ]),
 );
+const plantRelationshipSourceEntityTypeNames = new Set<string>([
+    'plant',
+    'plantSort',
+]);
+const plantRelationshipKinds = [
+    'companions',
+    'antagonists',
+] satisfies PlantRelationshipKind[];
 
 function relationshipLabel(kind: PlantRelationshipKind) {
     return kind === 'companions' ? 'companion' : 'antagonist';
@@ -92,7 +101,9 @@ export function plantRelationshipKindForAttributeDefinition(
     attributeDefinition: PlantRelationshipAttributeDefinition,
 ): PlantRelationshipKind | null {
     if (
-        attributeDefinition.entityTypeName !== 'plant' ||
+        !plantRelationshipSourceEntityTypeNames.has(
+            attributeDefinition.entityTypeName,
+        ) ||
         attributeDefinition.category !== plantRelationshipCategory ||
         attributeDefinition.dataType !== 'ref:plant'
     ) {
@@ -207,6 +218,47 @@ function plantSummary(
     };
 }
 
+function isPublishedEntity(
+    entity: PlantRelationshipEntity,
+    entityTypeName: string,
+) {
+    return (
+        !entity.isDeleted &&
+        entity.state === 'published' &&
+        entity.entityType?.name === entityTypeName
+    );
+}
+
+function isPublishedPlantRelationshipSource(
+    entity: PlantRelationshipEntity,
+): entity is PlantRelationshipEntity & {
+    entityType: { name: PlantRelationshipSourceEntityTypeName };
+} {
+    return (
+        !entity.isDeleted &&
+        entity.state === 'published' &&
+        plantRelationshipSourceEntityTypeNames.has(
+            entity.entityType?.name ?? '',
+        )
+    );
+}
+
+function parentPlantIdForSort(entity: PlantRelationshipEntity) {
+    if (entity.entityType?.name !== 'plantSort') {
+        return null;
+    }
+
+    const plantAttribute = entity.attributes.find(
+        (attribute) =>
+            !attribute.isDeleted &&
+            attribute.attributeDefinition.category === 'information' &&
+            attribute.attributeDefinition.name === 'plant' &&
+            attribute.attributeDefinition.dataType === 'ref:plant',
+    );
+
+    return parsePlantRelationshipTargetId(plantAttribute?.value);
+}
+
 function ensureKindMap(
     relationshipsByEntityId: Map<
         number,
@@ -240,20 +292,18 @@ export function buildPlantRelationshipReadModels(
 ) {
     const publishedPlantsById = new Map(
         entities
-            .filter(
-                (entity) =>
-                    !entity.isDeleted &&
-                    entity.state === 'published' &&
-                    entity.entityType?.name === 'plant',
-            )
+            .filter((entity) => isPublishedEntity(entity, 'plant'))
             .map((entity) => [entity.id, entity]),
+    );
+    const publishedSources = entities.filter(
+        isPublishedPlantRelationshipSource,
     );
     const relationshipsByEntityId = new Map<
         number,
         Record<PlantRelationshipKind, Map<number, PlantRelationshipSummary>>
     >();
 
-    for (const source of publishedPlantsById.values()) {
+    for (const source of publishedSources) {
         for (const attribute of source.attributes) {
             if (attribute.isDeleted) {
                 continue;
@@ -280,10 +330,34 @@ export function buildPlantRelationshipReadModels(
                 target.id,
                 plantSummary(target, kind),
             );
-            ensureKindMap(relationshipsByEntityId, target.id)[kind].set(
-                source.id,
-                plantSummary(source, kind),
-            );
+            if (source.entityType.name === 'plant') {
+                ensureKindMap(relationshipsByEntityId, target.id)[kind].set(
+                    source.id,
+                    plantSummary(source, kind),
+                );
+            }
+        }
+    }
+
+    for (const source of publishedSources) {
+        const parentPlantId = parentPlantIdForSort(source);
+        if (!parentPlantId) {
+            continue;
+        }
+
+        const parentRelationships = relationshipsByEntityId.get(parentPlantId);
+        if (!parentRelationships) {
+            continue;
+        }
+
+        const sortRelationships = ensureKindMap(
+            relationshipsByEntityId,
+            source.id,
+        );
+        for (const kind of plantRelationshipKinds) {
+            for (const [plantId, summary] of parentRelationships[kind]) {
+                sortRelationships[kind].set(plantId, summary);
+            }
         }
     }
 

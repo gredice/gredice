@@ -1,6 +1,15 @@
-import { directoriesClient } from '@gredice/client';
+import { directoriesClient, type PlantData } from '@gredice/client';
 import { cache } from 'react';
 import { isPlantRecommended } from '../../../../packages/js/src/plants/isPlantRecommended';
+import type { PlantHealthSource } from './plantRuntimeFields';
+
+export type PlantDataWithRuntimeFields = PlantData & PlantHealthSource;
+
+function includeRuntimePlantFields(
+    plant: PlantData,
+): PlantDataWithRuntimeFields {
+    return plant;
+}
 
 export const getPlantsData = cache(async () => {
     try {
@@ -14,7 +23,7 @@ export const getPlantsData = cache(async () => {
 
         return (
             data?.map((plant) => ({
-                ...plant,
+                ...includeRuntimePlantFields(plant),
                 isRecommended: isPlantRecommended(plant),
             })) ?? []
         );

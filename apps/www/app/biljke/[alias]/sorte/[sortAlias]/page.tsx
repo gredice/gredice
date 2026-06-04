@@ -17,7 +17,12 @@ import { GrowthAttributeCards } from '../../GrowthAttributeCards';
 import { getPlantInforationSections } from '../../getPlantInforationSections';
 import { HarvestAttributeCards } from '../../HarvestAttributeCards';
 import { InformationSection } from '../../InformationSection';
+import { hasPlantHealth, PlantHealthSection } from '../../PlantHealthSection';
 import { PlantPageHeader } from '../../PlantPageHeader';
+import {
+    hasPlantRelationships,
+    PlantRelationshipsSection,
+} from '../../PlantRelationshipsSection';
 import { PlantTips } from '../../PlantTips';
 import { SowingAttributeCards } from '../../SowingAttributeCards';
 import { WateringAttributeCards } from '../../WateringAttributeCards';
@@ -135,7 +140,10 @@ export default async function PlantSortPage(
         notFound();
     }
 
-    const informationSections = getPlantInforationSections(basePlantData);
+    const informationSections = getPlantInforationSections(
+        basePlantData,
+        sortData,
+    );
 
     // Map section IDs to their corresponding attribute cards
     const getAttributeCardsForSection = (sectionId: string) => {
@@ -172,6 +180,12 @@ export default async function PlantSortPage(
     const sortPath = KnownPages.PlantSort(alias, sortData.information.name);
     const sortUrl = `https://www.gredice.com${sortPath}`;
     const hasPerPlantPrice = typeof basePlantData.prices?.perPlant === 'number';
+    const relationships = hasPlantRelationships(sortData.relationships)
+        ? sortData.relationships
+        : basePlantData.relationships;
+    const health = hasPlantHealth(sortData.health)
+        ? sortData.health
+        : basePlantData.health;
 
     if (!hasPerPlantPrice) {
         console.error('Missing per-plant price for plant sort product schema', {
@@ -292,6 +306,8 @@ export default async function PlantSortPage(
                 {(basePlantData.information.tip?.length ?? 0) > 0 && (
                     <PlantTips plant={basePlantData} />
                 )}
+                <PlantHealthSection health={health} />
+                <PlantRelationshipsSection relationships={relationships} />
                 <Row spacing={4}>
                     <Typography level="body1">
                         Jesu li ti informacije o ovoj biljci korisne?

@@ -483,6 +483,29 @@ function applyPlantRelationshipReadModel<T>(
     }) as T[];
 }
 
+async function applyEntityRelationshipReadModels<T>(
+    entityTypeName: string,
+    formattedEntities: T[],
+    rawEntities: EntityWithAttributesAndType[],
+) {
+    if (entityTypeName === 'plant') {
+        return applyPlantRelationshipReadModel(formattedEntities, rawEntities);
+    }
+
+    if (entityTypeName !== 'plantSort') {
+        return formattedEntities;
+    }
+
+    const plantEntities = (await getEntitiesRaw(
+        'plant',
+        'published',
+    )) as EntityWithAttributesAndType[];
+    return applyPlantRelationshipReadModel(formattedEntities, [
+        ...rawEntities,
+        ...plantEntities,
+    ]);
+}
+
 export async function getEntitiesFormatted<T>(entityTypeName: string) {
     return directoriesCached(
         cacheKeys.entityTypeName(entityTypeName),
@@ -495,13 +518,11 @@ export async function getEntitiesFormatted<T>(entityTypeName: string) {
             const formattedEntities = (await Promise.all(
                 entities.map((e) => expandEntity(e, cache)),
             )) as T[];
-            if (entityTypeName === 'plant') {
-                return applyPlantRelationshipReadModel(
-                    formattedEntities,
-                    entities,
-                );
-            }
-            return formattedEntities;
+            return await applyEntityRelationshipReadModels(
+                entityTypeName,
+                formattedEntities,
+                entities,
+            );
         },
         entityCacheTtl,
     );
@@ -516,7 +537,10 @@ export async function getEntityFormatted<T>(id: number) {
                 | EntityWithAttributesAndType
                 | undefined;
             const formattedEntity = (await expandEntity(entity, cache)) as T;
-            if (entity?.entityTypeName !== 'plant') {
+            if (
+                entity?.entityTypeName !== 'plant' &&
+                entity?.entityTypeName !== 'plantSort'
+            ) {
                 return formattedEntity;
             }
 
@@ -524,9 +548,13 @@ export async function getEntityFormatted<T>(id: number) {
                 'plant',
                 'published',
             )) as EntityWithAttributesAndType[];
+            const rawEntities =
+                entity.entityTypeName === 'plant'
+                    ? plantEntities
+                    : [entity, ...plantEntities];
             return applyPlantRelationshipReadModel(
                 [formattedEntity],
-                plantEntities,
+                rawEntities,
             )[0];
         },
         entityCacheTtl,

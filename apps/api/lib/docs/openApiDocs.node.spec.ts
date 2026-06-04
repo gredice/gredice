@@ -144,6 +144,31 @@ test('buildAttributeDefinitionProperties maps plant relationships to shallow non
     });
 });
 
+test('buildAttributeDefinitionProperties maps plant sort relationships to shallow plant schema', async () => {
+    const result = await buildAttributeDefinitionProperties(
+        [
+            attributeDefinition({
+                category: 'relationships',
+                dataType: 'ref:plant',
+                entityTypeName: 'plantSort',
+                multiple: true,
+                name: 'companions',
+            }),
+        ],
+        async () => {
+            throw new Error('Plant sort relationships must not recurse.');
+        },
+    );
+
+    const relationships = schemaObject(result.properties.relationships);
+    const companions = schemaObject(relationships.properties?.companions);
+
+    assert.equal(companions.type, 'array');
+    assert.deepEqual(companions.items, {
+        $ref: '#/components/schemas/plant-relationship',
+    });
+});
+
 test('buildAttributeDefinitionProperties fails clearly for unsupported CMS data types', async () => {
     await assert.rejects(
         () =>

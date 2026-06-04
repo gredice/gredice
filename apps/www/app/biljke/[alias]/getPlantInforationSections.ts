@@ -1,4 +1,4 @@
-import type { PlantData } from '@gredice/client';
+import type { PlantData, PlantSortData } from '@gredice/client';
 import type { PlantStageName } from '@gredice/game';
 import { PLANT_STAGES } from '@gredice/game';
 
@@ -26,6 +26,13 @@ function hasValue(value: unknown): boolean {
 
 function hasInformationText(value: unknown): boolean {
     return typeof value === 'string' ? value.trim().length > 0 : Boolean(value);
+}
+
+function hasSortInformationText(
+    sort: PlantSortData | null | undefined,
+    section: PlantStageName,
+) {
+    return hasInformationText(sort?.information[section]);
 }
 
 function hasSectionAttributes(
@@ -71,11 +78,13 @@ function hasSectionAttributes(
 
 export function getPlantInforationSections(
     plant: PlantData,
+    sort?: PlantSortData | null,
 ): InformationSection[] {
     return PLANT_STAGES.map((stage) => ({
         header: stage.label,
         id: stage.name,
         avaialble:
+            hasSortInformationText(sort, stage.name) ||
             hasInformationText(plant.information[stage.name]) ||
             hasSectionAttributes(plant, stage.name),
     }));

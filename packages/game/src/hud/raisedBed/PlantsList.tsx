@@ -59,7 +59,7 @@ function formatNeighborPlantNames(names: string[]) {
         : visibleNames.join(', ');
 }
 
-function PlantRelationshipSignalChips({
+export function PlantRelationshipSignalChips({
     signal,
 }: {
     signal: PlantRelationshipSignal;

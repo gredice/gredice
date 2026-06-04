@@ -204,6 +204,60 @@ describe('getRaisedBedFieldRelationshipIndicators', () => {
             },
         ]);
     });
+
+    it('uses plant sort relationships for edge indicators', () => {
+        const indicators = getRaisedBedFieldRelationshipIndicators({
+            blockCount: 2,
+            gardenId: 1,
+            raisedBedId: 2,
+            fields: [
+                {
+                    active: true,
+                    plantSortId: 10,
+                    positionIndex: 4,
+                },
+                {
+                    active: true,
+                    plantSortId: 11,
+                    positionIndex: 5,
+                },
+            ],
+            sorts: [
+                {
+                    id: 10,
+                    relationships: {
+                        companions: [{ id: 101, name: 'Bosiljak' }],
+                    },
+                    information: {
+                        plant: {
+                            id: 100,
+                            information: { name: 'Rajčica' },
+                        },
+                    },
+                },
+                {
+                    id: 11,
+                    information: {
+                        plant: {
+                            id: 101,
+                            information: { name: 'Bosiljak' },
+                        },
+                    },
+                },
+            ],
+        });
+
+        assert.deepEqual(indicators, [
+            {
+                antagonistPlantNames: [],
+                companionPlantNames: ['Bosiljak'],
+                direction: 'left',
+                neighborPositionIndex: 5,
+                positionIndex: 4,
+                status: 'companion',
+            },
+        ]);
+    });
 });
 
 describe('getPlantRelationshipSignal', () => {

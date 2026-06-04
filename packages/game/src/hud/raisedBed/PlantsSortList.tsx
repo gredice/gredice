@@ -18,6 +18,12 @@ import {
 } from '../../indicators/AnimateFlyTo';
 import { KnownPages } from '../../knownPages';
 import { PlantListItemSkeleton } from './PlantListItemSkeleton';
+import { PlantRelationshipSignalChips } from './PlantsList';
+import {
+    getPlantRelationshipCandidateForSort,
+    getPlantRelationshipSignal,
+    type NeighborPlantSummary,
+} from './plantRelationshipSignals';
 
 type PlantsSortListProps = {
     plantId: number;
@@ -25,6 +31,7 @@ type PlantsSortListProps = {
     onChange: (plant: PlantSortData) => void;
     search: string;
     flyToShoppingCart?: boolean;
+    neighborPlants?: NeighborPlantSummary[];
 };
 
 function PlantSortListItem({
@@ -32,14 +39,23 @@ function PlantSortListItem({
     selectedSortId,
     onChange,
     flyToShoppingCart,
+    neighborPlants,
 }: {
     sort: PlantSortData;
     selectedSortId: number | null;
     onChange: (sort: PlantSortData) => void;
     flyToShoppingCart?: boolean;
+    neighborPlants: NeighborPlantSummary[];
 }) {
     const animateFlyToShoppingCart = useAnimateFlyToShoppingCart();
     const { track } = useGameAnalytics();
+    const relationshipCandidate = getPlantRelationshipCandidateForSort(sort);
+    const relationshipSignal = relationshipCandidate
+        ? getPlantRelationshipSignal({
+              candidate: relationshipCandidate,
+              neighborPlants,
+          })
+        : null;
 
     useEffect(() => {
         if (flyToShoppingCart) {
@@ -66,6 +82,17 @@ function PlantSortListItem({
                         plant_name: sort.information.plant.information?.name,
                         sort_id: sort.id,
                         sort_name: sort.information.name,
+                        ...(relationshipSignal?.status &&
+                        relationshipSignal.status !== 'neutral'
+                            ? {
+                                  relationship_neighbor_plant_ids:
+                                      relationshipSignal.neighborPlantIds.join(
+                                          ',',
+                                      ),
+                                  relationship_signal:
+                                      relationshipSignal.status,
+                              }
+                            : {}),
                     });
                     onChange(sort);
                 }}
@@ -98,7 +125,17 @@ function PlantSortListItem({
                     </span>
                 )}
             </Button>
-            <Row justifyContent="end" className="px-4">
+            <Row
+                justifyContent="space-between"
+                className="flex-wrap gap-y-1 px-4"
+            >
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    {relationshipSignal ? (
+                        <PlantRelationshipSignalChips
+                            signal={relationshipSignal}
+                        />
+                    ) : null}
+                </div>
                 <Button
                     title="Više informacija"
                     href={KnownPages.GredicePlantSort(
@@ -129,6 +166,7 @@ export function PlantsSortList({
     onChange,
     search,
     flyToShoppingCart,
+    neighborPlants = [],
 }: PlantsSortListProps) {
     const { data: plantSorts, isLoading, isError } = usePlantSorts(plantId);
     const normalizedSearch = search.trim().toLowerCase();
@@ -178,6 +216,7 @@ export function PlantsSortList({
                         sort={sort}
                         selectedSortId={selectedSortId}
                         onChange={onChange}
+                        neighborPlants={neighborPlants}
                         flyToShoppingCart={
                             flyToShoppingCart && selectedSortId === sort.id
                         }

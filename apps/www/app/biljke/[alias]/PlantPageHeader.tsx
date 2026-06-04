@@ -13,15 +13,21 @@ import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
+import type { PlantHealthSource } from '../../../lib/plants/plantRuntimeFields';
 import { KnownPages } from '../../../src/KnownPages';
 import { getPlantInforationSections } from './getPlantInforationSections';
 import { PlantCalendarPicker } from './PlantCalendarPicker';
+import { hasPlantHealth } from './PlantHealthSection';
+import { hasPlantRelationships } from './PlantRelationshipsSection';
 import { VerifiedInformationBadge } from './VerifiedInformationBadge';
 
 type InformationWithAlternativeName = {
     name?: unknown;
     alternativeName?: unknown;
 };
+type PlantSortWithRelationships = PlantSortData & {
+    relationships?: PlantData['relationships'];
+} & PlantHealthSource;
 
 const alternativeNamesLocale = 'hr-HR';
 
@@ -54,10 +60,11 @@ export function PlantPageHeader({
     plant,
     sort,
 }: {
-    plant: PlantData & { isRecommended: boolean | null | undefined };
-    sort?: PlantSortData;
+    plant: PlantData &
+        PlantHealthSource & { isRecommended: boolean | null | undefined };
+    sort?: PlantSortWithRelationships;
 }) {
-    const informationSections = getPlantInforationSections(plant);
+    const informationSections = getPlantInforationSections(plant, sort);
     const { totalPlants } = calculatePlantsPerField(
         plant.attributes?.seedingDistance,
     );
@@ -71,6 +78,18 @@ export function PlantPageHeader({
         contentLinks.push({
             href: `#${slug('Savjeti')}`,
             label: 'Savjeti',
+        });
+    }
+    if (hasPlantHealth(sort?.health ?? plant.health)) {
+        contentLinks.push({
+            href: `#${slug('Zdravlje biljke')}`,
+            label: 'Zdravlje biljke',
+        });
+    }
+    if (hasPlantRelationships(sort?.relationships ?? plant.relationships)) {
+        contentLinks.push({
+            href: `#${slug('Biljni susjedi')}`,
+            label: 'Biljni susjedi',
         });
     }
     if (!sort) {

@@ -166,6 +166,10 @@ type FormattedPlant = {
     };
 };
 
+type FormattedPlantSortWithRelationships = FormattedSort & {
+    relationships?: FormattedPlant['relationships'];
+};
+
 async function createPlantRelationshipTestData() {
     await upsertEntityType({ name: 'plant', label: 'Plant' });
 
@@ -362,6 +366,110 @@ test('plant relationships filter self links, duplicates, missing, draft, and del
         tomato?.relationships?.companions?.map((plant) => plant.id),
         [basilId],
     );
+});
+
+test('plant sort relationships include parent plant links and direct sort links', async () => {
+    createTestDb();
+    const suffix = randomUUID();
+    const { companionDefinitionId, createPlant } =
+        await createPlantRelationshipTestData();
+
+    await upsertEntityType({ name: 'plantSort', label: 'Plant Sort' });
+    const sortNameDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'name',
+        label: 'Name',
+        entityTypeName: 'plantSort',
+        dataType: 'text',
+    });
+    const sortPlantDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'plant',
+        label: 'Plant',
+        entityTypeName: 'plantSort',
+        dataType: 'ref:plant',
+    });
+    const sortCompanionDefinitionId = await createAttributeDefinition({
+        category: 'relationships',
+        name: 'companions',
+        label: 'Companions',
+        entityTypeName: 'plantSort',
+        dataType: 'ref:plant',
+        multiple: true,
+    });
+    const sortAntagonistDefinitionId = await createAttributeDefinition({
+        category: 'relationships',
+        name: 'antagonists',
+        label: 'Antagonists',
+        entityTypeName: 'plantSort',
+        dataType: 'ref:plant',
+        multiple: true,
+    });
+
+    const tomatoId = await createPlant(`Tomato ${suffix}`);
+    const basilId = await createPlant(`Basil ${suffix}`);
+    const fennelId = await createPlant(`Fennel ${suffix}`);
+    const marigoldId = await createPlant(`Marigold ${suffix}`);
+
+    await upsertAttributeValue({
+        attributeDefinitionId: companionDefinitionId,
+        entityTypeName: 'plant',
+        entityId: tomatoId,
+        value: String(basilId),
+    });
+
+    const sortId = await createEntity('plantSort');
+    await updateEntity({ id: sortId, state: 'published' });
+    await upsertAttributeValue({
+        attributeDefinitionId: sortNameDefinitionId,
+        entityTypeName: 'plantSort',
+        entityId: sortId,
+        value: `Cherry Tomato ${suffix}`,
+    });
+    await upsertAttributeValue({
+        attributeDefinitionId: sortPlantDefinitionId,
+        entityTypeName: 'plantSort',
+        entityId: sortId,
+        value: String(tomatoId),
+    });
+    await upsertAttributeValue({
+        attributeDefinitionId: sortCompanionDefinitionId,
+        entityTypeName: 'plantSort',
+        entityId: sortId,
+        value: String(marigoldId),
+    });
+    await upsertAttributeValue({
+        attributeDefinitionId: sortAntagonistDefinitionId,
+        entityTypeName: 'plantSort',
+        entityId: sortId,
+        value: String(fennelId),
+    });
+
+    const formattedSorts =
+        await getEntitiesFormatted<FormattedPlantSortWithRelationships>(
+            'plantSort',
+        );
+    const formattedSort = formattedSorts.find((sort) => sort.id === sortId);
+
+    assert.deepEqual(
+        formattedSort?.relationships?.companions?.map((plant) => plant.id),
+        [basilId, marigoldId],
+    );
+    assert.deepEqual(
+        formattedSort?.relationships?.antagonists?.map((plant) => plant.id),
+        [fennelId],
+    );
+
+    const singleFormattedSort =
+        await getEntityFormatted<FormattedPlantSortWithRelationships>(sortId);
+    assert.deepEqual(
+        singleFormattedSort.relationships?.companions?.map((plant) => plant.id),
+        [basilId, marigoldId],
+    );
+
+    const formattedPlants = await getEntitiesFormatted<FormattedPlant>('plant');
+    const fennel = formattedPlants.find((plant) => plant.id === fennelId);
+    assert.equal(fennel?.relationships?.antagonists, undefined);
 });
 
 test('CMS entity variants inherit parent attributes and allow override reset', async () => {

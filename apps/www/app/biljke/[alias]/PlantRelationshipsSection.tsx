@@ -11,6 +11,17 @@ type PlantRelationship = NonNullable<
     NonNullable<PlantData['relationships']>['companions']
 >[number];
 
+export type PlantRelationships = PlantData['relationships'];
+
+export function hasPlantRelationships(
+    relationships: PlantRelationships | null | undefined,
+) {
+    return (
+        (relationships?.companions?.length ?? 0) > 0 ||
+        (relationships?.antagonists?.length ?? 0) > 0
+    );
+}
+
 function PlantRelationshipCard({
     relationship,
     borderClassName,
@@ -92,12 +103,9 @@ function PlantRelationshipGroup({
 export function PlantRelationshipsSection({
     relationships,
 }: {
-    relationships: PlantData['relationships'] | undefined;
+    relationships: PlantRelationships | null | undefined;
 }) {
-    const hasCompanions = (relationships?.companions?.length ?? 0) > 0;
-    const hasAntagonists = (relationships?.antagonists?.length ?? 0) > 0;
-
-    if (!hasCompanions && !hasAntagonists) {
+    if (!hasPlantRelationships(relationships)) {
         return null;
     }
 
