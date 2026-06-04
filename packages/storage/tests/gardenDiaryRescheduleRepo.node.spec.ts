@@ -1,17 +1,28 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    cancelGardenDiaryOperation,
+    cancelGardenDiaryRaisedBedField,
     createAccount,
+    createAttributeDefinition,
+    createEntity,
     createEvent,
     createOperation,
+    GardenDiaryCancelError,
     GardenDiaryRescheduleError,
+    getAttributeDefinitions,
+    getNotificationsByAccount,
     getOperationById,
     getRaisedBed,
     getRaisedBedDiaryEntries,
     getRaisedBedFieldDiaryEntries,
+    getSunflowers,
     knownEvents,
     rescheduleGardenDiaryOperation,
     rescheduleGardenDiaryRaisedBedField,
+    updateEntity,
+    upsertAttributeValue,
+    upsertEntityType,
     upsertRaisedBedField,
 } from '@gredice/storage';
 import {
@@ -36,20 +47,133 @@ async function createDiaryRescheduleContext() {
     };
 }
 
+async function ensureAttributeDefinition({
+    category,
+    dataType,
+    entityTypeName,
+    label,
+    name,
+}: {
+    category: string;
+    dataType: string;
+    entityTypeName: string;
+    label: string;
+    name: string;
+}) {
+    const existing = (await getAttributeDefinitions(entityTypeName)).find(
+        (definition) =>
+            definition.category === category &&
+            definition.name === name &&
+            definition.dataType === dataType,
+    );
+
+    if (existing) {
+        return existing.id;
+    }
+
+    return createAttributeDefinition({
+        category,
+        dataType,
+        entityTypeName,
+        label,
+        name,
+    });
+}
+
+async function createPricedOperationEntity() {
+    await upsertEntityType({
+        name: 'operation',
+        label: 'Radnja',
+    });
+
+    const labelDefinitionId = await ensureAttributeDefinition({
+        category: 'information',
+        dataType: 'text',
+        entityTypeName: 'operation',
+        label: 'Label',
+        name: 'label',
+    });
+    const priceDefinitionId = await ensureAttributeDefinition({
+        category: 'prices',
+        dataType: 'number',
+        entityTypeName: 'operation',
+        label: 'Price per operation',
+        name: 'perOperation',
+    });
+    const entityId = await createEntity('operation');
+
+    await updateEntity({ id: entityId, state: 'published' });
+    await upsertAttributeValue({
+        attributeDefinitionId: labelDefinitionId,
+        entityTypeName: 'operation',
+        entityId,
+        value: 'Zalijevanje',
+    });
+    await upsertAttributeValue({
+        attributeDefinitionId: priceDefinitionId,
+        entityTypeName: 'operation',
+        entityId,
+        value: '2.5',
+    });
+
+    return entityId;
+}
+
+async function createPricedPlantSortEntity() {
+    await upsertEntityType({
+        name: 'plantSort',
+        label: 'Sorta biljke',
+    });
+
+    const nameDefinitionId = await ensureAttributeDefinition({
+        category: 'information',
+        dataType: 'text',
+        entityTypeName: 'plantSort',
+        label: 'Name',
+        name: 'name',
+    });
+    const priceDefinitionId = await ensureAttributeDefinition({
+        category: 'prices',
+        dataType: 'number',
+        entityTypeName: 'plantSort',
+        label: 'Price per plant',
+        name: 'perPlant',
+    });
+    const entityId = await createEntity('plantSort');
+
+    await updateEntity({ id: entityId, state: 'published' });
+    await upsertAttributeValue({
+        attributeDefinitionId: nameDefinitionId,
+        entityTypeName: 'plantSort',
+        entityId,
+        value: 'Cherry rajčica',
+    });
+    await upsertAttributeValue({
+        attributeDefinitionId: priceDefinitionId,
+        entityTypeName: 'plantSort',
+        entityId,
+        value: '1.5',
+    });
+
+    return entityId;
+}
+
 async function createScheduledOperation({
     accountId,
+    entityId = 1,
     gardenId,
     raisedBedId,
     scheduledDate,
 }: {
     accountId: string;
+    entityId?: number;
     gardenId: number;
     raisedBedId: number;
     scheduledDate: string;
 }) {
     const operationId = await createOperation({
         accountId,
-        entityId: 1,
+        entityId,
         entityTypeName: 'operation',
         gardenId,
         raisedBedId,
@@ -94,10 +218,12 @@ async function createUnscheduledPlannedOperation({
 }
 
 async function createScheduledField({
+    plantSortId = 101,
     raisedBedId,
     positionIndex,
     scheduledDate,
 }: {
+    plantSortId?: number;
     raisedBedId: number;
     positionIndex: number;
     scheduledDate: string;
@@ -111,7 +237,7 @@ async function createScheduledField({
         knownEvents.raisedBedFields.plantPlaceV1(
             `${raisedBedId.toString()}|${positionIndex.toString()}`,
             {
-                plantSortId: '101',
+                plantSortId: plantSortId.toString(),
                 scheduledDate,
             },
         ),
@@ -299,6 +425,146 @@ test('rescheduleGardenDiaryRaisedBedField rejects today as the new date', async 
             error instanceof GardenDiaryRescheduleError &&
             error.statusCode === 400,
     );
+});
+
+test('cancelGardenDiaryOperation cancels future planned operations with refund and notification', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createDiaryRescheduleContext();
+    const entityId = await createPricedOperationEntity();
+    const operationId = await createScheduledOperation({
+        accountId,
+        entityId,
+        gardenId,
+        raisedBedId,
+        scheduledDate: '2026-06-04T00:00:00.000Z',
+    });
+
+    const result = await cancelGardenDiaryOperation({
+        accountId,
+        canceledBy: 'user-1',
+        gardenId,
+        operationId,
+        referenceDate: new Date('2026-06-03T12:00:00.000Z'),
+    });
+
+    const operation = await getOperationById(operationId);
+    const notifications = await getNotificationsByAccount(
+        accountId,
+        false,
+        0,
+        10,
+    );
+
+    assert.equal(result.refundAmount, 2500);
+    assert.equal(operation.status, 'canceled');
+    assert.equal(operation.canceledBy, 'user-1');
+    assert.equal(operation.cancelReason, 'Korisnik je otkazao.');
+    assert.equal(await getSunflowers(accountId), 3500);
+    assert.equal(notifications.length, 1);
+    assert.equal(notifications[0]?.header, 'Radnja je otkazana');
+    assert.match(notifications[0]?.content ?? '', /2500 🌻/);
+});
+
+test('cancelGardenDiaryOperation rejects items scheduled for today', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createDiaryRescheduleContext();
+    const operationId = await createScheduledOperation({
+        accountId,
+        gardenId,
+        raisedBedId,
+        scheduledDate: '2026-06-03T00:00:00.000Z',
+    });
+
+    await assert.rejects(
+        () =>
+            cancelGardenDiaryOperation({
+                accountId,
+                canceledBy: 'user-1',
+                gardenId,
+                operationId,
+                referenceDate: new Date('2026-06-03T12:00:00.000Z'),
+            }),
+        (error) =>
+            error instanceof GardenDiaryCancelError && error.statusCode === 409,
+    );
+
+    const operation = await getOperationById(operationId);
+    assert.equal(operation.status, 'planned');
+});
+
+test('cancelGardenDiaryRaisedBedField removes future planned sowing with refund and notification', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createDiaryRescheduleContext();
+    const plantSortId = await createPricedPlantSortEntity();
+
+    await createScheduledField({
+        plantSortId,
+        raisedBedId,
+        positionIndex: 0,
+        scheduledDate: '2026-06-04T00:00:00.000Z',
+    });
+
+    const result = await cancelGardenDiaryRaisedBedField({
+        accountId,
+        canceledBy: 'user-1',
+        gardenId,
+        raisedBedId,
+        positionIndex: 0,
+        referenceDate: new Date('2026-06-03T12:00:00.000Z'),
+    });
+
+    const raisedBed = await getRaisedBed(raisedBedId);
+    const field = raisedBed?.fields.find(
+        (candidate) => candidate.positionIndex === 0,
+    );
+    const notifications = await getNotificationsByAccount(
+        accountId,
+        false,
+        0,
+        10,
+    );
+
+    assert.equal(result.refundAmount, 1500);
+    assert.equal(field, undefined);
+    assert.equal(await getSunflowers(accountId), 2500);
+    assert.equal(notifications.length, 1);
+    assert.equal(notifications[0]?.header, 'Sijanje je otkazano');
+    assert.match(notifications[0]?.content ?? '', /1500 🌻/);
+});
+
+test('cancelGardenDiaryRaisedBedField rejects sowing scheduled for today', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createDiaryRescheduleContext();
+
+    await createScheduledField({
+        raisedBedId,
+        positionIndex: 0,
+        scheduledDate: '2026-06-03T00:00:00.000Z',
+    });
+
+    await assert.rejects(
+        () =>
+            cancelGardenDiaryRaisedBedField({
+                accountId,
+                canceledBy: 'user-1',
+                gardenId,
+                raisedBedId,
+                positionIndex: 0,
+                referenceDate: new Date('2026-06-03T12:00:00.000Z'),
+            }),
+        (error) =>
+            error instanceof GardenDiaryCancelError && error.statusCode === 409,
+    );
+
+    const raisedBed = await getRaisedBed(raisedBedId);
+    const field = raisedBed?.fields.find(
+        (candidate) => candidate.positionIndex === 0,
+    );
+    assert.equal(field?.active, true);
 });
 
 test('diary entries expose operation and field reschedule targets', async () => {

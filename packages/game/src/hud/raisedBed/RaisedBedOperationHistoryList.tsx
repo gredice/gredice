@@ -18,8 +18,10 @@ import { useRaisedBedAiHistory } from '../../hooks/useRaisedBedAiHistory';
 import {
     buildSowingOperationItems,
     cartPlantSortEntityType,
+    GardenOperationCancelAction,
     GardenOperationCard,
     GardenOperationScheduleAction,
+    getGardenOperationCancelTarget,
     sortNewestFirst,
 } from '../GardenOperationsHud';
 import { RaisedBedDiaryAiAction } from './RaisedBedDiaryAiAction';
@@ -312,6 +314,17 @@ export function RaisedBedOperationHistoryList({
                         referenceDate={referenceDate}
                     />
                 ) : undefined;
+                const cancelTarget = !disableActions
+                    ? getGardenOperationCancelTarget(operation, currentGarden)
+                    : null;
+                const cancelAction = cancelTarget ? (
+                    <GardenOperationCancelAction
+                        entryName={entryName}
+                        garden={currentGarden}
+                        operation={operation}
+                        referenceDate={referenceDate}
+                    />
+                ) : undefined;
                 const aiAction =
                     flags.raisedBedImageAI &&
                     !disableActions &&
@@ -331,11 +344,13 @@ export function RaisedBedOperationHistoryList({
                             })}
                         />
                     ) : undefined;
-                const action = aiAction ? (
-                    <Row spacing={2} className="flex-wrap justify-end">
-                        {aiAction}
-                    </Row>
-                ) : undefined;
+                const action =
+                    cancelAction || aiAction ? (
+                        <Row spacing={2} className="flex-wrap justify-end">
+                            {cancelAction}
+                            {aiAction}
+                        </Row>
+                    ) : undefined;
 
                 return (
                     <GardenOperationCard

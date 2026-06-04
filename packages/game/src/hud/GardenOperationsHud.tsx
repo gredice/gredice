@@ -33,6 +33,10 @@ import {
 } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { SegmentedProgress } from '../controls/components/SegmentedProgress';
+import {
+    getDiaryCancelDisabledReason,
+    isDiaryCancelTargetEligible,
+} from '../hooks/useCancelDiaryEntry';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import {
     type GardenOperationItem,
@@ -53,6 +57,7 @@ import {
 } from '../hooks/useShoppingCart';
 import { ScrollView } from '../shared-ui/ScrollView';
 import { useShoppingCartOpenParam } from '../useUrlState';
+import { RaisedBedDiaryCancelAction } from './raisedBed/RaisedBedDiaryCancelAction';
 import { RaisedBedDiaryRescheduleAction } from './raisedBed/RaisedBedDiaryRescheduleAction';
 
 type OperationData = NonNullable<
@@ -124,6 +129,7 @@ const reschedulableActiveStatuses = new Set<GardenOperationStatus>([
     'assigned',
     'confirmed',
 ]);
+const cancelableActiveStatuses = new Set<GardenOperationStatus>(['planned']);
 const cartOperationEntityType = 'operation' as const;
 export const cartPlantSortEntityType = 'plantSort' as const;
 const plantingOperationLabel = 'Sadnja';
@@ -637,6 +643,49 @@ export function getGardenOperationRescheduleTarget(
     return null;
 }
 
+export function getGardenOperationCancelTarget(
+    operation: GardenOperationHudItem,
+    garden: CurrentGardenData | null | undefined,
+): DiaryRescheduleTarget | null {
+    if (
+        !cancelableActiveStatuses.has(operation.status) ||
+        operation.completedAt ||
+        operation.verifiedAt ||
+        operation.canceledAt ||
+        !operation.scheduledDate
+    ) {
+        return null;
+    }
+
+    const positionIndex = getOperationFieldPositionIndex(operation, garden);
+
+    if (operation.entityTypeName === cartOperationEntityType) {
+        return {
+            type: 'operation',
+            operationId: operation.id,
+            raisedBedId: operation.raisedBedId,
+            raisedBedFieldId: operation.raisedBedFieldId,
+            positionIndex,
+            scheduledDate: operation.scheduledDate,
+        };
+    }
+
+    if (
+        operation.entityTypeName === cartPlantSortEntityType &&
+        operation.raisedBedId &&
+        typeof positionIndex === 'number'
+    ) {
+        return {
+            type: 'raisedBedFieldPlant',
+            raisedBedId: operation.raisedBedId,
+            positionIndex,
+            scheduledDate: operation.scheduledDate,
+        };
+    }
+
+    return null;
+}
+
 function getOperationDisplayStatus(
     operation: GardenOperationHudItem,
     referenceDate: Date,
@@ -694,6 +743,17 @@ export function canRescheduleGardenOperation(
     );
 }
 
+export function canCancelGardenOperation(
+    operation: GardenOperationHudItem,
+    garden: CurrentGardenData | null | undefined,
+    referenceDate: Date,
+) {
+    const target = getGardenOperationCancelTarget(operation, garden);
+    return Boolean(
+        target && isDiaryCancelTargetEligible(target, referenceDate),
+    );
+}
+
 export function GardenOperationRescheduleAction({
     entryName,
     garden,
@@ -722,6 +782,36 @@ export function GardenOperationRescheduleAction({
             gardenId={garden.id}
             target={target}
             triggerLabel={triggerLabel}
+        />
+    );
+}
+
+export function GardenOperationCancelAction({
+    entryName,
+    garden,
+    operation,
+    referenceDate,
+}: {
+    entryName: string;
+    garden: CurrentGardenData | null | undefined;
+    operation: GardenOperationHudItem;
+    referenceDate: Date;
+}) {
+    if (!garden) {
+        return null;
+    }
+
+    const target = getGardenOperationCancelTarget(operation, garden);
+    if (!target) {
+        return null;
+    }
+
+    return (
+        <RaisedBedDiaryCancelAction
+            disabledReason={getDiaryCancelDisabledReason(target, referenceDate)}
+            entryName={entryName}
+            gardenId={garden.id}
+            target={target}
         />
     );
 }
@@ -1841,6 +1931,19 @@ export function GardenOperationsHud() {
                                             referenceDate={referenceDate}
                                         />
                                     );
+                                    const cancelTarget =
+                                        getGardenOperationCancelTarget(
+                                            operation,
+                                            currentGarden,
+                                        );
+                                    const cancelAction = cancelTarget ? (
+                                        <GardenOperationCancelAction
+                                            entryName={entryName}
+                                            garden={currentGarden}
+                                            operation={operation}
+                                            referenceDate={referenceDate}
+                                        />
+                                    ) : undefined;
 
                                     return (
                                         <GardenOperationCard
@@ -1863,6 +1966,16 @@ export function GardenOperationsHud() {
                                             currentGarden={currentGarden}
                                             referenceDate={referenceDate}
                                             scheduleAction={scheduleAction}
+                                            action={
+                                                cancelAction ? (
+                                                    <Row
+                                                        spacing={2}
+                                                        className="flex-wrap justify-end"
+                                                    >
+                                                        {cancelAction}
+                                                    </Row>
+                                                ) : undefined
+                                            }
                                         />
                                     );
                                 })}

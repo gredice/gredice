@@ -92,3 +92,25 @@ test('future planned diary entries expose the in-game reschedule action', async 
         getMinimumDiaryRescheduleDateInput(),
     );
 });
+
+test('future planned diary entries expose cancel confirmation', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(MOBILE_VIEWPORT);
+    await mount(<RaisedBedDiaryOverflowStory />);
+
+    const cancelButtons = page.getByRole('button', {
+        name: 'Otkaži',
+    });
+    await expect(cancelButtons).toHaveCount(1);
+
+    await cancelButtons.first().click();
+
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByText('Otkaži radnju')).toBeVisible();
+    await expect(
+        dialog.getByText('Otkazivanje se ne može poništiti.'),
+    ).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Otkaži' })).toBeVisible();
+});
