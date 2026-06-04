@@ -1,6 +1,6 @@
 import 'server-only';
 import { createHash } from 'node:crypto';
-import { and, asc, desc, eq } from 'drizzle-orm';
+import { and, asc, count, desc, eq } from 'drizzle-orm';
 import {
     type CommunityEditableFieldDefinition,
     type CommunityEditControlType,
@@ -910,6 +910,14 @@ export function listCommunityEditRequests(filters?: {
     return storage().query.communityEditRequests.findMany({
         where: conditions.length > 0 ? and(...conditions) : undefined,
         with: {
+            submitter: {
+                columns: {
+                    id: true,
+                    userName: true,
+                    displayName: true,
+                    avatarUrl: true,
+                },
+            },
             changes: {
                 with: {
                     attributeDefinition: true,
@@ -919,6 +927,15 @@ export function listCommunityEditRequests(filters?: {
         },
         orderBy: [desc(communityEditRequests.createdAt)],
     });
+}
+
+export async function getPendingCommunityEditRequestsCount() {
+    const result = await storage()
+        .select({ count: count() })
+        .from(communityEditRequests)
+        .where(eq(communityEditRequests.status, 'pending'));
+
+    return result[0]?.count ?? 0;
 }
 
 export function getCommunityEditRequest(id: number) {

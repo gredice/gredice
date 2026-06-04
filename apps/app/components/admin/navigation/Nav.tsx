@@ -237,6 +237,8 @@ export function Nav({
     const pendingAchievementsCount = navContext?.pendingAchievementsCount ?? 0;
     const pendingApprovalTasksCount =
         navContext?.pendingApprovalTasksCount ?? 0;
+    const pendingCommunityEditRequestsCount =
+        navContext?.pendingCommunityEditRequestsCount ?? 0;
     const quickActionBadgeCounts = {
         pendingAchievementsCount,
         pendingApprovalTasksCount,
@@ -301,6 +303,7 @@ export function Nav({
                     label={adminPages.CommunityEdits.label}
                     icon={<Edit className="size-5" />}
                     onClick={onItemClick}
+                    badge={pendingCommunityEditRequestsCount}
                     compact={compact}
                 />
                 {hasDirectoryRecords && (

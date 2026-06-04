@@ -9,6 +9,7 @@ export type NavContextType = Awaited<
 > & {
     pendingAchievementsCount: number;
     pendingApprovalTasksCount: number;
+    pendingCommunityEditRequestsCount: number;
     quickActions: DashboardQuickActionOption[];
 };
 
