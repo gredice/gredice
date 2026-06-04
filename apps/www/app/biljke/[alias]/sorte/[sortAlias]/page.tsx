@@ -259,7 +259,15 @@ export default async function PlantSortPage(
                         { label: sortData.information.name },
                     ]}
                 />
-                <PlantPageHeader plant={basePlantData} sort={sortData} />
+                <PlantPageHeader
+                    plant={basePlantData}
+                    sort={sortData}
+                    overviewEditTarget={{
+                        entityTypeName: 'plantSort',
+                        entityId: sortData.id,
+                        publicPath: sortPath,
+                    }}
+                />
                 {informationSections
                     .filter((section) => section.avaialble)
                     .map((section) => (

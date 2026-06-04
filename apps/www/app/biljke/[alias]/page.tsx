@@ -132,7 +132,14 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                         { label: plant.information.name },
                     ]}
                 />
-                <PlantPageHeader plant={plant} />
+                <PlantPageHeader
+                    plant={plant}
+                    overviewEditTarget={{
+                        entityTypeName: 'plant',
+                        entityId: plant.id,
+                        publicPath: KnownPages.Plant(alias),
+                    }}
+                />
                 {informationSections
                     .filter((section) => section.avaialble)
                     .map((section) => (

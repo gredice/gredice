@@ -127,7 +127,16 @@ export default async function BlockPage(props: PageProps<'/blokovi/[alias]'>) {
                         }
                         header={entity.information.label}
                         subHeader={entity.information.shortDescription}
-                    />
+                    >
+                        <Row className="justify-end">
+                            <CommunityEditButton
+                                entityTypeName="block"
+                                entityId={entity.id}
+                                publicPath={blockPath}
+                                sectionKey="overview"
+                            />
+                        </Row>
+                    </PageHeader>
                     <Markdown>{entity.information.fullDescription}</Markdown>
                     <Row className="justify-end">
                         <CommunityEditButton
