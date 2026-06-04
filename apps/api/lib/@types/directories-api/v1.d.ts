@@ -947,12 +947,17 @@ export interface components {
             slug: string;
             title: string;
             /** @enum {string} */
+            contentKind?: "page" | "blog" | "changelog";
+            category?: string | null;
+            tags?: string[];
+            /** @enum {string} */
             state: "published";
             /** Format: date-time */
             publishedAt?: string | null;
             metaTitle?: string | null;
             metaDescription?: string | null;
             metaImageUrl?: string | null;
+            seoImageUrl?: string | null;
             /** Format: date-time */
             updatedAt: string;
         };

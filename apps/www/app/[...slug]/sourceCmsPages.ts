@@ -20,6 +20,9 @@ export type SourceCmsPage = {
     slug: string;
     title: string;
     content: SectionData[];
+    contentKind: 'page';
+    category: string | null;
+    tags: string[];
     renderMode: CmsPageRenderMode;
     renderMaxWidth: CmsPageRenderMaxWidth;
     state: 'published';
@@ -27,6 +30,7 @@ export type SourceCmsPage = {
     metaTitle: string;
     metaDescription: string;
     metaImageUrl: string | null;
+    seoImageUrl: string | null;
     canonicalPath: string;
     noIndex: false;
     updatedAt: string;
@@ -35,6 +39,9 @@ export type SourceCmsPage = {
 export const qualityHarvestSafetyCmsPage: SourceCmsPage = {
     slug: QUALITY_HARVEST_SAFETY_SLUG,
     title: 'Kvaliteta i sigurnost uroda',
+    contentKind: 'page',
+    category: null,
+    tags: ['Kvaliteta', 'Sigurnost', 'Urod'],
     state: 'published',
     publishedAt: `${QUALITY_HARVEST_SAFETY_LAST_REVIEWED}T00:00:00.000Z`,
     updatedAt: `${QUALITY_HARVEST_SAFETY_LAST_REVIEWED}T00:00:00.000Z`,
@@ -42,6 +49,7 @@ export const qualityHarvestSafetyCmsPage: SourceCmsPage = {
     metaDescription:
         'Kako Gredice prate higijenu, sljedivost, berbu i dostavu svježeg uroda u trenutnom modelu usluge.',
     metaImageUrl: null,
+    seoImageUrl: null,
     canonicalPath: QUALITY_HARVEST_SAFETY_PATH,
     noIndex: false,
     renderMode: 'container',

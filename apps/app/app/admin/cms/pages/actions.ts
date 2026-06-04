@@ -123,6 +123,7 @@ function cmsPageInputFromForm(formData: FormData): CreateCmsPageInput {
         metaTitle: formOptionalText(formData, 'metaTitle'),
         metaDescription: formOptionalText(formData, 'metaDescription'),
         metaImageUrl: formOptionalText(formData, 'metaImageUrl'),
+        seoImageUrl: formOptionalText(formData, 'seoImageUrl'),
         canonicalPath: formOptionalText(formData, 'canonicalPath'),
         noIndex: formData.get('noIndex') === 'on',
         publishedAt: formOptionalText(formData, 'publishedAt'),

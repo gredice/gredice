@@ -555,6 +555,7 @@ test('CMS page metadata is preserved when updating only content', async () => {
         metaTitle: 'Meta title',
         metaDescription: 'Meta description',
         metaImageUrl: 'https://www.gredice.com/meta.png',
+        seoImageUrl: 'https://www.gredice.com/seo.png',
     });
 
     await updateCmsPage({
@@ -566,6 +567,7 @@ test('CMS page metadata is preserved when updating only content', async () => {
     assert.equal(page?.metaTitle, 'Meta title');
     assert.equal(page?.metaDescription, 'Meta description');
     assert.equal(page?.metaImageUrl, 'https://www.gredice.com/meta.png');
+    assert.equal(page?.seoImageUrl, 'https://www.gredice.com/seo.png');
 });
 
 test('published CMS news pages list only published blog and changelog entries', async () => {

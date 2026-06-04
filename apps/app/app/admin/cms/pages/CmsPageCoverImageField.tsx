@@ -12,10 +12,16 @@ import {
 } from '../../../../components/shared/media/ImageUploadManager';
 
 type CmsPageCoverImageFieldProps = {
+    description?: string;
     disabled?: boolean;
+    emptyLabel?: string;
+    label?: string;
+    modalTitle?: string;
     name: string;
     onChange: (value: string) => void;
     pageId?: number;
+    usage?: 'cover' | 'seo';
+    uploadEmptyLabel?: string;
     value: string;
 };
 
@@ -49,24 +55,33 @@ function cmsCoverImageUploadPath({
     file,
     itemId,
     pageId,
+    usage,
 }: {
     attempt: number;
     file: File;
     itemId: string;
     pageId?: number;
+    usage: 'cover' | 'seo';
 }) {
     const pageSegment = pageId ? String(pageId) : 'draft';
     const extension = getFileExtension(file.name);
-    const fileName = `${Date.now()}-${itemId}-${attempt}-${getFileBaseName(file.name)}${extension}`;
+    const baseName = usage === 'seo' ? 'seo-image' : 'cover';
+    const fileName = `${Date.now()}-${itemId}-${attempt}-${getFileBaseName(file.name) || baseName}${extension}`;
 
-    return `cms/pages/${pageSegment}/cover/${fileName}`;
+    return `cms/pages/${pageSegment}/${usage}/${fileName}`;
 }
 
 export function CmsPageCoverImageField({
+    description = 'Koristi se kao cover za blog i changelog prikaze te kao slika unutar generirane društvene objave.',
     disabled,
+    emptyLabel = 'Nema naslovne slike.',
+    label = 'Naslovna slika',
+    modalTitle = label,
     name,
     onChange,
     pageId,
+    usage = 'cover',
+    uploadEmptyLabel = 'Odaberite jednu sliku.',
     value,
 }: CmsPageCoverImageFieldProps) {
     const [isOpen, setIsOpen] = useState(false);
@@ -108,11 +123,10 @@ export function CmsPageCoverImageField({
             <input name={name} type="hidden" value={value} readOnly />
             <div className="space-y-1">
                 <Typography level="body3" semiBold>
-                    Naslovna slika
+                    {label}
                 </Typography>
                 <Typography level="body3" className="text-muted-foreground">
-                    Koristi se kao cover za blog i changelog prikaze te kao
-                    društvena slika za standardne stranice.
+                    {description}
                 </Typography>
             </div>
             {value ? (
@@ -127,7 +141,7 @@ export function CmsPageCoverImageField({
             ) : (
                 <div className="flex aspect-video items-center justify-center rounded-md border border-dashed bg-muted/30 px-4 text-center">
                     <Typography level="body2" className="text-muted-foreground">
-                        Nema naslovne slike.
+                        {emptyLabel}
                     </Typography>
                 </div>
             )}
@@ -141,7 +155,7 @@ export function CmsPageCoverImageField({
             )}
             <Row spacing={2} className="flex-wrap">
                 <Modal
-                    title="Naslovna slika"
+                    title={modalTitle}
                     open={isOpen}
                     onOpenChange={handleOpenChange}
                     className="max-w-xl"
@@ -157,7 +171,7 @@ export function CmsPageCoverImageField({
                 >
                     <Stack spacing={4}>
                         <div className="space-y-1 pr-8">
-                            <Typography level="h3">Naslovna slika</Typography>
+                            <Typography level="h3">{modalTitle}</Typography>
                             <Typography
                                 level="body2"
                                 className="text-muted-foreground"
@@ -173,11 +187,11 @@ export function CmsPageCoverImageField({
                             disabled={isUploading}
                             addLabel="Odaberi sliku"
                             addMoreLabel="Zamijeni odabranu sliku"
-                            emptyLabel="Odaberite jednu sliku za naslovnicu."
+                            emptyLabel={uploadEmptyLabel}
                             handleUploadUrl="/api/cms/images/upload"
                             clientPayload={JSON.stringify({
                                 pageId: pageId ?? null,
-                                usage: 'cover',
+                                usage,
                             })}
                             selectedLabel={() => 'Odabrana je jedna slika.'}
                             uploadPath={({ attempt, file, itemId }) =>
@@ -186,6 +200,7 @@ export function CmsPageCoverImageField({
                                     file,
                                     itemId,
                                     pageId,
+                                    usage,
                                 })
                             }
                         />
