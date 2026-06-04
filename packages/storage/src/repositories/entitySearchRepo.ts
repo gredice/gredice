@@ -685,17 +685,13 @@ async function relatedEntityIdsForPublicUrl(entityTypeName: string) {
 }
 
 export async function refreshImpactedEntitySearchDocuments(entityId: number) {
-    const sourceEntity = await getEntityRaw(entityId);
-    const deletedEntityInfo = sourceEntity
-        ? null
-        : await storage().query.entities.findFirst({
-              where: eq(entities.id, entityId),
-              columns: {
-                  entityTypeName: true,
-              },
-          });
-    const sourceEntityTypeName =
-        sourceEntity?.entityTypeName ?? deletedEntityInfo?.entityTypeName;
+    const sourceEntityInfo = await storage().query.entities.findFirst({
+        where: eq(entities.id, entityId),
+        columns: {
+            entityTypeName: true,
+        },
+    });
+    const sourceEntityTypeName = sourceEntityInfo?.entityTypeName;
 
     const impacted = new Set<number>([entityId]);
     const relatedIds = sourceEntityTypeName
