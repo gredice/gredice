@@ -12,6 +12,7 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
+import { CommunityEditButton } from '../../../components/community-edits/CommunityEditButton';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { KnownPages } from '../../../src/KnownPages';
 import { getPlantInforationSections } from './getPlantInforationSections';
@@ -21,6 +22,12 @@ import { VerifiedInformationBadge } from './VerifiedInformationBadge';
 type InformationWithAlternativeName = {
     name?: unknown;
     alternativeName?: unknown;
+};
+
+type OverviewEditTarget = {
+    entityTypeName: 'plant' | 'plantSort';
+    entityId: number;
+    publicPath: string;
 };
 
 const alternativeNamesLocale = 'hr-HR';
@@ -51,9 +58,11 @@ function formatAlternativeNames(
 }
 
 export function PlantPageHeader({
+    overviewEditTarget,
     plant,
     sort,
 }: {
+    overviewEditTarget?: OverviewEditTarget;
     plant: PlantData & { isRecommended: boolean | null | undefined };
     sort?: PlantSortData;
 }) {
@@ -209,20 +218,34 @@ export function PlantPageHeader({
                             navigateLabel="Više o gredicama"
                         />
                     </div>
-                    <FeedbackModal
-                        topic={
-                            sort
-                                ? 'www/plants/sorts/information'
-                                : 'www/plants/information'
-                        }
-                        data={{
-                            plantId: plant.id,
-                            plantAlias: plant.information.name,
-                            sortId: sort?.id,
-                            sortAlias: sort?.information.name,
-                        }}
-                        className="self-end group-hover:opacity-100 opacity-0 transition-opacity"
-                    />
+                    <Row
+                        spacing={1}
+                        className="self-end md:opacity-0 md:transition-opacity md:group-hover:opacity-100 md:group-focus-within:opacity-100"
+                    >
+                        {overviewEditTarget ? (
+                            <CommunityEditButton
+                                entityTypeName={
+                                    overviewEditTarget.entityTypeName
+                                }
+                                entityId={overviewEditTarget.entityId}
+                                publicPath={overviewEditTarget.publicPath}
+                                sectionKey="overview"
+                            />
+                        ) : null}
+                        <FeedbackModal
+                            topic={
+                                sort
+                                    ? 'www/plants/sorts/information'
+                                    : 'www/plants/information'
+                            }
+                            data={{
+                                plantId: plant.id,
+                                plantAlias: plant.information.name,
+                                sortId: sort?.id,
+                                sortAlias: sort?.information.name,
+                            }}
+                        />
+                    </Row>
                     <Typography level="body2" secondary>
                         Nisi zadovoljan uslugom ili proizvodom? Pogledaj{' '}
                         <Link className="underline" href={KnownPages.Refunds}>

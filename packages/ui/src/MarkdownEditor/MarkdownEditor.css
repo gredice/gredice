@@ -1,0 +1,103 @@
+/* biome-ignore-all lint/complexity/noImportantStyles: MDXEditor loads generated component CSS after app globals, so these integration overrides must win the cascade. */
+
+.gredice-mdx-editor {
+    --accentBase: hsl(var(--background)) !important;
+    --accentBgSubtle: hsl(var(--muted)) !important;
+    --accentBg: hsl(var(--accent)) !important;
+    --accentBgHover: hsl(var(--accent)) !important;
+    --accentBgActive: hsl(var(--accent)) !important;
+    --accentLine: hsl(var(--border)) !important;
+    --accentBorder: hsl(var(--border)) !important;
+    --accentBorderHover: hsl(var(--ring)) !important;
+    --accentSolid: hsl(var(--primary)) !important;
+    --accentSolidHover: hsl(var(--primary)) !important;
+    --accentText: hsl(var(--foreground)) !important;
+    --accentTextContrast: hsl(var(--primary-foreground)) !important;
+    --basePageBg: hsl(var(--background)) !important;
+    --baseBase: hsl(var(--background)) !important;
+    --baseBgSubtle: hsl(var(--muted)) !important;
+    --baseBg: hsl(var(--muted)) !important;
+    --baseBgHover: hsl(var(--accent)) !important;
+    --baseBgActive: hsl(var(--accent)) !important;
+    --baseLine: hsl(var(--border)) !important;
+    --baseBorder: hsl(var(--border)) !important;
+    --baseBorderHover: hsl(var(--muted-foreground)) !important;
+    --baseSolid: hsl(var(--muted-foreground)) !important;
+    --baseSolidHover: hsl(var(--foreground)) !important;
+    --baseText: hsl(var(--muted-foreground)) !important;
+    --baseTextContrast: hsl(var(--foreground)) !important;
+
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+}
+
+.gredice-mdx-editor [class*="contentEditable"],
+.gredice-mdx-editor-content {
+    background-color: hsl(var(--background)) !important;
+    color: hsl(var(--foreground)) !important;
+}
+
+.gredice-mdx-editor [class*="placeholder"] {
+    color: hsl(var(--muted-foreground)) !important;
+}
+
+.gredice-mdx-editor [class*="toolbarRoot"] {
+    background-color: hsl(var(--background)) !important;
+    color: hsl(var(--muted-foreground)) !important;
+}
+
+.gredice-mdx-editor [class*="toolbarRoot"] svg {
+    color: hsl(var(--foreground)) !important;
+}
+
+.gredice-mdx-editor [class*="toolbarRoot"] [role="separator"] {
+    border-left-color: hsl(var(--border)) !important;
+    border-right-color: hsl(var(--background)) !important;
+}
+
+.gredice-mdx-editor [class*="selectTrigger"],
+.gredice-mdx-editor [class*="toolbarButtonSelectTrigger"],
+.gredice-mdx-editor [class*="toolbarNodeKindSelectTrigger"] {
+    background-color: hsl(var(--background)) !important;
+    color: hsl(var(--foreground)) !important;
+}
+
+.gredice-mdx-editor [class*="selectContainer"],
+.gredice-mdx-editor [class*="toolbarButtonDropdownContainer"],
+.gredice-mdx-editor [class*="toolbarCodeBlockLanguageSelectContent"],
+.gredice-mdx-editor [class*="toolbarNodeKindSelectContainer"] {
+    background-color: hsl(var(--popover)) !important;
+    color: hsl(var(--popover-foreground)) !important;
+}
+
+.gredice-mdx-editor [class*="selectItem"],
+.gredice-mdx-editor [class*="toolbarNodeKindSelectItem"] {
+    color: hsl(var(--popover-foreground)) !important;
+}
+
+.gredice-mdx-editor [class*="selectItem"][data-highlighted],
+.gredice-mdx-editor [class*="selectItem"][data-state="checked"],
+.gredice-mdx-editor [class*="toolbarNodeKindSelectItem"][data-highlighted],
+.gredice-mdx-editor [class*="toolbarNodeKindSelectItem"][data-state="checked"] {
+    background-color: hsl(var(--accent)) !important;
+}
+
+.gredice-mdx-editor [class*="toolbarButton"],
+.gredice-mdx-editor [class*="toolbarToggleItem"] {
+    color: hsl(var(--foreground)) !important;
+}
+
+.gredice-mdx-editor [class*="toolbarButton"]:hover,
+.gredice-mdx-editor [class*="toolbarToggleItem"]:hover {
+    background-color: hsl(var(--muted)) !important;
+}
+
+.gredice-mdx-editor [class*="toolbarButton"][data-state="on"],
+.gredice-mdx-editor [class*="toolbarToggleItem"][data-state="on"] {
+    background-color: hsl(var(--accent)) !important;
+}
+
+.gredice-mdx-editor [class*="popoverContent"] {
+    background-color: hsl(var(--popover)) !important;
+    color: hsl(var(--popover-foreground)) !important;
+}

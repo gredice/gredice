@@ -1,5 +1,4 @@
 import type { PlantData } from '@gredice/client';
-import { slug } from '@gredice/js/slug';
 import { Card } from '@gredice/ui/Card';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Row } from '@gredice/ui/Row';
@@ -33,14 +32,14 @@ function PlantRelationshipCard({
                     height={56}
                     className="rounded-md object-cover"
                 />
-                <Stack spacing={1} className="min-w-0">
-                    <Typography level="h5" className="truncate">
+                <Stack spacing={0} className="min-w-0">
+                    <Typography level="h5" className="truncate leading-tight">
                         {relationship.name}
                     </Typography>
                     {relationship.latinName && (
                         <Typography
                             level="body2"
-                            className="text-gray-500 italic truncate"
+                            className="text-secondary-foreground italic truncate leading-tight"
                         >
                             {relationship.latinName}
                         </Typography>
@@ -72,7 +71,7 @@ function PlantRelationshipGroup({
                 <Typography level="h3" className="text-xl">
                     {title}
                 </Typography>
-                <Typography level="body2" className="text-gray-600">
+                <Typography level="body2" secondary>
                     {description}
                 </Typography>
             </Stack>
@@ -103,13 +102,6 @@ export function PlantRelationshipsSection({
 
     return (
         <Stack spacing={4}>
-            <Typography
-                level="h2"
-                className="text-2xl"
-                id={slug('Biljni susjedi')}
-            >
-                Biljni susjedi
-            </Typography>
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <PlantRelationshipGroup
                     title="Dobri susjedi"

@@ -1,5 +1,9 @@
 'use client';
 
+import {
+    markdownEditorClassNames,
+    markdownEditorContentEditableClassName,
+} from '@gredice/ui/MarkdownEditor';
 import { cx } from '@gredice/ui/utils';
 import {
     BlockTypeSelect,
@@ -19,7 +23,6 @@ import {
     toolbarPlugin,
     UndoRedo,
 } from '@mdxeditor/editor';
-import { useTheme } from 'next-themes';
 import '@mdxeditor/editor/style.css';
 
 export function CommunityMarkdownInput({
@@ -31,23 +34,17 @@ export function CommunityMarkdownInput({
     onChange: (value: string) => void;
     value: string;
 }) {
-    const { resolvedTheme } = useTheme();
-
     return (
         <div className="overflow-hidden rounded-md border border-input bg-background">
             <MDXEditor
                 className={cx(
-                    'bg-background text-foreground',
-                    '[&_.mdxeditor-toolbar]:bg-background [&_.mdxeditor-toolbar]:text-muted-foreground',
-                    "[&_[class*='SelectTrigger']]:bg-background",
-                    "[&_[class*='SelectTrigger']]:text-foreground",
-                    "[&_[class*='DropdownContainer']]:bg-background",
-                    "[&_[class*='CodeBlockLanguageSelectContent']]:bg-background",
-                    "[&_[class*='selectItem']]:bg-background",
-                    "[&_[class*='contentEditable']]:bg-background",
-                    resolvedTheme === 'dark' && 'dark-theme',
+                    markdownEditorClassNames,
+                    "[&_[class*='contentEditable']]:min-h-32",
                 )}
-                contentEditableClassName="prose prose-p:my-2 prose-sm max-w-none min-h-32 bg-background text-foreground"
+                contentEditableClassName={cx(
+                    markdownEditorContentEditableClassName,
+                    'min-h-32',
+                )}
                 markdown={value}
                 onChange={onChange}
                 placeholder="Upiši prijedlog..."

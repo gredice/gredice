@@ -109,14 +109,6 @@ export default async function OperationPage(
                         { label: operation.information.label },
                     ]}
                 />
-                <Row className="justify-end">
-                    <CommunityEditButton
-                        buttonStyle="button"
-                        entityTypeName="operation"
-                        entityId={operation.id}
-                        publicPath={operationPath}
-                    />
-                </Row>
                 <PageHeader
                     visual={<OperationImage operation={operation} size={192} />}
                     header={operation.information.label}

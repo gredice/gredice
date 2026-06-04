@@ -5,7 +5,6 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { CommunityEditButton } from '../../../../../components/community-edits/CommunityEditButton';
 import { FeedbackModal } from '../../../../../components/shared/feedback/FeedbackModal';
 import { StructuredDataScript } from '../../../../../components/shared/seo/StructuredDataScript';
 import { getPlantSortsData } from '../../../../../lib/plants/getPlantSortsData';
@@ -260,15 +259,15 @@ export default async function PlantSortPage(
                         { label: sortData.information.name },
                     ]}
                 />
-                <PlantPageHeader plant={basePlantData} sort={sortData} />
-                <Row className="justify-end">
-                    <CommunityEditButton
-                        buttonStyle="button"
-                        entityTypeName="plantSort"
-                        entityId={sortData.id}
-                        publicPath={sortPath}
-                    />
-                </Row>
+                <PlantPageHeader
+                    plant={basePlantData}
+                    sort={sortData}
+                    overviewEditTarget={{
+                        entityTypeName: 'plantSort',
+                        entityId: sortData.id,
+                        publicPath: sortPath,
+                    }}
+                />
                 {informationSections
                     .filter((section) => section.avaialble)
                     .map((section) => (
