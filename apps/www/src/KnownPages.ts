@@ -9,6 +9,12 @@ export const KnownPages = {
     DeliverySlots: '/dostava/termini',
     Plants: PublicDirectoryPaths.Plants as Route,
     Plant: (alias: string) => PublicDirectoryPaths.Plant(alias) as Route,
+    PlantDiseases: PublicDirectoryPaths.PlantDiseases as Route,
+    PlantDisease: (alias: string) =>
+        PublicDirectoryPaths.PlantDisease(alias) as Route,
+    PlantPests: PublicDirectoryPaths.PlantPests as Route,
+    PlantPest: (alias: string) =>
+        PublicDirectoryPaths.PlantPest(alias) as Route,
     PlantSort: (alias: string, sortName: string) =>
         PublicDirectoryPaths.PlantSort(alias, sortName) as Route,
     Blocks: PublicDirectoryPaths.Blocks as Route,

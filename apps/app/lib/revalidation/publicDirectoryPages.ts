@@ -1,6 +1,12 @@
 import 'server-only';
 
-type PublicDirectoryEntityType = 'block' | 'plant' | 'plantSort' | 'operation';
+type PublicDirectoryEntityType =
+    | 'block'
+    | 'plant'
+    | 'plantDisease'
+    | 'plantPest'
+    | 'plantSort'
+    | 'operation';
 
 const publicWwwRevalidationPath = '/api/revalidate/directories';
 
@@ -10,6 +16,8 @@ function publicDirectoryEntityType(
     switch (entityTypeName) {
         case 'block':
         case 'plant':
+        case 'plantDisease':
+        case 'plantPest':
         case 'plantSort':
         case 'operation':
             return entityTypeName;

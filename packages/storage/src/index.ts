@@ -14,6 +14,7 @@ export * from './helpers/communityEditableFields';
 export * from './helpers/deliveryEmail';
 export * from './helpers/entityCompleteness';
 export * from './helpers/entityPageSections';
+export * from './helpers/plantHealth';
 export * from './helpers/plantRelationships';
 export * from './helpers/timeSlotAutomation';
 export * from './helpers/timezoneUtils';

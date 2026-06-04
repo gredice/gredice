@@ -1,11 +1,18 @@
 import 'server-only';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { storage } from '..';
 import {
     bustCached,
     bustCachedByPrefixes,
     cacheKeys,
 } from '../cache/directoriesCached';
+import {
+    isPlantHealthAffectedPlantAttributeDefinition,
+    isPlantHealthIssueEntityTypeName,
+    parsePlantHealthReferenceTargetId,
+    plantHealthAffectedPlantsAttributeName,
+    plantHealthRelationshipCategory,
+} from '../helpers/plantHealth';
 import { plantRelationshipTargetIdForAttributeValue } from '../helpers/plantRelationships';
 import {
     attributeDefinitions,
@@ -111,6 +118,88 @@ async function refreshEntitySearchDocumentAfterMutation(
     }
 }
 
+async function plantHealthAffectedPlantIdsForMutation({
+    db,
+    definition,
+    entityId,
+    previousValue,
+    nextValue,
+}: {
+    db: DatabaseClient;
+    definition: Awaited<ReturnType<typeof getAttributeDefinitionForMutation>>;
+    entityId: number | null | undefined;
+    previousValue?: string | null;
+    nextValue?: string | null;
+}) {
+    if (
+        !definition ||
+        !entityId ||
+        !isPlantHealthIssueEntityTypeName(definition.entityTypeName)
+    ) {
+        return [];
+    }
+
+    const affectedPlantIds = new Set<number>();
+    for (const value of [previousValue, nextValue]) {
+        if (
+            isPlantHealthAffectedPlantAttributeDefinition(definition) &&
+            value
+        ) {
+            const targetId = parsePlantHealthReferenceTargetId(value);
+            if (targetId) {
+                affectedPlantIds.add(targetId);
+            }
+        }
+    }
+
+    const affectedPlantDefinitions =
+        await db.query.attributeDefinitions.findMany({
+            where: and(
+                eq(attributeDefinitions.isDeleted, false),
+                eq(
+                    attributeDefinitions.entityTypeName,
+                    definition.entityTypeName,
+                ),
+                eq(
+                    attributeDefinitions.category,
+                    plantHealthRelationshipCategory,
+                ),
+                eq(
+                    attributeDefinitions.name,
+                    plantHealthAffectedPlantsAttributeName,
+                ),
+                eq(attributeDefinitions.dataType, 'ref:plant'),
+            ),
+        });
+    if (affectedPlantDefinitions.length === 0) {
+        return Array.from(affectedPlantIds);
+    }
+
+    const affectedPlantValues = await db.query.attributeValues.findMany({
+        where: and(
+            eq(attributeValues.entityId, entityId),
+            eq(attributeValues.isDeleted, false),
+            inArray(
+                attributeValues.attributeDefinitionId,
+                affectedPlantDefinitions.map(
+                    (affectedPlantDefinition) => affectedPlantDefinition.id,
+                ),
+            ),
+        ),
+    });
+
+    for (const affectedPlantValue of affectedPlantValues) {
+        const targetId = parsePlantHealthReferenceTargetId(
+            affectedPlantValue.value,
+        );
+        if (targetId) {
+            affectedPlantIds.add(targetId);
+        }
+    }
+
+    return Array.from(affectedPlantIds);
+}
+
 export async function upsertAttributeValue(
     attributeValue: InsertAttributeValue,
     actor?: { id?: string; name?: string },
@@ -188,12 +277,31 @@ export async function upsertAttributeValue(
             : undefined,
     ]);
 
+    const affectedPlantHealthIds = await plantHealthAffectedPlantIdsForMutation(
+        {
+            db,
+            definition,
+            entityId: attributeValue.entityId ?? existingValue?.entityId,
+            previousValue: existingValue?.value,
+            nextValue: value,
+        },
+    );
+
     addAttributeValueMutationSideEffects(sideEffects, {
         entityId: attributeValue.entityId ?? existingValue?.entityId,
         entityTypeName:
             attributeValue.entityTypeName ?? existingValue?.entityTypeName,
-        relatedEntityIds: impactedRelationshipTargetIds,
+        relatedEntityIds: [
+            ...impactedRelationshipTargetIds,
+            ...affectedPlantHealthIds,
+        ],
     });
+    if (
+        definition &&
+        isPlantHealthIssueEntityTypeName(definition.entityTypeName)
+    ) {
+        sideEffects.entityTypeNames.add('plant');
+    }
     if (!options?.sideEffects) {
         await flushAttributeValueMutationSideEffects(sideEffects);
     }
@@ -247,15 +355,31 @@ export async function deleteAttributeValue(
             : undefined,
     ]);
 
+    const affectedPlantHealthIds = await plantHealthAffectedPlantIdsForMutation(
+        {
+            db,
+            definition,
+            entityId: existingValue?.entityId,
+            previousValue: existingValue?.value,
+            nextValue: null,
+        },
+    );
+
     addAttributeValueMutationSideEffects(sideEffects, {
         entityId: existingValue?.entityId,
         entityTypeName: existingValue?.entityTypeName,
         relatedEntityIds:
             relationshipTargetId &&
             relationshipTargetId !== existingValue?.entityId
-                ? [relationshipTargetId]
-                : [],
+                ? [relationshipTargetId, ...affectedPlantHealthIds]
+                : affectedPlantHealthIds,
     });
+    if (
+        definition &&
+        isPlantHealthIssueEntityTypeName(definition.entityTypeName)
+    ) {
+        sideEffects.entityTypeNames.add('plant');
+    }
     if (!options?.sideEffects) {
         await flushAttributeValueMutationSideEffects(sideEffects);
     }

@@ -16,7 +16,7 @@ import { SearchPageControls } from './SearchPageControls';
 export const revalidate = 300;
 
 const pageDescription =
-    'Pronađi biljke, sorte, radnje, blokove i sjeme na Gredice webu.';
+    'Pronađi biljke, sorte, radnje, bolesti, štetnike, blokove i sjeme na Gredice webu.';
 
 export const metadata = {
     title: 'Pretraga',

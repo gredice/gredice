@@ -1,5 +1,5 @@
 import type { components } from '@gredice/client';
-import { FileText, Layers, Leaf, Sprout } from '@gredice/ui/icons';
+import { Bug, FileText, Layers, Leaf, Shield, Sprout } from '@gredice/ui/icons';
 import { OperationCategoryIcon } from '@gredice/ui/OperationImage';
 import { PlantingSeedIcon } from '@gredice/ui/PlantingSeedIcon';
 import { cx } from '@gredice/ui/utils';
@@ -19,6 +19,8 @@ const resultFallbackIcons: Record<
 > = {
     plant: Leaf,
     plantSort: Sprout,
+    plantDisease: Shield,
+    plantPest: Bug,
     block: Layers,
     seed: PlantingSeedIcon,
 };

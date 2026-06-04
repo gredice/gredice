@@ -32,12 +32,15 @@ export function SelectEntity({
             });
     }, [entityTypeName]);
 
-    const isPlantRelationship =
-        attributeDefinition?.entityTypeName === 'plant' &&
-        attributeDefinition.category === 'relationships' &&
-        attributeDefinition.dataType === 'ref:plant' &&
-        (attributeDefinition.name === 'companions' ||
-            attributeDefinition.name === 'antagonists');
+    const blocksDuplicateReferences = Boolean(
+        attributeDefinition?.multiple &&
+            attributeDefinition.dataType.startsWith('ref:'),
+    );
+    const blocksSelfReference = Boolean(
+        entityTypeName &&
+            attributeDefinition?.entityTypeName &&
+            entityTypeName === attributeDefinition.entityTypeName,
+    );
     const blockedValueSet = useMemo(
         () => new Set(blockedValues),
         [blockedValues],
@@ -47,18 +50,25 @@ export function SelectEntity({
             return [];
         }
 
-        if (!isPlantRelationship) {
+        if (!blocksDuplicateReferences) {
             return entities;
         }
 
         return entities.filter((entity) => {
             const entityValue = entity.id.toString();
-            if (entity.id === entityId) {
+            if (blocksSelfReference && entity.id === entityId) {
                 return false;
             }
             return entityValue === value || !blockedValueSet.has(entityValue);
         });
-    }, [blockedValueSet, entities, entityId, isPlantRelationship, value]);
+    }, [
+        blockedValueSet,
+        blocksDuplicateReferences,
+        blocksSelfReference,
+        entities,
+        entityId,
+        value,
+    ]);
 
     const items = [
         { value: '-', label: '-' },

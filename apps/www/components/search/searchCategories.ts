@@ -5,6 +5,8 @@ export type SearchCategoryValue =
     | 'plants'
     | 'sorts'
     | 'operations'
+    | 'diseases'
+    | 'pests'
     | 'blocks'
     | 'seeds';
 
@@ -16,6 +18,8 @@ export const searchCategories: {
     { value: 'plants', label: 'Biljke' },
     { value: 'sorts', label: 'Sorte' },
     { value: 'operations', label: 'Radnje' },
+    { value: 'diseases', label: 'Bolesti' },
+    { value: 'pests', label: 'Štetnici' },
     { value: 'blocks', label: 'Blokovi' },
     { value: 'seeds', label: 'Sjeme' },
 ];
