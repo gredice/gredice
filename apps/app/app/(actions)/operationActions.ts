@@ -25,6 +25,7 @@ import {
     getRaisedBed,
     type InsertOperation,
     knownEvents,
+    unacceptOperation,
 } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
 import type { EntityStandardized } from '../../lib/@types/EntityStandardized';
@@ -484,6 +485,7 @@ export async function rescheduleOperationAction(formData: FormData) {
             scheduledDate: newDate.toISOString(),
         }),
     );
+    await unacceptOperation(operationId);
 
     await notifyOperationUpdate(operationId, 'rescheduled', {
         scheduledDate: newDate.toISOString(),

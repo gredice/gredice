@@ -834,7 +834,17 @@ function summarizePlantCycle(
                 assignedBy = data.assignedBy;
             }
 
-            if (
+            if (plantStatus === 'new' || plantStatus === 'planned') {
+                active = true;
+                toBeRemoved = false;
+                stoppedDate = undefined;
+                plantSowDate = undefined;
+                plantGrowthDate = undefined;
+                plantReadyDate = undefined;
+                plantDeadDate = undefined;
+                plantHarvestedDate = undefined;
+                plantRemovedDate = undefined;
+            } else if (
                 plantStatus === 'pendingVerification' ||
                 plantStatus === 'sowed'
             ) {
@@ -2673,7 +2683,17 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                 ) {
                     assignedBy = data.assignedBy;
                 }
-                if (
+                if (plantStatus === 'new' || plantStatus === 'planned') {
+                    active = true;
+                    toBeRemoved = false;
+                    stoppedDate = undefined;
+                    plantSowDate = undefined;
+                    plantGrowthDate = undefined;
+                    plantReadyDate = undefined;
+                    plantDeadDate = undefined;
+                    plantHarvestedDate = undefined;
+                    plantRemovedDate = undefined;
+                } else if (
                     plantStatus === 'pendingVerification' ||
                     plantStatus === 'sowed'
                 ) {

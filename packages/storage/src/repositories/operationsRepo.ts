@@ -247,6 +247,17 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
                     ? new Date(String(data.scheduledDate))
                     : undefined;
                 scheduledAt = event.createdAt;
+                completedAt = undefined;
+                completedBy = undefined;
+                verifiedAt = undefined;
+                verifiedBy = undefined;
+                error = undefined;
+                errorCode = undefined;
+                canceledBy = undefined;
+                canceledAt = undefined;
+                cancelReason = undefined;
+                imageUrls = undefined;
+                completionNotes = undefined;
             }
         }
 
@@ -948,6 +959,14 @@ export async function acceptOperation(id: number) {
     await storage()
         .update(operations)
         .set({ isAccepted: true })
+        .where(eq(operations.id, id));
+    await bustScheduleCache();
+}
+
+export async function unacceptOperation(id: number) {
+    await storage()
+        .update(operations)
+        .set({ isAccepted: false })
         .where(eq(operations.id, id));
     await bustScheduleCache();
 }

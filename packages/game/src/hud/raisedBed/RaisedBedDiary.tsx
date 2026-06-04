@@ -13,6 +13,7 @@ import Image from 'next/image';
 import { type ReactNode, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useGameFlags } from '../../GameFlagsContext';
+import { isDiaryCancelTargetEligible } from '../../hooks/useCancelDiaryEntry';
 import { useRaisedBedDiaryEntries } from '../../hooks/useRaisedBedDiaryEntries';
 import { useRaisedBedFieldDiaryEntries } from '../../hooks/useRaisedBedFieldDiaryEntries';
 import {
@@ -20,6 +21,7 @@ import {
     isDiaryRescheduleTargetEligible,
 } from '../../hooks/useRescheduleDiaryEntry';
 import { RaisedBedDiaryAiAction } from './RaisedBedDiaryAiAction';
+import { RaisedBedDiaryCancelAction } from './RaisedBedDiaryCancelAction';
 import { RaisedBedDiaryRescheduleAction } from './RaisedBedDiaryRescheduleAction';
 
 type DiaryEntry = {
@@ -143,14 +145,22 @@ function diaryEntryActions({
             target={rescheduleTarget}
         />
     ) : null;
+    const cancelAction = isDiaryCancelTargetEligible(rescheduleTarget) ? (
+        <RaisedBedDiaryCancelAction
+            entryName={entry.name}
+            gardenId={gardenId}
+            target={rescheduleTarget}
+        />
+    ) : null;
 
-    if (!aiAction && !rescheduleAction) {
+    if (!aiAction && !rescheduleAction && !cancelAction) {
         return null;
     }
 
     return (
         <Row spacing={2} className="flex-wrap items-center">
             {rescheduleAction}
+            {cancelAction}
             {aiAction}
         </Row>
     );

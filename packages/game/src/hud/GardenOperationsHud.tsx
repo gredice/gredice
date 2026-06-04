@@ -33,6 +33,10 @@ import {
 } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { SegmentedProgress } from '../controls/components/SegmentedProgress';
+import {
+    getDiaryCancelDisabledReason,
+    isDiaryCancelTargetEligible,
+} from '../hooks/useCancelDiaryEntry';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import {
     type GardenOperationItem,
@@ -53,6 +57,7 @@ import {
 } from '../hooks/useShoppingCart';
 import { ScrollView } from '../shared-ui/ScrollView';
 import { useShoppingCartOpenParam } from '../useUrlState';
+import { RaisedBedDiaryCancelAction } from './raisedBed/RaisedBedDiaryCancelAction';
 import { RaisedBedDiaryRescheduleAction } from './raisedBed/RaisedBedDiaryRescheduleAction';
 
 type OperationData = NonNullable<
@@ -119,10 +124,9 @@ const hiddenFromActive = new Set<GardenOperationStatus>([
     'failed',
     'canceled',
 ]);
-const reschedulableActiveStatuses = new Set<GardenOperationStatus>([
-    'planned',
-    'assigned',
-    'confirmed',
+const nonEditableStatuses = new Set<GardenOperationStatus>([
+    'completed',
+    'canceled',
 ]);
 const cartOperationEntityType = 'operation' as const;
 export const cartPlantSortEntityType = 'plantSort' as const;
@@ -337,12 +341,7 @@ function getSowingOperationStatus(
         return 'confirmed';
     }
 
-    const hasAssignedUser = hasAssignedSowingUser(entry);
-    if (status === 'planned' && hasAssignedUser) {
-        return 'confirmed';
-    }
-
-    if (hasAssignedUser) {
+    if (hasAssignedSowingUser(entry)) {
         return 'assigned';
     }
 
@@ -599,12 +598,44 @@ export function getGardenOperationRescheduleTarget(
     operation: GardenOperationHudItem,
     garden: CurrentGardenData | null | undefined,
 ): DiaryRescheduleTarget | null {
+    if (nonEditableStatuses.has(operation.status)) {
+        return null;
+    }
+
+    const positionIndex = getOperationFieldPositionIndex(operation, garden);
+
+    if (operation.entityTypeName === cartOperationEntityType) {
+        return {
+            type: 'operation',
+            operationId: operation.id,
+            raisedBedId: operation.raisedBedId,
+            raisedBedFieldId: operation.raisedBedFieldId,
+            positionIndex,
+            scheduledDate: operation.scheduledDate,
+        };
+    }
+
     if (
-        !reschedulableActiveStatuses.has(operation.status) ||
-        operation.completedAt ||
-        operation.verifiedAt ||
-        operation.canceledAt
+        operation.entityTypeName === cartPlantSortEntityType &&
+        operation.raisedBedId &&
+        typeof positionIndex === 'number'
     ) {
+        return {
+            type: 'raisedBedFieldPlant',
+            raisedBedId: operation.raisedBedId,
+            positionIndex,
+            scheduledDate: operation.scheduledDate,
+        };
+    }
+
+    return null;
+}
+
+export function getGardenOperationCancelTarget(
+    operation: GardenOperationHudItem,
+    garden: CurrentGardenData | null | undefined,
+): DiaryRescheduleTarget | null {
+    if (nonEditableStatuses.has(operation.status) || !operation.scheduledDate) {
         return null;
     }
 
@@ -694,6 +725,17 @@ export function canRescheduleGardenOperation(
     );
 }
 
+export function canCancelGardenOperation(
+    operation: GardenOperationHudItem,
+    garden: CurrentGardenData | null | undefined,
+    referenceDate: Date,
+) {
+    const target = getGardenOperationCancelTarget(operation, garden);
+    return Boolean(
+        target && isDiaryCancelTargetEligible(target, referenceDate),
+    );
+}
+
 export function GardenOperationRescheduleAction({
     entryName,
     garden,
@@ -726,12 +768,38 @@ export function GardenOperationRescheduleAction({
     );
 }
 
-function isFinishedOperation(operation: GardenOperationHudItem) {
-    return Boolean(
-        operation.completedAt ||
-            operation.verifiedAt ||
-            operation.status === 'completed',
+export function GardenOperationCancelAction({
+    entryName,
+    garden,
+    operation,
+    referenceDate,
+}: {
+    entryName: string;
+    garden: CurrentGardenData | null | undefined;
+    operation: GardenOperationHudItem;
+    referenceDate: Date;
+}) {
+    if (!garden) {
+        return null;
+    }
+
+    const target = getGardenOperationCancelTarget(operation, garden);
+    if (!target) {
+        return null;
+    }
+
+    return (
+        <RaisedBedDiaryCancelAction
+            disabledReason={getDiaryCancelDisabledReason(target, referenceDate)}
+            entryName={entryName}
+            gardenId={garden.id}
+            target={target}
+        />
     );
+}
+
+function isFinishedOperation(operation: GardenOperationHudItem) {
+    return nonEditableStatuses.has(operation.status);
 }
 
 function OperationScheduleText({ label }: { label: string }) {
@@ -1037,27 +1105,33 @@ function OperationProgress({
 
 function OperationSchedule({
     operation,
+    cancelAction,
     scheduleAction,
 }: {
     operation: GardenOperationItem;
+    cancelAction?: ReactNode;
     scheduleAction?: ReactNode;
 }) {
     const scheduledDate = formatDate(operation.scheduledDate);
-
-    if (scheduleAction) {
-        return <div className="w-fit max-w-full">{scheduleAction}</div>;
-    }
-
-    if (!scheduledDate) {
-        return null;
-    }
-
-    return (
+    const scheduleContent = scheduleAction ? (
+        <div className="w-fit max-w-full">{scheduleAction}</div>
+    ) : scheduledDate ? (
         <Row spacing={1} className="w-fit max-w-full text-muted-foreground">
             <Calendar aria-hidden className="size-3.5 shrink-0" />
             <Typography level="body3" secondary noWrap>
                 {scheduledDate}
             </Typography>
+        </Row>
+    ) : null;
+
+    if (!scheduleContent && !cancelAction) {
+        return null;
+    }
+
+    return (
+        <Row spacing={1} className="w-fit max-w-full items-center">
+            {scheduleContent}
+            {cancelAction}
         </Row>
     );
 }
@@ -1260,6 +1334,7 @@ export function GardenOperationCard({
     currentGarden,
     referenceDate,
     progressClassName,
+    cancelAction,
     scheduleAction,
     action,
 }: {
@@ -1271,6 +1346,7 @@ export function GardenOperationCard({
     currentGarden?: CurrentGardenData | null;
     referenceDate: Date;
     progressClassName?: string;
+    cancelAction?: ReactNode;
     scheduleAction?: ReactNode;
     action?: ReactNode;
 }) {
@@ -1329,6 +1405,7 @@ export function GardenOperationCard({
                     </Stack>
                     <OperationSchedule
                         operation={operation}
+                        cancelAction={cancelAction}
                         scheduleAction={scheduleAction}
                     />
                     <OperationEvidence operation={operation} />
@@ -1841,6 +1918,19 @@ export function GardenOperationsHud() {
                                             referenceDate={referenceDate}
                                         />
                                     );
+                                    const cancelTarget =
+                                        getGardenOperationCancelTarget(
+                                            operation,
+                                            currentGarden,
+                                        );
+                                    const cancelAction = cancelTarget ? (
+                                        <GardenOperationCancelAction
+                                            entryName={entryName}
+                                            garden={currentGarden}
+                                            operation={operation}
+                                            referenceDate={referenceDate}
+                                        />
+                                    ) : undefined;
 
                                     return (
                                         <GardenOperationCard
@@ -1863,6 +1953,7 @@ export function GardenOperationsHud() {
                                             currentGarden={currentGarden}
                                             referenceDate={referenceDate}
                                             scheduleAction={scheduleAction}
+                                            cancelAction={cancelAction}
                                         />
                                     );
                                 })}

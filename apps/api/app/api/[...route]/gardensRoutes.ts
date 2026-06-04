@@ -10,6 +10,8 @@ import {
     abandonRaisedBed,
     addGardenBoxInventoryItem,
     buildRaisedBedFieldPlantUpdatePayload,
+    cancelGardenDiaryOperation,
+    cancelGardenDiaryRaisedBedField,
     clearSandboxField,
     countAiRequestEventsSince,
     countRaisedBedsByAccount,
@@ -21,6 +23,7 @@ import {
     deleteGardenStack,
     deleteSandboxGardenCompletely,
     GardenBoxInventoryLimitError,
+    GardenDiaryCancelError,
     GardenDiaryRescheduleError,
     getAccount,
     getAccountGardens,
@@ -131,6 +134,20 @@ function getAnalysisReferenceDate(body: AnalyzeImageBody) {
 function diaryRescheduleErrorResponse(
     context: Context,
     error: GardenDiaryRescheduleError,
+) {
+    switch (error.statusCode) {
+        case 400:
+            return context.json({ error: error.message }, 400);
+        case 404:
+            return context.json({ error: error.message }, 404);
+        case 409:
+            return context.json({ error: error.message }, 409);
+    }
+}
+
+function diaryCancelErrorResponse(
+    context: Context,
+    error: GardenDiaryCancelError,
 ) {
     switch (error.statusCode) {
         case 400:
@@ -631,6 +648,61 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 console.error('Error rescheduling diary operation:', error);
                 return context.json(
                     { error: 'Failed to reschedule operation' },
+                    500,
+                );
+            }
+        },
+    )
+    .post(
+        '/:gardenId/operations/:operationId/cancel',
+        describeRoute({
+            description:
+                'Cancel a planned in-game diary operation for the current user and refund sunflowers',
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+                operationId: z.string(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, operationId } = context.req.valid('param');
+            const gardenIdNumber = Number.parseInt(gardenId, 10);
+            const operationIdNumber = Number.parseInt(operationId, 10);
+
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+            if (Number.isNaN(operationIdNumber)) {
+                return context.json({ error: 'Invalid operation ID' }, 400);
+            }
+
+            const { accountId, userId } = context.get('authContext');
+
+            try {
+                const result = await cancelGardenDiaryOperation({
+                    accountId,
+                    canceledBy: userId,
+                    gardenId: gardenIdNumber,
+                    operationId: operationIdNumber,
+                });
+
+                await notifyOperationUpdate(operationIdNumber, 'canceled', {
+                    canceledBy: userId,
+                    reason: result.reason,
+                });
+
+                return context.json({ refundAmount: result.refundAmount }, 200);
+            } catch (error) {
+                if (error instanceof GardenDiaryCancelError) {
+                    return diaryCancelErrorResponse(context, error);
+                }
+
+                console.error('Error canceling diary operation:', error);
+                return context.json(
+                    { error: 'Failed to cancel operation' },
                     500,
                 );
             }
@@ -2646,6 +2718,63 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
                 return context.json(
                     { error: 'Failed to reschedule raised bed field' },
+                    500,
+                );
+            }
+        },
+    )
+    .post(
+        '/:gardenId/raised-beds/:raisedBedId/fields/:positionIndex/cancel',
+        describeRoute({
+            description:
+                'Cancel a planned in-game diary raised-bed field sowing for the current user and refund sunflowers',
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+                raisedBedId: z.string(),
+                positionIndex: z.string(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, raisedBedId, positionIndex } =
+                context.req.valid('param');
+            const gardenIdNumber = Number.parseInt(gardenId, 10);
+            const raisedBedIdNumber = Number.parseInt(raisedBedId, 10);
+            const positionIndexNumber = Number.parseInt(positionIndex, 10);
+
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+            if (Number.isNaN(raisedBedIdNumber)) {
+                return context.json({ error: 'Invalid raised bed ID' }, 400);
+            }
+            if (Number.isNaN(positionIndexNumber) || positionIndexNumber < 0) {
+                return context.json({ error: 'Invalid position index' }, 400);
+            }
+
+            const { accountId, userId } = context.get('authContext');
+
+            try {
+                const result = await cancelGardenDiaryRaisedBedField({
+                    accountId,
+                    canceledBy: userId,
+                    gardenId: gardenIdNumber,
+                    raisedBedId: raisedBedIdNumber,
+                    positionIndex: positionIndexNumber,
+                });
+
+                return context.json({ refundAmount: result.refundAmount }, 200);
+            } catch (error) {
+                if (error instanceof GardenDiaryCancelError) {
+                    return diaryCancelErrorResponse(context, error);
+                }
+
+                console.error('Error canceling diary raised bed field:', error);
+                return context.json(
+                    { error: 'Failed to cancel raised bed field' },
                     500,
                 );
             }
