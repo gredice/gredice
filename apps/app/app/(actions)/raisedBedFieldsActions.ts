@@ -408,14 +408,21 @@ export async function rescheduleRaisedBedFieldAction(formData: FormData) {
         throw new Error('Field or plant sort not found.');
     }
 
+    const aggregateId = `${raisedBedId}|${positionIndex}`;
+
     await createEvent(
-        knownEvents.raisedBedFields.plantScheduleV1(
-            `${raisedBedId}|${positionIndex}`,
-            {
-                scheduledDate: new Date(scheduledDate).toISOString(),
-            },
-        ),
+        knownEvents.raisedBedFields.plantScheduleV1(aggregateId, {
+            scheduledDate: new Date(scheduledDate).toISOString(),
+        }),
     );
+
+    if (field.plantStatus === 'pendingVerification') {
+        await createEvent(
+            knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+                status: 'planned',
+            }),
+        );
+    }
 
     revalidatePath(KnownPages.Schedule);
     if (raisedBed.accountId)

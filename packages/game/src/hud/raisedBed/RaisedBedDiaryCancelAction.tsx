@@ -1,5 +1,6 @@
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
+import { IconButton } from '@gredice/ui/IconButton';
 import { Close, Warning } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
@@ -28,17 +29,20 @@ export function RaisedBedDiaryCancelAction({
     const [open, setOpen] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const mutation = useCancelDiaryEntry(gardenId);
+    const triggerTitle =
+        typeof triggerLabel === 'string' ? triggerLabel : 'Otkaži';
     const triggerButton = (
-        <Button
+        <IconButton
             type="button"
             size="xs"
-            variant="soft"
+            variant="plain"
             color="danger"
             disabled={Boolean(disabledReason)}
-            startDecorator={<Close className="size-3.5 shrink-0" />}
+            title={triggerTitle}
+            className="h-7 w-7 shrink-0 bg-transparent hover:bg-transparent dark:hover:bg-transparent"
         >
-            {triggerLabel}
-        </Button>
+            <Close className="size-4 shrink-0" />
+        </IconButton>
     );
 
     if (disabledReason) {

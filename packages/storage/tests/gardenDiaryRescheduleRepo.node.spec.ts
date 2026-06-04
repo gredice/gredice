@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    acceptOperation,
     cancelGardenDiaryOperation,
     cancelGardenDiaryRaisedBedField,
     createAccount,
@@ -318,6 +319,92 @@ test('rescheduleGardenDiaryOperation schedules planned operations without a date
     );
 });
 
+test('rescheduleGardenDiaryOperation returns confirmed operations to planned and keeps assignment', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createDiaryRescheduleContext();
+    const operationId = await createScheduledOperation({
+        accountId,
+        gardenId,
+        raisedBedId,
+        scheduledDate: '2026-06-04T00:00:00.000Z',
+    });
+
+    await createEvent(
+        knownEvents.operations.assignedV1(operationId.toString(), {
+            assignedUserIds: ['farmer-1'],
+            assignedBy: 'admin-1',
+        }),
+    );
+    await acceptOperation(operationId);
+    await createEvent(
+        knownEvents.operations.completedV1(operationId.toString(), {
+            completedBy: 'farmer-1',
+            images: ['https://example.com/confirmed.jpg'],
+            notes: 'Potvrđeno za provjeru.',
+        }),
+    );
+
+    await rescheduleGardenDiaryOperation({
+        accountId,
+        gardenId,
+        operationId,
+        scheduledDate: '2026-06-06',
+        referenceDate: new Date('2026-06-03T12:00:00.000Z'),
+    });
+
+    const operation = await getOperationById(operationId);
+    assert.equal(operation.status, 'planned');
+    assert.equal(
+        operation.scheduledDate?.toISOString(),
+        '2026-06-06T00:00:00.000Z',
+    );
+    assert.deepEqual(operation.assignedUserIds, ['farmer-1']);
+    assert.equal(operation.assignedBy, 'admin-1');
+    assert.equal(operation.isAccepted, false);
+    assert.equal(operation.completedAt, undefined);
+    assert.equal(operation.completedBy, undefined);
+    assert.equal(operation.imageUrls, undefined);
+    assert.equal(operation.completionNotes, undefined);
+});
+
+test('rescheduleGardenDiaryOperation rejects completed operations', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createDiaryRescheduleContext();
+    const operationId = await createScheduledOperation({
+        accountId,
+        gardenId,
+        raisedBedId,
+        scheduledDate: '2026-06-04T00:00:00.000Z',
+    });
+
+    await createEvent(
+        knownEvents.operations.completedV1(operationId.toString(), {
+            completedBy: 'farmer-1',
+        }),
+    );
+    await createEvent(
+        knownEvents.operations.verifiedV1(operationId.toString(), {
+            verifiedBy: 'admin-1',
+        }),
+    );
+
+    await assert.rejects(
+        () =>
+            rescheduleGardenDiaryOperation({
+                accountId,
+                gardenId,
+                operationId,
+                scheduledDate: '2026-06-06',
+                referenceDate: new Date('2026-06-03T12:00:00.000Z'),
+            }),
+        (error) =>
+            error instanceof GardenDiaryRescheduleError &&
+            error.statusCode === 409,
+    );
+});
+
 test('rescheduleGardenDiaryOperation rejects items scheduled for today', async () => {
     createTestDb();
     const { accountId, gardenId, raisedBedId } =
@@ -401,6 +488,52 @@ test('rescheduleGardenDiaryRaisedBedField schedules planned sowing without a dat
     );
 });
 
+test('rescheduleGardenDiaryRaisedBedField returns confirmed sowing to planned and keeps assignment', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createDiaryRescheduleContext();
+    const aggregateId = `${raisedBedId.toString()}|0`;
+    await createScheduledField({
+        raisedBedId,
+        positionIndex: 0,
+        scheduledDate: '2026-06-04T00:00:00.000Z',
+    });
+
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+            assignedUserIds: ['farmer-1'],
+            assignedBy: 'admin-1',
+        }),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+            status: 'pendingVerification',
+        }),
+    );
+
+    await rescheduleGardenDiaryRaisedBedField({
+        accountId,
+        gardenId,
+        raisedBedId,
+        positionIndex: 0,
+        scheduledDate: '2026-06-06',
+        referenceDate: new Date('2026-06-03T12:00:00.000Z'),
+    });
+
+    const raisedBed = await getRaisedBed(raisedBedId);
+    const field = raisedBed?.fields.find(
+        (candidate) => candidate.positionIndex === 0,
+    );
+    assert.equal(field?.plantStatus, 'planned');
+    assert.equal(
+        field?.plantScheduledDate?.toISOString(),
+        '2026-06-06T00:00:00.000Z',
+    );
+    assert.deepEqual(field?.assignedUserIds, ['farmer-1']);
+    assert.equal(field?.assignedBy, 'admin-1');
+    assert.equal(field?.plantSowDate, undefined);
+});
+
 test('rescheduleGardenDiaryRaisedBedField rejects today as the new date', async () => {
     createTestDb();
     const { accountId, gardenId, raisedBedId } =
@@ -464,6 +597,39 @@ test('cancelGardenDiaryOperation cancels future planned operations with refund a
     assert.equal(notifications.length, 1);
     assert.equal(notifications[0]?.header, 'Radnja je otkazana');
     assert.match(notifications[0]?.content ?? '', /2500 🌻/);
+});
+
+test('cancelGardenDiaryOperation cancels future confirmed operations', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createDiaryRescheduleContext();
+    const entityId = await createPricedOperationEntity();
+    const operationId = await createScheduledOperation({
+        accountId,
+        entityId,
+        gardenId,
+        raisedBedId,
+        scheduledDate: '2026-06-04T00:00:00.000Z',
+    });
+
+    await createEvent(
+        knownEvents.operations.completedV1(operationId.toString(), {
+            completedBy: 'farmer-1',
+        }),
+    );
+
+    const result = await cancelGardenDiaryOperation({
+        accountId,
+        canceledBy: 'user-1',
+        gardenId,
+        operationId,
+        referenceDate: new Date('2026-06-03T12:00:00.000Z'),
+    });
+
+    const operation = await getOperationById(operationId);
+    assert.equal(result.refundAmount, 2500);
+    assert.equal(operation.status, 'canceled');
+    assert.equal(operation.canceledBy, 'user-1');
 });
 
 test('cancelGardenDiaryOperation rejects items scheduled for today', async () => {
@@ -533,6 +699,42 @@ test('cancelGardenDiaryRaisedBedField removes future planned sowing with refund 
     assert.equal(notifications.length, 1);
     assert.equal(notifications[0]?.header, 'Sijanje je otkazano');
     assert.match(notifications[0]?.content ?? '', /1500 🌻/);
+});
+
+test('cancelGardenDiaryRaisedBedField removes future confirmed sowing', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createDiaryRescheduleContext();
+    const plantSortId = await createPricedPlantSortEntity();
+    const aggregateId = `${raisedBedId.toString()}|0`;
+
+    await createScheduledField({
+        plantSortId,
+        raisedBedId,
+        positionIndex: 0,
+        scheduledDate: '2026-06-04T00:00:00.000Z',
+    });
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+            status: 'pendingVerification',
+        }),
+    );
+
+    const result = await cancelGardenDiaryRaisedBedField({
+        accountId,
+        canceledBy: 'user-1',
+        gardenId,
+        raisedBedId,
+        positionIndex: 0,
+        referenceDate: new Date('2026-06-03T12:00:00.000Z'),
+    });
+
+    const raisedBed = await getRaisedBed(raisedBedId);
+    const field = raisedBed?.fields.find(
+        (candidate) => candidate.positionIndex === 0,
+    );
+    assert.equal(result.refundAmount, 1500);
+    assert.equal(field, undefined);
 });
 
 test('cancelGardenDiaryRaisedBedField rejects sowing scheduled for today', async () => {

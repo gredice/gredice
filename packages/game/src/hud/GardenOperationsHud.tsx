@@ -124,12 +124,10 @@ const hiddenFromActive = new Set<GardenOperationStatus>([
     'failed',
     'canceled',
 ]);
-const reschedulableActiveStatuses = new Set<GardenOperationStatus>([
-    'planned',
-    'assigned',
-    'confirmed',
+const nonEditableStatuses = new Set<GardenOperationStatus>([
+    'completed',
+    'canceled',
 ]);
-const cancelableActiveStatuses = new Set<GardenOperationStatus>(['planned']);
 const cartOperationEntityType = 'operation' as const;
 export const cartPlantSortEntityType = 'plantSort' as const;
 const plantingOperationLabel = 'Sadnja';
@@ -343,12 +341,7 @@ function getSowingOperationStatus(
         return 'confirmed';
     }
 
-    const hasAssignedUser = hasAssignedSowingUser(entry);
-    if (status === 'planned' && hasAssignedUser) {
-        return 'confirmed';
-    }
-
-    if (hasAssignedUser) {
+    if (hasAssignedSowingUser(entry)) {
         return 'assigned';
     }
 
@@ -605,12 +598,7 @@ export function getGardenOperationRescheduleTarget(
     operation: GardenOperationHudItem,
     garden: CurrentGardenData | null | undefined,
 ): DiaryRescheduleTarget | null {
-    if (
-        !reschedulableActiveStatuses.has(operation.status) ||
-        operation.completedAt ||
-        operation.verifiedAt ||
-        operation.canceledAt
-    ) {
+    if (nonEditableStatuses.has(operation.status)) {
         return null;
     }
 
@@ -647,13 +635,7 @@ export function getGardenOperationCancelTarget(
     operation: GardenOperationHudItem,
     garden: CurrentGardenData | null | undefined,
 ): DiaryRescheduleTarget | null {
-    if (
-        !cancelableActiveStatuses.has(operation.status) ||
-        operation.completedAt ||
-        operation.verifiedAt ||
-        operation.canceledAt ||
-        !operation.scheduledDate
-    ) {
+    if (nonEditableStatuses.has(operation.status) || !operation.scheduledDate) {
         return null;
     }
 
@@ -817,11 +799,7 @@ export function GardenOperationCancelAction({
 }
 
 function isFinishedOperation(operation: GardenOperationHudItem) {
-    return Boolean(
-        operation.completedAt ||
-            operation.verifiedAt ||
-            operation.status === 'completed',
-    );
+    return nonEditableStatuses.has(operation.status);
 }
 
 function OperationScheduleText({ label }: { label: string }) {
@@ -1127,27 +1105,33 @@ function OperationProgress({
 
 function OperationSchedule({
     operation,
+    cancelAction,
     scheduleAction,
 }: {
     operation: GardenOperationItem;
+    cancelAction?: ReactNode;
     scheduleAction?: ReactNode;
 }) {
     const scheduledDate = formatDate(operation.scheduledDate);
-
-    if (scheduleAction) {
-        return <div className="w-fit max-w-full">{scheduleAction}</div>;
-    }
-
-    if (!scheduledDate) {
-        return null;
-    }
-
-    return (
+    const scheduleContent = scheduleAction ? (
+        <div className="w-fit max-w-full">{scheduleAction}</div>
+    ) : scheduledDate ? (
         <Row spacing={1} className="w-fit max-w-full text-muted-foreground">
             <Calendar aria-hidden className="size-3.5 shrink-0" />
             <Typography level="body3" secondary noWrap>
                 {scheduledDate}
             </Typography>
+        </Row>
+    ) : null;
+
+    if (!scheduleContent && !cancelAction) {
+        return null;
+    }
+
+    return (
+        <Row spacing={1} className="w-fit max-w-full items-center">
+            {scheduleContent}
+            {cancelAction}
         </Row>
     );
 }
@@ -1350,6 +1334,7 @@ export function GardenOperationCard({
     currentGarden,
     referenceDate,
     progressClassName,
+    cancelAction,
     scheduleAction,
     action,
 }: {
@@ -1361,6 +1346,7 @@ export function GardenOperationCard({
     currentGarden?: CurrentGardenData | null;
     referenceDate: Date;
     progressClassName?: string;
+    cancelAction?: ReactNode;
     scheduleAction?: ReactNode;
     action?: ReactNode;
 }) {
@@ -1419,6 +1405,7 @@ export function GardenOperationCard({
                     </Stack>
                     <OperationSchedule
                         operation={operation}
+                        cancelAction={cancelAction}
                         scheduleAction={scheduleAction}
                     />
                     <OperationEvidence operation={operation} />
@@ -1966,16 +1953,7 @@ export function GardenOperationsHud() {
                                             currentGarden={currentGarden}
                                             referenceDate={referenceDate}
                                             scheduleAction={scheduleAction}
-                                            action={
-                                                cancelAction ? (
-                                                    <Row
-                                                        spacing={2}
-                                                        className="flex-wrap justify-end"
-                                                    >
-                                                        {cancelAction}
-                                                    </Row>
-                                                ) : undefined
-                                            }
+                                            cancelAction={cancelAction}
                                         />
                                     );
                                 })}

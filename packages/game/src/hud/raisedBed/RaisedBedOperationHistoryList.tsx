@@ -344,13 +344,11 @@ export function RaisedBedOperationHistoryList({
                             })}
                         />
                     ) : undefined;
-                const action =
-                    cancelAction || aiAction ? (
-                        <Row spacing={2} className="flex-wrap justify-end">
-                            {cancelAction}
-                            {aiAction}
-                        </Row>
-                    ) : undefined;
+                const action = aiAction ? (
+                    <Row spacing={2} className="flex-wrap justify-end">
+                        {aiAction}
+                    </Row>
+                ) : undefined;
 
                 return (
                     <GardenOperationCard
@@ -372,6 +370,7 @@ export function RaisedBedOperationHistoryList({
                         currentGarden={currentGarden}
                         referenceDate={referenceDate}
                         progressClassName="md:max-w-80"
+                        cancelAction={cancelAction}
                         action={action}
                         scheduleAction={scheduleAction}
                     />

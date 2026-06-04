@@ -1,7 +1,7 @@
 import { isRaisedBedAbandoned } from '@gredice/js/raisedBeds';
 import { createEvent, knownEvents } from './eventsRepo';
 import { getRaisedBed } from './gardensRepo';
-import { getOperationsByIds } from './operationsRepo';
+import { getOperationsByIds, unacceptOperation } from './operationsRepo';
 
 export type GardenDiaryRescheduleStatusCode = 400 | 404 | 409;
 
@@ -15,7 +15,15 @@ export class GardenDiaryRescheduleError extends Error {
     }
 }
 
-const reschedulableFieldPlantStatuses = new Set(['new', 'planned']);
+const terminalOperationStatuses = new Set(['completed', 'canceled']);
+const reschedulableFieldPlantStatuses = new Set([
+    'new',
+    'planned',
+    'pendingVerification',
+]);
+const fieldPlantStatusesThatNeedReconfirmation = new Set([
+    'pendingVerification',
+]);
 
 export function startOfUtcDay(date: Date) {
     return new Date(
@@ -61,6 +69,16 @@ export function normalizeDiaryRescheduleDate(
 
 export function isReschedulableFieldPlantStatus(status?: string | null) {
     return !status || reschedulableFieldPlantStatuses.has(status);
+}
+
+export function isReschedulableOperationStatus(status?: string | null) {
+    return !status || !terminalOperationStatuses.has(status);
+}
+
+function shouldResetFieldPlantStatusOnReschedule(status?: string | null) {
+    return Boolean(
+        status && fieldPlantStatusesThatNeedReconfirmation.has(status),
+    );
 }
 
 function assertExistingScheduledDateCanMove(
@@ -129,9 +147,9 @@ export async function rescheduleGardenDiaryOperation({
         throw new GardenDiaryRescheduleError('Operation not found.', 404);
     }
 
-    if (operation.status !== 'planned') {
+    if (!isReschedulableOperationStatus(operation.status)) {
         throw new GardenDiaryRescheduleError(
-            'Only planned operations can be rescheduled.',
+            'Completed or canceled operations cannot be rescheduled.',
             409,
         );
     }
@@ -148,6 +166,7 @@ export async function rescheduleGardenDiaryOperation({
             scheduledDate: normalizedDate.toISOString(),
         }),
     );
+    await unacceptOperation(operationId);
 
     return {
         operationId,
@@ -193,7 +212,7 @@ export async function rescheduleGardenDiaryRaisedBedField({
 
     if (!isReschedulableFieldPlantStatus(field.plantStatus)) {
         throw new GardenDiaryRescheduleError(
-            'Only planned plant fields can be rescheduled.',
+            'Only unfinished plant fields can be rescheduled.',
             409,
         );
     }
@@ -205,14 +224,21 @@ export async function rescheduleGardenDiaryRaisedBedField({
         referenceDate,
     );
 
+    const aggregateId = `${raisedBedId.toString()}|${positionIndex.toString()}`;
+
     await createEvent(
-        knownEvents.raisedBedFields.plantScheduleV1(
-            `${raisedBedId.toString()}|${positionIndex.toString()}`,
-            {
-                scheduledDate: normalizedDate.toISOString(),
-            },
-        ),
+        knownEvents.raisedBedFields.plantScheduleV1(aggregateId, {
+            scheduledDate: normalizedDate.toISOString(),
+        }),
     );
+
+    if (shouldResetFieldPlantStatusOnReschedule(field.plantStatus)) {
+        await createEvent(
+            knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+                status: 'planned',
+            }),
+        );
+    }
 
     return {
         positionIndex,

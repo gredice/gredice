@@ -7,6 +7,7 @@ import { createEvent, knownEvents } from './eventsRepo';
 import {
     getMinimumDiaryRescheduleDate,
     isReschedulableFieldPlantStatus,
+    isReschedulableOperationStatus,
     startOfUtcDay,
 } from './gardenDiaryRescheduleRepo';
 import { deleteRaisedBedField, getRaisedBed } from './gardensRepo';
@@ -121,9 +122,9 @@ export async function cancelGardenDiaryOperation({
         throw new GardenDiaryCancelError('Operation not found.', 404);
     }
 
-    if (operation.status !== 'planned') {
+    if (!isReschedulableOperationStatus(operation.status)) {
         throw new GardenDiaryCancelError(
-            'Only planned operations can be canceled.',
+            'Completed or canceled operations cannot be canceled.',
             409,
         );
     }
@@ -242,7 +243,7 @@ export async function cancelGardenDiaryRaisedBedField({
 
     if (!isReschedulableFieldPlantStatus(field.plantStatus)) {
         throw new GardenDiaryCancelError(
-            'Only planned plant fields can be canceled.',
+            'Only unfinished plant fields can be canceled.',
             409,
         );
     }
