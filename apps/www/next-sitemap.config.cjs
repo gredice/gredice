@@ -21,6 +21,36 @@ function normalizeSitemapPath(path) {
 }
 
 const sourceCmsPagePaths = ['/kvaliteta-i-sigurnost-uroda'];
+const staticNewsPaths = ['/novosti', '/novosti/sto-je-novo'];
+
+async function addNewsFeedPaths({ baseUrl, sitemapPaths }) {
+    const feedPaths = ['/api/news/blog', '/api/news/changelog'];
+
+    await Promise.all(
+        feedPaths.map(async (feedPath) => {
+            let response;
+            try {
+                response = await fetch(`${baseUrl}${feedPath}`);
+            } catch {
+                return;
+            }
+
+            if (!response.ok) {
+                return;
+            }
+
+            /** @type {{ items?: Array<{ path?: string; noIndex?: boolean; publishedAt?: string | null }> }} */
+            const feed = await response.json();
+            for (const item of feed.items ?? []) {
+                if (!item.path || item.noIndex || !item.publishedAt) {
+                    continue;
+                }
+
+                sitemapPaths.add(item.path);
+            }
+        }),
+    );
+}
 
 /** @type {import('next-sitemap').IConfig} */
 module.exports = {
@@ -45,7 +75,10 @@ module.exports = {
         alternateRefs: config.alternateRefs ?? [],
     }),
     additionalPaths: async (config) => {
-        const sitemapPaths = new Set(sourceCmsPagePaths);
+        const sitemapPaths = new Set([
+            ...sourceCmsPagePaths,
+            ...staticNewsPaths,
+        ]);
         const baseUrl = process.env.API_URL || 'https://api.gredice.com';
         let response;
         try {
@@ -73,6 +106,8 @@ module.exports = {
                     sitemapPaths.add(path);
                 });
         }
+
+        await addNewsFeedPaths({ baseUrl, sitemapPaths });
 
         const transformedPaths = await Promise.all(
             Array.from(sitemapPaths).map((path) =>

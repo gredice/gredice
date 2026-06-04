@@ -39,6 +39,8 @@ export const KnownPages = {
     Pricing: '/cjenik',
     Refunds: '/povrati-i-povrat-novca',
     Referrals: '/preporuke',
+    News: '/novosti',
+    WhatsNew: '/novosti/sto-je-novo',
 
     LegalPrivacy: '/legalno/politika-privatnosti',
     LegalTerms: '/legalno/uvjeti-koristenja',

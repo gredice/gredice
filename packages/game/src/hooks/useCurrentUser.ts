@@ -23,6 +23,7 @@ async function getCurrentUser() {
         createdAt,
         birthdayLastUpdatedAt,
         birthdayLastRewardAt,
+        whatsNewLastSeenAt,
         ...currentUser
     } = await response.json();
     return {
@@ -33,6 +34,9 @@ async function getCurrentUser() {
             : null,
         birthdayLastRewardAt: birthdayLastRewardAt
             ? new Date(birthdayLastRewardAt)
+            : null,
+        whatsNewLastSeenAt: whatsNewLastSeenAt
+            ? new Date(whatsNewLastSeenAt)
             : null,
     };
 }

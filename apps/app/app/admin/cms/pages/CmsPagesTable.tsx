@@ -13,6 +13,7 @@ export function CmsPagesTable({ pages }: { pages: SelectCmsPage[] }) {
             <Table.Header>
                 <Table.Row>
                     <Table.Head>Naslov</Table.Head>
+                    <Table.Head>Vrsta</Table.Head>
                     <Table.Head>Putanja</Table.Head>
                     <Table.Head>Status</Table.Head>
                     <Table.Head>Objavljeno</Table.Head>
@@ -22,7 +23,7 @@ export function CmsPagesTable({ pages }: { pages: SelectCmsPage[] }) {
             <Table.Body>
                 {pages.length === 0 && (
                     <Table.Row>
-                        <Table.Cell colSpan={5}>
+                        <Table.Cell colSpan={6}>
                             <NoDataPlaceholder />
                         </Table.Cell>
                     </Table.Row>
@@ -33,6 +34,15 @@ export function CmsPagesTable({ pages }: { pages: SelectCmsPage[] }) {
                             <Link href={KnownPages.CmsPageEdit(page.id)}>
                                 <Typography>{page.title}</Typography>
                             </Link>
+                        </Table.Cell>
+                        <Table.Cell>
+                            <Typography secondary>
+                                {page.contentKind === 'blog'
+                                    ? 'Blog'
+                                    : page.contentKind === 'changelog'
+                                      ? 'Changelog'
+                                      : 'Stranica'}
+                            </Typography>
                         </Table.Cell>
                         <Table.Cell>
                             <Typography secondary>

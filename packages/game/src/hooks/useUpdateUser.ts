@@ -11,6 +11,8 @@ export type UpdateUserVariables = {
         year?: number | null;
     } | null;
     userName?: string;
+    whatsNewLastSeenAt?: Date | string | null;
+    whatsNewPopupDisabled?: boolean;
 };
 
 export function useUpdateUser() {
@@ -22,6 +24,8 @@ export function useUpdateUser() {
             avatarUrl,
             birthday,
             userName,
+            whatsNewLastSeenAt,
+            whatsNewPopupDisabled,
         }: UpdateUserVariables) => {
             if (!currentUser.data) {
                 throw new Error('Current user data is not available');
@@ -38,6 +42,11 @@ export function useUpdateUser() {
                     avatarUrl,
                     birthday,
                     userName,
+                    whatsNewLastSeenAt:
+                        whatsNewLastSeenAt instanceof Date
+                            ? whatsNewLastSeenAt.toISOString()
+                            : whatsNewLastSeenAt,
+                    whatsNewPopupDisabled,
                 },
             });
 

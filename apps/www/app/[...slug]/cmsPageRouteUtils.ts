@@ -26,6 +26,7 @@ const reservedFirstSegments = new Set([
     'dostava',
     'kontakt',
     'legalno',
+    'novosti',
     'o-nama',
     'podignuta-gredica',
     'pozdrav',

@@ -15,6 +15,7 @@ export const KnownPages = {
     GrediceSunflowers: 'https://www.gredice.com/suncokreti',
     GrediceReferrals: 'https://www.gredice.com/preporuke',
     GrediceContact: 'https://www.gredice.com/kontakt',
+    GrediceWhatsNew: 'https://www.gredice.com/novosti/sto-je-novo',
     GrediceDeliverySlots: 'https://www.gredice.com/dostava/termini',
     AdventRules2025:
         'https://www.gredice.com/legalno/natjecaji/adventski-kalendar-2025',

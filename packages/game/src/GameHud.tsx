@@ -1,6 +1,7 @@
 'use client';
 
 import { cx } from '@gredice/ui/utils';
+import { useState } from 'react';
 import type { GameSceneProps } from './GameScene';
 import { useCurrentGarden } from './hooks/useCurrentGarden';
 import { AccountHud } from './hud/AccountHud';
@@ -19,6 +20,7 @@ import { ShoppingCartHud } from './hud/ShoppingCartHud';
 import { SunflowersHud } from './hud/SunflowersHud';
 import { WeatherHud } from './hud/WeatherHud';
 import { WelcomeMessage } from './hud/WelcomeMessage';
+import { WhatsNewAutoOpen } from './hud/WhatsNewAutoOpen';
 import { AdventModal } from './modals/advent/AdventModal';
 import { GiftBoxModal } from './modals/GiftBoxModal';
 import { OverviewModal } from './modals/OverviewModal';
@@ -37,6 +39,7 @@ export function GameHud({
     flags: GameSceneProps['flags'];
     noWeather?: boolean;
 }) {
+    const [welcomeConfirmed, setWelcomeConfirmed] = useState(false);
     const isCloseup = useGameState((state) => state.view) === 'closeup';
     const { data: currentGarden } = useCurrentGarden();
     // Sandbox ("play") gardens are decoration only: no economy or inventory.
@@ -88,7 +91,14 @@ export function GameHud({
             {!isLocalSandbox && <OverviewModal />}
             {!isLocalSandbox && <AdventModal />}
             {!isLocalSandbox && <GiftBoxModal />}
-            {!isLocalSandbox && <WelcomeMessage />}
+            {!isLocalSandbox && (
+                <>
+                    <WelcomeMessage
+                        onClosed={() => setWelcomeConfirmed(true)}
+                    />
+                    <WhatsNewAutoOpen enabled={welcomeConfirmed} />
+                </>
+            )}
             {!isLocalSandbox && <PaymentSuccessfulMessage />}
             {Boolean(flags?.enableDebugHudFlag) && <DebugHud />}
         </>

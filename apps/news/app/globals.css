@@ -1,0 +1,123 @@
+@import "tailwindcss";
+@config "../tailwind.config.ts";
+@source "../../../packages/ui/src";
+
+@layer base {
+    :root {
+        --baseHue: 137;
+
+        --background: 36 62% 98%;
+        --foreground: 137 38% 13%;
+
+        --muted: 42 40% 95%;
+        --muted-foreground: 137 12% 34%;
+
+        --popover: 0 0% 100%;
+        --popover-foreground: 137 38% 13%;
+
+        --card: 0 0% 100%;
+        --card-transparent: 0 0% 100%;
+        --card-foreground: 137 38% 13%;
+
+        --border: 40 28% 88%;
+        --input: 40 28% 88%;
+
+        --primary: 137 40% 24%;
+        --primary-foreground: 36 60% 98%;
+
+        --secondary: 48 46% 90%;
+        --secondary-foreground: 137 35% 18%;
+
+        --tertiary: 18 55% 84%;
+        --tertiary-foreground: 137 30% 18%;
+
+        --accent: 196 42% 88%;
+        --accent-foreground: 137 38% 13%;
+
+        --destructive: 0 100% 50%;
+        --destructive-foreground: 210 40% 98%;
+
+        --ring: 137 24% 55%;
+
+        --radius: 0.5rem;
+
+        --light-display: visible;
+        --dark-display: none;
+
+        --bg-selection: hsl(137, 40%, 24%);
+        --text-selection: #fff;
+    }
+
+    .dark {
+        color-scheme: dark;
+
+        --background: 137 16% 13%;
+        --foreground: 50 42% 92%;
+
+        --muted: 137 18% 18%;
+        --muted-foreground: 50 18% 74%;
+
+        --popover: 137 18% 14%;
+        --popover-foreground: 50 42% 92%;
+
+        --card: 137 18% 17%;
+        --card-transparent: 137 18% 17%;
+        --card-foreground: 50 42% 92%;
+
+        --border: 137 16% 26%;
+        --input: 137 16% 26%;
+
+        --primary: 88 46% 72%;
+        --primary-foreground: 137 36% 12%;
+
+        --secondary: 137 18% 24%;
+        --secondary-foreground: 50 32% 88%;
+
+        --tertiary: 18 42% 36%;
+        --tertiary-foreground: 50 42% 92%;
+
+        --accent: 196 26% 28%;
+        --accent-foreground: 50 42% 92%;
+
+        --destructive: 0 63% 31%;
+        --destructive-foreground: 210 40% 98%;
+
+        --ring: 88 40% 58%;
+
+        --light-display: none;
+        --dark-display: visible;
+
+        --bg-selection: hsl(88, 46%, 72%);
+        --text-selection: #0d2616;
+    }
+
+    * {
+        border-color: hsl(var(--border));
+    }
+
+    body {
+        background-color: hsl(var(--background));
+        color: hsl(var(--foreground));
+        font-feature-settings:
+            "rlig" 1,
+            "calt" 1;
+    }
+
+    button,
+    [role="button"] {
+        cursor: auto;
+    }
+
+    :target {
+        scroll-margin-top: 5rem;
+    }
+
+    ::selection {
+        background: var(--bg-selection);
+        color: var(--text-selection);
+    }
+}
+
+svg.lucide {
+    stroke-width: 1.75px;
+}

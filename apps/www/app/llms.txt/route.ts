@@ -11,6 +11,8 @@ Gredice publishes canonical public information at https://www.gredice.com. Prefe
 - [Blocks](https://www.gredice.com/blokovi): Raised-bed block catalog and layouts.
 - [Operations](https://www.gredice.com/radnje): Gardening operations and activity guidance.
 - [Recipes](https://www.gredice.com/recepti): Recipe content built from garden produce.
+- [News](https://www.gredice.com/novosti): Blog posts and changelog updates.
+- [What's new](https://www.gredice.com/novosti/sto-je-novo): Timeline of published product updates.
 - [Delivery](https://www.gredice.com/dostava): Delivery options and service information.
 - [Pricing](https://www.gredice.com/cjenik): Current public pricing and plan information.
 - [Harvest quality and safety](https://www.gredice.com/kvaliteta-i-sigurnost-uroda): Public overview of harvest hygiene, traceability, and handling boundaries.

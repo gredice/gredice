@@ -20,15 +20,37 @@ export default async function CmsPagesPage() {
         <Stack spacing={4}>
             <AdminPageHeader
                 actions={
-                    <Link href={KnownPages.CmsPageCreate}>
-                        <Row
-                            spacing={2}
-                            className="text-sm font-medium px-3 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                    <Row spacing={2} className="flex-wrap justify-end">
+                        <Link href={KnownPages.CmsPageCreate}>
+                            <Row
+                                spacing={2}
+                                className="text-sm font-medium px-3 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                            >
+                                <Add className="size-4" />
+                                <span>Nova stranica</span>
+                            </Row>
+                        </Link>
+                        <Link href={KnownPages.CmsPageCreateTemplate('blog')}>
+                            <Row
+                                spacing={2}
+                                className="text-sm font-medium px-3 py-2 rounded-md border bg-background hover:bg-muted transition-colors"
+                            >
+                                <Add className="size-4" />
+                                <span>Blog objava</span>
+                            </Row>
+                        </Link>
+                        <Link
+                            href={KnownPages.CmsPageCreateTemplate('changelog')}
                         >
-                            <Add className="size-4" />
-                            <span>Nova stranica</span>
-                        </Row>
-                    </Link>
+                            <Row
+                                spacing={2}
+                                className="text-sm font-medium px-3 py-2 rounded-md border bg-background hover:bg-muted transition-colors"
+                            >
+                                <Add className="size-4" />
+                                <span>Changelog zapis</span>
+                            </Row>
+                        </Link>
+                    </Row>
                 }
             />
             <Card>
