@@ -2,59 +2,48 @@ import {
     type CommunityEditRequestStatus,
     listCommunityEditRequests,
 } from '@gredice/storage';
-import { Button } from '@gredice/ui/Button';
 import { Card, CardOverflow } from '@gredice/ui/Card';
 import { Chip, type ColorPaletteProp } from '@gredice/ui/Chip';
-import { Input } from '@gredice/ui/Input';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
+import { UserAvatar } from '@gredice/ui/UserAvatar';
 import Link from 'next/link';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { auth } from '../../../lib/auth/auth';
 import { KnownPages } from '../../../src/KnownPages';
+import {
+    type CommunityEditSubmitterFilterOption,
+    CommunityEditsFilters,
+} from './CommunityEditsFilters';
+import {
+    type AgeOption,
+    entityTypeLabel,
+    isAgeOption,
+    isStatusOption,
+    statusLabel,
+} from './communityEditLabels';
 
 export const dynamic = 'force-dynamic';
 
-const STATUS_OPTIONS = [
-    'all',
-    'pending',
-    'conflicted',
-    'approved',
-    'applied',
-    'rejected',
-    'canceled',
-] as const;
-
-const ENTITY_TYPE_OPTIONS = ['all', 'plant', 'plantSort', 'operation', 'block'];
-
-const AGE_OPTIONS = ['all', 'day', 'week', 'older'] as const;
-
-type StatusOption = (typeof STATUS_OPTIONS)[number];
-type AgeOption = (typeof AGE_OPTIONS)[number];
 type CommunityEditRequestListItem = Awaited<
     ReturnType<typeof listCommunityEditRequests>
 >[number];
 
-function statusLabel(status: CommunityEditRequestStatus | StatusOption) {
-    switch (status) {
-        case 'all':
-            return 'Svi';
-        case 'pending':
-            return 'Na čekanju';
-        case 'approved':
-            return 'Odobreno';
-        case 'applied':
-            return 'Primijenjeno';
-        case 'rejected':
-            return 'Odbijeno';
-        case 'conflicted':
-            return 'Konflikt';
-        case 'canceled':
-            return 'Otkazano';
-    }
+const REQUEST_STATUS_VALUES: readonly string[] = [
+    'applied',
+    'approved',
+    'canceled',
+    'conflicted',
+    'pending',
+    'rejected',
+];
+
+function isCommunityEditRequestStatus(
+    status: string,
+): status is CommunityEditRequestStatus {
+    return REQUEST_STATUS_VALUES.includes(status);
 }
 
 function statusColor(status: CommunityEditRequestStatus): ColorPaletteProp {
@@ -71,55 +60,6 @@ function statusColor(status: CommunityEditRequestStatus): ColorPaletteProp {
         case 'conflicted':
             return 'error';
     }
-}
-
-function entityTypeLabel(entityTypeName: string) {
-    switch (entityTypeName) {
-        case 'plant':
-            return 'Biljka';
-        case 'plantSort':
-            return 'Sorta';
-        case 'operation':
-            return 'Radnja';
-        case 'block':
-            return 'Blok';
-        default:
-            return entityTypeName;
-    }
-}
-
-function isStatusOption(value: string | undefined): value is StatusOption {
-    return STATUS_OPTIONS.includes(value as StatusOption);
-}
-
-function isAgeOption(value: string | undefined): value is AgeOption {
-    return AGE_OPTIONS.includes(value as AgeOption);
-}
-
-function buildFilterHref(params: {
-    status?: StatusOption;
-    entityType?: string;
-    submitter?: string;
-    age?: AgeOption;
-}) {
-    const search = new URLSearchParams();
-    if (params.status && params.status !== 'all') {
-        search.set('status', params.status);
-    }
-    if (params.entityType && params.entityType !== 'all') {
-        search.set('entityType', params.entityType);
-    }
-    if (params.submitter) {
-        search.set('submitter', params.submitter);
-    }
-    if (params.age && params.age !== 'all') {
-        search.set('age', params.age);
-    }
-
-    const query = search.toString();
-    return query
-        ? `${KnownPages.CommunityEdits}?${query}`
-        : KnownPages.CommunityEdits;
 }
 
 function requestMatchesAge(
@@ -163,17 +103,39 @@ function requestMatchesSubmitter(
     ].some((value) => value?.toLowerCase().includes(query));
 }
 
-function ageLabel(age: AgeOption) {
-    switch (age) {
-        case 'all':
-            return 'Sva dob';
-        case 'day':
-            return 'Zadnja 24 h';
-        case 'week':
-            return '2-7 dana';
-        case 'older':
-            return 'Starije';
+function submitterDisplayName(request: CommunityEditRequestListItem) {
+    return (
+        request.submitter?.displayName ??
+        request.submitterName ??
+        request.submitter?.userName ??
+        request.submitterUserId
+    );
+}
+
+function submitterFilterLabel(request: CommunityEditRequestListItem) {
+    const displayName = submitterDisplayName(request);
+    return request.submitterEmail
+        ? `${displayName} (${request.submitterEmail})`
+        : displayName;
+}
+
+function buildSubmitterFilterOptions(
+    requests: CommunityEditRequestListItem[],
+): CommunityEditSubmitterFilterOption[] {
+    const submittersById = new Map<string, string>();
+    for (const request of requests) {
+        if (!submittersById.has(request.submitterUserId)) {
+            submittersById.set(
+                request.submitterUserId,
+                submitterFilterLabel(request),
+            );
+        }
     }
+
+    return Array.from(submittersById, ([value, label]) => ({
+        value,
+        label,
+    })).sort((left, right) => left.label.localeCompare(right.label, 'hr'));
 }
 
 export default async function CommunityEditsPage({
@@ -204,102 +166,15 @@ export default async function CommunityEditsPage({
             requestMatchesAge(request, selectedAge) &&
             requestMatchesSubmitter(request, submitter),
     );
-    const statusCounts = new Map<CommunityEditRequestStatus, number>();
-    for (const request of allRequests) {
-        statusCounts.set(
-            request.status as CommunityEditRequestStatus,
-            (statusCounts.get(request.status as CommunityEditRequestStatus) ??
-                0) + 1,
-        );
-    }
+    const submitterFilterOptions = buildSubmitterFilterOptions(allRequests);
 
     return (
         <Stack spacing={4}>
-            <Row spacing={2} className="flex-wrap gap-2">
-                <Chip color="primary">{filteredRequests.length}</Chip>
-                <Typography level="body2" className="text-muted-foreground">
-                    Prijedlozi za javni sadržaj direktorija
-                </Typography>
-            </Row>
+            <Typography level="body2" className="text-muted-foreground">
+                Prijedlozi za javni sadržaj direktorija
+            </Typography>
 
-            <Row spacing={2} className="flex-wrap gap-2">
-                {STATUS_OPTIONS.map((status) => {
-                    const isActive = selectedStatus === status;
-                    const count =
-                        status === 'all'
-                            ? allRequests.length
-                            : (statusCounts.get(status) ?? 0);
-                    return (
-                        <Chip
-                            key={status}
-                            color={isActive ? 'primary' : 'neutral'}
-                            href={buildFilterHref({
-                                status,
-                                entityType: selectedEntityType,
-                                submitter,
-                                age: selectedAge,
-                            })}
-                        >
-                            {statusLabel(status)} ({count})
-                        </Chip>
-                    );
-                })}
-            </Row>
-
-            <form action={KnownPages.CommunityEdits}>
-                <Row spacing={2} className="flex-wrap items-end gap-2">
-                    <label className="space-y-1">
-                        <Typography level="body2">Tip zapisa</Typography>
-                        <select
-                            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-                            defaultValue={selectedEntityType}
-                            name="entityType"
-                        >
-                            {ENTITY_TYPE_OPTIONS.map((option) => (
-                                <option key={option} value={option}>
-                                    {option === 'all'
-                                        ? 'Svi zapisi'
-                                        : entityTypeLabel(option)}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
-                    <label className="space-y-1">
-                        <Typography level="body2">Dob</Typography>
-                        <select
-                            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-                            defaultValue={selectedAge}
-                            name="age"
-                        >
-                            {AGE_OPTIONS.map((option) => (
-                                <option key={option} value={option}>
-                                    {ageLabel(option)}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
-                    <Input
-                        defaultValue={submitter}
-                        fullWidth
-                        label="Pošiljatelj"
-                        name="submitter"
-                        placeholder="Ime, email ili ID"
-                    />
-                    {selectedStatus !== 'all' ? (
-                        <input
-                            name="status"
-                            type="hidden"
-                            value={selectedStatus}
-                        />
-                    ) : null}
-                    <Button type="submit" variant="outlined">
-                        Filtriraj
-                    </Button>
-                    <Button href={KnownPages.CommunityEdits} variant="plain">
-                        Resetiraj
-                    </Button>
-                </Row>
-            </form>
+            <CommunityEditsFilters submitters={submitterFilterOptions} />
 
             <Card>
                 <CardOverflow>
@@ -325,68 +200,113 @@ export default async function CommunityEditsPage({
                                         </Table.Cell>
                                     </Table.Row>
                                 )}
-                                {filteredRequests.map((request) => (
-                                    <Table.Row key={request.id}>
-                                        <Table.Cell>
-                                            <Chip
-                                                color={statusColor(
-                                                    request.status as CommunityEditRequestStatus,
-                                                )}
-                                                size="sm"
-                                                variant="soft"
-                                            >
-                                                {statusLabel(
-                                                    request.status as CommunityEditRequestStatus,
-                                                )}
-                                            </Chip>
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            <Stack spacing={1}>
-                                                <Link
-                                                    href={KnownPages.CommunityEdit(
-                                                        request.id,
+                                {filteredRequests.map((request) => {
+                                    const requestStatus =
+                                        isCommunityEditRequestStatus(
+                                            request.status,
+                                        )
+                                            ? request.status
+                                            : null;
+                                    const displayName =
+                                        submitterDisplayName(request);
+
+                                    return (
+                                        <Table.Row key={request.id}>
+                                            <Table.Cell>
+                                                <Chip
+                                                    color={
+                                                        requestStatus
+                                                            ? statusColor(
+                                                                  requestStatus,
+                                                              )
+                                                            : 'neutral'
+                                                    }
+                                                    size="sm"
+                                                    variant="soft"
+                                                >
+                                                    {statusLabel(
+                                                        request.status,
                                                     )}
-                                                >
-                                                    {entityTypeLabel(
-                                                        request.entityTypeName,
-                                                    )}{' '}
-                                                    #{request.entityId}
-                                                </Link>
-                                                <Typography
-                                                    level="body3"
-                                                    className="text-muted-foreground"
-                                                >
-                                                    {request.sectionKey ??
-                                                        'Cijela stranica'}
-                                                </Typography>
-                                            </Stack>
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            {request.changes.length}
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            <Stack spacing={1}>
-                                                <Typography level="body2">
-                                                    {request.submitterName ??
-                                                        request.submitterUserId}
-                                                </Typography>
-                                                {request.submitterEmail ? (
+                                                </Chip>
+                                            </Table.Cell>
+                                            <Table.Cell>
+                                                <Stack spacing={1}>
+                                                    <Link
+                                                        href={KnownPages.CommunityEdit(
+                                                            request.id,
+                                                        )}
+                                                    >
+                                                        {entityTypeLabel(
+                                                            request.entityTypeName,
+                                                        )}{' '}
+                                                        #{request.entityId}
+                                                    </Link>
                                                     <Typography
                                                         level="body3"
                                                         className="text-muted-foreground"
                                                     >
-                                                        {request.submitterEmail}
+                                                        {request.sectionKey ??
+                                                            'Cijela stranica'}
                                                     </Typography>
-                                                ) : null}
-                                            </Stack>
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            <LocalDateTime>
-                                                {request.createdAt}
-                                            </LocalDateTime>
-                                        </Table.Cell>
-                                    </Table.Row>
-                                ))}
+                                                </Stack>
+                                            </Table.Cell>
+                                            <Table.Cell>
+                                                <Chip
+                                                    color="info"
+                                                    size="sm"
+                                                    variant="soft"
+                                                >
+                                                    {request.changes.length}
+                                                </Chip>
+                                            </Table.Cell>
+                                            <Table.Cell>
+                                                <Link
+                                                    href={KnownPages.User(
+                                                        request.submitterUserId,
+                                                    )}
+                                                    className="flex min-w-0 items-center gap-2"
+                                                >
+                                                    <UserAvatar
+                                                        avatarUrl={
+                                                            request.submitter
+                                                                ?.avatarUrl
+                                                        }
+                                                        displayName={
+                                                            displayName
+                                                        }
+                                                        size="sm"
+                                                    />
+                                                    <Stack
+                                                        spacing={0}
+                                                        className="min-w-0"
+                                                    >
+                                                        <Typography
+                                                            level="body2"
+                                                            className="truncate"
+                                                        >
+                                                            {displayName}
+                                                        </Typography>
+                                                        {request.submitterEmail ? (
+                                                            <Typography
+                                                                level="body3"
+                                                                className="truncate text-muted-foreground"
+                                                            >
+                                                                {
+                                                                    request.submitterEmail
+                                                                }
+                                                            </Typography>
+                                                        ) : null}
+                                                    </Stack>
+                                                </Link>
+                                            </Table.Cell>
+                                            <Table.Cell>
+                                                <LocalDateTime>
+                                                    {request.createdAt}
+                                                </LocalDateTime>
+                                            </Table.Cell>
+                                        </Table.Row>
+                                    );
+                                })}
                             </Table.Body>
                         </Table>
                     </div>
