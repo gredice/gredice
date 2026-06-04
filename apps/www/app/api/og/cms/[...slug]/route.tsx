@@ -1,19 +1,18 @@
 import {
     CmsOgImage,
-    cmsOgImageContentType,
     cmsOgImageSize,
 } from '@gredice/ui/cms';
 import { ImageResponse } from 'next/og';
-import { type CmsRoutePage, fetchCmsDirectoryPage } from './cmsPageData';
+import {
+    type CmsRoutePage,
+    fetchCmsDirectoryPage,
+} from '../../../../[...slug]/cmsPageData';
 import {
     hasReservedFirstSegment,
     normalizeCmsRouteSlug,
-} from './cmsPageRouteUtils';
-import { getSourceCmsPageBySlug } from './sourceCmsPages';
+} from '../../../../[...slug]/cmsPageRouteUtils';
+import { getSourceCmsPageBySlug } from '../../../../[...slug]/sourceCmsPages';
 
-export const alt = 'Gredice';
-export const size = cmsOgImageSize;
-export const contentType = cmsOgImageContentType;
 export const dynamic = 'force-dynamic';
 
 function pageOgKind(contentKind: string | null | undefined) {
@@ -39,11 +38,14 @@ async function resolveCmsOgPage(normalizedSlug: string) {
     return sourcePage;
 }
 
-export default async function CmsPageOpenGraphImage({
-    params,
-}: {
-    params: Promise<{ slug: string[] }>;
-}) {
+export async function GET(
+    _request: Request,
+    {
+        params,
+    }: {
+        params: Promise<{ slug: string[] }>;
+    },
+) {
     const { slug } = await params;
     const normalizedSlug = normalizeCmsRouteSlug(slug);
     const page =
@@ -59,7 +61,7 @@ export default async function CmsPageOpenGraphImage({
             title={page?.title ?? 'Gredice'}
         />,
         {
-            ...size,
+            ...cmsOgImageSize,
         },
     );
 }
