@@ -165,10 +165,19 @@ export async function InformationSection({
                 {attributeCards}
                 <Stack
                     className={cx(
-                        'border rounded-lg p-2 h-fit',
+                        'relative border rounded-lg px-2 pb-2 pt-3 h-fit',
                         !applicableOperations?.length && 'justify-center',
                     )}
                 >
+                    <Typography
+                        level="body3"
+                        component="span"
+                        semiBold
+                        uppercase
+                        className="absolute -top-2 left-3 bg-background px-1 leading-none"
+                    >
+                        RADNJE
+                    </Typography>
                     {(applicableOperations?.length ?? 0) <= 0 && (
                         <div className="py-4">
                             <NoDataPlaceholder>

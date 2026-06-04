@@ -40,13 +40,13 @@ export function PlantOperations({
     });
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={1}>
             {orderedOperations?.map((operation, operationIndex) => (
                 <div
                     key={operation.information?.name ?? operationIndex}
                     className="grid grid-cols-1 gap-2"
                 >
-                    <OperationCard operation={operation} />
+                    <OperationCard operation={operation} variant="compact" />
                 </div>
             ))}
         </Stack>
