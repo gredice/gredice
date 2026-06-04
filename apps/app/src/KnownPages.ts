@@ -67,6 +67,7 @@ export const KnownPages = {
     CommunicationSlack: '/admin/communication/slack',
     Feedback: '/admin/feedback',
     Notifications: '/admin/communication/notifications',
+    Surveys: '/admin/surveys',
     Logout: '/admin/logout',
     RaisedBeds: '/admin/raised-beds',
     RaisedBed: (raisedBedId: number) =>
