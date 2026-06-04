@@ -16,6 +16,7 @@ import {
     type SelectCommunityEditRequest,
 } from '../schema';
 import { storage } from '../storage';
+import { evaluateCommunityEditAchievementsForSubmitter } from './achievementsRepo';
 import {
     createAttributeValueMutationSideEffects,
     deleteAttributeValue,
@@ -1297,5 +1298,20 @@ export async function approveCommunityEditRequest(input: {
             `Request ${request.id} was not found after applying.`,
         );
     }
+
+    try {
+        await evaluateCommunityEditAchievementsForSubmitter(
+            applied.submitterUserId,
+        );
+    } catch (error) {
+        console.error(
+            'Failed to evaluate community edit achievements after approval',
+            {
+                requestId: applied.id,
+                error,
+            },
+        );
+    }
+
     return applied;
 }
