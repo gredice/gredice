@@ -217,6 +217,9 @@ export function getRaisedBedNeighborPositionIndices({
             if (rowDelta === 0 && colDelta === 0) {
                 continue;
             }
+            if (rowDelta !== 0 && colDelta !== 0) {
+                continue;
+            }
 
             const neighborRow = visualRow + rowDelta;
             const neighborCol = localPosition.col + colDelta;

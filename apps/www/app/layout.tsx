@@ -1,8 +1,7 @@
 import { Analytics } from '@vercel/analytics/react';
 import type { Metadata } from 'next';
 import './globals.css';
-import { Button } from '@gredice/ui/Button';
-import { PageNav } from '@gredice/ui/Nav';
+import { PublicFooter, PublicHeader } from '@gredice/ui/PublicChrome';
 import { Stack } from '@gredice/ui/Stack';
 import { PostHogPageView, PostHogProvider } from '@posthog/next';
 import { VercelToolbar } from '@vercel/toolbar/next';
@@ -10,12 +9,7 @@ import { Montserrat } from 'next/font/google';
 import Head from 'next/head';
 import type { ReactNode } from 'react';
 import { PageViewTracker } from '../components/analytics/PageViewTracker';
-import { Logotype } from '../components/Logotype';
-import { NavSearch } from '../components/NavSearch';
-import { NavUserButton } from '../components/NavUserButton';
 import { ClientAppProvider } from '../components/providers/ClientAppProvider';
-import { KnownPages } from '../src/KnownPages';
-import { Footer } from './Footer';
 import { LayoutContainer } from './LayoutContainer';
 
 const montserrat = Montserrat({
@@ -33,32 +27,6 @@ const gardenModelPreloadUrls = [
     'BlockTerrainCorner',
     'BlockTerrainReverseCorner',
 ].map((assetName) => `https://vrt.gredice.com/assets/models/${assetName}.glb`);
-
-function NavLinkButton({
-    href,
-    children,
-    className,
-}: Readonly<{
-    href: string;
-    children: ReactNode;
-    className?: string;
-}>) {
-    return (
-        <Button
-            href={href}
-            variant="plain"
-            size="sm"
-            className={[
-                'h-10 w-full shrink-0 justify-start whitespace-nowrap px-4 text-sm md:h-9 md:w-auto md:justify-center md:px-2.5',
-                className,
-            ]
-                .filter(Boolean)
-                .join(' ')}
-        >
-            {children}
-        </Button>
-    );
-}
 
 export function generateMetadata(): Metadata {
     return {
@@ -123,48 +91,11 @@ export default async function RootLayout({
     const content = (
         <ClientAppProvider>
             <Stack>
-                <div className="z-20">
-                    <PageNav
-                        logo={
-                            <Logotype
-                                className="h-[38px] w-[128px] sm:w-[140px]"
-                                aria-label="Gredice"
-                            />
-                        }
-                        links={[
-                            <NavLinkButton
-                                key="raised-beds"
-                                href={KnownPages.RaisedBeds}
-                            >
-                                Gredica
-                            </NavLinkButton>,
-                            <NavLinkButton
-                                key="plants"
-                                href={KnownPages.Plants}
-                            >
-                                Biljke
-                            </NavLinkButton>,
-                            <NavLinkButton
-                                key="operations"
-                                href={KnownPages.Operations}
-                            >
-                                Radnje
-                            </NavLinkButton>,
-                            <NavLinkButton key="faq" href={KnownPages.FAQ}>
-                                Česta pitanja
-                            </NavLinkButton>,
-                        ]}
-                    >
-                        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-                            <NavSearch className="shrink-0 md:-ml-1 xl:absolute xl:left-1/2 xl:top-1/2 xl:ml-0 xl:-translate-x-1/2 xl:-translate-y-1/2" />
-                            <NavUserButton href={KnownPages.GardenApp} />
-                        </div>
-                    </PageNav>
-                </div>
+                <PublicHeader />
                 <main className="mt-16 relative">
                     <LayoutContainer>{children}</LayoutContainer>
                 </main>
-                <Footer />
+                <PublicFooter />
             </Stack>
             <Analytics />
             <PageViewTracker />

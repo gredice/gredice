@@ -199,7 +199,7 @@ async function getSlackChannelId(
 ): Promise<string | undefined> {
     try {
         const setting = await getNotificationSetting(key);
-        if (!setting || setting.enabled !== 'true') {
+        if (setting?.enabled !== 'true') {
             return undefined;
         }
 

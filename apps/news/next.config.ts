@@ -6,6 +6,7 @@ import {
 } from '../../scripts/app-registry.ts';
 
 const app = getAppByName('news');
+const wwwApp = getAppByName('www');
 
 const nextConfig: NextConfig = {
     basePath: '/novosti',
@@ -58,7 +59,10 @@ const nextConfig: NextConfig = {
         ],
     },
     productionBrowserSourceMaps: !process.env.CI,
-    allowedDevOrigins: getAppAllowedDevOrigins(app),
+    allowedDevOrigins: [
+        ...getAppAllowedDevOrigins(app),
+        ...getAppAllowedDevOrigins(wwwApp),
+    ],
 };
 
 const withVercelToolbar = vercelToolbar();

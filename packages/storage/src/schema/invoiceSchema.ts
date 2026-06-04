@@ -157,8 +157,7 @@ export const receipts = pgTable(
     'receipts',
     {
         id: serial('id').primaryKey(),
-        invoiceId: integer('invoice_id')
-            .references(() => invoices.id), // Nullable: payout receipts have no invoice
+        invoiceId: integer('invoice_id').references(() => invoices.id), // Nullable: payout receipts have no invoice
 
         // Receipt identification
         receiptNumber: text('receipt_number').notNull(),

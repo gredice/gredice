@@ -1,18 +1,18 @@
 'use client';
 
 import { Markdown } from '@gredice/ui/Markdown';
+import {
+    DirectorySearchResultVisual,
+    type SearchCategoryValue,
+    searchPageHref,
+    searchPageLimit,
+} from '@gredice/ui/PublicChrome';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import { usePostHog } from '@posthog/next';
 import type { Route } from 'next';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { DirectorySearchResultVisual } from '../../components/search/DirectorySearchResultVisual';
-import {
-    type SearchCategoryValue,
-    searchPageHref,
-    searchPageLimit,
-} from '../../components/search/searchCategories';
 
 type SearchResult = {
     entityId: number;

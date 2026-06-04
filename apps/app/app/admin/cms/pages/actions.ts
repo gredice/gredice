@@ -1,5 +1,7 @@
 'use server';
 
+import { randomUUID } from 'node:crypto';
+import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import {
     type CreateCmsPageInput,
     createCmsPage,
@@ -15,6 +17,15 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
+
+const maxCmsMarkdownImageSizeBytes = 10 * 1024 * 1024;
+const cmsMarkdownImageContentTypeExtensions: Record<string, string> = {
+    'image/avif': 'avif',
+    'image/gif': 'gif',
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+};
 
 export type CmsPageFormState = {
     success: false;
@@ -35,6 +46,47 @@ function formText(formData: FormData, key: string) {
 function formOptionalText(formData: FormData, key: string) {
     const value = formText(formData, key).trim();
     return value.length > 0 ? value : null;
+}
+
+function toCmsImagePathSegment(value: string) {
+    const normalized = value
+        .trim()
+        .toLowerCase()
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9_-]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 80);
+
+    return normalized || 'image';
+}
+
+function cmsMarkdownImageFileName(file: File) {
+    const trimmedName = file.name.trim();
+    const extensionSeparatorIndex = trimmedName.lastIndexOf('.');
+    const hasExtension =
+        extensionSeparatorIndex > 0 &&
+        extensionSeparatorIndex < trimmedName.length - 1;
+    const rawName = hasExtension
+        ? trimmedName.slice(0, extensionSeparatorIndex)
+        : trimmedName;
+    const contentTypeExtension =
+        cmsMarkdownImageContentTypeExtensions[file.type];
+
+    if (!contentTypeExtension) {
+        throw new Error('Podržane su samo AVIF, GIF, JPEG, PNG i WebP slike.');
+    }
+
+    return `${toCmsImagePathSegment(rawName)}.${contentTypeExtension}`;
+}
+
+function cmsCdnPublicUrl(pathname: string) {
+    const { CDN_R2_PUBLIC_URL } = process.env;
+    if (!CDN_R2_PUBLIC_URL) {
+        throw new Error('CDN konfiguracija nije postavljena.');
+    }
+
+    return `${CDN_R2_PUBLIC_URL.replace(/\/+$/u, '')}/${pathname}`;
 }
 
 function formCmsPageState(formData: FormData) {
@@ -73,6 +125,7 @@ function cmsPageInputFromForm(formData: FormData): CreateCmsPageInput {
         metaImageUrl: formOptionalText(formData, 'metaImageUrl'),
         canonicalPath: formOptionalText(formData, 'canonicalPath'),
         noIndex: formData.get('noIndex') === 'on',
+        publishedAt: formOptionalText(formData, 'publishedAt'),
     };
 }
 
@@ -82,6 +135,62 @@ function cmsPageErrorMessage(error: unknown) {
     }
 
     return 'Spremanje stranice nije uspjelo.';
+}
+
+export async function uploadCmsMarkdownImage(formData: FormData) {
+    await auth(['admin']);
+
+    const file = formData.get('file');
+    if (!(file instanceof File)) {
+        throw new Error('Slika je obavezna.');
+    }
+
+    if (file.size <= 0) {
+        throw new Error('Slika je prazna.');
+    }
+
+    if (file.size > maxCmsMarkdownImageSizeBytes) {
+        throw new Error('Slika smije imati najviše 10 MB.');
+    }
+
+    const {
+        CDN_R2_ACCESS_KEY_ID,
+        CDN_R2_SECRET_ACCESS_KEY,
+        CDN_R2_BUCKET_NAME,
+        CDN_R2_ENDPOINT,
+    } = process.env;
+    if (
+        !CDN_R2_ACCESS_KEY_ID ||
+        !CDN_R2_SECRET_ACCESS_KEY ||
+        !CDN_R2_BUCKET_NAME ||
+        !CDN_R2_ENDPOINT
+    ) {
+        throw new Error('R2 konfiguracija nije postavljena.');
+    }
+
+    const safeFileName = cmsMarkdownImageFileName(file);
+    const pathname = `cms/markdown/${randomUUID()}-${safeFileName}`;
+    const client = new S3Client({
+        region: 'auto',
+        endpoint: CDN_R2_ENDPOINT,
+        credentials: {
+            accessKeyId: CDN_R2_ACCESS_KEY_ID,
+            secretAccessKey: CDN_R2_SECRET_ACCESS_KEY,
+        },
+    });
+
+    await client.send(
+        new PutObjectCommand({
+            Bucket: CDN_R2_BUCKET_NAME,
+            Key: pathname,
+            Body: Buffer.from(await file.arrayBuffer()),
+            ContentType: file.type,
+        }),
+    );
+
+    return {
+        url: cmsCdnPublicUrl(pathname),
+    };
 }
 
 function revalidateCmsPagePaths(pageId: number) {

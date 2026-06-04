@@ -8,7 +8,7 @@ import { createJwt } from '../../lib/auth/auth';
 export async function sendDeleteAccountEmail(accountId: string) {
     // Only allow if account has one user
     const users = await getAccountUsers(accountId);
-    if (!users || users.length !== 1) {
+    if (users?.length !== 1) {
         throw new Error('Account must have exactly one user.');
     }
 

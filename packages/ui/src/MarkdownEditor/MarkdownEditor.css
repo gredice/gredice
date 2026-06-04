@@ -37,12 +37,20 @@
     color: hsl(var(--foreground)) !important;
 }
 
+.gredice-mdx-editor-content :where(h1, h2, h3, h4, h5, h6, strong) {
+    color: hsl(var(--foreground)) !important;
+}
+
+.gredice-mdx-editor-content :where(a) {
+    color: hsl(var(--primary)) !important;
+}
+
 .gredice-mdx-editor [class*="placeholder"] {
     color: hsl(var(--muted-foreground)) !important;
 }
 
 .gredice-mdx-editor [class*="toolbarRoot"] {
-    background-color: hsl(var(--background)) !important;
+    background-color: hsl(var(--muted) / 0.65) !important;
     color: hsl(var(--muted-foreground)) !important;
 }
 
@@ -58,7 +66,7 @@
 .gredice-mdx-editor [class*="selectTrigger"],
 .gredice-mdx-editor [class*="toolbarButtonSelectTrigger"],
 .gredice-mdx-editor [class*="toolbarNodeKindSelectTrigger"] {
-    background-color: hsl(var(--background)) !important;
+    background-color: transparent !important;
     color: hsl(var(--foreground)) !important;
 }
 

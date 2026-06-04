@@ -185,7 +185,7 @@ export async function getApprovalRequests(filter?: ApprovalRequestsFilter) {
         }
 
         const request = requestsById.get(event.aggregateId);
-        if (!request || request.status !== 'pending') {
+        if (request?.status !== 'pending') {
             continue;
         }
 

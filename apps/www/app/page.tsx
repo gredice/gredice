@@ -71,7 +71,7 @@ function PlantsStatisticsLoading() {
 async function PlantsStatistics() {
     try {
         const response = await clientPublic().api.data.statistics.plants.$get();
-        if (!response || response.status !== 200) {
+        if (response?.status !== 200) {
             return null;
         }
 

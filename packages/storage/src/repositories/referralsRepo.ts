@@ -136,8 +136,7 @@ function isUsedCodeClearedEventData(data: unknown) {
 function referredAccountIdFromReferralEventData(data: unknown) {
     const record = referralEventData(data);
     if (
-        !record ||
-        record.action !== 'referred_account' ||
+        record?.action !== 'referred_account' ||
         typeof record.referredAccountId !== 'string'
     ) {
         return null;
@@ -148,8 +147,7 @@ function referredAccountIdFromReferralEventData(data: unknown) {
 function ownerAccountIdFromUsedCodeEventData(data: unknown) {
     const record = referralEventData(data);
     if (
-        !record ||
-        record.action !== 'used_code' ||
+        record?.action !== 'used_code' ||
         typeof record.ownerAccountId !== 'string'
     ) {
         return null;

@@ -1,5 +1,5 @@
+import { Logotype } from '@gredice/ui/PublicChrome';
 import { ImageResponse } from 'next/og';
-import { Logotype } from '../components/Logotype';
 
 export const alt = 'Gredice';
 export const size = {

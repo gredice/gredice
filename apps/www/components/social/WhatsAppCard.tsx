@@ -1,4 +1,4 @@
-import { CompanyWhatsApp } from '../../app/Footer';
+import { CompanyWhatsApp } from '@gredice/ui/PublicChrome';
 import { SocialCard } from './SocialCard';
 
 export function WhatsAppCard() {

@@ -1,15 +1,16 @@
-import type { components } from '@gredice/client';
-import { Bug, FileText, Layers, Leaf, Shield, Sprout } from '@gredice/ui/icons';
-import { OperationCategoryIcon } from '@gredice/ui/OperationImage';
-import { PlantingSeedIcon } from '@gredice/ui/PlantingSeedIcon';
-import { cx } from '@gredice/ui/utils';
 import Image from 'next/image';
 import type { ComponentType, SVGProps } from 'react';
+import { Bug, FileText, Layers, Leaf, Shield, Sprout } from '../icons';
+import { OperationCategoryIcon } from '../OperationImage';
+import { PlantingSeedIcon } from '../PlantingSeedIcon';
+import { cx } from '../utils';
 
-type DirectorySearchResult = Pick<
-    components['schemas']['directory-search-result'],
-    'entityType' | 'imageAlt' | 'imageUrl' | 'visualKey'
->;
+type DirectorySearchResult = {
+    entityType: string;
+    imageAlt?: string | null;
+    imageUrl?: string | null;
+    visualKey?: string | null;
+};
 
 type ResultFallbackIconProps = SVGProps<SVGSVGElement>;
 
