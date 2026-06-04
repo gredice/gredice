@@ -20,6 +20,7 @@ const categoryLabels: Record<string, string> = {
     planting: 'Sadnja',
     watering: 'Zalijevanje',
     harvest: 'Branje',
+    community_editing: 'Sadržaj',
 };
 
 const statusStyles: Record<

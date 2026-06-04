@@ -159,6 +159,7 @@ const breadcrumbSections: {
                 ...adminPages.Notifications,
                 icon: <Megaphone className="size-4" />,
             },
+            { ...adminPages.Surveys, icon: <Tally3 className="size-4" /> },
             { ...adminPages.Feedback, icon: <SmileHappy className="size-4" /> },
         ],
     },

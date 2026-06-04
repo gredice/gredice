@@ -6,7 +6,6 @@ import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { CommunityEditButton } from '../../../components/community-edits/CommunityEditButton';
 import { RecipeList } from '../../../components/recipes/RecipeList';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { StructuredDataScript } from '../../../components/shared/seo/StructuredDataScript';
@@ -134,15 +133,14 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                         { label: plant.information.name },
                     ]}
                 />
-                <PlantPageHeader plant={plant} />
-                <Row className="justify-end">
-                    <CommunityEditButton
-                        buttonStyle="button"
-                        entityTypeName="plant"
-                        entityId={plant.id}
-                        publicPath={KnownPages.Plant(alias)}
-                    />
-                </Row>
+                <PlantPageHeader
+                    plant={plant}
+                    overviewEditTarget={{
+                        entityTypeName: 'plant',
+                        entityId: plant.id,
+                        publicPath: KnownPages.Plant(alias),
+                    }}
+                />
                 {informationSections
                     .filter((section) => section.avaialble)
                     .map((section) => (

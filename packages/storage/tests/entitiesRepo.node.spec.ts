@@ -170,6 +170,76 @@ type FormattedPlantSortWithRelationships = FormattedSort & {
     relationships?: FormattedPlant['relationships'];
 };
 
+type FormattedPlantHealthOperation = {
+    id: number;
+    slug: string;
+    name: string;
+    information?: {
+        name?: string;
+    };
+};
+
+type FormattedPlantHealthIssue = {
+    id: number;
+    name: string;
+    kind: 'disease' | 'pest';
+    information?: {
+        name?: string;
+    };
+    operations?: {
+        prevention?: FormattedPlantHealthOperation[];
+        reduction?: FormattedPlantHealthOperation[];
+        alleviation?: FormattedPlantHealthOperation[];
+    };
+};
+
+type FormattedPlantWithHealth = FormattedPlant & {
+    health?: {
+        diseases?: FormattedPlantHealthIssue[];
+        pests?: FormattedPlantHealthIssue[];
+    };
+};
+
+type FormattedHealthIssueEntity = {
+    id: number;
+    relationships?: {
+        affectedPlants?: {
+            id: number;
+            slug: string;
+            name: string;
+            information?: {
+                name?: string;
+            };
+        }[];
+    };
+    operations?: {
+        prevention?: {
+            id: number;
+            slug: string;
+            name: string;
+            information?: {
+                name?: string;
+            };
+        }[];
+        reduction?: {
+            id: number;
+            slug: string;
+            name: string;
+            information?: {
+                name?: string;
+            };
+        }[];
+        alleviation?: {
+            id: number;
+            slug: string;
+            name: string;
+            information?: {
+                name?: string;
+            };
+        }[];
+    };
+};
+
 async function createPlantRelationshipTestData() {
     await upsertEntityType({ name: 'plant', label: 'Plant' });
 
@@ -213,6 +283,189 @@ async function createPlantRelationshipTestData() {
         antagonistDefinitionId,
         companionDefinitionId,
         createPlant,
+    };
+}
+
+async function createPlantHealthTestData() {
+    await upsertEntityType({ name: 'plant', label: 'Plant' });
+    await upsertEntityType({ name: 'operation', label: 'Operation' });
+    await upsertEntityType({
+        name: 'plantDisease',
+        label: 'Plant disease',
+    });
+    await upsertEntityType({
+        name: 'plantPest',
+        label: 'Plant pest',
+    });
+
+    const plantNameDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'name',
+        label: 'Name',
+        entityTypeName: 'plant',
+        dataType: 'text',
+    });
+    const operationNameDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'name',
+        label: 'Name',
+        entityTypeName: 'operation',
+        dataType: 'text',
+    });
+
+    async function createHealthDefinitions(entityTypeName: string) {
+        const nameDefinitionId = await createAttributeDefinition({
+            category: 'information',
+            name: 'name',
+            label: 'Name',
+            entityTypeName,
+            dataType: 'text',
+        });
+        const shortDescriptionDefinitionId = await createAttributeDefinition({
+            category: 'information',
+            name: 'shortDescription',
+            label: 'Short description',
+            entityTypeName,
+            dataType: 'text',
+        });
+        const symptomsDefinitionId = await createAttributeDefinition({
+            category: 'symptoms',
+            name: 'symptoms',
+            label: 'Symptoms',
+            entityTypeName,
+            dataType: 'markdown',
+        });
+        const conditionsDefinitionId = await createAttributeDefinition({
+            category: 'conditions',
+            name: 'favorableConditions',
+            label: 'Favorable conditions',
+            entityTypeName,
+            dataType: 'markdown',
+        });
+        const affectedPlantsDefinitionId = await createAttributeDefinition({
+            category: 'relationships',
+            name: 'affectedPlants',
+            label: 'Affected plants',
+            entityTypeName,
+            dataType: 'ref:plant',
+            multiple: true,
+        });
+        const preventionDefinitionId = await createAttributeDefinition({
+            category: 'operations',
+            name: 'prevention',
+            label: 'Prevention',
+            entityTypeName,
+            dataType: 'ref:operation',
+            multiple: true,
+        });
+        const reductionDefinitionId = await createAttributeDefinition({
+            category: 'operations',
+            name: 'reduction',
+            label: 'Reduction',
+            entityTypeName,
+            dataType: 'ref:operation',
+            multiple: true,
+        });
+        const alleviationDefinitionId = await createAttributeDefinition({
+            category: 'operations',
+            name: 'alleviation',
+            label: 'Alleviation',
+            entityTypeName,
+            dataType: 'ref:operation',
+            multiple: true,
+        });
+
+        return {
+            affectedPlantsDefinitionId,
+            alleviationDefinitionId,
+            conditionsDefinitionId,
+            nameDefinitionId,
+            preventionDefinitionId,
+            reductionDefinitionId,
+            shortDescriptionDefinitionId,
+            symptomsDefinitionId,
+        };
+    }
+
+    const diseaseDefinitions = await createHealthDefinitions('plantDisease');
+    const pestDefinitions = await createHealthDefinitions('plantPest');
+
+    async function createPlant(name: string, state = 'published') {
+        const id = await createEntity('plant');
+        await upsertAttributeValue({
+            attributeDefinitionId: plantNameDefinitionId,
+            entityTypeName: 'plant',
+            entityId: id,
+            value: name,
+        });
+        await updateEntity({ id, state });
+        return id;
+    }
+
+    async function createOperation(name: string, state = 'published') {
+        const id = await createEntity('operation');
+        await upsertAttributeValue({
+            attributeDefinitionId: operationNameDefinitionId,
+            entityTypeName: 'operation',
+            entityId: id,
+            value: name,
+        });
+        await updateEntity({ id, state });
+        return id;
+    }
+
+    async function createHealthIssue({
+        entityTypeName,
+        name,
+        state = 'published',
+    }: {
+        entityTypeName: 'plantDisease' | 'plantPest';
+        name: string;
+        state?: string;
+    }) {
+        const definitions =
+            entityTypeName === 'plantDisease'
+                ? diseaseDefinitions
+                : pestDefinitions;
+        const id = await createEntity(entityTypeName);
+        await upsertAttributeValue({
+            attributeDefinitionId: definitions.nameDefinitionId,
+            entityTypeName,
+            entityId: id,
+            value: name,
+        });
+        await upsertAttributeValue({
+            attributeDefinitionId: definitions.shortDescriptionDefinitionId,
+            entityTypeName,
+            entityId: id,
+            value: `${name} short description`,
+        });
+        await upsertAttributeValue({
+            attributeDefinitionId: definitions.symptomsDefinitionId,
+            entityTypeName,
+            entityId: id,
+            value: `${name} symptoms`,
+        });
+        await upsertAttributeValue({
+            attributeDefinitionId: definitions.conditionsDefinitionId,
+            entityTypeName,
+            entityId: id,
+            value: `${name} favorable conditions`,
+        });
+        await updateEntity({ id, state });
+
+        return {
+            definitions,
+            id,
+        };
+    }
+
+    return {
+        createHealthIssue,
+        createOperation,
+        createPlant,
+        diseaseDefinitions,
+        pestDefinitions,
     };
 }
 
@@ -470,6 +723,216 @@ test('plant sort relationships include parent plant links and direct sort links'
     const formattedPlants = await getEntitiesFormatted<FormattedPlant>('plant');
     const fennel = formattedPlants.find((plant) => plant.id === fennelId);
     assert.equal(fennel?.relationships?.antagonists, undefined);
+});
+
+test('plant health read model derives diseases and pests from affected plant refs', async () => {
+    createTestDb();
+    const { createHealthIssue, createOperation, createPlant } =
+        await createPlantHealthTestData();
+    const suffix = randomUUID();
+    const tomatoId = await createPlant(`Tomato health ${suffix}`);
+    const preventionOperationId = await createOperation(`Prevention ${suffix}`);
+    const treatmentOperationId = await createOperation(`Treatment ${suffix}`);
+    const disease = await createHealthIssue({
+        entityTypeName: 'plantDisease',
+        name: `Disease ${suffix}`,
+    });
+    const pest = await createHealthIssue({
+        entityTypeName: 'plantPest',
+        name: `Pest ${suffix}`,
+    });
+
+    await Promise.all([
+        upsertAttributeValue({
+            attributeDefinitionId:
+                disease.definitions.affectedPlantsDefinitionId,
+            entityTypeName: 'plantDisease',
+            entityId: disease.id,
+            value: String(tomatoId),
+        }),
+        upsertAttributeValue({
+            attributeDefinitionId: disease.definitions.preventionDefinitionId,
+            entityTypeName: 'plantDisease',
+            entityId: disease.id,
+            value: String(preventionOperationId),
+        }),
+        upsertAttributeValue({
+            attributeDefinitionId: pest.definitions.affectedPlantsDefinitionId,
+            entityTypeName: 'plantPest',
+            entityId: pest.id,
+            value: String(tomatoId),
+        }),
+        upsertAttributeValue({
+            attributeDefinitionId: pest.definitions.alleviationDefinitionId,
+            entityTypeName: 'plantPest',
+            entityId: pest.id,
+            value: String(treatmentOperationId),
+        }),
+    ]);
+
+    const formattedPlants =
+        await getEntitiesFormatted<FormattedPlantWithHealth>('plant');
+    const tomato = formattedPlants.find((plant) => plant.id === tomatoId);
+
+    assert.deepEqual(
+        tomato?.health?.diseases?.map((issue) => ({
+            id: issue.id,
+            kind: issue.kind,
+            hasNestedInformation: Boolean(issue.information),
+            preventionOperationIds: issue.operations?.prevention?.map(
+                (operation) => operation.id,
+            ),
+        })),
+        [
+            {
+                id: disease.id,
+                kind: 'disease',
+                hasNestedInformation: false,
+                preventionOperationIds: [preventionOperationId],
+            },
+        ],
+    );
+    assert.deepEqual(
+        tomato?.health?.pests?.map((issue) => ({
+            id: issue.id,
+            kind: issue.kind,
+            alleviationOperationIds: issue.operations?.alleviation?.map(
+                (operation) => operation.id,
+            ),
+        })),
+        [
+            {
+                id: pest.id,
+                kind: 'pest',
+                alleviationOperationIds: [treatmentOperationId],
+            },
+        ],
+    );
+
+    const formattedTomato =
+        await getEntityFormatted<FormattedPlantWithHealth>(tomatoId);
+    assert.deepEqual(
+        formattedTomato.health?.diseases?.map((issue) => issue.id),
+        [disease.id],
+    );
+});
+
+test('plant health issue formatting filters duplicate, draft, deleted, and invalid refs', async () => {
+    createTestDb();
+    const { createHealthIssue, createOperation, createPlant } =
+        await createPlantHealthTestData();
+    const suffix = randomUUID();
+    const tomatoName = `Tomato disease target ${suffix}`;
+    const tomatoId = await createPlant(tomatoName);
+    const draftPlantId = await createPlant(`Draft target ${suffix}`, 'draft');
+    const deletedPlantId = await createPlant(`Deleted target ${suffix}`);
+    await deleteEntity(deletedPlantId);
+    const preventionOperationName = `Prevention operation ${suffix}`;
+    const preventionOperationId = await createOperation(
+        preventionOperationName,
+    );
+    const draftOperationId = await createOperation(
+        `Draft operation ${suffix}`,
+        'draft',
+    );
+    const disease = await createHealthIssue({
+        entityTypeName: 'plantDisease',
+        name: `Duplicate filtered disease ${suffix}`,
+    });
+
+    await Promise.all([
+        upsertAttributeValue({
+            attributeDefinitionId:
+                disease.definitions.affectedPlantsDefinitionId,
+            entityTypeName: 'plantDisease',
+            entityId: disease.id,
+            value: String(tomatoId),
+        }),
+        upsertAttributeValue({
+            attributeDefinitionId:
+                disease.definitions.affectedPlantsDefinitionId,
+            entityTypeName: 'plantDisease',
+            entityId: disease.id,
+            value: String(tomatoId),
+        }),
+        upsertAttributeValue({
+            attributeDefinitionId:
+                disease.definitions.affectedPlantsDefinitionId,
+            entityTypeName: 'plantDisease',
+            entityId: disease.id,
+            value: String(draftPlantId),
+        }),
+        upsertAttributeValue({
+            attributeDefinitionId:
+                disease.definitions.affectedPlantsDefinitionId,
+            entityTypeName: 'plantDisease',
+            entityId: disease.id,
+            value: String(deletedPlantId),
+        }),
+        upsertAttributeValue({
+            attributeDefinitionId:
+                disease.definitions.affectedPlantsDefinitionId,
+            entityTypeName: 'plantDisease',
+            entityId: disease.id,
+            value: '99999999',
+        }),
+        upsertAttributeValue({
+            attributeDefinitionId: disease.definitions.preventionDefinitionId,
+            entityTypeName: 'plantDisease',
+            entityId: disease.id,
+            value: String(preventionOperationId),
+        }),
+        upsertAttributeValue({
+            attributeDefinitionId: disease.definitions.preventionDefinitionId,
+            entityTypeName: 'plantDisease',
+            entityId: disease.id,
+            value: String(preventionOperationId),
+        }),
+        upsertAttributeValue({
+            attributeDefinitionId: disease.definitions.preventionDefinitionId,
+            entityTypeName: 'plantDisease',
+            entityId: disease.id,
+            value: String(draftOperationId),
+        }),
+        upsertAttributeValue({
+            attributeDefinitionId: disease.definitions.preventionDefinitionId,
+            entityTypeName: 'plantDisease',
+            entityId: disease.id,
+            value: '99999999',
+        }),
+    ]);
+
+    const formattedDisease =
+        await getEntityFormatted<FormattedHealthIssueEntity>(disease.id);
+
+    assert.deepEqual(
+        formattedDisease.relationships?.affectedPlants?.map((plant) => ({
+            id: plant.id,
+            name: plant.name,
+            hasNestedInformation: Boolean(plant.information),
+        })),
+        [
+            {
+                id: tomatoId,
+                name: tomatoName,
+                hasNestedInformation: false,
+            },
+        ],
+    );
+    assert.deepEqual(
+        formattedDisease.operations?.prevention?.map((operation) => ({
+            id: operation.id,
+            name: operation.name,
+            hasNestedInformation: Boolean(operation.information),
+        })),
+        [
+            {
+                id: preventionOperationId,
+                name: preventionOperationName,
+                hasNestedInformation: false,
+            },
+        ],
+    );
 });
 
 test('CMS entity variants inherit parent attributes and allow override reset', async () => {

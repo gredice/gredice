@@ -17,6 +17,7 @@ import newsletterRoutes from './newsletterRoutes';
 import notificationsRoutes from './notificationsRoutes';
 import occasionsRoutes from './occasionsRoutes';
 import shoppingCartRoutes from './shoppingCartRoutes';
+import surveysRoutes from './surveysRoutes';
 import usersRoutes from './usersRoutes';
 
 export const dynamic = 'force-dynamic';
@@ -89,6 +90,7 @@ const app = new Hono()
     .route('/delivery', deliveryRoutes)
     .route('/data', dataRoutes)
     .route('/notifications', notificationsRoutes)
+    .route('/surveys', surveysRoutes)
     .route('/newsletter', newsletterRoutes);
 
 app.get('/docs/auth', docs(authRoutes, 'Auth API', 'auth'))
@@ -112,6 +114,7 @@ app.get('/docs/auth', docs(authRoutes, 'Auth API', 'auth'))
         '/docs/notifications',
         docs(notificationsRoutes, 'Notifications API', 'notifications'),
     )
+    .get('/docs/surveys', docs(surveysRoutes, 'Surveys API', 'surveys'))
     .get(
         '/docs/newsletter',
         docs(newsletterRoutes, 'Newsletter API', 'newsletter'),

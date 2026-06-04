@@ -1,7 +1,13 @@
 import { revalidatePath } from 'next/cache';
 import { type NextRequest, NextResponse } from 'next/server';
 
-type PublicDirectoryEntityType = 'block' | 'plant' | 'plantSort' | 'operation';
+type PublicDirectoryEntityType =
+    | 'block'
+    | 'plant'
+    | 'plantDisease'
+    | 'plantPest'
+    | 'plantSort'
+    | 'operation';
 type RevalidationPath = {
     path: string;
     type?: 'page' | 'layout';
@@ -22,6 +28,16 @@ const revalidationPathsByEntityType: Record<
         { path: '/blokovi/biljke/[alias]', type: 'page' },
         { path: '/radnje/[alias]', type: 'page' },
         { path: '/cjenik' },
+    ],
+    plantDisease: [
+        { path: '/bolesti' },
+        { path: '/bolesti/[alias]', type: 'page' },
+        { path: '/biljke/[alias]', type: 'page' },
+    ],
+    plantPest: [
+        { path: '/stetnici' },
+        { path: '/stetnici/[alias]', type: 'page' },
+        { path: '/biljke/[alias]', type: 'page' },
     ],
     plantSort: [
         { path: '/' },
@@ -44,6 +60,8 @@ function publicDirectoryEntityType(
     switch (value) {
         case 'block':
         case 'plant':
+        case 'plantDisease':
+        case 'plantPest':
         case 'plantSort':
         case 'operation':
             return value;

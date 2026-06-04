@@ -1,5 +1,6 @@
 import { PublicDirectoryPaths } from '@gredice/directory-types';
 import type { Route } from 'next';
+import { QUALITY_HARVEST_SAFETY_PATH } from './publicPagePaths';
 
 // TODO: Deprecate KnownPages in favor of using route types directly
 export const KnownPages = {
@@ -9,6 +10,12 @@ export const KnownPages = {
     DeliverySlots: '/dostava/termini',
     Plants: PublicDirectoryPaths.Plants as Route,
     Plant: (alias: string) => PublicDirectoryPaths.Plant(alias) as Route,
+    PlantDiseases: PublicDirectoryPaths.PlantDiseases as Route,
+    PlantDisease: (alias: string) =>
+        PublicDirectoryPaths.PlantDisease(alias) as Route,
+    PlantPests: PublicDirectoryPaths.PlantPests as Route,
+    PlantPest: (alias: string) =>
+        PublicDirectoryPaths.PlantPest(alias) as Route,
     PlantSort: (alias: string, sortName: string) =>
         PublicDirectoryPaths.PlantSort(alias, sortName) as Route,
     Blocks: PublicDirectoryPaths.Blocks as Route,
@@ -27,6 +34,7 @@ export const KnownPages = {
     Recipe: (slug: string) => `/recepti/${encodeURIComponent(slug)}` as Route,
     AboutUs: '/o-nama',
     FAQ: PublicDirectoryPaths.FAQ as Route,
+    QualityHarvestSafety: QUALITY_HARVEST_SAFETY_PATH as Route,
     Contact: '/kontakt',
     Pricing: '/cjenik',
     Refunds: '/povrati-i-povrat-novca',

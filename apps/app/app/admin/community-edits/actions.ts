@@ -30,6 +30,7 @@ function formNote(formData: FormData) {
 }
 
 async function revalidateCommunityEditAdminPaths(requestId: number) {
+    revalidatePath(KnownPages.Dashboard, 'layout');
     revalidatePath(KnownPages.CommunityEdits);
     revalidatePath(KnownPages.CommunityEdit(requestId));
 }

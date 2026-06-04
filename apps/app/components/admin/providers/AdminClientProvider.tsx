@@ -9,6 +9,7 @@ export function AdminClientProvider({
     shadowTypes,
     pendingAchievementsCount,
     pendingApprovalTasksCount,
+    pendingCommunityEditRequestsCount,
     quickActions,
     children,
 }: {
@@ -17,6 +18,7 @@ export function AdminClientProvider({
     shadowTypes: NavContextType['shadowTypes'];
     pendingAchievementsCount: number;
     pendingApprovalTasksCount: number;
+    pendingCommunityEditRequestsCount: number;
     quickActions: NavContextType['quickActions'];
     children: React.ReactNode;
 }) {
@@ -28,6 +30,7 @@ export function AdminClientProvider({
                 shadowTypes,
                 pendingAchievementsCount,
                 pendingApprovalTasksCount,
+                pendingCommunityEditRequestsCount,
                 quickActions,
             }}
         >

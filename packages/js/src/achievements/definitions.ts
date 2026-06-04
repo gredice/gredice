@@ -2,7 +2,8 @@ export type AchievementCategory =
     | 'registration'
     | 'planting'
     | 'watering'
-    | 'harvest';
+    | 'harvest'
+    | 'community_editing';
 
 export type AchievementStatus = 'pending' | 'approved' | 'denied';
 
@@ -56,6 +57,16 @@ const harvestThresholds: Array<[threshold: number, reward: number]> = [
     [500, 50_000],
 ];
 
+// TODO: Balance the rewards
+const communityEditingThresholds: Array<[threshold: number, reward: number]> = [
+    [1, 100],
+    [5, 250],
+    [10, 500],
+    [25, 1_000],
+    [50, 2_000],
+    [100, 5_000],
+];
+
 function plantingTitle(threshold: number) {
     if (threshold === 1) {
         return 'Prvo sjeme';
@@ -75,6 +86,23 @@ function harvestTitle(threshold: number) {
         return 'Prva berba';
     }
     return `${threshold} berbi`;
+}
+
+function communityEditingTitle(threshold: number) {
+    switch (threshold) {
+        case 1:
+            return 'Prvi doprinos';
+        case 5:
+            return 'Pouzdani urednik';
+        case 10:
+            return 'Čuvar sadržaja';
+        case 25:
+            return 'Znalac zajednice';
+        case 50:
+            return 'Majstor sadržaja';
+        default:
+            return `${threshold} prihvaćenih izmjena`;
+    }
 }
 
 export const achievementDefinitions: AchievementDefinition[] = [
@@ -114,6 +142,18 @@ export const achievementDefinitions: AchievementDefinition[] = [
         title: harvestTitle(threshold),
         description: `Uberi biljke ${threshold} puta.`,
         sortOrder: 300 + index,
+    })),
+    ...communityEditingThresholds.map(([threshold, reward], index) => ({
+        key: `community_edit_${threshold}`,
+        category: 'community_editing' as const,
+        threshold,
+        rewardSunflowers: reward,
+        title: communityEditingTitle(threshold),
+        description:
+            threshold === 1
+                ? 'Neka tvoj prvi prijedlog izmjene sadržaja bude prihvaćen.'
+                : `Neka ${threshold} tvojih prijedloga izmjene sadržaja bude prihvaćeno.`,
+        sortOrder: 400 + index,
     })),
 ];
 

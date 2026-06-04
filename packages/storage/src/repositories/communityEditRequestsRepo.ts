@@ -1,6 +1,6 @@
 import 'server-only';
 import { createHash } from 'node:crypto';
-import { and, asc, desc, eq } from 'drizzle-orm';
+import { and, asc, count, desc, eq } from 'drizzle-orm';
 import {
     type CommunityEditableFieldDefinition,
     type CommunityEditControlType,
@@ -16,6 +16,7 @@ import {
     type SelectCommunityEditRequest,
 } from '../schema';
 import { storage } from '../storage';
+import { evaluateCommunityEditAchievementsForSubmitter } from './achievementsRepo';
 import {
     createAttributeValueMutationSideEffects,
     deleteAttributeValue,
@@ -909,6 +910,14 @@ export function listCommunityEditRequests(filters?: {
     return storage().query.communityEditRequests.findMany({
         where: conditions.length > 0 ? and(...conditions) : undefined,
         with: {
+            submitter: {
+                columns: {
+                    id: true,
+                    userName: true,
+                    displayName: true,
+                    avatarUrl: true,
+                },
+            },
             changes: {
                 with: {
                     attributeDefinition: true,
@@ -918,6 +927,15 @@ export function listCommunityEditRequests(filters?: {
         },
         orderBy: [desc(communityEditRequests.createdAt)],
     });
+}
+
+export async function getPendingCommunityEditRequestsCount() {
+    const result = await storage()
+        .select({ count: count() })
+        .from(communityEditRequests)
+        .where(eq(communityEditRequests.status, 'pending'));
+
+    return result[0]?.count ?? 0;
 }
 
 export function getCommunityEditRequest(id: number) {
@@ -1297,5 +1315,20 @@ export async function approveCommunityEditRequest(input: {
             `Request ${request.id} was not found after applying.`,
         );
     }
+
+    try {
+        await evaluateCommunityEditAchievementsForSubmitter(
+            applied.submitterUserId,
+        );
+    } catch (error) {
+        console.error(
+            'Failed to evaluate community edit achievements after approval',
+            {
+                requestId: applied.id,
+                error,
+            },
+        );
+    }
+
     return applied;
 }

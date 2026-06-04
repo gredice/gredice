@@ -20,6 +20,8 @@ function normalizeSitemapPath(path) {
     return search ? `${normalizedPathname}?${search}` : normalizedPathname;
 }
 
+const sourceCmsPagePaths = ['/kvaliteta-i-sigurnost-uroda'];
+
 /** @type {import('next-sitemap').IConfig} */
 module.exports = {
     siteUrl: process.env.SITE_URL || 'https://www.gredice.com',
@@ -43,22 +45,22 @@ module.exports = {
         alternateRefs: config.alternateRefs ?? [],
     }),
     additionalPaths: async (config) => {
+        const sitemapPaths = new Set(sourceCmsPagePaths);
         const baseUrl = process.env.API_URL || 'https://api.gredice.com';
         let response;
         try {
             response = await fetch(`${baseUrl}/api/directories/pages`);
         } catch {
-            return [];
+            return Promise.all(
+                Array.from(sitemapPaths).map((path) =>
+                    config.transform(config, path),
+                ),
+            );
         }
 
-        if (!response.ok) {
-            return [];
-        }
-
-        /** @type {Array<{ slug: string; noIndex?: boolean; state: string; publishedAt?: string | null }>} */
-        const pages = await response.json();
-        const seen = new Set();
-        const sitemapPaths = await Promise.all(
+        if (response.ok) {
+            /** @type {Array<{ slug: string; noIndex?: boolean; state: string; publishedAt?: string | null }>} */
+            const pages = await response.json();
             pages
                 .filter(
                     (page) =>
@@ -67,15 +69,16 @@ module.exports = {
                         !page.noIndex,
                 )
                 .map((page) => `/${page.slug}`)
-                .filter((path) => {
-                    if (seen.has(path)) {
-                        return false;
-                    }
-                    seen.add(path);
-                    return true;
-                })
-                .map((path) => config.transform(config, path)),
+                .forEach((path) => {
+                    sitemapPaths.add(path);
+                });
+        }
+
+        const transformedPaths = await Promise.all(
+            Array.from(sitemapPaths).map((path) =>
+                config.transform(config, path),
+            ),
         );
-        return sitemapPaths.filter(Boolean);
+        return transformedPaths.filter(Boolean);
     },
 };

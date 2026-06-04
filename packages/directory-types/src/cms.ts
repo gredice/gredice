@@ -15,6 +15,8 @@ export interface DirectoryEntityDataMap {
     operation: components['schemas']['entity-operation'];
     operationFrequency: components['schemas']['entity-operationFrequency'];
     plant: components['schemas']['entity-plant'];
+    plantDisease: components['schemas']['entity-plantDisease'];
+    plantPest: components['schemas']['entity-plantPest'];
     plantSort: components['schemas']['entity-plantSort'];
     plantStage: components['schemas']['entity-plantStage'];
     seed: components['schemas']['entity-seed'];
@@ -38,6 +40,8 @@ export type OperationData = DirectoryEntityDataMap['operation'];
 export type OperationFrequencyData =
     DirectoryEntityDataMap['operationFrequency'];
 export type PlantData = DirectoryEntityDataMap['plant'];
+export type PlantDiseaseData = DirectoryEntityDataMap['plantDisease'];
+export type PlantPestData = DirectoryEntityDataMap['plantPest'];
 export type PlantSortData = DirectoryEntityDataMap['plantSort'];
 export type PlantStageData = DirectoryEntityDataMap['plantStage'];
 export type SeedData = DirectoryEntityDataMap['seed'];

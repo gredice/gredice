@@ -23,12 +23,14 @@ export function OperationsListItem({
     raisedBedId,
     positionIndex,
     inShoppingCart,
+    onOperationPicked,
 }: {
     gardenId: number;
     raisedBedId?: number;
     positionIndex?: number;
     operation: OperationData;
     inShoppingCart?: boolean;
+    onOperationPicked?: (operation: OperationData) => void;
 }) {
     const setShoppingCartItem = useSetShoppingCartItem();
     const animateFlyToShoppingCart = useAnimateFlyToShoppingCart();
@@ -55,6 +57,7 @@ export function OperationsListItem({
         scheduledDate?: Date,
         useInventoryItem?: boolean,
     ) {
+        onOperationPicked?.(operation);
         setShoppingCartItem.mutate({
             amount: 1,
             entityId: operation.id.toString(),

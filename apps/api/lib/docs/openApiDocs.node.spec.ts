@@ -169,6 +169,58 @@ test('buildAttributeDefinitionProperties maps plant sort relationships to shallo
     });
 });
 
+test('buildAttributeDefinitionProperties maps plant health refs to shallow schemas', async () => {
+    const result = await buildAttributeDefinitionProperties(
+        [
+            attributeDefinition({
+                category: 'relationships',
+                dataType: 'ref:plant',
+                entityTypeName: 'plantDisease',
+                multiple: true,
+                name: 'affectedPlants',
+            }),
+            attributeDefinition({
+                category: 'operations',
+                dataType: 'ref:operation',
+                entityTypeName: 'plantDisease',
+                multiple: true,
+                name: 'prevention',
+            }),
+            attributeDefinition({
+                category: 'operations',
+                dataType: 'ref:operation',
+                entityTypeName: 'plantPest',
+                multiple: true,
+                name: 'alleviation',
+            }),
+        ],
+        async () => {
+            throw new Error('Plant health relationships must not recurse.');
+        },
+    );
+
+    const relationships = schemaObject(result.properties.relationships);
+    const affectedPlants = schemaObject(
+        relationships.properties?.affectedPlants,
+    );
+    const operations = schemaObject(result.properties.operations);
+    const prevention = schemaObject(operations.properties?.prevention);
+    const alleviation = schemaObject(operations.properties?.alleviation);
+
+    assert.equal(affectedPlants.type, 'array');
+    assert.deepEqual(affectedPlants.items, {
+        $ref: '#/components/schemas/plant-health-affected-plant',
+    });
+    assert.equal(prevention.type, 'array');
+    assert.deepEqual(prevention.items, {
+        $ref: '#/components/schemas/plant-health-operation',
+    });
+    assert.equal(alleviation.type, 'array');
+    assert.deepEqual(alleviation.items, {
+        $ref: '#/components/schemas/plant-health-operation',
+    });
+});
+
 test('buildAttributeDefinitionProperties fails clearly for unsupported CMS data types', async () => {
     await assert.rejects(
         () =>

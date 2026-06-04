@@ -44,6 +44,20 @@ test('directory public URL resolver normalizes known public detail routes', () =
         PublicDirectoryPaths.BlockPlant('Rajčica'),
         '/blokovi/biljke/rajcica',
     );
+    assert.equal(
+        resolveDirectoryEntityPublicPathFromParts({
+            entityTypeName: 'plantDisease',
+            name: 'Pepelnica rajčice',
+        }),
+        '/bolesti/pepelnica-rajcice',
+    );
+    assert.equal(
+        resolveDirectoryEntityPublicPathFromParts({
+            entityTypeName: 'plantPest',
+            name: 'Lisna uš',
+        }),
+        '/stetnici/lisna-us',
+    );
 });
 
 test('directory public URL resolver requires route-compatible names', () => {
@@ -111,5 +125,16 @@ test('directory public search categories include seeds', () => {
     assert.deepEqual(publicSearchCategoryForDirectoryEntityType('seed'), {
         slug: 'seeds',
         label: 'Sjeme',
+    });
+    assert.deepEqual(
+        publicSearchCategoryForDirectoryEntityType('plantDisease'),
+        {
+            slug: 'diseases',
+            label: 'Bolesti',
+        },
+    );
+    assert.deepEqual(publicSearchCategoryForDirectoryEntityType('plantPest'), {
+        slug: 'pests',
+        label: 'Štetnici',
     });
 });

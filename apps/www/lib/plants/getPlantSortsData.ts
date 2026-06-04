@@ -4,11 +4,10 @@ import {
     type PlantSortData,
 } from '@gredice/client';
 import { cache } from 'react';
-import type { PlantHealthSource } from './plantRuntimeFields';
 
 export type PlantSortDataWithRelationships = PlantSortData & {
     relationships?: PlantData['relationships'];
-} & PlantHealthSource;
+};
 
 export type { PlantSortData };
 

@@ -5,7 +5,6 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { CommunityEditButton } from '../../../../../components/community-edits/CommunityEditButton';
 import { FeedbackModal } from '../../../../../components/shared/feedback/FeedbackModal';
 import { StructuredDataScript } from '../../../../../components/shared/seo/StructuredDataScript';
 import { getPlantSortsData } from '../../../../../lib/plants/getPlantSortsData';
@@ -17,7 +16,7 @@ import { GrowthAttributeCards } from '../../GrowthAttributeCards';
 import { getPlantInforationSections } from '../../getPlantInforationSections';
 import { HarvestAttributeCards } from '../../HarvestAttributeCards';
 import { InformationSection } from '../../InformationSection';
-import { hasPlantHealth, PlantHealthSection } from '../../PlantHealthSection';
+import { PlantHealthSection } from '../../PlantHealthSection';
 import { PlantPageHeader } from '../../PlantPageHeader';
 import {
     hasPlantRelationships,
@@ -183,9 +182,7 @@ export default async function PlantSortPage(
     const relationships = hasPlantRelationships(sortData.relationships)
         ? sortData.relationships
         : basePlantData.relationships;
-    const health = hasPlantHealth(sortData.health)
-        ? sortData.health
-        : basePlantData.health;
+    const health = basePlantData.health;
 
     if (!hasPerPlantPrice) {
         console.error('Missing per-plant price for plant sort product schema', {
@@ -274,15 +271,15 @@ export default async function PlantSortPage(
                         { label: sortData.information.name },
                     ]}
                 />
-                <PlantPageHeader plant={basePlantData} sort={sortData} />
-                <Row className="justify-end">
-                    <CommunityEditButton
-                        buttonStyle="button"
-                        entityTypeName="plantSort"
-                        entityId={sortData.id}
-                        publicPath={sortPath}
-                    />
-                </Row>
+                <PlantPageHeader
+                    plant={basePlantData}
+                    sort={sortData}
+                    overviewEditTarget={{
+                        entityTypeName: 'plantSort',
+                        entityId: sortData.id,
+                        publicPath: sortPath,
+                    }}
+                />
                 {informationSections
                     .filter((section) => section.avaialble)
                     .map((section) => (

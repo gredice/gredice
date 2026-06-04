@@ -1,6 +1,7 @@
 import {
     getEntityTypesOrganizedByCategories,
     getPendingAchievementsCount,
+    getPendingCommunityEditRequestsCount,
     getSetting,
     SettingsKeys,
 } from '@gredice/storage';
@@ -49,11 +50,13 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
         { categorizedTypes, uncategorizedTypes, shadowTypes },
         pendingAchievementsCount,
         pendingApprovalTasksCount,
+        pendingCommunityEditRequestsCount,
         dashboardQuickActionsSetting,
     ] = await Promise.all([
         getEntityTypesOrganizedByCategories(),
         getPendingAchievementsCount(),
         getPendingAdminApprovalTaskCount(),
+        getPendingCommunityEditRequestsCount(),
         getSetting(SettingsKeys.DashboardQuickActions),
     ]);
 
@@ -86,6 +89,9 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
                 shadowTypes={shadowTypes}
                 pendingAchievementsCount={pendingAchievementsCount}
                 pendingApprovalTasksCount={pendingApprovalTasksCount}
+                pendingCommunityEditRequestsCount={
+                    pendingCommunityEditRequestsCount
+                }
                 quickActions={quickActions}
             >
                 <div className="grow bg-secondary/40" data-gredice-admin-shell>

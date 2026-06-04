@@ -1,4 +1,4 @@
-import type { OperationData } from '@gredice/client';
+import type { OperationData, PlantData } from '@gredice/client';
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardOverflow } from '@gredice/ui/Card';
@@ -7,9 +7,11 @@ import { List } from '@gredice/ui/List';
 import { Skeleton } from '@gredice/ui/Skeleton';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
+import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { useOperations } from '../../hooks/useOperations';
 import { usePlantSort } from '../../hooks/usePlantSorts';
+import { usePlants } from '../../hooks/usePlants';
 import {
     DEFAULT_FEATURED_OPERATION_LIMIT,
     FEATURED_OPERATIONS_BY_STAGE,
@@ -18,6 +20,13 @@ import {
     type PlantStageName,
 } from './featuredOperations';
 import { OperationsListItem } from './shared/OperationsListItem';
+
+type PlantHealthIssueSummary = NonNullable<
+    NonNullable<PlantData['health']>['diseases']
+>[number];
+type PlantHealthOperationSummary = NonNullable<
+    NonNullable<PlantHealthIssueSummary['operations']>['prevention']
+>[number];
 
 export function RecommendationsCard({
     onShowOperations,
@@ -34,6 +43,7 @@ export function RecommendationsCard({
     plantStatus?: PlantFieldStatus;
     plantSortId?: number;
 }) {
+    const { track } = useGameAnalytics();
     // Fetch and prepare data for recommendations
     const {
         data: operations,
@@ -41,6 +51,10 @@ export function RecommendationsCard({
         isError: isOperationsError,
     } = useOperations();
     const { data: plantSort } = usePlantSort(plantSortId);
+    const { data: plants } = usePlants();
+    const plant = plants?.find(
+        (candidate) => candidate.id === plantSort?.information.plant.id,
+    );
 
     const plantSortOperationNames = useMemo(() => {
         const operationNames =
@@ -149,7 +163,96 @@ export function RecommendationsCard({
         return sorted.slice(0, DEFAULT_FEATURED_OPERATION_LIMIT);
     }, [selectedStage, stageOperations]);
 
+    const plantHealthIssues = useMemo(() => {
+        const plantHealth = plant?.health;
+        return [
+            ...(plantHealth?.diseases ?? []),
+            ...(plantHealth?.pests ?? []),
+        ];
+    }, [plant]);
+
+    const healthOperationIds = useMemo(() => {
+        const operationIds = new Set<number>();
+        for (const issue of plantHealthIssues) {
+            const issueOperationGroups: Array<
+                PlantHealthOperationSummary[] | undefined
+            > = [
+                issue.operations?.prevention,
+                issue.operations?.reduction,
+                issue.operations?.alleviation,
+            ];
+            for (const issueOperations of issueOperationGroups) {
+                for (const operation of issueOperations ?? []) {
+                    operationIds.add(operation.id);
+                }
+            }
+        }
+        return operationIds;
+    }, [plantHealthIssues]);
+
+    const healthRecommendedOperations = useMemo(() => {
+        if (!operations || healthOperationIds.size === 0) {
+            return [] as OperationData[];
+        }
+
+        return operations
+            .filter((operation) => healthOperationIds.has(operation.id))
+            .sort((left, right) =>
+                left.information.label.localeCompare(
+                    right.information.label,
+                    'hr',
+                ),
+            );
+    }, [healthOperationIds, operations]);
+
+    const healthIssueLabels = useMemo(
+        () => plantHealthIssues.map((issue) => issue.name),
+        [plantHealthIssues],
+    );
+
+    const healthRecommendationViewKey = healthRecommendedOperations
+        .map((operation) => operation.id)
+        .join(',');
+    const lastTrackedHealthRecommendationViewKey = useRef<string | null>(null);
+
+    useEffect(() => {
+        if (
+            !healthRecommendationViewKey ||
+            lastTrackedHealthRecommendationViewKey.current ===
+                healthRecommendationViewKey
+        ) {
+            return;
+        }
+
+        lastTrackedHealthRecommendationViewKey.current =
+            healthRecommendationViewKey;
+        track('game_plant_health_recommendations_viewed', {
+            garden_id: gardenId,
+            raised_bed_id: raisedBedId,
+            position_index: positionIndex,
+            plant_sort_id: plantSortId,
+            health_issue_count: plantHealthIssues.length,
+            operation_count: healthRecommendedOperations.length,
+        });
+    }, [
+        gardenId,
+        healthRecommendationViewKey,
+        healthRecommendedOperations.length,
+        plantHealthIssues.length,
+        plantSortId,
+        positionIndex,
+        raisedBedId,
+        track,
+    ]);
+
     const isLoadingFeaturedOperations = isLoadingOperations;
+    const hasStageRecommendations = Boolean(stageSequence?.length);
+    const hasHealthIssueRecommendations = plantHealthIssues.length > 0;
+    const isLoadingHealthOperations =
+        !hasStageRecommendations &&
+        isLoadingOperations &&
+        hasHealthIssueRecommendations &&
+        healthRecommendedOperations.length === 0;
     const skeletonKeys = useMemo(
         () =>
             Array.from(
@@ -159,8 +262,8 @@ export function RecommendationsCard({
         [],
     );
 
-    // Hide card if we can't determine stage for the current status
-    if (!stageSequence?.length) {
+    // Hide card if we can't determine stage and there are no plant health issues.
+    if (!hasStageRecommendations && !hasHealthIssueRecommendations) {
         return null;
     }
 
@@ -181,44 +284,113 @@ export function RecommendationsCard({
                                 Greška prilikom učitavanja radnji
                             </Alert>
                         )}
-                        {isLoadingFeaturedOperations ? (
+                        {hasStageRecommendations ? (
+                            isLoadingFeaturedOperations ? (
+                                <Stack spacing={2}>
+                                    {skeletonKeys.map((skeletonKey) => (
+                                        <Skeleton
+                                            key={skeletonKey}
+                                            className="h-16 w-full rounded-md"
+                                        />
+                                    ))}
+                                </Stack>
+                            ) : featuredOperations.length ? (
+                                <List
+                                    variant="outlined"
+                                    data-recommended-operation-list
+                                    className="border-b-0 border-l-0 border-r-0 rounded-none max-h-[25dvh] overflow-y-auto"
+                                >
+                                    {featuredOperations.map((operation) => (
+                                        <OperationsListItem
+                                            key={operation.id}
+                                            operation={operation}
+                                            gardenId={gardenId}
+                                            raisedBedId={raisedBedId}
+                                            positionIndex={positionIndex}
+                                        />
+                                    ))}
+                                    {onShowOperations && (
+                                        <ShowAllOperationsListItem
+                                            onShowOperations={onShowOperations}
+                                        />
+                                    )}
+                                </List>
+                            ) : (
+                                <Typography
+                                    level="body2"
+                                    secondary
+                                    className="p-4 border-t"
+                                >
+                                    Trenutno nema dostupnih radnji za ovu fazu.
+                                </Typography>
+                            )
+                        ) : null}
+                        {isLoadingHealthOperations && (
                             <Stack spacing={2}>
                                 {skeletonKeys.map((skeletonKey) => (
                                     <Skeleton
-                                        key={skeletonKey}
+                                        key={`health-${skeletonKey}`}
                                         className="h-16 w-full rounded-md"
                                     />
                                 ))}
                             </Stack>
-                        ) : featuredOperations.length ? (
-                            <List
-                                variant="outlined"
-                                data-recommended-operation-list
-                                className="border-b-0 border-l-0 border-r-0 rounded-none max-h-[25dvh] overflow-y-auto"
-                            >
-                                {featuredOperations.map((operation) => (
-                                    <OperationsListItem
-                                        key={operation.id}
-                                        operation={operation}
-                                        gardenId={gardenId}
-                                        raisedBedId={raisedBedId}
-                                        positionIndex={positionIndex}
-                                    />
-                                ))}
-                                {onShowOperations && (
-                                    <ShowAllOperationsListItem
-                                        onShowOperations={onShowOperations}
-                                    />
-                                )}
-                            </List>
-                        ) : (
-                            <Typography
-                                level="body2"
-                                secondary
-                                className="p-4 border-t"
-                            >
-                                Trenutno nema dostupnih radnji za ovu fazu.
-                            </Typography>
+                        )}
+                        {healthRecommendedOperations.length > 0 && (
+                            <Stack spacing={2} className="border-t p-3">
+                                <Stack spacing={1}>
+                                    <Typography
+                                        level="body3"
+                                        className="leading-tight font-semibold uppercase"
+                                    >
+                                        Zdravlje biljke
+                                    </Typography>
+                                    <Typography level="body3" secondary>
+                                        {healthIssueLabels
+                                            .slice(0, 3)
+                                            .join(', ')}
+                                        {healthIssueLabels.length > 3
+                                            ? ` +${healthIssueLabels.length - 3}`
+                                            : ''}
+                                    </Typography>
+                                </Stack>
+                                <List
+                                    variant="outlined"
+                                    data-plant-health-operation-list
+                                    className="border rounded-md"
+                                >
+                                    {healthRecommendedOperations.map(
+                                        (operation) => (
+                                            <OperationsListItem
+                                                key={operation.id}
+                                                operation={operation}
+                                                gardenId={gardenId}
+                                                raisedBedId={raisedBedId}
+                                                positionIndex={positionIndex}
+                                                onOperationPicked={() => {
+                                                    track(
+                                                        'game_plant_health_recommendation_selected',
+                                                        {
+                                                            garden_id: gardenId,
+                                                            raised_bed_id:
+                                                                raisedBedId,
+                                                            position_index:
+                                                                positionIndex,
+                                                            plant_sort_id:
+                                                                plantSortId,
+                                                            operation_id:
+                                                                operation.id,
+                                                            operation_name:
+                                                                operation
+                                                                    .information
+                                                                    .name,
+                                                        },
+                                                    );
+                                                }}
+                                            />
+                                        ),
+                                    )}
+                                </List>
+                            </Stack>
                         )}
                     </Stack>
                 </CardOverflow>
