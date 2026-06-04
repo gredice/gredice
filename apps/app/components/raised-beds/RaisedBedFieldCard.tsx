@@ -11,7 +11,7 @@ export const raisedBedFieldCardSelectClassName =
     'w-full min-w-0 [&_[role=combobox]]:h-8 [&_[role=combobox]]:min-w-0 [&_[role=combobox]]:gap-1.5 [&_[role=combobox]]:overflow-hidden [&_[role=combobox]]:!bg-background/80 [&_[role=combobox]]:px-2 [&_[role=combobox]]:text-foreground [&_[role=combobox]]:ring-1 [&_[role=combobox]]:ring-border/70 [&_[role=combobox]]:backdrop-blur-md [&_[role=combobox]]:hover:!bg-background/90 [&_[role=combobox]>span]:block [&_[role=combobox]>span]:min-w-0 [&_[role=combobox]>span]:truncate';
 
 export const raisedBedFieldCardButtonClassName =
-    'max-w-full min-w-0 overflow-hidden text-ellipsis whitespace-nowrap !bg-background/80 text-foreground ring-1 ring-border/70 backdrop-blur-md hover:!bg-background/90 hover:text-foreground';
+    'max-w-full min-w-0 overflow-hidden text-ellipsis whitespace-nowrap !bg-background/80 text-foreground ring-1 ring-border/70 backdrop-blur-md hover:!bg-background/90 hover:text-foreground [&>span]:min-w-0';
 
 export const raisedBedFieldCardChipClassName =
     'min-w-0 max-w-full overflow-hidden backdrop-blur-md';
@@ -23,7 +23,7 @@ export function RaisedBedFieldCardGrid({
     return (
         <div
             className={cx(
-                'grid grid-cols-3 auto-rows-fr gap-0 overflow-hidden rounded-lg border-r border-b',
+                'grid w-full min-w-0 grid-cols-[repeat(3,minmax(0,1fr))] gap-0 overflow-hidden rounded-lg border-r border-b',
                 className,
             )}
         >
@@ -54,11 +54,15 @@ export function RaisedBedFieldCard({
     return (
         <div
             className={cx(
-                'relative flex aspect-[4/3] min-h-48 min-w-0 flex-col overflow-hidden border-l border-t bg-muted/40',
+                'relative flex aspect-[4/3] min-h-40 min-w-0 max-w-full flex-col overflow-hidden border-l border-t bg-muted/40',
                 className,
             )}
         >
-            {image ?? (
+            {image ? (
+                <div className="absolute inset-0 overflow-hidden [&>img]:size-full">
+                    {image}
+                </div>
+            ) : (
                 <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
                     <Typography level="body2">Nema slike</Typography>
                 </div>
