@@ -68,6 +68,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@gredice/ui/Menu';
+import { ModalConfirm } from '@gredice/ui/ModalConfirm';
 import { PanelSection } from '@gredice/ui/PanelSection';
 import { Row } from '@gredice/ui/Row';
 import { SelectItems } from '@gredice/ui/SelectItems';
@@ -85,6 +86,7 @@ import {
     useMemo,
     useRef,
     useState,
+    useTransition,
 } from 'react';
 import {
     AdminPageHeader,
@@ -125,6 +127,7 @@ type CmsPageFormProps = {
         formData: FormData,
     ) => Promise<CmsPageFormState>;
     autosaveAction?: (formData: FormData) => Promise<CmsPageAutosaveState>;
+    deleteAction?: () => Promise<void>;
 };
 
 type ParsedCmsPageSections = {
@@ -726,8 +729,10 @@ export function CmsPageForm({
     heading,
     action,
     autosaveAction,
+    deleteAction,
 }: CmsPageFormProps) {
     const [state, formAction, pending] = useActionState(action, null);
+    const [isDeletePending, startDeleteTransition] = useTransition();
     const reactId = useId();
     const resolvedFormId = formId ?? reactId;
     const initialContentKind = normalizeFormContentKind(
@@ -840,6 +845,7 @@ export function CmsPageForm({
     const latestAutosaveSnapshot = useRef(autosaveSnapshot);
     const [autosaveStatus, setAutosaveStatus] = useState('saved');
     const [autosaveMessage, setAutosaveMessage] = useState<string | null>(null);
+    const [deleteError, setDeleteError] = useState<string | null>(null);
     const [lastSavedAt, setLastSavedAt] = useState<number | null>(
         () => page?.updatedAt?.getTime() ?? null,
     );
@@ -1139,6 +1145,26 @@ export function CmsPageForm({
         ? 'Prilagođeni meta naslov.'
         : 'Automatski se popunjava iz naslova stranice.';
     const formattedLastSavedAt = formatLastSavedAt(lastSavedAt);
+    const canDeletePage = Boolean(page && deleteAction && !isPublished);
+
+    const handleDeletePage = () => {
+        if (!deleteAction) {
+            return;
+        }
+
+        startDeleteTransition(async () => {
+            setDeleteError(null);
+            try {
+                await deleteAction();
+            } catch (error) {
+                setDeleteError(
+                    error instanceof Error
+                        ? error.message
+                        : 'Brisanje stranice nije uspjelo.',
+                );
+            }
+        });
+    };
 
     const insertSectionData = (data: CmsPageSectionData, index?: number) => {
         const sectionId = nextSectionId.current;
@@ -1627,6 +1653,63 @@ export function CmsPageForm({
         </PanelSection>
     );
 
+    const deletePanel =
+        page && deleteAction ? (
+            <PanelSection title="Brisanje" contentClassName="px-4 pt-1">
+                <Stack spacing={3}>
+                    <Typography level="body3" secondary>
+                        {isPublished
+                            ? 'Vrati stranicu u izradu prije brisanja.'
+                            : 'Brisanjem se stranica uklanja iz aktivnog CMS popisa.'}
+                    </Typography>
+                    {deleteError ? (
+                        <Typography level="body3" className="text-red-600">
+                            {deleteError}
+                        </Typography>
+                    ) : null}
+                    {canDeletePage ? (
+                        <ModalConfirm
+                            title="Potvrda brisanja CMS stranice"
+                            header="Brisanje stranice"
+                            confirmLabel="Obriši"
+                            onConfirm={handleDeletePage}
+                            trigger={
+                                <Button
+                                    type="button"
+                                    variant="outlined"
+                                    color="danger"
+                                    fullWidth
+                                    loading={isDeletePending}
+                                    startDecorator={
+                                        <Delete className="size-4" />
+                                    }
+                                >
+                                    Obriši stranicu
+                                </Button>
+                            }
+                        >
+                            <Typography>
+                                Jeste li sigurni da želite obrisati stranicu{' '}
+                                <strong>{page.title}</strong>? Ova akcija se ne
+                                može poništiti iz CMS sučelja.
+                            </Typography>
+                        </ModalConfirm>
+                    ) : (
+                        <Button
+                            type="button"
+                            variant="outlined"
+                            color="danger"
+                            fullWidth
+                            disabled
+                            startDecorator={<Delete className="size-4" />}
+                        >
+                            Obriši stranicu
+                        </Button>
+                    )}
+                </Stack>
+            </PanelSection>
+        ) : null;
+
     const editorModeControls = (
         <ButtonGroup legend="Editor mode" size="sm">
             <Button
@@ -2044,6 +2127,7 @@ export function CmsPageForm({
                                         {pageDetailsPanel}
                                         {seoPanel}
                                         {publishReadinessPanel}
+                                        {deletePanel}
                                     </Stack>
                                 }
                             >
@@ -2219,6 +2303,7 @@ export function CmsPageForm({
 
                                         {seoPanel}
                                         {publishReadinessPanel}
+                                        {deletePanel}
                                     </Stack>
                                 }
                             >
