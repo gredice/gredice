@@ -118,6 +118,31 @@ test('CMS page slugs must be unique across active pages', async () => {
     assert.notEqual(replacementPageId, pageId);
 });
 
+test('CMS pages must be unpublished before deletion', async () => {
+    createTestDb();
+    const content = JSON.stringify([
+        { component: 'Feature1', header: 'Published section' },
+    ]);
+    const pageId = await createCmsPage({
+        slug: `delete-published-${randomUUID()}`,
+        title: 'Delete published page',
+        content,
+        state: 'published',
+        metaTitle: 'Delete published page',
+        metaDescription: 'Published pages cannot be deleted directly.',
+    });
+
+    await assert.rejects(
+        () => softDeleteCmsPage(pageId),
+        /unpublished before deletion/,
+    );
+    assert.equal((await getCmsPage(pageId))?.state, 'published');
+
+    await updateCmsPageState(pageId, 'draft');
+    await softDeleteCmsPage(pageId);
+    assert.equal(await getCmsPage(pageId), undefined);
+});
+
 test('CMS page slugs reject reserved static route conflicts', async () => {
     createTestDb();
 

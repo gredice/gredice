@@ -357,12 +357,16 @@ export async function unpublishCmsPageAction(pageId: number) {
 
 export async function deleteCmsPageAction(pageId: number) {
     const authContext = await auth(['admin']);
+    const page = await getCmsPage(pageId);
 
     await softDeleteCmsPage(pageId, {
         id: authContext.user.id,
         name: authContext.user.userName,
     });
     revalidateCmsPagePaths(pageId);
+    if (page?.slug) {
+        revalidatePublicCmsPagePaths(page.slug);
+    }
     redirect(KnownPages.CmsPages);
 }
 

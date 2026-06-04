@@ -5,7 +5,11 @@ import { notFound } from 'next/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { auth } from '../../../../../../lib/auth/auth';
 import { KnownPages } from '../../../../../../src/KnownPages';
-import { autosaveCmsPageAction, updateCmsPageAction } from '../../actions';
+import {
+    autosaveCmsPageAction,
+    deleteCmsPageAction,
+    updateCmsPageAction,
+} from '../../actions';
 import { CmsPageForm } from '../../CmsPageForm';
 
 export const dynamic = 'force-dynamic';
@@ -30,6 +34,7 @@ export default async function EditCmsPagePage({
 
     const updateAction = updateCmsPageAction.bind(null, id);
     const autosaveAction = autosaveCmsPageAction.bind(null, id);
+    const deleteAction = deleteCmsPageAction.bind(null, id);
 
     return (
         <Stack spacing={8}>
@@ -38,6 +43,7 @@ export default async function EditCmsPagePage({
                 action={updateAction}
                 formId={`cms-page-${id}-edit-form`}
                 autosaveAction={autosaveAction}
+                deleteAction={deleteAction}
                 breadcrumbs={
                     <Breadcrumbs
                         items={[

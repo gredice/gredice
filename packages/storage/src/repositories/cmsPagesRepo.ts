@@ -755,11 +755,25 @@ export async function softDeleteCmsPage(id: number, actor?: CmsActor) {
     if (!existing) {
         throw new Error(`CMS page with id ${id} not found.`);
     }
+    if (existing.state === 'published') {
+        throw new Error('CMS page must be unpublished before deletion.');
+    }
 
-    await storage()
+    const [deleted] = await storage()
         .update(cmsPages)
         .set({ isDeleted: true })
-        .where(eq(cmsPages.id, id));
+        .where(
+            and(
+                eq(cmsPages.id, id),
+                eq(cmsPages.isDeleted, false),
+                ne(cmsPages.state, 'published'),
+            ),
+        )
+        .returning({ id: cmsPages.id });
+    if (!deleted) {
+        throw new Error('CMS page must be unpublished before deletion.');
+    }
+
     await storage()
         .insert(cmsPageRevisions)
         .values({

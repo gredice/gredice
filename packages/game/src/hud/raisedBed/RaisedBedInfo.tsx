@@ -68,12 +68,7 @@ export function RaisedBedInfo({
 
     return (
         <Stack spacing={4} className="min-w-0 max-w-full">
-            <Row
-                spacing={3}
-                alignItems="start"
-                justifyContent="space-between"
-                className="min-w-0 max-w-full"
-            >
+            <div className="grid min-w-0 max-w-full grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
                 <Row spacing={4} className="min-w-0 flex-1 items-start">
                     <BlockImage
                         blockName="Raised_Bed"
@@ -105,7 +100,7 @@ export function RaisedBedInfo({
                 >
                     <MoreHorizontal className="size-4" />
                 </Button>
-            </Row>
+            </div>
             <Tabs
                 value={activeTab}
                 onValueChange={(value: string) =>
