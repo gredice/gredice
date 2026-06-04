@@ -286,6 +286,28 @@ async function createPlantRelationshipTestData() {
     };
 }
 
+async function captureBustCacheKeys(run: () => Promise<void>) {
+    const originalDebug = console.debug;
+    const cacheKeys: string[] = [];
+    console.debug = (...args: unknown[]) => {
+        const [message] = args;
+        if (typeof message === 'string') {
+            const match = message.match(/^Bust cache for key: (.+)$/);
+            if (match?.[1]) {
+                cacheKeys.push(match[1]);
+            }
+        }
+    };
+
+    try {
+        await run();
+    } finally {
+        console.debug = originalDebug;
+    }
+
+    return cacheKeys;
+}
+
 async function createPlantHealthTestData() {
     await upsertEntityType({ name: 'plant', label: 'Plant' });
     await upsertEntityType({ name: 'operation', label: 'Operation' });
@@ -618,6 +640,47 @@ test('plant relationships filter self links, duplicates, missing, draft, and del
     assert.deepEqual(
         tomato?.relationships?.companions?.map((plant) => plant.id),
         [basilId],
+    );
+});
+
+test('plant relationship mutations bust inherited plant sort relationships cache', async () => {
+    createTestDb();
+    const { companionDefinitionId, createPlant } =
+        await createPlantRelationshipTestData();
+    const suffix = randomUUID();
+    const tomatoId = await createPlant(`Tomato cache ${suffix}`);
+    const basilId = await createPlant(`Basil cache ${suffix}`);
+
+    const createdCacheKeys = await captureBustCacheKeys(async () => {
+        await upsertAttributeValue({
+            attributeDefinitionId: companionDefinitionId,
+            entityTypeName: 'plant',
+            entityId: tomatoId,
+            value: String(basilId),
+        });
+    });
+
+    assert.ok(
+        createdCacheKeys.includes(
+            'entities:formatted:plantSort:state:published:locale:default:v1',
+        ),
+    );
+
+    const tomato = await getEntityRaw(tomatoId);
+    const companionAttribute = tomato?.attributes.find(
+        (attribute) =>
+            attribute.attributeDefinitionId === companionDefinitionId,
+    );
+    assert.ok(companionAttribute);
+
+    const deletedCacheKeys = await captureBustCacheKeys(async () => {
+        await deleteAttributeValue(companionAttribute.id);
+    });
+
+    assert.ok(
+        deletedCacheKeys.includes(
+            'entities:formatted:plantSort:state:published:locale:default:v1',
+        ),
     );
 });
 

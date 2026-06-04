@@ -13,7 +13,10 @@ import {
     plantHealthAffectedPlantsAttributeName,
     plantHealthRelationshipCategory,
 } from '../helpers/plantHealth';
-import { plantRelationshipTargetIdForAttributeValue } from '../helpers/plantRelationships';
+import {
+    isPlantRelationshipAttributeDefinition,
+    plantRelationshipTargetIdForAttributeValue,
+} from '../helpers/plantRelationships';
 import {
     attributeDefinitions,
     attributeValues,
@@ -302,6 +305,9 @@ export async function upsertAttributeValue(
     ) {
         sideEffects.entityTypeNames.add('plant');
     }
+    if (definition && isPlantRelationshipAttributeDefinition(definition)) {
+        sideEffects.entityTypeNames.add('plantSort');
+    }
     if (!options?.sideEffects) {
         await flushAttributeValueMutationSideEffects(sideEffects);
     }
@@ -379,6 +385,9 @@ export async function deleteAttributeValue(
         isPlantHealthIssueEntityTypeName(definition.entityTypeName)
     ) {
         sideEffects.entityTypeNames.add('plant');
+    }
+    if (definition && isPlantRelationshipAttributeDefinition(definition)) {
+        sideEffects.entityTypeNames.add('plantSort');
     }
     if (!options?.sideEffects) {
         await flushAttributeValueMutationSideEffects(sideEffects);
