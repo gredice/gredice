@@ -2,11 +2,14 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
+    accountUsers,
     approveCommunityEditRequest,
     CommunityEditRequestError,
+    createAccount,
     createAttributeDefinition,
     createCommunityEditRequest,
     createEntity,
+    getAccountAchievements,
     getCommunityEditableFieldsForEntity,
     getCommunityEditRequest,
     getEntityRaw,
@@ -332,6 +335,76 @@ test('community edit approval applies through attribute mutations and revisions'
                 revision.nextValue === 'Odobreni opis.',
         ),
     );
+});
+
+test('accepted community edit requests count toward content editing achievements', async () => {
+    const data = await fixture();
+    const suffix = randomUUID();
+    const submitterId = `community-achievement-submit-${suffix}`;
+    await storage()
+        .insert(users)
+        .values({
+            id: submitterId,
+            userName: `community-achievement-${suffix}`,
+            displayName: 'Community Achievement Submitter',
+            role: 'user',
+        });
+    const accountId = await createAccount();
+    await storage().insert(accountUsers).values({
+        accountId,
+        userId: submitterId,
+    });
+
+    const plantId = await createPublishedPlant();
+    const [descriptionField] = (
+        await getCommunityEditableFieldsForEntity({
+            entityTypeName: 'plant',
+            entityId: plantId,
+            sectionKey: 'overview',
+        })
+    ).filter((field) => field.fieldKey === 'plant.description');
+    assert.ok(descriptionField);
+
+    const request = await createCommunityEditRequest({
+        entityTypeName: 'plant',
+        entityId: plantId,
+        publicPath: '/biljke/test',
+        sectionKey: 'overview',
+        submitter: {
+            id: submitterId,
+            name: 'Community Achievement Submitter',
+        },
+        changes: [
+            {
+                fieldKey: 'plant.description',
+                baseValueHash: descriptionField.baseValueHash,
+                proposedValue: 'Opis koji donosi postignuće.',
+            },
+        ],
+    });
+
+    const beforeApproval = await getAccountAchievements(accountId);
+    assert.equal(
+        beforeApproval.some(
+            (achievement) => achievement.achievementKey === 'community_edit_1',
+        ),
+        false,
+    );
+
+    const applied = await approveCommunityEditRequest({
+        id: request.id,
+        reviewer: { id: data.reviewerId, name: 'Community Reviewer' },
+    });
+    assert.equal(applied.status, 'applied');
+
+    const achievements = await getAccountAchievements(accountId);
+    const contentAchievement = achievements.find(
+        (achievement) => achievement.achievementKey === 'community_edit_1',
+    );
+    assert.ok(contentAchievement);
+    assert.equal(contentAchievement.status, 'pending');
+    assert.equal(contentAchievement.progressValue, 1);
+    assert.equal(contentAchievement.threshold, 1);
 });
 
 test('community edit approval rolls back all attribute writes when a later change fails', async () => {
