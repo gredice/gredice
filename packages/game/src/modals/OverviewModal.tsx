@@ -25,7 +25,6 @@ import { ReferralsTab } from './components/ReferralsTab';
 import { SecurityTab } from './components/SecurityTab';
 import { SoundTab } from './components/SoundTab';
 import { SunflowersTab } from './components/SunflowersTab';
-import { WhatsNewTab } from './components/WhatsNewTab';
 
 const navGroups = [
     {
@@ -60,12 +59,6 @@ const navGroups = [
                 icon: '🔔',
                 label: 'Obavijesti',
                 value: 'obavijesti',
-            },
-            {
-                nodeId: 'profile-news',
-                icon: '📰',
-                label: 'Što je novo',
-                value: 'novosti',
             },
             {
                 nodeId: 'profile-referrals',
@@ -156,7 +149,7 @@ export function OverviewModal() {
             open={Boolean(settingsMode)}
             onOpenChange={handleOpenChange}
             className="max-h-[90dvh] overflow-hidden md:min-w-full lg:min-w-[80%] xl:min-w-[60%] md:min-h-[70%] md:max-h-full md:border-tertiary md:border-b-4"
-            title={settingsMode === 'novosti' ? 'Što je novo' : 'Profil'}
+            title="Profil"
         >
             <div className="grid max-h-[calc(90dvh-5rem)] grid-rows-[auto_1fr] gap-4 overflow-y-auto pr-1 md:max-h-none md:gap-0 md:grid-rows-1 md:grid-cols-[minmax(230px,auto)_1fr] md:overflow-hidden md:pr-0">
                 <Stack spacing={4} className="md:border-r md:pl-2">
@@ -213,7 +206,6 @@ export function OverviewModal() {
                         />
                     )}
                     {settingsMode === 'suncokreti' && <SunflowersTab />}
-                    {settingsMode === 'novosti' && <WhatsNewTab />}
                     {settingsMode === 'postignuca' && <AchievementsTab />}
                     {settingsMode === 'korisnici' && <AccountUsersTab />}
                     {settingsMode === 'preporuke' && <ReferralsTab />}

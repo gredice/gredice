@@ -15,9 +15,9 @@ export type UpdateUserVariables = {
     whatsNewPopupDisabled?: boolean;
 };
 
-export function useUpdateUser() {
+export function useUpdateUser({ enabled = true }: { enabled?: boolean } = {}) {
     const queryClient = useQueryClient();
-    const currentUser = useCurrentUser();
+    const currentUser = useCurrentUser(enabled);
     return useMutation({
         mutationFn: async ({
             displayName,
