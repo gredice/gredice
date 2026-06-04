@@ -90,9 +90,14 @@ function requestMatchesSubmitter(
         'submitterName' | 'submitterEmail' | 'submitterUserId'
     >,
     submitter: string,
+    exactSubmitterIds: ReadonlySet<string>,
 ) {
     if (!submitter) {
         return true;
+    }
+
+    if (exactSubmitterIds.has(submitter)) {
+        return request.submitterUserId === submitter;
     }
 
     const query = submitter.toLowerCase();
@@ -158,15 +163,18 @@ export default async function CommunityEditsPage({
     const selectedAge = isAgeOption(rawAge) ? rawAge : 'all';
 
     const allRequests = await listCommunityEditRequests();
+    const submitterFilterOptions = buildSubmitterFilterOptions(allRequests);
+    const exactSubmitterIds = new Set(
+        submitterFilterOptions.map((option) => option.value),
+    );
     const filteredRequests = allRequests.filter(
         (request) =>
             (selectedStatus === 'all' || request.status === selectedStatus) &&
             (selectedEntityType === 'all' ||
                 request.entityTypeName === selectedEntityType) &&
             requestMatchesAge(request, selectedAge) &&
-            requestMatchesSubmitter(request, submitter),
+            requestMatchesSubmitter(request, submitter, exactSubmitterIds),
     );
-    const submitterFilterOptions = buildSubmitterFilterOptions(allRequests);
 
     return (
         <Stack spacing={4}>
