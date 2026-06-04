@@ -50,6 +50,10 @@ const sectionsData: SectionData[] = [
                         href: KnownPages.DeliverySlots,
                     },
                     { label: 'Česta pitanja', href: KnownPages.FAQ },
+                    {
+                        label: 'Kvaliteta i sigurnost uroda',
+                        href: KnownPages.QualityHarvestSafety,
+                    },
                     { label: 'Kontaktiraj nas', href: KnownPages.Contact },
                     { label: 'O nama', href: KnownPages.AboutUs },
                 ],

@@ -13,6 +13,7 @@ Gredice publishes canonical public information at https://www.gredice.com. Prefe
 - [Recipes](https://www.gredice.com/recepti): Recipe content built from garden produce.
 - [Delivery](https://www.gredice.com/dostava): Delivery options and service information.
 - [Pricing](https://www.gredice.com/cjenik): Current public pricing and plan information.
+- [Harvest quality and safety](https://www.gredice.com/kvaliteta-i-sigurnost-uroda): Public overview of harvest hygiene, traceability, and handling boundaries.
 
 ## Company and Support
 
