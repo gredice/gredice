@@ -1,7 +1,7 @@
 'use client';
 
+import { isWinterSeason, useWinterMode } from '@gredice/ui/PublicChrome';
 import { useCurrentUser } from '../hooks/useCurrentUser';
-import { isWinterSeason, useWinterMode } from './providers/WinterModeProvider';
 
 export function WinterModeToggle() {
     const { isWinter, toggle } = useWinterMode();

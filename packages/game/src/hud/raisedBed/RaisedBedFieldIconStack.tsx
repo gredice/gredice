@@ -152,7 +152,7 @@ export function RaisedBedFieldIconStack({ children }: { children: ReactNode }) {
         <fieldset
             ref={stackRef}
             aria-label="Pokazatelji polja"
-            className="group absolute -right-1.5 -top-1.5 z-20 m-0 min-w-0 border-0 p-0"
+            className="group absolute -right-1.5 -top-1.5 z-30 m-0 min-w-0 border-0 p-0"
             data-field-icon-stack
             data-touch-expanded={isTouchExpanded ? 'true' : 'false'}
             onClickCapture={handleClickCapture}

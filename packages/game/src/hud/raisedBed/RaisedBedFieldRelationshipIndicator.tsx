@@ -127,7 +127,7 @@ export function RaisedBedFieldRelationshipIndicator({
             {/* biome-ignore lint/a11y/noSvgWithoutTitle: Decorative connector; the badge carries the accessible label. */}
             <svg
                 aria-hidden
-                className="pointer-events-none absolute -inset-0.5 z-10 overflow-visible"
+                className="pointer-events-none absolute -inset-0.5 z-0 overflow-visible"
                 focusable="false"
                 preserveAspectRatio="none"
                 viewBox="0 0 100 100"
@@ -141,7 +141,7 @@ export function RaisedBedFieldRelationshipIndicator({
                 <div
                     aria-label={title}
                     className={cx(
-                        'pointer-events-none absolute z-20 flex size-6 items-center justify-center rounded-full shadow-md ring-1',
+                        'pointer-events-none absolute z-10 flex size-6 items-center justify-center rounded-full shadow-md ring-1',
                         directionClassNames[indicator.direction],
                         indicator.status === 'companion'
                             ? 'bg-green-500 text-white ring-green-950/20'

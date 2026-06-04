@@ -1,5 +1,3 @@
-import type { Route } from 'next';
-
 export type SearchCategoryValue =
     | 'all'
     | 'plants'
@@ -64,5 +62,5 @@ export function searchPageHref({
     }
 
     const search = params.toString();
-    return (search ? `/pretraga?${search}` : '/pretraga') as Route;
+    return search ? `/pretraga?${search}` : '/pretraga';
 }

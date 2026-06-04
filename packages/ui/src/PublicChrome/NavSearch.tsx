@@ -1,10 +1,5 @@
 'use client';
 
-import { type components, directoriesClient } from '@gredice/client';
-import { IconButton } from '@gredice/ui/IconButton';
-import { Close, LoaderSpinner, Search } from '@gredice/ui/icons';
-import { LoadingIndicator } from '@gredice/ui/LoadingIndicator';
-import { cx } from '@gredice/ui/utils';
 import { usePostHog } from '@posthog/next';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -17,19 +12,37 @@ import {
     useRef,
     useState,
 } from 'react';
-import { DirectorySearchResultVisual } from './search/DirectorySearchResultVisual';
-import { SearchCategoryFilters } from './search/SearchCategoryFilters';
+import { IconButton } from '../IconButton';
+import { Close, LoaderSpinner, Search } from '../icons';
+import { LoadingIndicator } from '../LoadingIndicator';
+import { cx } from '../utils';
+import { DirectorySearchResultVisual } from './DirectorySearchResultVisual';
+import { type PublicChromeLinkMode, publicChromeHref } from './links';
+import { SearchCategoryFilters } from './SearchCategoryFilters';
 import {
     navSearchLimit,
     type SearchCategoryValue,
     searchCategoryParam,
     searchPageHref,
-} from './search/searchCategories';
+} from './searchCategories';
 
-type SearchResult = components['schemas']['directory-search-result'];
+type SearchResult = {
+    entityId: number;
+    entityType: string;
+    category: string;
+    categoryLabel: string;
+    title: string;
+    summary?: string | null;
+    imageUrl?: string | null;
+    imageAlt?: string | null;
+    visualKey?: string | null;
+    href: string;
+};
 
 type NavSearchProps = {
     className?: string;
+    linkMode?: PublicChromeLinkMode;
+    apiBasePath?: string;
 };
 
 function useDebouncedValue(value: string, delayMs: number) {
@@ -51,25 +64,33 @@ function useDebouncedValue(value: string, delayMs: number) {
 async function fetchSearchResults(
     query: string,
     category: SearchCategoryValue,
+    apiBasePath: string,
 ): Promise<SearchResult[]> {
-    const { data, error } = await directoriesClient().GET('/search', {
-        params: {
-            query: {
-                q: query,
-                category: searchCategoryParam(category),
-                limit: navSearchLimit,
-            },
-        },
+    const params = new URLSearchParams({
+        q: query,
+        limit: String(navSearchLimit),
     });
+    const categoryParam = searchCategoryParam(category);
+    if (categoryParam) {
+        params.set('category', categoryParam);
+    }
 
-    if (error) {
+    const response = await fetch(
+        `${apiBasePath}/api/directories/search?${params}`,
+        {
+            credentials: 'same-origin',
+        },
+    );
+
+    if (!response.ok) {
         throw new Error('Search request failed');
     }
 
-    return data?.results ?? [];
+    const body = (await response.json()) as { results?: SearchResult[] };
+    return body.results ?? [];
 }
 
-function localHref(href: string) {
+function localHref(href: string, linkMode: PublicChromeLinkMode) {
     try {
         const baseUrl =
             typeof window === 'undefined'
@@ -81,7 +102,10 @@ function localHref(href: string) {
             parsed.origin === window.location.origin;
 
         if (parsed.hostname === 'www.gredice.com' || isCurrentOrigin) {
-            return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+            return publicChromeHref(
+                `${parsed.pathname}${parsed.search}${parsed.hash}`,
+                linkMode,
+            );
         }
     } catch {
         return href;
@@ -119,7 +143,11 @@ function SearchShortcutHint({ label }: { label: string }) {
     );
 }
 
-export function NavSearch({ className }: NavSearchProps) {
+export function NavSearch({
+    className,
+    linkMode = 'relative',
+    apiBasePath = '/api/gredice',
+}: NavSearchProps) {
     const posthog = usePostHog();
     const [query, setQuery] = useState('');
     const [isOpen, setIsOpen] = useState(false);
@@ -136,7 +164,8 @@ export function NavSearch({ className }: NavSearchProps) {
 
     const searchQuery = useQuery({
         queryKey: ['public-nav-search', debouncedQuery, activeCategory],
-        queryFn: () => fetchSearchResults(debouncedQuery, activeCategory),
+        queryFn: () =>
+            fetchSearchResults(debouncedQuery, activeCategory, apiBasePath),
         enabled: isOpen && debouncedQuery.length >= 2,
         staleTime: 60_000,
     });
@@ -146,10 +175,13 @@ export function NavSearch({ className }: NavSearchProps) {
         trimmedQuery.length >= 2 &&
         (searchQuery.isFetching || trimmedQuery !== debouncedQuery);
     const hasMoreResults = !isSearching && results.length === navSearchLimit;
-    const moreResultsHref = searchPageHref({
-        query: trimmedQuery,
-        category: activeCategory,
-    });
+    const moreResultsHref = publicChromeHref(
+        searchPageHref({
+            query: trimmedQuery,
+            category: activeCategory,
+        }),
+        linkMode,
+    );
 
     useEffect(() => {
         if (!isOpen) {
@@ -246,7 +278,7 @@ export function NavSearch({ className }: NavSearchProps) {
             queryLength: trimmedQuery.length,
             rank: index + 1,
         });
-        navigateTo(localHref(result.href));
+        navigateTo(localHref(result.href, linkMode));
     };
 
     const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -457,7 +489,10 @@ export function NavSearch({ className }: NavSearchProps) {
                         {!isSearching && results.length > 0 ? (
                             <div className="space-y-1">
                                 {results.map((result, index) => {
-                                    const href = localHref(result.href);
+                                    const href = localHref(
+                                        result.href,
+                                        linkMode,
+                                    );
                                     const isActive = index === activeIndex;
 
                                     return (

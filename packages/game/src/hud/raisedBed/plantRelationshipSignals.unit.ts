@@ -10,13 +10,13 @@ import {
 } from './plantRelationshipSignals';
 
 describe('getRaisedBedNeighborPositionIndices', () => {
-    it('finds immediate neighbors inside a two-block raised bed', () => {
+    it('finds immediate edge neighbors inside a two-block raised bed', () => {
         assert.deepEqual(
             getRaisedBedNeighborPositionIndices({
                 blockCount: 2,
                 positionIndex: 4,
             }),
-            [0, 1, 2, 3, 5, 6, 7, 8],
+            [1, 3, 5, 7],
         );
     });
 
@@ -26,7 +26,7 @@ describe('getRaisedBedNeighborPositionIndices', () => {
                 blockCount: 2,
                 positionIndex: 11,
             }),
-            [7, 8, 10, 13, 14],
+            [8, 10, 14],
         );
     });
 });
@@ -257,6 +257,51 @@ describe('getRaisedBedFieldRelationshipIndicators', () => {
                 status: 'companion',
             },
         ]);
+    });
+
+    it('ignores diagonal plant relationships', () => {
+        const indicators = getRaisedBedFieldRelationshipIndicators({
+            blockCount: 2,
+            gardenId: 1,
+            raisedBedId: 2,
+            fields: [
+                {
+                    active: true,
+                    plantSortId: 10,
+                    positionIndex: 4,
+                },
+                {
+                    active: true,
+                    plantSortId: 11,
+                    positionIndex: 8,
+                },
+            ],
+            sorts: [
+                {
+                    id: 10,
+                    relationships: {
+                        companions: [{ id: 101, name: 'Bosiljak' }],
+                    },
+                    information: {
+                        plant: {
+                            id: 100,
+                            information: { name: 'Rajčica' },
+                        },
+                    },
+                },
+                {
+                    id: 11,
+                    information: {
+                        plant: {
+                            id: 101,
+                            information: { name: 'Bosiljak' },
+                        },
+                    },
+                },
+            ],
+        });
+
+        assert.deepEqual(indicators, []);
     });
 });
 

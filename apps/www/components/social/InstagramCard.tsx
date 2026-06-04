@@ -1,8 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
 import { Navigate } from '@gredice/ui/icons';
+import { CompanyInstagram } from '@gredice/ui/PublicChrome';
 import { cx } from '@gredice/ui/utils';
 import Link from 'next/link';
-import { CompanyInstagram } from '../../app/Footer';
 
 export function InstagramCard() {
     return (

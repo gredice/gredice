@@ -6,13 +6,13 @@ import { Button } from '@gredice/ui/Button';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Close, Navigate, SquareArrowRightEnter } from '@gredice/ui/icons';
 import { NavigatingButton } from '@gredice/ui/NavigatingButton';
-import { cx } from '@gredice/ui/utils';
-import type { CSSProperties } from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     isChristmasHolidaySeason,
     useWinterMode,
-} from '../components/providers/WinterModeProvider';
+} from '@gredice/ui/PublicChrome';
+import { cx } from '@gredice/ui/utils';
+import type { CSSProperties } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 
 // Summer weather - warm and sunny

@@ -68,6 +68,11 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
+const scrollablePageNumbers = Array.from(
+    { length: 24 },
+    (_, index) => index + 1,
+);
+
 export const Default: Story = {};
 
 export const ButtonTrigger: Story = {
@@ -93,9 +98,9 @@ export const ScrollableContent: Story = {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-56">
                     <DropdownMenuLabel>Odaberi stranicu</DropdownMenuLabel>
-                    {Array.from({ length: 24 }, (_, index) => (
-                        <DropdownMenuItem key={`page-${index + 1}`}>
-                            Stranica {index + 1}
+                    {scrollablePageNumbers.map((pageNumber) => (
+                        <DropdownMenuItem key={pageNumber}>
+                            Stranica {pageNumber}
                         </DropdownMenuItem>
                     ))}
                 </DropdownMenuContent>

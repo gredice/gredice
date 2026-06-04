@@ -95,7 +95,7 @@ export function RaisedBedFieldHud(_props: {
             style={hudStyles}
         >
             {currentGarden && raisedBed && (
-                <div className="absolute max-w-64 md:max-w-[312px] top-[var(--raised-bed-ui-top)] left-[var(--raised-bed-title-left)]">
+                <div className="absolute z-40 max-w-64 md:max-w-[312px] top-[var(--raised-bed-ui-top)] left-[var(--raised-bed-title-left)]">
                     <Modal
                         open={isInfoOpen}
                         onOpenChange={(open) => {
@@ -137,7 +137,7 @@ export function RaisedBedFieldHud(_props: {
                     </Modal>
                 </div>
             )}
-            <div className="absolute top-[calc(50%-1px)] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[var(--raised-bed-grid-size)] h-[var(--raised-bed-grid-height)]">
+            <div className="absolute z-0 top-[calc(50%-1px)] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[var(--raised-bed-grid-size)] h-[var(--raised-bed-grid-height)]">
                 {view === 'closeup' && currentGarden && raisedBed && (
                     <RaisedBedField
                         gardenId={currentGarden.id}
@@ -146,7 +146,7 @@ export function RaisedBedFieldHud(_props: {
                 )}
             </div>
             <Stack
-                className="absolute md:left-[calc(50%+var(--raised-bed-side-panel-left))] top-[var(--raised-bed-ui-top-mobile)] md:top-[var(--raised-bed-ui-top)] left-[var(--raised-bed-close-button-left)]"
+                className="absolute z-40 md:left-[calc(50%+var(--raised-bed-side-panel-left))] top-[var(--raised-bed-ui-top-mobile)] md:top-[var(--raised-bed-ui-top)] left-[var(--raised-bed-close-button-left)]"
                 spacing={2}
                 alignItems="center"
             >

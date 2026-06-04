@@ -1058,7 +1058,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 // TODO: Move check to delete function (repo)
                 // Check preconditions again
                 const users = await getAccountUsers(accountId);
-                if (!users || users.length !== 1) {
+                if (users?.length !== 1) {
                     return context.json(
                         { error: 'Account must have exactly one user.' },
                         400,

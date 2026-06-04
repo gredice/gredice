@@ -58,7 +58,7 @@ export default async function NewsHomePage({
                 </section>
             ) : (
                 <EmptyNewsState title="Još nema objava">
-                    Blog objave će se prikazati ovdje čim se objave kroz CMS.
+                    Trenutačno nema objavljenih novosti.
                 </EmptyNewsState>
             )}
         </div>

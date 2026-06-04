@@ -18,7 +18,10 @@ export type ColorPaletteProp =
     | 'success'
     | 'neutral';
 
-export type ChipProps = Omit<HTMLAttributes<HTMLElement>, 'color' | 'onClick'> & {
+export type ChipProps = Omit<
+    HTMLAttributes<HTMLElement>,
+    'color' | 'onClick'
+> & {
     disabled?: boolean;
     color?: ColorPaletteProp;
     variant?: 'plain' | 'outlined' | 'soft' | 'solid';

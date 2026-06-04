@@ -1,12 +1,18 @@
 'use client';
 
-import { SquareArrowRightEnter } from '@gredice/ui/icons';
-import { NavigatingButton } from '@gredice/ui/NavigatingButton';
-import { UserAvatar } from '@gredice/ui/UserAvatar';
-import { useCurrentUser } from '../hooks/useCurrentUser';
+import { SquareArrowRightEnter } from '../icons';
+import { NavigatingButton } from '../NavigatingButton';
+import { UserAvatar } from '../UserAvatar';
+import { useCurrentUser } from './currentUser';
 
-export function NavUserButton({ href }: { href: string }) {
-    const { data: user } = useCurrentUser();
+export function NavUserButton({
+    href,
+    apiBasePath,
+}: {
+    href: string;
+    apiBasePath?: string;
+}) {
+    const { data: user } = useCurrentUser(apiBasePath);
 
     return (
         <NavigatingButton

@@ -54,7 +54,6 @@
         "../farm/components/HomeButton.tsx",
         "../garden/components/Logotype.tsx",
         "../www/app/sjetva/SowingCalendarPreview.tsx",
-        "../www/components/Logotype.tsx",
         "../www/components/attributes/DetailCard.tsx",
         "../www/components/shared/ExpandableText.tsx",
         "../www/components/shared/ItemCard.tsx",

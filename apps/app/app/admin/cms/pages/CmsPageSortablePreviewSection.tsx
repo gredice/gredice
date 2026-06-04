@@ -2,7 +2,12 @@
 
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { CSSProperties, KeyboardEvent, ReactNode } from 'react';
+import type {
+    CSSProperties,
+    KeyboardEvent,
+    MouseEvent,
+    ReactNode,
+} from 'react';
 import { SortableDragHandle } from '../../../../components/admin/directories/SortableDragHandle';
 
 type CmsPageSortablePreviewSectionProps = {
@@ -13,6 +18,18 @@ type CmsPageSortablePreviewSectionProps = {
     className?: string;
     onSelect: () => void;
 };
+
+function hasInteractiveTarget(target: EventTarget | null) {
+    if (!(target instanceof Element)) {
+        return false;
+    }
+
+    return Boolean(
+        target.closest(
+            'a, button, input, textarea, select, [contenteditable="true"], [role="textbox"], [data-cms-preview-interactive="true"]',
+        ),
+    );
+}
 
 export function CmsPageSortablePreviewSection({
     id,
@@ -37,12 +54,20 @@ export function CmsPageSortablePreviewSection({
     const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
         if (
             event.defaultPrevented ||
+            hasInteractiveTarget(event.target) ||
             (event.key !== 'Enter' && event.key !== ' ')
         ) {
             return;
         }
 
         event.preventDefault();
+        onSelect();
+    };
+    const handleClick = (event: MouseEvent<HTMLDivElement>) => {
+        if (selected && hasInteractiveTarget(event.target)) {
+            return;
+        }
+
         onSelect();
     };
 
@@ -70,7 +95,7 @@ export function CmsPageSortablePreviewSection({
                 className={`relative min-w-0 flex-1 cursor-pointer overflow-visible rounded-lg outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                     className ?? ''
                 }`}
-                onClick={onSelect}
+                onClick={handleClick}
                 onKeyDown={handleKeyDown}
                 role="button"
                 tabIndex={0}

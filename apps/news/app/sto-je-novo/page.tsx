@@ -94,8 +94,7 @@ export default async function WhatsNewPage({
                 </ol>
             ) : (
                 <EmptyNewsState title="Još nema zapisa">
-                    Changelog zapisi će se prikazati ovdje čim se objave kroz
-                    CMS.
+                    Trenutačno nema objavljenih novosti.
                 </EmptyNewsState>
             )}
         </div>

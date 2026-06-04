@@ -379,8 +379,8 @@ test.describe('public search filters', () => {
             navbar.getByRole('link', { name: 'Gredica', exact: true }),
         ).toHaveAttribute('href', '/podignuta-gredica');
         await expect(
-            navbar.getByRole('link', { name: 'Radnje', exact: true }),
-        ).toHaveAttribute('href', '/radnje');
+            navbar.getByRole('link', { name: 'Novosti', exact: true }),
+        ).toHaveAttribute('href', '/novosti');
     });
 
     test('navbar shows current user avatar image', async ({ page }) => {

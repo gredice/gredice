@@ -216,6 +216,48 @@ test('CMS blog pages require category before publishing', async () => {
     assert.equal(page?.state, 'published');
 });
 
+test('CMS pages support in-review state before publishing', async () => {
+    createTestDb();
+    const content = JSON.stringify([
+        { component: 'MarkdownBlock', markdown: '## Ready for review' },
+    ]);
+
+    await assert.rejects(
+        () =>
+            createCmsPage({
+                slug: `review-not-ready-${randomUUID()}`,
+                title: 'Review without metadata',
+                content,
+                state: 'in-review',
+            }),
+        /Page is not ready for publishing/,
+    );
+
+    const pageId = await createCmsPage({
+        slug: `review-ready-${randomUUID()}`,
+        title: 'Review ready page',
+        content,
+        state: 'in-review',
+        metaTitle: 'Review ready page',
+        metaDescription: 'Ready for publishing, but not published yet.',
+    });
+
+    const reviewPage = await getCmsPage(pageId);
+    assert.equal(reviewPage?.state, 'in-review');
+    assert.equal(reviewPage?.publishedAt, null);
+
+    const reviewPages = await getCmsPages({ state: 'in-review' });
+    assert.equal(
+        reviewPages.some((page) => page.id === pageId),
+        true,
+    );
+
+    await updateCmsPageState(pageId, 'published');
+    const publishedPage = await getCmsPage(pageId);
+    assert.equal(publishedPage?.state, 'published');
+    assert.ok(publishedPage?.publishedAt instanceof Date);
+});
+
 test('CMS page publish readiness uses metadata from the same update', async () => {
     createTestDb();
     const content = JSON.stringify([
@@ -239,6 +281,82 @@ test('CMS page publish readiness uses metadata from the same update', async () =
     assert.equal(page?.metaTitle, 'Publishable meta title');
     assert.equal(page?.metaDescription, 'Publishable meta description');
     assert.ok(page?.publishedAt instanceof Date);
+});
+
+test('CMS pages use requested published dates for publish ordering', async () => {
+    createTestDb();
+    const content = JSON.stringify([
+        { component: 'MarkdownBlock', markdown: '## Changelog' },
+    ]);
+    const olderPublishedAt = new Date('2026-05-03T08:00:00.000Z');
+    const newerPublishedAt = new Date('2026-05-05T08:00:00.000Z');
+    const draftPublishedAt = new Date('2026-05-04T08:00:00.000Z');
+
+    const olderPageId = await createCmsPage({
+        slug: `/novosti/sto-je-novo/older-${randomUUID()}`,
+        title: 'Older changelog',
+        contentKind: 'changelog',
+        content,
+        state: 'published',
+        publishedAt: olderPublishedAt,
+        metaTitle: 'Older changelog',
+        metaDescription: 'Older changelog entry.',
+    });
+    const newerPageId = await createCmsPage({
+        slug: `/novosti/sto-je-novo/newer-${randomUUID()}`,
+        title: 'Newer changelog',
+        contentKind: 'changelog',
+        content,
+        state: 'published',
+        publishedAt: newerPublishedAt.toISOString(),
+        metaTitle: 'Newer changelog',
+        metaDescription: 'Newer changelog entry.',
+    });
+    const draftPageId = await createCmsPage({
+        slug: `/novosti/sto-je-novo/draft-${randomUUID()}`,
+        title: 'Draft changelog',
+        contentKind: 'changelog',
+        content,
+        publishedAt: draftPublishedAt,
+        metaTitle: 'Draft changelog',
+        metaDescription: 'Draft changelog entry.',
+    });
+
+    const draft = await getCmsPage(draftPageId);
+    assert.equal(draft?.state, 'draft');
+    assert.equal(
+        draft?.publishedAt?.toISOString(),
+        draftPublishedAt.toISOString(),
+    );
+
+    await updateCmsPageState(draftPageId, 'published');
+    const publishedDraft = await getCmsPage(draftPageId);
+    assert.equal(
+        publishedDraft?.publishedAt?.toISOString(),
+        draftPublishedAt.toISOString(),
+    );
+
+    const entries = await getPublishedCmsNewsPages({
+        contentKind: 'changelog',
+    });
+    assert.deepEqual(
+        entries.map((page) => page.id),
+        [newerPageId, draftPageId, olderPageId],
+    );
+});
+
+test('CMS pages reject invalid published dates', async () => {
+    createTestDb();
+
+    await assert.rejects(
+        () =>
+            createCmsPage({
+                slug: `invalid-published-date-${randomUUID()}`,
+                title: 'Invalid published date',
+                publishedAt: 'not-a-date',
+            }),
+        /Published date must be a valid date/,
+    );
 });
 
 test('CMS page content stores valid SectionData JSON payload', async () => {
@@ -423,6 +541,7 @@ test('CMS page cache keys include normalized page and list variants', () => {
         'cms:page:slug:vodici/cesta-pitanja:v1',
         'cms:pages:list:all:v1',
         'cms:pages:list:draft:v1',
+        'cms:pages:list:in-review:v1',
         'cms:pages:list:published:v1',
     ]);
 });
@@ -496,6 +615,17 @@ test('published CMS news pages list only published blog and changelog entries', 
         content,
         metaTitle: 'Draft blog',
         metaDescription: 'Draft content must not be listed.',
+    });
+    await createCmsPage({
+        slug: `/novosti/review-${randomUUID()}`,
+        title: 'In-review blog',
+        contentKind: 'blog',
+        category: 'Vrt',
+        tags: ['Vrt', testTag],
+        content,
+        state: 'in-review',
+        metaTitle: 'In-review blog',
+        metaDescription: 'Review content must not be listed.',
     });
     await createCmsPage({
         slug: `generic-${randomUUID()}`,

@@ -16,7 +16,7 @@ import {
 } from '../cache/directoriesCached';
 import { normalizeCmsPageContent as normalizeCmsPageContentPayload } from '../cmsPageContent';
 
-export type CmsPageState = 'draft' | 'published';
+export type CmsPageState = 'draft' | 'in-review' | 'published';
 export const cmsPageContentKinds = ['page', 'blog', 'changelog'] as const;
 export type CmsPageContentKind = (typeof cmsPageContentKinds)[number];
 export type CmsNewsContentKind = Exclude<CmsPageContentKind, 'page'>;
@@ -34,6 +34,7 @@ export type CreateCmsPageInput = {
     metaImageUrl?: string | null;
     canonicalPath?: string | null;
     noIndex?: boolean;
+    publishedAt?: Date | string | null;
 };
 
 export type UpdateCmsPageInput = Partial<CreateCmsPageInput> & {
@@ -55,7 +56,7 @@ export type GetPublishedCmsNewsPagesOptions = {
 };
 
 export function isCmsPageState(value: string): value is CmsPageState {
-    return value === 'draft' || value === 'published';
+    return value === 'draft' || value === 'in-review' || value === 'published';
 }
 
 export function isCmsPageContentKind(
@@ -169,6 +170,32 @@ function requiredText(value: string, fieldLabel: string) {
     return trimmed;
 }
 
+function optionalDate(
+    value: Date | string | null | undefined,
+    fieldLabel: string,
+) {
+    if (value === null || value === undefined) {
+        return null;
+    }
+
+    let date: Date;
+    if (value instanceof Date) {
+        date = value;
+    } else {
+        const normalized = optionalText(value);
+        if (!normalized) {
+            return null;
+        }
+        date = new Date(normalized);
+    }
+
+    if (Number.isNaN(date.getTime())) {
+        throw new Error(`${fieldLabel} must be a valid date.`);
+    }
+
+    return date;
+}
+
 function resolveSlugSegments(value: string) {
     return value
         .trim()
@@ -271,6 +298,7 @@ function pageInsertValues(input: CreateCmsPageInput): InsertCmsPage {
     const state = input.state ?? 'draft';
     const title = requiredText(input.title, 'Page title');
     const contentKind = normalizeCmsPageContentKind(input.contentKind);
+    const publishedAt = optionalDate(input.publishedAt, 'Published date');
 
     const values: InsertCmsPage = {
         slug: normalizeCmsPageSlug(input.slug),
@@ -280,7 +308,8 @@ function pageInsertValues(input: CreateCmsPageInput): InsertCmsPage {
         category: optionalTaxonomyText(input.category),
         tags: normalizeCmsPageTags(input.tags),
         state,
-        publishedAt: state === 'published' ? new Date() : null,
+        publishedAt:
+            state === 'published' ? (publishedAt ?? new Date()) : publishedAt,
         metaTitle: optionalText(input.metaTitle),
         metaDescription: boundedOptionalText(
             input.metaDescription,
@@ -292,7 +321,7 @@ function pageInsertValues(input: CreateCmsPageInput): InsertCmsPage {
         noIndex: input.noIndex ?? false,
     };
 
-    if (state === 'published') {
+    if (state === 'in-review' || state === 'published') {
         assertCmsPagePublishReadiness(values);
     }
 
@@ -459,6 +488,7 @@ export function cmsPageCacheKeysForSlug(slug: string) {
         cacheKeys.cmsPageBySlug(normalizedSlug),
         cacheKeys.cmsPagesList('all'),
         cacheKeys.cmsPagesList('draft'),
+        cacheKeys.cmsPagesList('in-review'),
         cacheKeys.cmsPagesList('published'),
     ];
 }
@@ -589,9 +619,21 @@ export async function updateCmsPage(
         updateData.noIndex = input.noIndex;
     }
 
+    if (input.publishedAt !== undefined) {
+        updateData.publishedAt = optionalDate(
+            input.publishedAt,
+            'Published date',
+        );
+    }
+
     if (input.state !== undefined) {
         updateData.state = input.state;
-        if (input.state === 'published' && existing.state !== 'published') {
+        const isMarkingReadyForReview =
+            input.state === 'in-review' && existing.state !== 'in-review';
+        const isPublishing =
+            input.state === 'published' && existing.state !== 'published';
+
+        if (isMarkingReadyForReview || isPublishing) {
             assertCmsPagePublishReadiness({
                 slug: updateData.slug ?? existing.slug,
                 contentKind: updateData.contentKind ?? existing.contentKind,
@@ -601,8 +643,22 @@ export async function updateCmsPage(
                 metaDescription:
                     updateData.metaDescription ?? existing.metaDescription,
             });
+        }
+
+        if (isPublishing) {
+            updateData.publishedAt =
+                updateData.publishedAt ?? existing.publishedAt ?? new Date();
+        } else if (
+            input.state === 'published' &&
+            updateData.publishedAt === null
+        ) {
             updateData.publishedAt = new Date();
         }
+    } else if (
+        existing.state === 'published' &&
+        updateData.publishedAt === null
+    ) {
+        updateData.publishedAt = new Date();
     }
 
     if (Object.keys(updateData).length === 0) {

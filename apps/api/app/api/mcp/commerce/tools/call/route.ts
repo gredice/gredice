@@ -469,7 +469,7 @@ async function handleGetProduct(
 
     const product = await getEntityFormatted<CommerceEntity>(entityId);
 
-    if (!product || product.entityType?.name !== 'plantSort') {
+    if (product?.entityType?.name !== 'plantSort') {
         return {
             unsupported: true,
             reason:
