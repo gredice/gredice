@@ -25,6 +25,7 @@ import {
     type NotificationsFilter,
     type NotificationsView,
 } from '../../notificationFilters';
+import { WhatsNewNotificationToggle } from './WhatsNewNotificationToggle';
 
 type ApiClient = ReturnType<typeof clientAuthenticated>;
 
@@ -540,6 +541,7 @@ export function NotificationsTab({
                 </TabsContent>
                 <TabsContent value="settings" className="mt-3">
                     <Stack spacing={2}>
+                        <WhatsNewNotificationToggle />
                         <Card className="bg-card p-2">
                             <Stack spacing={2}>
                                 <Typography level="body1" semiBold>

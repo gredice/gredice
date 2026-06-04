@@ -8,7 +8,6 @@ import {
     Comment,
     Configuration,
     ExternalLink,
-    History,
     Inbox,
     LogOut,
     Sprout,
@@ -195,13 +194,6 @@ function ProfileCard() {
             >
                 <Inbox className="size-4" />
                 <span>Obavijesti</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-                className="gap-3"
-                onClick={() => setProfileModalOpen('novosti')}
-            >
-                <History className="size-4" />
-                <span>Što je novo</span>
             </DropdownMenuItem>
             <DropdownMenuItem
                 className="gap-3"

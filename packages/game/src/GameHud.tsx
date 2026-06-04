@@ -20,7 +20,7 @@ import { ShoppingCartHud } from './hud/ShoppingCartHud';
 import { SunflowersHud } from './hud/SunflowersHud';
 import { WeatherHud } from './hud/WeatherHud';
 import { WelcomeMessage } from './hud/WelcomeMessage';
-import { WhatsNewAutoOpen } from './hud/WhatsNewAutoOpen';
+import { WhatsNewWidget } from './hud/WhatsNewWidget';
 import { AdventModal } from './modals/advent/AdventModal';
 import { GiftBoxModal } from './modals/GiftBoxModal';
 import { OverviewModal } from './modals/OverviewModal';
@@ -96,7 +96,7 @@ export function GameHud({
                     <WelcomeMessage
                         onClosed={() => setWelcomeConfirmed(true)}
                     />
-                    <WhatsNewAutoOpen enabled={welcomeConfirmed} />
+                    <WhatsNewWidget enabled={welcomeConfirmed} />
                 </>
             )}
             {!isLocalSandbox && <PaymentSuccessfulMessage />}
