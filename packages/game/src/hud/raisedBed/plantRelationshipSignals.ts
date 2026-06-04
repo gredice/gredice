@@ -74,6 +74,10 @@ type ShoppingCartPlantItemLike = {
 
 type PlantSortLike = {
     id: number;
+    relationships?: {
+        companions?: PlantRelationshipReferenceLike[] | null;
+        antagonists?: PlantRelationshipReferenceLike[] | null;
+    } | null;
     information?: {
         plant?: PlantRelationshipCandidateLike | null;
     } | null;
@@ -112,6 +116,38 @@ function plantSummaryForSort(
     };
 }
 
+function hasRelationshipReferences(
+    relationships:
+        | PlantRelationshipCandidateLike['relationships']
+        | PlantSortLike['relationships']
+        | null
+        | undefined,
+) {
+    return (
+        (relationships?.companions?.length ?? 0) > 0 ||
+        (relationships?.antagonists?.length ?? 0) > 0
+    );
+}
+
+export function getPlantRelationshipCandidateForSort(
+    sort: PlantSortLike,
+): PlantRelationshipCandidateLike | null {
+    const plant = sort.information?.plant;
+    if (!plant) {
+        return null;
+    }
+
+    const relationships = hasRelationshipReferences(sort.relationships)
+        ? sort.relationships
+        : plant.relationships;
+
+    return {
+        id: plant.id,
+        information: plant.information,
+        relationships,
+    };
+}
+
 function positionedPlantSummaryForSort(
     positionIndex: number,
     sortId: number | null,
@@ -121,7 +157,12 @@ function positionedPlantSummaryForSort(
         return null;
     }
 
-    const plant = sortsById.get(sortId)?.information?.plant;
+    const sort = sortsById.get(sortId);
+    if (!sort) {
+        return null;
+    }
+
+    const plant = getPlantRelationshipCandidateForSort(sort);
     if (!plant) {
         return null;
     }

@@ -6,9 +6,16 @@ import { PlantHealthIssueCard } from '../../../components/plant-health/PlantHeal
 import { plantHealthOperationCount } from '../../../components/plant-health/PlantHealthIssueOperations';
 import { plantHealthIssueDetailPath } from '../../../components/plant-health/plantHealthIssueContent';
 
+type PlantHealth = PlantData['health'];
 type PlantHealthIssueSummary = NonNullable<
-    NonNullable<PlantData['health']>['diseases']
+    NonNullable<PlantHealth>['diseases']
 >[number];
+
+export function hasPlantHealth(health: PlantHealth | null | undefined) {
+    return (
+        (health?.diseases?.length ?? 0) > 0 || (health?.pests?.length ?? 0) > 0
+    );
+}
 
 function PlantHealthIssueGroup({
     title,
@@ -56,12 +63,9 @@ function PlantHealthIssueGroup({
 export function PlantHealthSection({
     health,
 }: {
-    health: PlantData['health'] | undefined;
+    health: PlantHealth | null | undefined;
 }) {
-    const hasDiseases = (health?.diseases?.length ?? 0) > 0;
-    const hasPests = (health?.pests?.length ?? 0) > 0;
-
-    if (!hasDiseases && !hasPests) {
+    if (!hasPlantHealth(health)) {
         return null;
     }
 

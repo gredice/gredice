@@ -1,4 +1,5 @@
 import type { PlantData } from '@gredice/client';
+import { slug } from '@gredice/js/slug';
 import { Card } from '@gredice/ui/Card';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Row } from '@gredice/ui/Row';
@@ -9,6 +10,17 @@ import { KnownPages } from '../../../src/KnownPages';
 type PlantRelationship = NonNullable<
     NonNullable<PlantData['relationships']>['companions']
 >[number];
+
+export type PlantRelationships = PlantData['relationships'];
+
+export function hasPlantRelationships(
+    relationships: PlantRelationships | null | undefined,
+) {
+    return (
+        (relationships?.companions?.length ?? 0) > 0 ||
+        (relationships?.antagonists?.length ?? 0) > 0
+    );
+}
 
 function PlantRelationshipCard({
     relationship,
@@ -91,17 +103,21 @@ function PlantRelationshipGroup({
 export function PlantRelationshipsSection({
     relationships,
 }: {
-    relationships: PlantData['relationships'] | undefined;
+    relationships: PlantRelationships | null | undefined;
 }) {
-    const hasCompanions = (relationships?.companions?.length ?? 0) > 0;
-    const hasAntagonists = (relationships?.antagonists?.length ?? 0) > 0;
-
-    if (!hasCompanions && !hasAntagonists) {
+    if (!hasPlantRelationships(relationships)) {
         return null;
     }
 
     return (
         <Stack spacing={4}>
+            <Typography
+                level="h2"
+                className="text-2xl"
+                id={slug('Biljni susjedi')}
+            >
+                Biljni susjedi
+            </Typography>
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <PlantRelationshipGroup
                     title="Dobri susjedi"

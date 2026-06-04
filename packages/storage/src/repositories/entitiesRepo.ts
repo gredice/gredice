@@ -493,6 +493,29 @@ function applyPlantRelationshipReadModel<T>(
     }) as T[];
 }
 
+async function applyEntityRelationshipReadModels<T>(
+    entityTypeName: string,
+    formattedEntities: T[],
+    rawEntities: EntityWithAttributesAndType[],
+) {
+    if (entityTypeName === 'plant') {
+        return applyPlantRelationshipReadModel(formattedEntities, rawEntities);
+    }
+
+    if (entityTypeName !== 'plantSort') {
+        return formattedEntities;
+    }
+
+    const plantEntities = (await getEntitiesRaw(
+        'plant',
+        'published',
+    )) as EntityWithAttributesAndType[];
+    return applyPlantRelationshipReadModel(formattedEntities, [
+        ...rawEntities,
+        ...plantEntities,
+    ]);
+}
+
 function applyPlantHealthReadModel<T>(
     entities: T[],
     rawEntities: EntityWithAttributesAndType[],
@@ -687,6 +710,13 @@ export async function getEntitiesFormatted<T>(entityTypeName: string) {
                     plantHealthReadModel,
                 );
             }
+            if (entityTypeName === 'plantSort') {
+                return await applyEntityRelationshipReadModels(
+                    entityTypeName,
+                    formattedEntities,
+                    entities,
+                );
+            }
             return formattedEntities.map((entity) =>
                 applyPlantHealthIssueFormatting(entityTypeName, entity),
             );
@@ -705,6 +735,16 @@ export async function getEntityFormatted<T>(id: number) {
                 | undefined;
             const formattedEntity = (await expandEntity(entity, cache)) as T;
             if (entity?.entityTypeName !== 'plant') {
+                if (entity?.entityTypeName === 'plantSort') {
+                    const plantEntities = (await getEntitiesRaw(
+                        'plant',
+                        'published',
+                    )) as EntityWithAttributesAndType[];
+                    return applyPlantRelationshipReadModel(
+                        [formattedEntity],
+                        [entity, ...plantEntities],
+                    )[0];
+                }
                 return applyPlantHealthIssueFormatting(
                     entity?.entityTypeName ?? '',
                     formattedEntity,

@@ -449,6 +449,7 @@ export function PlantPicker({
                                 selectedSortId={selectedSortId}
                                 onChange={handleSortSelect}
                                 search={search}
+                                neighborPlants={neighborPlants}
                                 flyToShoppingCart={flyToShoppingCart}
                             />
                             {isSandbox ? (

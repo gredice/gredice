@@ -81,5 +81,3 @@ Operations:
 - Sources: UC IPM Whiteflies Pest Notes
 - Fields/refs changed: 0
 - Existing refs skipped: 8
-
-
