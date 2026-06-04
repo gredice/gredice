@@ -846,7 +846,9 @@ export async function searchDirectoryEntities({
         rowsByEntityId.set(row.entityId, row);
     }
 
-    const rowsWithPublicUrls: DirectoryEntitySearchRow[] = [];
+    const rowsWithPublicUrls: Array<
+        DirectoryEntitySearchRow & { highPriorityBoost: number }
+    > = [];
     for (const row of rowsByEntityId.values()) {
         const entity = await getEntityRaw(row.entityId);
         if (!entity) {
@@ -860,18 +862,26 @@ export async function searchDirectoryEntities({
 
         const image = await entityImageMetadata(entity);
         const visualKey = await entityVisualKey(entity);
+        const highPriorityBoost = highPrioritySearchBoost(
+            entity,
+            normalizedQuery,
+        );
         rowsWithPublicUrls.push({
             ...row,
             publicUrl,
             imageUrl: image?.url ?? null,
             imageAlt: image?.alt ?? null,
             visualKey,
-            score: row.score + highPrioritySearchBoost(entity, normalizedQuery),
+            score: row.score + highPriorityBoost,
+            highPriorityBoost,
         });
     }
 
     return rowsWithPublicUrls
         .toSorted((a, b) => {
+            if (b.highPriorityBoost !== a.highPriorityBoost) {
+                return b.highPriorityBoost - a.highPriorityBoost;
+            }
             if (b.score !== a.score) {
                 return b.score - a.score;
             }
@@ -880,7 +890,8 @@ export async function searchDirectoryEntities({
             }
             return a.entityId - b.entityId;
         })
-        .slice(requestedOffset, requestedOffset + requestedLimit);
+        .slice(requestedOffset, requestedOffset + requestedLimit)
+        .map(({ highPriorityBoost: _highPriorityBoost, ...row }) => row);
 }
 
 export function publicSearchCategoryForEntityType(entityTypeName: string) {

@@ -111,7 +111,7 @@ export function RaisedBedInfo({
                 onValueChange={(value: string) =>
                     setActiveTab(value as RaisedBedTab)
                 }
-                className="flex flex-col"
+                className="flex flex-col pt-2"
             >
                 <div className="flex justify-center">
                     <TabsList className="border w-fit self-center">
