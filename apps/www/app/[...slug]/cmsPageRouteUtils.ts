@@ -17,6 +17,7 @@ export const parseCmsPageRenderMaxWidth = normalizeCmsPageRenderMaxWidth;
 
 const reservedFirstSegments = new Set([
     'biljke',
+    'bolesti',
     'blokovi',
     'cesta-pitanja',
     'checkout',
@@ -33,6 +34,7 @@ const reservedFirstSegments = new Set([
     'racun',
     'radnje',
     'recepti',
+    'stetnici',
     'sjetva',
     'suncokreti',
     'vrtovi',

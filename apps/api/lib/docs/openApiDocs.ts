@@ -3,7 +3,9 @@ import {
     type ExtendedAttributeDefinition,
     getAttributeDefinitions,
     getEntityTypes,
+    isPlantHealthAffectedPlantAttributeDefinition,
     isPlantRelationshipAttributeDefinition,
+    plantHealthOperationIntentForAttributeDefinition,
 } from '@gredice/storage';
 import type { OpenAPIV3_1 } from 'openapi-types';
 
@@ -195,6 +197,26 @@ async function resolvePropertyData(
     attributeDefinition: DirectoryAttributeDefinition,
     loadAttributeDefinitions: AttributeDefinitionLoader = getAttributeDefinitions,
 ) {
+    if (isPlantHealthAffectedPlantAttributeDefinition(attributeDefinition)) {
+        return {
+            type: 'array',
+            items: {
+                $ref: '#/components/schemas/plant-health-affected-plant',
+            },
+            description: attributeDefinition.description || undefined,
+        } satisfies OpenAPIV3_1.SchemaObject;
+    }
+
+    if (plantHealthOperationIntentForAttributeDefinition(attributeDefinition)) {
+        return {
+            type: 'array',
+            items: {
+                $ref: '#/components/schemas/plant-health-operation',
+            },
+            description: attributeDefinition.description || undefined,
+        } satisfies OpenAPIV3_1.SchemaObject;
+    }
+
     if (isPlantRelationshipAttributeDefinition(attributeDefinition)) {
         return {
             type: 'array',
@@ -356,6 +378,15 @@ async function openApiEntitiesDoc(
         ...attributeProperties,
     };
 
+    if (entityType.name === 'plant') {
+        properties = {
+            ...properties,
+            health: {
+                $ref: '#/components/schemas/plant-health',
+            },
+        };
+    }
+
     properties = {
         ...properties,
         createdAt: {
@@ -506,6 +537,126 @@ export async function openApiDocs(
                         },
                     },
                     required: ['id', 'slug', 'name', 'relationship'],
+                },
+                'plant-health-operation': {
+                    type: 'object',
+                    properties: {
+                        id: {
+                            type: 'number',
+                        },
+                        slug: {
+                            type: 'string',
+                        },
+                        name: {
+                            type: 'string',
+                        },
+                        label: {
+                            type: 'string',
+                        },
+                    },
+                    required: ['id', 'slug', 'name'],
+                },
+                'plant-health-affected-plant': {
+                    type: 'object',
+                    properties: {
+                        id: {
+                            type: 'number',
+                        },
+                        slug: {
+                            type: 'string',
+                        },
+                        name: {
+                            type: 'string',
+                        },
+                        latinName: {
+                            type: 'string',
+                        },
+                        image: {
+                            type: 'object',
+                            properties: {
+                                cover: {
+                                    $ref: '#/components/schemas/image',
+                                },
+                            },
+                        },
+                    },
+                    required: ['id', 'slug', 'name'],
+                },
+                'plant-health-issue': {
+                    type: 'object',
+                    properties: {
+                        id: {
+                            type: 'number',
+                        },
+                        slug: {
+                            type: 'string',
+                        },
+                        name: {
+                            type: 'string',
+                        },
+                        kind: {
+                            type: 'string',
+                            enum: ['disease', 'pest'],
+                        },
+                        shortDescription: {
+                            type: 'string',
+                        },
+                        symptoms: {
+                            type: 'string',
+                        },
+                        conditions: {
+                            type: 'string',
+                        },
+                        image: {
+                            type: 'object',
+                            properties: {
+                                cover: {
+                                    $ref: '#/components/schemas/image',
+                                },
+                            },
+                        },
+                        operations: {
+                            type: 'object',
+                            properties: {
+                                prevention: {
+                                    type: 'array',
+                                    items: {
+                                        $ref: '#/components/schemas/plant-health-operation',
+                                    },
+                                },
+                                reduction: {
+                                    type: 'array',
+                                    items: {
+                                        $ref: '#/components/schemas/plant-health-operation',
+                                    },
+                                },
+                                alleviation: {
+                                    type: 'array',
+                                    items: {
+                                        $ref: '#/components/schemas/plant-health-operation',
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    required: ['id', 'slug', 'name', 'kind'],
+                },
+                'plant-health': {
+                    type: 'object',
+                    properties: {
+                        diseases: {
+                            type: 'array',
+                            items: {
+                                $ref: '#/components/schemas/plant-health-issue',
+                            },
+                        },
+                        pests: {
+                            type: 'array',
+                            items: {
+                                $ref: '#/components/schemas/plant-health-issue',
+                            },
+                        },
+                    },
                 },
             },
         },
