@@ -598,7 +598,7 @@ export function getGardenOperationRescheduleTarget(
     operation: GardenOperationHudItem,
     garden: CurrentGardenData | null | undefined,
 ): DiaryRescheduleTarget | null {
-    if (nonEditableStatuses.has(operation.status)) {
+    if (isFinishedOperation(operation)) {
         return null;
     }
 
@@ -635,7 +635,7 @@ export function getGardenOperationCancelTarget(
     operation: GardenOperationHudItem,
     garden: CurrentGardenData | null | undefined,
 ): DiaryRescheduleTarget | null {
-    if (nonEditableStatuses.has(operation.status) || !operation.scheduledDate) {
+    if (isFinishedOperation(operation) || !operation.scheduledDate) {
         return null;
     }
 
@@ -799,7 +799,13 @@ export function GardenOperationCancelAction({
 }
 
 function isFinishedOperation(operation: GardenOperationHudItem) {
-    return nonEditableStatuses.has(operation.status);
+    return Boolean(
+        nonEditableStatuses.has(operation.status) ||
+            terminalFailureStatuses.has(operation.status) ||
+            operation.completedAt ||
+            operation.verifiedAt ||
+            operation.canceledAt,
+    );
 }
 
 function OperationScheduleText({ label }: { label: string }) {
