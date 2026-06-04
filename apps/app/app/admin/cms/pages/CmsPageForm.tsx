@@ -144,6 +144,7 @@ export type CmsPageFormTemplate = {
     metaTitle?: string;
     metaDescription?: string;
     metaImageUrl?: string;
+    seoImageUrl?: string;
     publishedAt?: Date | string | null;
 };
 
@@ -673,6 +674,33 @@ function canonicalPathFromSlug(value: string) {
     return normalized ? `/${normalized}` : '';
 }
 
+function cmsPageOgPreviewUrl({
+    contentKind,
+    imageUrl,
+    tags,
+    title,
+}: {
+    contentKind: CmsPageContentKind;
+    imageUrl: string;
+    tags: string[];
+    title: string;
+}) {
+    const searchParams = new URLSearchParams();
+    searchParams.set('contentKind', contentKind);
+    searchParams.set('title', title.trim() || 'Gredice');
+    if (imageUrl.trim()) {
+        searchParams.set('imageUrl', imageUrl.trim());
+    }
+
+    for (const tag of tags) {
+        if (tag.trim()) {
+            searchParams.append('tag', tag.trim());
+        }
+    }
+
+    return `/admin/cms/pages/og-preview?${searchParams.toString()}`;
+}
+
 function updateSectionData(
     sectionId: string,
     data: CmsPageSectionData,
@@ -774,10 +802,26 @@ export function CmsPageForm({
     const [metaImageUrl, setMetaImageUrl] = useState(
         page?.metaImageUrl ?? template?.metaImageUrl ?? '',
     );
+    const [seoImageUrl, setSeoImageUrl] = useState(
+        page?.seoImageUrl ?? template?.seoImageUrl ?? '',
+    );
     const [category, setCategory] = useState(
         page?.category ?? template?.category ?? '',
     );
     const [tags, setTags] = useState(() => page?.tags ?? template?.tags ?? []);
+    const generatedOgPreviewUrl = useMemo(
+        () =>
+            cmsPageOgPreviewUrl({
+                contentKind,
+                imageUrl: metaImageUrl,
+                tags,
+                title,
+            }),
+        [contentKind, metaImageUrl, tags, title],
+    );
+    const effectiveOgPreviewUrl = seoImageUrl.trim()
+        ? seoImageUrl.trim()
+        : generatedOgPreviewUrl;
     const builderContent = useMemo(
         () => stringifySections(sections, pageRenderMode, pageRenderMaxWidth),
         [pageRenderMaxWidth, pageRenderMode, sections],
@@ -1405,6 +1449,44 @@ export function CmsPageForm({
                     maxLength={160}
                     helperText={`${metaDescription.length}/160 znakova`}
                     onChange={(event) => setMetaDescription(event.target.value)}
+                />
+                <Stack spacing={2}>
+                    <div className="space-y-1">
+                        <Typography level="body3" semiBold>
+                            OG pregled
+                        </Typography>
+                        <Typography
+                            level="body3"
+                            className="text-muted-foreground"
+                        >
+                            {seoImageUrl.trim()
+                                ? 'Koristi se prilagođena SEO slika.'
+                                : 'Koristi se generirana OG slika s naslovom, tagovima, logotipom i naslovnom slikom ako postoji.'}
+                        </Typography>
+                    </div>
+                    <div className="overflow-hidden rounded-md border bg-muted">
+                        {/** biome-ignore lint/performance/noImgElement: Admin preview renders generated and arbitrary SEO image URLs. */}
+                        <img
+                            alt="OG pregled CMS stranice"
+                            className="aspect-[1200/630] w-full object-cover"
+                            src={effectiveOgPreviewUrl}
+                        />
+                    </div>
+                </Stack>
+                <CmsPageCoverImageField
+                    name="seoImageUrl"
+                    pageId={page?.id}
+                    value={seoImageUrl}
+                    label="SEO slika"
+                    modalTitle="SEO slika"
+                    usage="seo"
+                    emptyLabel="Nema prilagođene SEO slike."
+                    uploadEmptyLabel="Odaberite jednu sliku za SEO override."
+                    description="Opcionalno. Ako je postavljena, koristi se umjesto generirane OG slike za društvene mreže."
+                    onChange={(nextSeoImageUrl) => {
+                        setSeoImageUrl(nextSeoImageUrl);
+                        setFormRevision((current) => current + 1);
+                    }}
                 />
                 <Input
                     name="canonicalPath"

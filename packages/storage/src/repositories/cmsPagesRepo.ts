@@ -32,6 +32,7 @@ export type CreateCmsPageInput = {
     metaTitle?: string | null;
     metaDescription?: string | null;
     metaImageUrl?: string | null;
+    seoImageUrl?: string | null;
     canonicalPath?: string | null;
     noIndex?: boolean;
     publishedAt?: Date | string | null;
@@ -317,6 +318,7 @@ function pageInsertValues(input: CreateCmsPageInput): InsertCmsPage {
             160,
         ),
         metaImageUrl: optionalText(input.metaImageUrl),
+        seoImageUrl: optionalText(input.seoImageUrl),
         canonicalPath: optionalText(input.canonicalPath),
         noIndex: input.noIndex ?? false,
     };
@@ -534,6 +536,7 @@ export async function createCmsPage(
         nextMetaTitle: values.metaTitle,
         nextMetaDescription: values.metaDescription,
         nextMetaImageUrl: values.metaImageUrl,
+        nextSeoImageUrl: values.seoImageUrl,
         nextCanonicalPath: values.canonicalPath,
         nextNoIndex: values.noIndex,
         nextPublishedAt: values.publishedAt,
@@ -609,6 +612,10 @@ export async function updateCmsPage(
 
     if (input.metaImageUrl !== undefined) {
         updateData.metaImageUrl = optionalText(input.metaImageUrl);
+    }
+
+    if (input.seoImageUrl !== undefined) {
+        updateData.seoImageUrl = optionalText(input.seoImageUrl);
     }
 
     if (input.canonicalPath !== undefined) {
@@ -724,6 +731,8 @@ function cmsPageRevisionValues(
         nextMetaDescription: next.metaDescription,
         previousMetaImageUrl: previous.metaImageUrl,
         nextMetaImageUrl: next.metaImageUrl,
+        previousSeoImageUrl: previous.seoImageUrl,
+        nextSeoImageUrl: next.seoImageUrl,
         previousCanonicalPath: previous.canonicalPath,
         nextCanonicalPath: next.canonicalPath,
         previousNoIndex: previous.noIndex,
@@ -821,6 +830,9 @@ export async function restoreCmsPageRevision(
             metaImageUrl: restoreNextSnapshot
                 ? revision.nextMetaImageUrl
                 : revision.previousMetaImageUrl,
+            seoImageUrl: restoreNextSnapshot
+                ? revision.nextSeoImageUrl
+                : revision.previousSeoImageUrl,
             canonicalPath: restoreNextSnapshot
                 ? revision.nextCanonicalPath
                 : revision.previousCanonicalPath,

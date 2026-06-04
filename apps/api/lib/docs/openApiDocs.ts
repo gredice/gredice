@@ -885,11 +885,21 @@ export async function openApiDocs(
             properties: {
                 slug: { type: 'string' },
                 title: { type: 'string' },
+                contentKind: {
+                    type: 'string',
+                    enum: ['page', 'blog', 'changelog'],
+                },
+                category: { type: ['string', 'null'] },
+                tags: {
+                    type: 'array',
+                    items: { type: 'string' },
+                },
                 state: { type: 'string', enum: ['published'] },
                 publishedAt: { type: ['string', 'null'], format: 'date-time' },
                 metaTitle: { type: ['string', 'null'] },
                 metaDescription: { type: ['string', 'null'] },
                 metaImageUrl: { type: ['string', 'null'] },
+                seoImageUrl: { type: ['string', 'null'] },
                 updatedAt: { type: 'string', format: 'date-time' },
             },
         };

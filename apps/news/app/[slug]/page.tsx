@@ -29,6 +29,7 @@ export async function generateMetadata({
     if (!entry) {
         return {};
     }
+    const openGraphImage = entry.seoImageUrl || `${entry.path}/opengraph-image`;
 
     return {
         title: entry.metaTitle || entry.title,
@@ -42,7 +43,7 @@ export async function generateMetadata({
         openGraph: {
             title: entry.metaTitle || entry.title,
             description: entry.metaDescription || entry.excerpt || undefined,
-            images: entry.metaImageUrl ? [entry.metaImageUrl] : undefined,
+            images: [openGraphImage],
             url: entry.canonicalPath || entry.path,
         },
     };

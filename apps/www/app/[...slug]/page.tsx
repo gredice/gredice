@@ -1,9 +1,13 @@
-import { clientPublic } from '@gredice/client';
 import { SectionsView } from '@gredice/ui/cms';
 import type { Metadata } from 'next';
-import { draftMode, headers } from 'next/headers';
+import { draftMode } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { sectionsComponentRegistry } from '../../components/shared/sectionsComponentRegistry';
+import {
+    type CmsRoutePage,
+    cmsPagePreviewSecret,
+    fetchCmsDirectoryPage,
+} from './cmsPageData';
 import {
     hasReservedFirstSegment,
     normalizeCmsRouteSlug,
@@ -12,74 +16,6 @@ import {
     parseCmsSectionData,
 } from './cmsPageRouteUtils';
 import { getSourceCmsPageBySlug } from './sourceCmsPages';
-
-const localCmsPagePreviewSecret = 'local-preview-secret';
-
-type CmsRoutePage = {
-    slug: string;
-    title: string;
-    content: unknown;
-    renderMode?: unknown;
-    renderMaxWidth?: unknown;
-    metaTitle?: string | null;
-    metaDescription?: string | null;
-    metaImageUrl?: string | null;
-    canonicalPath?: string | null;
-    noIndex?: boolean;
-};
-
-function isLocalPreviewHost(hostname: string) {
-    return (
-        hostname === 'localhost' ||
-        hostname === '127.0.0.1' ||
-        hostname.endsWith('.gredice.test')
-    );
-}
-
-async function cmsPagePreviewSecret() {
-    const configuredSecret = process.env.CMS_PAGES_PREVIEW_SECRET?.trim();
-    if (configuredSecret) {
-        return configuredSecret;
-    }
-
-    const requestHost = (await headers()).get('host') ?? '';
-    const hostname = requestHost
-        ? new URL(`http://${requestHost}`).hostname
-        : '';
-    return isLocalPreviewHost(hostname) ? localCmsPagePreviewSecret : null;
-}
-
-async function fetchCmsDirectoryPage({
-    normalizedSlug,
-    previewSecret,
-    suppressFetchError,
-}: {
-    normalizedSlug: string;
-    previewSecret?: string | null;
-    suppressFetchError?: boolean;
-}) {
-    try {
-        return await clientPublic().api.directories.pages[':slug{.+}'].$get({
-            param: { slug: normalizedSlug },
-            query: previewSecret ? { draft: '1' } : {},
-            ...(previewSecret
-                ? {
-                      header: {
-                          'x-preview-secret': previewSecret,
-                      },
-                  }
-                : {}),
-        });
-    } catch (error) {
-        if (!suppressFetchError) {
-            console.error('Failed to fetch CMS page from directories API', {
-                slug: normalizedSlug,
-                error,
-            });
-        }
-        return null;
-    }
-}
 
 export default async function CmsPublishedPageRoute({
     params,
@@ -150,6 +86,7 @@ export async function generateMetadata({
         return {};
     }
     const canonicalPath = page.canonicalPath || `/${page.slug}`;
+    const openGraphImage = page.seoImageUrl || `/${page.slug}/opengraph-image`;
     return {
         title: page.metaTitle || page.title,
         description: page.metaDescription || undefined,
@@ -162,7 +99,7 @@ export async function generateMetadata({
         openGraph: {
             title: page.metaTitle || page.title,
             description: page.metaDescription || undefined,
-            images: page.metaImageUrl ? [page.metaImageUrl] : undefined,
+            images: [openGraphImage],
         },
     };
 }

@@ -6,7 +6,7 @@ const MAX_CMS_IMAGE_SIZE_BYTES = 25 * 1024 * 1024;
 
 type CmsImageUploadPayload = {
     pageId: number | null;
-    usage: 'cover';
+    usage: 'cover' | 'seo';
 };
 
 function getCmsImageUploadPayload(clientPayload: string | null) {
@@ -26,7 +26,7 @@ function getCmsImageUploadPayload(clientPayload: string | null) {
     }
 
     const usage = Reflect.get(parsedPayload, 'usage');
-    if (usage !== 'cover') {
+    if (usage !== 'cover' && usage !== 'seo') {
         throw new Error('Invalid CMS image upload usage');
     }
 
