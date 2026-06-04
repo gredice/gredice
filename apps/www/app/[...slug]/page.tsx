@@ -11,8 +11,22 @@ import {
     parseCmsPageRenderMode,
     parseCmsSectionData,
 } from './cmsPageRouteUtils';
+import { getSourceCmsPageBySlug } from './sourceCmsPages';
 
 const localCmsPagePreviewSecret = 'local-preview-secret';
+
+type CmsRoutePage = {
+    slug: string;
+    title: string;
+    content: unknown;
+    renderMode?: unknown;
+    renderMaxWidth?: unknown;
+    metaTitle?: string | null;
+    metaDescription?: string | null;
+    metaImageUrl?: string | null;
+    canonicalPath?: string | null;
+    noIndex?: boolean;
+};
 
 function isLocalPreviewHost(hostname: string) {
     return (
@@ -35,6 +49,38 @@ async function cmsPagePreviewSecret() {
     return isLocalPreviewHost(hostname) ? localCmsPagePreviewSecret : null;
 }
 
+async function fetchCmsDirectoryPage({
+    normalizedSlug,
+    previewSecret,
+    suppressFetchError,
+}: {
+    normalizedSlug: string;
+    previewSecret?: string | null;
+    suppressFetchError?: boolean;
+}) {
+    try {
+        return await clientPublic().api.directories.pages[':slug{.+}'].$get({
+            param: { slug: normalizedSlug },
+            query: previewSecret ? { draft: '1' } : {},
+            ...(previewSecret
+                ? {
+                      header: {
+                          'x-preview-secret': previewSecret,
+                      },
+                  }
+                : {}),
+        });
+    } catch (error) {
+        if (!suppressFetchError) {
+            console.error('Failed to fetch CMS page from directories API', {
+                slug: normalizedSlug,
+                error,
+            });
+        }
+        return null;
+    }
+}
+
 export default async function CmsPublishedPageRoute({
     params,
 }: {
@@ -49,26 +95,22 @@ export default async function CmsPublishedPageRoute({
 
     const { isEnabled } = await draftMode();
     const previewSecret = isEnabled ? await cmsPagePreviewSecret() : null;
+    const sourcePage = getSourceCmsPageBySlug(normalizedSlug);
 
-    const response = await clientPublic().api.directories.pages[
-        ':slug{.+}'
-    ].$get({
-        param: { slug: normalizedSlug },
-        query: isEnabled ? { draft: '1' } : {},
-        ...(isEnabled && previewSecret
-            ? {
-                  header: {
-                      'x-preview-secret': previewSecret,
-                  },
-              }
-            : {}),
+    const response = await fetchCmsDirectoryPage({
+        normalizedSlug,
+        previewSecret: isEnabled ? previewSecret : null,
+        suppressFetchError: Boolean(sourcePage),
     });
 
-    if (response.status !== 200) {
+    let page: CmsRoutePage;
+    if (response?.status === 200) {
+        page = await response.json();
+    } else if (sourcePage) {
+        page = sourcePage;
+    } else {
         notFound();
     }
-
-    const page = await response.json();
 
     return (
         <main>
@@ -93,18 +135,20 @@ export async function generateMetadata({
         return {};
     }
 
-    const response = await clientPublic().api.directories.pages[
-        ':slug{.+}'
-    ].$get({
-        param: { slug: normalizedSlug },
-        query: {},
+    const sourcePage = getSourceCmsPageBySlug(normalizedSlug);
+    const response = await fetchCmsDirectoryPage({
+        normalizedSlug,
+        suppressFetchError: Boolean(sourcePage),
     });
 
-    if (response.status !== 200) {
+    let page: CmsRoutePage;
+    if (response?.status === 200) {
+        page = await response.json();
+    } else if (sourcePage) {
+        page = sourcePage;
+    } else {
         return {};
     }
-
-    const page = await response.json();
     const canonicalPath = page.canonicalPath || `/${page.slug}`;
     return {
         title: page.metaTitle || page.title,

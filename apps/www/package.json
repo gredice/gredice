@@ -16,6 +16,7 @@
         "test:prepare": "turbo build --filter=www && pnpm run test:prepare:routes",
         "test:prepare:routes": "node --experimental-strip-types ./tests/populate-test-cases.ts",
         "test:run": "playwright test --project=chromium",
+        "test:cms-pages": "node --experimental-strip-types --test ./tests/cmsPages.node.spec.ts ./lib/plants/qualityHarvestSafetyFaq.node.spec.ts",
         "test-ui": "pnpm run test:prepare && playwright test --project=chromium --ui",
         "generate-playwright": "node ./generate/populate-test-cases.js && playwright test --config playwright-generate.config.ts",
         "generate-playwright:blocks": "node ./generate/populate-test-cases.js && playwright test --config playwright-generate.config.ts generate/blocks-snapshots.specgen.tsx",
