@@ -388,7 +388,7 @@ function RaisedBedFieldTile({
                 plantSort={sort}
                 alt={plantLabel}
                 fill
-                className="object-cover"
+                className="object-contain"
                 sizes="(min-width: 1536px) 14rem, (min-width: 1280px) 16rem, (min-width: 768px) 18rem, 50vw"
             />
         ) : undefined;
@@ -448,6 +448,7 @@ function RaisedBedFieldTile({
                 positionIndex={positionIndex}
                 status={field.plantStatus}
                 date={dateItems.find((item) => item.current)?.value ?? null}
+                dateItems={dateItems}
                 className={raisedBedFieldCardButtonClassName}
             />
         ) : undefined;

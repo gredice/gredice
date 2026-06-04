@@ -6,16 +6,19 @@ import { Calendar } from '@gredice/ui/icons';
 import { Popper } from '@gredice/ui/Popper';
 import { SelectItems } from '@gredice/ui/SelectItems';
 import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { raisedBedFieldUpdatePlant } from '../../app/(actions)/raisedBedFieldsActions';
 import { raisedBedFieldPlantStatusItems } from '../../app/admin/raised-beds/[raisedBedId]/RaisedBedFieldPlantStatusSelector';
+import type { RaisedBedFieldDateItem } from './RaisedBedFieldDatesPopover';
 
 type RaisedBedFieldStatusDateChipProps = {
     raisedBedId: number;
     positionIndex: number;
     status: string;
     date: string | null;
+    dateItems?: RaisedBedFieldDateItem[];
     className?: string;
 };
 
@@ -53,16 +56,19 @@ function formatDateInputValue(date: Date) {
     return `${year}-${month}-${day}`;
 }
 
-function formatShortDate(value: string | null) {
+function formatShortDate(value: string | null, fallback = 'Datum') {
     const date = parseDate(value);
     if (!date) {
-        return 'Datum';
+        return fallback;
     }
 
-    return new Intl.DateTimeFormat('hr-HR', {
-        day: '2-digit',
-        month: '2-digit',
-    }).format(date);
+    const currentYear = new Date().getFullYear();
+    const format: Intl.DateTimeFormatOptions =
+        date.getFullYear() === currentYear
+            ? { day: '2-digit', month: '2-digit' }
+            : { day: '2-digit', month: '2-digit', year: 'numeric' };
+
+    return new Intl.DateTimeFormat('hr-HR', format).format(date);
 }
 
 function dateInputToTimestamp(value: string) {
@@ -81,6 +87,7 @@ export function RaisedBedFieldStatusDateChip({
     positionIndex,
     status,
     date,
+    dateItems = [],
     className,
 }: RaisedBedFieldStatusDateChipProps) {
     const [open, setOpen] = useState(false);
@@ -158,7 +165,7 @@ export function RaisedBedFieldStatusDateChip({
             open={open}
             onOpenChange={handleOpenChange}
             align="start"
-            className="w-72 p-3"
+            className="w-80 max-w-[calc(100vw-2rem)] p-3"
             side="bottom"
             trigger={
                 <Button
@@ -199,6 +206,51 @@ export function RaisedBedFieldStatusDateChip({
                     value={selectedDate}
                     onChange={(event) => setSelectedDate(event.target.value)}
                 />
+                {dateItems.length > 0 && (
+                    <div className="rounded-md border bg-muted/20 p-2">
+                        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1.5">
+                            {dateItems.map((item) => (
+                                <div
+                                    className="contents"
+                                    key={`${item.key}-${item.label}`}
+                                >
+                                    <Typography
+                                        level="body3"
+                                        className={cx(
+                                            'min-w-0 truncate',
+                                            item.current
+                                                ? 'font-medium text-foreground'
+                                                : 'text-muted-foreground',
+                                        )}
+                                    >
+                                        {item.label}
+                                    </Typography>
+                                    <Typography
+                                        level="body3"
+                                        className={cx(
+                                            'text-right tabular-nums',
+                                            item.current
+                                                ? 'font-medium text-foreground'
+                                                : item.value
+                                                  ? 'text-foreground'
+                                                  : 'text-muted-foreground',
+                                        )}
+                                        title={item.value ?? undefined}
+                                    >
+                                        {item.value
+                                            ? mounted
+                                                ? formatShortDate(
+                                                      item.value,
+                                                      '-',
+                                                  )
+                                                : '...'
+                                            : '-'}
+                                    </Typography>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
                 <Button
                     fullWidth
                     size="sm"

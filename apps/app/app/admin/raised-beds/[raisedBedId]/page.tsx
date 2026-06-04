@@ -211,11 +211,11 @@ export default async function RaisedBedPage({
                         </Alert>
                     )}
                     <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
-                        <Card>
+                        <Card className="min-w-0 overflow-hidden">
                             <CardHeader>
                                 <CardTitle>Polja</CardTitle>
                             </CardHeader>
-                            <CardOverflow className="mt-0">
+                            <CardOverflow className="mt-0 min-w-0 overflow-hidden">
                                 <Suspense>
                                     <RaisedBedFieldsTable
                                         raisedBedId={raisedBed.id}
