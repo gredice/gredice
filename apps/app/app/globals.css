@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "../../../packages/ui/src/MarkdownEditor/MarkdownEditor.css";
 @config "../tailwind.config.ts";
 @source "../../../packages/ui/src";
 
