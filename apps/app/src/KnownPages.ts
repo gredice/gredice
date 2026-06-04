@@ -12,6 +12,8 @@ export const KnownPages = {
         `/admin/community-edits/${requestId}` as Route,
     CmsPages: '/admin/cms/pages',
     CmsPageCreate: '/admin/cms/pages/create',
+    CmsPageCreateTemplate: (template: 'blog' | 'changelog') =>
+        `/admin/cms/pages/create?template=${template}` as Route,
     CmsPageEdit: (pageId: number) => `/admin/cms/pages/${pageId}/edit` as Route,
     CmsPagePreview: (pageId: number) =>
         `/admin/cms/pages/${pageId}/preview` as Route,

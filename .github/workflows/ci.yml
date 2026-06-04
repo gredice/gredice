@@ -47,6 +47,16 @@ jobs:
               - pnpm-lock.yaml
               - pnpm-workspace.yaml
               - turbo.json
+            app_news:
+              - apps/news/**
+              - packages/client/**
+              - packages/storage/**
+              - packages/ui/**
+              - .github/workflows/**
+              - package.json
+              - pnpm-lock.yaml
+              - pnpm-workspace.yaml
+              - turbo.json
             app_garden:
               - apps/garden/**
               - packages/client/**
@@ -153,6 +163,7 @@ jobs:
               - turbo.json
     outputs:
       app_www: ${{ steps.filter.outputs.app_www }}
+      app_news: ${{ steps.filter.outputs.app_news }}
       app_garden: ${{ steps.filter.outputs.app_garden }}
       app_farm: ${{ steps.filter.outputs.app_farm }}
       app_app: ${{ steps.filter.outputs.app_app }}

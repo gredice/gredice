@@ -4,6 +4,7 @@ import {
     type CreateCmsPageInput,
     createCmsPage,
     getCmsPage,
+    isCmsPageContentKind,
     isCmsPageState,
     restoreCmsPageRevision,
     softDeleteCmsPage,
@@ -42,6 +43,19 @@ function formCmsPageState(formData: FormData) {
     return isCmsPageState(value) ? value : 'draft';
 }
 
+function formCmsPageContentKind(formData: FormData) {
+    const value = formText(formData, 'contentKind');
+    return isCmsPageContentKind(value) ? value : 'page';
+}
+
+function formTags(formData: FormData) {
+    return formData
+        .getAll('tags')
+        .flatMap((value) => (typeof value === 'string' ? value.split(',') : []))
+        .map((value) => value.trim())
+        .filter((value) => value.length > 0);
+}
+
 function cmsPageInputFromForm(formData: FormData): CreateCmsPageInput {
     const title = formText(formData, 'title');
     const slug = formText(formData, 'slug') || title;
@@ -50,6 +64,9 @@ function cmsPageInputFromForm(formData: FormData): CreateCmsPageInput {
         title,
         slug,
         state: formCmsPageState(formData),
+        contentKind: formCmsPageContentKind(formData),
+        category: formOptionalText(formData, 'category'),
+        tags: formTags(formData),
         content: formOptionalText(formData, 'content'),
         metaTitle: formOptionalText(formData, 'metaTitle'),
         metaDescription: formOptionalText(formData, 'metaDescription'),
@@ -76,6 +93,10 @@ function revalidatePublicCmsPagePaths(slug: string) {
     revalidatePath(`/${slug}`);
     revalidatePath('/api/directories/pages');
     revalidatePath(`/api/directories/pages/${slug}`);
+    revalidatePath('/api/news/blog');
+    revalidatePath('/api/news/changelog');
+    revalidatePath('/novosti');
+    revalidatePath('/novosti/sto-je-novo');
 }
 
 export async function createCmsPageAction(

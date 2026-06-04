@@ -36,6 +36,7 @@ test('CMS page render layout parsers normalize invalid API values', () => {
 
 test('hasReservedFirstSegment flags static route conflicts', () => {
     assert.equal(hasReservedFirstSegment('legalno/politika-privatnosti'), true);
+    assert.equal(hasReservedFirstSegment('novosti/sto-je-novo'), true);
     assert.equal(hasReservedFirstSegment('bolesti/pepelnica'), true);
     assert.equal(hasReservedFirstSegment('stetnici/lisna-us'), true);
     assert.equal(hasReservedFirstSegment('cms/about-us'), false);

@@ -65,6 +65,7 @@ jobs:
           VERCEL_SCOPE: gredice
           GREDICE_PREVIEW_DOMAIN: preview.gredice.com
           VERCEL_PROJECT_ID_WWW: ${{ secrets.VERCEL_PROJECT_ID_WWW }}
+          VERCEL_PROJECT_ID_NEWS: ${{ secrets.VERCEL_PROJECT_ID_NEWS }}
           VERCEL_PROJECT_ID_GARDEN: ${{ secrets.VERCEL_PROJECT_ID_GARDEN }}
           VERCEL_PROJECT_ID_FARM: ${{ secrets.VERCEL_PROJECT_ID_FARM }}
           VERCEL_PROJECT_ID_APP: ${{ secrets.VERCEL_PROJECT_ID_APP }}
@@ -83,10 +84,11 @@ jobs:
           aliases_table="| App | Preview |"
           aliases_table+=$'\n| --- | --- |'
           alias_count=0
-          apps=(www garden farm app storybook api status)
+          apps=(www news garden farm app storybook api status)
           declare -A pending_project_ids
           declare -A vercel_project_names=(
             [www]=www
+            [news]=news
             [garden]=garden
             [farm]=farm
             [app]=app

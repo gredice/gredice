@@ -14,7 +14,7 @@ import {
     verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { slugify } from '@gredice/js/slug';
-import type { SelectCmsPage } from '@gredice/storage';
+import type { CmsPageContentKind, SelectCmsPage } from '@gredice/storage';
 import {
     type CmsPageSectionComponent,
     type CmsPageSectionPreset,
@@ -64,6 +64,7 @@ import {
 } from '@gredice/ui/Menu';
 import { PanelSection } from '@gredice/ui/PanelSection';
 import { Row } from '@gredice/ui/Row';
+import { SelectItems } from '@gredice/ui/SelectItems';
 import {
     SidePanelLayout,
     SidePanelToggleButton,
@@ -106,6 +107,7 @@ import {
 
 type CmsPageFormProps = {
     page?: SelectCmsPage;
+    template?: CmsPageFormTemplate;
     formId?: string;
     breadcrumbs?: ReactNode;
     heading?: ReactNode;
@@ -114,6 +116,18 @@ type CmsPageFormProps = {
         formData: FormData,
     ) => Promise<CmsPageFormState>;
     autosaveAction?: (formData: FormData) => Promise<CmsPageAutosaveState>;
+};
+
+export type CmsPageFormTemplate = {
+    contentKind: CmsPageContentKind;
+    title?: string;
+    slug?: string;
+    content?: string;
+    category?: string;
+    tags?: string[];
+    metaTitle?: string;
+    metaDescription?: string;
+    metaImageUrl?: string;
 };
 
 const cmsPageSectionComponentsByName = new Map<string, CmsPageSectionComponent>(
@@ -571,6 +585,23 @@ function normalizeCmsPageSlugInput(value: string) {
         .join('/');
 }
 
+function automaticSlugForTitle(title: string, contentKind: CmsPageContentKind) {
+    const normalizedTitle = normalizeCmsPageSlugInput(title);
+    if (!normalizedTitle) {
+        return '';
+    }
+
+    if (contentKind === 'blog') {
+        return `novosti/${normalizedTitle}`;
+    }
+
+    if (contentKind === 'changelog') {
+        return `novosti/sto-je-novo/${normalizedTitle}`;
+    }
+
+    return normalizedTitle;
+}
+
 function canonicalPathFromSlug(value: string) {
     const normalized = normalizeCmsPageSlugInput(value);
     return normalized ? `/${normalized}` : '';
@@ -595,6 +626,7 @@ function updateSectionData(
 
 export function CmsPageForm({
     page,
+    template,
     formId,
     breadcrumbs,
     heading,
@@ -604,8 +636,11 @@ export function CmsPageForm({
     const [state, formAction, pending] = useActionState(action, null);
     const reactId = useId();
     const resolvedFormId = formId ?? reactId;
-    const initialTitle = page?.title ?? '';
-    const initialSlug = page?.slug ?? '';
+    const [contentKind, setContentKind] = useState<CmsPageContentKind>(
+        page?.contentKind ?? template?.contentKind ?? 'page',
+    );
+    const initialTitle = page?.title ?? template?.title ?? '';
+    const initialSlug = page?.slug ?? template?.slug ?? '';
     const storedCanonicalPath = page?.canonicalPath ?? '';
     const initialCanonicalPath =
         storedCanonicalPath.trim().length > 0
@@ -616,7 +651,7 @@ export function CmsPageForm({
     const [isCustomSlug, setIsCustomSlug] = useState(
         () =>
             initialSlug.length > 0 &&
-            initialSlug !== normalizeCmsPageSlugInput(initialTitle),
+            initialSlug !== automaticSlugForTitle(initialTitle, contentKind),
     );
     const [canonicalPath, setCanonicalPath] = useState(initialCanonicalPath);
     const [isCustomCanonicalPath, setIsCustomCanonicalPath] = useState(
@@ -637,8 +672,8 @@ export function CmsPageForm({
         [page?.id, reactId],
     );
     const parsedSections = useMemo(
-        () => parseSections(page?.content),
-        [page?.content],
+        () => parseSections(page?.content ?? template?.content),
+        [page?.content, template?.content],
     );
     const [pageRenderMode, setPageRenderMode] = useState<CmsPageRenderMode>(
         parsedSections.renderMode,
@@ -652,9 +687,11 @@ export function CmsPageForm({
     const preserveFallbackContent =
         !parsedSections.isStructured && Boolean(page?.content);
     const [rawMode, setRawMode] = useState(preserveFallbackContent);
-    const [rawContent, setRawContent] = useState(page?.content ?? '');
+    const [rawContent, setRawContent] = useState(
+        page?.content ?? template?.content ?? '',
+    );
     const [rawError, setRawError] = useState<string | null>(null);
-    const storedMetaTitle = page?.metaTitle ?? '';
+    const storedMetaTitle = page?.metaTitle ?? template?.metaTitle ?? '';
     const initialMetaTitle =
         storedMetaTitle.trim().length > 0 ? storedMetaTitle : initialTitle;
     const [metaTitle, setMetaTitle] = useState(initialMetaTitle);
@@ -664,7 +701,13 @@ export function CmsPageForm({
             storedMetaTitle !== initialTitle,
     );
     const [metaDescription, setMetaDescription] = useState(
-        page?.metaDescription ?? '',
+        page?.metaDescription ?? template?.metaDescription ?? '',
+    );
+    const [category, setCategory] = useState(
+        page?.category ?? template?.category ?? '',
+    );
+    const [tagsInput, setTagsInput] = useState(
+        (page?.tags ?? template?.tags ?? []).join(', '),
     );
     const builderContent = useMemo(
         () => stringifySections(sections, pageRenderMode, pageRenderMaxWidth),
@@ -914,6 +957,20 @@ export function CmsPageForm({
             label: 'Slug stranice je upisan.',
         },
         {
+            id: 'content-kind',
+            checked: Boolean(contentKind),
+            label: 'Vrsta sadržaja je odabrana.',
+        },
+        ...(contentKind === 'blog'
+            ? [
+                  {
+                      id: 'category',
+                      checked: category.trim().length > 0,
+                      label: 'Kategorija blog objave je upisana.',
+                  },
+              ]
+            : []),
+        {
             id: 'content-structure',
             checked: contentStructured,
             label: 'Sadržaj je ispravno strukturiran.',
@@ -1008,6 +1065,40 @@ export function CmsPageForm({
                     value={currentPageState}
                     readOnly
                 />
+                <SelectItems<CmsPageContentKind>
+                    name="contentKind"
+                    label="Vrsta sadržaja"
+                    value={contentKind}
+                    items={[
+                        {
+                            value: 'page',
+                            label: 'Stranica',
+                        },
+                        {
+                            value: 'blog',
+                            label: 'Blog objava',
+                        },
+                        {
+                            value: 'changelog',
+                            label: 'Changelog zapis',
+                        },
+                    ]}
+                    onValueChange={(nextContentKind) => {
+                        setContentKind(nextContentKind);
+                        if (!isCustomSlug) {
+                            const nextSlug = automaticSlugForTitle(
+                                title,
+                                nextContentKind,
+                            );
+                            setSlug(nextSlug);
+                            if (!isCustomCanonicalPath) {
+                                setCanonicalPath(
+                                    canonicalPathFromSlug(nextSlug),
+                                );
+                            }
+                        }
+                    }}
+                />
                 <Input
                     name="title"
                     label="Naslov"
@@ -1017,8 +1108,10 @@ export function CmsPageForm({
                         const nextTitle = event.target.value;
                         setTitle(nextTitle);
                         if (!isCustomSlug) {
-                            const nextSlug =
-                                normalizeCmsPageSlugInput(nextTitle);
+                            const nextSlug = automaticSlugForTitle(
+                                nextTitle,
+                                contentKind,
+                            );
                             setSlug(nextSlug);
                             if (!isCustomCanonicalPath) {
                                 setCanonicalPath(
@@ -1053,8 +1146,10 @@ export function CmsPageForm({
                                     type="button"
                                     variant="plain"
                                     onClick={() => {
-                                        const nextSlug =
-                                            normalizeCmsPageSlugInput(title);
+                                        const nextSlug = automaticSlugForTitle(
+                                            title,
+                                            contentKind,
+                                        );
                                         setIsCustomSlug(false);
                                         setSlug(nextSlug);
                                         if (!isCustomCanonicalPath) {
@@ -1097,6 +1192,27 @@ export function CmsPageForm({
                         )}
                     </Row>
                 </Stack>
+                <Input
+                    name="category"
+                    label="Kategorija"
+                    value={category}
+                    fullWidth
+                    helperText={
+                        contentKind === 'blog'
+                            ? 'Obavezno za Blog objave. Koristi se za filtriranje.'
+                            : 'Opcionalno. Najčešće se koristi za Blog objave.'
+                    }
+                    onChange={(event) => setCategory(event.target.value)}
+                    required={contentKind === 'blog'}
+                />
+                <Input
+                    name="tags"
+                    label="Tagovi"
+                    value={tagsInput}
+                    fullWidth
+                    helperText="Odvoji tagove zarezom, npr. Vrt, Biljke."
+                    onChange={(event) => setTagsInput(event.target.value)}
+                />
                 {autosaveAction && (
                     <div className="space-y-1">
                         <div className="flex items-center justify-between gap-3">
@@ -1204,7 +1320,9 @@ export function CmsPageForm({
                     name="metaImageUrl"
                     label="Meta slika URL"
                     type="url"
-                    defaultValue={page?.metaImageUrl ?? ''}
+                    defaultValue={
+                        page?.metaImageUrl ?? template?.metaImageUrl ?? ''
+                    }
                 />
                 <Input
                     name="canonicalPath"

@@ -56,6 +56,7 @@ const sectionsData: SectionData[] = [
                     },
                     { label: 'Kontaktiraj nas', href: KnownPages.Contact },
                     { label: 'O nama', href: KnownPages.AboutUs },
+                    { label: 'Novosti', href: KnownPages.News },
                 ],
             },
             {
@@ -67,6 +68,7 @@ const sectionsData: SectionData[] = [
                     { label: 'Radnje', href: KnownPages.Operations },
                     { label: 'Blokovi', href: KnownPages.Blocks },
                     { label: 'Suncokreti', href: KnownPages.Sunflowers },
+                    { label: 'Što je novo', href: KnownPages.WhatsNew },
                 ],
             },
             {
