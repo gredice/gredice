@@ -46,6 +46,24 @@ test('quality harvest safety source CMS page has real content sections', () => {
         JSON.stringify(qualityHarvestSafetyCmsPage.content),
         /Svježi urod treba oprati i pripremiti prije konzumacije/u,
     );
+    assert.doesNotMatch(
+        JSON.stringify(qualityHarvestSafetyCmsPage.content),
+        /Zadnji pregled/u,
+    );
+});
+
+test('quality harvest safety control items include CMS feature icons', () => {
+    const controlsSection = qualityHarvestSafetyCmsPage.content.find(
+        (section) => section.component === 'Feature1',
+    );
+
+    assert.ok(controlsSection?.features?.length);
+    assert.equal(controlsSection.features.length, 6);
+    assert.ok(
+        controlsSection.features.every(
+            (feature) => typeof feature.iconName === 'string',
+        ),
+    );
 });
 
 test('quality harvest safety source CMS page avoids risky public claim phrases', () => {

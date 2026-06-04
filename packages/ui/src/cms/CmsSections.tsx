@@ -2,6 +2,7 @@ import { slugify } from '@gredice/js/slug';
 import { createElement, type ExoticComponent, type ReactNode } from 'react';
 import { Accordion } from '../Accordion';
 import { Button } from '../Button';
+import { Card } from '../Card';
 import { Container, type ContainerProps } from '../Container';
 import { Divider } from '../Divider';
 import {
@@ -10,8 +11,16 @@ import {
     CompanyGitHub,
     CompanyReddit,
     CompanyX,
+    Droplets,
     Globe,
+    Leaf,
+    Link,
     Mail,
+    MapPin,
+    Security,
+    Sprout,
+    Success,
+    Warning,
 } from '../icons';
 import { Markdown } from '../Markdown';
 import { Stack } from '../Stack';
@@ -73,6 +82,7 @@ export type SectionData = {
     assetUrl?: string;
     assetDarkUrl?: string;
     assetAlt?: string;
+    iconName?: string;
     features?: SectionData[];
     ctas?: {
         label: string;
@@ -307,7 +317,13 @@ export function CmsMediaImage({
     );
 }
 
-function IconName({ name }: { name: string }) {
+function IconName({
+    className = 'size-4',
+    name,
+}: {
+    className?: string;
+    name: string;
+}) {
     const normalized = name.trim().toLowerCase();
 
     if (!normalized) {
@@ -315,21 +331,43 @@ function IconName({ name }: { name: string }) {
     }
 
     switch (normalized) {
+        case 'deviation':
+        case 'warning':
+            return <Warning className={className} />;
+        case 'harvest':
+        case 'sort':
+            return <Success className={className} />;
+        case 'hygiene':
+        case 'security':
+            return <Security className={className} />;
+        case 'inputs':
+        case 'sprout':
+            return <Sprout className={className} />;
+        case 'leaf':
+            return <Leaf className={className} />;
+        case 'location':
+        case 'map-pin':
+            return <MapPin className={className} />;
+        case 'trace':
+        case 'traceability':
+            return <Link className={className} />;
+        case 'water':
+            return <Droplets className={className} />;
         case 'facebook':
-            return <CompanyFacebook className="size-4" />;
+            return <CompanyFacebook className={className} />;
         case 'github':
-            return <CompanyGitHub className="size-4" />;
+            return <CompanyGitHub className={className} />;
         case 'instagram':
         case 'link':
-            return <Globe className="size-4" />;
+            return <Globe className={className} />;
         case 'mail':
-            return <Mail className="size-4" />;
+            return <Mail className={className} />;
         case 'reddit':
-            return <CompanyReddit className="size-4" />;
+            return <CompanyReddit className={className} />;
         case 'whatsapp':
-            return <Comment className="size-4" />;
+            return <Comment className={className} />;
         case 'x':
-            return <CompanyX className="size-4" />;
+            return <CompanyX className={className} />;
         default:
             break;
     }
@@ -382,8 +420,9 @@ function FeatureItem({
     assetUrl,
     description,
     header,
+    iconName,
 }: SectionData) {
-    return (
+    const content = (
         <Stack spacing={4}>
             <AssetBlock
                 asset={asset}
@@ -402,6 +441,19 @@ function FeatureItem({
                 description
             )}
         </Stack>
+    );
+
+    if (!iconName) {
+        return content;
+    }
+
+    return (
+        <div className="flex gap-4">
+            <span className="mt-1 flex size-10 shrink-0 items-center justify-center rounded-md border bg-card text-primary">
+                <IconName className="size-5" name={iconName} />
+            </span>
+            <div className="min-w-0">{content}</div>
+        </div>
     );
 }
 
@@ -861,7 +913,10 @@ export function StepList(props: SectionData) {
                                 {features.map((feature, index) => (
                                     <div
                                         className="rounded-lg border bg-card p-5"
-                                        key={sectionKey(feature) || `step-${index}`}
+                                        key={
+                                            sectionKey(feature) ||
+                                            `step-${index}`
+                                        }
                                     >
                                         <Stack spacing={4}>
                                             <span className="inline-flex size-8 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
@@ -1054,7 +1109,7 @@ export function CalloutBlock(props: SectionData) {
         <CmsSectionContainer>
             <section className="py-8">
                 <CmsSectionContent section={props}>
-                    <div className="rounded-lg border border-primary/20 bg-muted/30 p-5 @[48rem]/cms:p-6">
+                    <Card className="border-primary/20 bg-card p-5 shadow-sm @[48rem]/cms:p-6">
                         <Stack spacing={5}>
                             <DescriptionBlock
                                 description={description}
@@ -1063,7 +1118,7 @@ export function CalloutBlock(props: SectionData) {
                             />
                             <Ctas ctas={ctas} />
                         </Stack>
-                    </div>
+                    </Card>
                 </CmsSectionContent>
             </section>
         </CmsSectionContainer>
@@ -1122,7 +1177,7 @@ export function CtaBand(props: SectionData) {
         <CmsSectionContainer>
             <section className="py-12">
                 <CmsSectionContent section={props}>
-                    <div className="rounded-lg border bg-muted/20 p-6 @[48rem]/cms:p-10">
+                    <Card className="bg-card p-6 shadow-sm @[48rem]/cms:p-10">
                         <div className="grid gap-6 @[64rem]/cms:grid-cols-[minmax(0,1fr)_auto] @[64rem]/cms:items-end">
                             <DescriptionBlock
                                 className="max-w-3xl"
@@ -1132,7 +1187,7 @@ export function CtaBand(props: SectionData) {
                             />
                             <Ctas ctas={ctas} />
                         </div>
-                    </div>
+                    </Card>
                 </CmsSectionContent>
             </section>
         </CmsSectionContainer>

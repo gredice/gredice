@@ -68,31 +68,37 @@ export const qualityHarvestSafetyCmsPage: SourceCmsPage = {
                 'Interni postupci oslanjaju se na dobru poljoprivrednu praksu, dobru higijensku praksu, sljedivost, evidencije, korektivne radnje i načela HACCP-a.',
             features: [
                 {
+                    iconName: 'inputs',
                     header: 'Inputi i materijali',
                     description:
                         'Porijeklo sjemena, presadnica, supstrata, gnojiva, alata i drugih materijala koji ulaze u uzgoj.',
                 },
                 {
+                    iconName: 'water',
                     header: 'Lokacija i voda',
                     description:
                         'Stanje gredice, okolni rizici, životinjski tragovi, poplava, navodnjavanje i prikladnost vode za namjenu.',
                 },
                 {
+                    iconName: 'hygiene',
                     header: 'Higijena i čistoća',
                     description:
                         'Higijena osoba koje rukuju urodom te čistoća alata, gajbi, radnih površina i dostavnog prostora.',
                 },
                 {
+                    iconName: 'harvest',
                     header: 'Berba i sortiranje',
                     description:
                         'Pregled prije berbe, izdvajanje vidljivo oštećenog ili sumnjivog uroda i osnovno sortiranje prije predaje.',
                 },
                 {
+                    iconName: 'traceability',
                     header: 'Sljedivost',
                     description:
                         'Povezivanje korisnika, gredice, sezone, berbe i dostave kako bi se u slučaju pitanja moglo provjeriti što se dogodilo.',
                 },
                 {
+                    iconName: 'deviation',
                     header: 'Odstupanja i prigovori',
                     description:
                         'Zapisivanje sumnji, prigovora i korektivnih radnji kada postupak nije proveden kako je planirano.',
@@ -142,7 +148,6 @@ export const qualityHarvestSafetyCmsPage: SourceCmsPage = {
         },
         {
             component: 'CtaBand',
-            tagline: `Zadnji pregled: ${QUALITY_HARVEST_SAFETY_LAST_REVIEWED}`,
             header: 'Pitanja o dostavi, pranju ili pripremi uroda?',
             description:
                 'Odgovori na najčešća pitanja dostupni su na FAQ stranici, a za konkretan urod možeš se javiti podršci.',
