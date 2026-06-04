@@ -79,7 +79,7 @@ const nextConfig: NextConfig = {
                       'localhost',
                       getAppDevPort(newsApp),
                   )
-                : 'https://news.gredice.com');
+                : 'https://novosti.gredice.com');
 
         return [
             {

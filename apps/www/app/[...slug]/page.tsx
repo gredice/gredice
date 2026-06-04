@@ -86,7 +86,7 @@ export async function generateMetadata({
         return {};
     }
     const canonicalPath = page.canonicalPath || `/${page.slug}`;
-    const openGraphImage = page.seoImageUrl || `/${page.slug}/opengraph-image`;
+    const openGraphImage = page.seoImageUrl || `/api/og/cms/${page.slug}`;
     return {
         title: page.metaTitle || page.title,
         description: page.metaDescription || undefined,
