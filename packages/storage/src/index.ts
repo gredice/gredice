@@ -63,6 +63,7 @@ export * from './repositories/shoppingCartRepo';
 export * from './repositories/socialAccountsRepo';
 export * from './repositories/socialPostsRepo';
 export * from './repositories/sunflowerDropsRepo';
+export * from './repositories/surveysRepo';
 export * from './repositories/timeSlotsRepo';
 export * from './repositories/transactionsRepo';
 export * from './repositories/usersRepo';

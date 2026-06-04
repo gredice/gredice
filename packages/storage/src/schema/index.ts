@@ -21,6 +21,7 @@ export * from './refreshTokensSchema';
 export * from './settingsSchema';
 export * from './shoppingCartSchema';
 export * from './socialPostsSchema';
+export * from './surveysSchema';
 export * from './transactionSchema';
 export * from './usersSchema';
 export * from './weatherHistorySchema';
