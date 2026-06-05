@@ -20,7 +20,10 @@ import { WinterModeToggle } from '../components/WinterModeToggle';
 import { KnownPages } from '../src/KnownPages';
 import { LandingGameScene, LandingGameSignupCta } from './LandingGameScene';
 import { NewsletterSignUp } from './NewsletterSignUp';
+import { OutletLandingSection } from './outlet/OutletLandingSection';
 import { PlantsShowcase } from './PlantsShowcase';
+
+export const revalidate = 60;
 
 const sectionsData: SectionData[] = [
     {
@@ -290,6 +293,9 @@ export default function Home() {
                     componentsRegistry={sectionsComponentRegistry}
                 />
                 <StepsSection />
+                <Suspense fallback={null}>
+                    <OutletLandingSection />
+                </Suspense>
                 <Stack spacing={8}>
                     <Stack spacing={2}>
                         <Typography level="body1" semiBold tertiary>

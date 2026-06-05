@@ -16,6 +16,7 @@ export * from './newsletterSchema';
 export * from './notificationSettingsSchema';
 export * from './notificationsSchema';
 export * from './operationsSchema';
+export * from './outletSchema';
 export * from './payoutsSchema';
 export * from './refreshTokensSchema';
 export * from './settingsSchema';

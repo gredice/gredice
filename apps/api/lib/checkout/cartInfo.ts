@@ -6,6 +6,7 @@ import {
     type EntityStandardized,
     getEntitiesFormatted,
     getInventory,
+    getOutletOfferReservationsForCartItems,
     getRaisedBed,
     type SelectShoppingCartItem,
 } from '@gredice/storage';
@@ -18,6 +19,18 @@ export type ShoppingCartDiscount = {
 
 export type ShoppingCartItemWithShopData = SelectShoppingCartItem & {
     entityData: EntityStandardized;
+    outlet?: {
+        offerId: number;
+        reservationId: number;
+        status: string;
+        holdExpiresAt: Date;
+        endAt: Date;
+        sowingDate: Date;
+        initialPlantStatus: string;
+        outletPrice: number;
+        comparePrice: number | null;
+        expired: boolean;
+    };
     shopData: {
         name?: string;
         description?: string;
@@ -90,6 +103,42 @@ export async function getCartInfo(
     );
 
     const discounts: ShoppingCartDiscount[] = [];
+    const now = new Date();
+    const outletReservations = await getOutletOfferReservationsForCartItems(
+        items.map((item) => item.id),
+    );
+    const outletReservationsByCartItemId = new Map<
+        number,
+        (typeof outletReservations)[number]
+    >();
+    for (const reservation of outletReservations) {
+        if (!outletReservationsByCartItemId.has(reservation.cartItemId)) {
+            outletReservationsByCartItemId.set(
+                reservation.cartItemId,
+                reservation,
+            );
+        }
+    }
+
+    for (const reservation of outletReservations) {
+        if (reservation.status !== 'held') {
+            continue;
+        }
+
+        const hasExpired =
+            reservation.holdExpiresAt.getTime() <= now.getTime() ||
+            reservation.outletOffer.endAt.getTime() <= now.getTime();
+        if (hasExpired) {
+            continue;
+        }
+
+        discounts.push({
+            cartItemId: reservation.cartItemId,
+            discountPrice: reservation.heldOutletPriceCents / 100,
+            discountDescription: 'Outlet sadnica',
+        });
+    }
+
     const inventory = accountId ? await getInventory(accountId) : [];
     const inventoryLookup = new Map(
         inventory.map((item) => [
@@ -162,11 +211,58 @@ export async function getCartInfo(
                 allowPurchase = false;
             }
 
+            const outletReservation = outletReservationsByCartItemId.get(
+                item.id,
+            );
+            const outletExpired = outletReservation
+                ? outletReservation.status === 'held' &&
+                  (outletReservation.holdExpiresAt.getTime() <= now.getTime() ||
+                      outletReservation.outletOffer.endAt.getTime() <=
+                          now.getTime())
+                : false;
+
+            if (
+                outletReservation &&
+                item.status !== 'paid' &&
+                outletReservation.status === 'held' &&
+                outletExpired
+            ) {
+                notes.push(
+                    `${
+                        entityData.information?.label ||
+                        entityData.information?.name ||
+                        'Outlet sadnica'
+                    } više nije rezervirana po outlet cijeni.`,
+                );
+                allowPurchase = false;
+            }
+
             return {
                 ...item,
                 usesInventory: wantsInventory,
                 inventoryAvailable,
                 entityData,
+                outlet: outletReservation
+                    ? {
+                          offerId: outletReservation.outletOfferId,
+                          reservationId: outletReservation.id,
+                          status: outletReservation.status,
+                          holdExpiresAt: outletReservation.holdExpiresAt,
+                          endAt: outletReservation.outletOffer.endAt,
+                          sowingDate: outletReservation.heldSowingDate,
+                          initialPlantStatus:
+                              outletReservation.heldInitialPlantStatus,
+                          outletPrice:
+                              outletReservation.heldOutletPriceCents / 100,
+                          comparePrice:
+                              typeof outletReservation.heldComparePriceCents ===
+                              'number'
+                                  ? outletReservation.heldComparePriceCents /
+                                    100
+                                  : null,
+                          expired: outletExpired,
+                      }
+                    : undefined,
                 shopData: {
                     name:
                         entityData.information?.label ??

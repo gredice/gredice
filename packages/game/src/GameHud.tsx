@@ -12,6 +12,7 @@ import { ControlsTooltipHud } from './hud/ControlsTooltipHud';
 import { DebugHud } from './hud/DebugHud';
 import { InventoryHud } from './hud/InventoryHud';
 import { ItemsHud } from './hud/ItemsHud';
+import { OutletHud } from './hud/OutletHud';
 import { PaymentSuccessfulMessage } from './hud/PaymentSuccessfulMessage';
 import { RaisedBedFieldHud } from './hud/RaisedBedFieldHud';
 import { SandboxBlockTrashDropTarget } from './hud/SandboxBlockTrashDropTarget';
@@ -65,6 +66,11 @@ export function GameHud({
                 {!isSandbox && (
                     <div className={closeupHiddenHudClassName}>
                         <InventoryHud />
+                    </div>
+                )}
+                {!isSandbox && (
+                    <div className={closeupHiddenHudClassName}>
+                        <OutletHud />
                     </div>
                 )}
             </div>

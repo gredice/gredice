@@ -10,6 +10,7 @@ import {
 } from '@gredice/notifications';
 import {
     consumeInventoryItem,
+    convertOutletReservationForCartItem,
     createDeliveryRequest,
     createEvent,
     createOperation,
@@ -17,6 +18,7 @@ import {
     earnSunflowersForPayment,
     getAllTransactions,
     getInventory,
+    getOutletOfferReservationForCartItem,
     getRaisedBed,
     getRaisedBedFieldsWithEvents,
     getShoppingCart,
@@ -131,6 +133,7 @@ async function processNonStripeCartItems(
                 setCartItemPaid(item.id),
                 processItem({
                     accountId,
+                    cartItemId: item.id,
                     entityId: item.entityId,
                     entityTypeName: item.entityTypeName,
                     cartId: item.cartId,
@@ -212,6 +215,7 @@ async function processNonStripeCartItems(
                 setCartItemPaid(item.id),
                 processItem({
                     accountId,
+                    cartItemId: item.id,
                     entityId: item.entityId,
                     entityTypeName: item.entityTypeName,
                     cartId: item.cartId,
@@ -291,7 +295,15 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
         purchasedItems.push({
             name:
                 typeof product?.name === 'string'
-                    ? product.name
+                    ? `${product.name}${
+                          product.metadata?.outletOfferId
+                              ? ` (Outlet #${product.metadata.outletOfferId}${
+                                    product.metadata.outletSowingDate
+                                        ? `, sjetva ${product.metadata.outletSowingDate.slice(0, 10)}`
+                                        : ''
+                                })`
+                              : ''
+                      }`
                     : (product?.metadata?.name ?? null),
             quantity: item.quantity ?? null,
             amountSubtotal:
@@ -323,6 +335,18 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
                 : undefined,
             additionalData: product?.metadata.additionalData
                 ? JSON.parse(product.metadata.additionalData)
+                : undefined,
+            outletOfferId: product?.metadata.outletOfferId
+                ? parseInt(product.metadata.outletOfferId, 10)
+                : undefined,
+            outletReservationId: product?.metadata.outletReservationId
+                ? parseInt(product.metadata.outletReservationId, 10)
+                : undefined,
+            outletSowingDate: product?.metadata.outletSowingDate ?? undefined,
+            outletInitialPlantStatus:
+                product?.metadata.outletInitialPlantStatus ?? undefined,
+            outletPriceCents: product?.metadata.outletPriceCents
+                ? parseInt(product.metadata.outletPriceCents, 10)
                 : undefined,
             currency: 'eur',
         };
@@ -553,15 +577,79 @@ async function assertRaisedBedAllowsCheckoutItem(raisedBedId?: number | null) {
     return true;
 }
 
+async function outletReservationForCheckout(itemData: {
+    cartItemId?: number | null;
+    entityId: string | null | undefined;
+    outletOfferId?: number | null;
+    outletReservationId?: number | null;
+}) {
+    if (!itemData.cartItemId) {
+        return null;
+    }
+
+    const reservation = await getOutletOfferReservationForCartItem(
+        itemData.cartItemId,
+    );
+    if (!reservation) {
+        if (itemData.outletOfferId || itemData.outletReservationId) {
+            throw new Error(
+                `Outlet reservation not found for cart item ${itemData.cartItemId}.`,
+            );
+        }
+
+        return null;
+    }
+
+    if (
+        itemData.outletReservationId &&
+        itemData.outletReservationId !== reservation.id
+    ) {
+        throw new Error(
+            `Outlet reservation mismatch for cart item ${itemData.cartItemId}.`,
+        );
+    }
+    if (
+        itemData.outletOfferId &&
+        itemData.outletOfferId !== reservation.outletOfferId
+    ) {
+        throw new Error(
+            `Outlet offer mismatch for cart item ${itemData.cartItemId}.`,
+        );
+    }
+    if (reservation.outletOffer.plantSortId.toString() !== itemData.entityId) {
+        throw new Error(
+            `Outlet plant sort mismatch for cart item ${itemData.cartItemId}.`,
+        );
+    }
+
+    await convertOutletReservationForCartItem(itemData.cartItemId);
+    return reservation;
+}
+
+function scheduledDateFromAdditionalData(additionalData: unknown) {
+    return typeof additionalData === 'object' &&
+        additionalData != null &&
+        'scheduledDate' in additionalData &&
+        typeof additionalData.scheduledDate === 'string'
+        ? additionalData.scheduledDate
+        : null;
+}
+
 export async function processItem(itemData: {
     entityId: string | null | undefined;
     entityTypeName: string | null | undefined;
     accountId: string | null | undefined;
+    cartItemId?: number | null;
     cartId: number | null | undefined;
     gardenId: number | null | undefined;
     raisedBedId: number | null | undefined;
     positionIndex: number | null | undefined;
     additionalData: unknown | null | undefined;
+    outletOfferId?: number | null;
+    outletReservationId?: number | null;
+    outletSowingDate?: string | null;
+    outletInitialPlantStatus?: string | null;
+    outletPriceCents?: number | null;
     currency: string | null;
     amount_total: number; // Amount in cents or sunflowers
     scheduledDeliveryEmailKeys?: Set<string>;
@@ -782,27 +870,41 @@ export async function processItem(itemData: {
             return;
         }
 
-        await Promise.all([
-            upsertRaisedBedField({
-                positionIndex: itemData.positionIndex,
-                raisedBedId: itemData.raisedBedId,
+        const outletReservation = await outletReservationForCheckout(itemData);
+        const aggregateId = `${itemData.raisedBedId}|${itemData.positionIndex}`;
+
+        await upsertRaisedBedField({
+            positionIndex: itemData.positionIndex,
+            raisedBedId: itemData.raisedBedId,
+        });
+        await createEvent(
+            knownEvents.raisedBedFields.plantPlaceV1(aggregateId, {
+                plantSortId: itemData.entityId,
+                scheduledDate: outletReservation
+                    ? null
+                    : scheduledDateFromAdditionalData(itemData.additionalData),
+                sowingLocation: outletReservation ? 'greenhouse' : undefined,
             }),
-            createEvent(
-                knownEvents.raisedBedFields.plantPlaceV1(
-                    `${itemData.raisedBedId}|${itemData.positionIndex}`,
-                    {
-                        plantSortId: itemData.entityId,
-                        scheduledDate:
-                            typeof itemData.additionalData === 'object' &&
-                            itemData.additionalData != null &&
-                            'scheduledDate' in itemData.additionalData &&
-                            typeof itemData.additionalData.scheduledDate ===
-                                'string'
-                                ? itemData.additionalData.scheduledDate
-                                : null,
-                    },
-                ),
-            ),
+        );
+        if (outletReservation) {
+            await createEvent(
+                knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+                    status: 'sowed',
+                    effectiveDate:
+                        outletReservation.heldSowingDate.toISOString(),
+                }),
+            );
+
+            if (outletReservation.heldInitialPlantStatus !== 'sowed') {
+                await createEvent(
+                    knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+                        status: outletReservation.heldInitialPlantStatus,
+                    }),
+                );
+            }
+        }
+
+        await Promise.all([
             updateRaisedBed({
                 id: itemData.raisedBedId,
                 status: 'active',
@@ -812,6 +914,17 @@ export async function processItem(itemData: {
         console.debug(
             `Placed plant sort ${itemData.entityId} in raised bed ${itemData.raisedBedId} at position ${itemData.positionIndex}.`,
         );
+        if (outletReservation && itemData.accountId) {
+            (await getPostHogClient()).capture({
+                distinctId: itemData.accountId,
+                event: 'outlet_reservation_converted',
+                properties: {
+                    outlet_offer_id: outletReservation.outletOfferId,
+                    outlet_reservation_id: outletReservation.id,
+                    cart_item_id: itemData.cartItemId,
+                },
+            });
+        }
     } else {
         console.error(
             `Unsupported item type for entityId ${itemData.entityId} in order.`,

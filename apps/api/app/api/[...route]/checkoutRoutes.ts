@@ -6,6 +6,10 @@ import {
     getUser,
     markCartPaidIfAllItemsPaid,
     normalizeShoppingCartInventoryUsage,
+    OutletOfferUnavailableError,
+    OutletReservationUnavailableError,
+    releaseOutletReservationsForCart,
+    reserveOutletOffer,
     setCartItemPaid,
     spendSunflowers,
 } from '@gredice/storage';
@@ -89,6 +93,38 @@ const app = new Hono<{ Variables: AuthVariables }>()
             if (!cartInfo.allowPurchase) {
                 return context.json({ error: 'Cart in invalid state' }, 400);
             }
+            for (const item of cartInfo.items) {
+                if (
+                    item.status === 'paid' ||
+                    item.currency !== 'eur' ||
+                    !item.outlet
+                ) {
+                    continue;
+                }
+
+                try {
+                    await reserveOutletOffer({
+                        offerId: item.outlet.offerId,
+                        accountId,
+                        cartId: item.cartId,
+                        cartItemId: item.id,
+                        quantity: item.amount,
+                        holdMinutes: 30,
+                    });
+                } catch (error) {
+                    if (
+                        error instanceof OutletOfferUnavailableError ||
+                        error instanceof OutletReservationUnavailableError
+                    ) {
+                        return context.json(
+                            { error: 'Outlet offer is not available' },
+                            409,
+                        );
+                    }
+
+                    throw error;
+                }
+            }
 
             const requiresStripePayment = cartInfo.items.some(
                 (item) => item.status !== 'paid' && item.currency === 'eur',
@@ -127,6 +163,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                                 setCartItemPaid(item.id),
                                 processItem({
                                     accountId,
+                                    cartItemId: item.id,
                                     ...item,
                                     amount_total: sunflowerAmount,
                                     scheduledDeliveryEmailKeys,
@@ -173,6 +210,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             setCartItemPaid(item.id),
                             processItem({
                                 accountId,
+                                cartItemId: item.id,
                                 ...item,
                                 amount_total: 0,
                                 scheduledDeliveryEmailKeys,
@@ -262,6 +300,21 @@ const app = new Hono<{ Variables: AuthVariables }>()
                                     ? { delivery: deliveryInfo }
                                     : {}),
                             }),
+                            outletOfferId: item.outlet?.offerId ?? null,
+                            outletReservationId:
+                                item.outlet?.reservationId ?? null,
+                            outletSowingDate:
+                                item.outlet?.sowingDate.toISOString() ?? null,
+                            outletInitialPlantStatus:
+                                item.outlet?.initialPlantStatus ?? null,
+                            outletPriceCents:
+                                typeof item.outlet?.outletPrice === 'number'
+                                    ? Math.round(item.outlet.outletPrice * 100)
+                                    : null,
+                            outletComparePriceCents:
+                                typeof item.outlet?.comparePrice === 'number'
+                                    ? Math.round(item.outlet.comparePrice * 100)
+                                    : null,
                         },
                     },
                     price: {
@@ -359,6 +412,26 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     );
                 }
                 await stripeSessionCancel(sessionId);
+                const outletCartIds = new Set<number>();
+                for (const item of session.lineItems?.data ?? []) {
+                    const product = item.price?.product;
+                    if (typeof product === 'string' || product?.deleted) {
+                        continue;
+                    }
+
+                    const cartId = product?.metadata.cartId
+                        ? parseInt(product.metadata.cartId, 10)
+                        : undefined;
+                    if (cartId && product?.metadata.outletOfferId) {
+                        outletCartIds.add(cartId);
+                    }
+                }
+
+                await Promise.all(
+                    Array.from(outletCartIds).map((cartId) =>
+                        releaseOutletReservationsForCart(cartId),
+                    ),
+                );
             } catch (error) {
                 console.error(
                     'Error retrieving or cancelling Stripe checkout session',

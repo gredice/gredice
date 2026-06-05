@@ -17,6 +17,7 @@ import newsletterRoutes from './newsletterRoutes';
 import newsRoutes from './newsRoutes';
 import notificationsRoutes from './notificationsRoutes';
 import occasionsRoutes from './occasionsRoutes';
+import outletRoutes from './outletRoutes';
 import shoppingCartRoutes from './shoppingCartRoutes';
 import surveysRoutes from './surveysRoutes';
 import usersRoutes from './usersRoutes';
@@ -93,7 +94,8 @@ const app = new Hono()
     .route('/notifications', notificationsRoutes)
     .route('/surveys', surveysRoutes)
     .route('/newsletter', newsletterRoutes)
-    .route('/news', newsRoutes);
+    .route('/news', newsRoutes)
+    .route('/outlet', outletRoutes);
 
 app.get('/docs/auth', docs(authRoutes, 'Auth API', 'auth'))
     .get('/docs/accounts', docs(accountsRoutes, 'Accounts API', 'accounts'))
@@ -121,7 +123,8 @@ app.get('/docs/auth', docs(authRoutes, 'Auth API', 'auth'))
         '/docs/newsletter',
         docs(newsletterRoutes, 'Newsletter API', 'newsletter'),
     )
-    .get('/docs/news', docs(newsRoutes, 'News API', 'news'));
+    .get('/docs/news', docs(newsRoutes, 'News API', 'news'))
+    .get('/docs/outlet', docs(outletRoutes, 'Outlet API', 'outlet'));
 
 export const GET = handle(app);
 export const POST = handle(app);

@@ -2,6 +2,10 @@ import { and, asc, eq } from 'drizzle-orm';
 import { shoppingCartItems, shoppingCarts } from '../schema';
 import { storage } from '../storage';
 import { getInventory } from './inventoryRepo';
+import {
+    releaseOutletReservationForCartItem,
+    releaseOutletReservationsForCart,
+} from './outletOffersRepo';
 
 function startOfUtcDay(date: Date) {
     return new Date(
@@ -235,6 +239,7 @@ export async function upsertOrRemoveCartItem(
                     isDeleted: true,
                 })
                 .where(eq(shoppingCartItems.id, existingItem.id));
+            await releaseOutletReservationForCartItem(existingItem.id);
 
             const remainingItems =
                 await storage().query.shoppingCartItems.findMany({
@@ -306,6 +311,7 @@ export async function deleteShoppingCart(accountId: string) {
                 .update(shoppingCartItems)
                 .set({ isDeleted: true })
                 .where(eq(shoppingCartItems.cartId, cart.id)),
+            releaseOutletReservationsForCart(cart.id),
         ]);
     }
 }

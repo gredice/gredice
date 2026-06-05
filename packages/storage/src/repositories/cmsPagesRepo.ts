@@ -89,6 +89,7 @@ const reservedCmsPageFirstSegments = new Set([
     'novosti',
     'o-nama',
     'odjava',
+    'outlet',
     'podignuta-gredica',
     'povrati-i-povrat-novca',
     'pozdrav',

@@ -43,6 +43,9 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const scheduledDate = scheduledDateString
         ? new Date(scheduledDateString)
         : null;
+    const outletHoldExpiresAt = item.outlet?.holdExpiresAt
+        ? new Date(item.outlet.holdExpiresAt)
+        : null;
     const changeCurrencyShoppingCartItem = useSetShoppingCartItem();
     const removeShoppingCartItem = useSetShoppingCartItem();
 
@@ -221,6 +224,30 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                             </Row>
                         </Row>
                     )}
+                {item.outlet && (
+                    <Row className="flex-wrap" spacing={1}>
+                        <Chip className="bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-100">
+                            <Typography level="body3">
+                                Outlet sadnica
+                            </Typography>
+                        </Chip>
+                        <Chip
+                            className={
+                                item.outlet.expired
+                                    ? 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-100'
+                                    : 'bg-muted'
+                            }
+                        >
+                            <Typography level="body3">
+                                {item.outlet.expired
+                                    ? 'Rezervacija istekla'
+                                    : outletHoldExpiresAt
+                                      ? `Čuva se do ${outletHoldExpiresAt.toLocaleTimeString('hr-HR', { hour: '2-digit', minute: '2-digit' })}`
+                                      : 'Rezervirano'}
+                            </Typography>
+                        </Chip>
+                    </Row>
+                )}
                 <Row justifyContent="space-between">
                     <Stack spacing={1}>
                         <Row spacing={2}>
