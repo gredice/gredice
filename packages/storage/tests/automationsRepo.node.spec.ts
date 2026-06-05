@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    type AutomationGraph,
     acceptOperation,
     automationEventCursors,
     automationModuleKeys,
@@ -90,6 +91,39 @@ async function getScheduledFreeWateringDates(
         )
         .map((operation) => operation.scheduledDate?.toISOString())
         .sort();
+}
+
+function raisedBedAiAnalysisImagePlantStatusReviewAutomationGraph(): AutomationGraph {
+    return {
+        nodes: [
+            {
+                id: 'trigger',
+                kind: 'trigger',
+                moduleKey: automationModuleKeys.triggerDomainEvent,
+                position: { x: 0, y: 160 },
+                config: {
+                    eventType: knownEventTypes.raisedBeds.aiAnalysis,
+                },
+            },
+            {
+                id: 'review-plant-statuses',
+                kind: 'action',
+                moduleKey:
+                    automationModuleKeys.actionCreatePlantStatusRequestsFromImageAnalysis,
+                position: { x: 620, y: 160 },
+                config: {
+                    minConfidence: 0.9,
+                },
+            },
+        ],
+        edges: [
+            {
+                id: 'trigger-to-action',
+                source: 'trigger',
+                target: 'review-plant-statuses',
+            },
+        ],
+    };
 }
 
 function addUtcDays(date: Date, days: number) {
@@ -904,15 +938,17 @@ test('image plant-status review automation previews operation completion images 
         raisedBedId,
         raisedBedFieldId: field.id,
     });
-    await createEvent(
-        knownEvents.operations.completedV1(operationId.toString(), {
+    const operationImageDate = new Date('2026-05-10T08:00:00.000Z');
+    await createEvent({
+        ...knownEvents.operations.completedV1(operationId.toString(), {
             completedBy: 'automations-test',
             images: [
                 'https://myegtvromcktt2y7.public.blob.vercel-storage.com/operations/test-field.jpg',
                 'https://example.com/not-gredice-storage.jpg',
             ],
         }),
-    );
+        createdAt: operationImageDate,
+    });
     const event = await getLatestEvent(
         knownEventTypes.operations.complete,
         operationId.toString(),
@@ -963,10 +999,98 @@ test('image plant-status review automation previews operation completion images 
     );
     assert.strictEqual(Reflect.get(actionStep.output, 'imageCount'), 1);
     assert.strictEqual(
+        Reflect.get(actionStep.output, 'imageDate'),
+        operationImageDate.toISOString(),
+    );
+    assert.strictEqual(
         Reflect.get(actionStep.output, 'skippedInvalidImageCount'),
         1,
     );
     assert.strictEqual(Reflect.get(actionStep.output, 'plantedFieldCount'), 1);
+});
+
+test('image plant-status review automation uses AI analysis reference date in dry run', async () => {
+    createTestDb();
+    const { accountId, raisedBedId } = await createAutomationRaisedBedContext();
+    const fieldAggregateId = `${raisedBedId}|0`;
+    await upsertRaisedBedField({ raisedBedId, positionIndex: 0 });
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(fieldAggregateId, {
+            plantSortId: '101',
+            scheduledDate: '2026-04-01T08:00:00.000Z',
+        }),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(fieldAggregateId, {
+            status: 'sowed',
+        }),
+    );
+    const imageDate = '2026-05-10T08:00:00.000Z';
+    await createEvent({
+        ...knownEvents.raisedBeds.aiAnalysisV1(raisedBedId.toString(), {
+            markdown: 'AI review',
+            imageUrl:
+                'https://myegtvromcktt2y7.public.blob.vercel-storage.com/operations/test-field.jpg',
+            imageUrls: [
+                'https://myegtvromcktt2y7.public.blob.vercel-storage.com/operations/test-field.jpg',
+            ],
+            model: 'test-model',
+            analyzedAt: '2026-06-05T08:00:00.000Z',
+            referenceDate: imageDate,
+            accountId,
+        }),
+        createdAt: new Date('2026-06-05T08:00:00.000Z'),
+    });
+    const event = await getLatestEvent(
+        knownEventTypes.raisedBeds.aiAnalysis,
+        raisedBedId.toString(),
+    );
+    const definition = await createAutomationDefinition({
+        key: 'test.image-plant-status-review-ai-reference-date',
+        name: 'Image plant status review AI reference date',
+        status: 'enabled',
+        graph: raisedBedAiAnalysisImagePlantStatusReviewAutomationGraph(),
+    });
+    const run = await createAutomationRun({
+        automationDefinition: definition,
+        source: 'event',
+        sourceEvent: event,
+        dryRun: true,
+        input: {
+            eventId: event.id,
+            eventType: event.type,
+            aggregateId: event.aggregateId,
+            data:
+                event.data && typeof event.data === 'object'
+                    ? (event.data as Record<string, unknown>)
+                    : {},
+        },
+    });
+    assert.ok(run);
+    const startedRun = await startAutomationRun(run.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedRun);
+
+    const result = await executeAutomationRun(startedRun);
+
+    assert.strictEqual(result.status, 'succeeded');
+    const runWithSteps = await getAutomationRunWithSteps(startedRun.id);
+    const actionStep = runWithSteps?.steps.find(
+        (step) => step.nodeId === 'review-plant-statuses',
+    );
+    assert.strictEqual(actionStep?.status, 'succeeded');
+    assert.ok(
+        actionStep?.output &&
+            typeof actionStep.output === 'object' &&
+            !Array.isArray(actionStep.output),
+    );
+    assert.strictEqual(
+        Reflect.get(actionStep.output, 'source'),
+        'raisedBedAiAnalysis',
+    );
+    assert.strictEqual(Reflect.get(actionStep.output, 'imageDate'), imageDate);
+    assert.strictEqual(Reflect.get(actionStep.output, 'imageCount'), 1);
 });
 
 test('image plant-status review automation skips non-dry runs when AI Gateway credentials are blank', async (t) => {

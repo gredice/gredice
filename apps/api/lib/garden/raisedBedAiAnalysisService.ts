@@ -413,8 +413,9 @@ async function buildAnalysisMessages({
     positionIndex,
     referenceDate: inputReferenceDate,
 }: AnalysisParams) {
-    const referenceDate =
-        normalizeAnalysisReferenceDate(inputReferenceDate) ?? new Date();
+    const inputReferenceDateValue =
+        normalizeAnalysisReferenceDate(inputReferenceDate);
+    const referenceDate = inputReferenceDateValue ?? new Date();
     const [plantSorts, operations, operationsData, weather] = await Promise.all(
         [
             getEntitiesFormatted<{
@@ -497,6 +498,9 @@ async function buildAnalysisMessages({
     const orientation = raisedBed.orientation ?? 'vertical';
     const nowIso = new Date().toISOString();
     const referenceDateIso = referenceDate.toISOString();
+    const imageDateSource = inputReferenceDateValue
+        ? 'requestReferenceDate'
+        : 'analysisTimeFallback';
     const analyzedPositionLabel =
         typeof positionIndex === 'number'
             ? toPositionLabel(positionIndex)
@@ -515,7 +519,7 @@ async function buildAnalysisMessages({
                 '- Gornji red kod 18-poljne gredice: 16 (gornje desno) → 17 (gornja sredina) → 18 (gornje lijevo).',
                 '- U JSON kontekstu vrijednost `positionLabel` koristi ovo brojanje (1-bazirano), dok `positionIndex` ostaje 0-bazirana interna oznaka (`positionLabel = positionIndex + 1`).',
                 '- Polja s `currentLocation: "greenhouse"` su presadnice koje trenutno rastu u stakleniku i još nisu presađene u gredicu; polja s `currentLocation: "raisedBed"` su u gredici. `sowingLocation` opisuje gdje je biljka započela.',
-                '- Koristi `analysisReferenceDate` i `weather.historical` za vremenske uvjete na dan fotografija. `currentDate`, `weather.now` i `weather.forecast` koristi samo za današnje i buduće preporuke za zalijevanje, zaštitu od mraza, sjetvu i berbu.',
+                '- `imageDate` je datum fotografija/dnevničkog unosa. Koristi `imageDate`, `analysisReferenceDate` i `weather.historical` za procjenu stanja na fotografijama. `currentDate`, `weather.now` i `weather.forecast` koristi samo za današnje i buduće preporuke za zalijevanje, zaštitu od mraza, sjetvu i berbu.',
             ].join('\n'),
         },
         {
@@ -538,6 +542,8 @@ async function buildAnalysisMessages({
                         JSON.stringify(
                             {
                                 currentDate: nowIso,
+                                imageDate: referenceDateIso,
+                                imageDateSource,
                                 analysisReferenceDate: referenceDateIso,
                                 weather,
                                 raisedBed: {
