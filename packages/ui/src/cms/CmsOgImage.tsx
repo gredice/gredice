@@ -21,7 +21,6 @@ const brandGreen = '#2E6F40';
 const foregroundBrown = '#4A3326';
 const mutedBrown = '#826B58';
 const softBrown = '#E8DCCF';
-const softGreen = '#E6EFE8';
 
 function templateLabel(kind: CmsOgImageKind) {
     if (kind === 'blog') {
@@ -69,8 +68,9 @@ export function CmsOgImage({
     title,
 }: CmsOgImageProps) {
     const normalizedTitle = title.trim() || 'Gredice';
+    const normalizedImageUrl = imageUrl?.trim() || null;
     const renderedTags = visibleTags(tags);
-    const hasImage = Boolean(imageUrl);
+    const hasImage = Boolean(normalizedImageUrl);
 
     return (
         <div
@@ -116,49 +116,52 @@ export function CmsOgImage({
                         alignItems: 'center',
                         display: 'flex',
                         gap: 26,
-                        justifyContent: 'space-between',
+                        justifyContent: 'flex-start',
                     }}
                 >
                     <Logotype fill={brandGreen} width={210} />
-                    <div
-                        style={{
-                            alignItems: 'center',
-                            background: softGreen,
-                            borderRadius: 999,
-                            color: brandGreen,
-                            display: 'flex',
-                            fontSize: 26,
-                            fontWeight: 700,
-                            lineHeight: 1,
-                            padding: '15px 22px',
-                            whiteSpace: 'nowrap',
-                        }}
-                    >
-                        {templateLabel(kind)}
-                    </div>
                 </div>
                 <div
                     style={{
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: 34,
-                        paddingRight: hasImage ? 14 : 190,
+                        gap: 30,
+                        paddingRight: hasImage ? 14 : 84,
                     }}
                 >
                     <div
                         style={{
-                            color: foregroundBrown,
                             display: 'flex',
-                            fontFamily:
-                                'Montserrat, Arial Black, Arial, sans-serif',
-                            fontSize: titleFontSize(normalizedTitle),
-                            fontWeight: 800,
-                            letterSpacing: 0,
-                            lineHeight: 1.04,
-                            maxWidth: hasImage ? 610 : 870,
+                            flexDirection: 'column',
+                            gap: 16,
                         }}
                     >
-                        {normalizedTitle}
+                        <div
+                            style={{
+                                color: mutedBrown,
+                                display: 'flex',
+                                fontSize: 27,
+                                fontWeight: 600,
+                                lineHeight: 1,
+                            }}
+                        >
+                            {templateLabel(kind)}
+                        </div>
+                        <div
+                            style={{
+                                color: foregroundBrown,
+                                display: 'flex',
+                                fontFamily:
+                                    'Montserrat, Arial Black, Arial, sans-serif',
+                                fontSize: titleFontSize(normalizedTitle),
+                                fontWeight: 800,
+                                letterSpacing: 0,
+                                lineHeight: 1.04,
+                                maxWidth: hasImage ? 610 : 940,
+                            }}
+                        >
+                            {normalizedTitle}
+                        </div>
                     </div>
                     {renderedTags.length > 0 ? (
                         <div
@@ -200,7 +203,7 @@ export function CmsOgImage({
                         fontWeight: 600,
                     }}
                 >
-                    gredice.com
+                    www.gredice.com
                 </div>
             </div>
             {hasImage ? (
@@ -217,7 +220,7 @@ export function CmsOgImage({
                     {/** biome-ignore lint/performance/noImgElement: OG rendering accepts arbitrary CMS image URLs. */}
                     <img
                         alt=""
-                        src={imageUrl ?? undefined}
+                        src={normalizedImageUrl ?? undefined}
                         style={{
                             height: '100%',
                             objectFit: 'cover',
@@ -239,69 +242,7 @@ export function CmsOgImage({
                         }}
                     />
                 </div>
-            ) : (
-                <div
-                    style={{
-                        bottom: 64,
-                        display: 'flex',
-                        position: 'absolute',
-                        right: 72,
-                        top: 118,
-                        width: 260,
-                    }}
-                >
-                    <div
-                        style={{
-                            background: softGreen,
-                            borderColor: '#C6DAC9',
-                            borderRadius: 42,
-                            borderStyle: 'solid',
-                            borderWidth: 1,
-                            display: 'flex',
-                            flex: 1,
-                            overflow: 'hidden',
-                            position: 'relative',
-                        }}
-                    >
-                        <div
-                            style={{
-                                background: 'rgba(255, 255, 255, 0.44)',
-                                display: 'flex',
-                                height: 96,
-                                left: 0,
-                                position: 'absolute',
-                                right: 0,
-                                top: 112,
-                            }}
-                        />
-                        <div
-                            style={{
-                                background: brandGreen,
-                                borderRadius: 999,
-                                display: 'flex',
-                                height: 88,
-                                left: 86,
-                                position: 'absolute',
-                                top: 62,
-                                width: 88,
-                            }}
-                        />
-                        <div
-                            style={{
-                                background: foregroundBrown,
-                                borderRadius: 999,
-                                bottom: 74,
-                                display: 'flex',
-                                height: 118,
-                                left: 70,
-                                opacity: 0.16,
-                                position: 'absolute',
-                                width: 118,
-                            }}
-                        />
-                    </div>
-                </div>
-            )}
+            ) : null}
         </div>
     );
 }
