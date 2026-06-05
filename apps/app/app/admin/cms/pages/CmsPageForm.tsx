@@ -47,6 +47,7 @@ import {
     Add,
     ArrowDown,
     ArrowUp,
+    Auto,
     Close,
     Code,
     Delete,
@@ -857,7 +858,7 @@ export function CmsPageForm({
     const [insertAtEnd, setInsertAtEnd] = useState(false);
     const [sectionSearch, setSectionSearch] = useState('');
     const [previewViewport, setPreviewViewport] =
-        useState<CmsPreviewViewport>('desktop');
+        useState<CmsPreviewViewport>('auto');
     const {
         containerRef: previewViewportContainerRef,
         supportedViewports: supportedPreviewViewports,
@@ -1760,6 +1761,19 @@ export function CmsPageForm({
 
     const previewViewportControls = (
         <ButtonGroup legend="Preview viewport" size="sm">
+            <Button
+                type="button"
+                variant={previewViewport === 'auto' ? 'solid' : 'plain'}
+                size="sm"
+                className={buttonGroupItemClassName({ iconOnly: true })}
+                aria-pressed={previewViewport === 'auto'}
+                aria-label="Auto preview"
+                title="Auto preview"
+                disabled={rawMode}
+                onClick={() => setPreviewViewport('auto')}
+            >
+                <Auto className="size-4" />
+            </Button>
             <Button
                 type="button"
                 variant={previewViewport === 'mobile' ? 'solid' : 'plain'}
