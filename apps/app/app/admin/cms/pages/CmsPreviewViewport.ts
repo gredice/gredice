@@ -2,15 +2,19 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-export type CmsPreviewViewport = 'mobile' | 'tablet' | 'desktop';
+export type CmsPreviewViewport = 'auto' | 'mobile' | 'tablet' | 'desktop';
+
+type CmsFixedPreviewViewport = Exclude<CmsPreviewViewport, 'auto'>;
 
 export const cmsPagePreviewViewportClassNames = {
+    auto: 'max-w-none',
     mobile: 'max-w-sm',
     tablet: 'max-w-2xl',
     desktop: 'max-w-none',
 } satisfies Record<CmsPreviewViewport, string>;
 
 export const cmsSectionInfoPreviewViewportClassNames = {
+    auto: 'max-w-none',
     mobile: 'max-w-[22rem]',
     tablet: 'max-w-[44rem]',
     desktop: 'max-w-[72rem]',
@@ -20,9 +24,9 @@ const cmsPreviewViewportMinWidths = {
     mobile: 0,
     tablet: 704,
     desktop: 1024,
-} satisfies Record<CmsPreviewViewport, number>;
+} satisfies Record<CmsFixedPreviewViewport, number>;
 
-const cmsPreviewViewportFallbackOrder: CmsPreviewViewport[] = [
+const cmsPreviewViewportFallbackOrder: CmsFixedPreviewViewport[] = [
     'desktop',
     'tablet',
     'mobile',
@@ -35,6 +39,7 @@ function supportedCmsPreviewViewports(
 ): CmsPreviewViewportSupport {
     if (availableWidth === undefined) {
         return {
+            auto: true,
             mobile: true,
             tablet: true,
             desktop: true,
@@ -42,6 +47,7 @@ function supportedCmsPreviewViewports(
     }
 
     return {
+        auto: true,
         mobile: true,
         tablet: availableWidth >= cmsPreviewViewportMinWidths.tablet,
         desktop: availableWidth >= cmsPreviewViewportMinWidths.desktop,
