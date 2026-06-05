@@ -64,6 +64,7 @@ type ReviewInput =
           focusPositionIndex?: number;
           operationId?: number;
           raisedBedFieldId?: number | null;
+          referenceDate: Date;
           skippedInvalidImageCount: number;
       }
     | {
@@ -92,6 +93,22 @@ function isoDate(value: Date | string | null | undefined) {
 
     const date = value instanceof Date ? value : new Date(value);
     return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function dateFromValue(value: unknown) {
+    if (!(value instanceof Date) && typeof value !== 'string') {
+        return null;
+    }
+
+    const date = value instanceof Date ? value : new Date(value);
+
+    return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function getReviewReferenceDate(event: AutomationSourceEvent) {
+    return (
+        dateFromValue(event.data.referenceDate) ?? event.createdAt ?? new Date()
+    );
 }
 
 function daysSince(value: Date | string | null | undefined, now = Date.now()) {
@@ -160,6 +177,8 @@ function parseRaisedBedFieldAggregateId(aggregateId: string) {
 async function resolveReviewInput(
     event: AutomationSourceEvent,
 ): Promise<ReviewInput> {
+    const referenceDate = getReviewReferenceDate(event);
+
     if (event.type === knownEventTypes.operations.complete) {
         const operationId = Number(event.aggregateId);
         if (!Number.isInteger(operationId) || operationId <= 0) {
@@ -208,6 +227,7 @@ async function resolveReviewInput(
             imageUrls,
             operationId,
             raisedBedFieldId: operation.raisedBedFieldId,
+            referenceDate,
             skippedInvalidImageCount,
         };
     }
@@ -241,6 +261,7 @@ async function resolveReviewInput(
             source: 'raisedBedAiAnalysis',
             raisedBedId,
             imageUrls,
+            referenceDate,
             skippedInvalidImageCount,
         };
     }
@@ -276,6 +297,7 @@ async function resolveReviewInput(
             raisedBedId: parsed.raisedBedId,
             focusPositionIndex: parsed.positionIndex,
             imageUrls,
+            referenceDate,
             skippedInvalidImageCount,
         };
     }
@@ -357,6 +379,7 @@ async function buildReviewContext(input: ReviewInput & { ok: true }) {
     const focusPositionIndex =
         input.focusPositionIndex ?? operationFocusField?.positionIndex;
     const nowIso = new Date().toISOString();
+    const imageDateIso = input.referenceDate.toISOString();
     const totalFields = raisedBed.fields.length || 18;
     const rows = Math.max(1, Math.ceil(totalFields / RAISED_BED_COLUMNS));
 
@@ -390,11 +413,26 @@ async function buildReviewContext(input: ReviewInput & { ok: true }) {
                 expectedPlantCount: plantsPerField.totalPlants,
                 expectedPlantsPerRow: plantsPerField.plantsPerRow,
                 seedingDistanceCm: seedingDistance,
-                daysFromSowing: daysSince(field.plantSowDate),
-                daysFromGrowth: daysSince(field.plantGrowthDate),
-                daysFromReady: daysSince(field.plantReadyDate),
-                daysFromHarvest: daysSince(field.plantHarvestedDate),
-                daysFromDead: daysSince(field.plantDeadDate),
+                daysFromSowing: daysSince(
+                    field.plantSowDate,
+                    input.referenceDate.getTime(),
+                ),
+                daysFromGrowth: daysSince(
+                    field.plantGrowthDate,
+                    input.referenceDate.getTime(),
+                ),
+                daysFromReady: daysSince(
+                    field.plantReadyDate,
+                    input.referenceDate.getTime(),
+                ),
+                daysFromHarvest: daysSince(
+                    field.plantHarvestedDate,
+                    input.referenceDate.getTime(),
+                ),
+                daysFromDead: daysSince(
+                    field.plantDeadDate,
+                    input.referenceDate.getTime(),
+                ),
                 needsRemoval: Boolean(field.toBeRemoved),
                 isFocusField: field.positionIndex === focusPositionIndex,
                 history: buildFieldHistory(field),
@@ -407,6 +445,7 @@ async function buildReviewContext(input: ReviewInput & { ok: true }) {
         focusPositionIndex,
         promptContext: {
             currentDate: nowIso,
+            imageDate: imageDateIso,
             source: input.source,
             operationId: input.operationId ?? null,
             imageCount: input.imageUrls.length,
@@ -451,6 +490,7 @@ function buildReviewMessages({
                 'Ako je fotografija close-up i polje nije sigurno prepoznatljivo, koristi `focusField` kada postoji. Ako je fotografija cijele gredice, možeš predložiti više polja.',
                 'Polja s `currentLocation: "greenhouse"` ignoriraj osim ako fotografija jasno pokazuje da se ista biljka nalazi u pripadajućem polju gredice.',
                 'Koristi `expectedPlantCount` kao kontekst za to koliko pojedinačnih biljaka ili klica se očekuje u polju.',
+                '`imageDate` je datum fotografija ili izvornog dnevničkog unosa; koristi ga za kontekst polja i vrijednosti `daysFrom*`. `currentDate` je trenutak obrade automatizacije i ne smije promijeniti interpretaciju stanja na starijoj fotografiji.',
                 '',
                 'Raspored polja u slici cijele gredice:',
                 '- Polja su numerirana od donjeg desnog kuta slike.',
@@ -670,7 +710,7 @@ export async function runRaisedBedImagePlantStatusReview({
                 gardenId: context.raisedBed.gardenId,
                 plantSortId: proposal.plantSortId,
                 currentStatus: proposal.currentStatus,
-                effectiveAt: event.createdAt,
+                effectiveAt: input.referenceDate,
                 note: buildApprovalNote({
                     event,
                     proposal,
@@ -697,6 +737,7 @@ export async function runRaisedBedImagePlantStatusReview({
             raisedBedId: input.raisedBedId,
             operationId: input.operationId ?? null,
             focusPositionIndex: context.focusPositionIndex ?? null,
+            imageDate: input.referenceDate.toISOString(),
             imageCount: input.imageUrls.length,
             skippedInvalidImageCount: input.skippedInvalidImageCount,
             model: AI_MODEL,
@@ -743,6 +784,7 @@ export async function previewRaisedBedImagePlantStatusReview(
             raisedBedId: input.raisedBedId,
             operationId: input.operationId ?? null,
             focusPositionIndex: context.focusPositionIndex ?? null,
+            imageDate: input.referenceDate.toISOString(),
             imageCount: input.imageUrls.length,
             skippedInvalidImageCount: input.skippedInvalidImageCount,
             plantedFieldCount: Array.isArray(context.promptContext.fields)
