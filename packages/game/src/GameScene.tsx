@@ -216,9 +216,21 @@ export function GameScene({
     // Start non-critical metadata early, but don't block the first scene frame.
     useBlockData();
     const { data: garden, isLoading: gardenLoading } = useCurrentGarden();
+    const setBackgroundPaletteKey = useGameState(
+        (state) => state.setBackgroundPaletteKey,
+    );
+    const gardenBackgroundPalette = garden?.backgroundPalette;
     useClearSandboxEnvironmentOverrides(garden);
     useWeatherNow(!isLocalSandbox && !weatherDisabled && !weather);
     const isLoading = gardenLoading;
+
+    useEffect(() => {
+        if (!gardenBackgroundPalette) {
+            return;
+        }
+
+        setBackgroundPaletteKey(gardenBackgroundPalette);
+    }, [gardenBackgroundPalette, setBackgroundPaletteKey]);
 
     const loadingContext = useGameLoading();
     useEffect(() => {

@@ -142,6 +142,17 @@ test('updateGarden updates garden name', async () => {
     assert.strictEqual(garden?.name, 'Updated Garden');
 });
 
+test('updateGarden updates garden background palette', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    await updateGarden({ id: gardenId, backgroundPalette: 'purple' });
+    const garden = await getGarden(gardenId);
+    assert.ok(garden);
+    assert.strictEqual(garden.backgroundPalette, 'purple');
+});
+
 test('deleteGarden marks garden as deleted', async () => {
     createTestDb();
     const accountId = await createAccount();

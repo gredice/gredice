@@ -1,12 +1,12 @@
 import { animated } from '@react-spring/three';
 import type { ThreeEvent } from '@react-three/fiber';
 import { type ReactNode, useState } from 'react';
+import { useCycleGardenBackgroundPalette } from '../hooks/useCycleGardenBackgroundPalette';
 import type { GLTFResult } from '../models/GameAssets';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
-import { useGameState } from '../useGameState';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { HoverOutline } from './helpers/HoverOutline';
@@ -69,9 +69,7 @@ export function PaintRoller({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes } = useGameGLTF('PaintRoller');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
-    const cycleBackgroundPalette = useGameState(
-        (state) => state.cycleBackgroundPalette,
-    );
+    const cycleBackgroundPalette = useCycleGardenBackgroundPalette();
     const [hovered, setHovered] = useState(false);
 
     function handleClick(event: ThreeEvent<MouseEvent>) {

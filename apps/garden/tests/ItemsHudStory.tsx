@@ -138,6 +138,7 @@ function createItemsHudQueryClient({
         id: 1,
         name: 'Test garden',
         isSandbox,
+        backgroundPalette: 'current',
         stacks: [],
         location: { lat: 45.739, lon: 16.572 },
         raisedBeds: [],
