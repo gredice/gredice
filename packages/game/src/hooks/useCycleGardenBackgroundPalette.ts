@@ -113,11 +113,12 @@ export function useCycleGardenBackgroundPalette() {
     });
 
     return () => {
+        const { nextKey, previousKey } = cycleBackgroundPalette();
+
         if (!garden) {
             return;
         }
 
-        const { nextKey, previousKey } = cycleBackgroundPalette();
         mutation.mutate({
             backgroundPalette: nextKey,
             previousBackgroundPalette: previousKey,
