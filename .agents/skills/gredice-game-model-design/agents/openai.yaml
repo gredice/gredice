@@ -1,0 +1,4 @@
+interface:
+  display_name: "Gredice Game Model Design"
+  short_description: "Design original garden 3D models"
+  default_prompt: "Use $gredice-game-model-design to design an original low-poly Gredice garden model."
