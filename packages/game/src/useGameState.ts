@@ -10,6 +10,11 @@ import type {
     ActiveDragPreviewTargetOffset,
 } from './dragPreviewIdentity';
 import {
+    defaultGameBackgroundPaletteIndex,
+    getNextGameBackgroundPaletteIndex,
+    normalizeGameBackgroundPaletteIndex,
+} from './scene/backgroundPalettes';
+import {
     type GameQualityCustomProfile,
     type GameQualitySetting,
     getGameQualityCustomProfile,
@@ -146,6 +151,9 @@ export type GameState = {
     setGameQualityCustomProfile: (profile: GameQualityCustomProfile) => void;
     gameQualitySetting: GameQualitySetting;
     setGameQualitySetting: (setting: GameQualitySetting) => void;
+    backgroundPaletteIndex: number;
+    cycleBackgroundPalette: () => void;
+    setBackgroundPaletteIndex: (index: number) => void;
     weatherVisualizationDisabled: boolean;
     setWeatherVisualizationDisabled: (disabled: boolean) => void;
     timeOfDay: number;
@@ -310,6 +318,20 @@ export function createGameState({
             persistGameQualitySetting(setting);
             set({ gameQualitySetting: setting });
         },
+        backgroundPaletteIndex: defaultGameBackgroundPaletteIndex,
+        cycleBackgroundPalette: () => {
+            triggerSelectionHaptic();
+            set((state) => ({
+                backgroundPaletteIndex: getNextGameBackgroundPaletteIndex(
+                    state.backgroundPaletteIndex,
+                ),
+            }));
+        },
+        setBackgroundPaletteIndex: (index) =>
+            set({
+                backgroundPaletteIndex:
+                    normalizeGameBackgroundPaletteIndex(index),
+            }),
         weatherVisualizationDisabled,
         setWeatherVisualizationDisabled: (disabled) => {
             persistWeatherVisualizationDisabled(disabled);

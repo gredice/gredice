@@ -345,6 +345,23 @@
             ]
         },
         {
+            "name": "PaintRoller",
+            "source": "PaintRoller.blend",
+            "output": "PaintRoller.glb",
+            "preload": "lazy",
+            "objects": [
+                "PaintRoller_Sleeve",
+                "PaintRoller_Sleeve_Shadow",
+                "PaintRoller_EndCap_Left",
+                "PaintRoller_EndCap_Right",
+                "PaintRoller_EndHub",
+                "PaintRoller_Frame",
+                "PaintRoller_Handle",
+                "PaintRoller_Handle_Collar_Top",
+                "PaintRoller_Handle_Collar_Bottom"
+            ]
+        },
+        {
             "name": "WaterWell",
             "source": "WaterWell.blend",
             "output": "WaterWell.glb",
