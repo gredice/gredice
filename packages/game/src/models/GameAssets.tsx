@@ -169,6 +169,15 @@ export type GLTFResult = GLTF & {
         WateringCan_Rose_Head: THREE.Mesh;
         WateringCan_Spout: THREE.Mesh;
         WateringCan_Water: THREE.Mesh;
+        PaintRoller_Sleeve: THREE.Mesh;
+        PaintRoller_Sleeve_Shadow: THREE.Mesh;
+        PaintRoller_EndCap_Left: THREE.Mesh;
+        PaintRoller_EndCap_Right: THREE.Mesh;
+        PaintRoller_EndHub: THREE.Mesh;
+        PaintRoller_Frame: THREE.Mesh;
+        PaintRoller_Handle: THREE.Mesh;
+        PaintRoller_Handle_Collar_Top: THREE.Mesh;
+        PaintRoller_Handle_Collar_Bottom: THREE.Mesh;
         WaterWell_Stone_Mid: THREE.Mesh;
         WaterWell_Stone_Light: THREE.Mesh;
         WaterWell_Stone_Dark: THREE.Mesh;
@@ -383,6 +392,12 @@ export type GLTFResult = GLTF & {
         'Material.GreenhouseGreen': THREE.MeshStandardMaterial;
         'Material.Leaves': THREE.MeshStandardMaterial;
         'Material.Metal': THREE.MeshStandardMaterial;
+        'Material.PaintRoller.Frame': THREE.MeshStandardMaterial;
+        'Material.PaintRoller.Handle': THREE.MeshStandardMaterial;
+        'Material.PaintRoller.Orange': THREE.MeshStandardMaterial;
+        'Material.PaintRoller.Sleeve': THREE.MeshStandardMaterial;
+        'Material.PaintRoller.SleeveShadow': THREE.MeshStandardMaterial;
+        'Material.PaintRoller.Yellow': THREE.MeshStandardMaterial;
         'Material.Planks': THREE.MeshStandardMaterial;
         'Material.Sand': THREE.MeshStandardMaterial;
         'Material.Sand.001': THREE.MeshStandardMaterial;

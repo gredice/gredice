@@ -1,3 +1,4 @@
+import type { GameBackgroundPaletteKey } from '@gredice/js/gameBackground';
 import { createContext, useContext, useEffect } from 'react';
 import { createStore, useStore } from 'zustand';
 import { createGameAudio, type GameAudio } from './audio/audioMixer';
@@ -9,6 +10,12 @@ import type {
     ActiveDragPreviewTarget,
     ActiveDragPreviewTargetOffset,
 } from './dragPreviewIdentity';
+import {
+    getGameBackgroundPaletteIndexByKey,
+    getGameBackgroundPaletteKey,
+    getNextGameBackgroundPaletteIndex,
+    normalizeGameBackgroundPaletteIndex,
+} from './scene/backgroundPalettes';
 import {
     type GameQualityCustomProfile,
     type GameQualitySetting,
@@ -127,6 +134,11 @@ type WeatherOverride = {
     snowAccumulation?: number;
 };
 
+type BackgroundPaletteCycle = {
+    nextKey: GameBackgroundPaletteKey;
+    previousKey: GameBackgroundPaletteKey;
+};
+
 export type GameState = {
     // General
     isMock: boolean;
@@ -146,6 +158,13 @@ export type GameState = {
     setGameQualityCustomProfile: (profile: GameQualityCustomProfile) => void;
     gameQualitySetting: GameQualitySetting;
     setGameQualitySetting: (setting: GameQualitySetting) => void;
+    backgroundPaletteKey: GameBackgroundPaletteKey;
+    backgroundPaletteIndex: number;
+    cycleBackgroundPalette: () => BackgroundPaletteCycle;
+    setBackgroundPaletteIndex: (index: number) => void;
+    setBackgroundPaletteKey: (
+        key: string | null | undefined,
+    ) => GameBackgroundPaletteKey;
     weatherVisualizationDisabled: boolean;
     setWeatherVisualizationDisabled: (disabled: boolean) => void;
     timeOfDay: number;
@@ -232,6 +251,7 @@ export function createGameState({
     spriteBaseUrl,
     dayNightCycleDisabled: initialDayNightCycleDisabled,
     freezeTime,
+    initialBackgroundPalette,
     initialQualitySetting,
     isMock,
     localSandboxStorageKey,
@@ -243,6 +263,7 @@ export function createGameState({
     spriteBaseUrl?: string;
     dayNightCycleDisabled?: boolean;
     freezeTime: Date | null;
+    initialBackgroundPalette?: string | null;
     initialQualitySetting?: GameQualitySetting;
     isMock: boolean;
     localSandboxStorageKey?: string;
@@ -254,6 +275,12 @@ export function createGameState({
         initialDayNightCycleDisabled ?? isDayNightCycleDisabled();
     const gameQualityCustomProfile = getGameQualityCustomProfile();
     const gameQualitySetting = initialQualitySetting ?? getGameQualitySetting();
+    const initialBackgroundPaletteIndex = getGameBackgroundPaletteIndexByKey(
+        initialBackgroundPalette,
+    );
+    const initialBackgroundPaletteKey = getGameBackgroundPaletteKey(
+        initialBackgroundPaletteIndex,
+    );
     const weatherVisualizationDisabled = isWeatherVisualizationDisabled();
     const now = freezeTime ?? new Date();
     const timeOfDay = resolveGameTimeOfDay(now, dayNightCycleDisabled);
@@ -309,6 +336,47 @@ export function createGameState({
         setGameQualitySetting: (setting) => {
             persistGameQualitySetting(setting);
             set({ gameQualitySetting: setting });
+        },
+        backgroundPaletteKey: initialBackgroundPaletteKey,
+        backgroundPaletteIndex: initialBackgroundPaletteIndex,
+        cycleBackgroundPalette: () => {
+            triggerSelectionHaptic();
+            const previousKey = get().backgroundPaletteKey;
+            const nextBackgroundPaletteIndex =
+                getNextGameBackgroundPaletteIndex(get().backgroundPaletteIndex);
+            const nextBackgroundPaletteKey = getGameBackgroundPaletteKey(
+                nextBackgroundPaletteIndex,
+            );
+            set({
+                backgroundPaletteKey: nextBackgroundPaletteKey,
+                backgroundPaletteIndex: nextBackgroundPaletteIndex,
+            });
+            return {
+                nextKey: nextBackgroundPaletteKey,
+                previousKey,
+            };
+        },
+        setBackgroundPaletteIndex: (index) => {
+            const backgroundPaletteIndex =
+                normalizeGameBackgroundPaletteIndex(index);
+            set({
+                backgroundPaletteKey: getGameBackgroundPaletteKey(
+                    backgroundPaletteIndex,
+                ),
+                backgroundPaletteIndex,
+            });
+        },
+        setBackgroundPaletteKey: (key) => {
+            const backgroundPaletteIndex =
+                getGameBackgroundPaletteIndexByKey(key);
+            const backgroundPaletteKey = getGameBackgroundPaletteKey(
+                backgroundPaletteIndex,
+            );
+            set({
+                backgroundPaletteKey,
+                backgroundPaletteIndex,
+            });
+            return backgroundPaletteKey;
         },
         weatherVisualizationDisabled,
         setWeatherVisualizationDisabled: (disabled) => {

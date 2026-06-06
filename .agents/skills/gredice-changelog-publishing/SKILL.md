@@ -50,24 +50,21 @@ Every changelog item needs:
 
 - `heading`: concise public feature name.
 - `shortDescription`: one-sentence public summary.
-- `releaseDate`: the merge date on `main`.
-- `markdown`: public Markdown summary of what changed and what is new.
+- `releaseDate`: the merge date on `main`, used as the CMS `publishedAt` date.
+- `markdown`: public, free-form Markdown summary of what changed and why it matters.
 - `sources`: PR numbers or URLs for traceability.
 
-Public copy should be Croatian unless the user asks otherwise. Avoid PR numbers, branch names, package names, and admin terminology in the published content.
+Public copy should be Croatian unless the user asks otherwise. Avoid PR numbers, branch names, package names, administration-only details, and technical implementation terminology in the published content.
 
-Recommended Markdown structure:
+Recommended Markdown style:
 
 ```markdown
-## Sto je novo
+Kratak odlomak koji objasnjava sto je novo za korisnike ili farmere.
 
-- Concrete user-visible change.
-- Concrete benefit or new capability.
-
-## Kome je namijenjeno
-
-Kratka recenica za korisnike, farmere ili javne posjetitelje.
+Po potrebi dodaj jos jedan odlomak s konkretnom koristi ili nacinom koristenja.
 ```
+
+Do not add `Sto je novo`/`Što je novo`, `Kome je namijenjeno`, or `Datum izdanja` sections. Do not write the changelog body as bullets unless the user explicitly asks for a list.
 
 ## CMS Page Rules
 
@@ -80,11 +77,12 @@ Changelog entries are CMS pages:
 - `metaTitle`: specific and human-readable.
 - `metaDescription`: no more than 160 characters.
 - `canonicalPath`: usually `"/novosti/sto-je-novo/<entry-slug>"`.
-- `tags`: audience/topic tags that help filtering, such as `Vrt`, `Farma`, `Dostava`, `Novosti`.
+- `publishedAt`: set to the changelog release date while the page is still a draft.
+- `tags`: audience/topic tags that help filtering, such as `Vrt`, `Farma`, `Dostava`, `Novosti`. Do not include date tags.
 
-Use supported CMS sections from `packages/storage/src/cmsPageSections.ts`. The current changelog template uses `MediaBlock` plus `MarkdownBlock`; `PageHeader`, `TextBlock`, and `MarkdownBlock` are also safe for plain entries after checking the registry.
+Use supported CMS sections from `packages/storage/src/cmsPageSections.ts`. The current changelog template uses `MediaBlock` plus `MarkdownBlock`; `PageHeader`, `TextBlock`, and `MarkdownBlock` are also safe for plain entries after checking the registry. Do not add a `TextBlock` only to show the release date.
 
-Publishing sets or refreshes `publishedAt` through the CMS repository. Public changelog APIs and news pages order by `publishedAt`, not by the release date written in the content. Confirm the desired ordering before publishing historical batches.
+Public changelog APIs and news pages order by `publishedAt`, so historical batches must preserve the release date there before publishing. Do not duplicate the release date in tags or visible content sections.
 
 ## Database Workflow
 
@@ -120,6 +118,8 @@ Before applying:
 - Verify each entry has heading, description, release date, Markdown, and sources.
 - Validate slugs with `normalizeCmsPageSlug` and CMS content with `normalizeCmsPageContent`.
 - Check `metaDescription.length <= 160`.
+- Confirm changelog tags contain only audience/topic labels, not date strings.
+- Confirm Markdown is free-form user/farmer-facing copy with no `Sto je novo`, `Kome je namijenjeno`, or `Datum izdanja` sections.
 - Dry-run the create/update script and review counts.
 
 After applying:

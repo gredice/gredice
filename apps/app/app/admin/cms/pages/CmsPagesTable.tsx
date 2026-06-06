@@ -7,7 +7,41 @@ import { NoDataPlaceholder } from '../../../../components/shared/placeholders/No
 import { KnownPages } from '../../../../src/KnownPages';
 import { CmsPageStateChip } from './CmsPageStateChip';
 
+function publishedAtTime(page: SelectCmsPage) {
+    if (!page.publishedAt) {
+        return null;
+    }
+
+    const time = new Date(page.publishedAt).getTime();
+    return Number.isNaN(time) ? null : time;
+}
+
+function comparePagesByPublishDate(a: SelectCmsPage, b: SelectCmsPage) {
+    const aPublishedAt = publishedAtTime(a);
+    const bPublishedAt = publishedAtTime(b);
+
+    if (aPublishedAt !== null && bPublishedAt !== null) {
+        const publishDateDifference = bPublishedAt - aPublishedAt;
+
+        if (publishDateDifference !== 0) {
+            return publishDateDifference;
+        }
+    }
+
+    if (aPublishedAt !== null) {
+        return -1;
+    }
+
+    if (bPublishedAt !== null) {
+        return 1;
+    }
+
+    return b.id - a.id;
+}
+
 export function CmsPagesTable({ pages }: { pages: SelectCmsPage[] }) {
+    const sortedPages = [...pages].sort(comparePagesByPublishDate);
+
     return (
         <Table>
             <Table.Header>
@@ -25,7 +59,7 @@ export function CmsPagesTable({ pages }: { pages: SelectCmsPage[] }) {
                         </Table.Cell>
                     </Table.Row>
                 )}
-                {pages.map((page) => (
+                {sortedPages.map((page) => (
                     <Table.Row key={page.id}>
                         <Table.Cell>
                             <div className="flex min-w-0 items-center gap-2">

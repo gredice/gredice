@@ -22,6 +22,9 @@ export const gardens = pgTable(
             .notNull()
             .references(() => farms.id),
         name: text('name').notNull(),
+        backgroundPalette: text('background_palette')
+            .notNull()
+            .default('current'),
         // Sandbox ("play") gardens have no economy: free building, no inventory,
         // no plant-status lifecycle and no weather. Decoration only.
         isSandbox: boolean('is_sandbox').notNull().default(false),

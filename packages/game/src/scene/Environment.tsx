@@ -10,6 +10,7 @@ import { useSnapshotTime } from '../hooks/useSnapshotTime';
 import { useWeatherNow } from '../hooks/useWeatherNow';
 import type { Stack } from '../types/Stack';
 import { type GameState, useGameState } from '../useGameState';
+import { getGameBackgroundPalette } from './backgroundPalettes';
 import { CloudLayer } from './CloudLayer';
 import { updateGameProfileMetadata } from './gameProfileMetadata';
 import {
@@ -232,6 +233,38 @@ function smoothstep(edge0: number, edge1: number, value: number) {
     return t * t * (3 - 2 * t);
 }
 
+function daylightBlend(timeOfDay: number) {
+    return Math.min(
+        smoothstep(0.2, 0.3, timeOfDay),
+        1 - smoothstep(0.72, 0.82, timeOfDay),
+    );
+}
+
+function resolveThemedBackground({
+    backgroundPaletteIndex,
+    timeOfDay,
+}: {
+    backgroundPaletteIndex: number;
+    timeOfDay: number;
+}) {
+    const palette = getGameBackgroundPalette(backgroundPaletteIndex);
+
+    if (palette.kind === 'current') {
+        return null;
+    }
+
+    const daylight = daylightBlend(timeOfDay);
+
+    return {
+        background: chroma
+            .mix(palette.nightColor, palette.dayColor, daylight, 'rgb')
+            .rgb(),
+        hemisphereSkyColor: chroma
+            .mix(palette.nightColor, palette.lightColor, daylight, 'rgb')
+            .rgb(),
+    };
+}
+
 export function environmentState(
     { lat, lon }: { lat: number; lon: number },
     currentTime: Date,
@@ -298,11 +331,13 @@ function resolveWindDirection(
 }
 
 function useEnvironmentElements({
+    backgroundPaletteIndex,
     location,
     currentTime,
     timeOfDay,
     weather,
 }: {
+    backgroundPaletteIndex: number;
     location: { lat: number; lon: number };
     currentTime: Date;
     timeOfDay: number;
@@ -317,6 +352,10 @@ function useEnvironmentElements({
     const moonlitNightScales = getMoonlitNightScales({
         date: sceneDate,
         location,
+        timeOfDay,
+    });
+    const themedBackground = resolveThemedBackground({
+        backgroundPaletteIndex,
         timeOfDay,
     });
 
@@ -345,11 +384,12 @@ function useEnvironmentElements({
         moonlitNightScales.lightScale;
 
     // Background color
+    const effectiveBackground = themedBackground?.background ?? background;
     const backgroundColor = useRef<Color>(new Color());
     backgroundColor.current.setRGB(
-        background[0] / 255,
-        background[1] / 255,
-        background[2] / 255,
+        effectiveBackground[0] / 255,
+        effectiveBackground[1] / 255,
+        effectiveBackground[2] / 255,
         'srgb',
     );
     const moonlitBackground = { h: 0, s: 0, l: 0 };
@@ -380,20 +420,36 @@ function useEnvironmentElements({
     });
 
     const hemisphereColor = useRef<Color>(new Color());
-    hemisphereColor.current.setRGB(
-        (hemisphereSkyColor[0] / 255) * -0,
-        hemisphereSkyColor[1] / 255,
-        hemisphereSkyColor[2] / 255,
-        'srgb',
-    );
+    const effectiveHemisphereSkyColor =
+        themedBackground?.hemisphereSkyColor ?? hemisphereSkyColor;
+    if (themedBackground) {
+        hemisphereColor.current.setRGB(
+            effectiveHemisphereSkyColor[0] / 255,
+            effectiveHemisphereSkyColor[1] / 255,
+            effectiveHemisphereSkyColor[2] / 255,
+            'srgb',
+        );
+    } else {
+        hemisphereColor.current.setRGB(
+            (effectiveHemisphereSkyColor[0] / 255) * -0,
+            effectiveHemisphereSkyColor[1] / 255,
+            effectiveHemisphereSkyColor[2] / 255,
+            'srgb',
+        );
+    }
 
     const hemisphereGroundColor = useRef<Color>(new Color());
-    hemisphereGroundColor.current.setRGB(
-        (backgroundColor.current.r / 255) * 0.5,
-        (backgroundColor.current.g / 255) * 0.5,
-        (backgroundColor.current.b / 255) * 0.5,
-        'srgb',
-    );
+    if (themedBackground) {
+        hemisphereGroundColor.current.copy(backgroundColor.current);
+        hemisphereGroundColor.current.multiplyScalar(0.42);
+    } else {
+        hemisphereGroundColor.current.setRGB(
+            (backgroundColor.current.r / 255) * 0.5,
+            (backgroundColor.current.g / 255) * 0.5,
+            (backgroundColor.current.b / 255) * 0.5,
+            'srgb',
+        );
+    }
     const hemisphereIntensity =
         (sunIntensity * 2 + 3) * moonlitNightScales.lightScale;
 
@@ -490,9 +546,13 @@ export function StaticEnvironment({
     const qualityProfile = quality ?? resolveGameQualityProfile();
     const currentTime = useSnapshotTime();
     const timeOfDay = useGameState((state) => state.timeOfDay);
+    const backgroundPaletteIndex = useGameState(
+        (state) => state.backgroundPaletteIndex,
+    );
     const setWaterColors = useGameState((state) => state.setWaterColors);
     const { background, ambient, hemisphere, directionalLight, waterColors } =
         useEnvironmentElements({
+            backgroundPaletteIndex,
             location: defaultLocation,
             currentTime,
             timeOfDay,
@@ -585,6 +645,9 @@ export function Environment({
 
     const currentTime = useSnapshotTime();
     const timeOfDay = useGameState((state) => state.timeOfDay);
+    const backgroundPaletteIndex = useGameState(
+        (state) => state.backgroundPaletteIndex,
+    );
     const view = useGameState((state) => state.view);
     const closeupBlockId = useGameState((state) => state.closeupBlock?.id);
     const pickupBlockId = useGameState((state) => state.pickupBlock?.id);
@@ -770,6 +833,7 @@ export function Environment({
 
     const { background, ambient, hemisphere, directionalLight, waterColors } =
         useEnvironmentElements({
+            backgroundPaletteIndex,
             location,
             currentTime,
             timeOfDay,

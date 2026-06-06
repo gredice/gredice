@@ -39,6 +39,7 @@ import { GiftBoxGreenGold } from './GiftBoxGreenGold';
 import { GiftBoxPurpleSilver } from './GiftBoxPurpleSilver';
 import { GiftBoxRedWhite } from './GiftBoxRedWhite';
 import { GiftBoxWhiteGreen } from './GiftBoxWhiteGreen';
+import { PaintRoller } from './PaintRoller';
 import { Pine } from './Pine';
 import { PineAdvent } from './PineAdvent';
 import { Pot } from './Pot';
@@ -91,6 +92,7 @@ export const entityNameMap: Record<
     Stool: Stool,
     Bucket: Bucket,
     WateringCan: WateringCan,
+    PaintRoller: PaintRoller,
     WaterWell: WaterWell,
     BirdHouse: BirdHouse,
     CatPillow: CatPillow,

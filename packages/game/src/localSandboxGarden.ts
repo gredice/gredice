@@ -1,3 +1,8 @@
+import {
+    defaultGameBackgroundPaletteKey,
+    type GameBackgroundPaletteKey,
+    isGameBackgroundPaletteKey,
+} from '@gredice/js/gameBackground';
 import { Vector3 } from 'three';
 import type { Block } from './types/Block';
 import type { Stack } from './types/Stack';
@@ -9,6 +14,7 @@ export type LocalSandboxGarden = {
     id: number;
     name: string;
     isSandbox: true;
+    backgroundPalette: GameBackgroundPaletteKey;
     stacks: Stack[];
     location: {
         lat: number;
@@ -18,6 +24,7 @@ export type LocalSandboxGarden = {
 };
 
 type StoredLocalSandboxGarden = {
+    backgroundPalette?: unknown;
     stacks?: Array<{
         position?: {
             x?: unknown;
@@ -28,6 +35,7 @@ type StoredLocalSandboxGarden = {
 };
 
 type LocalSandboxGardenOptions = {
+    backgroundPalette?: GameBackgroundPaletteKey;
     name?: string;
     stacks?: Stack[];
 };
@@ -73,6 +81,8 @@ export function createDefaultLocalSandboxGarden(
         id: localSandboxGardenId,
         name: options.name ?? 'Debug sandbox',
         isSandbox: true,
+        backgroundPalette:
+            options.backgroundPalette ?? defaultGameBackgroundPaletteKey,
         stacks: resolveDefaultLocalSandboxStacks(options.stacks),
         location: { lat: 45.739, lon: 16.572 },
         raisedBeds: [],
@@ -140,6 +150,11 @@ function normalizeStoredGarden(
 
     return {
         ...createDefaultLocalSandboxGarden(options),
+        backgroundPalette: isGameBackgroundPaletteKey(
+            storedGarden.backgroundPalette,
+        )
+            ? storedGarden.backgroundPalette
+            : (options.backgroundPalette ?? defaultGameBackgroundPaletteKey),
         stacks:
             stacks.length > 0
                 ? stacks
@@ -173,13 +188,19 @@ export function loadLocalSandboxGarden(
 
 export function persistLocalSandboxGarden(
     storageKey: string,
-    garden: Pick<LocalSandboxGarden, 'stacks'>,
+    garden: Pick<LocalSandboxGarden, 'stacks'> &
+        Partial<Pick<LocalSandboxGarden, 'backgroundPalette'>>,
 ) {
     if (typeof window === 'undefined') {
         return;
     }
 
+    const storedBackgroundPalette =
+        garden.backgroundPalette ??
+        getStoredLocalSandboxBackgroundPalette(storageKey) ??
+        defaultGameBackgroundPaletteKey;
     const storedGarden: StoredLocalSandboxGarden = {
+        backgroundPalette: storedBackgroundPalette,
         stacks: garden.stacks.map((stack) => ({
             position: {
                 x: stack.position.x,
@@ -198,6 +219,24 @@ export function persistLocalSandboxGarden(
         window.localStorage.setItem(storageKey, JSON.stringify(storedGarden));
     } catch (error) {
         console.warn('Failed to persist local sandbox garden', error);
+    }
+}
+
+function getStoredLocalSandboxBackgroundPalette(storageKey: string) {
+    try {
+        const storedValue = window.localStorage.getItem(storageKey);
+        if (!storedValue) {
+            return null;
+        }
+
+        const storedGarden = JSON.parse(
+            storedValue,
+        ) as StoredLocalSandboxGarden;
+        return isGameBackgroundPaletteKey(storedGarden.backgroundPalette)
+            ? storedGarden.backgroundPalette
+            : null;
+    } catch {
+        return null;
     }
 }
 

@@ -44,6 +44,7 @@ test('persists local sandbox stacks in local storage', () => {
         const garden = createDefaultLocalSandboxGarden();
         const nextGarden = {
             ...garden,
+            backgroundPalette: 'purple' as const,
             stacks: [
                 {
                     position: new Vector3(3, 0, -1),
@@ -62,6 +63,7 @@ test('persists local sandbox stacks in local storage', () => {
         const loadedGarden = loadLocalSandboxGarden('test-local-sandbox');
 
         assert.equal(loadedGarden.isSandbox, true);
+        assert.equal(loadedGarden.backgroundPalette, 'purple');
         assert.equal(loadedGarden.stacks.length, 1);
         assert.equal(loadedGarden.stacks[0]?.position.x, 3);
         assert.equal(loadedGarden.stacks[0]?.position.z, -1);
@@ -98,10 +100,27 @@ test('loads provided default local sandbox stacks when storage is empty', () => 
     });
 });
 
+test('keeps local sandbox background palette when persisting stacks only', () => {
+    withLocalStorage(() => {
+        const garden = createDefaultLocalSandboxGarden({
+            backgroundPalette: 'sunset-red',
+        });
+
+        persistLocalSandboxGarden('test-local-sandbox', garden);
+        persistLocalSandboxGarden('test-local-sandbox', {
+            stacks: garden.stacks,
+        });
+
+        const loadedGarden = loadLocalSandboxGarden('test-local-sandbox');
+        assert.equal(loadedGarden.backgroundPalette, 'sunset-red');
+    });
+});
+
 test('falls back to a playable default local sandbox', () => {
     const garden = createDefaultLocalSandboxGarden();
 
     assert.equal(garden.isSandbox, true);
+    assert.equal(garden.backgroundPalette, 'current');
     assert.equal(garden.raisedBeds.length, 0);
     assert.ok(garden.stacks.length >= 9);
     assert.ok(
