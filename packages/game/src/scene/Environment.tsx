@@ -1,6 +1,6 @@
 'use client';
 
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import chroma from 'chroma-js';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getPosition } from 'suncalc';
@@ -73,6 +73,8 @@ const DEBUG_WEATHER_BLEND_CONFIG: WeatherBlendConfig = {
     transitionSeconds: 0.35,
 };
 const WEATHER_BLEND_EPSILON = 0.0005;
+const BACKGROUND_COLOR_TRANSITION_SECONDS = 0.55;
+const BACKGROUND_COLOR_EPSILON = 0.001;
 
 function dampNumber(
     current: number,
@@ -90,6 +92,73 @@ function isWithinBlendEpsilon(
     target: number | null | undefined,
 ) {
     return Math.abs((current ?? 0) - (target ?? 0)) <= WEATHER_BLEND_EPSILON;
+}
+
+function isWithinColorEpsilon(current: Color, target: Color) {
+    return (
+        Math.abs(current.r - target.r) <= BACKGROUND_COLOR_EPSILON &&
+        Math.abs(current.g - target.g) <= BACKGROUND_COLOR_EPSILON &&
+        Math.abs(current.b - target.b) <= BACKGROUND_COLOR_EPSILON
+    );
+}
+
+function SceneBackgroundColor({
+    animate,
+    color,
+}: {
+    animate: boolean;
+    color: Color;
+}) {
+    const { scene } = useThree();
+    const displayedColor = useRef<Color>(new Color());
+    const targetColor = useRef<Color>(new Color());
+    const initialized = useRef(false);
+    const colorRed = color.r;
+    const colorGreen = color.g;
+    const colorBlue = color.b;
+
+    useEffect(() => {
+        targetColor.current.setRGB(colorRed, colorGreen, colorBlue);
+
+        if (!animate || !initialized.current) {
+            displayedColor.current.setRGB(colorRed, colorGreen, colorBlue);
+            initialized.current = true;
+        }
+
+        scene.background = displayedColor.current;
+    }, [animate, colorBlue, colorGreen, colorRed, scene]);
+
+    useEffect(() => {
+        scene.background = displayedColor.current;
+
+        return () => {
+            if (scene.background === displayedColor.current) {
+                scene.background = null;
+            }
+        };
+    }, [scene]);
+
+    useFrame((_, delta) => {
+        if (!animate || !initialized.current) {
+            return;
+        }
+
+        if (scene.background !== displayedColor.current) {
+            scene.background = displayedColor.current;
+        }
+
+        if (isWithinColorEpsilon(displayedColor.current, targetColor.current)) {
+            displayedColor.current.copy(targetColor.current);
+            return;
+        }
+
+        displayedColor.current.lerp(
+            targetColor.current,
+            1 - Math.exp(-(1 / BACKGROUND_COLOR_TRANSITION_SECONDS) * delta),
+        );
+    });
+
+    return null;
 }
 
 function useBlendedWeather(
@@ -596,10 +665,7 @@ export function StaticEnvironment({
                 invalidationKey={shadowInvalidationKey}
             />
             {!noBackground && (
-                <color
-                    attach="background"
-                    args={[background.r, background.g, background.b]}
-                />
+                <SceneBackgroundColor animate={false} color={background} />
             )}
             <ambientLight intensity={ambient.intensity} />
             <hemisphereLight
@@ -1101,10 +1167,7 @@ export function Environment({
                 invalidationKey={shadowInvalidationKey}
             />
             {!noBackground && (
-                <color
-                    attach="background"
-                    args={[background.r, background.g, background.b]}
-                />
+                <SceneBackgroundColor animate color={background} />
             )}
             <ambientLight intensity={ambient.intensity} />
             {lightningFlash > 0 && (
