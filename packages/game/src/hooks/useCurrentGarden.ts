@@ -1,4 +1,9 @@
 import { clientAuthenticated, type GardenResponse } from '@gredice/client';
+import {
+    defaultGameBackgroundPaletteKey,
+    type GameBackgroundPaletteKey,
+    isGameBackgroundPaletteKey,
+} from '@gredice/js/gameBackground';
 import { type UseQueryResult, useQuery } from '@tanstack/react-query';
 import { Vector3 } from 'three';
 import {
@@ -35,8 +40,15 @@ export const currentGardenKeys = (
 
 type useCurrentGardenResponse = Omit<
     GardenResponse,
-    'stacks' | 'farmId' | 'latitude' | 'longitude' | 'createdAt' | 'updatedAt'
+    | 'backgroundPalette'
+    | 'stacks'
+    | 'farmId'
+    | 'latitude'
+    | 'longitude'
+    | 'createdAt'
+    | 'updatedAt'
 > & {
+    backgroundPalette: GameBackgroundPaletteKey;
     farmId?: number | null;
     stacks: Stack[];
     location: {
@@ -220,6 +232,12 @@ function mockDaysAgoIso(daysAgo: number) {
     const date = new Date();
     date.setDate(date.getDate() - daysAgo);
     return date.toISOString();
+}
+
+function normalizeGardenBackgroundPalette(value: unknown) {
+    return isGameBackgroundPaletteKey(value)
+        ? value
+        : defaultGameBackgroundPaletteKey;
 }
 
 function mockRaisedBedField(
@@ -489,6 +507,7 @@ function denseMockGarden(
                 ? 'Profile plant-heavy garden'
                 : 'Profile dense garden',
         isSandbox: false,
+        backgroundPalette: defaultGameBackgroundPaletteKey,
         stacks,
         location: { lat: 45.739, lon: 16.572 },
         raisedBeds,
@@ -546,6 +565,7 @@ function mockGarden(
         id: 99999,
         name: 'Moj vrt',
         isSandbox: false,
+        backgroundPalette: defaultGameBackgroundPaletteKey,
         stacks: [
             {
                 position: new Vector3(
@@ -860,6 +880,9 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
                 id: garden.id,
                 name: garden.name,
                 isSandbox: garden.isSandbox,
+                backgroundPalette: normalizeGardenBackgroundPalette(
+                    garden.backgroundPalette,
+                ),
                 farmId: garden.farmId,
                 stacks,
                 location: {

@@ -1,3 +1,4 @@
+import { gameBackgroundPaletteKeys } from '@gredice/js/gameBackground';
 import { userAllowedPlantStatusTransitions } from '@gredice/js/plants';
 import {
     isRaisedBedAbandoned,
@@ -435,6 +436,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     id: garden.id,
                     name: garden.name,
                     isSandbox: garden.isSandbox,
+                    backgroundPalette: garden.backgroundPalette,
                     createdAt: garden.createdAt,
                 })),
             );
@@ -849,6 +851,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 id: garden.id,
                 name: garden.name,
                 isSandbox: garden.isSandbox,
+                backgroundPalette: garden.backgroundPalette,
                 farmId: garden.farmId,
                 latitude: garden.farm.latitude,
                 longitude: garden.farm.longitude,
@@ -988,12 +991,13 @@ const app = new Hono<{ Variables: AuthVariables }>()
             'json',
             z.object({
                 name: z.string().min(1).optional(),
+                backgroundPalette: z.enum(gameBackgroundPaletteKeys).optional(),
             }),
         ),
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId } = context.req.valid('param');
-            const { name } = context.req.valid('json');
+            const { backgroundPalette, name } = context.req.valid('json');
             const gardenIdNumber = parseInt(gardenId, 10);
             if (Number.isNaN(gardenIdNumber)) {
                 return context.json({ error: 'Invalid garden ID' }, 400);
@@ -1006,11 +1010,18 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             // Update garden with provided fields
-            const updateData: { id: number; name?: string } = {
+            const updateData: {
+                backgroundPalette?: string;
+                id: number;
+                name?: string;
+            } = {
                 id: gardenIdNumber,
             };
             if (name !== undefined) {
                 updateData.name = name.trim();
+            }
+            if (backgroundPalette !== undefined) {
+                updateData.backgroundPalette = backgroundPalette;
             }
 
             await updateGarden(updateData);
