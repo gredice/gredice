@@ -425,6 +425,8 @@ async function buildAnalysisMessages({
             getOperations(accountId, gardenId, raisedBed.id),
             getEntitiesFormatted<{
                 id: string;
+                slug?: string;
+                attributes?: { application?: string | null };
                 information?: { label?: string; name?: string };
             }>('operation'),
             buildWeatherContext(referenceDate),
@@ -443,11 +445,33 @@ async function buildAnalysisMessages({
             entity.information?.label ?? entity.information?.name ?? entity.id,
         ]),
     );
-    const availableOperations = operationsData.map((entity) => ({
-        id: entity.id,
-        name:
-            entity.information?.label ?? entity.information?.name ?? entity.id,
-    }));
+    const availableOperations = operationsData.map((entity) => {
+        const application = entity.attributes?.application ?? null;
+        const isRaisedBedOperation =
+            application === 'raisedBedFull' || application === 'raisedBed1m';
+        const isPlantFieldOperation = application === 'plant';
+        const publicOperationUrl = entity.slug
+            ? `https://www.gredice.com/radnje/${entity.slug}`
+            : null;
+
+        return {
+            id: entity.id,
+            name:
+                entity.information?.label ??
+                entity.information?.name ??
+                entity.id,
+            slug: entity.slug ?? null,
+            application,
+            raisedBedOperationUrl:
+                isRaisedBedOperation && publicOperationUrl
+                    ? `${publicOperationUrl}#raisedBedId=${raisedBed.id}`
+                    : null,
+            plantFieldOperationUrlTemplate:
+                isPlantFieldOperation && publicOperationUrl
+                    ? `${publicOperationUrl}#raisedBedId=${raisedBed.id}&positionIndex={positionIndex}`
+                    : null,
+        };
+    });
 
     const plantedFields = raisedBed.fields
         .filter((field) => field.active && field.plantSortId)
@@ -520,6 +544,9 @@ async function buildAnalysisMessages({
                 '- U JSON kontekstu vrijednost `positionLabel` koristi ovo brojanje (1-bazirano), dok `positionIndex` ostaje 0-bazirana interna oznaka (`positionLabel = positionIndex + 1`).',
                 '- Polja s `currentLocation: "greenhouse"` su presadnice koje trenutno rastu u stakleniku i još nisu presađene u gredicu; polja s `currentLocation: "raisedBed"` su u gredici. `sowingLocation` opisuje gdje je biljka započela.',
                 '- `imageDate` je datum fotografija/dnevničkog unosa. Koristi `imageDate`, `analysisReferenceDate` i `weather.historical` za procjenu stanja na fotografijama. `currentDate`, `weather.now` i `weather.forecast` koristi samo za današnje i buduće preporuke za zalijevanje, zaštitu od mraza, sjetvu i berbu.',
+                '- Kada preporučiš konkretnu radnju iz `availableOperations`, napiši je kao markdown poveznicu na apsolutni URL iz `raisedBedOperationUrl` ili `plantFieldOperationUrlTemplate`, npr. `[Naziv radnje](https://www.gredice.com/radnje/{slug}#raisedBedId={raisedBedId})`.',
+                '- Za radnje nad pojedinom biljkom/poljem koristi hash s 0-baziranim `positionIndex`: `[Naziv radnje](https://www.gredice.com/radnje/{slug}#raisedBedId={raisedBedId}&positionIndex={positionIndex})`. Ne koristi `positionLabel` u URL-u.',
+                '- Koristi samo apsolutne `https://www.gredice.com/radnje/...` URL predloške iz `availableOperations`; ne izmišljaj slugove, ne piši sirovi URL bez markdown oznake i ne dodaj link ako za radnju ne postoji odgovarajući URL predložak.',
             ].join('\n'),
         },
         {

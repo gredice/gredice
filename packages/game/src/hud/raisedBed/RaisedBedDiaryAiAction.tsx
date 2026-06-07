@@ -6,11 +6,11 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
 import { AiAnalysisRequestError } from '../../hooks/aiAnalysisError';
 import { useRaisedBedAiAnalysis } from '../../hooks/useRaisedBedAiAnalysis';
 import { useRaisedBedFieldAiAnalysis } from '../../hooks/useRaisedBedFieldAiAnalysis';
 import { ButtonGreen } from '../../shared-ui/ButtonGreen';
+import { RaisedBedAiOperationMarkdown } from './RaisedBedAiOperationMarkdown';
 import styles from './RaisedBedDiaryAiAction.module.css';
 
 type RaisedBedDiaryAiActionProps = {
@@ -433,9 +433,11 @@ export function RaisedBedDiaryAiAction({
                             <div className="min-h-72 rounded-3xl border bg-card p-4 text-card-foreground shadow-xs">
                                 {visibleMarkdown ? (
                                     <div className="prose prose-sm max-w-none dark:prose-invert">
-                                        <ReactMarkdown>
+                                        <RaisedBedAiOperationMarkdown
+                                            gardenId={gardenId}
+                                        >
                                             {visibleMarkdown}
-                                        </ReactMarkdown>
+                                        </RaisedBedAiOperationMarkdown>
                                         {phase === 'typing' && (
                                             <span
                                                 className={`${styles.cursorBlink} ml-0.5 inline-block h-[1.1rem] w-2.5 rounded-full bg-amber-300 align-text-bottom`}
