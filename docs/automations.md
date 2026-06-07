@@ -6,7 +6,9 @@ existing planting flow where a `raisedBedField.plantUpdate` event with
 `data.status = "sowed"` queues seasonal watering operations asynchronously, and
 monthly schedules that can create recurring farm operations. Operation
 completion images can also be reviewed asynchronously for high-confidence plant
-status changes that create pending admin approval requests.
+status changes that create pending admin approval requests. Completing the
+seedling transplanting operation also switches the targeted plant from
+greenhouse sowing to direct sowing.
 
 ## Ownership
 
@@ -90,6 +92,9 @@ MVP modules:
   definition.
 - `action.updateRaisedBedFieldPlantStatus`: writes a
   `raisedBedField.plantUpdate` event for an operation target.
+- `action.updateRaisedBedFieldSowingLocation`: writes a
+  `raisedBedField.plantSchedule` event for an operation target, preserving the
+  scheduled date while changing `sowingLocation`.
 - `action.createPlantStatusRequestsFromImageAnalysis`: reviews hosted
   raised-bed images from operation completion or raised-bed AI analysis events,
   then creates pending plant-status approval requests when the visual evidence
