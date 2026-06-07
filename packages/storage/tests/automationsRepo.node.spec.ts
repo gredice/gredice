@@ -34,6 +34,7 @@ import {
     processDueAutomationRuns,
     recordAutomationRunStep,
     seasonalSowedWateringAutomationGraph,
+    seedlingTransplantDirectSowingLocationAutomationGraph,
     startAutomationRun,
     storage,
     updateAutomationDefinition,
@@ -801,7 +802,6 @@ test('plant-status automation skips replay when target status already exists', a
     });
     await createEvent(
         knownEvents.operations.completedV1(operationId.toString(), {
-            completedAt: '2026-05-01T08:00:00.000Z',
             completedBy: 'automations-test',
         }),
     );
@@ -900,6 +900,168 @@ test('plant-status automation skips replay when target status already exists', a
     assert.strictEqual(
         (
             await getEvents(knownEventTypes.raisedBedFields.plantUpdate, [
+                fieldAggregateId,
+            ])
+        ).length,
+        1,
+    );
+});
+
+test('seedling transplant automation waits for verification before setting sowing location to direct', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createAutomationRaisedBedContext();
+    const fieldAggregateId = `${raisedBedId}|0`;
+    const scheduledDate = '2026-04-01T08:00:00.000Z';
+    await upsertRaisedBedField({ raisedBedId, positionIndex: 0 });
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(fieldAggregateId, {
+            plantSortId: '101',
+            scheduledDate,
+            sowingLocation: 'greenhouse',
+        }),
+    );
+    const raisedBed = await getRaisedBed(raisedBedId);
+    const field = raisedBed?.fields[0];
+    assert.ok(field);
+    assert.strictEqual(field.sowingLocation, 'greenhouse');
+
+    const operationId = await createOperation({
+        accountId,
+        entityId: 593,
+        entityTypeName: 'operation',
+        gardenId,
+        raisedBedId,
+        raisedBedFieldId: field.id,
+    });
+    await createEvent(
+        knownEvents.operations.completedV1(operationId.toString(), {
+            completedBy: 'automations-test',
+        }),
+    );
+    const completionEvent = await getLatestEvent(
+        knownEventTypes.operations.complete,
+        operationId.toString(),
+    );
+    const graph = seedlingTransplantDirectSowingLocationAutomationGraph();
+    const definition = await createAutomationDefinition({
+        key: 'test.seedling-transplant-direct-location',
+        name: 'Seedling transplant direct location',
+        status: 'enabled',
+        graph,
+    });
+    const completionInput = {
+        eventId: completionEvent.id,
+        eventType: completionEvent.type,
+        aggregateId: completionEvent.aggregateId,
+        data:
+            completionEvent.data && typeof completionEvent.data === 'object'
+                ? (completionEvent.data as Record<string, unknown>)
+                : {},
+    };
+    const completionRun = await createAutomationRun({
+        automationDefinition: definition,
+        source: 'event',
+        sourceEvent: completionEvent,
+        input: completionInput,
+    });
+    assert.ok(completionRun);
+    const startedCompletionRun = await startAutomationRun(completionRun.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedCompletionRun);
+
+    const completionResult = await executeAutomationRun(startedCompletionRun);
+
+    assert.strictEqual(completionResult.status, 'skipped');
+    assert.strictEqual(
+        (
+            await getEvents(knownEventTypes.raisedBedFields.plantSchedule, [
+                fieldAggregateId,
+            ])
+        ).length,
+        0,
+    );
+
+    await createEvent(
+        knownEvents.operations.verifiedV1(operationId.toString(), {
+            verifiedBy: 'automations-test',
+        }),
+    );
+    const verificationEvent = await getLatestEvent(
+        knownEventTypes.operations.verify,
+        operationId.toString(),
+    );
+    const verificationInput = {
+        eventId: verificationEvent.id,
+        eventType: verificationEvent.type,
+        aggregateId: verificationEvent.aggregateId,
+        data:
+            verificationEvent.data && typeof verificationEvent.data === 'object'
+                ? (verificationEvent.data as Record<string, unknown>)
+                : {},
+    };
+    const run = await createAutomationRun({
+        automationDefinition: definition,
+        source: 'event',
+        sourceEvent: verificationEvent,
+        input: verificationInput,
+    });
+    assert.ok(run);
+    const startedRun = await startAutomationRun(run.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedRun);
+
+    const result = await executeAutomationRun(startedRun);
+
+    assert.strictEqual(result.status, 'succeeded');
+    const updatedRaisedBed = await getRaisedBed(raisedBedId);
+    const updatedField = updatedRaisedBed?.fields.find(
+        (candidate) => candidate.id === field.id,
+    );
+    assert.strictEqual(updatedField?.sowingLocation, 'direct');
+    assert.strictEqual(
+        updatedField?.plantScheduledDate?.toISOString(),
+        scheduledDate,
+    );
+    const scheduleEvents = await getEvents(
+        knownEventTypes.raisedBedFields.plantSchedule,
+        [fieldAggregateId],
+    );
+    assert.strictEqual(scheduleEvents.length, 1);
+    assert.ok(
+        scheduleEvents[0]?.data &&
+            typeof scheduleEvents[0].data === 'object' &&
+            !Array.isArray(scheduleEvents[0].data),
+    );
+    assert.strictEqual(
+        Reflect.get(scheduleEvents[0].data, 'sowingLocation'),
+        'direct',
+    );
+    assert.strictEqual(
+        Reflect.get(scheduleEvents[0].data, 'scheduledDate'),
+        scheduledDate,
+    );
+
+    const replayRun = await createAutomationRun({
+        automationDefinition: definition,
+        source: 'replay',
+        sourceEvent: verificationEvent,
+        input: verificationInput,
+    });
+    assert.ok(replayRun);
+    const startedReplay = await startAutomationRun(replayRun.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedReplay);
+
+    const replayResult = await executeAutomationRun(startedReplay);
+
+    assert.strictEqual(replayResult.status, 'skipped');
+    assert.strictEqual(
+        (
+            await getEvents(knownEventTypes.raisedBedFields.plantSchedule, [
                 fieldAggregateId,
             ])
         ).length,
