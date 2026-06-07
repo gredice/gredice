@@ -12,6 +12,10 @@ export function useShoppingCartOpenParam() {
     return useQueryState('kosarica', parseAsBoolean.withDefault(false));
 }
 
+export function useOutletOpenParam() {
+    return useQueryState('outlet', parseAsString);
+}
+
 // Backpack/Inventory modal parameter (Croatian: "ruksak" = backpack)
 export function useBackpackOpenParam() {
     return useQueryState('ruksak', parseAsBoolean.withDefault(false));
@@ -74,6 +78,7 @@ export function useCurrentGardenIdParam() {
 // Serializer for building URLs with query params
 export const urlStateSerializer = createSerializer({
     kosarica: parseAsBoolean,
+    outlet: parseAsString,
     ruksak: parseAsBoolean,
     'ruksak-kartica': parseAsString,
     gredica: parseAsString,

@@ -81,6 +81,12 @@ const DASHBOARD_BUILTIN_QUICK_ACTIONS = [
         href: KnownPages.Receipts,
     },
     {
+        key: 'outlet',
+        label: 'Outlet',
+        href: KnownPages.Outlet,
+        description: 'Upravljanje outlet ponudama i rezervacijama.',
+    },
+    {
         key: 'users',
         label: 'Korisnici',
         href: KnownPages.Users,

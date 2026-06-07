@@ -26,6 +26,7 @@ export const KnownPages = {
     BlockPlantGenerator: '/blokovi/biljke/generator' as Route,
     Sunflowers: '/suncokreti',
     RaisedBeds: '/podignuta-gredica',
+    Outlet: '/outlet',
     Sowing: '/sjetva',
     Operations: PublicDirectoryPaths.Operations as Route,
     Operation: (alias: string) =>

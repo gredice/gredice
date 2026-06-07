@@ -782,6 +782,10 @@ function summarizePlantCycle(
             const previousPlantStatus = plantStatus;
             const nextPlantStatus =
                 typeof data?.status === 'string' ? data.status : undefined;
+            const statusEventDate = effectiveEventDate(
+                data ?? {},
+                plantCycleEvent.createdAt,
+            );
             let shouldApplyAssignedBy = true;
             const shouldApplyAssignedUsers = isAssignmentEvent(data ?? {});
             const hasAssignedUserIdUpdate =
@@ -790,7 +794,7 @@ function summarizePlantCycle(
             if (nextPlantStatus && nextPlantStatus !== previousPlantStatus) {
                 statusChanges.push({
                     status: nextPlantStatus,
-                    occurredAt: plantCycleEvent.createdAt,
+                    occurredAt: statusEventDate,
                 });
             }
             plantStatus = nextPlantStatus ?? plantStatus;
@@ -848,29 +852,29 @@ function summarizePlantCycle(
                 plantStatus === 'pendingVerification' ||
                 plantStatus === 'sowed'
             ) {
-                plantSowDate = plantSowDate ?? plantCycleEvent.createdAt;
+                plantSowDate = plantSowDate ?? statusEventDate;
             } else if (plantStatus === 'sprouted') {
-                plantGrowthDate = plantCycleEvent.createdAt;
+                plantGrowthDate = statusEventDate;
             } else if (plantStatus === 'notSprouted') {
-                plantDeadDate = plantCycleEvent.createdAt;
-                stoppedDate = plantCycleEvent.createdAt;
+                plantDeadDate = statusEventDate;
+                stoppedDate = statusEventDate;
                 toBeRemoved = true;
             } else if (plantStatus === 'died') {
-                plantDeadDate = plantCycleEvent.createdAt;
-                stoppedDate = plantCycleEvent.createdAt;
+                plantDeadDate = statusEventDate;
+                stoppedDate = statusEventDate;
             } else if (plantStatus === 'firstFlowers') {
-                plantGrowthDate = plantGrowthDate ?? plantCycleEvent.createdAt;
+                plantGrowthDate = plantGrowthDate ?? statusEventDate;
             } else if (plantStatus === 'firstFruitSet') {
-                plantGrowthDate = plantGrowthDate ?? plantCycleEvent.createdAt;
+                plantGrowthDate = plantGrowthDate ?? statusEventDate;
             } else if (plantStatus === 'ready') {
-                plantReadyDate = plantCycleEvent.createdAt;
+                plantReadyDate = statusEventDate;
             } else if (plantStatus === 'harvested') {
-                plantHarvestedDate = plantCycleEvent.createdAt;
-                stoppedDate = plantCycleEvent.createdAt;
+                plantHarvestedDate = statusEventDate;
+                stoppedDate = statusEventDate;
             } else if (plantStatus === 'removed') {
-                plantRemovedDate = plantCycleEvent.createdAt;
+                plantRemovedDate = statusEventDate;
                 active = false;
-                stoppedDate = plantCycleEvent.createdAt;
+                stoppedDate = statusEventDate;
             }
         }
     }
@@ -929,6 +933,15 @@ function eventDataRecord(event: RaisedBedFieldPlantCycleEvent) {
     return event.data && typeof event.data === 'object'
         ? (event.data as Record<string, unknown>)
         : {};
+}
+
+function effectiveEventDate(data: Record<string, unknown>, fallbackDate: Date) {
+    if (typeof data.effectiveDate !== 'string') {
+        return fallbackDate;
+    }
+
+    const date = new Date(data.effectiveDate);
+    return Number.isNaN(date.getTime()) ? fallbackDate : date;
 }
 
 function plantUpdateEventStatus(event: RaisedBedFieldPlantCycleEvent) {
@@ -2631,6 +2644,10 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
             else if (
                 event.type === knownEventTypes.raisedBedFields.plantUpdate
             ) {
+                const statusEventDate = effectiveEventDate(
+                    data ?? {},
+                    event.createdAt,
+                );
                 let shouldApplyAssignedBy = true;
                 const shouldApplyAssignedUsers = isAssignmentEvent(data ?? {});
                 const hasAssignedUserIdUpdate =
@@ -2697,29 +2714,29 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                     plantStatus === 'pendingVerification' ||
                     plantStatus === 'sowed'
                 ) {
-                    plantSowDate = plantSowDate ?? event.createdAt;
+                    plantSowDate = plantSowDate ?? statusEventDate;
                 } else if (plantStatus === 'sprouted') {
-                    plantGrowthDate = event.createdAt;
+                    plantGrowthDate = statusEventDate;
                 } else if (plantStatus === 'notSprouted') {
-                    plantDeadDate = event.createdAt;
-                    stoppedDate = event.createdAt;
+                    plantDeadDate = statusEventDate;
+                    stoppedDate = statusEventDate;
                     toBeRemoved = true;
                 } else if (plantStatus === 'died') {
-                    plantDeadDate = event.createdAt;
-                    stoppedDate = event.createdAt;
+                    plantDeadDate = statusEventDate;
+                    stoppedDate = statusEventDate;
                 } else if (plantStatus === 'firstFlowers') {
-                    plantGrowthDate = plantGrowthDate ?? event.createdAt;
+                    plantGrowthDate = plantGrowthDate ?? statusEventDate;
                 } else if (plantStatus === 'firstFruitSet') {
-                    plantGrowthDate = plantGrowthDate ?? event.createdAt;
+                    plantGrowthDate = plantGrowthDate ?? statusEventDate;
                 } else if (plantStatus === 'ready') {
-                    plantReadyDate = event.createdAt;
+                    plantReadyDate = statusEventDate;
                 } else if (plantStatus === 'harvested') {
-                    plantHarvestedDate = event.createdAt;
-                    stoppedDate = event.createdAt;
+                    plantHarvestedDate = statusEventDate;
+                    stoppedDate = statusEventDate;
                 } else if (plantStatus === 'removed') {
-                    plantRemovedDate = event.createdAt;
+                    plantRemovedDate = statusEventDate;
                     active = false;
-                    stoppedDate = event.createdAt;
+                    stoppedDate = statusEventDate;
                 }
             }
             // Handle plant sort replace event

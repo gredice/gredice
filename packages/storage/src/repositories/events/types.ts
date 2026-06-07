@@ -187,30 +187,34 @@ export type RaisedBedFieldPlantSchedulePayload = {
     sowingLocation?: RaisedBedFieldSowingLocation;
 };
 
+type RaisedBedFieldPlantUpdateEffectiveDate = {
+    effectiveDate?: string | null;
+};
+
 export type RaisedBedFieldPlantUpdatePayload =
-    | {
+    | ({
           status: string;
           assignedUserId?: undefined;
           assignedUserIds?: undefined;
           assignedBy?: undefined;
-      }
-    | {
+      } & RaisedBedFieldPlantUpdateEffectiveDate)
+    | ({
           status?: string;
           assignedUserId: string;
           assignedUserIds?: string[];
           assignedBy: string;
-      }
-    | {
+      } & RaisedBedFieldPlantUpdateEffectiveDate)
+    | ({
           status?: string;
           assignedUserId: null;
           assignedUserIds?: string[];
           assignedBy?: string | null;
-      }
-    | {
+      } & RaisedBedFieldPlantUpdateEffectiveDate)
+    | ({
           status?: string;
           assignedUserIds: string[];
           assignedBy?: string | null;
-      };
+      } & RaisedBedFieldPlantUpdateEffectiveDate);
 
 export type RaisedBedFieldPlantReplaceSortPayload = {
     plantSortId: string;

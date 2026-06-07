@@ -953,6 +953,56 @@ test('raised bed field sowing location is projected from schedule events', async
     assert.strictEqual(plantCycle?.sowingLocation, 'direct');
 });
 
+test('greenhouse outlet seedlings preserve effective sowing date', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const blockId = await createTestBlock(gardenId, 'block-outlet-seedling');
+    const raisedBedId = await createTestRaisedBed(gardenId, accountId, blockId);
+    const sowingDate = '2026-04-01T00:00:00.000Z';
+
+    await upsertRaisedBedField({
+        raisedBedId,
+        positionIndex: 0,
+    });
+
+    const aggregateId = `${raisedBedId.toString()}|0`;
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(aggregateId, {
+            plantSortId: '101',
+            scheduledDate: null,
+            sowingLocation: 'greenhouse',
+        }),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+            status: 'sowed',
+            effectiveDate: sowingDate,
+        }),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+            status: 'sprouted',
+        }),
+    );
+
+    const [field] = await getRaisedBedFieldsWithEvents(raisedBedId);
+    assert.strictEqual(field?.sowingLocation, 'greenhouse');
+    assert.strictEqual(field?.plantStatus, 'sprouted');
+    assert.strictEqual(field?.plantSowDate?.toISOString(), sowingDate);
+    assert.ok(field?.plantGrowthDate);
+
+    const [plantCycle] = await getRaisedBedFieldPlantCycles(raisedBedId);
+    assert.strictEqual(plantCycle?.sowingLocation, 'greenhouse');
+    assert.strictEqual(plantCycle?.plantStatus, 'sprouted');
+    assert.strictEqual(plantCycle?.plantSowDate?.toISOString(), sowingDate);
+    assert.strictEqual(
+        plantCycle?.statusChanges[0]?.occurredAt.toISOString(),
+        sowingDate,
+    );
+});
+
 test('raised bed field assignment metadata is projected for assign and unassign updates', async () => {
     createTestDb();
     const accountId = await createAccount();

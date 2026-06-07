@@ -134,6 +134,7 @@ function buildOperationCartItem({
         updatedAt: now,
         usesInventory: false,
         inventoryAvailable: 0,
+        outlet: undefined,
         shopData: {
             name: cartOperation.information.label,
             description: cartOperation.information.shortDescription,

@@ -23,6 +23,7 @@ import { SegmentedProgress } from '../../controls/components/SegmentedProgress';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useGardens } from '../../hooks/useGardens';
 import { useInventory } from '../../hooks/useInventory';
+import { useOutletOffers } from '../../hooks/useOutletOffers';
 import { useAllSorts } from '../../hooks/usePlantSorts';
 import { useSandboxPlant } from '../../hooks/useSandboxPlant';
 import { useSetShoppingCartItem } from '../../hooks/useSetShoppingCartItem';
@@ -98,6 +99,7 @@ export function PlantPicker({
         (bed) => bed.id === raisedBedId,
     );
     const { data: allSorts } = useAllSorts();
+    const { data: outletOffers } = useOutletOffers();
     const setCartItem = useSetShoppingCartItem();
     const { data: inventory } = useInventory();
     // Derive sandbox from the gardens list by id (the picker already receives
@@ -121,6 +123,7 @@ export function PlantPicker({
     } | null>(preselectedPlantOptions ?? null);
     const [flyToShoppingCart, setFlyToShoppingCart] = useState(false);
     const [useInventoryItem, setUseInventoryItem] = useState(false);
+    const [useOutletOffer, setUseOutletOffer] = useState(false);
     const [search, setSearch] = useState('');
     const searchInputId = useId();
     const shouldRestoreSearchFocusRef = useRef(false);
@@ -169,6 +172,8 @@ export function PlantPicker({
 
     function handleSortSelect(sort: PlantSortData) {
         setSelectedSortId(sort.id);
+        setUseOutletOffer(Boolean(outletOffersBySortId.get(sort.id)));
+        setUseInventoryItem(false);
         resetSearch();
     }
 
@@ -207,6 +212,7 @@ export function PlantPicker({
         setSelectedSortId(null);
         setPlantOptions(null);
         setUseInventoryItem(false);
+        setUseOutletOffer(false);
         resetSearch();
         await removeFromCart();
     }
@@ -272,6 +278,8 @@ export function PlantPicker({
             scheduled_date: plantOptions?.scheduledDate?.toISOString(),
             sort_id: selectedSortId,
             use_inventory: useInventoryItem,
+            outlet_offer_id: selectedOutletOffer?.id,
+            use_outlet_offer: useOutletOffer,
         });
         showShoppingCartTransientHub();
         setFlyToShoppingCart(true);
@@ -284,9 +292,18 @@ export function PlantPicker({
                 raisedBedId,
                 positionIndex,
                 additionalData: JSON.stringify({
-                    scheduledDate: plantOptions?.scheduledDate?.toISOString(),
+                    ...(useOutletOffer && selectedOutletOffer
+                        ? { outletOfferId: selectedOutletOffer.id }
+                        : {
+                              scheduledDate:
+                                  plantOptions?.scheduledDate?.toISOString(),
+                          }),
                 }),
                 currency: useInventoryItem ? 'inventory' : 'eur',
+                outletOfferId:
+                    useOutletOffer && selectedOutletOffer
+                        ? selectedOutletOffer.id
+                        : undefined,
             });
             await new Promise((resolve) => setTimeout(resolve, 800)); // Wait for animation to finish
         } finally {
@@ -318,6 +335,7 @@ export function PlantPicker({
                 item.positionIndex === positionIndex,
         );
         setUseInventoryItem(existingItem?.currency === 'inventory');
+        setUseOutletOffer(Boolean(existingItem?.outlet));
     }
 
     // Plant options
@@ -347,6 +365,12 @@ export function PlantPicker({
             item.entityTypeName === 'plantSort' &&
             item.entityId === selectedSortId?.toString(),
     )?.amount;
+    const outletOffersBySortId = new Map(
+        (outletOffers ?? []).map((offer) => [offer.plantSort.id, offer]),
+    );
+    const selectedOutletOffer = selectedSortId
+        ? outletOffersBySortId.get(selectedSortId)
+        : undefined;
     const relationshipBlockCount = getRaisedBedRelationshipBlockCount({
         cartItems: cart?.items,
         fields: raisedBed?.fields,
@@ -451,6 +475,7 @@ export function PlantPicker({
                                 search={search}
                                 neighborPlants={neighborPlants}
                                 flyToShoppingCart={flyToShoppingCart}
+                                outletOffersBySortId={outletOffersBySortId}
                             />
                             {isSandbox ? (
                                 <Stack spacing={1}>
@@ -484,6 +509,40 @@ export function PlantPicker({
                             ) : (
                                 <>
                                     <Row spacing={2} className="flex-wrap">
+                                        {selectedOutletOffer ? (
+                                            <Button
+                                                variant={
+                                                    useOutletOffer
+                                                        ? 'solid'
+                                                        : 'outlined'
+                                                }
+                                                size="sm"
+                                                onClick={() => {
+                                                    track(
+                                                        'game_outlet_offer_toggled',
+                                                        {
+                                                            garden_id: gardenId,
+                                                            outlet_offer_id:
+                                                                selectedOutletOffer.id,
+                                                            position_index:
+                                                                positionIndex,
+                                                            raised_bed_id:
+                                                                raisedBedId,
+                                                            sort_id:
+                                                                selectedSortId,
+                                                            use_outlet_offer:
+                                                                !useOutletOffer,
+                                                        },
+                                                    );
+                                                    setUseOutletOffer(
+                                                        (previous) => !previous,
+                                                    );
+                                                    setUseInventoryItem(false);
+                                                }}
+                                            >
+                                                {`Outlet ${selectedOutletOffer.outletPrice.toFixed(2)} € · ${selectedOutletOffer.remainingQuantity} dostupno`}
+                                            </Button>
+                                        ) : null}
                                         <Button
                                             variant={
                                                 availableFromInventory &&
@@ -492,7 +551,10 @@ export function PlantPicker({
                                                     : 'outlined'
                                             }
                                             size="sm"
-                                            disabled={!availableFromInventory}
+                                            disabled={
+                                                !availableFromInventory ||
+                                                useOutletOffer
+                                            }
                                             startDecorator={
                                                 <BackpackIcon className="size-5 shrink-0" />
                                             }
@@ -518,20 +580,31 @@ export function PlantPicker({
                                             {`U ruksaku (${availableFromInventory ?? 0})`}
                                         </Button>
                                     </Row>
-                                    <Input
-                                        type="date"
-                                        label="Datum sijanja"
-                                        name="plantDate"
-                                        className="w-full bg-card"
-                                        value={plantDate}
-                                        onChange={(e) =>
-                                            handlePlantDateChange(
-                                                e.target.value,
-                                            )
-                                        }
-                                        min={min}
-                                        max={max}
-                                    />
+                                    {useOutletOffer && selectedOutletOffer ? (
+                                        <div className="rounded-lg border border-green-300 bg-green-50 p-3 text-sm text-green-900 dark:border-green-900 dark:bg-green-950/40 dark:text-green-100">
+                                            Presadnica je posijana{' '}
+                                            {new Date(
+                                                selectedOutletOffer.sowingDate,
+                                            ).toLocaleDateString('hr-HR')}{' '}
+                                            u stakleniku. Rezervacija se čuva
+                                            kratko nakon dodavanja u košaru.
+                                        </div>
+                                    ) : (
+                                        <Input
+                                            type="date"
+                                            label="Datum sijanja"
+                                            name="plantDate"
+                                            className="w-full bg-card"
+                                            value={plantDate}
+                                            onChange={(e) =>
+                                                handlePlantDateChange(
+                                                    e.target.value,
+                                                )
+                                            }
+                                            min={min}
+                                            max={max}
+                                        />
+                                    )}
                                 </>
                             )}
                         </Stack>

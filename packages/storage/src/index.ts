@@ -54,6 +54,7 @@ export * from './repositories/notificationSettingsRepo';
 export * from './repositories/notificationsRepo';
 export * from './repositories/occasionsRepo';
 export * from './repositories/operationsRepo';
+export * from './repositories/outletOffersRepo';
 export * from './repositories/payoutsRepo';
 export * from './repositories/pickupLocationsRepo';
 export * from './repositories/plantRelationshipsRepo';

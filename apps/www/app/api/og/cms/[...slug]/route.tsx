@@ -1,7 +1,4 @@
-import {
-    CmsOgImage,
-    cmsOgImageSize,
-} from '@gredice/ui/cms';
+import { CmsOgImage, cmsOgImageSize } from '@gredice/ui/cms';
 import { ImageResponse } from 'next/og';
 import {
     type CmsRoutePage,

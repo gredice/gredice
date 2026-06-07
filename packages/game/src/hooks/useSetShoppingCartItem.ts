@@ -21,6 +21,7 @@ type SetShoppingCartItemInput = {
     positionIndex?: number;
     additionalData?: string | null;
     currency?: string | null;
+    outletOfferId?: number;
     forceCreate?: boolean;
 };
 

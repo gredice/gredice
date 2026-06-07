@@ -7,11 +7,15 @@ import {
     cartContainsDeliverableItems,
     deleteShoppingCart,
     getOrCreateShoppingCart,
+    getOutletOffer,
     getRaisedBed,
     getSunflowers,
     normalizeShoppingCartInventoryUsage,
     normalizeShoppingCartScheduledDates,
+    OutletOfferUnavailableError,
+    OutletReservationUnavailableError,
     upsertOrRemoveCartItem,
+    upsertOrRemoveCartItemWithOutletReservation,
 } from '@gredice/storage';
 import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
@@ -127,6 +131,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 positionIndex: z.number().int().optional(),
                 additionalData: z.string().optional().nullable(),
                 currency: z.string().optional().nullable(),
+                outletOfferId: z.number().int().positive().optional(),
                 forceCreate: z.boolean().optional().default(false),
             }),
         ),
@@ -142,9 +147,45 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 positionIndex,
                 additionalData,
                 currency,
+                outletOfferId,
                 forceCreate,
             } = context.req.valid('json');
             const { accountId } = context.get('authContext');
+            if (outletOfferId && entityTypeName !== 'plantSort') {
+                return context.json(
+                    { error: 'Outlet offers can only be used for plant sorts' },
+                    400,
+                );
+            }
+            if (outletOfferId && currency && currency !== 'eur') {
+                return context.json(
+                    { error: 'Outlet offers can only be paid in euros' },
+                    400,
+                );
+            }
+            if (outletOfferId && amount > 0) {
+                const offer = await getOutletOffer(outletOfferId);
+                if (!offer) {
+                    return context.json(
+                        { error: 'Outlet offer is not available' },
+                        409,
+                    );
+                }
+
+                const now = Date.now();
+                if (
+                    offer.status !== 'published' ||
+                    offer.startAt.getTime() > now ||
+                    offer.endAt.getTime() <= now ||
+                    offer.remainingQuantity < amount ||
+                    offer.plantSortId.toString() !== entityId
+                ) {
+                    return context.json(
+                        { error: 'Outlet offer is not available' },
+                        409,
+                    );
+                }
+            }
             if (amount > 0 && raisedBedId) {
                 const raisedBed = await getRaisedBed(raisedBedId);
                 if (!raisedBed || raisedBed.accountId !== accountId) {
@@ -160,19 +201,51 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     );
                 }
             }
-            await upsertOrRemoveCartItem(
-                id,
-                cartId,
-                entityId,
-                entityTypeName,
-                amount,
-                gardenId,
-                raisedBedId,
-                positionIndex,
-                additionalData,
-                currency,
-                forceCreate,
-            );
+            try {
+                if (outletOfferId && amount > 0) {
+                    await upsertOrRemoveCartItemWithOutletReservation({
+                        id,
+                        cartId,
+                        entityId,
+                        entityTypeName,
+                        amount,
+                        gardenId,
+                        raisedBedId,
+                        positionIndex,
+                        additionalData,
+                        currency,
+                        forceCreate,
+                        outletOfferId,
+                        accountId,
+                    });
+                } else {
+                    await upsertOrRemoveCartItem(
+                        id,
+                        cartId,
+                        entityId,
+                        entityTypeName,
+                        amount,
+                        gardenId,
+                        raisedBedId,
+                        positionIndex,
+                        additionalData,
+                        currency,
+                        forceCreate,
+                    );
+                }
+            } catch (error) {
+                if (
+                    error instanceof OutletOfferUnavailableError ||
+                    error instanceof OutletReservationUnavailableError
+                ) {
+                    return context.json(
+                        { error: 'Outlet offer is not available' },
+                        409,
+                    );
+                }
+
+                throw error;
+            }
             (await getPostHogClient()).capture({
                 distinctId: accountId,
                 event: 'cart_item_updated',
@@ -182,6 +255,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     entity_type: entityTypeName,
                     amount,
                     currency: currency ?? undefined,
+                    outlet_offer_id: outletOfferId,
                 },
             });
             return context.json({ success: true });

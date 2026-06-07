@@ -90,6 +90,11 @@ export const KnownPages = {
     ShoppingCarts: '/admin/shopping-carts',
     ShoppingCart: (cartId: number) =>
         `/admin/shopping-carts/${cartId}` as Route,
+    Outlet: '/admin/outlet',
+    OutletCreate: '/admin/outlet/create',
+    OutletOffer: (offerId: number) => `/admin/outlet/${offerId}` as Route,
+    OutletOfferEdit: (offerId: number) =>
+        `/admin/outlet/${offerId}/edit` as Route,
     Operations: '/admin/operations',
     Operation: (operationId: number) =>
         `/admin/operations/${operationId}` as Route,

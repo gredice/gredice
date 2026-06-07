@@ -167,6 +167,14 @@ test('CMS page slugs reject reserved static route conflicts', async () => {
             }),
         /reserved route/,
     );
+    await assert.rejects(
+        () =>
+            createCmsPage({
+                slug: '/outlet',
+                title: 'Conflicting outlet index',
+            }),
+        /reserved route/,
+    );
 });
 
 test('CMS news page slugs follow blog and changelog namespaces', async () => {

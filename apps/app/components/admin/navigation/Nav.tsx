@@ -21,6 +21,7 @@ import {
     Bank,
     Calendar,
     Cloud,
+    Discount,
     Edit,
     Euro,
     Fence,
@@ -96,6 +97,8 @@ function quickActionIcon(quickAction: { href: string; icon?: string | null }) {
         case KnownPages.FarmerPrices:
         case KnownPages.Transactions:
             return <Euro className="size-5" />;
+        case KnownPages.Outlet:
+            return <Discount className="size-5" />;
         case KnownPages.Farms:
             return <MapIcon className="size-5" />;
         case KnownPages.Gardens:
@@ -449,6 +452,7 @@ export function Nav({
                         adminPages.Transactions.href,
                         adminPages.Sunflowers.href,
                         adminPages.Receipts.href,
+                        adminPages.Outlet.href,
                     ])}
                     compact={compact}
                 >
@@ -488,6 +492,14 @@ export function Nav({
                         href={adminPages.Receipts.href}
                         label={adminPages.Receipts.label}
                         icon={<File className="size-5" />}
+                        onClick={onItemClick}
+                        compact={compact}
+                        nested
+                    />
+                    <NavItem
+                        href={adminPages.Outlet.href}
+                        label={adminPages.Outlet.label}
+                        icon={<Discount className="size-5" />}
                         onClick={onItemClick}
                         compact={compact}
                         nested

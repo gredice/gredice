@@ -11,6 +11,7 @@ import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import { useEffect } from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
+import type { OutletOfferData } from '../../hooks/useOutletOffers';
 import { usePlantSorts } from '../../hooks/usePlantSorts';
 import {
     AnimateFlyToItem,
@@ -32,6 +33,7 @@ type PlantsSortListProps = {
     search: string;
     flyToShoppingCart?: boolean;
     neighborPlants?: NeighborPlantSummary[];
+    outletOffersBySortId?: Map<number, OutletOfferData>;
 };
 
 function PlantSortListItem({
@@ -40,12 +42,14 @@ function PlantSortListItem({
     onChange,
     flyToShoppingCart,
     neighborPlants,
+    outletOffer,
 }: {
     sort: PlantSortData;
     selectedSortId: number | null;
     onChange: (sort: PlantSortData) => void;
     flyToShoppingCart?: boolean;
     neighborPlants: NeighborPlantSummary[];
+    outletOffer?: OutletOfferData;
 }) {
     const animateFlyToShoppingCart = useAnimateFlyToShoppingCart();
     const { track } = useGameAnalytics();
@@ -130,6 +134,11 @@ function PlantSortListItem({
                 className="flex-wrap gap-y-1 px-4"
             >
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    {outletOffer ? (
+                        <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700 dark:bg-green-900/50 dark:text-green-200">
+                            Outlet {outletOffer.outletPrice.toFixed(2)} €
+                        </span>
+                    ) : null}
                     {relationshipSignal ? (
                         <PlantRelationshipSignalChips
                             signal={relationshipSignal}
@@ -167,6 +176,7 @@ export function PlantsSortList({
     search,
     flyToShoppingCart,
     neighborPlants = [],
+    outletOffersBySortId,
 }: PlantsSortListProps) {
     const { data: plantSorts, isLoading, isError } = usePlantSorts(plantId);
     const normalizedSearch = search.trim().toLowerCase();
@@ -217,6 +227,7 @@ export function PlantsSortList({
                         selectedSortId={selectedSortId}
                         onChange={onChange}
                         neighborPlants={neighborPlants}
+                        outletOffer={outletOffersBySortId?.get(sort.id)}
                         flyToShoppingCart={
                             flyToShoppingCart && selectedSortId === sort.id
                         }

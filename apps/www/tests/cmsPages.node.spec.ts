@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { hasReservedFirstSegment } from '../app/[...slug]/cmsPageRouteUtils.ts';
 import {
     getSourceCmsPageBySlug,
     QUALITY_HARVEST_SAFETY_PATH,
@@ -26,6 +27,11 @@ test('quality harvest safety source CMS page is published and canonical', () => 
     assert.ok(qualityHarvestSafetyCmsPage.metaTitle);
     assert.ok(qualityHarvestSafetyCmsPage.metaDescription.length <= 160);
     assert.ok(getSourceCmsPageBySlug(QUALITY_HARVEST_SAFETY_SLUG));
+});
+
+test('public CMS catch-all keeps outlet route reserved', () => {
+    assert.equal(hasReservedFirstSegment('outlet'), true);
+    assert.equal(hasReservedFirstSegment('outlet/sezonska-ponuda'), true);
 });
 
 test('quality harvest safety source CMS page has real content sections', () => {

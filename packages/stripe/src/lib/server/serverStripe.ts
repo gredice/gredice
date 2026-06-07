@@ -170,6 +170,7 @@ export async function stripeCheckout(
     account: UserAccount,
     data: {
         items: CheckoutItem[];
+        expiresAt?: Date;
     },
 ) {
     try {
@@ -198,6 +199,9 @@ export async function stripeCheckout(
             cancel_url: getReturnUrl({ status: 'cancel' }),
             success_url: getReturnUrl({ status: 'success' }),
         };
+        if (data.expiresAt) {
+            params.expires_at = Math.floor(data.expiresAt.getTime() / 1000);
+        }
 
         // Create a checkout session in Stripe
         let session: Stripe.Checkout.Session | undefined;
