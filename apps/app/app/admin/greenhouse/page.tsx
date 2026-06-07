@@ -7,6 +7,7 @@ import {
 import { Card, CardHeader, CardOverflow } from '@gredice/ui/Card';
 import { Chip, type ColorPaletteProp } from '@gredice/ui/Chip';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Row } from '@gredice/ui/Row';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Stack } from '@gredice/ui/Stack';
@@ -85,20 +86,58 @@ function getStatusColor(status?: string | null): ColorPaletteProp {
 }
 
 function getPlantName(
-    plantSortNameById: Map<number, string>,
+    plantSort: PlantSortData | undefined,
     plantSortId: number,
 ) {
     return (
-        plantSortNameById.get(plantSortId) ?? `Nepoznata sorta #${plantSortId}`
+        plantSort?.information?.name?.trim() ??
+        `Nepoznata sorta #${plantSortId}`
     );
 }
 
-function dateCell(date: Date | undefined | null) {
-    if (!date) {
+function localCalendarDayIndex(date: Date) {
+    const millisecondsPerDay = 24 * 60 * 60 * 1000;
+
+    return (
+        Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) /
+        millisecondsPerDay
+    );
+}
+
+function formatDayCount(days: number) {
+    return days === 1 ? '1 dan' : `${days} dana`;
+}
+
+function daysBetweenDates(startDate: Date, endDate: Date) {
+    const difference =
+        localCalendarDayIndex(endDate) - localCalendarDayIndex(startDate);
+
+    return Math.max(0, difference);
+}
+
+function sowingDateCell(
+    sowDate: Date | undefined,
+    sproutedDate: Date | undefined,
+    today: Date,
+) {
+    if (!sowDate) {
         return <span className="text-muted-foreground">-</span>;
     }
 
-    return <LocalDateTime time={false}>{date}</LocalDateTime>;
+    const targetDate = sproutedDate ?? today;
+    const dayCount = daysBetweenDates(sowDate, targetDate);
+    const label = sproutedDate
+        ? `${formatDayCount(dayCount)} do klijanja`
+        : `${formatDayCount(dayCount)} do danas`;
+
+    return (
+        <div className="space-y-0.5">
+            <LocalDateTime time={false}>{sowDate}</LocalDateTime>
+            <div className="text-xs tabular-nums text-muted-foreground">
+                {label}
+            </div>
+        </div>
+    );
 }
 
 function getGreenhouseRaisedBeds(
@@ -170,11 +209,8 @@ export default async function GreenhousePage() {
         getAllRaisedBeds(),
         getEntitiesFormatted<PlantSortData>('plantSort'),
     ]);
-    const plantSortNameById = new Map(
-        (plantSorts ?? []).map((plantSort) => [
-            plantSort.id,
-            plantSort.information?.name?.trim() || `Sorta ${plantSort.id}`,
-        ]),
+    const plantSortById = new Map(
+        (plantSorts ?? []).map((plantSort) => [plantSort.id, plantSort]),
     );
     const greenhouseRaisedBeds = getGreenhouseRaisedBeds(raisedBeds);
 
@@ -188,6 +224,7 @@ export default async function GreenhousePage() {
 
     const transplantingOperationIdsByFieldId =
         await getTransplantingOperationIdsByFieldId(greenhouseRaisedBeds);
+    const today = new Date();
 
     return (
         <Stack spacing={3}>
@@ -221,77 +258,104 @@ export default async function GreenhousePage() {
                                         Polje
                                     </Table.Head>
                                     <Table.Head>Biljka</Table.Head>
+                                    <Table.Head>Status</Table.Head>
                                     <Table.Head>Sijano</Table.Head>
                                     <Table.Head>Proklijalo</Table.Head>
                                     <Table.Head>Presađivanje</Table.Head>
-                                    <Table.Head>Status</Table.Head>
                                 </Table.Row>
                             </Table.Header>
                             <Table.Body>
-                                {raisedBed.fields.map((field) => (
-                                    <Table.Row
-                                        key={`${raisedBed.id}-${field.id}`}
-                                    >
-                                        <Table.Cell className="font-medium">
-                                            {field.positionIndex + 1}
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            <span className="font-medium">
-                                                {getPlantName(
-                                                    plantSortNameById,
-                                                    field.plantSortId,
+                                {raisedBed.fields.map((field) => {
+                                    const plantSort = plantSortById.get(
+                                        field.plantSortId,
+                                    );
+                                    const plantName = getPlantName(
+                                        plantSort,
+                                        field.plantSortId,
+                                    );
+
+                                    return (
+                                        <Table.Row
+                                            key={`${raisedBed.id}-${field.id}`}
+                                        >
+                                            <Table.Cell className="font-medium">
+                                                {field.positionIndex + 1}
+                                            </Table.Cell>
+                                            <Table.Cell>
+                                                <div className="flex min-w-0 items-center gap-3">
+                                                    <div className="relative size-9 shrink-0 overflow-hidden rounded-md border bg-muted/30">
+                                                        <PlantOrSortImage
+                                                            plantSort={
+                                                                plantSort
+                                                            }
+                                                            alt={plantName}
+                                                            fill
+                                                            className="object-contain"
+                                                            sizes="36px"
+                                                        />
+                                                    </div>
+                                                    <span className="min-w-0 font-medium">
+                                                        {plantName}
+                                                    </span>
+                                                </div>
+                                            </Table.Cell>
+                                            <Table.Cell>
+                                                <Chip
+                                                    color={getStatusColor(
+                                                        field.plantStatus,
+                                                    )}
+                                                    size="sm"
+                                                >
+                                                    {statusLabels[
+                                                        field.plantStatus ?? ''
+                                                    ] ??
+                                                        field.plantStatus ??
+                                                        'Nepoznato'}
+                                                </Chip>
+                                            </Table.Cell>
+                                            <Table.Cell>
+                                                {sowingDateCell(
+                                                    field.plantSowDate,
+                                                    field.plantGrowthDate,
+                                                    today,
                                                 )}
-                                            </span>
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            {dateCell(field.plantSowDate)}
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            <SproutedDateQuickAction
-                                                raisedBedId={raisedBed.id}
-                                                positionIndex={
-                                                    field.positionIndex
-                                                }
-                                                sproutedDate={
-                                                    field.plantGrowthDate ??
-                                                    null
-                                                }
-                                            />
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            {field.plantStatus === 'sprouted' &&
-                                            raisedBed.accountId ? (
-                                                <SeedlingTransplantingQuickAction
+                                            </Table.Cell>
+                                            <Table.Cell>
+                                                <SproutedDateQuickAction
                                                     raisedBedId={raisedBed.id}
                                                     positionIndex={
                                                         field.positionIndex
                                                     }
-                                                    existingOperationId={
-                                                        transplantingOperationIdsByFieldId.get(
-                                                            field.id,
-                                                        ) ?? null
+                                                    sproutedDate={
+                                                        field.plantGrowthDate ??
+                                                        null
                                                     }
                                                 />
-                                            ) : (
-                                                '-'
-                                            )}
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            <Chip
-                                                color={getStatusColor(
-                                                    field.plantStatus,
+                                            </Table.Cell>
+                                            <Table.Cell>
+                                                {field.plantStatus ===
+                                                    'sprouted' &&
+                                                raisedBed.accountId ? (
+                                                    <SeedlingTransplantingQuickAction
+                                                        raisedBedId={
+                                                            raisedBed.id
+                                                        }
+                                                        positionIndex={
+                                                            field.positionIndex
+                                                        }
+                                                        existingOperationId={
+                                                            transplantingOperationIdsByFieldId.get(
+                                                                field.id,
+                                                            ) ?? null
+                                                        }
+                                                    />
+                                                ) : (
+                                                    '-'
                                                 )}
-                                                size="sm"
-                                            >
-                                                {statusLabels[
-                                                    field.plantStatus ?? ''
-                                                ] ??
-                                                    field.plantStatus ??
-                                                    'Nepoznato'}
-                                            </Chip>
-                                        </Table.Cell>
-                                    </Table.Row>
-                                ))}
+                                            </Table.Cell>
+                                        </Table.Row>
+                                    );
+                                })}
                             </Table.Body>
                         </Table>
                     </CardOverflow>
