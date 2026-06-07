@@ -74,6 +74,7 @@ export const KnownPages = {
     RaisedBeds: '/admin/raised-beds',
     RaisedBed: (raisedBedId: number) =>
         `/admin/raised-beds/${raisedBedId}` as Route,
+    Greenhouse: '/admin/greenhouse',
     HarvestTraces: '/admin/harvest-traces',
     HarvestTrace: (traceId: number) =>
         `/admin/harvest-traces/${traceId}` as Route,
