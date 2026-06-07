@@ -2,18 +2,21 @@
 
 import { Button } from '@gredice/ui/Button';
 import { Input } from '@gredice/ui/Input';
-import { Check } from '@gredice/ui/icons';
+import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { Popper } from '@gredice/ui/Popper';
 import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useTransition } from 'react';
 import { raisedBedFieldUpdatePlant } from '../../(actions)/raisedBedFieldsActions';
 
 function formatDateInputValue(value: Date | string | null | undefined) {
-    if (!value) {
-        return '';
-    }
-
-    const date = value instanceof Date ? value : new Date(value);
+    const date = value
+        ? value instanceof Date
+            ? value
+            : new Date(value)
+        : new Date();
     if (Number.isNaN(date.getTime())) {
         return '';
     }
@@ -46,19 +49,27 @@ export function SproutedDateQuickAction({
     sproutedDate: Date | null;
 }) {
     const router = useRouter();
+    const [open, setOpen] = useState(false);
     const [selectedDate, setSelectedDate] = useState(
         formatDateInputValue(sproutedDate),
     );
     const [isPending, startTransition] = useTransition();
-    const dateChanged = selectedDate !== formatDateInputValue(sproutedDate);
 
     useEffect(() => {
         setSelectedDate(formatDateInputValue(sproutedDate));
     }, [sproutedDate]);
 
+    function handleOpenChange(nextOpen: boolean) {
+        if (nextOpen) {
+            setSelectedDate(formatDateInputValue(sproutedDate));
+        }
+        setOpen(nextOpen);
+    }
+
     function handleSave() {
         const timestamp = dateInputToTimestamp(selectedDate);
         if (!timestamp) {
+            alert('Odaberi ispravan datum klijanja.');
             return;
         }
 
@@ -70,6 +81,7 @@ export function SproutedDateQuickAction({
                     status: 'sprouted',
                     timestamp,
                 });
+                setOpen(false);
                 router.refresh();
             } catch (error) {
                 console.error('Error updating sprouted date:', error);
@@ -83,29 +95,63 @@ export function SproutedDateQuickAction({
     }
 
     return (
-        <Row spacing={1} className="items-center">
-            <Input
-                aria-label="Datum klijanja"
-                className="h-8 w-36"
-                disabled={isPending}
-                name={`sproutedDate-${raisedBedId}-${positionIndex}`}
-                onChange={(event) => setSelectedDate(event.target.value)}
-                type="date"
-                value={selectedDate}
-            />
-            <Button
-                aria-label="Spremi datum klijanja"
-                color="success"
-                disabled={!selectedDate || isPending || !dateChanged}
-                loading={isPending}
-                onClick={handleSave}
-                size="sm"
-                startDecorator={<Check className="size-4 shrink-0" />}
-                title="Spremi datum klijanja i označi biljku kao proklijalu"
-                variant="outlined"
-            >
-                Spremi
-            </Button>
-        </Row>
+        <Popper
+            open={open}
+            onOpenChange={handleOpenChange}
+            align="start"
+            className="w-72 p-3"
+            side="bottom"
+            trigger={
+                <Button
+                    type="button"
+                    aria-label="Promijeni datum klijanja"
+                    color="neutral"
+                    size="sm"
+                    title="Promijeni datum klijanja"
+                    variant="plain"
+                    className="h-8 px-1 -mx-1"
+                >
+                    {sproutedDate ? (
+                        <LocalDateTime time={false}>
+                            {sproutedDate}
+                        </LocalDateTime>
+                    ) : (
+                        <span className="text-muted-foreground">-</span>
+                    )}
+                </Button>
+            }
+        >
+            <Stack spacing={3}>
+                <Typography level="h5">Datum klijanja</Typography>
+                <Input
+                    fullWidth
+                    aria-label="Datum klijanja"
+                    disabled={isPending}
+                    label="Proklijalo"
+                    name={`sproutedDate-${raisedBedId}-${positionIndex}`}
+                    onChange={(event) => setSelectedDate(event.target.value)}
+                    type="date"
+                    value={selectedDate}
+                />
+                <Row spacing={2} className="justify-end">
+                    <Button
+                        type="button"
+                        disabled={isPending}
+                        onClick={() => setOpen(false)}
+                        variant="plain"
+                    >
+                        Odustani
+                    </Button>
+                    <Button
+                        type="button"
+                        disabled={!selectedDate || isPending}
+                        loading={isPending}
+                        onClick={handleSave}
+                    >
+                        Spremi
+                    </Button>
+                </Row>
+            </Stack>
+        </Popper>
     );
 }

@@ -35,6 +35,7 @@ async function revalidateRaisedBedPaths(raisedBed: {
     if (raisedBed.gardenId)
         revalidatePath(KnownPages.Garden(raisedBed.gardenId));
     revalidatePath(KnownPages.RaisedBed(raisedBed.id));
+    revalidatePath(KnownPages.Greenhouse);
 }
 
 async function applyRaisedBedFieldPlantUpdate({
