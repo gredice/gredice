@@ -29,6 +29,7 @@ async function revalidateRaisedBedPaths(raisedBed: {
     gardenId?: number | null;
 }) {
     revalidatePath(KnownPages.Schedule);
+    revalidatePath(KnownPages.Greenhouse);
     if (raisedBed.accountId)
         revalidatePath(KnownPages.Account(raisedBed.accountId));
     if (raisedBed.gardenId)
