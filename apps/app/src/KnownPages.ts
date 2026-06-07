@@ -62,7 +62,6 @@ export const KnownPages = {
     Achievements: '/admin/achievements',
     Gardens: '/admin/gardens',
     Garden: (gardenId: number) => `/admin/gardens/${gardenId}` as Route,
-    Greenhouse: '/admin/greenhouse',
     CommunicationInbox: '/admin/communication/inbox',
     CommunicationEmails: '/admin/communication/emails',
     CommunicationEmail: (emailId: number) =>
@@ -75,6 +74,7 @@ export const KnownPages = {
     RaisedBeds: '/admin/raised-beds',
     RaisedBed: (raisedBedId: number) =>
         `/admin/raised-beds/${raisedBedId}` as Route,
+    Greenhouse: '/admin/greenhouse',
     HarvestTraces: '/admin/harvest-traces',
     HarvestTrace: (traceId: number) =>
         `/admin/harvest-traces/${traceId}` as Route,

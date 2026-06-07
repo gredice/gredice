@@ -113,6 +113,12 @@ const DASHBOARD_BUILTIN_QUICK_ACTIONS = [
         description: 'Pregled i upravljanje svim gredicama.',
     },
     {
+        key: 'greenhouse',
+        label: 'Staklenik',
+        href: KnownPages.Greenhouse,
+        description: 'Pregled biljaka koje su trenutno u stakleniku.',
+    },
+    {
         key: 'operations',
         label: 'Radnje',
         href: KnownPages.Operations,

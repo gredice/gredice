@@ -10,6 +10,10 @@ export const seasonalSowedWateringAutomationKey =
     'default.seasonal-sowed-watering';
 export const operationImagePlantStatusReviewAutomationKey =
     'default.operation-image-plant-status-review';
+export const seedlingTransplantDirectSowingLocationAutomationKey =
+    'default.seedling-transplant-direct-sowing-location';
+
+const seedlingTransplantingOperationId = 593;
 
 export function seasonalSowedWateringAutomationGraph(): AutomationGraph {
     return {
@@ -106,6 +110,54 @@ export function operationImagePlantStatusReviewAutomationGraph(): AutomationGrap
     };
 }
 
+export function seedlingTransplantDirectSowingLocationAutomationGraph(): AutomationGraph {
+    return {
+        nodes: [
+            {
+                id: 'trigger',
+                kind: 'trigger',
+                moduleKey: automationModuleKeys.triggerDomainEvent,
+                position: { x: 0, y: 160 },
+                config: {
+                    eventType: knownEventTypes.operations.verify,
+                },
+            },
+            {
+                id: 'operation-is-seedling-transplant',
+                kind: 'condition',
+                moduleKey: automationModuleKeys.conditionOperationMatches,
+                position: { x: 280, y: 160 },
+                config: {
+                    status: 'completed',
+                    entityId: seedlingTransplantingOperationId,
+                },
+            },
+            {
+                id: 'set-location-direct',
+                kind: 'action',
+                moduleKey:
+                    automationModuleKeys.actionUpdateRaisedBedFieldSowingLocation,
+                position: { x: 620, y: 160 },
+                config: {
+                    targetSowingLocation: 'direct',
+                },
+            },
+        ],
+        edges: [
+            {
+                id: 'trigger-to-operation-match',
+                source: 'trigger',
+                target: 'operation-is-seedling-transplant',
+            },
+            {
+                id: 'operation-match-to-set-location',
+                source: 'operation-is-seedling-transplant',
+                target: 'set-location-direct',
+            },
+        ],
+    };
+}
+
 export async function ensureDefaultAutomationDefinitions() {
     await initializeAutomationEventCursorToLatest();
 
@@ -136,8 +188,24 @@ export async function ensureDefaultAutomationDefinitions() {
             },
         });
 
+    const seedlingTransplantDirectSowingLocation =
+        await upsertAutomationDefinitionByKey({
+            key: seedlingTransplantDirectSowingLocationAutomationKey,
+            name: 'Postavi sadnice nakon potvrde presađivanja na direktnu sjetvu',
+            description:
+                'Kada je radnja presađivanja sadnica potvrđena, prebaci lokaciju sijanja ciljane biljke iz staklenika na direktnu sjetvu.',
+            status: 'enabled',
+            graph: seedlingTransplantDirectSowingLocationAutomationGraph(),
+            metadata: {
+                managedBy: 'gredice',
+                defaultAutomation: true,
+                operationEntityId: seedlingTransplantingOperationId,
+            },
+        });
+
     return {
         seasonalSowedWatering,
         operationImagePlantStatusReview,
+        seedlingTransplantDirectSowingLocation,
     };
 }

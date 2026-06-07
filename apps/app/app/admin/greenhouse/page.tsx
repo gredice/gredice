@@ -1,19 +1,18 @@
+import type { PlantSortData } from '@gredice/client';
 import {
     getAllRaisedBeds,
     getEntitiesFormatted,
     getOperations,
 } from '@gredice/storage';
 import { Card, CardHeader, CardOverflow } from '@gredice/ui/Card';
-import { Chip } from '@gredice/ui/Chip';
+import { Chip, type ColorPaletteProp } from '@gredice/ui/Chip';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Row } from '@gredice/ui/Row';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Stack } from '@gredice/ui/Stack';
 import { Table } from '@gredice/ui/Table';
-import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
-import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
 import { auth } from '../../../lib/auth/auth';
 import { KnownPages } from '../../../src/KnownPages';
 import { SEEDLING_TRANSPLANTING_OPERATION_ENTITY_ID } from './constants';
@@ -22,13 +21,7 @@ import { SproutedDateQuickAction } from './SproutedDateQuickAction';
 
 export const dynamic = 'force-dynamic';
 
-type RaisedBed = Awaited<ReturnType<typeof getAllRaisedBeds>>[number];
-type RaisedBedField = RaisedBed['fields'][number];
-type GreenhouseRaisedBedField = RaisedBedField & {
-    plantSortId: number;
-};
-
-const greenhouseStatuses = new Set([
+const GREENHOUSE_PLANT_STATUSES = new Set([
     'new',
     'planned',
     'pendingVerification',
@@ -36,25 +29,29 @@ const greenhouseStatuses = new Set([
     'sprouted',
 ]);
 
-const fieldStatusMetadata: Record<
-    string,
-    { label: string; color?: 'success' }
-> = {
-    new: { label: 'Novo' },
-    planned: { label: 'Planirano' },
-    pendingVerification: { label: 'Čeka verifikaciju' },
-    sowed: { label: 'Sijano' },
-    sprouted: { label: 'Proklijalo', color: 'success' },
+const statusLabels: Record<string, string> = {
+    new: 'Novo',
+    planned: 'Planirano',
+    pendingVerification: 'Čeka verifikaciju',
+    sowed: 'Sijano',
+    sprouted: 'Proklijalo',
 };
 
-function isGreenhouseField(
+type RaisedBed = Awaited<ReturnType<typeof getAllRaisedBeds>>[number];
+type RaisedBedField = RaisedBed['fields'][number];
+type GreenhouseRaisedBedField = RaisedBedField & { plantSortId: number };
+type GreenhouseRaisedBed = Omit<RaisedBed, 'fields'> & {
+    fields: GreenhouseRaisedBedField[];
+};
+
+function canFieldCurrentlyBeInGreenhouse(
     field: RaisedBedField,
 ): field is GreenhouseRaisedBedField {
     return (
         field.active &&
         field.sowingLocation === 'greenhouse' &&
-        greenhouseStatuses.has(field.plantStatus ?? '') &&
         typeof field.plantSortId === 'number' &&
+        GREENHOUSE_PLANT_STATUSES.has(field.plantStatus ?? '') &&
         !field.plantDeadDate &&
         !field.plantHarvestedDate &&
         !field.plantRemovedDate
@@ -71,58 +68,60 @@ function compareRaisedBeds(left: RaisedBed, right: RaisedBed) {
     });
 }
 
-function getPlantSortName(
-    plantSortNames: Map<number, string>,
+function getStatusColor(status?: string | null): ColorPaletteProp {
+    switch (status) {
+        case 'planned':
+            return 'info';
+        case 'pendingVerification':
+            return 'warning';
+        case 'sowed':
+            return 'primary';
+        case 'sprouted':
+            return 'success';
+        default:
+            return 'neutral';
+    }
+}
+
+function getPlantName(
+    plantSortNameById: Map<number, string>,
     plantSortId: number,
 ) {
-    return plantSortNames.get(plantSortId) ?? `Sorta ${plantSortId}`;
+    return (
+        plantSortNameById.get(plantSortId) ?? `Nepoznata sorta #${plantSortId}`
+    );
 }
 
-function getStatusLabel(status: string | null | undefined) {
-    if (!status) {
-        return 'Nepoznato';
+function dateCell(date: Date | undefined | null) {
+    if (!date) {
+        return <span className="text-muted-foreground">-</span>;
     }
 
-    return fieldStatusMetadata[status]?.label ?? status;
+    return <LocalDateTime time={false}>{date}</LocalDateTime>;
 }
 
-export default async function AdminGreenhousePage() {
-    await auth(['admin']);
-
-    const [raisedBeds, plantSorts] = await Promise.all([
-        getAllRaisedBeds(),
-        getEntitiesFormatted<EntityStandardized>('plantSort'),
-    ]);
-    const plantSortNames = new Map(
-        (plantSorts ?? []).map((plantSort) => [
-            plantSort.id,
-            plantSort.information?.name?.trim() || `Sorta ${plantSort.id}`,
-        ]),
-    );
-    const greenhouseRaisedBeds = raisedBeds
+function getGreenhouseRaisedBeds(
+    raisedBeds: RaisedBed[],
+): GreenhouseRaisedBed[] {
+    return raisedBeds
         .map((raisedBed) => ({
             ...raisedBed,
             fields: raisedBed.fields
-                .filter(isGreenhouseField)
+                .filter(canFieldCurrentlyBeInGreenhouse)
                 .sort(
                     (left, right) => left.positionIndex - right.positionIndex,
                 ),
         }))
         .filter((raisedBed) => raisedBed.fields.length > 0)
         .sort(compareRaisedBeds);
+}
 
-    if (greenhouseRaisedBeds.length === 0) {
-        return (
-            <NoDataPlaceholder>
-                Nema aktivnih biljaka u stakleniku.
-            </NoDataPlaceholder>
-        );
-    }
-
-    const transplantingOperationIdsByFieldId = new Map<number, number>();
-    const transplantingOperations = (
+async function getTransplantingOperationIdsByFieldId(
+    raisedBeds: GreenhouseRaisedBed[],
+) {
+    const operations = (
         await Promise.all(
-            greenhouseRaisedBeds.map((raisedBed) => {
+            raisedBeds.map((raisedBed) => {
                 if (!raisedBed.accountId) {
                     return Promise.resolve([]);
                 }
@@ -136,20 +135,48 @@ export default async function AdminGreenhousePage() {
             }),
         )
     ).flat();
-    for (const operation of transplantingOperations) {
+    const operationIdsByFieldId = new Map<number, number>();
+
+    for (const operation of operations) {
         if (
             operation.entityTypeName === 'operation' &&
             operation.entityId === SEEDLING_TRANSPLANTING_OPERATION_ENTITY_ID &&
             operation.status !== 'canceled' &&
             operation.raisedBedFieldId != null &&
-            !transplantingOperationIdsByFieldId.has(operation.raisedBedFieldId)
+            !operationIdsByFieldId.has(operation.raisedBedFieldId)
         ) {
-            transplantingOperationIdsByFieldId.set(
-                operation.raisedBedFieldId,
-                operation.id,
-            );
+            operationIdsByFieldId.set(operation.raisedBedFieldId, operation.id);
         }
     }
+
+    return operationIdsByFieldId;
+}
+
+export default async function GreenhousePage() {
+    await auth(['admin']);
+
+    const [raisedBeds, plantSorts] = await Promise.all([
+        getAllRaisedBeds(),
+        getEntitiesFormatted<PlantSortData>('plantSort'),
+    ]);
+    const plantSortNameById = new Map(
+        (plantSorts ?? []).map((plantSort) => [
+            plantSort.id,
+            plantSort.information?.name?.trim() || `Sorta ${plantSort.id}`,
+        ]),
+    );
+    const greenhouseRaisedBeds = getGreenhouseRaisedBeds(raisedBeds);
+
+    if (greenhouseRaisedBeds.length === 0) {
+        return (
+            <NoDataPlaceholder>
+                Nema biljaka koje su trenutno u stakleniku.
+            </NoDataPlaceholder>
+        );
+    }
+
+    const transplantingOperationIdsByFieldId =
+        await getTransplantingOperationIdsByFieldId(greenhouseRaisedBeds);
 
     return (
         <Stack spacing={3}>
@@ -170,12 +197,9 @@ export default async function AdminGreenhousePage() {
                                     size="compact"
                                 />
                             </Link>
-                            <Typography
-                                level="body2"
-                                className="shrink-0 text-muted-foreground"
-                            >
-                                {raisedBed.fields.length} polja
-                            </Typography>
+                            <Chip size="sm">
+                                Biljaka: {raisedBed.fields.length}
+                            </Chip>
                         </Row>
                     </CardHeader>
                     <CardOverflow>
@@ -193,82 +217,70 @@ export default async function AdminGreenhousePage() {
                                 </Table.Row>
                             </Table.Header>
                             <Table.Body>
-                                {raisedBed.fields.map((field) => {
-                                    const statusMeta =
-                                        field.plantStatus != null
-                                            ? fieldStatusMetadata[
-                                                  field.plantStatus
-                                              ]
-                                            : undefined;
-
-                                    return (
-                                        <Table.Row
-                                            key={`${raisedBed.id}-${field.positionIndex}`}
-                                        >
-                                            <Table.Cell className="font-medium">
-                                                {field.positionIndex + 1}
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                {getPlantSortName(
-                                                    plantSortNames,
+                                {raisedBed.fields.map((field) => (
+                                    <Table.Row
+                                        key={`${raisedBed.id}-${field.id}`}
+                                    >
+                                        <Table.Cell className="font-medium">
+                                            {field.positionIndex + 1}
+                                        </Table.Cell>
+                                        <Table.Cell>
+                                            <span className="font-medium">
+                                                {getPlantName(
+                                                    plantSortNameById,
                                                     field.plantSortId,
                                                 )}
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                {field.plantSowDate ? (
-                                                    <LocalDateTime time={false}>
-                                                        {field.plantSowDate}
-                                                    </LocalDateTime>
-                                                ) : (
-                                                    '-'
-                                                )}
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                <SproutedDateQuickAction
+                                            </span>
+                                        </Table.Cell>
+                                        <Table.Cell>
+                                            {dateCell(field.plantSowDate)}
+                                        </Table.Cell>
+                                        <Table.Cell>
+                                            <SproutedDateQuickAction
+                                                raisedBedId={raisedBed.id}
+                                                positionIndex={
+                                                    field.positionIndex
+                                                }
+                                                sproutedDate={
+                                                    field.plantGrowthDate ??
+                                                    null
+                                                }
+                                            />
+                                        </Table.Cell>
+                                        <Table.Cell>
+                                            {field.plantStatus === 'sprouted' &&
+                                            raisedBed.accountId ? (
+                                                <SeedlingTransplantingQuickAction
                                                     raisedBedId={raisedBed.id}
                                                     positionIndex={
                                                         field.positionIndex
                                                     }
-                                                    sproutedDate={
-                                                        field.plantGrowthDate ??
-                                                        null
+                                                    existingOperationId={
+                                                        transplantingOperationIdsByFieldId.get(
+                                                            field.id,
+                                                        ) ?? null
                                                     }
                                                 />
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                {field.plantStatus ===
-                                                    'sprouted' &&
-                                                raisedBed.accountId ? (
-                                                    <SeedlingTransplantingQuickAction
-                                                        raisedBedId={
-                                                            raisedBed.id
-                                                        }
-                                                        positionIndex={
-                                                            field.positionIndex
-                                                        }
-                                                        existingOperationId={
-                                                            transplantingOperationIdsByFieldId.get(
-                                                                field.id,
-                                                            ) ?? null
-                                                        }
-                                                    />
-                                                ) : (
-                                                    '-'
+                                            ) : (
+                                                '-'
+                                            )}
+                                        </Table.Cell>
+                                        <Table.Cell>
+                                            <Chip
+                                                color={getStatusColor(
+                                                    field.plantStatus,
                                                 )}
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                <Chip
-                                                    color={statusMeta?.color}
-                                                    size="sm"
-                                                >
-                                                    {getStatusLabel(
-                                                        field.plantStatus,
-                                                    )}
-                                                </Chip>
-                                            </Table.Cell>
-                                        </Table.Row>
-                                    );
-                                })}
+                                                size="sm"
+                                            >
+                                                {statusLabels[
+                                                    field.plantStatus ?? ''
+                                                ] ??
+                                                    field.plantStatus ??
+                                                    'Nepoznato'}
+                                            </Chip>
+                                        </Table.Cell>
+                                    </Table.Row>
+                                ))}
                             </Table.Body>
                         </Table>
                     </CardOverflow>
