@@ -8,13 +8,13 @@ type RaisedBedFieldCardGridProps = {
 };
 
 export const raisedBedFieldCardSelectClassName =
-    'w-full min-w-0 [&_[role=combobox]]:h-8 [&_[role=combobox]]:min-w-0 [&_[role=combobox]]:gap-1.5 [&_[role=combobox]]:overflow-hidden [&_[role=combobox]]:!bg-background/80 [&_[role=combobox]]:px-2 [&_[role=combobox]]:text-foreground [&_[role=combobox]]:ring-1 [&_[role=combobox]]:ring-border/70 [&_[role=combobox]]:backdrop-blur-md [&_[role=combobox]]:hover:!bg-background/90 [&_[role=combobox]>span]:block [&_[role=combobox]>span]:min-w-0 [&_[role=combobox]>span]:truncate';
+    'w-full min-w-0 [&_[role=combobox]]:h-8 [&_[role=combobox]]:min-w-0 [&_[role=combobox]]:gap-1.5 [&_[role=combobox]]:overflow-hidden [&_[role=combobox]]:border [&_[role=combobox]]:border-input [&_[role=combobox]]:!bg-background [&_[role=combobox]]:px-2 [&_[role=combobox]]:text-foreground [&_[role=combobox]]:shadow-xs [&_[role=combobox]]:hover:!bg-muted [&_[role=combobox]>span]:block [&_[role=combobox]>span]:min-w-0 [&_[role=combobox]>span]:truncate';
 
 export const raisedBedFieldCardButtonClassName =
-    'max-w-full min-w-0 overflow-hidden text-ellipsis whitespace-nowrap !bg-background/80 text-foreground ring-1 ring-border/70 backdrop-blur-md hover:!bg-background/90 hover:text-foreground [&>span]:min-w-0';
+    'max-w-full min-w-0 overflow-hidden text-ellipsis whitespace-nowrap border border-input !bg-background text-foreground shadow-xs hover:!bg-muted hover:text-foreground [&>span]:min-w-0';
 
 export const raisedBedFieldCardChipClassName =
-    'min-w-0 max-w-full overflow-hidden backdrop-blur-md';
+    'min-w-0 max-w-full overflow-hidden';
 
 export function RaisedBedFieldCardGrid({
     children,
