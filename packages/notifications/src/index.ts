@@ -5,6 +5,7 @@ import {
     type DeliveryRequestState,
     getDeliveryRequest,
     getEntityFormatted,
+    getFarm,
     getGarden,
     getNotificationSetting,
     getOperationById,
@@ -151,6 +152,15 @@ async function buildOperationContext(
                         }
                     }
                 }
+            }
+        }
+
+        if (operation.farmId && !farmSlackChannelId) {
+            const farm = await getFarm(operation.farmId);
+            if (farm) {
+                farmName = farm.name ?? farmName;
+                farmId = farm.id;
+                farmSlackChannelId = farm.slackChannelId ?? farmSlackChannelId;
             }
         }
 
