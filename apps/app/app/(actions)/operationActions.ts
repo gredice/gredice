@@ -148,6 +148,8 @@ export async function createOperationAction(formData: FormData) {
         revalidatePath(KnownPages.Garden(operation.gardenId));
     if (operation.raisedBedId)
         revalidatePath(KnownPages.RaisedBed(operation.raisedBedId));
+    revalidatePath(KnownPages.Operations);
+    revalidatePath(KnownPages.Operation(operationId));
     return { success: true };
 }
 
@@ -491,13 +493,7 @@ export async function rescheduleOperationAction(formData: FormData) {
         scheduledDate: newDate.toISOString(),
     });
 
-    revalidatePath(KnownPages.Schedule);
-    if (operation.accountId)
-        revalidatePath(KnownPages.Account(operation.accountId));
-    if (operation.gardenId)
-        revalidatePath(KnownPages.Garden(operation.gardenId));
-    if (operation.raisedBedId)
-        revalidatePath(KnownPages.RaisedBed(operation.raisedBedId));
+    await revalidateOperationPaths(operation);
     return { success: true };
 }
 
@@ -514,13 +510,7 @@ export async function acceptOperationAction(operationId: number) {
     }
     await acceptOperation(operationId);
     await notifyOperationUpdate(operationId, 'approved');
-    revalidatePath(KnownPages.Schedule);
-    if (operation.accountId)
-        revalidatePath(KnownPages.Account(operation.accountId));
-    if (operation.gardenId)
-        revalidatePath(KnownPages.Garden(operation.gardenId));
-    if (operation.raisedBedId)
-        revalidatePath(KnownPages.RaisedBed(operation.raisedBedId));
+    await revalidateOperationPaths(operation);
 }
 
 export async function assignOperationUserAction(
@@ -584,13 +574,7 @@ export async function assignOperationUserAction(
         await notifyOperationAssignedUsers(operationId, newlyAssignedUserIds);
     }
 
-    revalidatePath(KnownPages.Schedule);
-    if (operation.accountId)
-        revalidatePath(KnownPages.Account(operation.accountId));
-    if (operation.gardenId)
-        revalidatePath(KnownPages.Garden(operation.gardenId));
-    if (operation.raisedBedId)
-        revalidatePath(KnownPages.RaisedBed(operation.raisedBedId));
+    await revalidateOperationPaths(operation);
 
     return { success: true };
 }
@@ -603,6 +587,7 @@ async function revalidateOperationPaths(
     revalidatePath(KnownPages.Operation(operation.id));
     if (operation.accountId)
         revalidatePath(KnownPages.Account(operation.accountId));
+    if (operation.farmId) revalidatePath(KnownPages.Farm(operation.farmId));
     if (operation.gardenId)
         revalidatePath(KnownPages.Garden(operation.gardenId));
     if (operation.raisedBedId)
@@ -924,11 +909,5 @@ export async function cancelOperationAction(formData: FormData) {
             : undefined,
     ]);
 
-    revalidatePath(KnownPages.Schedule);
-    if (operation.accountId)
-        revalidatePath(KnownPages.Account(operation.accountId));
-    if (operation.gardenId)
-        revalidatePath(KnownPages.Garden(operation.gardenId));
-    if (operation.raisedBedId)
-        revalidatePath(KnownPages.RaisedBed(operation.raisedBedId));
+    await revalidateOperationPaths(operation);
 }
