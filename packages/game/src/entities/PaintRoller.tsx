@@ -41,7 +41,7 @@ const overlayNodeNames = new Set<PaintRollerNodeName>([
     'PaintRoller_Handle_Collar_Bottom',
 ]);
 
-const paintRollerScale = 0.44;
+const paintRollerScale = 0.352;
 
 function PaintRollerPart({
     children,

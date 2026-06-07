@@ -5,6 +5,7 @@ import {
     createEvent,
     knownEvents,
     knownEventTypes,
+    type RaisedBedFieldSowingLocation,
 } from '../repositories/events';
 import { getFarms } from '../repositories/farmsRepo';
 import { getRaisedBed } from '../repositories/gardensRepo';
@@ -41,6 +42,8 @@ const createFarmInventoryOperationsActionKey =
     'action.createFarmInventoryOperations';
 const updateRaisedBedFieldPlantStatusActionKey =
     'action.updateRaisedBedFieldPlantStatus';
+const updateRaisedBedFieldSowingLocationActionKey =
+    'action.updateRaisedBedFieldSowingLocation';
 const createPlantStatusRequestsFromImageAnalysisActionKey =
     'action.createPlantStatusRequestsFromImageAnalysis';
 const logActionKey = 'action.log';
@@ -60,6 +63,8 @@ export const automationModuleKeys = {
     actionCreateFarmInventoryOperations: createFarmInventoryOperationsActionKey,
     actionUpdateRaisedBedFieldPlantStatus:
         updateRaisedBedFieldPlantStatusActionKey,
+    actionUpdateRaisedBedFieldSowingLocation:
+        updateRaisedBedFieldSowingLocationActionKey,
     actionCreatePlantStatusRequestsFromImageAnalysis:
         createPlantStatusRequestsFromImageAnalysisActionKey,
     actionLog: logActionKey,
@@ -381,6 +386,12 @@ function parseRaisedBedFieldAggregateId(aggregateId: string) {
     }
 
     return { raisedBedId, positionIndex };
+}
+
+function parseSowingLocation(
+    value: unknown,
+): RaisedBedFieldSowingLocation | null {
+    return value === 'direct' || value === 'greenhouse' ? value : null;
 }
 
 function configFieldsForEventType() {
@@ -1179,6 +1190,107 @@ const updateRaisedBedFieldPlantStatusActionModule: AutomationModule = {
     },
 };
 
+const updateRaisedBedFieldSowingLocationActionModule: AutomationModule = {
+    key: updateRaisedBedFieldSowingLocationActionKey,
+    kind: 'action',
+    title: 'Update sowing location',
+    description:
+        'Writes a raised-bed field sowing location update for the operation target.',
+    category: 'Raised-bed fields',
+    configFields: [
+        {
+            key: 'targetSowingLocation',
+            label: 'Target sowing location',
+            type: 'select',
+            required: true,
+            options: [
+                { value: 'direct', label: 'Direct' },
+                { value: 'greenhouse', label: 'Greenhouse' },
+            ],
+        },
+    ],
+    dryRunSupported: true,
+    mutatesData: true,
+    retryable: true,
+    validateConfig: (config) =>
+        parseSowingLocation(config.targetSowingLocation)
+            ? []
+            : ['targetSowingLocation must be direct or greenhouse.'],
+    execute: async (context, node) => {
+        if (!context.event) {
+            return skip('No source event is available.');
+        }
+
+        const targetSowingLocation = parseSowingLocation(
+            node.config.targetSowingLocation,
+        );
+        if (!targetSowingLocation) {
+            throw new AutomationModuleExecutionError(
+                'Sowing location action is missing targetSowingLocation.',
+                'invalid_config',
+            );
+        }
+
+        const operationId = Number(context.event.aggregateId);
+        if (!Number.isInteger(operationId) || operationId <= 0) {
+            return skip('Source event aggregate is not an operation id.');
+        }
+
+        const operation = await getOperationById(operationId);
+        if (!operation?.raisedBedId || !operation.raisedBedFieldId) {
+            return skip('Operation has no raised-bed field target.', {
+                operationId,
+            });
+        }
+
+        const raisedBed = await getRaisedBed(operation.raisedBedId);
+        const field = raisedBed?.fields.find(
+            (candidate) => candidate.id === operation.raisedBedFieldId,
+        );
+        if (!raisedBed || !field) {
+            return skip('Operation target field was not found.', {
+                operationId,
+                raisedBedId: operation.raisedBedId,
+                raisedBedFieldId: operation.raisedBedFieldId,
+            });
+        }
+
+        if (field.sowingLocation === targetSowingLocation) {
+            return skip('Plant already has the target sowing location.', {
+                targetSowingLocation,
+            });
+        }
+
+        if (context.dryRun) {
+            return success({
+                dryRun: true,
+                raisedBedId: raisedBed.id,
+                positionIndex: field.positionIndex,
+                previousSowingLocation: field.sowingLocation,
+                targetSowingLocation,
+            });
+        }
+
+        await createEvent(
+            knownEvents.raisedBedFields.plantScheduleV1(
+                `${raisedBed.id}|${field.positionIndex}`,
+                {
+                    scheduledDate:
+                        field.plantScheduledDate?.toISOString() ?? null,
+                    sowingLocation: targetSowingLocation,
+                },
+            ),
+        );
+
+        return success({
+            raisedBedId: raisedBed.id,
+            positionIndex: field.positionIndex,
+            previousSowingLocation: field.sowingLocation,
+            targetSowingLocation,
+        });
+    },
+};
+
 const createPlantStatusRequestsFromImageAnalysisActionModule: AutomationModule =
     {
         key: createPlantStatusRequestsFromImageAnalysisActionKey,
@@ -1305,6 +1417,7 @@ export const automationModules = [
     createOperationActionModule,
     createFarmInventoryOperationsActionModule,
     updateRaisedBedFieldPlantStatusActionModule,
+    updateRaisedBedFieldSowingLocationActionModule,
     createPlantStatusRequestsFromImageAnalysisActionModule,
     logActionModule,
 ] as const satisfies readonly AutomationModule[];
