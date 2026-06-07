@@ -13,9 +13,9 @@ import { setCacheControl } from '../../../lib/http/cacheControl';
 
 const outletCacheControl = {
     visibility: 'public',
-    maxAgeSeconds: 30,
-    sharedMaxAgeSeconds: 30,
-    staleWhileRevalidateSeconds: 60,
+    maxAgeSeconds: 0,
+    sharedMaxAgeSeconds: 0,
+    mustRevalidate: true,
 } as const;
 
 function wwwOrigin() {

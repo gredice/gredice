@@ -28,7 +28,12 @@ export type OutletOffer = {
 
 export async function getOutletOffers() {
     try {
-        const response = await clientPublic().api.outlet.offers.$get();
+        const response = await clientPublic().api.outlet.offers.$get(
+            undefined,
+            {
+                init: { cache: 'no-store' },
+            },
+        );
         if (response.status !== 200) {
             return [];
         }

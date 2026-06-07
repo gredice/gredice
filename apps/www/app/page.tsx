@@ -23,7 +23,7 @@ import { NewsletterSignUp } from './NewsletterSignUp';
 import { OutletLandingSection } from './outlet/OutletLandingSection';
 import { PlantsShowcase } from './PlantsShowcase';
 
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
 const sectionsData: SectionData[] = [
     {

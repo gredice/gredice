@@ -28,7 +28,9 @@ export type OutletOfferData = {
 };
 
 async function getOutletOffers() {
-    const response = await clientPublic().api.outlet.offers.$get();
+    const response = await clientPublic().api.outlet.offers.$get(undefined, {
+        init: { cache: 'no-store' },
+    });
     if (response.status !== 200) {
         throw new Error('Failed to fetch outlet offers');
     }
@@ -38,11 +40,14 @@ async function getOutletOffers() {
 }
 
 export const useOutletOffersQueryKey = ['outlet-offers'];
+const outletOffersRefetchIntervalMs = 15 * 1000;
 
 export function useOutletOffers() {
     return useQuery({
         queryKey: useOutletOffersQueryKey,
         queryFn: getOutletOffers,
-        staleTime: 1000 * 60,
+        staleTime: 0,
+        refetchOnMount: 'always',
+        refetchInterval: outletOffersRefetchIntervalMs,
     });
 }
