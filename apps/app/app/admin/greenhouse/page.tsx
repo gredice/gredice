@@ -16,6 +16,7 @@ import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDat
 import { auth } from '../../../lib/auth/auth';
 import { KnownPages } from '../../../src/KnownPages';
 import { SEEDLING_TRANSPLANTING_OPERATION_ENTITY_ID } from './constants';
+import { isOperationInActivePlantCycle } from './operationMatching';
 import { SeedlingTransplantingQuickAction } from './SeedlingTransplantingQuickAction';
 import { SproutedDateQuickAction } from './SproutedDateQuickAction';
 
@@ -119,6 +120,11 @@ function getGreenhouseRaisedBeds(
 async function getTransplantingOperationIdsByFieldId(
     raisedBeds: GreenhouseRaisedBed[],
 ) {
+    const fieldsById = new Map(
+        raisedBeds.flatMap((raisedBed) =>
+            raisedBed.fields.map((field) => [field.id, field] as const),
+        ),
+    );
     const operations = (
         await Promise.all(
             raisedBeds.map((raisedBed) => {
@@ -138,14 +144,19 @@ async function getTransplantingOperationIdsByFieldId(
     const operationIdsByFieldId = new Map<number, number>();
 
     for (const operation of operations) {
+        const field =
+            operation.raisedBedFieldId != null
+                ? fieldsById.get(operation.raisedBedFieldId)
+                : undefined;
+
         if (
+            field &&
             operation.entityTypeName === 'operation' &&
             operation.entityId === SEEDLING_TRANSPLANTING_OPERATION_ENTITY_ID &&
-            operation.status !== 'canceled' &&
-            operation.raisedBedFieldId != null &&
-            !operationIdsByFieldId.has(operation.raisedBedFieldId)
+            isOperationInActivePlantCycle(operation, field) &&
+            !operationIdsByFieldId.has(field.id)
         ) {
-            operationIdsByFieldId.set(operation.raisedBedFieldId, operation.id);
+            operationIdsByFieldId.set(field.id, operation.id);
         }
     }
 

@@ -10,6 +10,10 @@ import { revalidatePath } from 'next/cache';
 import { auth } from '../../../lib/auth/auth';
 import { KnownPages } from '../../../src/KnownPages';
 import { SEEDLING_TRANSPLANTING_OPERATION_ENTITY_ID } from './constants';
+import {
+    getSeedlingTransplantingOperationTimestamp,
+    isOperationInActivePlantCycle,
+} from './operationMatching';
 
 function revalidateGreenhouseOperationPaths(raisedBed: {
     id: number;
@@ -77,7 +81,7 @@ export async function createSeedlingTransplantingOperationAction({
         (operation) =>
             operation.entityTypeName === 'operation' &&
             operation.entityId === SEEDLING_TRANSPLANTING_OPERATION_ENTITY_ID &&
-            operation.status !== 'canceled',
+            isOperationInActivePlantCycle(operation, field),
     );
 
     if (existingOperation) {
@@ -95,7 +99,7 @@ export async function createSeedlingTransplantingOperationAction({
         gardenId: raisedBed.gardenId ?? undefined,
         raisedBedId: raisedBed.id,
         raisedBedFieldId: field.id,
-        timestamp: undefined,
+        timestamp: getSeedlingTransplantingOperationTimestamp(field),
     });
 
     revalidateGreenhouseOperationPaths(raisedBed);
