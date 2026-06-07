@@ -11,12 +11,14 @@ import {
     getOutletOffer,
     getOutletOfferReservation,
     getOutletOffers,
+    getShoppingCart,
     OutletOfferUnavailableError,
     reserveOutletOffer,
     updateEntity,
     updateOutletOffer,
     upsertEntityType,
     upsertOrRemoveCartItem,
+    upsertOrRemoveCartItemWithOutletReservation,
 } from '@gredice/storage';
 import { createTestAccount } from './helpers/testHelpers';
 import { createTestDb } from './testDb';
@@ -179,6 +181,46 @@ test('reserveOutletOffer creates a held reservation and blocks overselling', asy
             }),
         OutletOfferUnavailableError,
     );
+});
+
+test('outlet cart upsert rolls back when reservation fails', async () => {
+    createTestDb();
+    const now = new Date('2026-05-01T10:00:00.000Z');
+    const plantSortId = await createTestPlantSort();
+    const offerId = await createPublishedOffer({ plantSortId, now });
+    const accountId = await createTestAccount();
+    const { cart, cartItemId } = await createCartItem(accountId, plantSortId);
+
+    await reserveOutletOffer({
+        offerId,
+        accountId,
+        cartId: cart.id,
+        cartItemId,
+        now,
+    });
+
+    const otherAccountId = await createTestAccount();
+    const otherCart = await getOrCreateShoppingCart(otherAccountId);
+    assert.ok(otherCart, 'Cart should be created');
+
+    await assert.rejects(
+        () =>
+            upsertOrRemoveCartItemWithOutletReservation({
+                cartId: otherCart.id,
+                entityId: plantSortId.toString(),
+                entityTypeName: 'plantSort',
+                amount: 1,
+                currency: 'eur',
+                forceCreate: true,
+                outletOfferId: offerId,
+                accountId: otherAccountId,
+                now,
+            }),
+        OutletOfferUnavailableError,
+    );
+
+    const rolledBackCart = await getShoppingCart(otherCart.id);
+    assert.deepEqual(rolledBackCart?.items ?? [], []);
 });
 
 test('reserveOutletOffer refreshes an existing reservation without double-counting stock', async () => {

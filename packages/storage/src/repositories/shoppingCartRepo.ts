@@ -5,7 +5,14 @@ import { getInventory } from './inventoryRepo';
 import {
     releaseOutletReservationForCartItem,
     releaseOutletReservationsForCart,
+    reserveOutletOffer,
 } from './outletOffersRepo';
+
+type StorageClient = ReturnType<typeof storage>;
+type TransactionClient = Parameters<
+    Parameters<StorageClient['transaction']>[0]
+>[0];
+type DatabaseClient = StorageClient | TransactionClient;
 
 function startOfUtcDay(date: Date) {
     return new Date(
@@ -184,6 +191,7 @@ export async function upsertOrRemoveCartItem(
     currency?: string | null,
     forceCreate?: boolean,
     forceDelete: boolean = false,
+    db: DatabaseClient = storage(),
 ) {
     if (additionalData !== undefined) {
         additionalData = normalizeScheduledDateAdditionalData(additionalData);
@@ -194,14 +202,14 @@ export async function upsertOrRemoveCartItem(
     }
 
     const existingItem = id
-        ? await storage().query.shoppingCartItems.findFirst({
+        ? await db.query.shoppingCartItems.findFirst({
               where: and(
                   eq(shoppingCartItems.id, id),
                   eq(shoppingCartItems.isDeleted, false),
               ),
           })
         : !forceCreate
-          ? await storage().query.shoppingCartItems.findFirst({
+          ? await db.query.shoppingCartItems.findFirst({
                 where: and(
                     eq(shoppingCartItems.cartId, cartId),
                     eq(shoppingCartItems.entityTypeName, entityTypeName),
@@ -233,24 +241,27 @@ export async function upsertOrRemoveCartItem(
 
     if (amount <= 0) {
         if (existingItem) {
-            await storage()
+            await db
                 .update(shoppingCartItems)
                 .set({
                     isDeleted: true,
                 })
                 .where(eq(shoppingCartItems.id, existingItem.id));
-            await releaseOutletReservationForCartItem(existingItem.id);
+            await releaseOutletReservationForCartItem(
+                existingItem.id,
+                new Date(),
+                db,
+            );
 
-            const remainingItems =
-                await storage().query.shoppingCartItems.findMany({
-                    where: and(
-                        eq(shoppingCartItems.cartId, cartId),
-                        eq(shoppingCartItems.isDeleted, false),
-                    ),
-                });
+            const remainingItems = await db.query.shoppingCartItems.findMany({
+                where: and(
+                    eq(shoppingCartItems.cartId, cartId),
+                    eq(shoppingCartItems.isDeleted, false),
+                ),
+            });
 
             if (remainingItems.length === 0) {
-                await storage()
+                await db
                     .update(shoppingCarts)
                     .set({ isDeleted: true })
                     .where(eq(shoppingCarts.id, cartId));
@@ -261,7 +272,7 @@ export async function upsertOrRemoveCartItem(
 
     if (existingItem) {
         return (
-            await storage()
+            await db
                 .update(shoppingCartItems)
                 .set({
                     amount,
@@ -279,7 +290,7 @@ export async function upsertOrRemoveCartItem(
         )[0].id;
     } else {
         return (
-            await storage()
+            await db
                 .insert(shoppingCartItems)
                 .values({
                     cartId,
@@ -297,6 +308,75 @@ export async function upsertOrRemoveCartItem(
                 })
         )[0].id;
     }
+}
+
+export async function upsertOrRemoveCartItemWithOutletReservation({
+    id,
+    cartId,
+    entityId,
+    entityTypeName,
+    amount,
+    gardenId,
+    raisedBedId,
+    positionIndex,
+    additionalData,
+    currency,
+    forceCreate,
+    forceDelete = false,
+    outletOfferId,
+    accountId,
+    now = new Date(),
+    holdMinutes,
+}: {
+    id?: number | null;
+    cartId: number;
+    entityId: string;
+    entityTypeName: string;
+    amount: number;
+    gardenId?: number;
+    raisedBedId?: number;
+    positionIndex?: number;
+    additionalData?: string | null;
+    currency?: string | null;
+    forceCreate?: boolean;
+    forceDelete?: boolean;
+    outletOfferId: number;
+    accountId: string;
+    now?: Date;
+    holdMinutes?: number;
+}) {
+    return storage().transaction(async (tx) => {
+        const cartItemId = await upsertOrRemoveCartItem(
+            id,
+            cartId,
+            entityId,
+            entityTypeName,
+            amount,
+            gardenId,
+            raisedBedId,
+            positionIndex,
+            additionalData,
+            currency,
+            forceCreate,
+            forceDelete,
+            tx,
+        );
+
+        if (amount > 0 && cartItemId) {
+            await reserveOutletOffer({
+                offerId: outletOfferId,
+                accountId,
+                cartId,
+                cartItemId,
+                quantity: amount,
+                now,
+                holdMinutes,
+                db: tx,
+            });
+        }
+
+        return cartItemId;
+    });
 }
 
 export async function deleteShoppingCart(accountId: string) {

@@ -14,8 +14,8 @@ import {
     normalizeShoppingCartScheduledDates,
     OutletOfferUnavailableError,
     OutletReservationUnavailableError,
-    reserveOutletOffer,
     upsertOrRemoveCartItem,
+    upsertOrRemoveCartItemWithOutletReservation,
 } from '@gredice/storage';
 import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
@@ -201,41 +201,50 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     );
                 }
             }
-            const cartItemId = await upsertOrRemoveCartItem(
-                id,
-                cartId,
-                entityId,
-                entityTypeName,
-                amount,
-                gardenId,
-                raisedBedId,
-                positionIndex,
-                additionalData,
-                currency,
-                forceCreate,
-            );
-            if (outletOfferId && amount > 0 && cartItemId) {
-                try {
-                    await reserveOutletOffer({
-                        offerId: outletOfferId,
-                        accountId,
+            try {
+                if (outletOfferId && amount > 0) {
+                    await upsertOrRemoveCartItemWithOutletReservation({
+                        id,
                         cartId,
-                        cartItemId,
-                        quantity: amount,
+                        entityId,
+                        entityTypeName,
+                        amount,
+                        gardenId,
+                        raisedBedId,
+                        positionIndex,
+                        additionalData,
+                        currency,
+                        forceCreate,
+                        outletOfferId,
+                        accountId,
                     });
-                } catch (error) {
-                    if (
-                        error instanceof OutletOfferUnavailableError ||
-                        error instanceof OutletReservationUnavailableError
-                    ) {
-                        return context.json(
-                            { error: 'Outlet offer is not available' },
-                            409,
-                        );
-                    }
-
-                    throw error;
+                } else {
+                    await upsertOrRemoveCartItem(
+                        id,
+                        cartId,
+                        entityId,
+                        entityTypeName,
+                        amount,
+                        gardenId,
+                        raisedBedId,
+                        positionIndex,
+                        additionalData,
+                        currency,
+                        forceCreate,
+                    );
                 }
+            } catch (error) {
+                if (
+                    error instanceof OutletOfferUnavailableError ||
+                    error instanceof OutletReservationUnavailableError
+                ) {
+                    return context.json(
+                        { error: 'Outlet offer is not available' },
+                        409,
+                    );
+                }
+
+                throw error;
             }
             (await getPostHogClient()).capture({
                 distinctId: accountId,

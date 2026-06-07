@@ -6,6 +6,7 @@ import {
     getUser,
     markCartPaidIfAllItemsPaid,
     normalizeShoppingCartInventoryUsage,
+    OUTLET_RESERVATION_HOLD_MINUTES,
     OutletOfferUnavailableError,
     OutletReservationUnavailableError,
     releaseOutletReservationsForCart,
@@ -30,6 +31,17 @@ import {
 } from '../../../lib/hono/authValidator';
 import { getPostHogClient } from '../../../lib/posthog-server';
 import { processItem } from '../../../lib/stripe/processCheckoutSession';
+
+const STRIPE_MIN_CHECKOUT_SESSION_LIFETIME_MINUTES = 30;
+const OUTLET_CHECKOUT_HOLD_MINUTES = Math.max(
+    OUTLET_RESERVATION_HOLD_MINUTES,
+    // Stripe requires checkout sessions to expire at least 30 minutes out.
+    STRIPE_MIN_CHECKOUT_SESSION_LIFETIME_MINUTES + 1,
+);
+
+function addMinutes(date: Date, minutes: number) {
+    return new Date(date.getTime() + minutes * 60 * 1000);
+}
 
 const app = new Hono<{ Variables: AuthVariables }>()
     .post(
@@ -93,6 +105,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
             if (!cartInfo.allowPurchase) {
                 return context.json({ error: 'Cart in invalid state' }, 400);
             }
+            const outletCheckoutStartedAt = new Date();
+            const outletCheckoutExpiresAt = addMinutes(
+                outletCheckoutStartedAt,
+                OUTLET_CHECKOUT_HOLD_MINUTES,
+            );
+            let hasOutletStripeItems = false;
             for (const item of cartInfo.items) {
                 if (
                     item.status === 'paid' ||
@@ -101,6 +119,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 ) {
                     continue;
                 }
+                hasOutletStripeItems = true;
 
                 try {
                     await reserveOutletOffer({
@@ -109,7 +128,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         cartId: item.cartId,
                         cartItemId: item.id,
                         quantity: item.amount,
-                        holdMinutes: 30,
+                        now: outletCheckoutStartedAt,
+                        holdMinutes: OUTLET_CHECKOUT_HOLD_MINUTES,
                     });
                 } catch (error) {
                     if (
@@ -335,6 +355,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     },
                     {
                         items: stripeItems,
+                        expiresAt: hasOutletStripeItems
+                            ? outletCheckoutExpiresAt
+                            : undefined,
                     },
                 );
 

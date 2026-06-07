@@ -32,6 +32,17 @@ export class OutletReservationUnavailableError extends Error {
     }
 }
 
+type ReserveOutletOfferOptions = {
+    offerId: number;
+    accountId: string;
+    cartId: number;
+    cartItemId: number;
+    quantity?: number;
+    now?: Date;
+    holdMinutes?: number;
+    db?: TransactionClient;
+};
+
 export type OutletOfferWithAvailability = SelectOutletOffer & {
     reservedQuantity: number;
     soldQuantity: number;
@@ -339,128 +350,125 @@ async function getConvertedQuantity({
     return row?.quantity ?? 0;
 }
 
-export async function reserveOutletOffer({
-    offerId,
-    accountId,
-    cartId,
-    cartItemId,
-    quantity = 1,
-    now = new Date(),
-    holdMinutes = OUTLET_RESERVATION_HOLD_MINUTES,
-}: {
-    offerId: number;
-    accountId: string;
-    cartId: number;
-    cartItemId: number;
-    quantity?: number;
-    now?: Date;
-    holdMinutes?: number;
-}) {
+async function reserveOutletOfferInTransaction(
+    {
+        offerId,
+        accountId,
+        cartId,
+        cartItemId,
+        quantity = 1,
+        now = new Date(),
+        holdMinutes = OUTLET_RESERVATION_HOLD_MINUTES,
+    }: ReserveOutletOfferOptions,
+    tx: TransactionClient,
+) {
     if (quantity <= 0) {
         throw new OutletOfferUnavailableError(
             'Outlet reservation quantity must be positive.',
         );
     }
 
-    return storage().transaction(async (tx) => {
-        const offer = await lockOutletOffer(offerId, tx);
-        if (!offer) {
-            throw new OutletOfferUnavailableError();
-        }
-        if (offer.status !== 'published') {
-            throw new OutletOfferUnavailableError();
-        }
-        if (offer.startAt.getTime() > now.getTime()) {
-            throw new OutletOfferUnavailableError(
-                'Outlet offer has not started.',
-            );
-        }
-        if (offer.endAt.getTime() <= now.getTime()) {
-            throw new OutletOfferUnavailableError('Outlet offer has expired.');
-        }
+    const offer = await lockOutletOffer(offerId, tx);
+    if (!offer) {
+        throw new OutletOfferUnavailableError();
+    }
+    if (offer.status !== 'published') {
+        throw new OutletOfferUnavailableError();
+    }
+    if (offer.startAt.getTime() > now.getTime()) {
+        throw new OutletOfferUnavailableError('Outlet offer has not started.');
+    }
+    if (offer.endAt.getTime() <= now.getTime()) {
+        throw new OutletOfferUnavailableError('Outlet offer has expired.');
+    }
 
-        const existingReservation =
-            await tx.query.outletOfferReservations.findFirst({
-                where: and(
-                    eq(outletOfferReservations.cartItemId, cartItemId),
-                    ne(outletOfferReservations.status, 'released'),
-                ),
-                orderBy: (table, { desc }) => [
-                    desc(table.createdAt),
-                    desc(table.id),
-                ],
-            });
+    const existingReservation =
+        await tx.query.outletOfferReservations.findFirst({
+            where: and(
+                eq(outletOfferReservations.cartItemId, cartItemId),
+                ne(outletOfferReservations.status, 'released'),
+            ),
+            orderBy: (table, { desc }) => [
+                desc(table.createdAt),
+                desc(table.id),
+            ],
+        });
 
-        if (existingReservation?.status === 'converted') {
-            throw new OutletReservationUnavailableError(
-                'Outlet reservation is already converted.',
-            );
-        }
-        if (
-            existingReservation &&
-            existingReservation.outletOfferId !== offerId
-        ) {
-            await tx
-                .update(outletOfferReservations)
-                .set({ status: 'released', releasedAt: now })
-                .where(eq(outletOfferReservations.id, existingReservation.id));
-        }
+    if (existingReservation?.status === 'converted') {
+        throw new OutletReservationUnavailableError(
+            'Outlet reservation is already converted.',
+        );
+    }
+    if (existingReservation && existingReservation.outletOfferId !== offerId) {
+        await tx
+            .update(outletOfferReservations)
+            .set({ status: 'released', releasedAt: now })
+            .where(eq(outletOfferReservations.id, existingReservation.id));
+    }
 
-        const reusableReservation =
-            existingReservation?.outletOfferId === offerId
-                ? existingReservation
-                : null;
-        const excludeReservationId = reusableReservation?.id;
-        const [reservedQuantity, soldQuantity] = await Promise.all([
-            getActiveReservedQuantity({
-                offerId,
-                now,
-                excludeReservationId,
-                db: tx,
-            }),
-            getConvertedQuantity({ offerId, excludeReservationId, db: tx }),
-        ]);
-        const remainingQuantity =
-            offer.quantity - reservedQuantity - soldQuantity;
-        if (remainingQuantity < quantity) {
-            throw new OutletOfferUnavailableError('Outlet offer is sold out.');
-        }
+    const reusableReservation =
+        existingReservation?.outletOfferId === offerId
+            ? existingReservation
+            : null;
+    const excludeReservationId = reusableReservation?.id;
+    const [reservedQuantity, soldQuantity] = await Promise.all([
+        getActiveReservedQuantity({
+            offerId,
+            now,
+            excludeReservationId,
+            db: tx,
+        }),
+        getConvertedQuantity({ offerId, excludeReservationId, db: tx }),
+    ]);
+    const remainingQuantity = offer.quantity - reservedQuantity - soldQuantity;
+    if (remainingQuantity < quantity) {
+        throw new OutletOfferUnavailableError('Outlet offer is sold out.');
+    }
 
-        const holdExpiresAt = addMinutes(now, holdMinutes);
-        if (reusableReservation) {
-            const [updated] = await tx
-                .update(outletOfferReservations)
-                .set({
-                    quantity,
-                    holdExpiresAt,
-                    status: 'held',
-                    releasedAt: null,
-                })
-                .where(eq(outletOfferReservations.id, reusableReservation.id))
-                .returning();
-
-            return updated;
-        }
-
-        const [created] = await tx
-            .insert(outletOfferReservations)
-            .values({
-                outletOfferId: offerId,
-                accountId,
-                cartId,
-                cartItemId,
+    const holdExpiresAt = addMinutes(now, holdMinutes);
+    if (reusableReservation) {
+        const [updated] = await tx
+            .update(outletOfferReservations)
+            .set({
                 quantity,
                 holdExpiresAt,
                 status: 'held',
-                heldOutletPriceCents: offer.outletPriceCents,
-                heldComparePriceCents: offer.comparePriceCents,
-                heldSowingDate: offer.sowingDate,
-                heldInitialPlantStatus: offer.initialPlantStatus,
+                releasedAt: null,
             })
+            .where(eq(outletOfferReservations.id, reusableReservation.id))
             .returning();
 
-        return created;
-    });
+        return updated;
+    }
+
+    const [created] = await tx
+        .insert(outletOfferReservations)
+        .values({
+            outletOfferId: offerId,
+            accountId,
+            cartId,
+            cartItemId,
+            quantity,
+            holdExpiresAt,
+            status: 'held',
+            heldOutletPriceCents: offer.outletPriceCents,
+            heldComparePriceCents: offer.comparePriceCents,
+            heldSowingDate: offer.sowingDate,
+            heldInitialPlantStatus: offer.initialPlantStatus,
+        })
+        .returning();
+
+    return created;
+}
+
+export async function reserveOutletOffer(options: ReserveOutletOfferOptions) {
+    if (options.db) {
+        return reserveOutletOfferInTransaction(options, options.db);
+    }
+
+    return storage().transaction((tx) =>
+        reserveOutletOfferInTransaction(options, tx),
+    );
 }
 
 export async function releaseOutletReservationForCartItem(
