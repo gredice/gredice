@@ -18,6 +18,7 @@
         "lint:migrate": "biome migrate --write",
         "db-generate": "drizzle-kit generate",
         "db-push": "tsx --env-file=.env ./src/migrate.ts",
+        "migrate:deploy": "tsx --conditions=react-server ./src/migrate.ts",
         "dev": "drizzle-kit studio",
         "test": "pnpm run test:node",
         "test:db:start": "bash ./tests/startTestDb.sh",
