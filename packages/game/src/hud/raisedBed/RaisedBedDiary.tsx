@@ -11,7 +11,6 @@ import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import Image from 'next/image';
 import { type ReactNode, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
 import { useGameFlags } from '../../GameFlagsContext';
 import { isDiaryCancelTargetEligible } from '../../hooks/useCancelDiaryEntry';
 import { useRaisedBedDiaryEntries } from '../../hooks/useRaisedBedDiaryEntries';
@@ -20,6 +19,7 @@ import {
     type DiaryRescheduleTarget,
     isDiaryRescheduleTargetEligible,
 } from '../../hooks/useRescheduleDiaryEntry';
+import { RaisedBedAiOperationMarkdown } from './RaisedBedAiOperationMarkdown';
 import { RaisedBedDiaryAiAction } from './RaisedBedDiaryAiAction';
 import { RaisedBedDiaryCancelAction } from './RaisedBedDiaryCancelAction';
 import { RaisedBedDiaryRescheduleAction } from './RaisedBedDiaryRescheduleAction';
@@ -168,11 +168,13 @@ function diaryEntryActions({
 
 function DiaryList({
     error,
+    gardenId,
     isLoading,
     entries,
     renderEntryAction,
 }: {
     error: Error | null;
+    gardenId: number;
     isLoading: boolean;
     entries: DiaryEntry[] | undefined;
     renderEntryAction?: (
@@ -388,9 +390,9 @@ function DiaryList({
                             imageUrls={expandedAiEntry.imageUrls}
                         />
                         <div className="prose prose-sm max-w-none dark:prose-invert">
-                            <ReactMarkdown>
+                            <RaisedBedAiOperationMarkdown gardenId={gardenId}>
                                 {expandedAiEntry.description ?? ''}
-                            </ReactMarkdown>
+                            </RaisedBedAiOperationMarkdown>
                         </div>
                         <Typography
                             level="body3"
@@ -457,6 +459,7 @@ export function RaisedBedFieldDiary({
     return (
         <DiaryList
             error={error}
+            gardenId={gardenId}
             isLoading={isLoading}
             entries={entries}
             renderEntryAction={renderEntryAction}
@@ -506,6 +509,7 @@ export function RaisedBedDiary({
     return (
         <DiaryList
             error={error}
+            gardenId={gardenId}
             isLoading={isLoading}
             entries={entries}
             renderEntryAction={renderEntryAction}

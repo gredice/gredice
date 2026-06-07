@@ -1,6 +1,7 @@
 import type { OperationData } from '@gredice/client';
 import { formatPrice } from '@gredice/js/currency';
 import { getHarvestOperationRemovalDisclaimer } from '@gredice/js/plants';
+import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent } from '@gredice/ui/Card';
 import { Input } from '@gredice/ui/Input';
@@ -24,6 +25,7 @@ export function OperationScheduleModal({
 }) {
     const [open, setOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -31,10 +33,16 @@ export function OperationScheduleModal({
         const date = formData.get('scheduledDate') as string;
         if (date) {
             const scheduledDate = new Date(date);
+            setErrorMessage(null);
             setIsLoading(true);
-            await onConfirm(scheduledDate);
-            setOpen(false);
-            setIsLoading(false);
+            try {
+                await onConfirm(scheduledDate);
+                setOpen(false);
+            } catch {
+                setErrorMessage('Zakazivanje nije uspjelo. Pokušaj ponovno.');
+            } finally {
+                setIsLoading(false);
+            }
         }
     }
 
@@ -67,7 +75,12 @@ export function OperationScheduleModal({
             trigger={trigger}
             title={`Zakaži radnju: ${operation.information.label}`}
             open={open}
-            onOpenChange={setOpen}
+            onOpenChange={(nextOpen) => {
+                setOpen(nextOpen);
+                if (!nextOpen) {
+                    setErrorMessage(null);
+                }
+            }}
         >
             <form onSubmit={handleSubmit}>
                 <Stack spacing={4}>
@@ -108,6 +121,13 @@ export function OperationScheduleModal({
                             </Row>
                         </CardContent>
                     </Card>
+                    {errorMessage ? (
+                        <Alert color="danger">
+                            <Typography level="body2">
+                                {errorMessage}
+                            </Typography>
+                        </Alert>
+                    ) : null}
                     <Input
                         type="date"
                         label="Željeni datum radnje"

@@ -3,6 +3,7 @@ import { type PropsWithChildren, useMemo } from 'react';
 import { GameFlagsContext } from '../../../packages/game/src/GameFlagsContext';
 import { RaisedBedDiary } from '../../../packages/game/src/hud/raisedBed/RaisedBedDiary';
 import { Card, CardOverflow } from '../../../packages/ui/src/Card';
+import { buildOperation } from './raisedBedFieldHudScenarios';
 
 const TEST_GARDEN_ID = 1;
 const TEST_RAISED_BED_ID = 101;
@@ -35,6 +36,30 @@ const imageUrls = [
 const longWord =
     'SuperdugacakNazivDnevnickogUnosaBezRazmakaKojiMoraOstatiUnutarListe';
 
+const baseRaisedBedOperation = buildOperation({
+    id: 77,
+    name: 'raised-bed-mulching',
+    label: 'Malčiranje gredice',
+    stageName: 'growth',
+    stageLabel: 'Rast',
+});
+
+const raisedBedOperation = {
+    ...baseRaisedBedOperation,
+    attributes: {
+        ...baseRaisedBedOperation.attributes,
+        application: 'raisedBedFull',
+    },
+};
+
+const plantFieldOperation = buildOperation({
+    id: 88,
+    name: 'plant-watering',
+    label: 'Zalijevanje biljke',
+    stageName: 'growth',
+    stageLabel: 'Rast',
+});
+
 function todayUtcIso() {
     const today = new Date();
     return new Date(
@@ -64,9 +89,9 @@ const diaryEntries: DiaryEntry[] = [
     },
     {
         id: 2,
-        name: 'AI analysis with several images',
+        name: 'AI analysis with operation links',
         description:
-            '## Analysis\n\nThe gallery and text should stay constrained inside the diary row.',
+            '## Analysis\n\nSchedule [Malčiranje gredice](https://www.gredice.com/radnje/mock-raised-bed-mulching#raisedBedId=101) for the full bed and [Zalijevanje biljke](https://www.gredice.com/radnje/mock-plant-watering#raisedBedId=101&positionIndex=5) for the stressed plant.',
         status: null,
         timestamp: new Date('2026-05-12T12:00:00.000Z'),
         imageUrls,
@@ -100,6 +125,19 @@ function createRaisedBedDiaryQueryClient() {
         ['raisedBeds', TEST_RAISED_BED_ID, 'diary'],
         diaryEntries,
     );
+    queryClient.setQueryData(['currentUser'], { id: 'test-user' });
+    queryClient.setQueryData(
+        ['operations'],
+        [raisedBedOperation, plantFieldOperation],
+    );
+    queryClient.setQueryData(['shopping-cart'], {
+        id: 1,
+        items: [],
+        total: 0,
+        totalSunflowers: 0,
+        allowPurchase: true,
+        notes: [],
+    });
 
     return queryClient;
 }
