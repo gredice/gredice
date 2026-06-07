@@ -1,5 +1,8 @@
 import { expect, test } from '@playwright/experimental-ct-react';
-import { ShoppingCartOptimisticToggleStory } from './ShoppingCartOptimisticToggleStory';
+import {
+    ShoppingCartOptimisticToggleStory,
+    ShoppingCartOutletCountdownStory,
+} from './ShoppingCartOptimisticToggleStory';
 
 test('shopping cart payment toggle updates before the server responds', async ({
     mount,
@@ -49,4 +52,14 @@ test('shopping cart payment toggle updates before the server responds', async ({
     );
 
     releasePost?.();
+});
+
+test('shopping cart outlet item shows a live reservation countdown', async ({
+    mount,
+    page,
+}) => {
+    await mount(<ShoppingCartOutletCountdownStory />);
+
+    await expect(page.getByText('Outlet sadnica').first()).toBeVisible();
+    await expect(page.getByText(/Istječe za 1:[0-5]\d/u)).toBeVisible();
 });

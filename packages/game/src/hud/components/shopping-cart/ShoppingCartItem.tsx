@@ -15,20 +15,37 @@ import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import type { CSSProperties } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { type CSSProperties, useEffect, useState } from 'react';
 import { useGameAnalytics } from '../../../analytics/GameAnalyticsContext';
 import { useCurrentAccount } from '../../../hooks/useCurrentAccount';
 import { useCurrentGarden } from '../../../hooks/useCurrentGarden';
 import { useInventory } from '../../../hooks/useInventory';
 import { useSetShoppingCartItem } from '../../../hooks/useSetShoppingCartItem';
-import type { ShoppingCartItemData } from '../../../hooks/useShoppingCart';
+import {
+    type ShoppingCartItemData,
+    useShoppingCartQueryKey,
+} from '../../../hooks/useShoppingCart';
 import { ButtonPricePickPaymentMethod } from './ButtonPricePickPaymentMethod';
+
+const outletReservationCountdownIntervalMs = 1000;
+const outletReservationRefetchBufferMs = 500;
+const urgentOutletReservationThresholdMs = 5 * 60 * 1000;
+
+function formatCountdown(remainingMs: number) {
+    const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
 
 export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const { data: garden } = useCurrentGarden();
     const { data: account } = useCurrentAccount();
     const { data: inventory } = useInventory();
     const { track } = useGameAnalytics();
+    const queryClient = useQueryClient();
+    const [countdownNowMs, setCountdownNowMs] = useState(() => Date.now());
 
     const hasDiscount = typeof item.shopData.discountPrice === 'number';
     const hasRaisedBed = Boolean(item.raisedBedId);
@@ -46,8 +63,87 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const outletHoldExpiresAt = item.outlet?.holdExpiresAt
         ? new Date(item.outlet.holdExpiresAt)
         : null;
+    const hasOutletReservation = Boolean(item.outlet);
+    const outletReservationExpiredFromApi = item.outlet?.expired ?? false;
+    const outletHoldExpiresAtMs = outletHoldExpiresAt?.getTime() ?? null;
+    const outletReservationRemainingMs =
+        outletHoldExpiresAtMs != null
+            ? outletHoldExpiresAtMs - countdownNowMs
+            : null;
+    const outletReservationExpired =
+        outletReservationExpiredFromApi ||
+        (outletReservationRemainingMs != null &&
+            outletReservationRemainingMs <= 0);
+    const outletReservationText = outletReservationExpired
+        ? 'Rezervacija istekla'
+        : outletReservationRemainingMs != null
+          ? `Istječe za ${formatCountdown(outletReservationRemainingMs)}`
+          : 'Rezervirano';
+    const outletReservationTitle = outletReservationExpired
+        ? 'Outlet cijena više nije rezervirana.'
+        : outletHoldExpiresAt
+          ? `Outlet cijena čuva se do ${outletHoldExpiresAt.toLocaleTimeString(
+                'hr-HR',
+                {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                },
+            )}.`
+          : undefined;
+    const outletReservationChipClassName = outletReservationExpired
+        ? 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-100'
+        : (outletReservationRemainingMs ?? Number.POSITIVE_INFINITY) <=
+            urgentOutletReservationThresholdMs
+          ? 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-100'
+          : 'bg-muted';
     const changeCurrencyShoppingCartItem = useSetShoppingCartItem();
     const removeShoppingCartItem = useSetShoppingCartItem();
+
+    useEffect(() => {
+        if (
+            !hasOutletReservation ||
+            outletReservationExpiredFromApi ||
+            !outletHoldExpiresAtMs
+        ) {
+            return;
+        }
+
+        setCountdownNowMs(Date.now());
+        const interval = window.setInterval(() => {
+            setCountdownNowMs(Date.now());
+        }, outletReservationCountdownIntervalMs);
+
+        return () => window.clearInterval(interval);
+    }, [
+        hasOutletReservation,
+        outletReservationExpiredFromApi,
+        outletHoldExpiresAtMs,
+    ]);
+
+    useEffect(() => {
+        if (
+            !hasOutletReservation ||
+            outletReservationExpiredFromApi ||
+            !outletHoldExpiresAtMs
+        ) {
+            return;
+        }
+
+        const delayMs = Math.max(outletHoldExpiresAtMs - Date.now(), 0);
+        const timeout = window.setTimeout(() => {
+            setCountdownNowMs(Date.now());
+            void queryClient.invalidateQueries({
+                queryKey: useShoppingCartQueryKey,
+            });
+        }, delayMs + outletReservationRefetchBufferMs);
+
+        return () => window.clearTimeout(timeout);
+    }, [
+        hasOutletReservation,
+        outletReservationExpiredFromApi,
+        outletHoldExpiresAtMs,
+        queryClient,
+    ]);
 
     const usesInventory = item.currency === 'inventory';
     const availableFromInventory = inventory?.items?.find(
@@ -232,18 +328,11 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                             </Typography>
                         </Chip>
                         <Chip
-                            className={
-                                item.outlet.expired
-                                    ? 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-100'
-                                    : 'bg-muted'
-                            }
+                            className={outletReservationChipClassName}
+                            title={outletReservationTitle}
                         >
                             <Typography level="body3">
-                                {item.outlet.expired
-                                    ? 'Rezervacija istekla'
-                                    : outletHoldExpiresAt
-                                      ? `Čuva se do ${outletHoldExpiresAt.toLocaleTimeString('hr-HR', { hour: '2-digit', minute: '2-digit' })}`
-                                      : 'Rezervirano'}
+                                {outletReservationText}
                             </Typography>
                         </Chip>
                     </Row>
