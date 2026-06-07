@@ -21,6 +21,7 @@ import {
     Settings,
     ShoppingCart,
     SmileHappy,
+    Sprout,
     Success,
     Tally3,
     Truck,
@@ -120,6 +121,8 @@ function quickActionIcon(quickAction: { href: string; icon?: string | null }) {
             return <Calendar className="size-4" />;
         case KnownPages.RaisedBeds:
             return <RaisedBedIcon className="size-4" physicalId={null} />;
+        case KnownPages.Greenhouse:
+            return <Sprout className="size-4" />;
         case KnownPages.Operations:
             return <Hammer className="size-4" />;
         case KnownPages.Settings:

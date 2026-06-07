@@ -36,6 +36,7 @@ import {
     Settings,
     ShoppingCart,
     SmileHappy,
+    Sprout,
     Success,
     Tally3,
     Truck,
@@ -110,6 +111,8 @@ function quickActionIcon(quickAction: { href: string; icon?: string | null }) {
             return <Calendar className="size-5" />;
         case KnownPages.RaisedBeds:
             return <RaisedBedIcon className="size-5" physicalId={null} />;
+        case KnownPages.Greenhouse:
+            return <Sprout className="size-5" />;
         case KnownPages.Operations:
             return <Hammer className="size-5" />;
         case KnownPages.Settings:
@@ -498,6 +501,7 @@ export function Nav({
                         adminPages.Weather.href,
                         adminPages.Gardens.href,
                         adminPages.RaisedBeds.href,
+                        adminPages.Greenhouse.href,
                         adminPages.HarvestTraces.href,
                         adminPages.Operations.href,
                         adminPages.FarmerPayouts.href,
@@ -538,6 +542,14 @@ export function Nav({
                                 physicalId={null}
                             />
                         }
+                        onClick={onItemClick}
+                        compact={compact}
+                        nested
+                    />
+                    <NavItem
+                        href={adminPages.Greenhouse.href}
+                        label={adminPages.Greenhouse.label}
+                        icon={<Sprout className="size-5" />}
                         onClick={onItemClick}
                         compact={compact}
                         nested
