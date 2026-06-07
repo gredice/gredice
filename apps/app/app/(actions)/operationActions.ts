@@ -340,11 +340,18 @@ export async function bulkCreateOperationsAction(
             : undefined;
         const selectedAssignedUserId =
             getStringFormValue(formData, 'assignedUserId') || undefined;
+        const approveOnCreate =
+            getStringFormValue(formData, 'approve') === 'true';
         const targets = formData
             .getAll('targets')
             .filter((value): value is string => typeof value === 'string');
         if (targets.length === 0) {
             throw new Error('Odaberite barem jednu ciljnu lokaciju.');
+        }
+        if (approveOnCreate && !selectedAssignedUserId) {
+            throw new Error(
+                'Radnje ne mogu biti potvrđene prije nego što korisnik bude dodijeljen.',
+            );
         }
         const parsedTargets = targets.map(parseOperationTarget);
         await assertRaisedBedTargetsAllowNewOperations(parsedTargets);
@@ -431,6 +438,10 @@ export async function bulkCreateOperationsAction(
                 await notifyOperationAssignedUsers(operationId, [
                     selectedAssignedUserId,
                 ]);
+            }
+            if (approveOnCreate) {
+                await acceptOperation(operationId);
+                await notifyOperationUpdate(operationId, 'approved');
             }
             createdCount += 1;
         }
