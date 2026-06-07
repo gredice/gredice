@@ -6,7 +6,7 @@ existing planting flow where a `raisedBedField.plantUpdate` event with
 `data.status = "sowed"` queues seasonal watering operations asynchronously, and
 monthly schedules that can create recurring farm operations. Operation
 completion images can also be reviewed asynchronously for high-confidence plant
-status changes that create pending admin approval requests. Completing the
+status changes that create pending admin approval requests. Verifying the
 seedling transplanting operation also switches the targeted plant from
 greenhouse sowing to direct sowing.
 

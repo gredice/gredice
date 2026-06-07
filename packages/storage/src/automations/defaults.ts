@@ -119,7 +119,7 @@ export function seedlingTransplantDirectSowingLocationAutomationGraph(): Automat
                 moduleKey: automationModuleKeys.triggerDomainEvent,
                 position: { x: 0, y: 160 },
                 config: {
-                    eventType: knownEventTypes.operations.complete,
+                    eventType: knownEventTypes.operations.verify,
                 },
             },
             {
@@ -128,6 +128,7 @@ export function seedlingTransplantDirectSowingLocationAutomationGraph(): Automat
                 moduleKey: automationModuleKeys.conditionOperationMatches,
                 position: { x: 280, y: 160 },
                 config: {
+                    status: 'completed',
                     entityId: seedlingTransplantingOperationId,
                 },
             },
@@ -190,9 +191,9 @@ export async function ensureDefaultAutomationDefinitions() {
     const seedlingTransplantDirectSowingLocation =
         await upsertAutomationDefinitionByKey({
             key: seedlingTransplantDirectSowingLocationAutomationKey,
-            name: 'Postavi sadnice nakon presađivanja na direktnu sjetvu',
+            name: 'Postavi sadnice nakon potvrde presađivanja na direktnu sjetvu',
             description:
-                'Kada je radnja presađivanja sadnica završena, prebaci lokaciju sijanja ciljane biljke iz staklenika na direktnu sjetvu.',
+                'Kada je radnja presađivanja sadnica potvrđena, prebaci lokaciju sijanja ciljane biljke iz staklenika na direktnu sjetvu.',
             status: 'enabled',
             graph: seedlingTransplantDirectSowingLocationAutomationGraph(),
             metadata: {

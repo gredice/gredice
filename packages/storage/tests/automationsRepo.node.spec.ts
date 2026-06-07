@@ -907,7 +907,7 @@ test('plant-status automation skips replay when target status already exists', a
     );
 });
 
-test('seedling transplant automation sets sowing location to direct once', async () => {
+test('seedling transplant automation waits for verification before setting sowing location to direct', async () => {
     createTestDb();
     const { accountId, gardenId, raisedBedId } =
         await createAutomationRaisedBedContext();
@@ -939,7 +939,7 @@ test('seedling transplant automation sets sowing location to direct once', async
             completedBy: 'automations-test',
         }),
     );
-    const event = await getLatestEvent(
+    const completionEvent = await getLatestEvent(
         knownEventTypes.operations.complete,
         operationId.toString(),
     );
@@ -950,20 +950,62 @@ test('seedling transplant automation sets sowing location to direct once', async
         status: 'enabled',
         graph,
     });
-    const input = {
-        eventId: event.id,
-        eventType: event.type,
-        aggregateId: event.aggregateId,
+    const completionInput = {
+        eventId: completionEvent.id,
+        eventType: completionEvent.type,
+        aggregateId: completionEvent.aggregateId,
         data:
-            event.data && typeof event.data === 'object'
-                ? (event.data as Record<string, unknown>)
+            completionEvent.data && typeof completionEvent.data === 'object'
+                ? (completionEvent.data as Record<string, unknown>)
+                : {},
+    };
+    const completionRun = await createAutomationRun({
+        automationDefinition: definition,
+        source: 'event',
+        sourceEvent: completionEvent,
+        input: completionInput,
+    });
+    assert.ok(completionRun);
+    const startedCompletionRun = await startAutomationRun(completionRun.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedCompletionRun);
+
+    const completionResult = await executeAutomationRun(startedCompletionRun);
+
+    assert.strictEqual(completionResult.status, 'skipped');
+    assert.strictEqual(
+        (
+            await getEvents(knownEventTypes.raisedBedFields.plantSchedule, [
+                fieldAggregateId,
+            ])
+        ).length,
+        0,
+    );
+
+    await createEvent(
+        knownEvents.operations.verifiedV1(operationId.toString(), {
+            verifiedBy: 'automations-test',
+        }),
+    );
+    const verificationEvent = await getLatestEvent(
+        knownEventTypes.operations.verify,
+        operationId.toString(),
+    );
+    const verificationInput = {
+        eventId: verificationEvent.id,
+        eventType: verificationEvent.type,
+        aggregateId: verificationEvent.aggregateId,
+        data:
+            verificationEvent.data && typeof verificationEvent.data === 'object'
+                ? (verificationEvent.data as Record<string, unknown>)
                 : {},
     };
     const run = await createAutomationRun({
         automationDefinition: definition,
         source: 'event',
-        sourceEvent: event,
-        input,
+        sourceEvent: verificationEvent,
+        input: verificationInput,
     });
     assert.ok(run);
     const startedRun = await startAutomationRun(run.id, {
@@ -1005,8 +1047,8 @@ test('seedling transplant automation sets sowing location to direct once', async
     const replayRun = await createAutomationRun({
         automationDefinition: definition,
         source: 'replay',
-        sourceEvent: event,
-        input,
+        sourceEvent: verificationEvent,
+        input: verificationInput,
     });
     assert.ok(replayRun);
     const startedReplay = await startAutomationRun(replayRun.id, {
