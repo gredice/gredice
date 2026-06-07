@@ -109,10 +109,10 @@ function quickActionIcon(quickAction: { href: string; icon?: string | null }) {
         case KnownPages.Occasions:
         case KnownPages.Schedule:
             return <Calendar className="size-5" />;
-        case KnownPages.RaisedBeds:
-            return <RaisedBedIcon className="size-5" physicalId={null} />;
         case KnownPages.Greenhouse:
             return <Sprout className="size-5" />;
+        case KnownPages.RaisedBeds:
+            return <RaisedBedIcon className="size-5" physicalId={null} />;
         case KnownPages.Operations:
             return <Hammer className="size-5" />;
         case KnownPages.Settings:
