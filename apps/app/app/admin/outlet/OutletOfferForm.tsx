@@ -11,6 +11,7 @@ import {
     formatDateTimeInputValue,
     formatPrice,
 } from './format';
+import { OutletOfferImagesField } from './OutletOfferImagesField';
 
 type OutletOfferFormProps = {
     action: (formData: FormData) => void | Promise<void>;
@@ -187,25 +188,11 @@ export function OutletOfferForm({
                         />
                     </div>
 
-                    <Stack spacing={2}>
-                        <label
-                            className="text-sm font-medium"
-                            htmlFor="outlet-image-urls"
-                        >
-                            Slike
-                        </label>
-                        <textarea
-                            className="min-h-28 rounded-md border border-input bg-background px-3 py-2 text-sm outline-hidden ring-offset-background placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                            defaultValue={offer?.imageUrls.join('\n') ?? ''}
-                            id="outlet-image-urls"
-                            name="imageUrls"
-                            placeholder="https://..."
-                        />
-                        <p className="text-xs text-muted-foreground">
-                            Jedan URL po retku ili odvojeno zarezom. Prva slika
-                            se koristi kao naslovna.
-                        </p>
-                    </Stack>
+                    <OutletOfferImagesField
+                        offerId={offer?.id}
+                        initialImageUrls={offer?.imageUrls}
+                        name="imageUrls"
+                    />
 
                     <Stack spacing={2}>
                         <label
