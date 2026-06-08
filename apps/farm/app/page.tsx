@@ -14,6 +14,7 @@ import {
     Calendar,
     Euro,
     Fence,
+    MapPinHouse,
     Settings,
     Shield,
     Sprout,
@@ -166,6 +167,18 @@ async function FarmerDashboard() {
                                 href="/raised-beds"
                             >
                                 Gredice
+                            </Button>
+                            <Button
+                                variant="soft"
+                                size="lg"
+                                fullWidth
+                                className="h-24 flex-col text-center text-base"
+                                startDecorator={
+                                    <MapPinHouse className="size-6" />
+                                }
+                                href="/greenhouse"
+                            >
+                                Staklenik
                             </Button>
                             <Button
                                 variant="soft"
