@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import type {
     AppliedOperationVisualInput,
     OperationVisualDefinitionInput,
+    OperationVisualRewardKind,
 } from '../../operationVisualRewards';
 import { resolveOperationVisualRewards } from '../../operationVisualRewards';
 import { resolveRaisedBedHarvestPositions } from './raisedBedHarvestRewards';
@@ -13,6 +14,7 @@ function operation(
         application?: string;
         label: string;
         name: string;
+        visualReward: OperationVisualRewardKind;
     },
 ): OperationVisualDefinitionInput {
     return {
@@ -25,6 +27,7 @@ function operation(
                     name: 'harvest',
                 },
             },
+            visualReward: input.visualReward,
         },
         information: {
             description: input.label,
@@ -41,11 +44,13 @@ const operations = [
     operation(1, {
         label: 'Berba gredice',
         name: 'raisedBedHarvest',
+        visualReward: 'harvest',
     }),
     operation(2, {
         application: 'plant',
         label: 'Berba biljke',
         name: 'plantHarvest',
+        visualReward: 'harvest',
     }),
 ];
 
