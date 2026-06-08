@@ -33,8 +33,21 @@ type PlantsSortListProps = {
     search: string;
     flyToShoppingCart?: boolean;
     neighborPlants?: NeighborPlantSummary[];
-    outletOffersBySortId?: Map<number, OutletOfferData>;
+    outletOffersBySortId?: Map<number, OutletOfferData[]>;
 };
+
+const currencyFormatter = new Intl.NumberFormat('hr-HR', {
+    style: 'currency',
+    currency: 'EUR',
+});
+
+function outletOfferBadgeLabel(outletOffers: OutletOfferData[]) {
+    if (outletOffers.length === 1) {
+        return `Outlet ${currencyFormatter.format(outletOffers[0].outletPrice)}`;
+    }
+
+    return `Outlet ${outletOffers.length} ponude`;
+}
 
 function PlantSortListItem({
     sort,
@@ -42,14 +55,14 @@ function PlantSortListItem({
     onChange,
     flyToShoppingCart,
     neighborPlants,
-    outletOffer,
+    outletOffers,
 }: {
     sort: PlantSortData;
     selectedSortId: number | null;
     onChange: (sort: PlantSortData) => void;
     flyToShoppingCart?: boolean;
     neighborPlants: NeighborPlantSummary[];
-    outletOffer?: OutletOfferData;
+    outletOffers?: OutletOfferData[];
 }) {
     const animateFlyToShoppingCart = useAnimateFlyToShoppingCart();
     const { track } = useGameAnalytics();
@@ -134,9 +147,9 @@ function PlantSortListItem({
                 className="flex-wrap gap-y-1 px-4"
             >
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    {outletOffer ? (
+                    {outletOffers?.length ? (
                         <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700 dark:bg-green-900/50 dark:text-green-200">
-                            Outlet {outletOffer.outletPrice.toFixed(2)} €
+                            {outletOfferBadgeLabel(outletOffers)}
                         </span>
                     ) : null}
                     {relationshipSignal ? (
@@ -227,7 +240,7 @@ export function PlantsSortList({
                         selectedSortId={selectedSortId}
                         onChange={onChange}
                         neighborPlants={neighborPlants}
-                        outletOffer={outletOffersBySortId?.get(sort.id)}
+                        outletOffers={outletOffersBySortId?.get(sort.id)}
                         flyToShoppingCart={
                             flyToShoppingCart && selectedSortId === sort.id
                         }

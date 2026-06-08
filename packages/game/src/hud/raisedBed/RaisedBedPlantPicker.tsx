@@ -3,7 +3,7 @@ import { BackpackIcon } from '@gredice/ui/BackpackIcon';
 import { Button } from '@gredice/ui/Button';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Input } from '@gredice/ui/Input';
-import { Close, Left, Search, ShoppingCart } from '@gredice/ui/icons';
+import { Check, Close, Left, Search, ShoppingCart } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
 import { PlantingSeedIcon } from '@gredice/ui/PlantingSeedIcon';
 import { Row } from '@gredice/ui/Row';
@@ -15,6 +15,7 @@ import {
     type ReactElement,
     useId,
     useLayoutEffect,
+    useMemo,
     useRef,
     useState,
 } from 'react';
@@ -23,7 +24,10 @@ import { SegmentedProgress } from '../../controls/components/SegmentedProgress';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useGardens } from '../../hooks/useGardens';
 import { useInventory } from '../../hooks/useInventory';
-import { useOutletOffers } from '../../hooks/useOutletOffers';
+import {
+    type OutletOfferData,
+    useOutletOffers,
+} from '../../hooks/useOutletOffers';
 import { useAllSorts } from '../../hooks/usePlantSorts';
 import { useSandboxPlant } from '../../hooks/useSandboxPlant';
 import { useSetShoppingCartItem } from '../../hooks/useSetShoppingCartItem';
@@ -58,6 +62,56 @@ export function formatLocalDate(date: Date): string {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+}
+
+const outletCurrencyFormatter = new Intl.NumberFormat('hr-HR', {
+    style: 'currency',
+    currency: 'EUR',
+});
+
+const outletDateFormatter = new Intl.DateTimeFormat('hr-HR', {
+    day: 'numeric',
+    month: 'short',
+});
+
+function outletOfferTimestamp(date: string) {
+    const timestamp = new Date(date).getTime();
+    return Number.isNaN(timestamp) ? Number.POSITIVE_INFINITY : timestamp;
+}
+
+function compareOutletOffers(left: OutletOfferData, right: OutletOfferData) {
+    const sowingDateDifference =
+        outletOfferTimestamp(left.sowingDate) -
+        outletOfferTimestamp(right.sowingDate);
+    if (sowingDateDifference !== 0) {
+        return sowingDateDifference;
+    }
+
+    const priceDifference = left.outletPrice - right.outletPrice;
+    if (priceDifference !== 0) {
+        return priceDifference;
+    }
+
+    return left.id - right.id;
+}
+
+function groupOutletOffersBySortId(outletOffers: OutletOfferData[] = []) {
+    const offersBySortId = new Map<number, OutletOfferData[]>();
+
+    for (const offer of outletOffers) {
+        const sortOffers = offersBySortId.get(offer.plantSort.id);
+        if (sortOffers) {
+            sortOffers.push(offer);
+        } else {
+            offersBySortId.set(offer.plantSort.id, [offer]);
+        }
+    }
+
+    for (const sortOffers of offersBySortId.values()) {
+        sortOffers.sort(compareOutletOffers);
+    }
+
+    return offersBySortId;
 }
 
 type PlantPickerProps = {
@@ -124,8 +178,12 @@ export function PlantPicker({
     const [flyToShoppingCart, setFlyToShoppingCart] = useState(false);
     const [useInventoryItem, setUseInventoryItem] = useState(false);
     const [useOutletOffer, setUseOutletOffer] = useState(false);
+    const [selectedOutletOfferId, setSelectedOutletOfferId] = useState<
+        number | null
+    >(null);
     const [search, setSearch] = useState('');
     const searchInputId = useId();
+    const sowingModeName = useId();
     const shouldRestoreSearchFocusRef = useRef(false);
 
     let currentStep = 0;
@@ -167,12 +225,15 @@ export function PlantPicker({
     function handlePlantSelect(plant: PlantData) {
         setSelectedPlantId(plant.id);
         setSelectedSortId(null);
+        setUseOutletOffer(false);
+        setSelectedOutletOfferId(null);
         resetSearch();
     }
 
     function handleSortSelect(sort: PlantSortData) {
         setSelectedSortId(sort.id);
-        setUseOutletOffer(Boolean(outletOffersBySortId.get(sort.id)));
+        setUseOutletOffer(false);
+        setSelectedOutletOfferId(null);
         setUseInventoryItem(false);
         resetSearch();
     }
@@ -213,6 +274,7 @@ export function PlantPicker({
         setPlantOptions(null);
         setUseInventoryItem(false);
         setUseOutletOffer(false);
+        setSelectedOutletOfferId(null);
         resetSearch();
         await removeFromCart();
     }
@@ -248,6 +310,8 @@ export function PlantPicker({
                 setOpen(false);
                 setSelectedPlantId(null);
                 setSelectedSortId(null);
+                setUseOutletOffer(false);
+                setSelectedOutletOfferId(null);
                 resetSearch();
             }
             return;
@@ -267,6 +331,8 @@ export function PlantPicker({
         ) {
             await removeFromCart(existingItem);
         }
+        const existingItemCanBeUpdated =
+            existingItem?.entityId === selectedSortId.toString();
 
         // Add new item to cart
         track('game_planting_confirmed', {
@@ -279,7 +345,7 @@ export function PlantPicker({
             sort_id: selectedSortId,
             use_inventory: useInventoryItem,
             outlet_offer_id: selectedOutletOffer?.id,
-            use_outlet_offer: useOutletOffer,
+            use_outlet_offer: Boolean(selectedOutletOffer),
         });
         showShoppingCartTransientHub();
         setFlyToShoppingCart(true);
@@ -287,6 +353,7 @@ export function PlantPicker({
             await setCartItem.mutateAsync({
                 entityTypeName: 'plantSort',
                 entityId: selectedSortId?.toString(),
+                id: existingItemCanBeUpdated ? existingItem.id : undefined,
                 amount: 1,
                 gardenId,
                 raisedBedId,
@@ -336,6 +403,7 @@ export function PlantPicker({
         );
         setUseInventoryItem(existingItem?.currency === 'inventory');
         setUseOutletOffer(Boolean(existingItem?.outlet));
+        setSelectedOutletOfferId(existingItem?.outlet?.offerId ?? null);
     }
 
     // Plant options
@@ -365,12 +433,24 @@ export function PlantPicker({
             item.entityTypeName === 'plantSort' &&
             item.entityId === selectedSortId?.toString(),
     )?.amount;
-    const outletOffersBySortId = new Map(
-        (outletOffers ?? []).map((offer) => [offer.plantSort.id, offer]),
+    const outletOffersBySortId = useMemo(
+        () => groupOutletOffersBySortId(outletOffers),
+        [outletOffers],
     );
-    const selectedOutletOffer = selectedSortId
-        ? outletOffersBySortId.get(selectedSortId)
+    const selectedOutletOffers = selectedSortId
+        ? (outletOffersBySortId.get(selectedSortId) ?? [])
+        : [];
+    const selectedOutletOffer = useOutletOffer
+        ? selectedOutletOfferId
+            ? selectedOutletOffers.find(
+                  (offer) => offer.id === selectedOutletOfferId,
+              )
+            : selectedOutletOffers[0]
         : undefined;
+    const selectedOutletOfferUnavailable =
+        useOutletOffer &&
+        selectedOutletOfferId !== null &&
+        selectedOutletOffer === undefined;
     const relationshipBlockCount = getRaisedBedRelationshipBlockCount({
         cartItems: cart?.items,
         fields: raisedBed?.fields,
@@ -412,6 +492,8 @@ export function PlantPicker({
                                 ? () => {
                                       setSelectedPlantId(null);
                                       setSelectedSortId(null);
+                                      setUseOutletOffer(false);
+                                      setSelectedOutletOfferId(null);
                                       resetSearch();
                                   }
                                 : undefined,
@@ -508,41 +590,211 @@ export function PlantPicker({
                                 </Stack>
                             ) : (
                                 <>
-                                    <Row spacing={2} className="flex-wrap">
-                                        {selectedOutletOffer ? (
-                                            <Button
-                                                variant={
-                                                    useOutletOffer
-                                                        ? 'solid'
-                                                        : 'outlined'
-                                                }
-                                                size="sm"
-                                                onClick={() => {
-                                                    track(
-                                                        'game_outlet_offer_toggled',
-                                                        {
-                                                            garden_id: gardenId,
-                                                            outlet_offer_id:
-                                                                selectedOutletOffer.id,
-                                                            position_index:
-                                                                positionIndex,
-                                                            raised_bed_id:
-                                                                raisedBedId,
-                                                            sort_id:
-                                                                selectedSortId,
-                                                            use_outlet_offer:
-                                                                !useOutletOffer,
-                                                        },
-                                                    );
-                                                    setUseOutletOffer(
-                                                        (previous) => !previous,
-                                                    );
-                                                    setUseInventoryItem(false);
-                                                }}
+                                    {selectedOutletOffers.length > 0 ||
+                                    selectedOutletOfferUnavailable ? (
+                                        <Stack spacing={2}>
+                                            <Typography level="body2" semiBold>
+                                                Način sijanja
+                                            </Typography>
+                                            <div
+                                                role="radiogroup"
+                                                aria-label="Način sijanja"
+                                                className="grid gap-2 md:grid-cols-2"
                                             >
-                                                {`Outlet ${selectedOutletOffer.outletPrice.toFixed(2)} € · ${selectedOutletOffer.remainingQuantity} dostupno`}
-                                            </Button>
-                                        ) : null}
+                                                <label
+                                                    className={cx(
+                                                        'block cursor-pointer rounded-lg border p-3 text-left transition-colors focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2',
+                                                        !useOutletOffer
+                                                            ? 'border-green-500 bg-green-50 text-green-950 dark:border-green-700 dark:bg-green-950/40 dark:text-green-100'
+                                                            : 'border-input bg-card hover:bg-muted',
+                                                    )}
+                                                >
+                                                    <input
+                                                        type="radio"
+                                                        className="sr-only"
+                                                        name={sowingModeName}
+                                                        value="scheduled"
+                                                        checked={
+                                                            !useOutletOffer
+                                                        }
+                                                        onChange={() => {
+                                                            track(
+                                                                'game_outlet_offer_toggled',
+                                                                {
+                                                                    garden_id:
+                                                                        gardenId,
+                                                                    outlet_offer_id:
+                                                                        selectedOutletOfferId ??
+                                                                        selectedOutletOffer?.id,
+                                                                    position_index:
+                                                                        positionIndex,
+                                                                    raised_bed_id:
+                                                                        raisedBedId,
+                                                                    sort_id:
+                                                                        selectedSortId,
+                                                                    use_outlet_offer: false,
+                                                                },
+                                                            );
+                                                            setUseOutletOffer(
+                                                                false,
+                                                            );
+                                                            setSelectedOutletOfferId(
+                                                                null,
+                                                            );
+                                                        }}
+                                                    />
+                                                    <Row
+                                                        alignItems="start"
+                                                        justifyContent="space-between"
+                                                        spacing={2}
+                                                    >
+                                                        <Stack
+                                                            spacing={1}
+                                                            className="min-w-0"
+                                                        >
+                                                            <Typography
+                                                                level="body2"
+                                                                semiBold
+                                                            >
+                                                                Planirano
+                                                                sijanje
+                                                            </Typography>
+                                                            <Typography
+                                                                level="body3"
+                                                                secondary
+                                                            >
+                                                                Odaberi termin
+                                                                za novu biljku.
+                                                            </Typography>
+                                                        </Stack>
+                                                        {!useOutletOffer ? (
+                                                            <Check className="size-5 shrink-0" />
+                                                        ) : null}
+                                                    </Row>
+                                                </label>
+                                                {selectedOutletOffers.map(
+                                                    (offer) => {
+                                                        const selected =
+                                                            selectedOutletOffer?.id ===
+                                                            offer.id;
+
+                                                        return (
+                                                            <label
+                                                                key={offer.id}
+                                                                className={cx(
+                                                                    'block cursor-pointer rounded-lg border p-3 text-left transition-colors focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2',
+                                                                    selected
+                                                                        ? 'border-green-500 bg-green-50 text-green-950 dark:border-green-700 dark:bg-green-950/40 dark:text-green-100'
+                                                                        : 'border-input bg-card hover:bg-muted',
+                                                                )}
+                                                            >
+                                                                <input
+                                                                    type="radio"
+                                                                    className="sr-only"
+                                                                    name={
+                                                                        sowingModeName
+                                                                    }
+                                                                    value={`outlet-${offer.id}`}
+                                                                    checked={
+                                                                        selected
+                                                                    }
+                                                                    onChange={() => {
+                                                                        track(
+                                                                            'game_outlet_offer_toggled',
+                                                                            {
+                                                                                garden_id:
+                                                                                    gardenId,
+                                                                                outlet_offer_id:
+                                                                                    offer.id,
+                                                                                position_index:
+                                                                                    positionIndex,
+                                                                                raised_bed_id:
+                                                                                    raisedBedId,
+                                                                                sort_id:
+                                                                                    selectedSortId,
+                                                                                use_outlet_offer: true,
+                                                                            },
+                                                                        );
+                                                                        setUseOutletOffer(
+                                                                            true,
+                                                                        );
+                                                                        setSelectedOutletOfferId(
+                                                                            offer.id,
+                                                                        );
+                                                                        setUseInventoryItem(
+                                                                            false,
+                                                                        );
+                                                                    }}
+                                                                />
+                                                                <Row
+                                                                    alignItems="start"
+                                                                    justifyContent="space-between"
+                                                                    spacing={2}
+                                                                >
+                                                                    <Stack
+                                                                        spacing={
+                                                                            1
+                                                                        }
+                                                                        className="min-w-0"
+                                                                    >
+                                                                        <Typography
+                                                                            level="body2"
+                                                                            semiBold
+                                                                        >
+                                                                            Outlet
+                                                                            sadnica
+                                                                        </Typography>
+                                                                        <Typography
+                                                                            level="body3"
+                                                                            secondary
+                                                                        >
+                                                                            Sjetva{' '}
+                                                                            {outletDateFormatter.format(
+                                                                                new Date(
+                                                                                    offer.sowingDate,
+                                                                                ),
+                                                                            )}{' '}
+                                                                            ·{' '}
+                                                                            {outletCurrencyFormatter.format(
+                                                                                offer.outletPrice,
+                                                                            )}
+                                                                        </Typography>
+                                                                        <Typography
+                                                                            level="body3"
+                                                                            secondary
+                                                                        >
+                                                                            Preostalo{' '}
+                                                                            {
+                                                                                offer.remainingQuantity
+                                                                            }{' '}
+                                                                            · do{' '}
+                                                                            {outletDateFormatter.format(
+                                                                                new Date(
+                                                                                    offer.endAt,
+                                                                                ),
+                                                                            )}
+                                                                        </Typography>
+                                                                    </Stack>
+                                                                    {selected ? (
+                                                                        <Check className="size-5 shrink-0" />
+                                                                    ) : null}
+                                                                </Row>
+                                                            </label>
+                                                        );
+                                                    },
+                                                )}
+                                            </div>
+                                            {selectedOutletOfferUnavailable ? (
+                                                <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+                                                    Odabrana outlet sadnica više
+                                                    nije dostupna. Odaberi drugu
+                                                    outlet sadnicu ili planirano
+                                                    sijanje.
+                                                </div>
+                                            ) : null}
+                                        </Stack>
+                                    ) : null}
+                                    <Row spacing={2} className="flex-wrap">
                                         <Button
                                             variant={
                                                 availableFromInventory &&
@@ -553,7 +805,8 @@ export function PlantPicker({
                                             size="sm"
                                             disabled={
                                                 !availableFromInventory ||
-                                                useOutletOffer
+                                                Boolean(selectedOutletOffer) ||
+                                                selectedOutletOfferUnavailable
                                             }
                                             startDecorator={
                                                 <BackpackIcon className="size-5 shrink-0" />
@@ -580,16 +833,18 @@ export function PlantPicker({
                                             {`U ruksaku (${availableFromInventory ?? 0})`}
                                         </Button>
                                     </Row>
-                                    {useOutletOffer && selectedOutletOffer ? (
+                                    {selectedOutletOffer ? (
                                         <div className="rounded-lg border border-green-300 bg-green-50 p-3 text-sm text-green-900 dark:border-green-900 dark:bg-green-950/40 dark:text-green-100">
                                             Presadnica je posijana{' '}
-                                            {new Date(
-                                                selectedOutletOffer.sowingDate,
-                                            ).toLocaleDateString('hr-HR')}{' '}
+                                            {outletDateFormatter.format(
+                                                new Date(
+                                                    selectedOutletOffer.sowingDate,
+                                                ),
+                                            )}{' '}
                                             u stakleniku. Rezervacija se čuva
                                             kratko nakon dodavanja u košaru.
                                         </div>
-                                    ) : (
+                                    ) : selectedOutletOfferUnavailable ? null : (
                                         <Input
                                             type="date"
                                             label="Datum sijanja"
@@ -617,6 +872,9 @@ export function PlantPicker({
                                 className="min-w-0 justify-start whitespace-nowrap px-2 max-[340px]:justify-center md:justify-start"
                                 onClick={() => {
                                     setSelectedPlantId(null);
+                                    setSelectedSortId(null);
+                                    setUseOutletOffer(false);
+                                    setSelectedOutletOfferId(null);
                                     resetSearch();
                                 }}
                                 startDecorator={<Left className="size-5" />}
@@ -640,11 +898,16 @@ export function PlantPicker({
                                 <Button
                                     variant="solid"
                                     className="whitespace-nowrap"
-                                    disabled={!selectedSortId}
+                                    disabled={
+                                        !selectedSortId ||
+                                        selectedOutletOfferUnavailable
+                                    }
                                     title={
                                         !selectedSortId
                                             ? 'Odaberi sortu prije potvrde'
-                                            : undefined
+                                            : selectedOutletOfferUnavailable
+                                              ? 'Odabrana outlet sadnica više nije dostupna'
+                                              : undefined
                                     }
                                     loading={
                                         isSandbox

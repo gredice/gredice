@@ -14,6 +14,7 @@ import {
     normalizeShoppingCartScheduledDates,
     OutletOfferUnavailableError,
     OutletReservationUnavailableError,
+    releaseOutletReservationForCartItem,
     upsertOrRemoveCartItem,
     upsertOrRemoveCartItemWithOutletReservation,
 } from '@gredice/storage';
@@ -219,7 +220,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         accountId,
                     });
                 } else {
-                    await upsertOrRemoveCartItem(
+                    const cartItemId = await upsertOrRemoveCartItem(
                         id,
                         cartId,
                         entityId,
@@ -232,6 +233,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         currency,
                         forceCreate,
                     );
+                    if (amount > 0 && cartItemId) {
+                        await releaseOutletReservationForCartItem(cartItemId);
+                    }
                 }
             } catch (error) {
                 if (
