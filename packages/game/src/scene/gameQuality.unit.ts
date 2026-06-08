@@ -29,7 +29,11 @@ test('custom quality profile resolves all adjustable fields', () => {
     });
 });
 
-test('auto quality profile can resolve from supplied device metrics', () => {
+test('manual low quality profile resolves the low tier', () => {
+    assert.equal(resolveGameQualityProfile('low'), gameQualityProfiles.low);
+});
+
+test('auto quality profile never resolves low from supplied device metrics', () => {
     assert.equal(
         resolveGameQualityProfile('auto', undefined, {
             coarsePointer: false,
@@ -48,6 +52,6 @@ test('auto quality profile can resolve from supplied device metrics', () => {
             memoryGb: 8,
             narrowViewport: true,
         }),
-        gameQualityProfiles.low,
+        gameQualityProfiles.medium,
     );
 });
