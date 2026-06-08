@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import type {
     AppliedOperationVisualInput,
     OperationVisualDefinitionInput,
+    OperationVisualRewardKind,
 } from '../../operationVisualRewards';
 import { resolveOperationVisualRewards } from '../../operationVisualRewards';
 import { resolveRaisedBedAgrotextileCoverPositions } from './raisedBedAgrotextileRewards';
@@ -12,12 +13,14 @@ function operation(
     input: {
         label: string;
         name: string;
+        visualReward: OperationVisualRewardKind;
     },
 ): OperationVisualDefinitionInput {
     return {
         id,
         attributes: {
             application: 'raisedBedFull',
+            visualReward: input.visualReward,
         },
         information: {
             description: input.label,
@@ -34,10 +37,12 @@ const operations = [
     operation(1, {
         label: 'Postavljanje agrotekstila',
         name: 'agrotextileCover',
+        visualReward: 'agrotextile',
     }),
     operation(2, {
         label: 'Uklanjanje agrotekstila',
         name: 'removeAgrotextileCover',
+        visualReward: 'removeAgrotextile',
     }),
 ];
 
