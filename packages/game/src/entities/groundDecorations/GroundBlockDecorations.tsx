@@ -17,7 +17,7 @@ import {
     GroundDecorationInstances,
 } from './GroundDecorationInstances';
 import { getBlockSurfaceDecorations } from './getBlockSurfaceDecorations';
-import { resolveGroundDecorationSurface } from './groundDecorationConfig';
+import { getGroundDecorationBlocks } from './groundDecorationBlocks';
 
 const blockSurfaceYOffset = 0.2;
 type GroundBlockDecorationsProps = {
@@ -40,13 +40,8 @@ export function GroundBlockDecorations({
             return [];
         }
 
-        return stacks.flatMap((stack) =>
-            stack.blocks.flatMap((block, blockIndex) => {
-                const surface = resolveGroundDecorationSurface(block.name);
-                if (!surface) {
-                    return [];
-                }
-
+        return getGroundDecorationBlocks(stacks).flatMap(
+            ({ block, blockIndex, stack, surface }) => {
                 const placements = getBlockSurfaceDecorations({
                     block,
                     density,
@@ -67,7 +62,7 @@ export function GroundBlockDecorations({
                         surface,
                     },
                 ];
-            }),
+            },
         );
     }, [density, garden?.id, stacks]);
     const decoratedBlockPreviewKeys = useMemo(
