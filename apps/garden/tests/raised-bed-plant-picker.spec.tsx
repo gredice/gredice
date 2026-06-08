@@ -136,6 +136,43 @@ test('outlet sowing sends the selected outlet offer', async ({
     expect(post.additionalData).toBe(JSON.stringify({ outletOfferId: 302 }));
 });
 
+test('outlet refetch does not replace a missing selected offer', async ({
+    mount,
+    page,
+}) => {
+    await mockShoppingCartPosts(page);
+
+    await mount(<PlantPickerTestStory showOutletRefetchControl />);
+
+    await page.getByRole('button', { name: 'Sijanje' }).click();
+    await page.getByRole('button', { name: /Rajčica/ }).click();
+    await page.getByRole('button', { name: /Cherry rajčica/ }).click();
+
+    const sowingMode = page.getByRole('radiogroup', {
+        name: 'Način sijanja',
+    });
+    const laterOutletOffer = sowingMode.getByRole('radio', {
+        name: /Preostalo 3/,
+    });
+    await sowingMode.getByText('Preostalo 3').click();
+    await expect(laterOutletOffer).toBeChecked();
+
+    await page.evaluate(() => window.__grediceRemoveOutlet302?.());
+
+    await expect(
+        page.getByText('Odabrana outlet sadnica više nije dostupna.'),
+    ).toBeVisible();
+    await expect(
+        sowingMode.getByRole('radio', { name: /Preostalo 2/ }),
+    ).not.toBeChecked();
+    await expect(
+        page.getByRole('textbox', { name: 'Datum sijanja' }),
+    ).toHaveCount(0);
+    await expect(
+        page.getByRole('button', { name: 'Dodaj u košaru' }),
+    ).toBeDisabled();
+});
+
 test('mobile sort step keeps the cart action reachable', async ({
     mount,
     page,

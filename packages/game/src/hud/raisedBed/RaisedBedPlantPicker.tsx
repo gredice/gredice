@@ -441,10 +441,16 @@ export function PlantPicker({
         ? (outletOffersBySortId.get(selectedSortId) ?? [])
         : [];
     const selectedOutletOffer = useOutletOffer
-        ? (selectedOutletOffers.find(
-              (offer) => offer.id === selectedOutletOfferId,
-          ) ?? selectedOutletOffers[0])
+        ? selectedOutletOfferId
+            ? selectedOutletOffers.find(
+                  (offer) => offer.id === selectedOutletOfferId,
+              )
+            : selectedOutletOffers[0]
         : undefined;
+    const selectedOutletOfferUnavailable =
+        useOutletOffer &&
+        selectedOutletOfferId !== null &&
+        selectedOutletOffer === undefined;
     const relationshipBlockCount = getRaisedBedRelationshipBlockCount({
         cartItems: cart?.items,
         fields: raisedBed?.fields,
@@ -584,7 +590,8 @@ export function PlantPicker({
                                 </Stack>
                             ) : (
                                 <>
-                                    {selectedOutletOffers.length > 0 ? (
+                                    {selectedOutletOffers.length > 0 ||
+                                    selectedOutletOfferUnavailable ? (
                                         <Stack spacing={2}>
                                             <Typography level="body2" semiBold>
                                                 Način sijanja
@@ -617,6 +624,7 @@ export function PlantPicker({
                                                                     garden_id:
                                                                         gardenId,
                                                                     outlet_offer_id:
+                                                                        selectedOutletOfferId ??
                                                                         selectedOutletOffer?.id,
                                                                     position_index:
                                                                         positionIndex,
@@ -776,6 +784,14 @@ export function PlantPicker({
                                                     },
                                                 )}
                                             </div>
+                                            {selectedOutletOfferUnavailable ? (
+                                                <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+                                                    Odabrana outlet sadnica više
+                                                    nije dostupna. Odaberi drugu
+                                                    outlet sadnicu ili planirano
+                                                    sijanje.
+                                                </div>
+                                            ) : null}
                                         </Stack>
                                     ) : null}
                                     <Row spacing={2} className="flex-wrap">
@@ -789,7 +805,8 @@ export function PlantPicker({
                                             size="sm"
                                             disabled={
                                                 !availableFromInventory ||
-                                                Boolean(selectedOutletOffer)
+                                                Boolean(selectedOutletOffer) ||
+                                                selectedOutletOfferUnavailable
                                             }
                                             startDecorator={
                                                 <BackpackIcon className="size-5 shrink-0" />
@@ -827,7 +844,7 @@ export function PlantPicker({
                                             u stakleniku. Rezervacija se čuva
                                             kratko nakon dodavanja u košaru.
                                         </div>
-                                    ) : (
+                                    ) : selectedOutletOfferUnavailable ? null : (
                                         <Input
                                             type="date"
                                             label="Datum sijanja"
@@ -881,11 +898,16 @@ export function PlantPicker({
                                 <Button
                                     variant="solid"
                                     className="whitespace-nowrap"
-                                    disabled={!selectedSortId}
+                                    disabled={
+                                        !selectedSortId ||
+                                        selectedOutletOfferUnavailable
+                                    }
                                     title={
                                         !selectedSortId
                                             ? 'Odaberi sortu prije potvrde'
-                                            : undefined
+                                            : selectedOutletOfferUnavailable
+                                              ? 'Odabrana outlet sadnica više nije dostupna'
+                                              : undefined
                                     }
                                     loading={
                                         isSandbox

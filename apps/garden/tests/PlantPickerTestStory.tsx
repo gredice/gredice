@@ -1,7 +1,7 @@
 import type { PlantData, PlantSortData } from '@gredice/client';
 import * as ReactQuery from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
-import { type PropsWithChildren, useMemo } from 'react';
+import { type PropsWithChildren, useEffect, useMemo } from 'react';
 import type { OutletOfferData } from '../../../packages/game/src/hooks/useOutletOffers';
 import { PlantPicker } from '../../../packages/game/src/hud/raisedBed/RaisedBedPlantPicker';
 import {
@@ -10,6 +10,12 @@ import {
 } from '../../../packages/game/src/useGameState';
 
 const now = '2026-05-13T00:00:00.000Z';
+
+declare global {
+    interface Window {
+        __grediceRemoveOutlet302?: () => void;
+    }
+}
 
 const tomatoPlant = {
     id: 1,
@@ -293,9 +299,33 @@ function PlantPickerTestProviders({ children }: PropsWithChildren) {
     );
 }
 
-export function PlantPickerTestStory() {
+function OutletOfferRefetchTestHook() {
+    const queryClient = ReactQuery.useQueryClient();
+
+    useEffect(() => {
+        window.__grediceRemoveOutlet302 = () => {
+            queryClient.setQueryData(
+                ['outlet-offers'],
+                tomatoOutletOffers.filter((offer) => offer.id !== 302),
+            );
+        };
+
+        return () => {
+            delete window.__grediceRemoveOutlet302;
+        };
+    }, [queryClient]);
+
+    return null;
+}
+
+export function PlantPickerTestStory({
+    showOutletRefetchControl = false,
+}: {
+    showOutletRefetchControl?: boolean;
+} = {}) {
     return (
         <PlantPickerTestProviders>
+            {showOutletRefetchControl ? <OutletOfferRefetchTestHook /> : null}
             <PlantPicker
                 gardenId={1}
                 raisedBedId={1}
