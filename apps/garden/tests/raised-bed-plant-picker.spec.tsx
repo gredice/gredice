@@ -1,5 +1,42 @@
 import { expect, test } from '@playwright/experimental-ct-react';
+import type { Page } from '@playwright/test';
 import { PlantPickerTestStory } from './PlantPickerTestStory';
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+}
+
+async function mockShoppingCartPosts(page: Page) {
+    const posts: unknown[] = [];
+
+    await page.route('**/api/gredice/**/shopping-cart', async (route) => {
+        if (route.request().method() === 'POST') {
+            posts.push(route.request().postDataJSON());
+            await route.fulfill({
+                body: JSON.stringify({ success: true }),
+                contentType: 'application/json',
+                status: 200,
+            });
+            return;
+        }
+
+        await route.fulfill({
+            body: JSON.stringify({
+                allowPurchase: true,
+                hasDeliverableItems: false,
+                id: 1,
+                items: [],
+                notes: [],
+                total: 0,
+                totalSunflowers: 0,
+            }),
+            contentType: 'application/json',
+            status: 200,
+        });
+    });
+
+    return posts;
+}
 
 test('plant search keeps keyboard focus while filtering sowing options', async ({
     mount,
@@ -26,6 +63,77 @@ test('plant search keeps keyboard focus while filtering sowing options', async (
     await expect(searchInput).toHaveValue('paradajz');
     await expect(page.getByRole('button', { name: /Rajčica/ })).toBeVisible();
     await expect(page.getByRole('button', { name: /Bosiljak/ })).toHaveCount(0);
+});
+
+test('outlet sorts keep planned sowing selected by default', async ({
+    mount,
+    page,
+}) => {
+    const posts = await mockShoppingCartPosts(page);
+
+    await mount(<PlantPickerTestStory />);
+
+    await page.getByRole('button', { name: 'Sijanje' }).click();
+    await page.getByRole('button', { name: /Rajčica/ }).click();
+    await page.getByRole('button', { name: /Cherry rajčica/ }).click();
+
+    const sowingMode = page.getByRole('radiogroup', {
+        name: 'Način sijanja',
+    });
+    await expect(
+        sowingMode.getByRole('radio', { name: /Planirano sijanje/ }),
+    ).toBeChecked();
+    await expect(sowingMode.getByText('Outlet sadnica')).toHaveCount(2);
+    await expect(
+        page.getByRole('textbox', { name: 'Datum sijanja' }),
+    ).toBeVisible();
+
+    await page.getByRole('button', { name: 'Dodaj u košaru' }).click();
+
+    await expect.poll(() => posts.length).toBe(1);
+    const post = posts[0];
+    expect(isRecord(post)).toBe(true);
+    if (!isRecord(post)) {
+        return;
+    }
+    expect(post.outletOfferId).toBeUndefined();
+    expect(post.entityId).toBe('101');
+});
+
+test('outlet sowing sends the selected outlet offer', async ({
+    mount,
+    page,
+}) => {
+    const posts = await mockShoppingCartPosts(page);
+
+    await mount(<PlantPickerTestStory />);
+
+    await page.getByRole('button', { name: 'Sijanje' }).click();
+    await page.getByRole('button', { name: /Rajčica/ }).click();
+    await page.getByRole('button', { name: /Cherry rajčica/ }).click();
+
+    const sowingMode = page.getByRole('radiogroup', {
+        name: 'Način sijanja',
+    });
+    const laterOutletOffer = sowingMode.getByRole('radio', {
+        name: /Preostalo 3/,
+    });
+    await sowingMode.getByText('Preostalo 3').click();
+    await expect(laterOutletOffer).toBeChecked();
+    await expect(
+        page.getByRole('textbox', { name: 'Datum sijanja' }),
+    ).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Dodaj u košaru' }).click();
+
+    await expect.poll(() => posts.length).toBe(1);
+    const post = posts[0];
+    expect(isRecord(post)).toBe(true);
+    if (!isRecord(post)) {
+        return;
+    }
+    expect(post.outletOfferId).toBe(302);
+    expect(post.additionalData).toBe(JSON.stringify({ outletOfferId: 302 }));
 });
 
 test('mobile sort step keeps the cart action reachable', async ({
@@ -80,7 +188,7 @@ test('mobile sort step scrolls the sowing date clear of sticky actions', async (
     await page.getByRole('button', { name: /Rajčica/ }).click();
     await page.getByRole('button', { name: /Cherry rajčica/ }).click();
 
-    const dateInput = page.getByLabel('Datum sijanja');
+    const dateInput = page.getByRole('textbox', { name: 'Datum sijanja' });
     await dateInput.evaluate((element) => {
         let scrollParent = element.parentElement;
         while (scrollParent) {

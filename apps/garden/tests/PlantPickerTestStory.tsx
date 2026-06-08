@@ -2,6 +2,7 @@ import type { PlantData, PlantSortData } from '@gredice/client';
 import * as ReactQuery from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { type PropsWithChildren, useMemo } from 'react';
+import type { OutletOfferData } from '../../../packages/game/src/hooks/useOutletOffers';
 import { PlantPicker } from '../../../packages/game/src/hud/raisedBed/RaisedBedPlantPicker';
 import {
     createGameState,
@@ -149,6 +150,59 @@ const tomatoSorts = [
     ),
 ];
 
+const tomatoOutletOffers = [
+    {
+        id: 301,
+        plantSort: {
+            id: tomatoSort.id,
+            name: tomatoSort.information.name,
+            description: tomatoSort.information.shortDescription,
+            imageUrl: null,
+            plant: {
+                id: tomatoPlant.id,
+                name: tomatoPlant.information.name,
+            },
+        },
+        sowingDate: '2026-04-01T00:00:00.000Z',
+        initialPlantStatus: 'sprouted',
+        imageUrls: [],
+        outletPrice: 1.2,
+        comparePrice: 1.5,
+        quantity: 2,
+        remainingQuantity: 2,
+        reservedQuantity: 0,
+        soldQuantity: 0,
+        startAt: '2026-05-01T00:00:00.000Z',
+        endAt: '2026-06-01T00:00:00.000Z',
+        url: 'https://www.gredice.test/outlet?offer=301',
+    },
+    {
+        id: 302,
+        plantSort: {
+            id: tomatoSort.id,
+            name: tomatoSort.information.name,
+            description: tomatoSort.information.shortDescription,
+            imageUrl: null,
+            plant: {
+                id: tomatoPlant.id,
+                name: tomatoPlant.information.name,
+            },
+        },
+        sowingDate: '2026-04-15T00:00:00.000Z',
+        initialPlantStatus: 'sprouted',
+        imageUrls: [],
+        outletPrice: 1.3,
+        comparePrice: 1.5,
+        quantity: 3,
+        remainingQuantity: 3,
+        reservedQuantity: 0,
+        soldQuantity: 0,
+        startAt: '2026-05-01T00:00:00.000Z',
+        endAt: '2026-06-15T00:00:00.000Z',
+        url: 'https://www.gredice.test/outlet?offer=302',
+    },
+] satisfies OutletOfferData[];
+
 function createPlantPickerQueryClient() {
     const queryClient = new ReactQuery.QueryClient({
         defaultOptions: {
@@ -208,6 +262,7 @@ function createPlantPickerQueryClient() {
     queryClient.setQueryData(['inventory'], {
         items: [],
     });
+    queryClient.setQueryData(['outlet-offers'], tomatoOutletOffers);
     queryClient.setQueryData(['plants'], [tomatoPlant, basilPlant]);
     queryClient.setQueryData(['sorts'], tomatoSorts);
 
