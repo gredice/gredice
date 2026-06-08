@@ -24,6 +24,7 @@ import {
     RaisedBedPlantField,
 } from './RaisedBedPlantField';
 import { resolveRaisedBedAgrotextileCoverPositions } from './raisedBedAgrotextileRewards';
+import { resolveRaisedBedSupportPositions } from './raisedBedSupportRewards';
 import { isWateringRewardVisible } from './raisedBedWateringRewards';
 import {
     resolveRaisedBedFieldWeedLevel,
@@ -223,6 +224,44 @@ function RaisedBedFieldAgrotextileCover({
     );
 }
 
+function RaisedBedFieldSupportVisual({
+    blockIndex,
+    orientation,
+    positionIndex,
+}: {
+    blockIndex: number;
+    orientation: RaisedBedOrientation;
+    positionIndex: number;
+}) {
+    const position = getRaisedBedFieldSurfacePosition({
+        blockIndex,
+        orientation,
+        positionIndex,
+        y: -0.724,
+    });
+
+    return (
+        <group position={position}>
+            <mesh castShadow position={[-0.082, 0.24, 0.052]} renderOrder={3}>
+                <cylinderGeometry args={[0.012, 0.014, 0.48, 5]} />
+                <meshStandardMaterial color="#7a4f2b" roughness={0.9} />
+            </mesh>
+            <mesh position={[0.004, 0.285, 0.044]} renderOrder={4}>
+                <boxGeometry args={[0.17, 0.012, 0.01]} />
+                <meshStandardMaterial color="#d8c68e" roughness={1} />
+            </mesh>
+            <mesh position={[0.002, 0.19, 0.018]} renderOrder={4}>
+                <boxGeometry args={[0.145, 0.01, 0.01]} />
+                <meshStandardMaterial color="#d8c68e" roughness={1} />
+            </mesh>
+            <mesh position={[0.054, 0.235, 0.014]} renderOrder={3}>
+                <cylinderGeometry args={[0.007, 0.008, 0.32, 5]} />
+                <meshStandardMaterial color="#5e7a3d" roughness={1} />
+            </mesh>
+        </group>
+    );
+}
+
 export function RaisedBedFields({
     blockId,
     generatedPlantsHandledExternally = false,
@@ -340,6 +379,17 @@ export function RaisedBedFields({
           })
         : [];
     const agrotextileCoverPositionSet = new Set(agrotextileCoverPositions);
+    const supportPositions = raisedBed
+        ? resolveRaisedBedSupportPositions({
+              blockOffset,
+              fields: raisedBed.fields,
+              raisedBedId: raisedBed.id,
+              visualRewards,
+          })
+        : [];
+    const visibleSupportPositions = supportPositions.filter(
+        (positionIndex) => !agrotextileCoverPositionSet.has(positionIndex),
+    );
 
     return (
         <>
@@ -415,6 +465,14 @@ export function RaisedBedFields({
                     />
                 );
             })}
+            {visibleSupportPositions.map((positionIndex) => (
+                <RaisedBedFieldSupportVisual
+                    key={`raised-bed-field-support-${blockId}-${positionIndex}`}
+                    blockIndex={blockIndex}
+                    orientation={orientation}
+                    positionIndex={positionIndex}
+                />
+            ))}
             {agrotextileCoverPositions.map((positionIndex) => (
                 <RaisedBedFieldAgrotextileCover
                     key={`raised-bed-field-agrotextile-${blockId}-${positionIndex}`}
