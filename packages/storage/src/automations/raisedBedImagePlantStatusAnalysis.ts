@@ -14,6 +14,7 @@ import { knownEventTypes } from '../repositories/events';
 import { getRaisedBed } from '../repositories/gardensRepo';
 import { getOperationById } from '../repositories/operationsRepo';
 import type { AutomationJsonObject } from '../schema';
+import { buildPreviousPlantNames } from './raisedBedImagePlantContext';
 import type { AutomationSourceEvent } from './types';
 
 const AI_MODEL = process.env.AI_GATEWAY_MODEL ?? 'openai/gpt-5.5';
@@ -84,15 +85,6 @@ type AcceptedReviewProposal = ReviewProposal & {
 
 function optionalNumber(value: unknown) {
     return typeof value === 'number' && Number.isFinite(value) ? value : null;
-}
-
-function isoDate(value: Date | string | null | undefined) {
-    if (!value) {
-        return null;
-    }
-
-    const date = value instanceof Date ? value : new Date(value);
-    return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
 function dateFromValue(value: unknown) {
@@ -337,24 +329,6 @@ function plantSeedingDistance(sort: EntityStandardized | undefined) {
     );
 }
 
-function buildFieldHistory(field: RaisedBedFieldForReview) {
-    return field.plantCycles.map((cycle) => ({
-        positionLabel: cycle.positionIndex + 1,
-        plantSortId: cycle.plantSortId ?? null,
-        plantStatus: cycle.plantStatus ?? null,
-        active: cycle.active,
-        startedAt: isoDate(cycle.startedAt),
-        endedAt: isoDate(cycle.endedAt),
-        sowingLocation: cycle.sowingLocation,
-        sowedAt: isoDate(cycle.plantSowDate),
-        sproutedAt: isoDate(cycle.plantGrowthDate),
-        readyAt: isoDate(cycle.plantReadyDate),
-        deadAt: isoDate(cycle.plantDeadDate),
-        harvestedAt: isoDate(cycle.plantHarvestedDate),
-        removedAt: isoDate(cycle.plantRemovedDate),
-    }));
-}
-
 async function buildReviewContext(input: ReviewInput & { ok: true }) {
     const raisedBed = await getRaisedBed(input.raisedBedId);
     if (!raisedBed) {
@@ -390,6 +364,10 @@ async function buildReviewContext(input: ReviewInput & { ok: true }) {
             const seedingDistance = plantSeedingDistance(plantSort);
             const plantsPerField = calculatePlantsPerField(seedingDistance);
             const currentStatus = field.plantStatus ?? null;
+            const previousPlantNames = buildPreviousPlantNames(
+                field,
+                plantSortsById,
+            );
 
             return {
                 id: field.id,
@@ -435,7 +413,9 @@ async function buildReviewContext(input: ReviewInput & { ok: true }) {
                 ),
                 needsRemoval: Boolean(field.toBeRemoved),
                 isFocusField: field.positionIndex === focusPositionIndex,
-                history: buildFieldHistory(field),
+                ...(previousPlantNames.length > 0
+                    ? { previousPlantNames }
+                    : {}),
             };
         });
 
@@ -490,6 +470,7 @@ function buildReviewMessages({
                 'Ako je fotografija close-up i polje nije sigurno prepoznatljivo, koristi `focusField` kada postoji. Ako je fotografija cijele gredice, možeš predložiti više polja.',
                 'Polja s `currentLocation: "greenhouse"` ignoriraj osim ako fotografija jasno pokazuje da se ista biljka nalazi u pripadajućem polju gredice.',
                 'Koristi `expectedPlantCount` kao kontekst za to koliko pojedinačnih biljaka ili klica se očekuje u polju.',
+                '`previousPlantNames` sadrži samo nazive ranijih biljaka u tom polju; ne sadrži povijest događaja, statuse ni datume.',
                 '`imageDate` je datum fotografija ili izvornog dnevničkog unosa; koristi ga za kontekst polja i vrijednosti `daysFrom*`. `currentDate` je trenutak obrade automatizacije i ne smije promijeniti interpretaciju stanja na starijoj fotografiji.',
                 '',
                 'Raspored polja u slici cijele gredice:',

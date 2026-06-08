@@ -116,7 +116,17 @@ type RaisedBedAnalysisTarget = {
         sowingLocation?: 'direct' | 'greenhouse' | string | null;
         toBeRemoved?: boolean | null;
         active?: boolean | null;
+        plantCycles?: Array<{
+            plantSortId?: number | string | null;
+            active?: boolean | null;
+        }> | null;
     }>;
+};
+
+export type PastPlantFieldContext = {
+    positionIndex: number;
+    positionLabel: number;
+    plantNames: string[];
 };
 
 type WeatherDayContext = {
@@ -176,6 +186,60 @@ type WeatherContext = {
 
 function toPositionLabel(positionIndex: number) {
     return positionIndex + 1;
+}
+
+function plantSortContextName(
+    plantSortNameById: Map<number, string>,
+    plantSortId: number | string,
+) {
+    const numericPlantSortId = Number(plantSortId);
+
+    return Number.isFinite(numericPlantSortId)
+        ? (plantSortNameById.get(numericPlantSortId) ?? String(plantSortId))
+        : String(plantSortId);
+}
+
+export function buildPastPlantFieldsContext(
+    fields: Array<{
+        positionIndex: number;
+        plantCycles?: Array<{
+            plantSortId?: number | string | null;
+            active?: boolean | null;
+        }> | null;
+    }>,
+    plantSortNameById: Map<number, string>,
+): PastPlantFieldContext[] {
+    return fields
+        .map((field) => {
+            const plantNames: string[] = [];
+            const seenPlantNames = new Set<string>();
+
+            for (const cycle of field.plantCycles ?? []) {
+                if (cycle.active !== false || !cycle.plantSortId) {
+                    continue;
+                }
+
+                const plantName = plantSortContextName(
+                    plantSortNameById,
+                    cycle.plantSortId,
+                );
+                if (seenPlantNames.has(plantName)) {
+                    continue;
+                }
+
+                seenPlantNames.add(plantName);
+                plantNames.push(plantName);
+            }
+
+            return plantNames.length > 0
+                ? {
+                      positionIndex: field.positionIndex,
+                      positionLabel: toPositionLabel(field.positionIndex),
+                      plantNames,
+                  }
+                : null;
+        })
+        .filter((field): field is PastPlantFieldContext => field !== null);
 }
 
 function isCurrentlyGreenhouseSeedling(field: {
@@ -504,6 +568,10 @@ async function buildAnalysisMessages({
                     field.positionIndex === positionIndex,
             };
         });
+    const pastPlantFields = buildPastPlantFieldsContext(
+        raisedBed.fields,
+        plantSortNameById,
+    );
 
     const executedOperations = operations.map((op) => ({
         id: op.id,
@@ -543,6 +611,7 @@ async function buildAnalysisMessages({
                 '- Gornji red kod 18-poljne gredice: 16 (gornje desno) → 17 (gornja sredina) → 18 (gornje lijevo).',
                 '- U JSON kontekstu vrijednost `positionLabel` koristi ovo brojanje (1-bazirano), dok `positionIndex` ostaje 0-bazirana interna oznaka (`positionLabel = positionIndex + 1`).',
                 '- Polja s `currentLocation: "greenhouse"` su presadnice koje trenutno rastu u stakleniku i još nisu presađene u gredicu; polja s `currentLocation: "raisedBed"` su u gredici. `sowingLocation` opisuje gdje je biljka započela.',
+                '- `pastPlantFields` navodi samo nazive biljaka koje su ranije bile u polju; ne sadrži povijest događaja ni datume.',
                 '- `imageDate` je datum fotografija/dnevničkog unosa. Koristi `imageDate`, `analysisReferenceDate` i `weather.historical` za procjenu stanja na fotografijama. `currentDate`, `weather.now` i `weather.forecast` koristi samo za današnje i buduće preporuke za zalijevanje, zaštitu od mraza, sjetvu i berbu.',
                 '- Kada preporučiš konkretnu radnju iz `availableOperations`, napiši je kao markdown poveznicu na apsolutni URL iz `raisedBedOperationUrl` ili `plantFieldOperationUrlTemplate`, npr. `[Naziv radnje](https://www.gredice.com/radnje/{slug}#raisedBedId={raisedBedId})`.',
                 '- Za radnje nad pojedinom biljkom/poljem koristi hash s 0-baziranim `positionIndex`: `[Naziv radnje](https://www.gredice.com/radnje/{slug}#raisedBedId={raisedBedId}&positionIndex={positionIndex})`. Ne koristi `positionLabel` u URL-u.',
@@ -589,6 +658,10 @@ async function buildAnalysisMessages({
                                         : null,
                                 imageCount: imageUrls.length,
                                 plantedFields,
+                                pastPlantFields:
+                                    pastPlantFields.length > 0
+                                        ? pastPlantFields
+                                        : undefined,
                                 availableOperations,
                                 executedOperations,
                             },
