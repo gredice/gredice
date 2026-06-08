@@ -344,32 +344,42 @@ export function FarmScheduleOperationsSection({
 
                     return (
                         <Stack key={key} spacing={2}>
-                            <Row
-                                spacing={2}
-                                className="items-center flex-wrap gap-y-1"
-                            >
-                                {physicalId ? (
-                                    <RaisedBedLabel physicalId={physicalId} />
-                                ) : (
-                                    <Typography semiBold>
-                                        Gredica bez fizičkog ID-a
-                                    </Typography>
-                                )}
-                                <Typography
-                                    level="body2"
-                                    className="text-muted-foreground"
+                            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+                                <div className="min-w-0">
+                                    {physicalId ? (
+                                        <RaisedBedLabel
+                                            physicalId={physicalId}
+                                        />
+                                    ) : (
+                                        <Typography
+                                            semiBold
+                                            className="truncate"
+                                        >
+                                            Gredica bez fizičkog ID-a
+                                        </Typography>
+                                    )}
+                                </div>
+                                <Row
+                                    spacing={2}
+                                    className="justify-end text-right"
                                 >
-                                    {dayOperations.length} zadataka
-                                </Typography>
-                                {totalDuration > 0 && (
                                     <Typography
                                         level="body2"
-                                        className="text-muted-foreground"
+                                        className="whitespace-nowrap text-muted-foreground"
                                     >
-                                        Vrijeme: {formatMinutes(totalDuration)}
+                                        {dayOperations.length} zadataka
                                     </Typography>
-                                )}
-                            </Row>
+                                    {totalDuration > 0 && (
+                                        <Typography
+                                            level="body2"
+                                            className="whitespace-nowrap text-muted-foreground"
+                                        >
+                                            Vrijeme:{' '}
+                                            {formatMinutes(totalDuration)}
+                                        </Typography>
+                                    )}
+                                </Row>
+                            </div>
                             <Stack spacing={2}>
                                 {dayOperations.map((operation) => {
                                     const completed = isOperationCompleted(

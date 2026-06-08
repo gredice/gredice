@@ -29,13 +29,6 @@ export function ScheduleDaySummary({
     const { scheduledFields, scheduledOperations } = dayData;
 
     const taskCount = scheduledOperations.length + scheduledFields.length;
-    const raisedBedIds = new Set(
-        [
-            ...scheduledOperations.map((op) => op.raisedBedId),
-            ...scheduledFields.map((field) => field.raisedBedId),
-        ].filter(Boolean),
-    );
-    const raisedBedCount = raisedBedIds.size;
 
     const operationDataById = new Map<number, EntityStandardized>();
     if (operationsData) {
@@ -54,9 +47,8 @@ export function ScheduleDaySummary({
         scheduledFields.length * PLANTING_TASK_DURATION_MINUTES;
 
     return (
-        <Row spacing={8} className="flex-wrap gap-y-2">
+        <Row spacing={2}>
             <SummaryItem label="Zadataka" value={taskCount} />
-            <SummaryItem label="Gredica" value={raisedBedCount} />
             {totalMinutes > 0 && (
                 <SummaryItem
                     label="Vrijeme"

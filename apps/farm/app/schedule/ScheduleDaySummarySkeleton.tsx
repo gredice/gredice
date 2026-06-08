@@ -12,8 +12,7 @@ function SummaryItemSkeleton() {
 
 export function ScheduleDaySummarySkeleton() {
     return (
-        <Row spacing={8}>
-            <SummaryItemSkeleton />
+        <Row spacing={2}>
             <SummaryItemSkeleton />
             <SummaryItemSkeleton />
         </Row>
