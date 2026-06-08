@@ -66,3 +66,43 @@ test('time popover fits on narrow mobile viewports', async ({
         MOBILE_VIEWPORT.width - 16 + 1,
     );
 });
+
+test('weather warnings are grouped and scroll within the mobile popover', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(MOBILE_VIEWPORT);
+    await mount(<WeatherHudTimePopoverStory withAlerts />);
+
+    await page.getByTitle('Trenutno vrijeme').click();
+
+    const details = page.locator('[data-weather-now-details="true"]');
+    await expect(details).toBeVisible();
+    await expect(
+        page.getByRole('button', {
+            name: /Žuto upozorenje za grmljavinsku oluju.*2 razdoblja/,
+        }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', {
+            name: /Narančasto upozorenje za kišu.*1 razdoblje/,
+        }),
+    ).toBeVisible();
+    await expect(page.getByText('Udar vjetra u srijedu')).toBeVisible();
+    await expect(page.getByText('Udar vjetra u četvrtak')).toBeVisible();
+    await expect(page.getByText('Obilna kiša u petak.')).toBeHidden();
+
+    const detailsBox = await details.boundingBox();
+    expect(detailsBox).not.toBeNull();
+    expect(detailsBox?.height ?? 0).toBeLessThanOrEqual(
+        MOBILE_VIEWPORT.height - 48,
+    );
+
+    const scrollStats = await page
+        .locator('[data-weather-now-scroll="true"]')
+        .evaluate((element) => ({
+            clientHeight: element.clientHeight,
+            scrollHeight: element.scrollHeight,
+        }));
+    expect(scrollStats.scrollHeight).toBeGreaterThan(scrollStats.clientHeight);
+});

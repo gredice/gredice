@@ -1,4 +1,4 @@
-import { Alert } from '@gredice/ui/Alert';
+import { Accordion } from '@gredice/ui/Accordion';
 import { Button } from '@gredice/ui/Button';
 import { Divider } from '@gredice/ui/Divider';
 import {
@@ -20,6 +20,7 @@ import { Link } from '@gredice/ui/Link';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import Image from 'next/image';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { type FC, useEffect, useMemo, useState } from 'react';
@@ -89,12 +90,239 @@ function alertLevelLabel(alert: {
     return alert.awarenessLevel?.label ?? alert.severity ?? 'Upozorenje';
 }
 
+type WeatherAlert = {
+    id: string;
+    event: string;
+    description: string;
+    instruction?: string | null;
+    onset: string;
+    expires: string;
+    severity?: string | null;
+    awarenessLevel?: {
+        id?: string | null;
+        color?: string | null;
+        label?: string | null;
+    } | null;
+    awarenessType?: {
+        id?: string | null;
+        label?: string | null;
+    } | null;
+    area?: {
+        regionCode?: string | null;
+    } | null;
+};
+
+type WeatherAlertGroup = {
+    key: string;
+    alerts: WeatherAlert[];
+    event: string;
+    firstOnset: string;
+    lastExpires: string;
+    proximityMs: number;
+};
+
+function parseAlertTime(value: string) {
+    const timestamp = new Date(value).getTime();
+    return Number.isFinite(timestamp) ? timestamp : null;
+}
+
+function weatherAlertGroupKey(alert: WeatherAlert) {
+    return [
+        alert.area?.regionCode ?? 'unknown-region',
+        alert.awarenessType?.id ?? alert.event,
+        alert.awarenessLevel?.id ?? alert.severity ?? 'unknown-level',
+        alert.event,
+    ].join(':');
+}
+
+function alertProximityMs(alert: WeatherAlert, nowMs: number) {
+    const onsetMs = parseAlertTime(alert.onset);
+    const expiresMs = parseAlertTime(alert.expires);
+    if (onsetMs === null || expiresMs === null) {
+        return Number.POSITIVE_INFINITY;
+    }
+    if (onsetMs <= nowMs && expiresMs >= nowMs) return 0;
+    if (onsetMs > nowMs) return onsetMs - nowMs;
+    return nowMs - expiresMs;
+}
+
+function periodCountLabel(count: number) {
+    if (count === 1) return '1 razdoblje';
+    if (count > 1 && count < 5) return `${count} razdoblja`;
+    return `${count} razdoblja`;
+}
+
+function groupWeatherAlerts(alerts: WeatherAlert[], nowMs: number) {
+    const groupsByKey = new Map<string, WeatherAlertGroup>();
+
+    for (const alert of alerts) {
+        const key = weatherAlertGroupKey(alert);
+        const proximityMs = alertProximityMs(alert, nowMs);
+        const existingGroup = groupsByKey.get(key);
+
+        if (!existingGroup) {
+            groupsByKey.set(key, {
+                key,
+                alerts: [alert],
+                event: alert.event,
+                firstOnset: alert.onset,
+                lastExpires: alert.expires,
+                proximityMs,
+            });
+            continue;
+        }
+
+        existingGroup.alerts.push(alert);
+        if (
+            (parseAlertTime(alert.onset) ?? Number.POSITIVE_INFINITY) <
+            (parseAlertTime(existingGroup.firstOnset) ??
+                Number.POSITIVE_INFINITY)
+        ) {
+            existingGroup.firstOnset = alert.onset;
+        }
+        if (
+            (parseAlertTime(alert.expires) ?? Number.NEGATIVE_INFINITY) >
+            (parseAlertTime(existingGroup.lastExpires) ??
+                Number.NEGATIVE_INFINITY)
+        ) {
+            existingGroup.lastExpires = alert.expires;
+        }
+        existingGroup.proximityMs = Math.min(
+            existingGroup.proximityMs,
+            proximityMs,
+        );
+    }
+
+    return Array.from(groupsByKey.values())
+        .map((group) => ({
+            ...group,
+            alerts: group.alerts.toSorted((left, right) => {
+                const leftOnset = parseAlertTime(left.onset) ?? 0;
+                const rightOnset = parseAlertTime(right.onset) ?? 0;
+                if (leftOnset !== rightOnset) return leftOnset - rightOnset;
+                return left.id.localeCompare(right.id);
+            }),
+        }))
+        .toSorted((left, right) => {
+            if (left.proximityMs !== right.proximityMs) {
+                return left.proximityMs - right.proximityMs;
+            }
+            const leftOnset = parseAlertTime(left.firstOnset) ?? 0;
+            const rightOnset = parseAlertTime(right.firstOnset) ?? 0;
+            if (leftOnset !== rightOnset) return leftOnset - rightOnset;
+            return left.key.localeCompare(right.key);
+        });
+}
+
+function WeatherAlertGroups({ alerts }: { alerts: WeatherAlert[] }) {
+    const alertGroups = useMemo(
+        () => groupWeatherAlerts(alerts, Date.now()),
+        [alerts],
+    );
+    const [expandedGroupKey, setExpandedGroupKey] = useState<
+        string | null | undefined
+    >(undefined);
+
+    useEffect(() => {
+        if (expandedGroupKey === undefined || expandedGroupKey === null) {
+            return;
+        }
+
+        if (!alertGroups.some((group) => group.key === expandedGroupKey)) {
+            setExpandedGroupKey(undefined);
+        }
+    }, [alertGroups, expandedGroupKey]);
+
+    const defaultExpandedGroupKey = alertGroups[0]?.key ?? null;
+    const activeGroupKey =
+        expandedGroupKey === undefined
+            ? defaultExpandedGroupKey
+            : expandedGroupKey;
+
+    if (alertGroups.length === 0) return null;
+
+    return (
+        <Stack
+            className="col-span-full px-4 pb-4"
+            data-weather-alert-groups="true"
+            spacing={2}
+        >
+            {alertGroups.map((group) => {
+                const firstAlert = group.alerts[0];
+                const open = activeGroupKey === group.key;
+
+                return (
+                    <Accordion
+                        className={cx(
+                            'border-amber-300 bg-amber-100 text-amber-950 shadow-none dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100',
+                            open && 'bg-amber-100 dark:bg-amber-950',
+                        )}
+                        key={group.key}
+                        onOpenChanged={(_, nextOpen) =>
+                            setExpandedGroupKey(nextOpen ? group.key : null)
+                        }
+                        open={open}
+                        unmountOnExit
+                    >
+                        <Row alignItems="start" className="min-w-0" spacing={3}>
+                            <Warning className="mt-0.5 size-4 shrink-0" />
+                            <Stack className="min-w-0" spacing={1}>
+                                <Typography className="min-w-0" semiBold>
+                                    {group.event}
+                                </Typography>
+                                <Typography
+                                    className="text-amber-900/75 dark:text-amber-100/80"
+                                    level="body3"
+                                >
+                                    {firstAlert
+                                        ? alertLevelLabel(firstAlert)
+                                        : 'Upozorenje'}{' '}
+                                    · {periodCountLabel(group.alerts.length)} ·{' '}
+                                    {formatAlertDateTime(group.firstOnset)} -{' '}
+                                    {formatAlertDateTime(group.lastExpires)}
+                                </Typography>
+                            </Stack>
+                        </Row>
+                        <Stack spacing={2}>
+                            {group.alerts.map((alert) => (
+                                <Stack
+                                    className="border-amber-300/70 border-t pt-2 first:border-t-0 first:pt-0 dark:border-amber-800/80"
+                                    key={alert.id}
+                                    spacing={1}
+                                >
+                                    <Typography level="body3" semiBold>
+                                        {formatAlertDateTime(alert.onset)} -{' '}
+                                        {formatAlertDateTime(alert.expires)}
+                                    </Typography>
+                                    <Typography level="body3">
+                                        {alert.description}
+                                    </Typography>
+                                    {alert.instruction && (
+                                        <Typography
+                                            className="text-amber-900/80 dark:text-amber-100/80"
+                                            level="body3"
+                                        >
+                                            {alert.instruction}
+                                        </Typography>
+                                    )}
+                                </Stack>
+                            ))}
+                        </Stack>
+                    </Accordion>
+                );
+            })}
+        </Stack>
+    );
+}
+
 function useNotificationSettingsHref() {
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
     return useMemo(() => {
-        const next = new URLSearchParams(Array.from(searchParams.entries()));
+        const next = new URLSearchParams(
+            Array.from(searchParams?.entries() ?? []),
+        );
         next.set('pregled', 'obavijesti');
         next.set(notificationsViewSearchParam, 'settings');
 
@@ -252,14 +480,16 @@ export function WeatherNowDetails({ farmId }: { farmId?: number | null } = {}) {
 
     return (
         <Stack
-            className={
+            className={cx(
+                'max-h-[min(calc(100vh-6rem),44rem)] min-h-0 overflow-hidden',
                 view === 'graph'
                     ? 'w-[min(calc(100vw-1rem),44rem)]'
-                    : 'w-[min(calc(100vw-1rem),26rem)]'
-            }
+                    : 'w-[min(calc(100vw-1rem),26rem)]',
+            )}
+            data-weather-now-details="true"
         >
             <Row
-                className="bg-background px-4 py-2"
+                className="shrink-0 bg-background px-4 py-2"
                 justifyContent="space-between"
             >
                 <Typography level="body2" bold>
@@ -268,142 +498,115 @@ export function WeatherNowDetails({ farmId }: { farmId?: number | null } = {}) {
                 <WeatherViewToggle value={view} onValueChange={setView} />
             </Row>
             <Divider />
-            {view === 'graph' && <WeatherHistoryPanel className="p-3" />}
-            {view === 'weather' && showForecast && (
-                <WeatherForecastDays limit={3} />
-            )}
-            {view === 'weather' && !showForecast && (
-                <div className="grid grid-cols-[1fr_auto] gap-2">
-                    <Row spacing={2} className="p-4">
-                        <div className="my-1 mr-2">
-                            {WeatherIcon && (
-                                <WeatherIcon.day className="size-12" />
-                            )}
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <Stack>
-                                <Typography level="body3">
-                                    Temperatura (prognoza)
-                                </Typography>
-                                <Typography semiBold>
-                                    {data.temperature ?? '—'}°C
-                                </Typography>
-                            </Stack>
-                            {data.measuredTemperature && (
+            <div
+                className="min-h-0 overflow-y-auto overscroll-contain"
+                data-weather-now-scroll="true"
+            >
+                {view === 'graph' && <WeatherHistoryPanel className="p-3" />}
+                {view === 'weather' && showForecast && (
+                    <WeatherForecastDays limit={3} />
+                )}
+                {view === 'weather' && !showForecast && (
+                    <div className="grid grid-cols-[1fr_auto] gap-2">
+                        <Row spacing={2} className="p-4">
+                            <div className="my-1 mr-2">
+                                {WeatherIcon && (
+                                    <WeatherIcon.day className="size-12" />
+                                )}
+                            </div>
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                 <Stack>
                                     <Typography level="body3">
-                                        Izmjerena temperatura
+                                        Temperatura (prognoza)
                                     </Typography>
                                     <Typography semiBold>
-                                        {data.measuredTemperature.toFixed(1)}°C
+                                        {data.temperature ?? '—'}°C
                                     </Typography>
                                 </Stack>
-                            )}
-                            {data.rain > 0 && (
-                                <Stack spacing={1}>
-                                    <Typography level="body3">
-                                        Padaline
-                                    </Typography>
-                                    <div className="flex items-center space-x-1">
-                                        <RainIcon chance={rainChance} />
-                                        <Typography level="body2">
-                                            {data.rain} mm
+                                {data.measuredTemperature && (
+                                    <Stack>
+                                        <Typography level="body3">
+                                            Izmjerena temperatura
                                         </Typography>
-                                    </div>
-                                </Stack>
-                            )}
-                            {data.snowAccumulation > 0 && (
-                                <Stack spacing={1}>
-                                    <Typography level="body3">
-                                        Snijeg
-                                    </Typography>
-                                    <div className="flex items-center space-x-1">
-                                        <Snowflake className="w-4 h-4 opacity-60" />
-                                        <Typography level="body2">
-                                            {data.snowAccumulation.toFixed(1)}{' '}
-                                            cm
+                                        <Typography semiBold>
+                                            {data.measuredTemperature.toFixed(
+                                                1,
+                                            )}
+                                            °C
                                         </Typography>
-                                    </div>
-                                </Stack>
-                            )}
-                            {data.windSpeed > 0 && (
-                                <Stack spacing={1}>
-                                    <Typography level="body3">
-                                        Vjetar
-                                    </Typography>
-                                    <div className="flex items-center space-x-1 relative">
-                                        <Wind className="w-4 h-4 opacity-40" />
-                                        <Row>
-                                            {Array(data.windSpeed)
-                                                .fill(0)
-                                                .map((_, i) => (
-                                                    <WindIcon
-                                                        // biome-ignore lint/suspicious/noArrayIndexKey: Allowed
-                                                        key={i}
-                                                        className="w-4 h-4 first:ml-0 -ml-1.5"
-                                                    />
-                                                ))}
-                                        </Row>
-                                    </div>
-                                </Stack>
-                            )}
-                        </div>
-                    </Row>
-                    {alerts.length > 0 && (
-                        <Stack className="col-span-full px-4 pb-4" spacing={2}>
-                            {alerts.map((alert) => (
-                                <Alert
-                                    key={alert.id}
-                                    color="warning"
-                                    className="p-3"
-                                    startDecorator={
-                                        <Warning className="size-4" />
-                                    }
-                                >
+                                    </Stack>
+                                )}
+                                {data.rain > 0 && (
                                     <Stack spacing={1}>
-                                        <div>
-                                            <Typography semiBold>
-                                                {alert.event}
-                                            </Typography>
-                                            <Typography level="body3" secondary>
-                                                {alertLevelLabel(alert)} ·{' '}
-                                                {formatAlertDateTime(
-                                                    alert.onset,
-                                                )}{' '}
-                                                -{' '}
-                                                {formatAlertDateTime(
-                                                    alert.expires,
-                                                )}
+                                        <Typography level="body3">
+                                            Padaline
+                                        </Typography>
+                                        <div className="flex items-center space-x-1">
+                                            <RainIcon chance={rainChance} />
+                                            <Typography level="body2">
+                                                {data.rain} mm
                                             </Typography>
                                         </div>
-                                        <Typography level="body3">
-                                            {alert.description}
-                                        </Typography>
-                                        {alert.instruction && (
-                                            <Typography level="body3" secondary>
-                                                {alert.instruction}
-                                            </Typography>
-                                        )}
                                     </Stack>
-                                </Alert>
-                            ))}
-                        </Stack>
-                    )}
-                    <WeatherAlertPreferencePrompt />
-                    <div className="border-l block md:hidden">
-                        <Button
-                            variant="plain"
-                            className="h-full rounded-none"
-                            endDecorator={<Navigate />}
-                            onClick={() => setShowForecast(true)}
-                        >
-                            Prognoza
-                        </Button>
+                                )}
+                                {data.snowAccumulation > 0 && (
+                                    <Stack spacing={1}>
+                                        <Typography level="body3">
+                                            Snijeg
+                                        </Typography>
+                                        <div className="flex items-center space-x-1">
+                                            <Snowflake className="h-4 w-4 opacity-60" />
+                                            <Typography level="body2">
+                                                {data.snowAccumulation.toFixed(
+                                                    1,
+                                                )}{' '}
+                                                cm
+                                            </Typography>
+                                        </div>
+                                    </Stack>
+                                )}
+                                {data.windSpeed > 0 && (
+                                    <Stack spacing={1}>
+                                        <Typography level="body3">
+                                            Vjetar
+                                        </Typography>
+                                        <div className="relative flex items-center space-x-1">
+                                            <Wind className="h-4 w-4 opacity-40" />
+                                            <Row>
+                                                {Array(data.windSpeed)
+                                                    .fill(0)
+                                                    .map((_, i) => (
+                                                        <WindIcon
+                                                            // biome-ignore lint/suspicious/noArrayIndexKey: Allowed
+                                                            key={i}
+                                                            className="-ml-1.5 h-4 w-4 first:ml-0"
+                                                        />
+                                                    ))}
+                                            </Row>
+                                        </div>
+                                    </Stack>
+                                )}
+                            </div>
+                        </Row>
+                        {alerts.length > 0 && (
+                            <WeatherAlertGroups alerts={alerts} />
+                        )}
+                        <WeatherAlertPreferencePrompt />
+                        <div className="block border-l md:hidden">
+                            <Button
+                                variant="plain"
+                                className="h-full rounded-none"
+                                endDecorator={<Navigate />}
+                                onClick={() => setShowForecast(true)}
+                            >
+                                Prognoza
+                            </Button>
+                        </div>
                     </div>
-                </div>
-            )}
+                )}
+            </div>
             <Divider />
-            <Row className="px-4 py-2" justifyContent="space-between">
+            <Row className="shrink-0 px-4 py-2" justifyContent="space-between">
                 <Typography level="body3" className="flex gap-1">
                     <span>Izvor podataka</span>
                     <Link
