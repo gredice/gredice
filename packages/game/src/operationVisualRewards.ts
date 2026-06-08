@@ -33,6 +33,7 @@ export type OperationVisualDefinitionInput = {
                 name?: string | null;
             } | null;
         } | null;
+        visualReward?: string | null;
     } | null;
     image?: {
         cover?: {
@@ -96,91 +97,23 @@ const activeAppliedStatuses = new Set([
     'pendingVerification',
 ]);
 
-const removalKeywords = [
-    'ciscenje',
-    'makn',
-    'odstran',
-    'remove',
-    'removal',
-    'skid',
-    'uklanj',
-];
-
-const operationKeywordGroups = {
-    agrotextile: [
-        'agro textile',
-        'agrotekstil',
-        'agrotextil',
-        'agrotextile',
-        'agril',
-        'agryl',
-    ],
-    harvest: ['berba', 'branje', 'harvest', 'ubiranje'],
-    mulch: ['hay', 'malc', 'malcir', 'mulch', 'sijeno', 'slama', 'straw'],
-    photography: ['foto', 'fotograf', 'photo', 'photography', 'slika'],
-    supports: [
-        'kolac',
-        'kolci',
-        'potpor',
-        'stake',
-        'staking',
-        'support',
-        'tie',
-        'vezanje',
-        'veziv',
-    ],
-    watering: ['navodnj', 'watering', 'zalijev'],
-    weeds: ['korov', 'plijev', 'pljev', 'weed', 'weeding'],
-};
-
-function normalizeSearchText(value: string | null | undefined) {
-    return (value ?? '')
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, ' ')
-        .trim()
-        .replace(/\s+/g, ' ');
-}
-
-function textIncludesAny(text: string, keywords: string[]) {
-    return keywords.some((keyword) =>
-        text.includes(normalizeSearchText(keyword)),
-    );
-}
-
-function operationSearchText(operation: OperationVisualDefinitionInput) {
-    return normalizeSearchText(
-        [
-            operation.slug,
-            operation.information?.name,
-            operation.information?.label,
-            operation.information?.shortDescription,
-            operation.information?.description,
-            operation.information?.instructions,
-            operation.attributes?.application,
-            operation.attributes?.stage?.information?.name,
-            operation.attributes?.stage?.information?.label,
-            operation.image?.cover?.url,
-        ]
-            .filter((value): value is string => typeof value === 'string')
-            .join(' '),
-    );
-}
-
-function operationStageText(operation: OperationVisualDefinitionInput) {
-    return normalizeSearchText(
-        [
-            operation.attributes?.stage?.information?.name,
-            operation.attributes?.stage?.information?.label,
-        ]
-            .filter((value): value is string => typeof value === 'string')
-            .join(' '),
-    );
-}
-
-function hasRemovalIntent(text: string) {
-    return textIncludesAny(text, removalKeywords);
+export function parseOperationVisualRewardKind(
+    value: string | null | undefined,
+): OperationVisualRewardKind | null {
+    switch (value) {
+        case 'agrotextile':
+        case 'harvest':
+        case 'mulch':
+        case 'photographyUpdate':
+        case 'removeAgrotextile':
+        case 'removeMulch':
+        case 'supports':
+        case 'watering':
+        case 'weeding':
+            return value;
+        default:
+            return null;
+    }
 }
 
 export function resolveOperationVisualRewardKind(
@@ -190,45 +123,7 @@ export function resolveOperationVisualRewardKind(
         return null;
     }
 
-    const text = operationSearchText(operation);
-    const stageText = operationStageText(operation);
-    const isRemoval = hasRemovalIntent(text);
-
-    if (textIncludesAny(text, operationKeywordGroups.photography)) {
-        return 'photographyUpdate';
-    }
-
-    if (
-        textIncludesAny(stageText, operationKeywordGroups.watering) ||
-        textIncludesAny(text, operationKeywordGroups.watering)
-    ) {
-        return 'watering';
-    }
-
-    if (
-        textIncludesAny(stageText, operationKeywordGroups.harvest) ||
-        textIncludesAny(text, operationKeywordGroups.harvest)
-    ) {
-        return 'harvest';
-    }
-
-    if (textIncludesAny(text, operationKeywordGroups.agrotextile)) {
-        return isRemoval ? 'removeAgrotextile' : 'agrotextile';
-    }
-
-    if (textIncludesAny(text, operationKeywordGroups.mulch)) {
-        return isRemoval ? 'removeMulch' : 'mulch';
-    }
-
-    if (textIncludesAny(text, operationKeywordGroups.weeds)) {
-        return 'weeding';
-    }
-
-    if (textIncludesAny(text, operationKeywordGroups.supports)) {
-        return 'supports';
-    }
-
-    return null;
+    return parseOperationVisualRewardKind(operation.attributes?.visualReward);
 }
 
 export function getOperationVisualRewardFamily(

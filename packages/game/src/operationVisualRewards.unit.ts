@@ -5,6 +5,7 @@ import {
     filterOperationVisualRewards,
     type OperationHistoryVisualInput,
     type OperationVisualDefinitionInput,
+    type OperationVisualRewardKind,
     resolveOperationVisualRewardKind,
     resolveOperationVisualRewards,
 } from './operationVisualRewards';
@@ -16,6 +17,7 @@ function operation(
         label: string;
         name: string;
         stage?: string;
+        visualReward?: OperationVisualRewardKind | string | null;
     },
 ): OperationVisualDefinitionInput {
     return {
@@ -28,6 +30,9 @@ function operation(
                     label: input.stage ?? 'maintenance',
                 },
             },
+            ...(input.visualReward !== undefined
+                ? { visualReward: input.visualReward }
+                : {}),
         },
         information: {
             description: input.label,
@@ -45,42 +50,51 @@ const operations = [
         label: 'Zalijevanje gredice',
         name: 'wateringRaisedBed',
         stage: 'watering',
+        visualReward: 'watering',
     }),
     operation(2, {
         label: 'Malčiranje slamom',
         name: 'mulchStraw',
+        visualReward: 'mulch',
     }),
     operation(3, {
         label: 'Uklanjanje malča',
         name: 'removeMulch',
+        visualReward: 'removeMulch',
     }),
     operation(4, {
         label: 'Postavljanje agrotekstila',
         name: 'agrotextileCover',
+        visualReward: 'agrotextile',
     }),
     operation(5, {
         label: 'Uklanjanje agrotekstila',
         name: 'removeAgrotextileCover',
+        visualReward: 'removeAgrotextile',
     }),
     operation(6, {
         application: 'plant',
         label: 'Plijevljenje korova',
         name: 'weeding',
+        visualReward: 'weeding',
     }),
     operation(7, {
         application: 'plant',
         label: 'Postavljanje potpore',
         name: 'plantSupports',
+        visualReward: 'supports',
     }),
     operation(8, {
         application: 'plant',
         label: 'Berba plodova',
         name: 'harvestPlant',
         stage: 'harvest',
+        visualReward: 'harvest',
     }),
     operation(9, {
         label: 'Fotografiranje gredice',
         name: 'raisedBedPhotography',
+        visualReward: 'photographyUpdate',
     }),
 ];
 
@@ -140,6 +154,32 @@ describe('operation visual reward kind mapping', () => {
         assert.strictEqual(
             resolveOperationVisualRewardKind(operations[8]),
             'photographyUpdate',
+        );
+    });
+
+    it('does not infer rewards from operation text without the explicit attribute', () => {
+        assert.strictEqual(
+            resolveOperationVisualRewardKind(
+                operation(10, {
+                    label: 'Zalijevanje gredice',
+                    name: 'wateringRaisedBed',
+                    stage: 'watering',
+                }),
+            ),
+            null,
+        );
+    });
+
+    it('ignores unknown explicit visual reward values', () => {
+        assert.strictEqual(
+            resolveOperationVisualRewardKind(
+                operation(11, {
+                    label: 'Zalijevanje gredice',
+                    name: 'wateringRaisedBed',
+                    visualReward: 'droplets',
+                }),
+            ),
+            null,
         );
     });
 });
