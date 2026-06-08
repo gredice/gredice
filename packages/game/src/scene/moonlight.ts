@@ -1,14 +1,8 @@
 import SunCalc from 'suncalc';
+import { getVisualNightAmount, smoothstep } from './visualDayNight';
 
 const MOONLESS_NIGHT_LIGHT_SCALE = 0.32;
 const MOONLESS_NIGHT_SKY_SCALE = 0.6;
-
-const NIGHT_VISIBILITY = {
-    dawnFadeStart: 0.2,
-    dayStart: 0.25,
-    duskStart: 0.75,
-    nightStart: 0.8,
-};
 
 const MOON_HORIZON_FADE = {
     start: -0.05,
@@ -19,29 +13,12 @@ function clamp01(value: number) {
     return Math.min(1, Math.max(0, value));
 }
 
-function smoothstep(edge0: number, edge1: number, value: number) {
-    const t = clamp01((value - edge0) / (edge1 - edge0));
-    return t * t * (3 - 2 * t);
-}
-
 function mix(from: number, to: number, amount: number) {
     return from + (to - from) * amount;
 }
 
 export function getNightAmount(timeOfDay: number) {
-    const dawnAmount =
-        1 -
-        smoothstep(
-            NIGHT_VISIBILITY.dawnFadeStart,
-            NIGHT_VISIBILITY.dayStart,
-            timeOfDay,
-        );
-    const duskAmount = smoothstep(
-        NIGHT_VISIBILITY.duskStart,
-        NIGHT_VISIBILITY.nightStart,
-        timeOfDay,
-    );
-    return Math.max(dawnAmount, duskAmount);
+    return getVisualNightAmount(timeOfDay);
 }
 
 export function resolveMoonlitNightScales({

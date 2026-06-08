@@ -24,11 +24,18 @@ import { ShadowMapController } from './ShadowMapController';
 import Snow from './Snow/Snow';
 import { Stars } from './Stars';
 import { SunMoon } from './SunMoon';
+import {
+    getVisualDaylightAmount,
+    getVisualNightAmount,
+    smoothstep,
+    visualDayNightTimes,
+} from './visualDayNight';
 import { resolveWaterColors } from './waterColors';
 
 const backgroundColorScale = chroma
     .scale([
         '#2D3947',
+        '#6f8cac',
         '#BADDf6',
         '#E7E2CC',
         '#E7E2CC',
@@ -36,7 +43,16 @@ const backgroundColorScale = chroma
         '#6c5b7b',
         '#2D3947',
     ])
-    .domain([0.2, 0.225, 0.25, 0.75, 0.765, 0.785, 0.8]);
+    .domain([
+        visualDayNightTimes.dawnNightEnd,
+        visualDayNightTimes.sunrise,
+        visualDayNightTimes.dayStart - 0.03,
+        visualDayNightTimes.dayStart,
+        visualDayNightTimes.lateDayStart,
+        visualDayNightTimes.sunset,
+        0.84,
+        visualDayNightTimes.nightStart,
+    ]);
 const sunTemperatureScale = chroma
     .scale([
         chroma.temperature(20000),
@@ -46,10 +62,14 @@ const sunTemperatureScale = chroma
         chroma.temperature(2000),
         chroma.temperature(20000),
     ])
-    .domain([0.2, 0.25, 0.775, 0.8]);
-const sunIntensityTimeScale = chroma
-    .scale(['black', 'white', 'white', 'black'])
-    .domain([0.2, 0.225, 0.75, 0.81]);
+    .domain([
+        visualDayNightTimes.dawnNightEnd,
+        visualDayNightTimes.dawnLightEnd,
+        visualDayNightTimes.dayStart,
+        visualDayNightTimes.lateDayStart,
+        visualDayNightTimes.duskNightStart,
+        visualDayNightTimes.nightStart,
+    ]);
 const hemisphereSkyColorScale = chroma
     .scale([
         chroma.temperature(20000),
@@ -59,7 +79,14 @@ const hemisphereSkyColorScale = chroma
         chroma.temperature(2000),
         chroma.temperature(20000),
     ])
-    .domain([0.2, 0.25, 0.3, 0.75, 0.8, 0.85]);
+    .domain([
+        visualDayNightTimes.dawnNightEnd,
+        visualDayNightTimes.dawnLightEnd,
+        visualDayNightTimes.dayStart,
+        visualDayNightTimes.lateDayStart,
+        visualDayNightTimes.duskNightStart,
+        visualDayNightTimes.nightStart,
+    ]);
 
 type WeatherBlendConfig = {
     transitionSeconds: number;
@@ -253,13 +280,6 @@ function useBlendedWeather(
     return blendedWeather;
 }
 
-const STAR_NIGHT_VISIBILITY = {
-    dawnFadeStart: 0.2,
-    dayStart: 0.25,
-    duskStart: 0.75,
-    nightStart: 0.8,
-};
-
 export function timeOfDayToDate(currentTime: Date, timeOfDay: number) {
     const hours = Math.trunc(timeOfDay * 24);
     const minutes = Math.trunc((timeOfDay * 24 - hours) * 60);
@@ -297,18 +317,6 @@ function getSunPosition(
     return altAzToScenePosition(altitude, azimuth);
 }
 
-function smoothstep(edge0: number, edge1: number, value: number) {
-    const t = Math.min(1, Math.max(0, (value - edge0) / (edge1 - edge0)));
-    return t * t * (3 - 2 * t);
-}
-
-function daylightBlend(timeOfDay: number) {
-    return Math.min(
-        smoothstep(0.2, 0.3, timeOfDay),
-        1 - smoothstep(0.72, 0.82, timeOfDay),
-    );
-}
-
 function resolveThemedBackground({
     backgroundPaletteIndex,
     timeOfDay,
@@ -322,7 +330,7 @@ function resolveThemedBackground({
         return null;
     }
 
-    const daylight = daylightBlend(timeOfDay);
+    const daylight = getVisualDaylightAmount(timeOfDay);
 
     return {
         background: chroma
@@ -346,7 +354,7 @@ export function environmentState(
         hemisphereSkyColor: hemisphereSkyColorScale(timeOfDay).rgb(),
     };
     const intensities = {
-        sun: sunIntensityTimeScale(timeOfDay).get('rgb.r') / 255,
+        sun: getVisualDaylightAmount(timeOfDay),
     };
     return { timeOfDay, sunPosition, colors, intensities };
 }
@@ -920,10 +928,9 @@ export function Environment({
     // Handle fog
     const fog = blendedWeather?.foggy ?? 0;
     const fogNear = 170 - fog * 30;
+    const nightVisibility = getVisualNightAmount(timeOfDay);
     const fogColor =
-        timeOfDay > 0.2 && timeOfDay < 0.8
-            ? new Color(0xaaaaaa)
-            : new Color(0x55556a);
+        nightVisibility < 0.5 ? new Color(0xaaaaaa) : new Color(0x55556a);
 
     // Handle rain
     const rain = blendedWeather?.rainy ?? 0;
@@ -958,25 +965,6 @@ export function Environment({
         weatherDisabled,
     ]);
 
-    const dawnVisibility =
-        timeOfDay <= STAR_NIGHT_VISIBILITY.dawnFadeStart
-            ? 1
-            : timeOfDay >= STAR_NIGHT_VISIBILITY.dayStart
-              ? 0
-              : 1 -
-                (timeOfDay - STAR_NIGHT_VISIBILITY.dawnFadeStart) /
-                    (STAR_NIGHT_VISIBILITY.dayStart -
-                        STAR_NIGHT_VISIBILITY.dawnFadeStart);
-    const duskVisibility =
-        timeOfDay <= STAR_NIGHT_VISIBILITY.duskStart
-            ? 0
-            : timeOfDay >= STAR_NIGHT_VISIBILITY.nightStart
-              ? 1
-              : (timeOfDay - STAR_NIGHT_VISIBILITY.duskStart) /
-                (STAR_NIGHT_VISIBILITY.nightStart -
-                    STAR_NIGHT_VISIBILITY.duskStart);
-    const nightVisibility = Math.max(dawnVisibility, duskVisibility);
-
     // Light clouds keep only a few faint bright stars visible, but only at
     // night or during twilight transitions.
     const cloudCover = blendedWeather?.cloudy ?? 1;
@@ -994,10 +982,7 @@ export function Environment({
     const bodyVisibility = weatherDisabled
         ? 1
         : Math.max(0.05, (1 - obstruction) ** 2);
-    const daylightVisibility = Math.min(
-        smoothstep(0.18, 0.28, timeOfDay),
-        1 - smoothstep(0.72, 0.82, timeOfDay),
-    );
+    const daylightVisibility = getVisualDaylightAmount(timeOfDay);
     const shadowVisibility = weatherDisabled
         ? 1
         : Math.max(
@@ -1111,8 +1096,7 @@ export function Environment({
                 (blendedWeather?.rainy ?? 0) * 0.3 +
                 (blendedWeather?.cloudy ?? 0) * 0.2,
         );
-        const nightFactor =
-            0.2 + Math.max(dawnVisibility, duskVisibility) * 0.6;
+        const nightFactor = 0.2 + nightVisibility * 0.6;
         const flashStrength = Math.min(
             1,
             0.35 + stormStrength * 0.45 + nightFactor,
@@ -1154,8 +1138,7 @@ export function Environment({
         blendedWeather?.cloudy,
         blendedWeather?.rainy,
         actualWeather?.thundery,
-        dawnVisibility,
-        duskVisibility,
+        nightVisibility,
         weatherDisabled,
     ]);
 
