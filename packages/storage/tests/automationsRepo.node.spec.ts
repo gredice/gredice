@@ -32,9 +32,11 @@ import {
     listEnabledAutomationDefinitionsForEventType,
     operationImagePlantStatusReviewAutomationGraph,
     processDueAutomationRuns,
+    RAISED_BED_WATERING_50L_OPERATION_ID,
     recordAutomationRunStep,
     seasonalSowedWateringAutomationGraph,
     seedlingTransplantDirectSowingLocationAutomationGraph,
+    seedlingTransplantWateringAutomationGraph,
     startAutomationRun,
     storage,
     updateAutomationDefinition,
@@ -82,13 +84,26 @@ async function getScheduledFreeWateringDates(
     gardenId: number,
     raisedBedId: number,
 ) {
+    return getScheduledOperationDates(
+        accountId,
+        gardenId,
+        raisedBedId,
+        FREE_WATERING_OPERATION_ID,
+    );
+}
+
+async function getScheduledOperationDates(
+    accountId: string,
+    gardenId: number,
+    raisedBedId: number,
+    entityId: number,
+) {
     const operations = await getOperations(accountId, gardenId, raisedBedId);
 
     return operations
         .filter(
             (operation) =>
-                operation.entityId === FREE_WATERING_OPERATION_ID &&
-                operation.scheduledDate,
+                operation.entityId === entityId && operation.scheduledDate,
         )
         .map((operation) => operation.scheduledDate?.toISOString())
         .sort();
@@ -1066,6 +1081,150 @@ test('seedling transplant automation waits for verification before setting sowin
             ])
         ).length,
         1,
+    );
+});
+
+test('seedling transplant watering automation queues 50L waterings for the next two days after verification', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createAutomationRaisedBedContext();
+    const fieldAggregateId = `${raisedBedId}|0`;
+    await upsertRaisedBedField({ raisedBedId, positionIndex: 0 });
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(fieldAggregateId, {
+            plantSortId: '101',
+            scheduledDate: '2026-05-15T08:00:00.000Z',
+            sowingLocation: 'greenhouse',
+        }),
+    );
+    const raisedBed = await getRaisedBed(raisedBedId);
+    const field = raisedBed?.fields[0];
+    assert.ok(field);
+
+    const verificationDate = new Date('2026-06-01T08:00:00.000Z');
+    const firstWateringDate = addUtcDays(verificationDate, 1);
+    const secondWateringDate = addUtcDays(verificationDate, 2);
+    const preexisting50LWateringId = await createOperation({
+        accountId,
+        entityId: RAISED_BED_WATERING_50L_OPERATION_ID,
+        entityTypeName: 'operation',
+        gardenId,
+        raisedBedId,
+    });
+    await createEvent(
+        knownEvents.operations.scheduledV1(
+            preexisting50LWateringId.toString(),
+            {
+                scheduledDate: firstWateringDate.toISOString(),
+            },
+        ),
+    );
+    const preexisting20LWateringId = await createOperation({
+        accountId,
+        entityId: FREE_WATERING_OPERATION_ID,
+        entityTypeName: 'operation',
+        gardenId,
+        raisedBedId,
+    });
+    await createEvent(
+        knownEvents.operations.scheduledV1(
+            preexisting20LWateringId.toString(),
+            {
+                scheduledDate: secondWateringDate.toISOString(),
+            },
+        ),
+    );
+
+    const transplantOperationId = await createOperation({
+        accountId,
+        entityId: 593,
+        entityTypeName: 'operation',
+        gardenId,
+        raisedBedId,
+        raisedBedFieldId: field.id,
+    });
+    await createEvent({
+        ...knownEvents.operations.verifiedV1(transplantOperationId.toString(), {
+            verifiedBy: 'automations-test',
+        }),
+        createdAt: verificationDate,
+    });
+    const event = await getLatestEvent(
+        knownEventTypes.operations.verify,
+        transplantOperationId.toString(),
+    );
+    const graph = seedlingTransplantWateringAutomationGraph();
+    const definition = await createAutomationDefinition({
+        key: 'test.seedling-transplant-waterings',
+        name: 'Seedling transplant waterings',
+        status: 'enabled',
+        graph,
+    });
+    const input = {
+        eventId: event.id,
+        eventType: event.type,
+        aggregateId: event.aggregateId,
+        data:
+            event.data && typeof event.data === 'object'
+                ? (event.data as Record<string, unknown>)
+                : {},
+    };
+    const run = await createAutomationRun({
+        automationDefinition: definition,
+        source: 'event',
+        sourceEvent: event,
+        input,
+    });
+    assert.ok(run);
+    const startedRun = await startAutomationRun(run.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedRun);
+
+    const result = await executeAutomationRun(startedRun);
+
+    assert.strictEqual(result.status, 'succeeded');
+    assert.deepStrictEqual(
+        await getScheduledOperationDates(
+            accountId,
+            gardenId,
+            raisedBedId,
+            RAISED_BED_WATERING_50L_OPERATION_ID,
+        ),
+        [firstWateringDate.toISOString(), secondWateringDate.toISOString()],
+    );
+
+    const runWithSteps = await getAutomationRunWithSteps(startedRun.id);
+    assert.ok(runWithSteps);
+    assert.strictEqual(runWithSteps.status, 'succeeded');
+    assert.deepStrictEqual(
+        runWithSteps.steps.map((step) => step.status),
+        ['succeeded', 'succeeded', 'succeeded'],
+    );
+
+    const replayRun = await createAutomationRun({
+        automationDefinition: definition,
+        source: 'replay',
+        sourceEvent: event,
+        input,
+    });
+    assert.ok(replayRun);
+    const startedReplay = await startAutomationRun(replayRun.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedReplay);
+
+    const replayResult = await executeAutomationRun(startedReplay);
+
+    assert.strictEqual(replayResult.status, 'skipped');
+    assert.deepStrictEqual(
+        await getScheduledOperationDates(
+            accountId,
+            gardenId,
+            raisedBedId,
+            RAISED_BED_WATERING_50L_OPERATION_ID,
+        ),
+        [firstWateringDate.toISOString(), secondWateringDate.toISOString()],
     );
 });
 
