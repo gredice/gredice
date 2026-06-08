@@ -17,9 +17,9 @@ export type AvatarProps = HTMLAttributes<HTMLDivElement> & {
     );
 
 const sizeClassNames = {
-    sm: 'h-6 min-w-[24px] max-w-[24px] text-xs',
-    md: 'h-9 min-w-[36px] max-w-[36px]',
-    lg: 'h-12 min-w-[48px] max-w-[48px] text-lg',
+    sm: 'size-6 text-xs',
+    md: 'size-9',
+    lg: 'size-12 text-lg',
 };
 
 export function Avatar({

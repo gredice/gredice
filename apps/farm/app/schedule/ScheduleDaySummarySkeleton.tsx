@@ -3,17 +3,16 @@ import { Skeleton } from '@gredice/ui/Skeleton';
 
 function SummaryItemSkeleton() {
     return (
-        <div className="text-center space-y-1">
-            <Skeleton className="mx-auto h-4 w-8" />
-            <Skeleton className="mx-auto h-4 w-14" />
+        <div className="space-y-1 text-center">
+            <Skeleton className="mx-auto h-3 w-6 sm:h-4 sm:w-8" />
+            <Skeleton className="mx-auto h-3 w-10 sm:h-4 sm:w-14" />
         </div>
     );
 }
 
 export function ScheduleDaySummarySkeleton() {
     return (
-        <Row spacing={8}>
-            <SummaryItemSkeleton />
+        <Row className="gap-1 sm:gap-2">
             <SummaryItemSkeleton />
             <SummaryItemSkeleton />
         </Row>

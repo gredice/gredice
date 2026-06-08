@@ -25,21 +25,29 @@ async function FarmScheduleContent({ date }: { date: Date }) {
     const plantSortsPromise = getFarmSchedulePlantSorts();
 
     return (
-        <div className="max-w-5xl mx-auto w-full p-4 space-y-4">
-            <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-                    <div className="flex min-w-0 items-center gap-2">
-                        <HomeButton />
+        <div className="max-w-5xl mx-auto w-full space-y-4 px-2 py-4 sm:p-4">
+            <div className="space-y-2">
+                <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-1 sm:gap-2">
+                    <div className="justify-self-start">
+                        <HomeButton className="h-8 sm:h-10" />
                     </div>
-                    <ScheduleDateNavigation date={date} basePath="/schedule" />
-                </div>
-                <div className="flex min-w-0 flex-col items-start gap-2 sm:items-end">
-                    <Suspense fallback={<ScheduleDaySummarySkeleton />}>
-                        <ScheduleDaySummarySection
-                            dayDataPromise={dayDataPromise}
-                            operationsDataPromise={operationsDataPromise}
+                    <div className="min-w-0 justify-self-center">
+                        <ScheduleDateNavigation
+                            date={date}
+                            basePath="/schedule"
+                            compact
                         />
-                    </Suspense>
+                    </div>
+                    <div className="min-w-0 justify-self-end">
+                        <Suspense fallback={<ScheduleDaySummarySkeleton />}>
+                            <ScheduleDaySummarySection
+                                dayDataPromise={dayDataPromise}
+                                operationsDataPromise={operationsDataPromise}
+                            />
+                        </Suspense>
+                    </div>
+                </div>
+                <div className="flex min-w-0 justify-end">
                     <Suspense fallback={null}>
                         <ScheduleLabelPrintSection
                             dayDataPromise={dayDataPromise}
