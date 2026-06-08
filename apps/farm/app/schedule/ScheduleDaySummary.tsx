@@ -47,7 +47,7 @@ export function ScheduleDaySummary({
         scheduledFields.length * PLANTING_TASK_DURATION_MINUTES;
 
     return (
-        <Row spacing={2}>
+        <Row className="gap-1 sm:gap-2">
             <SummaryItem label="Zadataka" value={taskCount} />
             {totalMinutes > 0 && (
                 <SummaryItem
@@ -67,11 +67,14 @@ function SummaryItem({
     value: string | number;
 }) {
     return (
-        <div className="text-center">
-            <Typography level="body2" semiBold>
+        <div className="text-center leading-tight">
+            <Typography level="body2" semiBold className="text-xs sm:text-sm">
                 {value}
             </Typography>
-            <Typography level="body2" className="text-muted-foreground">
+            <Typography
+                level="body2"
+                className="text-xs text-muted-foreground sm:text-sm"
+            >
                 {label}
             </Typography>
         </div>
