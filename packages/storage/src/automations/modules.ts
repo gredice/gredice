@@ -15,7 +15,11 @@ import {
     getFarmAcceptedOperationsByScheduleRange,
     getOperationById,
 } from '../repositories/operationsRepo';
-import { queueSeasonalSowingOfferOperations } from '../repositories/seasonalOffersRepo';
+import {
+    queuePostTransplantWateringOperations,
+    queueSeasonalSowingOfferOperations,
+    RAISED_BED_WATERING_50L_OPERATION_ID,
+} from '../repositories/seasonalOffersRepo';
 import type { AutomationGraphNode, AutomationJsonObject } from '../schema';
 import {
     hasRaisedBedImagePlantStatusReviewAiConfig,
@@ -37,6 +41,8 @@ const operationMatchesConditionKey = 'condition.operationMatches';
 const plantStatusEqualsConditionKey = 'condition.plantStatusEquals';
 const queueSeasonalSowingOfferOperationsActionKey =
     'action.queueSeasonalSowingOfferOperations';
+const queuePostTransplantWateringOperationsActionKey =
+    'action.queuePostTransplantWateringOperations';
 const createOperationActionKey = 'action.createOperation';
 const createFarmInventoryOperationsActionKey =
     'action.createFarmInventoryOperations';
@@ -59,6 +65,8 @@ export const automationModuleKeys = {
     conditionPlantStatusEquals: plantStatusEqualsConditionKey,
     actionQueueSeasonalSowingOfferOperations:
         queueSeasonalSowingOfferOperationsActionKey,
+    actionQueuePostTransplantWateringOperations:
+        queuePostTransplantWateringOperationsActionKey,
     actionCreateOperation: createOperationActionKey,
     actionCreateFarmInventoryOperations: createFarmInventoryOperationsActionKey,
     actionUpdateRaisedBedFieldPlantStatus:
@@ -793,6 +801,94 @@ const queueSeasonalSowingOfferOperationsActionModule: AutomationModule = {
     },
 };
 
+const queuePostTransplantWateringOperationsActionModule: AutomationModule = {
+    key: queuePostTransplantWateringOperationsActionKey,
+    kind: 'action',
+    title: 'Queue post-transplant watering operations',
+    description:
+        'Queues 50L raised-bed watering operations for the two days after a seedling transplant is verified.',
+    category: 'Operations',
+    configFields: [],
+    inputDescription:
+        'An `operation.verify` event for a seedling transplant operation with a raised-bed target.',
+    outputDescription: 'Created operation ids, or a skip reason.',
+    dryRunSupported: true,
+    mutatesData: true,
+    retryable: true,
+    execute: async (context) => {
+        if (!context.event) {
+            return skip('No source event is available.');
+        }
+
+        const operationId = Number(context.event.aggregateId);
+        if (!Number.isInteger(operationId) || operationId <= 0) {
+            return skip('Source event aggregate is not an operation id.');
+        }
+
+        let operation: Awaited<ReturnType<typeof getOperationById>> | null =
+            null;
+        try {
+            operation = await getOperationById(operationId);
+        } catch {
+            return skip('Operation was not found.', { operationId });
+        }
+
+        if (!operation.raisedBedId) {
+            return skip('Operation has no raised-bed target.', {
+                operationId,
+            });
+        }
+
+        const raisedBed = await getRaisedBed(operation.raisedBedId);
+        if (!raisedBed?.accountId) {
+            return skip('Raised bed or account was not found.', {
+                operationId,
+                raisedBedId: operation.raisedBedId,
+            });
+        }
+
+        const referenceDate = context.event.createdAt ?? new Date();
+        const gardenId = operation.gardenId ?? raisedBed.gardenId ?? undefined;
+
+        if (context.dryRun) {
+            return success({
+                dryRun: true,
+                operationId,
+                accountId: raisedBed.accountId,
+                gardenId: gardenId ?? null,
+                raisedBedId: raisedBed.id,
+                wateringOperationEntityId: RAISED_BED_WATERING_50L_OPERATION_ID,
+                scheduledDates: [1, 2].map((dayOffset) =>
+                    addUtcDays(referenceDate, dayOffset).toISOString(),
+                ),
+            });
+        }
+
+        const createdOperationIds = await queuePostTransplantWateringOperations(
+            {
+                accountId: raisedBed.accountId,
+                ...(gardenId ? { gardenId } : {}),
+                raisedBedId: raisedBed.id,
+                referenceDate,
+            },
+        );
+
+        if (createdOperationIds.length === 0) {
+            return skip('Post-transplant watering operations already exist.', {
+                operationId,
+                raisedBedId: raisedBed.id,
+                wateringOperationEntityId: RAISED_BED_WATERING_50L_OPERATION_ID,
+            });
+        }
+
+        return success({
+            createdOperationIds,
+            createdCount: createdOperationIds.length,
+            wateringOperationEntityId: RAISED_BED_WATERING_50L_OPERATION_ID,
+        });
+    },
+};
+
 const createOperationActionModule: AutomationModule = {
     key: createOperationActionKey,
     kind: 'action',
@@ -1414,6 +1510,7 @@ export const automationModules = [
     operationMatchesConditionModule,
     plantStatusEqualsConditionModule,
     queueSeasonalSowingOfferOperationsActionModule,
+    queuePostTransplantWateringOperationsActionModule,
     createOperationActionModule,
     createFarmInventoryOperationsActionModule,
     updateRaisedBedFieldPlantStatusActionModule,

@@ -3,6 +3,7 @@ import {
     upsertAutomationDefinitionByKey,
 } from '../repositories/automationsRepo';
 import { knownEventTypes } from '../repositories/events/knownEventTypes';
+import { RAISED_BED_WATERING_50L_OPERATION_ID } from '../repositories/seasonalOffersRepo';
 import type { AutomationGraph } from '../schema';
 import { automationModuleKeys } from './modules';
 
@@ -12,6 +13,8 @@ export const operationImagePlantStatusReviewAutomationKey =
     'default.operation-image-plant-status-review';
 export const seedlingTransplantDirectSowingLocationAutomationKey =
     'default.seedling-transplant-direct-sowing-location';
+export const seedlingTransplantWateringAutomationKey =
+    'default.seedling-transplant-watering';
 
 const seedlingTransplantingOperationId = 593;
 
@@ -158,6 +161,52 @@ export function seedlingTransplantDirectSowingLocationAutomationGraph(): Automat
     };
 }
 
+export function seedlingTransplantWateringAutomationGraph(): AutomationGraph {
+    return {
+        nodes: [
+            {
+                id: 'trigger',
+                kind: 'trigger',
+                moduleKey: automationModuleKeys.triggerDomainEvent,
+                position: { x: 0, y: 160 },
+                config: {
+                    eventType: knownEventTypes.operations.verify,
+                },
+            },
+            {
+                id: 'operation-is-seedling-transplant',
+                kind: 'condition',
+                moduleKey: automationModuleKeys.conditionOperationMatches,
+                position: { x: 280, y: 160 },
+                config: {
+                    status: 'completed',
+                    entityId: seedlingTransplantingOperationId,
+                },
+            },
+            {
+                id: 'queue-transplant-waterings',
+                kind: 'action',
+                moduleKey:
+                    automationModuleKeys.actionQueuePostTransplantWateringOperations,
+                position: { x: 620, y: 160 },
+                config: {},
+            },
+        ],
+        edges: [
+            {
+                id: 'trigger-to-operation-match',
+                source: 'trigger',
+                target: 'operation-is-seedling-transplant',
+            },
+            {
+                id: 'operation-match-to-waterings',
+                source: 'operation-is-seedling-transplant',
+                target: 'queue-transplant-waterings',
+            },
+        ],
+    };
+}
+
 export async function ensureDefaultAutomationDefinitions() {
     await initializeAutomationEventCursorToLatest();
 
@@ -203,9 +252,25 @@ export async function ensureDefaultAutomationDefinitions() {
             },
         });
 
+    const seedlingTransplantWatering = await upsertAutomationDefinitionByKey({
+        key: seedlingTransplantWateringAutomationKey,
+        name: 'Dodaj zalijevanja nakon potvrde presađivanja sadnice',
+        description:
+            'Kada je radnja presađivanja sadnica potvrđena, dodaj 50L zalijevanje za ciljanu gredicu za sljedeća dva dana ako taj dan već nema barem 50L zalijevanja.',
+        status: 'enabled',
+        graph: seedlingTransplantWateringAutomationGraph(),
+        metadata: {
+            managedBy: 'gredice',
+            defaultAutomation: true,
+            operationEntityId: seedlingTransplantingOperationId,
+            wateringOperationEntityId: RAISED_BED_WATERING_50L_OPERATION_ID,
+        },
+    });
+
     return {
         seasonalSowedWatering,
         operationImagePlantStatusReview,
         seedlingTransplantDirectSowingLocation,
+        seedlingTransplantWatering,
     };
 }

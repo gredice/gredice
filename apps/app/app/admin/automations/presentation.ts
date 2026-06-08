@@ -22,6 +22,8 @@ export const automationModuleKeys = {
     actionCreatePlantStatusRequestsFromImageAnalysis:
         'action.createPlantStatusRequestsFromImageAnalysis',
     actionLog: 'action.log',
+    actionQueuePostTransplantWateringOperations:
+        'action.queuePostTransplantWateringOperations',
     actionQueueSeasonalSowingOfferOperations:
         'action.queueSeasonalSowingOfferOperations',
     actionUpdateRaisedBedFieldPlantStatus:
@@ -122,6 +124,14 @@ const automationModulePresentations: Record<
             'Dodaje trenutačnu sezonsku ponudu besplatnog zalijevanja nakon sjetve.',
         inputDescription:
             'Event `raisedBedField.plantUpdate` s agregatom `raisedBedId|positionIndex`.',
+        outputDescription: 'ID-jevi kreiranih radnji ili razlog preskakanja.',
+    },
+    [automationModuleKeys.actionQueuePostTransplantWateringOperations]: {
+        title: 'Zalijevanja nakon presađivanja',
+        description:
+            'Dodaje 50L zalijevanja za dva dana nakon potvrđenog presađivanja sadnice.',
+        inputDescription:
+            'Event `operation.verify` za radnju presađivanja sadnice s ciljanom gredicom.',
         outputDescription: 'ID-jevi kreiranih radnji ili razlog preskakanja.',
     },
     [automationModuleKeys.actionCreateOperation]: {

@@ -8,7 +8,9 @@ monthly schedules that can create recurring farm operations. Operation
 completion images can also be reviewed asynchronously for high-confidence plant
 status changes that create pending admin approval requests. Verifying the
 seedling transplanting operation also switches the targeted plant from
-greenhouse sowing to direct sowing.
+greenhouse sowing to direct sowing and queues 50L watering operations for the
+next two days when that raised bed does not already have at least 50L of
+watering scheduled on those days.
 
 ## Ownership
 
@@ -86,6 +88,10 @@ MVP modules:
 - `condition.plantStatusEquals`: checks current raised-bed field plant status.
 - `action.queueSeasonalSowingOfferOperations`: queues seasonal free watering
   operations.
+- `action.queuePostTransplantWateringOperations`: queues 50L raised-bed
+  watering operations for the two days after seedling transplant verification,
+  skipping days where active scheduled watering for that raised bed already
+  totals at least 50L.
 - `action.createOperation`: creates an operation for the event context.
 - `action.createFarmInventoryOperations`: creates accepted, scheduled farm-level
   operations for every active farm from a JSON list in the automation
