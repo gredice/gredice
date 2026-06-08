@@ -164,53 +164,6 @@ export default function LoginModal() {
                         </TabsList>
                     </div>
                     <Stack spacing={4}>
-                        <TabsContent value="login" className="mt-4">
-                            <div className="space-y-4 px-1">
-                                <Stack spacing={4}>
-                                    <EmailPasswordForm
-                                        onSubmit={handleLogin}
-                                        submitText="Prijava"
-                                    />
-                                    {error && (
-                                        <Alert color="danger">{error}</Alert>
-                                    )}
-                                </Stack>
-                                <div className="relative">
-                                    <div className="absolute inset-0 flex items-center">
-                                        <Divider />
-                                    </div>
-                                    <div className="relative flex justify-center">
-                                        <span className="bg-background px-2 text-xs rounded-xs">
-                                            ili nastavi sa
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </TabsContent>
-                        <TabsContent value="register" className="mt-4">
-                            <div className="space-y-4 px-1">
-                                <Stack spacing={4}>
-                                    <EmailPasswordForm
-                                        onSubmit={handleRegister}
-                                        submitText="Registriraj se"
-                                        registration
-                                    />
-                                    {error && (
-                                        <Alert color="danger">{error}</Alert>
-                                    )}
-                                </Stack>
-                                <div className="relative">
-                                    <div className="absolute inset-0 flex items-center">
-                                        <Divider />
-                                    </div>
-                                    <div className="relative flex justify-center">
-                                        <span className="bg-background px-2 text-xs rounded-xs">
-                                            ili nastavi sa
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </TabsContent>
                         <Stack spacing={2}>
                             <FacebookLoginButton
                                 onClick={() => handleOAuthLogin('facebook')}
@@ -221,6 +174,43 @@ export default function LoginModal() {
                                 lastUsed={lastLoginProvider === 'google'}
                             />
                         </Stack>
+                        <div className="relative">
+                            <div className="absolute inset-0 flex items-center">
+                                <Divider />
+                            </div>
+                            <div className="relative flex justify-center">
+                                <span className="bg-background px-2 text-xs rounded-xs">
+                                    ili nastavi emailom
+                                </span>
+                            </div>
+                        </div>
+                        <TabsContent value="login">
+                            <div className="px-1">
+                                <Stack spacing={4}>
+                                    <EmailPasswordForm
+                                        onSubmit={handleLogin}
+                                        submitText="Prijava"
+                                    />
+                                    {error && (
+                                        <Alert color="danger">{error}</Alert>
+                                    )}
+                                </Stack>
+                            </div>
+                        </TabsContent>
+                        <TabsContent value="register">
+                            <div className="px-1">
+                                <Stack spacing={4}>
+                                    <EmailPasswordForm
+                                        onSubmit={handleRegister}
+                                        submitText="Registriraj se"
+                                        registration
+                                    />
+                                    {error && (
+                                        <Alert color="danger">{error}</Alert>
+                                    )}
+                                </Stack>
+                            </div>
+                        </TabsContent>
                     </Stack>
                 </Tabs>
             </Modal>
