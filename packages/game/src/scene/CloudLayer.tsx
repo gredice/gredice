@@ -23,6 +23,7 @@ import { useGameState } from '../useGameState';
 import { updateGameProfileMetadata } from './gameProfileMetadata';
 import type { GameCloudShadowMode } from './gameQuality';
 import { useSceneTimeInvalidation } from './SceneTime';
+import { getVisualDaylightAmount, smoothstep } from './visualDayNight';
 
 const MAX_CLOUDS = 8;
 const CLOUD_ALPHA_TEST = 0.025;
@@ -45,11 +46,6 @@ const CLOUD_RENDER_ORDER = 30;
 const CLOUD_SHADOW_CASTER_BASE_ALPHA_TEST = 0.2;
 const CLOUD_SHADOW_CASTER_HARD_ALPHA_TEST = 0.08;
 const CLOUD_SHADOW_CASTER_SOFT_ALPHA_TEST = 0.02;
-
-function smoothstep(edge0: number, edge1: number, value: number) {
-    const t = Math.min(1, Math.max(0, (value - edge0) / (edge1 - edge0)));
-    return t * t * (3 - 2 * t);
-}
 
 function seededRandom(seed: number) {
     const value = Math.sin(seed * 12.9898) * 43758.5453;
@@ -272,10 +268,7 @@ export function CloudLayer({
         spawnHalfZ: 8,
     });
     const effectiveCloudiness = Math.min(1, cloudy + foggy * 0.35);
-    const daylightVisibility = Math.min(
-        smoothstep(0.18, 0.28, timeOfDay),
-        1 - smoothstep(0.72, 0.82, timeOfDay),
-    );
+    const daylightVisibility = getVisualDaylightAmount(timeOfDay);
     const visibleCloudiness = daylightVisibility * effectiveCloudiness;
 
     const visibleCloudCount =

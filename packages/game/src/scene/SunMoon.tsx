@@ -17,6 +17,7 @@ import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useSnapshotTime } from '../hooks/useSnapshotTime';
 import { useGameState } from '../useGameState';
 import { altAzToScenePosition, timeOfDayToDate } from './Environment';
+import { visualDayNightTimes } from './visualDayNight';
 
 // World-space size of the billboard planes. The visible disc is a fraction of
 // this (see shader), leaving room around the disc for the soft glow to fade to
@@ -101,7 +102,14 @@ const sunColorScale = chroma
         chroma.temperature(3500),
         chroma.temperature(2200),
     ])
-    .domain([0.2, 0.23, 0.28, 0.72, 0.77, 0.8]);
+    .domain([
+        visualDayNightTimes.sunrise,
+        visualDayNightTimes.dawnLightEnd,
+        visualDayNightTimes.dayStart,
+        0.72,
+        visualDayNightTimes.sunset,
+        visualDayNightTimes.nightStart,
+    ]);
 
 function smoothstep(edge0: number, edge1: number, x: number) {
     const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)));
