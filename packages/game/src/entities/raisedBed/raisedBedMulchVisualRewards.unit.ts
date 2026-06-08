@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import type {
     AppliedOperationVisualInput,
     OperationVisualDefinitionInput,
+    OperationVisualRewardKind,
 } from '../../operationVisualRewards';
 import {
     resolveActiveFieldMulchRewardsByFieldId,
@@ -15,12 +16,14 @@ function operation(
         application?: string;
         label: string;
         name: string;
+        visualReward: OperationVisualRewardKind;
     },
 ): OperationVisualDefinitionInput {
     return {
         id,
         attributes: {
             application: input.application ?? 'raisedBedFull',
+            visualReward: input.visualReward,
         },
         information: {
             description: input.label,
@@ -37,20 +40,24 @@ const operations = [
     operation(1, {
         label: 'Malciranje slamom',
         name: 'mulchStraw',
+        visualReward: 'mulch',
     }),
     operation(2, {
         label: 'Uklanjanje malca',
         name: 'removeMulch',
+        visualReward: 'removeMulch',
     }),
     operation(3, {
         application: 'plant',
         label: 'Malciranje biljke',
         name: 'plantMulch',
+        visualReward: 'mulch',
     }),
     operation(4, {
         application: 'plant',
         label: 'Uklanjanje malca s biljke',
         name: 'removePlantMulch',
+        visualReward: 'removeMulch',
     }),
 ];
 
