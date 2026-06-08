@@ -142,6 +142,28 @@ export function LoginDialog() {
                             svojom farmom.
                         </Typography>
                     </Stack>
+                    <Stack spacing={4}>
+                        <Stack spacing={2}>
+                            <FacebookLoginButton
+                                onClick={() => handleOAuthLogin('facebook')}
+                                lastUsed={lastLoginProvider === 'facebook'}
+                            />
+                            <GoogleLoginButton
+                                onClick={() => handleOAuthLogin('google')}
+                                lastUsed={lastLoginProvider === 'google'}
+                            />
+                        </Stack>
+                        <div className="relative">
+                            <div className="absolute inset-0 flex items-center">
+                                <Divider />
+                            </div>
+                            <div className="relative flex justify-center">
+                                <span className="bg-background px-2 text-xs rounded-xs">
+                                    ili nastavi emailom
+                                </span>
+                            </div>
+                        </div>
+                    </Stack>
                     <form action={submitAction} className="w-full space-y-4">
                         <Stack spacing={6}>
                             <Stack spacing={2}>
@@ -183,28 +205,6 @@ export function LoginDialog() {
                             )}
                         </Stack>
                     </form>
-                    <Stack spacing={4}>
-                        <div className="relative">
-                            <div className="absolute inset-0 flex items-center">
-                                <Divider />
-                            </div>
-                            <div className="relative flex justify-center">
-                                <span className="bg-background px-2 text-xs rounded-xs">
-                                    ili nastavi sa
-                                </span>
-                            </div>
-                        </div>
-                        <Stack spacing={2}>
-                            <FacebookLoginButton
-                                onClick={() => handleOAuthLogin('facebook')}
-                                lastUsed={lastLoginProvider === 'facebook'}
-                            />
-                            <GoogleLoginButton
-                                onClick={() => handleOAuthLogin('google')}
-                                lastUsed={lastLoginProvider === 'google'}
-                            />
-                        </Stack>
-                    </Stack>
                 </Stack>
             </Modal>
         </div>
