@@ -28,10 +28,11 @@ import {
     type RaisedBedOrientation,
 } from '../../utils/raisedBedOrientation';
 import { useGameGLTF } from '../../utils/useGameGLTF';
+import { appliedMulchOperationsOldestFirst } from './raisedBedMulchOperationOrder';
 import {
-    appliedMulchOperationsOldestFirst,
-    latestAppliedMulchOperation,
-} from './raisedBedMulchOperationOrder';
+    resolveActiveFieldMulchRewardsByFieldId,
+    resolveActiveRaisedBedMulchReward,
+} from './raisedBedMulchVisualRewards';
 
 const combinedOverlap = 0.1;
 const halfOverlap = combinedOverlap / 2;
@@ -42,9 +43,6 @@ type CurrentGardenData = NonNullable<
 >;
 type RaisedBedFieldData =
     CurrentGardenData['raisedBeds'][number]['fields'][number];
-type AppliedRaisedBedOperationData = NonNullable<
-    CurrentGardenData['raisedBeds'][number]['appliedOperations']
->[number];
 
 type RaisedBedDirtGeometryName =
     | 'Raised_Bed_O_2'
@@ -126,7 +124,10 @@ function activePlantCycleStartMs(field: RaisedBedFieldData) {
 }
 
 function isOperationAppliedToActivePlantCycle(
-    operation: AppliedRaisedBedOperationData,
+    operation: {
+        completedAt?: Date | string | null;
+        createdAt?: Date | string | null;
+    },
     field: RaisedBedFieldData,
 ) {
     const operationTimestamp = timestampMs(
@@ -704,6 +705,11 @@ export function RaisedBedMulchOverlays({
         if (placements.length === 0) {
             continue;
         }
+        const activeRaisedBedMulchReward = resolveActiveRaisedBedMulchReward({
+            appliedOperations: raisedBed.appliedOperations ?? [],
+            operations,
+            raisedBedId: raisedBed.id,
+        });
 
         const fullBedCartVisual = cart?.items.find((item) => {
             if (
@@ -721,23 +727,12 @@ export function RaisedBedMulchOverlays({
         const fullBedCartMulch =
             fullBedCartVisual &&
             mulchVisualByOperationId.get(Number(fullBedCartVisual.entityId));
-        const fullBedAppliedMulch = latestAppliedMulchOperation(
-            raisedBed.appliedOperations ?? [],
-            (operation) => {
-                const visual = mulchVisualByOperationId.get(operation.entityId);
-                return Boolean(
-                    visual && isBedMulchApplication(visual.application),
-                );
-            },
-        );
+        const fullBedAppliedMulch =
+            activeRaisedBedMulchReward &&
+            mulchVisualByOperationId.get(activeRaisedBedMulchReward.entityId);
 
         if (fullBedCartMulch || fullBedAppliedMulch) {
-            let visual = fullBedCartMulch;
-            if (!visual && fullBedAppliedMulch) {
-                visual = mulchVisualByOperationId.get(
-                    fullBedAppliedMulch.entityId,
-                );
-            }
+            const visual = fullBedCartMulch || fullBedAppliedMulch;
             if (visual) {
                 const mulchAsset = getMulchAsset(mulchAssets, visual.blockName);
                 if (mulchAsset) {
@@ -770,23 +765,29 @@ export function RaisedBedMulchOverlays({
         }
 
         const fieldMulchByPositionIndex = new Map<number, string>();
+        const appliedFieldMulchRewardsByFieldId =
+            resolveActiveFieldMulchRewardsByFieldId({
+                appliedOperations: raisedBed.appliedOperations ?? [],
+                operations,
+                raisedBedId: raisedBed.id,
+            });
 
-        for (const operation of appliedMulchOperationsOldestFirst(
-            raisedBed.appliedOperations ?? [],
+        for (const reward of appliedMulchOperationsOldestFirst(
+            Array.from(appliedFieldMulchRewardsByFieldId.values()),
         )) {
-            const visual = mulchVisualByOperationId.get(operation.entityId);
+            const visual = mulchVisualByOperationId.get(reward.entityId);
             if (!visual || !isFieldMulchApplication(visual.application)) {
                 continue;
             }
 
             const field = raisedBed.fields.find(
-                (candidate) => candidate.id === operation.raisedBedFieldId,
+                (candidate) => candidate.id === reward.raisedBedFieldId,
             );
             if (!field || !isRaisedBedFieldOccupied(field)) {
                 continue;
             }
 
-            if (!isOperationAppliedToActivePlantCycle(operation, field)) {
+            if (!isOperationAppliedToActivePlantCycle(reward, field)) {
                 continue;
             }
 
