@@ -23,6 +23,7 @@ import {
     mockPlantPresetLabelsBySortId,
     RaisedBedPlantField,
 } from './RaisedBedPlantField';
+import { resolveRaisedBedAgrotextileCoverPositions } from './raisedBedAgrotextileRewards';
 import { isWateringRewardVisible } from './raisedBedWateringRewards';
 import {
     resolveRaisedBedFieldWeedLevel,
@@ -160,6 +161,68 @@ function RaisedBedFieldWeedClump({
     );
 }
 
+function RaisedBedFieldAgrotextileCover({
+    blockIndex,
+    orientation,
+    positionIndex,
+}: {
+    blockIndex: number;
+    orientation: RaisedBedOrientation;
+    positionIndex: number;
+}) {
+    const position = getRaisedBedFieldSurfacePosition({
+        blockIndex,
+        orientation,
+        positionIndex,
+        y: -0.704,
+    });
+
+    return (
+        <group position={position}>
+            <mesh
+                position={[0, 0.004, 0]}
+                rotation={[-Math.PI / 2, 0, 0]}
+                renderOrder={4}
+            >
+                <planeGeometry args={[0.25, 0.25]} />
+                <meshStandardMaterial
+                    color="#dcd7c6"
+                    depthWrite={false}
+                    opacity={0.76}
+                    polygonOffset
+                    polygonOffsetFactor={-4}
+                    roughness={1}
+                    transparent
+                />
+            </mesh>
+            <mesh position={[0, 0.012, -0.118]} renderOrder={5}>
+                <boxGeometry args={[0.255, 0.008, 0.012]} />
+                <meshStandardMaterial color="#eee9d8" roughness={1} />
+            </mesh>
+            <mesh position={[0, 0.012, 0.118]} renderOrder={5}>
+                <boxGeometry args={[0.255, 0.008, 0.012]} />
+                <meshStandardMaterial color="#eee9d8" roughness={1} />
+            </mesh>
+            <mesh position={[-0.118, 0.012, 0]} renderOrder={5}>
+                <boxGeometry args={[0.012, 0.008, 0.255]} />
+                <meshStandardMaterial color="#eee9d8" roughness={1} />
+            </mesh>
+            <mesh position={[0.118, 0.012, 0]} renderOrder={5}>
+                <boxGeometry args={[0.012, 0.008, 0.255]} />
+                <meshStandardMaterial color="#eee9d8" roughness={1} />
+            </mesh>
+            <mesh position={[0, 0.014, 0]} renderOrder={6}>
+                <boxGeometry args={[0.22, 0.006, 0.008]} />
+                <meshStandardMaterial color="#c9c2ad" roughness={1} />
+            </mesh>
+            <mesh position={[0, 0.015, 0]} renderOrder={6}>
+                <boxGeometry args={[0.008, 0.006, 0.22]} />
+                <meshStandardMaterial color="#c9c2ad" roughness={1} />
+            </mesh>
+        </group>
+    );
+}
+
 export function RaisedBedFields({
     blockId,
     generatedPlantsHandledExternally = false,
@@ -268,6 +331,15 @@ export function RaisedBedFields({
               } => Boolean(visual),
           )
         : [];
+    const agrotextileCoverPositions = raisedBed
+        ? resolveRaisedBedAgrotextileCoverPositions({
+              blockOffset,
+              fields: raisedBed.fields,
+              raisedBedId: raisedBed.id,
+              visualRewards,
+          })
+        : [];
+    const agrotextileCoverPositionSet = new Set(agrotextileCoverPositions);
 
     return (
         <>
@@ -289,17 +361,25 @@ export function RaisedBedFields({
                     />
                 );
             })}
-            {weedFieldVisuals.map((visual) => (
-                <RaisedBedFieldWeedClump
-                    key={`raised-bed-field-weed-${blockId}-${visual.positionIndex}`}
-                    blockIndex={blockIndex}
-                    level={visual.level}
-                    orientation={orientation}
-                    positionIndex={visual.positionIndex}
-                />
-            ))}
+            {weedFieldVisuals.map((visual) =>
+                agrotextileCoverPositionSet.has(visual.positionIndex) ? null : (
+                    <RaisedBedFieldWeedClump
+                        key={`raised-bed-field-weed-${blockId}-${visual.positionIndex}`}
+                        blockIndex={blockIndex}
+                        level={visual.level}
+                        orientation={orientation}
+                        positionIndex={visual.positionIndex}
+                    />
+                ),
+            )}
             {displayedFields.map((field) => {
                 if (!field) return null;
+                const localPositionIndex = field.positionIndex - blockOffset;
+
+                if (agrotextileCoverPositionSet.has(localPositionIndex)) {
+                    return null;
+                }
+
                 if (
                     generatedPlantsHandledExternally &&
                     generatedPlantsEnabled &&
@@ -328,13 +408,21 @@ export function RaisedBedFields({
                         key={field.id}
                         field={{
                             ...field,
-                            positionIndex: field.positionIndex - blockOffset,
+                            positionIndex: localPositionIndex,
                         }}
                         blockIndex={blockIndex}
                         orientation={orientation}
                     />
                 );
             })}
+            {agrotextileCoverPositions.map((positionIndex) => (
+                <RaisedBedFieldAgrotextileCover
+                    key={`raised-bed-field-agrotextile-${blockId}-${positionIndex}`}
+                    blockIndex={blockIndex}
+                    orientation={orientation}
+                    positionIndex={positionIndex}
+                />
+            ))}
         </>
     );
 }
