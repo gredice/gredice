@@ -39,6 +39,7 @@ type RaisedBedFieldCardProps = {
     locationControl?: ReactNode;
     plantSortControl: ReactNode;
     statusControl?: ReactNode;
+    weedControl?: ReactNode;
     className?: string;
 };
 
@@ -49,6 +50,7 @@ export function RaisedBedFieldCard({
     locationControl,
     plantSortControl,
     statusControl,
+    weedControl,
     className,
 }: RaisedBedFieldCardProps) {
     return (
@@ -79,6 +81,7 @@ export function RaisedBedFieldCard({
             )}
             <div className="relative z-10 mt-auto flex min-w-0 flex-col gap-0.5 px-2 pb-2 pt-8">
                 <div className="min-w-0">{plantSortControl}</div>
+                {weedControl && <div className="min-w-0">{weedControl}</div>}
                 {statusControl && (
                     <div className="min-w-0">{statusControl}</div>
                 )}

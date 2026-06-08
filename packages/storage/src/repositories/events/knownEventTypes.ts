@@ -41,6 +41,7 @@ export const knownEventTypes = {
         delete: 'raisedBed.delete',
         abandon: 'raisedBed.abandon',
         aiAnalysis: 'raisedBed.aiAnalysis',
+        weedStateSet: 'raisedBed.weedState.set',
     },
     raisedBedFields: {
         create: 'raisedBedField.create',
@@ -50,6 +51,7 @@ export const knownEventTypes = {
         plantUpdate: 'raisedBedField.plantUpdate',
         plantReplaceSort: 'raisedBedField.plantReplaceSort',
         aiAnalysis: 'raisedBedField.aiAnalysis',
+        weedStateSet: 'raisedBedField.weedState.set',
     },
     operations: {
         assign: 'operation.assign',

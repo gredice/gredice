@@ -24,6 +24,44 @@ import {
     RaisedBedPlantField,
 } from './RaisedBedPlantField';
 import { isWateringRewardVisible } from './raisedBedWateringRewards';
+import {
+    resolveRaisedBedFieldWeedLevel,
+    type VisibleRaisedBedWeedLevel,
+} from './raisedBedWeedState';
+
+const weedBladePlacements = [
+    { id: 'center-left', columnOffset: -0.035, rowOffset: -0.02 },
+    { id: 'center', columnOffset: 0, rowOffset: -0.02 },
+    { id: 'center-right', columnOffset: 0.035, rowOffset: -0.02 },
+    { id: 'back-left', columnOffset: -0.035, rowOffset: 0.02 },
+    { id: 'back', columnOffset: 0, rowOffset: 0.02 },
+    { id: 'back-right', columnOffset: 0.035, rowOffset: 0.02 },
+] as const;
+
+function getRaisedBedFieldSurfacePosition({
+    blockIndex,
+    orientation,
+    positionIndex,
+    y,
+}: {
+    blockIndex: number;
+    orientation: RaisedBedOrientation;
+    positionIndex: number;
+    y: number;
+}) {
+    const offsetX =
+        orientation === 'vertical' ? 0.31 - blockIndex * 0.05 : 0.27;
+    const offsetZ =
+        orientation === 'vertical' ? 0.27 : 0.27 + blockIndex * 0.05;
+    const multiplierX = orientation === 'vertical' ? 0.285 : 0.27;
+    const multiplierZ = orientation === 'vertical' ? 0.27 : 0.285;
+    const { row, col } = getGridPositionFromIndex(positionIndex, orientation);
+    return [
+        col * multiplierX - offsetX,
+        y,
+        (2 - row) * multiplierZ - offsetZ,
+    ] satisfies [number, number, number];
+}
 
 function RaisedBedFieldMoistSoilOverlay({
     blockIndex,
@@ -34,18 +72,12 @@ function RaisedBedFieldMoistSoilOverlay({
     orientation: RaisedBedOrientation;
     positionIndex: number;
 }) {
-    const offsetX =
-        orientation === 'vertical' ? 0.31 - blockIndex * 0.05 : 0.27;
-    const offsetZ =
-        orientation === 'vertical' ? 0.27 : 0.27 + blockIndex * 0.05;
-    const multiplierX = orientation === 'vertical' ? 0.285 : 0.27;
-    const multiplierZ = orientation === 'vertical' ? 0.27 : 0.285;
-    const { row, col } = getGridPositionFromIndex(positionIndex, orientation);
-    const position: [number, number, number] = [
-        col * multiplierX - offsetX,
-        -0.748,
-        (2 - row) * multiplierZ - offsetZ,
-    ];
+    const position = getRaisedBedFieldSurfacePosition({
+        blockIndex,
+        orientation,
+        positionIndex,
+        y: -0.748,
+    });
 
     return (
         <mesh
@@ -77,6 +109,54 @@ function shouldRenderGeneratedPlantField(field: {
         (field.plantStatus === 'sprouted' ||
             field.plantStatus === 'ready' ||
             field.plantStatus === 'harvested')
+    );
+}
+
+function RaisedBedFieldWeedClump({
+    blockIndex,
+    level,
+    orientation,
+    positionIndex,
+}: {
+    blockIndex: number;
+    level: VisibleRaisedBedWeedLevel;
+    orientation: RaisedBedOrientation;
+    positionIndex: number;
+}) {
+    const position = getRaisedBedFieldSurfacePosition({
+        blockIndex,
+        orientation,
+        positionIndex,
+        y: -0.72,
+    });
+    const bladeCount = level === 'heavy' ? 6 : 3;
+
+    return (
+        <group position={position}>
+            {weedBladePlacements
+                .slice(0, bladeCount)
+                .map((placement, index) => {
+                    const height = level === 'heavy' ? 0.16 : 0.12;
+
+                    return (
+                        <mesh
+                            key={placement.id}
+                            position={[
+                                placement.columnOffset,
+                                height / 2,
+                                placement.rowOffset,
+                            ]}
+                            rotation={[0, index * 0.9, 0]}
+                        >
+                            <coneGeometry args={[0.022, height, 4]} />
+                            <meshStandardMaterial
+                                color="#3f6b35"
+                                roughness={1}
+                            />
+                        </mesh>
+                    );
+                })}
+        </group>
     );
 }
 
@@ -156,6 +236,38 @@ export function RaisedBedFields({
             )
             .map((reward) => reward.raisedBedFieldId),
     );
+    const weedFieldVisuals = raisedBed
+        ? Array.from({ length: 9 }, (_, localPositionIndex) => {
+              const positionIndex = blockOffset + localPositionIndex;
+              const field = raisedBed.fields.find(
+                  (candidate) =>
+                      candidate.active &&
+                      candidate.positionIndex === positionIndex,
+              );
+              const weedLevel = resolveRaisedBedFieldWeedLevel({
+                  fieldWeedState: field?.weedState,
+                  raisedBedFieldId:
+                      typeof field?.id === 'number' ? field.id : null,
+                  raisedBedId: raisedBed.id,
+                  raisedBedWeedState: raisedBed.weedState,
+                  visualRewards,
+              });
+
+              return weedLevel
+                  ? {
+                        level: weedLevel,
+                        positionIndex: localPositionIndex,
+                    }
+                  : null;
+          }).filter(
+              (
+                  visual,
+              ): visual is {
+                  level: VisibleRaisedBedWeedLevel;
+                  positionIndex: number;
+              } => Boolean(visual),
+          )
+        : [];
 
     return (
         <>
@@ -177,6 +289,15 @@ export function RaisedBedFields({
                     />
                 );
             })}
+            {weedFieldVisuals.map((visual) => (
+                <RaisedBedFieldWeedClump
+                    key={`raised-bed-field-weed-${blockId}-${visual.positionIndex}`}
+                    blockIndex={blockIndex}
+                    level={visual.level}
+                    orientation={orientation}
+                    positionIndex={visual.positionIndex}
+                />
+            ))}
             {displayedFields.map((field) => {
                 if (!field) return null;
                 if (

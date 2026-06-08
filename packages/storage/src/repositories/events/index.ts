@@ -84,6 +84,9 @@ export type {
     RaisedBedFieldPlantSchedulePayload,
     RaisedBedFieldPlantUpdatePayload,
     RaisedBedFieldSowingLocation,
+    RaisedBedWeedStateLevel,
+    RaisedBedWeedStateSetPayload,
+    RaisedBedWeedStateSource,
     // Receipt
     ReceiptCreatePayload,
     ReceiptFiscalizePayload,

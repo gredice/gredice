@@ -16,6 +16,8 @@ import {
     knownEvents,
     moveRaisedBedFieldPlantHistory,
     type RaisedBedFieldSowingLocation,
+    type RaisedBedWeedStateLevel,
+    setRaisedBedFieldWeedState as setRaisedBedFieldWeedStateInStorage,
     updateActiveRaisedBedFieldPlantStatusEventCreatedAt,
 } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
@@ -242,6 +244,41 @@ export async function raisedBedFieldUpdatePlant({
         status,
         plantSortId,
         timestamp,
+    });
+
+    await revalidateRaisedBedPaths(raisedBed);
+
+    return { success: true };
+}
+
+export async function setRaisedBedFieldWeedState({
+    level,
+    positionIndex,
+    raisedBedId,
+}: {
+    level: RaisedBedWeedStateLevel;
+    positionIndex: number;
+    raisedBedId: number;
+}) {
+    await auth(['admin']);
+
+    const raisedBed = await getRaisedBed(raisedBedId);
+    if (!raisedBed) {
+        throw new Error(`Raised bed with ID ${raisedBedId} not found.`);
+    }
+
+    const field = raisedBed.fields.find(
+        (item) => item.positionIndex === positionIndex && item.active,
+    );
+    if (field?.weedState?.level === level) {
+        return { success: true };
+    }
+
+    await setRaisedBedFieldWeedStateInStorage({
+        level,
+        positionIndex,
+        raisedBedId,
+        source: 'admin',
     });
 
     await revalidateRaisedBedPaths(raisedBed);

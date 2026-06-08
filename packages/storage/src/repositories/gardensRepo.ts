@@ -45,6 +45,9 @@ import {
     knownEvents,
     knownEventTypes,
     type RaisedBedFieldSowingLocation,
+    type RaisedBedWeedStateLevel,
+    type RaisedBedWeedStateSetPayload,
+    type RaisedBedWeedStateSource,
     updateEventCreatedAt,
 } from './eventsRepo';
 import { getFarms } from './farmsRepo';
@@ -74,6 +77,15 @@ type RaisedBedFieldPlantCycleEvent = typeof events.$inferSelect;
 export type RaisedBedFieldPlantStatusChange = {
     status: string;
     occurredAt: Date;
+};
+
+export type RaisedBedWeedState = {
+    level: RaisedBedWeedStateLevel;
+    source: RaisedBedWeedStateSource;
+    observedAt: Date;
+    updatedAt: Date;
+    eventId: number;
+    notes?: string | null;
 };
 
 export type RaisedBedFieldPlantCycle = {
@@ -608,6 +620,67 @@ function parseSowingLocation(
     value: unknown,
 ): RaisedBedFieldSowingLocation | undefined {
     return value === 'direct' || value === 'greenhouse' ? value : undefined;
+}
+
+function parseWeedStateLevel(value: unknown): RaisedBedWeedStateLevel | null {
+    switch (value) {
+        case 'none':
+        case 'light':
+        case 'heavy':
+            return value;
+        default:
+            return null;
+    }
+}
+
+function parseWeedStateSource(value: unknown): RaisedBedWeedStateSource {
+    return value === 'ai' ? 'ai' : 'admin';
+}
+
+function parseWeedStateObservedAt(value: unknown, fallbackDate: Date): Date {
+    if (typeof value !== 'string') {
+        return fallbackDate;
+    }
+
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? fallbackDate : date;
+}
+
+function weedStateFromEvent(
+    event: RaisedBedFieldPlantCycleEvent,
+): RaisedBedWeedState | null {
+    const data =
+        event.data && typeof event.data === 'object'
+            ? (event.data as Partial<RaisedBedWeedStateSetPayload>)
+            : undefined;
+    const level = parseWeedStateLevel(data?.level);
+    if (!level) {
+        return null;
+    }
+
+    return {
+        level,
+        source: parseWeedStateSource(data?.source),
+        observedAt: parseWeedStateObservedAt(data?.observedAt, event.createdAt),
+        updatedAt: event.createdAt,
+        eventId: event.id,
+        notes: typeof data?.notes === 'string' ? data.notes : null,
+    };
+}
+
+function latestWeedStateFromEvents(
+    weedStateEvents: RaisedBedFieldPlantCycleEvent[],
+) {
+    let weedState: RaisedBedWeedState | null = null;
+
+    for (const event of weedStateEvents) {
+        const nextWeedState = weedStateFromEvent(event);
+        if (nextWeedState) {
+            weedState = nextWeedState;
+        }
+    }
+
+    return weedState;
 }
 
 function splitPlantCycleEvents(
@@ -1590,6 +1663,48 @@ export async function getRaisedBedMetadataByIds(raisedBedIds: number[]) {
         .orderBy(asc(raisedBeds.id));
 }
 
+async function getRaisedBedWeedStatesByIds(raisedBedIds: number[]) {
+    const uniqueRaisedBedIds = Array.from(new Set(raisedBedIds));
+    const weedStatesByRaisedBedId = new Map<number, RaisedBedWeedState>();
+    if (uniqueRaisedBedIds.length === 0) {
+        return weedStatesByRaisedBedId;
+    }
+
+    const weedStateEvents = await getEvents(
+        knownEventTypes.raisedBeds.weedStateSet,
+        uniqueRaisedBedIds.map((raisedBedId) => raisedBedId.toString()),
+        0,
+        100000,
+    );
+
+    const eventsByRaisedBedId = new Map<
+        number,
+        RaisedBedFieldPlantCycleEvent[]
+    >();
+    for (const event of weedStateEvents) {
+        const raisedBedId = Number(event.aggregateId);
+        if (!Number.isInteger(raisedBedId)) {
+            continue;
+        }
+
+        const raisedBedEvents = eventsByRaisedBedId.get(raisedBedId);
+        if (raisedBedEvents) {
+            raisedBedEvents.push(event);
+        } else {
+            eventsByRaisedBedId.set(raisedBedId, [event]);
+        }
+    }
+
+    for (const [raisedBedId, events] of eventsByRaisedBedId) {
+        const weedState = latestWeedStateFromEvents(events);
+        if (weedState) {
+            weedStatesByRaisedBedId.set(raisedBedId, weedState);
+        }
+    }
+
+    return weedStatesByRaisedBedId;
+}
+
 export async function getRaisedBeds(
     gardenId: number,
     filters?: {
@@ -1609,6 +1724,9 @@ export async function getRaisedBeds(
     const beds = await storage().query.raisedBeds.findMany({
         where: and(...whereConditions),
     });
+    const weedStatesByRaisedBedId = await getRaisedBedWeedStatesByIds(
+        beds.map((bed) => bed.id),
+    );
 
     // For each raised bed, fetch and attach fields with event-sourced info
     return Promise.all(
@@ -1617,13 +1735,14 @@ export async function getRaisedBeds(
             return {
                 ...bed,
                 fields,
+                weedState: weedStatesByRaisedBedId.get(bed.id) ?? null,
             };
         }),
     );
 }
 
 export async function getRaisedBed(raisedBedId: number) {
-    const [raisedBed, fields] = await Promise.all([
+    const [raisedBed, fields, weedStatesByRaisedBedId] = await Promise.all([
         storage().query.raisedBeds.findFirst({
             where: and(
                 eq(raisedBeds.id, raisedBedId),
@@ -1631,13 +1750,96 @@ export async function getRaisedBed(raisedBedId: number) {
             ),
         }),
         getRaisedBedFieldsWithEvents(raisedBedId),
+        getRaisedBedWeedStatesByIds([raisedBedId]),
     ]);
     if (!raisedBed) return null;
     // Attach raised bed fields with event-sourced info
     return {
         ...raisedBed,
         fields,
+        weedState: weedStatesByRaisedBedId.get(raisedBed.id) ?? null,
     };
+}
+
+function buildWeedStatePayload({
+    level,
+    observedAt,
+    source,
+}: {
+    level: RaisedBedWeedStateLevel;
+    observedAt?: Date;
+    source: RaisedBedWeedStateSource;
+}): RaisedBedWeedStateSetPayload {
+    return {
+        level,
+        source,
+        observedAt: (observedAt ?? new Date()).toISOString(),
+    };
+}
+
+export async function setRaisedBedWeedState({
+    level,
+    observedAt,
+    raisedBedId,
+    source = 'admin',
+}: {
+    level: RaisedBedWeedStateLevel;
+    observedAt?: Date;
+    raisedBedId: number;
+    source?: RaisedBedWeedStateSource;
+}) {
+    const raisedBed = await storage().query.raisedBeds.findFirst({
+        where: and(
+            eq(raisedBeds.id, raisedBedId),
+            eq(raisedBeds.isDeleted, false),
+        ),
+    });
+    if (!raisedBed) {
+        throw new Error(`Raised bed with ID ${raisedBedId} not found.`);
+    }
+
+    await createEvent(
+        knownEvents.raisedBeds.weedStateSetV1(
+            raisedBedId.toString(),
+            buildWeedStatePayload({ level, observedAt, source }),
+        ),
+    );
+}
+
+export async function setRaisedBedFieldWeedState({
+    level,
+    observedAt,
+    positionIndex,
+    raisedBedId,
+    source = 'admin',
+}: {
+    level: RaisedBedWeedStateLevel;
+    observedAt?: Date;
+    positionIndex: number;
+    raisedBedId: number;
+    source?: RaisedBedWeedStateSource;
+}) {
+    if (!Number.isInteger(positionIndex) || positionIndex < 0) {
+        throw new Error('Field position must be zero or greater.');
+    }
+
+    const raisedBed = await storage().query.raisedBeds.findFirst({
+        where: and(
+            eq(raisedBeds.id, raisedBedId),
+            eq(raisedBeds.isDeleted, false),
+        ),
+    });
+    if (!raisedBed) {
+        throw new Error(`Raised bed with ID ${raisedBedId} not found.`);
+    }
+
+    await upsertRaisedBedField({ raisedBedId, positionIndex });
+    await createEvent(
+        knownEvents.raisedBedFields.weedStateSetV1(
+            `${raisedBedId.toString()}|${positionIndex.toString()}`,
+            buildWeedStatePayload({ level, observedAt, source }),
+        ),
+    );
 }
 
 export async function getRaisedBedFieldPlantCycles(raisedBedId: number) {
@@ -1716,6 +1918,7 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
             knownEventTypes.raisedBedFields.plantSchedule,
             knownEventTypes.raisedBedFields.plantUpdate,
             knownEventTypes.raisedBedFields.plantReplaceSort,
+            knownEventTypes.raisedBedFields.weedStateSet,
         ],
         fieldAggregateIds,
         0,
@@ -1776,6 +1979,7 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
         let assignedUserIds: string[] | undefined;
         let assignedBy: string | null | undefined;
         let assignedAt: Date | undefined;
+        let weedState: RaisedBedWeedState | null = null;
 
         for (const event of events) {
             const data = event.data as Record<string, unknown> | undefined;
@@ -1956,6 +2160,12 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                     plantSortId = parseInt(data.plantSortId, 10);
                 }
             }
+            // Handle weed state updates
+            else if (
+                event.type === knownEventTypes.raisedBedFields.weedStateSet
+            ) {
+                weedState = weedStateFromEvent(event) ?? weedState;
+            }
             // Handle field deletion event
             else if (event.type === knownEventTypes.raisedBedFields.delete) {
                 plantStatus = 'deleted';
@@ -1996,6 +2206,7 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
             assignedUserId,
             assignedBy,
             assignedAt,
+            weedState,
         };
     });
 }

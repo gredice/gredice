@@ -42,6 +42,7 @@ import type {
     RaisedBedFieldPlantReplaceSortPayload,
     RaisedBedFieldPlantSchedulePayload,
     RaisedBedFieldPlantUpdatePayload,
+    RaisedBedWeedStateSetPayload,
     ReceiptCreatePayload,
     ReceiptFiscalizePayload,
     TransactionCreatePayload,
@@ -257,6 +258,15 @@ export const knownEvents = {
             aggregateId,
             data,
         }),
+        weedStateSetV1: (
+            aggregateId: string,
+            data: RaisedBedWeedStateSetPayload,
+        ) => ({
+            type: knownEventTypes.raisedBeds.weedStateSet,
+            version: 1,
+            aggregateId,
+            data,
+        }),
     },
     raisedBedFields: {
         createdV1: (
@@ -314,6 +324,15 @@ export const knownEvents = {
             data: RaisedBedFieldAiAnalysisPayload,
         ) => ({
             type: knownEventTypes.raisedBedFields.aiAnalysis,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        weedStateSetV1: (
+            aggregateId: string,
+            data: RaisedBedWeedStateSetPayload,
+        ) => ({
+            type: knownEventTypes.raisedBedFields.weedStateSet,
             version: 1,
             aggregateId,
             data,
