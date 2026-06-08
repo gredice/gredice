@@ -12,6 +12,7 @@ function operation(id: number): OperationVisualDefinitionInput {
         id,
         attributes: {
             application: 'raisedBedFull',
+            visualReward: 'photographyUpdate',
         },
         information: {
             description: 'Fotografiranje gredice',
