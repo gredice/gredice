@@ -25,6 +25,10 @@ import {
 } from './RaisedBedPlantField';
 import { resolveRaisedBedAgrotextileCoverPositions } from './raisedBedAgrotextileRewards';
 import { resolveRaisedBedHarvestPositions } from './raisedBedHarvestRewards';
+import {
+    type RaisedBedPhotographyMarker,
+    resolveRaisedBedPhotographyMarkers,
+} from './raisedBedPhotographyRewards';
 import { resolveRaisedBedSupportPositions } from './raisedBedSupportRewards';
 import { isWateringRewardVisible } from './raisedBedWateringRewards';
 import {
@@ -317,6 +321,49 @@ function RaisedBedFieldHarvestCrate({
     );
 }
 
+function RaisedBedFieldPhotographyMarker({
+    blockIndex,
+    marker,
+    orientation,
+}: {
+    blockIndex: number;
+    marker: RaisedBedPhotographyMarker;
+    orientation: RaisedBedOrientation;
+}) {
+    const position = getRaisedBedFieldSurfacePosition({
+        blockIndex,
+        orientation,
+        positionIndex: marker.positionIndex,
+        y: -0.61,
+    });
+    const badgeScale = marker.scope === 'raisedBed' ? 1.12 : 1;
+
+    return (
+        <group position={position} scale={badgeScale}>
+            <mesh position={[-0.074, 0.04, 0.074]} renderOrder={7}>
+                <boxGeometry args={[0.108, 0.01, 0.078]} />
+                <meshStandardMaterial color="#f4f1e8" roughness={0.88} />
+            </mesh>
+            <mesh position={[-0.074, 0.047, 0.074]} renderOrder={8}>
+                <boxGeometry args={[0.08, 0.006, 0.048]} />
+                <meshStandardMaterial color="#7aa4b8" roughness={0.9} />
+            </mesh>
+            <mesh position={[-0.1, 0.054, 0.052]} renderOrder={9}>
+                <sphereGeometry args={[0.014, 8, 6]} />
+                <meshStandardMaterial color="#263238" roughness={0.75} />
+            </mesh>
+            <mesh position={[-0.032, 0.061, 0.11]} renderOrder={10}>
+                <sphereGeometry args={[0.018, 8, 6]} />
+                <meshStandardMaterial color="#48a05b" roughness={0.65} />
+            </mesh>
+            <mesh position={[-0.026, 0.079, 0.118]} renderOrder={11}>
+                <coneGeometry args={[0.012, 0.028, 3]} />
+                <meshStandardMaterial color="#48a05b" roughness={0.65} />
+            </mesh>
+        </group>
+    );
+}
+
 export function RaisedBedFields({
     blockId,
     generatedPlantsHandledExternally = false,
@@ -457,6 +504,14 @@ export function RaisedBedFields({
         (positionIndex) => !agrotextileCoverPositionSet.has(positionIndex),
     );
     const harvestPositionSet = new Set(visibleHarvestPositions);
+    const photographyMarkers = raisedBed
+        ? resolveRaisedBedPhotographyMarkers({
+              blockOffset,
+              fields: raisedBed.fields,
+              raisedBedId: raisedBed.id,
+              visualRewards,
+          })
+        : [];
 
     return (
         <>
@@ -556,6 +611,14 @@ export function RaisedBedFields({
                     blockIndex={blockIndex}
                     orientation={orientation}
                     positionIndex={positionIndex}
+                />
+            ))}
+            {photographyMarkers.map((marker) => (
+                <RaisedBedFieldPhotographyMarker
+                    key={`raised-bed-field-photo-${blockId}-${marker.scope}-${marker.positionIndex}-${marker.timestampMs}`}
+                    blockIndex={blockIndex}
+                    marker={marker}
+                    orientation={orientation}
                 />
             ))}
         </>

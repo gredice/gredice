@@ -4,6 +4,7 @@ import {
     resolveOperationVisualRewards,
 } from '../operationVisualRewards';
 import type { useCurrentGarden } from './useCurrentGarden';
+import { useGardenOperations } from './useGardenOperations';
 import { useOperations } from './useOperations';
 
 type CurrentGardenData = NonNullable<
@@ -24,6 +25,12 @@ export function useRaisedBedOperationVisualRewards(
     raisedBed: RaisedBedData | null | undefined,
 ) {
     const { data: operations } = useOperations();
+    const history = useGardenOperations({
+        enabled: Boolean(raisedBed),
+        includeCompleted: true,
+        pageSize: 20,
+        raisedBedId: raisedBed?.id,
+    });
 
     return useMemo(() => {
         if (!raisedBed || !operations) {
@@ -32,7 +39,9 @@ export function useRaisedBedOperationVisualRewards(
 
         return resolveOperationVisualRewards({
             appliedOperations: raisedBedAppliedOperationVisualInputs(raisedBed),
+            operationItems:
+                history.data?.pages.flatMap((page) => page.items) ?? [],
             operations,
         });
-    }, [operations, raisedBed]);
+    }, [history.data?.pages, operations, raisedBed]);
 }
