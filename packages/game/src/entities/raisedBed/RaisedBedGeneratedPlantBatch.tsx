@@ -1,30 +1,25 @@
 'use client';
 
-import { useLayoutEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import CSM from 'three-custom-shader-material';
 import { useGeneratedLSystemSymbolsBatch } from '../../generators/plant/hooks/useGeneratedLSystem';
-import type { PlantLodLevel } from '../../generators/plant/hooks/usePlantLod';
-import { usePlantSway } from '../../generators/plant/hooks/usePlantSway';
-import { buildPlantRenderData } from '../../generators/plant/lib/buildPlantRenderData';
+import {
+    buildPlantRenderData,
+    type PlantStemSegment,
+} from '../../generators/plant/lib/buildPlantRenderData';
 import {
     MAX_PLANT_GENERATION,
     type PlantDefinition,
 } from '../../generators/plant/lib/plant-definitions';
-import {
-    createStemSurfaceUniforms,
-    stemSurfaceFragmentShader,
-    stemSurfaceVertexShader,
-} from '../../generators/plant/lib/plant-stem-material';
-import { PlantGenerator } from '../../generators/plant/PlantGenerator';
+import type { PlantLodLevel } from '../../generators/plant/lib/plantLod';
 import { Flowers } from '../../generators/plant/parts/flowers';
 import { Leaves } from '../../generators/plant/parts/leaves';
-import { PlantBillboard } from '../../generators/plant/parts/PlantBillboard';
+import { PlantBillboardBatch } from '../../generators/plant/parts/PlantBillboard';
+import { Stems } from '../../generators/plant/parts/stems';
 import { Thorns } from '../../generators/plant/parts/thorns';
 import { Vegetables } from '../../generators/plant/parts/vegetables';
 
-interface RaisedBedGeneratedPlantBatchInstance {
+export interface RaisedBedGeneratedPlantBatchInstance {
     generation: number;
     position: readonly [number, number, number];
     scale: number;
@@ -49,7 +44,7 @@ type BatchedPlantRenderData = {
     flowers: THREE.Matrix4[];
     leafColors: THREE.Color[];
     leaves: THREE.Matrix4[];
-    stemGeometry: THREE.BufferGeometry;
+    stemSegments: PlantStemSegment[];
     thorns: THREE.Matrix4[];
     vegetables: ReturnType<typeof buildPlantRenderData>['vegetables'];
 };
@@ -63,36 +58,20 @@ function RaisedBedDetailedPlantBatch({
     batchedData: BatchedPlantRenderData;
     definition: PlantDefinition;
 }) {
-    const stemSwayUniforms = usePlantSway(batchSeed, {
-        amplitude: 0.055,
-        speed: 1.1,
-    });
-    const stemSurfaceUniforms = useMemo(
-        () => createStemSurfaceUniforms(definition.stem),
-        [definition.stem],
-    );
-
     return (
-        <group>
-            <mesh geometry={batchedData.stemGeometry} castShadow>
-                <CSM
-                    baseMaterial={THREE.MeshStandardMaterial}
-                    vertexShader={stemSurfaceVertexShader}
-                    fragmentShader={stemSurfaceFragmentShader}
-                    uniforms={{
-                        ...stemSwayUniforms,
-                        ...stemSurfaceUniforms,
-                    }}
-                    color={definition.stem.color}
-                    roughness={0.8}
-                    metalness={0.2}
-                />
-            </mesh>
+        <group name={`RaisedBedPlantBatch:${definition.name}:near`}>
+            <Stems
+                seed={batchSeed}
+                segments={batchedData.stemSegments}
+                stem={definition.stem}
+                debugName={`RaisedBedPlantStems:${definition.name}:segments:${batchedData.stemSegments.length}`}
+            />
             <Leaves
                 seed={`${batchSeed}-leaves`}
                 matrices={batchedData.leaves}
                 colors={batchedData.leafColors}
                 type={definition.leaf.type}
+                debugName={`RaisedBedPlantLeaves:${definition.name}:count:${batchedData.leaves.length}`}
             />
             {definition.flower.enabled && (
                 <Flowers
@@ -154,7 +133,7 @@ export function RaisedBedGeneratedPlantBatch({
         const rootPosition = new THREE.Vector3();
         const rootScale = new THREE.Vector3();
         const rootMatrix = new THREE.Matrix4();
-        const stemGeometries: THREE.BufferGeometry[] = [];
+        const stemSegments: PlantStemSegment[] = [];
         const leaves: THREE.Matrix4[] = [];
         const leafColors: THREE.Color[] = [];
         const flowers: THREE.Matrix4[] = [];
@@ -196,17 +175,15 @@ export function RaisedBedGeneratedPlantBatch({
             rootMatrix.compose(rootPosition, ROOT_QUATERNION, rootScale);
 
             if (!renderDetailedGeometry) {
-                plantData.stemGeometry.dispose();
                 return;
             }
 
-            if (plantData.stemGeometry.getAttribute('position')) {
-                plantData.stemGeometry.applyMatrix4(rootMatrix);
-                stemGeometries.push(plantData.stemGeometry);
-            } else {
-                plantData.stemGeometry.dispose();
-            }
-
+            plantData.stemSegments.forEach((segment) => {
+                stemSegments.push({
+                    ...segment,
+                    matrix: segment.matrix.clone().premultiply(rootMatrix),
+                });
+            });
             plantData.leaves.forEach((matrix) => {
                 leaves.push(matrix.clone().premultiply(rootMatrix));
             });
@@ -226,29 +203,16 @@ export function RaisedBedGeneratedPlantBatch({
                 thorns.push(matrix.clone().premultiply(rootMatrix));
             });
         });
-        const stemGeometry = stemGeometries.length
-            ? mergeGeometries(stemGeometries)
-            : new THREE.BufferGeometry();
-        stemGeometries.forEach((geometry) => {
-            geometry.dispose();
-        });
-
         return {
             billboards,
             flowers,
             leafColors,
             leaves,
-            stemGeometry,
+            stemSegments,
             thorns,
             vegetables,
         } satisfies BatchedPlantRenderData;
     }, [definition, instances, renderDetailedGeometry, symbols]);
-
-    useLayoutEffect(() => {
-        return () => {
-            batchedData?.stemGeometry.dispose();
-        };
-    }, [batchedData]);
 
     if (!batchedData) {
         return null;
@@ -256,44 +220,11 @@ export function RaisedBedGeneratedPlantBatch({
 
     if (lodLevel !== 'near') {
         return (
-            <group>
-                {batchedData.billboards.map((billboard) => (
-                    <group
-                        key={billboard.seed}
-                        position={billboard.position}
-                        scale={[
-                            billboard.scale,
-                            billboard.scale,
-                            billboard.scale,
-                        ]}
-                    >
-                        <PlantBillboard
-                            level={lodLevel}
-                            summary={billboard.summary}
-                        />
-                    </group>
-                ))}
-            </group>
-        );
-    }
-
-    if (instances.length <= 1 && symbols[0]) {
-        const [instance] = instances;
-
-        return (
-            <group
-                position={instance.position}
-                scale={[instance.scale, instance.scale, instance.scale]}
-            >
-                <PlantGenerator
-                    plantDefinition={definition}
-                    lSystemSymbols={symbols[0]}
-                    generation={instance.generation}
-                    seed={instance.seed}
-                    flowerGrowth={1}
-                    fruitGrowth={1}
-                />
-            </group>
+            <PlantBillboardBatch
+                billboards={batchedData.billboards}
+                debugName={`RaisedBedPlantBillboards:${definition.name}`}
+                level={lodLevel}
+            />
         );
     }
 

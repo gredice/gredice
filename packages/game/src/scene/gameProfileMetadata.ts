@@ -16,6 +16,14 @@ export type GameProfileMetadata = {
     qualityTier?: GameQualityProfileTier;
     rainParticleCount?: number;
     raisedBedMulchOverlayCount?: number;
+    rendererGeometries?: number;
+    rendererLines?: number;
+    rendererMatrices?: number;
+    rendererPoints?: number;
+    rendererRenderCalls?: number;
+    rendererShaders?: number;
+    rendererTextures?: number;
+    rendererTriangles?: number;
     shadowMapAutoUpdate?: boolean;
     shadowMapDynamicRefreshMs?: number;
     shadowMapInvalidationCount?: number;

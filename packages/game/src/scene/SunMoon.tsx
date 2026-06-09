@@ -399,6 +399,7 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
         <>
             <mesh
                 ref={sunMesh}
+                name="Environment:SunBillboard"
                 frustumCulled={false}
                 renderOrder={-1}
                 material={sunMaterial}
@@ -407,6 +408,7 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
             </mesh>
             <mesh
                 ref={moonMesh}
+                name="Environment:MoonBillboard"
                 frustumCulled={false}
                 renderOrder={-1}
                 material={moonMaterial}

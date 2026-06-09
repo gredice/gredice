@@ -110,6 +110,12 @@ function formatMetric(value: number | null | undefined, suffix = '') {
         : 'n/a';
 }
 
+function formatCount(value: number | null | undefined) {
+    return typeof value === 'number' && Number.isFinite(value)
+        ? Math.round(value).toLocaleString('hr-HR')
+        : 'n/a';
+}
+
 function formatTemperature(value: number | null | undefined) {
     return typeof value === 'number' && Number.isFinite(value)
         ? `${Math.round(value)}°C`
@@ -775,6 +781,62 @@ export function DebugHud() {
                                     icon={FullWidth}
                                     label="Canvas"
                                     value={canvasSize}
+                                />
+                                <InfoRow
+                                    icon={Graph}
+                                    label="Render calls"
+                                    value={formatCount(
+                                        profileSnapshot?.rendererRenderCalls,
+                                    )}
+                                />
+                                <InfoRow
+                                    icon={Layers}
+                                    label="Triangles"
+                                    value={formatCount(
+                                        profileSnapshot?.rendererTriangles,
+                                    )}
+                                />
+                                <InfoRow
+                                    icon={Custom}
+                                    label="Shaders"
+                                    value={formatCount(
+                                        profileSnapshot?.rendererShaders,
+                                    )}
+                                />
+                                <InfoRow
+                                    icon={Layers}
+                                    label="Geometries"
+                                    value={formatCount(
+                                        profileSnapshot?.rendererGeometries,
+                                    )}
+                                />
+                                <InfoRow
+                                    icon={Desktop}
+                                    label="Textures"
+                                    value={formatCount(
+                                        profileSnapshot?.rendererTextures,
+                                    )}
+                                />
+                                <InfoRow
+                                    icon={FullWidth}
+                                    label="Lines"
+                                    value={formatCount(
+                                        profileSnapshot?.rendererLines,
+                                    )}
+                                />
+                                <InfoRow
+                                    icon={MapPin}
+                                    label="Points"
+                                    value={formatCount(
+                                        profileSnapshot?.rendererPoints,
+                                    )}
+                                />
+                                <InfoRow
+                                    icon={Settings}
+                                    label="Matrices"
+                                    value={formatCount(
+                                        profileSnapshot?.rendererMatrices,
+                                    )}
                                 />
                                 <InfoRow
                                     icon={Sun}

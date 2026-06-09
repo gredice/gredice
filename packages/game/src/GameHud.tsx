@@ -34,9 +34,11 @@ export const gameHudBottomControlsClassName =
     'flex flex-row items-end p-2 md:absolute md:bottom-0 md:left-0';
 
 export function GameHud({
+    debugHud,
     flags,
     noWeather,
 }: {
+    debugHud?: boolean;
     flags: GameSceneProps['flags'];
     noWeather?: boolean;
 }) {
@@ -106,7 +108,7 @@ export function GameHud({
                 </>
             )}
             {!isLocalSandbox && <PaymentSuccessfulMessage />}
-            {Boolean(flags?.enableDebugHudFlag) && <DebugHud />}
+            {debugHud && <DebugHud />}
         </>
     );
 }

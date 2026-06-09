@@ -11,12 +11,12 @@ import {
 } from 'react';
 import * as THREE from 'three';
 import { useGameState } from '../../../useGameState';
+import {
+    type PlantLodLevel,
+    resolvePlantLodLevel,
+    resolvePlantLodLevelWithHysteresis,
+} from '../lib/plantLod';
 
-export type PlantLodLevel = 'near' | 'mid' | 'far';
-
-const NEAR_THRESHOLD = 0.12;
-const FAR_THRESHOLD = 0.045;
-const HYSTERESIS = 0.012;
 const DEFAULT_VISIBILITY_MARGIN = 0.14;
 
 export type PlantLodState = {
@@ -31,44 +31,8 @@ type PlantLodOptions = {
     visibilityMargin?: number;
 };
 
-function resolveLodLevel(screenOccupancy: number): PlantLodLevel {
-    if (screenOccupancy >= NEAR_THRESHOLD) {
-        return 'near';
-    }
-
-    if (screenOccupancy >= FAR_THRESHOLD) {
-        return 'mid';
-    }
-
-    return 'far';
-}
-
-function resolveLodLevelWithHysteresis(
-    currentLevel: PlantLodLevel,
-    screenOccupancy: number,
-) {
-    if (currentLevel === 'near') {
-        if (screenOccupancy >= NEAR_THRESHOLD - HYSTERESIS) {
-            return 'near';
-        }
-        return screenOccupancy >= FAR_THRESHOLD - HYSTERESIS ? 'mid' : 'far';
-    }
-
-    if (currentLevel === 'mid') {
-        if (screenOccupancy >= NEAR_THRESHOLD + HYSTERESIS) {
-            return 'near';
-        }
-        if (screenOccupancy < FAR_THRESHOLD - HYSTERESIS) {
-            return 'far';
-        }
-        return 'mid';
-    }
-
-    if (screenOccupancy >= NEAR_THRESHOLD + HYSTERESIS) {
-        return 'near';
-    }
-
-    return screenOccupancy >= FAR_THRESHOLD + HYSTERESIS ? 'mid' : 'far';
+function getOrthographicCameraZoom(camera: THREE.Camera) {
+    return camera instanceof THREE.OrthographicCamera ? camera.zoom : 0;
 }
 
 function resolvePlantVisibility({
@@ -121,7 +85,7 @@ export function usePlantLodState(
     const gameCamera = useGameState((state) => state.gameCamera);
     const worldPosition = useMemo(() => new THREE.Vector3(), []);
     const [lodState, setLodState] = useState<PlantLodState>(() => ({
-        level: cullOffscreen ? 'far' : resolveLodLevel(1),
+        level: cullOffscreen ? 'far' : resolvePlantLodLevel(1),
         measured: false,
         screenOccupancy: cullOffscreen ? 0 : 1,
         visible: !cullOffscreen,
@@ -155,10 +119,11 @@ export function usePlantLodState(
             viewportHeight,
             worldPosition,
         });
-        const nextLevel = resolveLodLevelWithHysteresis(
-            lodStateRef.current.level,
+        const nextLevel = resolvePlantLodLevelWithHysteresis({
+            cameraZoom: getOrthographicCameraZoom(camera),
+            currentLevel: lodStateRef.current.level,
             screenOccupancy,
-        );
+        });
 
         const resolvedLevel = visible ? nextLevel : 'far';
         setLodState((current) => {

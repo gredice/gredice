@@ -13,6 +13,7 @@ import { useGameState } from '../useGameState';
 
 type RainWetOverlayProps = {
     geometry: BufferGeometry;
+    debugName?: string;
     minRain?: number;
     intensityMultiplier?: number;
     drySpeed?: number;
@@ -213,6 +214,7 @@ export function useRainWetOverlayMaterial({
 }
 
 function RainWetOverlayEffect({
+    debugName = 'RainWetOverlay',
     geometry,
     minRain = 0.08,
     intensityMultiplier = 1,
@@ -242,5 +244,5 @@ function RainWetOverlayEffect({
         return null;
     }
 
-    return <mesh geometry={geometry} material={material} />;
+    return <mesh name={debugName} geometry={geometry} material={material} />;
 }

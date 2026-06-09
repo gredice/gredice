@@ -246,6 +246,7 @@ export function BlockInteractionLayer({
         // biome-ignore lint/a11y/noStaticElementInteractions: Three.js mesh is the single block interaction plane.
         <mesh
             ref={layerRef}
+            name={`Interaction:BlockLayer:targets:${targets.length}`}
             frustumCulled={false}
             onClick={handleClick}
             onPointerDown={handlePointerDown}

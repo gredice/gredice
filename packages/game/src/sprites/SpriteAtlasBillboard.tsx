@@ -17,6 +17,7 @@ type SpriteAtlasBillboardProps = {
     alphaTest?: number;
     atlasBasePath: string;
     depthWrite?: boolean;
+    debugName?: string;
     follow?: boolean;
     height?: number;
     opacity?: number;
@@ -45,6 +46,7 @@ type WobbleAnimation = {
 type BillboardMeshProps = {
     alphaTest: number;
     color: Color;
+    debugName: string;
     depthWrite: boolean;
     geometry: PlaneGeometry;
     opacity: number;
@@ -187,6 +189,7 @@ transformed =
 export function SpriteAtlasBillboard({
     alphaTest = 0.05,
     atlasBasePath,
+    debugName,
     depthWrite = false,
     follow = true,
     height = 1,
@@ -204,6 +207,8 @@ export function SpriteAtlasBillboard({
         () => resolveSpriteAtlasAssetPaths(atlasBasePath),
         [atlasBasePath],
     );
+    const resolvedDebugName =
+        debugName ?? `SpriteAtlasBillboard:${atlasBasePath}:${spriteName}`;
     const brightness = getSpriteBrightness(timeOfDay, weather);
     const color = useMemo(() => {
         return new Color().setScalar(brightness);
@@ -349,10 +354,15 @@ export function SpriteAtlasBillboard({
     }
 
     return (
-        <Billboard follow={follow} position={position}>
+        <Billboard
+            follow={follow}
+            name={`${resolvedDebugName}:billboard`}
+            position={position}
+        >
             <SpriteAtlasBillboardMesh
                 alphaTest={alphaTest}
                 color={color}
+                debugName={resolvedDebugName}
                 depthWrite={depthWrite}
                 geometry={geometry}
                 opacity={opacity}
@@ -384,6 +394,7 @@ function SpriteAtlasBillboardMesh({
 function StaticSpriteAtlasBillboardMesh({
     alphaTest,
     color,
+    debugName,
     depthWrite,
     geometry,
     opacity,
@@ -393,6 +404,7 @@ function StaticSpriteAtlasBillboardMesh({
 }: BillboardMeshProps) {
     return (
         <mesh
+            name={`${debugName}:mesh`}
             renderOrder={renderOrder}
             receiveShadow
             rotation={[0, 0, rotationZ]}
@@ -413,6 +425,7 @@ function StaticSpriteAtlasBillboardMesh({
 function AnimatedSpriteAtlasBillboardMesh({
     alphaTest,
     color,
+    debugName,
     depthWrite,
     geometry,
     opacity,
@@ -438,6 +451,7 @@ function AnimatedSpriteAtlasBillboardMesh({
 
     return (
         <mesh
+            name={`${debugName}:animatedMesh`}
             renderOrder={renderOrder}
             receiveShadow
             rotation={[0, 0, rotationZ]}

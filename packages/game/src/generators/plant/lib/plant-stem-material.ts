@@ -14,6 +14,27 @@ export const stemSurfaceVertexShader = /* glsl */ `
     )}
 `;
 
+export const instancedStemSurfaceVertexShader = /* glsl */ `
+    attribute vec2 stemRadius;
+    varying vec3 vStemSurfacePosition;
+
+    ${plantSwayVertexShader
+        .replace(
+            'void main() {',
+            `
+        void main() {
+            float stemT = clamp(position.y, 0.0, 1.0);
+            float radius = mix(stemRadius.x, stemRadius.y, stemT);
+            vec3 taperedPosition = vec3(position.x * radius, position.y, position.z * radius);
+            vStemSurfacePosition = (instanceMatrix * vec4(taperedPosition, 1.0)).xyz;
+        `,
+        )
+        .replace(
+            'vec4 localPosition = vec4(position, 1.0);',
+            'vec4 localPosition = vec4(taperedPosition, 1.0);',
+        )}
+`;
+
 export const stemSurfaceFragmentShader = /* glsl */ `
     uniform vec3 uStemDetailColor;
     uniform float uStemDetailScale;
