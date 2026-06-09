@@ -1152,14 +1152,19 @@ export function Environment({
             {!noBackground && (
                 <SceneBackgroundColor animate color={background} />
             )}
-            <ambientLight intensity={ambient.intensity} />
+            <ambientLight
+                name="Environment:AmbientLight"
+                intensity={ambient.intensity}
+            />
             {lightningFlash > 0 && (
                 <ambientLight
+                    name="Environment:LightningAmbientLight"
                     color={0xf8fbff}
                     intensity={lightningFlash * 1.2}
                 />
             )}
             <hemisphereLight
+                name="Environment:HemisphereLight"
                 position={[0, 1, 0]}
                 color={hemisphere.color}
                 groundColor={hemisphere.groundColor}
@@ -1168,6 +1173,7 @@ export function Environment({
             {/* TODO: Update shadow camera position based on camera position */}
             <directionalLight
                 key={directionalLightKey}
+                name="Environment:SunDirectionalLight"
                 intensity={directionalLight.intensity}
                 color={directionalLight.color}
                 position={directionalLight.position}
@@ -1181,6 +1187,7 @@ export function Environment({
                 castShadow={qualityProfile.shadows}
             >
                 <orthographicCamera
+                    name="Environment:SunShadowCamera"
                     attach="shadow-camera"
                     args={[
                         -shadowCameraSize,

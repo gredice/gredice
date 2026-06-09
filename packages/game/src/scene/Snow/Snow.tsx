@@ -239,8 +239,9 @@ const Snow = ({
     );
 
     return (
-        <group ref={fref}>
+        <group ref={fref} name="Weather:Snow">
             <instancedMesh
+                name={`Weather:SnowFlakes:count:${count}`}
                 args={[geometry, undefined, count]}
                 frustumCulled={false}
                 renderOrder={36}

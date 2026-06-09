@@ -12,7 +12,7 @@ const defaultOutDir = resolve(appRoot, 'test-results/game-profile');
 const coreScenarios = [
     {
         name: 'game-baseline-desktop',
-        path: '/debug/profile/game?mode=baseline&controls=0&quality=medium',
+        path: '/debug/profile/game?mode=baseline&quality=medium',
         viewport: { width: 1280, height: 720 },
         dpr: 1,
         isMobile: false,
@@ -20,7 +20,7 @@ const coreScenarios = [
     },
     {
         name: 'game-baseline-mobile',
-        path: '/debug/profile/game?mode=baseline&controls=0&quality=low',
+        path: '/debug/profile/game?mode=baseline&quality=medium',
         viewport: { width: 390, height: 844 },
         dpr: 3,
         isMobile: true,
@@ -28,7 +28,7 @@ const coreScenarios = [
     },
     {
         name: 'game-details-desktop',
-        path: '/debug/profile/game?mode=details&controls=0&quality=medium',
+        path: '/debug/profile/game?mode=details&quality=medium',
         viewport: { width: 1280, height: 720 },
         dpr: 1,
         isMobile: false,
@@ -36,7 +36,7 @@ const coreScenarios = [
     },
     {
         name: 'game-rain-mobile',
-        path: '/debug/profile/game?mode=rain&controls=0&quality=low',
+        path: '/debug/profile/game?mode=rain&quality=medium',
         viewport: { width: 390, height: 844 },
         dpr: 3,
         isMobile: true,
@@ -44,7 +44,7 @@ const coreScenarios = [
     },
     {
         name: 'game-snow-mobile',
-        path: '/debug/profile/game?mode=snow&controls=0&quality=low',
+        path: '/debug/profile/game?mode=snow&quality=medium',
         viewport: { width: 390, height: 844 },
         dpr: 3,
         isMobile: true,
@@ -63,7 +63,7 @@ const coreScenarios = [
 const denseScenarios = [
     {
         name: 'game-dense-25x25-desktop',
-        path: '/debug/profile/game?mode=details&profile=dense&controls=0&quality=medium',
+        path: '/debug/profile/game?mode=details&profile=dense&quality=medium',
         viewport: { width: 1280, height: 720 },
         dpr: 1,
         isMobile: false,
@@ -71,7 +71,7 @@ const denseScenarios = [
     },
     {
         name: 'game-dense-25x25-high-desktop',
-        path: '/debug/profile/game?mode=details&profile=dense&controls=0&quality=high',
+        path: '/debug/profile/game?mode=details&profile=dense&quality=high',
         viewport: { width: 1280, height: 720 },
         dpr: 1,
         isMobile: false,
@@ -96,7 +96,7 @@ const denseScenarios = [
     },
     {
         name: 'game-dense-25x25-rain-desktop',
-        path: '/debug/profile/game?mode=rain&profile=dense&details=1&controls=0&quality=medium',
+        path: '/debug/profile/game?mode=rain&profile=dense&quality=medium',
         viewport: { width: 1280, height: 720 },
         dpr: 1,
         isMobile: false,
@@ -104,7 +104,7 @@ const denseScenarios = [
     },
     {
         name: 'game-dense-25x25-snow-desktop',
-        path: '/debug/profile/game?mode=snow&profile=dense&details=1&controls=0&quality=medium',
+        path: '/debug/profile/game?mode=snow&profile=dense&quality=medium',
         viewport: { width: 1280, height: 720 },
         dpr: 1,
         isMobile: false,
@@ -112,7 +112,7 @@ const denseScenarios = [
     },
     {
         name: 'game-dense-25x25-cloudy-desktop',
-        path: '/debug/profile/game?mode=cloudy&profile=dense&details=1&controls=0&quality=medium',
+        path: '/debug/profile/game?mode=cloudy&profile=dense&quality=medium',
         viewport: { width: 1280, height: 720 },
         dpr: 1,
         isMobile: false,
@@ -120,7 +120,7 @@ const denseScenarios = [
     },
     {
         name: 'game-dense-25x25-windy-desktop',
-        path: '/debug/profile/game?mode=windy&profile=dense&details=1&controls=0&quality=medium',
+        path: '/debug/profile/game?mode=windy&profile=dense&quality=medium',
         viewport: { width: 1280, height: 720 },
         dpr: 1,
         isMobile: false,
@@ -128,7 +128,7 @@ const denseScenarios = [
     },
     {
         name: 'game-plant-heavy-25x25-desktop',
-        path: '/debug/profile/game?mode=details&profile=plant-heavy&controls=0&quality=medium',
+        path: '/debug/profile/game?mode=details&profile=plant-heavy&quality=medium',
         viewport: { width: 1280, height: 720 },
         dpr: 1,
         isMobile: false,
@@ -365,8 +365,11 @@ function resolveScenarios(scenarioSet) {
 function getScenarioRequest(path) {
     const url = new URL(path, 'http://profile.local');
     return {
-        controls: url.searchParams.get('controls') ?? '1',
+        controls: url.searchParams.get('controls') ?? '0',
+        details: url.searchParams.get('details') ?? '1',
+        debugHud: url.searchParams.get('debugHud') ?? '0',
         gardenProfile: url.searchParams.get('profile') ?? 'default',
+        hud: url.searchParams.get('hud') ?? '0',
         mode: url.searchParams.get('mode') ?? 'baseline',
         quality: url.searchParams.get('quality') ?? 'auto',
     };
@@ -669,7 +672,10 @@ async function measureScenario(browser, baseUrl, scenario, options) {
 
         return {
             controls: element.dataset.gameProfileControls ?? null,
+            details: element.dataset.gameProfileDetails ?? null,
+            debugHud: element.dataset.gameProfileDebugHud ?? null,
             gardenProfile: element.dataset.gameProfileGardenProfile ?? null,
+            hud: element.dataset.gameProfileHud ?? null,
             mode: element.dataset.gameProfileMode ?? null,
             quality: element.dataset.gameProfileQuality ?? null,
         };
@@ -879,9 +885,12 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         path: scenario.path,
         requested: {
             controls: profileMetadata?.controls ?? request.controls,
+            details: profileMetadata?.details ?? request.details,
+            debugHud: profileMetadata?.debugHud ?? request.debugHud,
             dpr: scenario.dpr,
             gardenProfile:
                 profileMetadata?.gardenProfile ?? request.gardenProfile,
+            hud: profileMetadata?.hud ?? request.hud,
             isMobile: scenario.isMobile,
             mode: profileMetadata?.mode ?? request.mode,
             motion: scenario.motion ?? 'none',
@@ -966,8 +975,8 @@ function buildMarkdown(report) {
         '',
         `Budget status: ${report.summary.failedScenarios === 0 ? 'pass' : 'fail'}`,
         '',
-        '| Scenario | Mode | Profile | Controls | Motion | Quality | Canvas | Shadow | Rain/Snow | Overlays/Decor | FPS | p95 | Max | Draw/frame | Triangles/frame | Long tasks | Heap | Budget |',
-        '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |',
+        '| Scenario | Mode | Profile | Details | Controls | HUD | Debug HUD | Motion | Quality | Canvas | Shadow | Rain/Snow | Overlays/Decor | FPS | p95 | Max | Draw/frame | Triangles/frame | Long tasks | Heap | Budget |',
+        '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |',
     ];
 
     for (const scenario of report.scenarios) {
@@ -987,7 +996,7 @@ function buildMarkdown(report) {
             ? `${scenario.runtime.instancedSnowOverlayCount ?? 0}+${scenario.runtime.raisedBedMulchOverlayCount ?? 0}/${scenario.runtime.groundDecorationCount ?? 0} decor, visible ${scenario.runtime.groundDecorationVisibleCount ?? 'n/a'}, pages ${scenario.runtime.groundDecorationAtlasPageCount ?? 'n/a'}, chunks ${scenario.runtime.groundDecorationChunkCount ?? 'n/a'}`
             : 'n/a';
         lines.push(
-            `| ${scenario.name} | ${scenario.requested.mode} | ${scenario.requested.gardenProfile} | ${scenario.requested.controls} | ${scenario.requested.motion} | ${quality} | ${canvas} | ${shadow} | ${weather} | ${detailCounts} | ${scenario.sample.fps} | ${scenario.sample.p95FrameMs} ms | ${scenario.sample.maxFrameMs} ms | ${scenario.sample.drawCallsPerFrame} | ${scenario.sample.trianglesPerFrame} | ${scenario.sample.longTaskCount} | ${scenario.sample.jsHeapMb ?? 'n/a'} MB | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
+            `| ${scenario.name} | ${scenario.requested.mode} | ${scenario.requested.gardenProfile} | ${scenario.requested.details} | ${scenario.requested.controls} | ${scenario.requested.hud} | ${scenario.requested.debugHud} | ${scenario.requested.motion} | ${quality} | ${canvas} | ${shadow} | ${weather} | ${detailCounts} | ${scenario.sample.fps} | ${scenario.sample.p95FrameMs} ms | ${scenario.sample.maxFrameMs} ms | ${scenario.sample.drawCallsPerFrame} | ${scenario.sample.trianglesPerFrame} | ${scenario.sample.longTaskCount} | ${scenario.sample.jsHeapMb ?? 'n/a'} MB | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
         );
     }
 

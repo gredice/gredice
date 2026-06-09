@@ -541,6 +541,10 @@ Progress:
   rendered `1353` decorations with `1235` submitted after culling, `2` atlas
   pages, and `113` chunks. Controls-enabled medium kept the same `839/914`
   visible decoration count, `2` pages, and `106` chunks.
+- 2026-06-09 local dev smoke against
+  `/debug/profile/game?mode=details&profile=dense&quality=medium&debugHud=1`
+  rendered `914` decorations with `845` submitted after culling, `2` atlas
+  pages, `57` chunks, `126` renderer calls, and no shader/WebGLProgram errors.
 - The longer profile recorded render-size budgets within target despite local
   headless frame-time budget failures from Chromium `ReadPixels`/GPU stalls:
   medium `88.9` draw calls/frame, `76862` triangles/frame, `35.6 MB` heap;
@@ -811,10 +815,12 @@ Progress:
   `88144` triangles/frame, `28 MB`; snow dense `126.6` draw calls/frame,
   `141251` triangles/frame, `37.8 MB`; plant-heavy `60.8` draw calls/frame,
   `84707` triangles/frame, `61 MB`.
+- Hover outline rendering moved off `useFrame`; it now subscribes to the
+  after-render pass only while outline targets are active.
 - Remaining callbacks are camera rig/render invalidation, active weather/cloud
-  transitions, hover outline render control, particle/animal simulations, and
-  plant LOD/culling. Those are still tied to visible simulation, input, or
-  render invalidation work rather than simple duplicated time-uniform writes.
+  transitions, particle/animal simulations, and plant LOD/culling. Those are
+  still tied to visible simulation, input, or render invalidation work rather
+  than simple duplicated time-uniform writes.
 
 ## Milestone 8: Profiling and QA harness
 
@@ -918,10 +924,10 @@ Run the narrowest relevant checks per task:
 
 For visual/rendering tasks, also run a production browser smoke against:
 
-- `/debug/profile/game?mode=baseline&controls=0&quality=medium`
-- `/debug/profile/game?mode=details&controls=0&quality=medium`
-- `/debug/profile/game?mode=rain&controls=0&quality=medium`
-- `/debug/profile/game?mode=snow&controls=0&quality=medium`
+- `/debug/profile/game?mode=baseline&quality=medium`
+- `/debug/profile/game?mode=details&quality=medium`
+- `/debug/profile/game?mode=rain&quality=medium`
+- `/debug/profile/game?mode=snow&quality=medium`
 - `/debug/profile/game?mode=details&controls=1&quality=medium`
 - `/debug/sandbox` with a dense 25x25 local garden
 

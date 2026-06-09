@@ -522,6 +522,7 @@ export function EntityInstancesGeometry(
                     key={`${instanceKey}:${chunk.key}`}
                     castShadow={castShadow}
                     chunk={chunk}
+                    debugName={`BlockInstances:${instanceKey}:chunk:${chunk.key}:count:${chunk.instances.length}`}
                     geometry={geometry}
                     localTransform={localTransform}
                     material={material}
@@ -584,6 +585,7 @@ export function EntityInstancesGeometry(
 function ChunkedInstancedMesh({
     castShadow,
     chunk,
+    debugName,
     geometry,
     localTransform,
     material,
@@ -594,6 +596,7 @@ function ChunkedInstancedMesh({
 }: {
     castShadow: boolean;
     chunk: InstanceChunk;
+    debugName: string;
     geometry: BufferGeometry;
     localTransform: {
         position: [number, number, number];
@@ -628,6 +631,7 @@ function ChunkedInstancedMesh({
     return (
         <instancedMesh
             ref={meshRef}
+            name={debugName}
             args={[geometry, material, chunk.instances.length]}
             castShadow={castShadow}
             receiveShadow={receiveShadow}
@@ -705,6 +709,7 @@ function InstancedSnowOverlays({
             key={`snow:${chunk.key}`}
             castShadow={false}
             chunk={chunk}
+            debugName={`SnowOverlay:${chunk.key}:count:${chunk.instances.length}`}
             geometry={overlayGeometry}
             localTransform={liftedTransform}
             material={material}
@@ -741,6 +746,7 @@ function InstancedRainWetOverlays({
             key={`rain:${chunk.key}`}
             castShadow={false}
             chunk={chunk}
+            debugName={`RainWetOverlay:${chunk.key}:count:${chunk.instances.length}`}
             geometry={geometry}
             localTransform={localTransform}
             material={material}

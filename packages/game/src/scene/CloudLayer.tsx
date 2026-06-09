@@ -605,10 +605,11 @@ export function CloudLayer({
     return (
         <>
             {cloudDefinitions.map((cloud, index) => (
-                <group key={cloud.id}>
+                <group key={cloud.id} name={`Environment:CloudSlot:${index}`}>
                     <mesh
                         castShadow
                         frustumCulled={false}
+                        name={`Environment:CloudShadowCaster:${index}`}
                         receiveShadow={false}
                         ref={(mesh) => {
                             cloudShadowRefs.current[index] = mesh;
@@ -632,6 +633,7 @@ export function CloudLayer({
                     <mesh
                         castShadow={false}
                         frustumCulled={false}
+                        name={`Environment:CloudBillboard:${index}`}
                         renderOrder={CLOUD_RENDER_ORDER}
                         ref={(mesh) => {
                             cloudRefs.current[index] = mesh;

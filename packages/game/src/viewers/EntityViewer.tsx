@@ -139,6 +139,7 @@ export function EntityViewer({
                 >
                     <GameSceneDetailContext.Provider value={{ renderDetails }}>
                         <Scene
+                            debugStats={debugHud}
                             position={100}
                             zoom={zoom ?? 90}
                             quality={quality}

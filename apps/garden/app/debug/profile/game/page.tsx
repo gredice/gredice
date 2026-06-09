@@ -183,10 +183,10 @@ export default async function GameProfilePage({
 }) {
     const params = await searchParams;
     const mode = resolveMode(firstValue(params.mode));
-    const renderDetails =
-        mode === 'details' || firstValue(params.details) === '1';
+    const renderDetails = firstValue(params.details) !== '0';
     const showHud = firstValue(params.hud) === '1';
-    const enableControls = firstValue(params.controls) !== '0';
+    const showDebugHud = firstValue(params.debugHud) === '1';
+    const enableControls = firstValue(params.controls) === '1';
     const mockGardenProfile = resolveMockGardenProfile(
         firstValue(params.profile),
     );
@@ -199,21 +199,25 @@ export default async function GameProfilePage({
             className="h-screen w-screen overflow-hidden bg-[#e7e2cc]"
             data-game-profile-mode={mode}
             data-game-profile-controls={enableControls ? '1' : '0'}
+            data-game-profile-details={renderDetails ? '1' : '0'}
+            data-game-profile-debug-hud={showDebugHud ? '1' : '0'}
+            data-game-profile-hud={showHud ? '1' : '0'}
             data-game-profile-garden-profile={mockGardenProfile}
             data-game-profile-quality={quality ?? 'auto'}
         >
             <GameScene
                 className="h-full w-full"
                 dayNightCycleDisabled={false}
-                deferDetails={!renderDetails}
                 flags={debugGameFlags}
                 freezeTime={freezeTime}
+                debugHud={showDebugHud}
                 hideHud={!showHud}
                 initialQualitySetting={quality}
                 mockGarden
                 mockGardenProfile={mockGardenProfile}
                 noControls={!enableControls}
                 noSound
+                renderDetails={renderDetails}
                 weather={weather}
                 winterMode={mode === 'snow' ? 'winter' : 'summer'}
             />

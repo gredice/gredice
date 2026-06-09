@@ -701,7 +701,7 @@ export function PickableGroup({
         spawn(
             resolveBlockParticleType(block.name),
             stack.position.clone().setY(currentStackHeight),
-            6,
+            4,
         );
         applyActivePreview(preview);
     }
@@ -789,11 +789,7 @@ export function PickableGroup({
             });
             dropSound.play();
             triggerPlaceHaptic();
-            spawn(
-                resolveBlockParticleType(block.name),
-                previewDropPosition,
-                12,
-            );
+            spawn(resolveBlockParticleType(block.name), previewDropPosition, 8);
             const blockDataForInventory = getBlockDataByName(
                 blocksData,
                 block.name,
@@ -881,7 +877,7 @@ export function PickableGroup({
         });
         dropSound.play();
         triggerPlaceHaptic();
-        spawn(resolveBlockParticleType(block.name), previewDropPosition, 12);
+        spawn(resolveBlockParticleType(block.name), previewDropPosition, 8);
 
         await moveBlock
             .mutateAsync({
@@ -1122,39 +1118,54 @@ export function PickableGroup({
     ) : (
         children
     );
+    const dragPosition = dragSprings.internalPosition as unknown as [
+        number,
+        number,
+        number,
+    ];
+    const blockedIndicator = showBlockedIndicator ? (
+        <animated.group
+            scale={blockedScaleSprings.scale}
+            position={indicatorPosition}
+        >
+            <Shadow color={0xff0000} opacity={1} colorStop={0.5} scale={2} />
+        </animated.group>
+    ) : null;
+    const recycleIndicator = isOverRecycler ? (
+        <Suspense>
+            <animated.group position={recyclePosition}>
+                <RecycleIndicator />
+            </animated.group>
+        </Suspense>
+    ) : null;
+
+    if (interactionTargetKey) {
+        return (
+            <>
+                {pickupOutlineContent}
+                {(blockedIndicator || recycleIndicator) && (
+                    <animated.group
+                        position={dragPosition}
+                        scale={dragSprings.scale}
+                    >
+                        {blockedIndicator}
+                        {recycleIndicator}
+                    </animated.group>
+                )}
+            </>
+        );
+    }
 
     return (
         <animated.group
-            position={
-                dragSprings.internalPosition as unknown as [
-                    number,
-                    number,
-                    number,
-                ]
-            }
+            position={dragPosition}
             scale={dragSprings.scale}
-            onPointerDown={interactionTargetKey ? undefined : handlePointerDown}
-            onClick={interactionTargetKey ? undefined : handleClick}
+            onPointerDown={handlePointerDown}
+            onClick={handleClick}
         >
-            <animated.group
-                scale={blockedScaleSprings.scale}
-                position={indicatorPosition}
-            >
-                <Shadow
-                    color={0xff0000}
-                    opacity={1}
-                    colorStop={0.5}
-                    scale={2}
-                />
-            </animated.group>
+            {blockedIndicator}
             {pickupOutlineContent}
-            {isOverRecycler && (
-                <Suspense>
-                    <animated.group position={recyclePosition}>
-                        <RecycleIndicator />
-                    </animated.group>
-                </Suspense>
-            )}
+            {recycleIndicator}
         </animated.group>
     );
 }

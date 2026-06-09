@@ -55,6 +55,7 @@ function EntityRenderModeDebugOverlay({
 
     return (
         <mesh
+            name={`Debug:EntityRenderMode:${instanced ? 'instanced' : 'component'}:${block.name}:${block.id}`}
             position={[
                 stack.position.x,
                 currentStackHeight + overlayHeight / 2,
@@ -225,7 +226,7 @@ export function EntityFactory({
         }
 
         return (
-            <SelectableGroup block={block}>
+            <>
                 <InstancedEntitySelectionRegistration
                     block={block}
                     blockIndex={blockIndex}
@@ -252,7 +253,7 @@ export function EntityFactory({
                         />
                     </RotatableGroup>
                 </PickableGroup>
-            </SelectableGroup>
+            </>
         );
     }
 
