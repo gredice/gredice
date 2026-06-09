@@ -1,4 +1,10 @@
-import { GameScene, type GameSceneProps } from '@gredice/game';
+import {
+    GameScene,
+    type GameSceneProps,
+    isOperationVisualRewardDebugProfile,
+    operationVisualRewardDebugProfile,
+    operationVisualRewardDebugScenarios,
+} from '@gredice/game';
 
 type GameProfileSearchParams = Promise<
     Record<string, string | string[] | undefined>
@@ -71,7 +77,11 @@ function resolveQuality(value: string | undefined): GameSceneProps['quality'] {
 function resolveMockGardenProfile(
     value: string | undefined,
 ): GameProfileMockGardenProfile {
-    if (value === 'dense' || value === 'plant-heavy') {
+    if (
+        value === 'dense' ||
+        value === operationVisualRewardDebugProfile ||
+        value === 'plant-heavy'
+    ) {
         return value;
     }
 
@@ -176,6 +186,57 @@ function resolveFreezeTime(mode: GameProfileMode) {
     return new Date(2024, 5, 21, 12, 0, 0);
 }
 
+function OperationRewardDebugOverlay() {
+    return (
+        <aside
+            className="pointer-events-auto absolute inset-x-4 bottom-4 max-h-[36vh] overflow-auto rounded-lg border border-neutral-800 bg-neutral-950/90 p-4 text-white shadow-2xl backdrop-blur"
+            data-operation-reward-debug-panel="1"
+        >
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+                <span className="shrink-0 text-base font-semibold">
+                    Operation reward matrix
+                </span>
+                <span className="max-w-3xl text-xs text-neutral-400">
+                    Each operation is resolved from attributes.visualReward and
+                    rendered as before/after beds.
+                </span>
+            </div>
+            <div className="mt-4 grid gap-2 md:grid-cols-3 xl:grid-cols-5">
+                {operationVisualRewardDebugScenarios.map((scenario) => (
+                    <div
+                        key={scenario.kind}
+                        className="rounded-md border border-neutral-800 bg-neutral-900/80 p-3"
+                    >
+                        <div className="flex items-center justify-between gap-3">
+                            <span className="text-sm font-semibold">
+                                {scenario.title}
+                            </span>
+                            <code className="rounded bg-neutral-950 px-1.5 py-0.5 font-mono text-[11px] text-neutral-400">
+                                {scenario.kind} #{scenario.operationId}
+                            </code>
+                        </div>
+                        <div className="mt-2 grid gap-2">
+                            {[scenario.before, scenario.after].map((state) => (
+                                <div
+                                    key={`${scenario.kind}-${state.label}`}
+                                    className="rounded border border-neutral-800 bg-neutral-950/70 p-2"
+                                >
+                                    <span className="block text-[11px] font-semibold uppercase text-neutral-500">
+                                        {state.label} bed {state.raisedBedId}
+                                    </span>
+                                    <span className="mt-1 block text-xs text-neutral-300">
+                                        {state.state}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </aside>
+    );
+}
+
 export default async function GameProfilePage({
     searchParams,
 }: {
@@ -184,19 +245,22 @@ export default async function GameProfilePage({
     const params = await searchParams;
     const mode = resolveMode(firstValue(params.mode));
     const renderDetails = firstValue(params.details) !== '0';
+    const showLegend = firstValue(params.legend) !== '0';
     const showHud = firstValue(params.hud) === '1';
     const showDebugHud = firstValue(params.debugHud) === '1';
     const enableControls = firstValue(params.controls) === '1';
     const mockGardenProfile = resolveMockGardenProfile(
         firstValue(params.profile),
     );
+    const isOperationRewardDebug =
+        isOperationVisualRewardDebugProfile(mockGardenProfile);
     const quality = resolveQuality(firstValue(params.quality));
     const weather = resolveWeather(mode);
     const freezeTime = resolveFreezeTime(mode);
 
     return (
         <main
-            className="h-screen w-screen overflow-hidden bg-[#e7e2cc]"
+            className="relative h-screen w-screen overflow-hidden bg-[#e7e2cc]"
             data-game-profile-mode={mode}
             data-game-profile-controls={enableControls ? '1' : '0'}
             data-game-profile-details={renderDetails ? '1' : '0'}
@@ -220,7 +284,11 @@ export default async function GameProfilePage({
                 renderDetails={renderDetails}
                 weather={weather}
                 winterMode={mode === 'snow' ? 'winter' : 'summer'}
+                zoom={isOperationRewardDebug ? 'far' : 'normal'}
             />
+            {isOperationRewardDebug && showLegend ? (
+                <OperationRewardDebugOverlay />
+            ) : null}
         </main>
     );
 }

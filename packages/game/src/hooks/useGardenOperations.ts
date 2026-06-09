@@ -1,5 +1,10 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useInfiniteQuery } from '@tanstack/react-query';
+import {
+    isOperationVisualRewardDebugProfile,
+    operationVisualRewardDebugOperationItems,
+} from '../operationVisualRewardDebugProfile';
+import { useGameState } from '../useGameState';
 import { useCurrentGarden } from './useCurrentGarden';
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -57,6 +62,10 @@ type GardenOperationsPage = {
     nextCursor: number | null;
     total: number;
 };
+
+type CurrentGardenData = NonNullable<
+    NonNullable<ReturnType<typeof useCurrentGarden>['data']>
+>;
 
 type GardenOperationItemResponse = Omit<
     GardenOperationItem,
@@ -164,6 +173,7 @@ export function gardenOperationsQueryKey({
     gardenId,
     includeCompleted,
     pageSize,
+    profile,
     raisedBedId,
     raisedBedFieldId,
     positionIndex,
@@ -171,16 +181,105 @@ export function gardenOperationsQueryKey({
     gardenId: number | undefined;
     includeCompleted: boolean;
     pageSize: number;
+    profile?: string | null;
 } & GardenOperationsScope) {
     return [
         'garden-operations',
         gardenId,
+        profile ?? null,
         includeCompleted,
         pageSize,
         raisedBedId ?? null,
         raisedBedFieldId ?? null,
         positionIndex ?? null,
     ] as const;
+}
+
+function fieldIdsForPositionIndex({
+    currentGarden,
+    positionIndex,
+    raisedBedId,
+}: {
+    currentGarden: CurrentGardenData;
+    positionIndex: number;
+    raisedBedId?: number;
+}) {
+    return currentGarden.raisedBeds
+        .filter((raisedBed) =>
+            raisedBedId == null ? true : raisedBed.id === raisedBedId,
+        )
+        .flatMap((raisedBed) =>
+            raisedBed.fields
+                .filter((field) => field.positionIndex === positionIndex)
+                .map((field) => field.id),
+        );
+}
+
+function getOperationVisualRewardDebugOperationsPage({
+    currentGarden,
+    cursor,
+    includeCompleted,
+    pageSize,
+    positionIndex,
+    raisedBedFieldId,
+    raisedBedId,
+}: {
+    currentGarden: CurrentGardenData;
+    cursor: number;
+    includeCompleted: boolean;
+    pageSize: number;
+} & GardenOperationsScope): GardenOperationsPage {
+    if (!includeCompleted) {
+        return {
+            items: [],
+            nextCursor: null,
+            total: 0,
+        };
+    }
+
+    const fieldIds =
+        positionIndex == null
+            ? null
+            : new Set(
+                  fieldIdsForPositionIndex({
+                      currentGarden,
+                      positionIndex,
+                      raisedBedId,
+                  }),
+              );
+    const matchingItems = operationVisualRewardDebugOperationItems.filter(
+        (item) => {
+            if (raisedBedId != null && item.raisedBedId !== raisedBedId) {
+                return false;
+            }
+
+            if (
+                raisedBedFieldId != null &&
+                item.raisedBedFieldId !== raisedBedFieldId
+            ) {
+                return false;
+            }
+
+            if (
+                fieldIds &&
+                (item.raisedBedFieldId == null ||
+                    !fieldIds.has(item.raisedBedFieldId))
+            ) {
+                return false;
+            }
+
+            return true;
+        },
+    );
+    const items = matchingItems.slice(cursor, cursor + pageSize);
+    const nextCursor =
+        cursor + pageSize < matchingItems.length ? cursor + pageSize : null;
+
+    return {
+        items,
+        nextCursor,
+        total: matchingItems.length,
+    };
 }
 
 export function useGardenOperations({
@@ -196,12 +295,17 @@ export function useGardenOperations({
     pageSize?: number;
 } & GardenOperationsScope) {
     const { data: currentGarden } = useCurrentGarden();
+    const isMock = useGameState((state) => state.isMock);
+    const mockGardenProfile = useGameState((state) => state.mockGardenProfile);
+    const isOperationRewardDebug =
+        isMock && isOperationVisualRewardDebugProfile(mockGardenProfile);
 
     return useInfiniteQuery({
         queryKey: gardenOperationsQueryKey({
             gardenId: currentGarden?.id,
             includeCompleted,
             pageSize,
+            profile: isOperationRewardDebug ? mockGardenProfile : null,
             raisedBedId,
             raisedBedFieldId,
             positionIndex,
@@ -213,6 +317,18 @@ export function useGardenOperations({
                     nextCursor: null,
                     total: 0,
                 } satisfies GardenOperationsPage;
+            }
+
+            if (isOperationRewardDebug) {
+                return getOperationVisualRewardDebugOperationsPage({
+                    currentGarden,
+                    includeCompleted,
+                    pageSize,
+                    raisedBedId,
+                    raisedBedFieldId,
+                    positionIndex,
+                    cursor: pageParam,
+                });
             }
 
             return getGardenOperationsPage({

@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+    operationVisualRewardDebugOperationDefinitions,
+    operationVisualRewardDebugScenarios,
+} from './operationVisualRewardDebugProfile';
+import {
     type AppliedOperationVisualInput,
     filterOperationVisualRewards,
     type OperationHistoryVisualInput,
@@ -180,6 +184,38 @@ describe('operation visual reward kind mapping', () => {
                 }),
             ),
             null,
+        );
+    });
+});
+
+describe('operation visual reward debug profile', () => {
+    it('covers every supported reward kind through explicit attributes', () => {
+        const expectedKinds = operationVisualRewardDebugScenarios
+            .map((scenario) => scenario.kind)
+            .sort();
+        const resolvedKinds = operationVisualRewardDebugOperationDefinitions
+            .map(resolveOperationVisualRewardKind)
+            .filter((kind): kind is OperationVisualRewardKind => kind !== null)
+            .sort();
+
+        assert.deepStrictEqual(resolvedKinds, expectedKinds);
+        assert.deepStrictEqual(
+            operationVisualRewardDebugScenarios.map((scenario) => ({
+                after: scenario.after.raisedBedId,
+                before: scenario.before.raisedBedId,
+                kind: scenario.kind,
+                operationId: scenario.operationId,
+            })),
+            operationVisualRewardDebugOperationDefinitions.map((operation) => ({
+                after: operationVisualRewardDebugScenarios.find(
+                    (scenario) => scenario.operationId === operation.id,
+                )?.after.raisedBedId,
+                before: operationVisualRewardDebugScenarios.find(
+                    (scenario) => scenario.operationId === operation.id,
+                )?.before.raisedBedId,
+                kind: resolveOperationVisualRewardKind(operation),
+                operationId: operation.id,
+            })),
         );
     });
 });

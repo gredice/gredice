@@ -44,7 +44,11 @@ import {
 } from './utils/weather';
 
 export type WinterMode = 'summer' | 'winter' | 'holiday';
-export type MockGardenProfile = 'default' | 'dense' | 'plant-heavy';
+export type MockGardenProfile =
+    | 'default'
+    | 'dense'
+    | 'operation-rewards'
+    | 'plant-heavy';
 
 export type ActiveDragPreview = {
     source: ActiveDragPreviewTarget;

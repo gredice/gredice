@@ -13,6 +13,15 @@ export {
 } from './hud/raisedBed/featuredOperations';
 export { defaultLocalSandboxStorageKey } from './localSandboxGarden';
 export type {
+    OperationVisualRewardDebugBedState,
+    OperationVisualRewardDebugScenario,
+} from './operationVisualRewardDebugProfile';
+export {
+    isOperationVisualRewardDebugProfile,
+    operationVisualRewardDebugProfile,
+    operationVisualRewardDebugScenarios,
+} from './operationVisualRewardDebugProfile';
+export type {
     AppliedOperationVisualInput,
     OperationHistoryVisualInput,
     OperationVisualDefinitionInput,

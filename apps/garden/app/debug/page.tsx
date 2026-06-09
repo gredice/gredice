@@ -40,6 +40,12 @@ const debugGroups = [
                 description:
                     'Mocked garden scene profiles for weather, season, quality, and HUD checks.',
             },
+            {
+                href: '/debug/profile/game?profile=operation-rewards&details=1&quality=medium',
+                title: 'Operation reward matrix',
+                description:
+                    'Before/after mock raised beds for every operation visual reward state.',
+            },
         ],
     },
     {

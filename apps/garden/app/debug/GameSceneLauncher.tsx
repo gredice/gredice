@@ -1,5 +1,6 @@
 'use client';
 
+import { operationVisualRewardDebugProfile } from '@gredice/game';
 import { useMemo, useState } from 'react';
 
 const MODE_OPTIONS = [
@@ -18,8 +19,24 @@ const QUALITY_OPTIONS = [
     { value: 'high', label: 'High', description: 'Maximum detail' },
 ] as const;
 
+const PROFILE_OPTIONS = [
+    { value: 'default', label: 'Default', description: 'Small demo garden' },
+    { value: 'dense', label: 'Dense', description: '25x25 stress scene' },
+    {
+        value: 'plant-heavy',
+        label: 'Plants',
+        description: 'Dense planted raised beds',
+    },
+    {
+        value: operationVisualRewardDebugProfile,
+        label: 'Rewards',
+        description: 'Operation visual reward matrix',
+    },
+] as const;
+
 type Mode = (typeof MODE_OPTIONS)[number]['value'];
 type Quality = (typeof QUALITY_OPTIONS)[number]['value'];
+type Profile = (typeof PROFILE_OPTIONS)[number]['value'];
 
 const segmentBase =
     'rounded-md border px-3 py-1.5 text-sm font-medium transition-colors';
@@ -128,6 +145,7 @@ function ToggleButton({
 export function GameSceneLauncher() {
     const [mode, setMode] = useState<Mode>('baseline');
     const [quality, setQuality] = useState<Quality>('auto');
+    const [profile, setProfile] = useState<Profile>('default');
     const [details, setDetails] = useState(true);
     const [hud, setHud] = useState(false);
     const [debugHud, setDebugHud] = useState(false);
@@ -140,6 +158,9 @@ export function GameSceneLauncher() {
         }
         if (quality !== 'auto') {
             params.set('quality', quality);
+        }
+        if (profile !== 'default') {
+            params.set('profile', profile);
         }
         if (!details) {
             params.set('details', '0');
@@ -155,7 +176,7 @@ export function GameSceneLauncher() {
         }
         const queryString = params.toString();
         return `/debug/profile/game${queryString ? `?${queryString}` : ''}`;
-    }, [mode, quality, details, hud, debugHud, controls]);
+    }, [mode, quality, profile, details, hud, debugHud, controls]);
 
     return (
         <div className="flex flex-col gap-5 rounded-lg border border-neutral-800 bg-neutral-900 p-5">
@@ -183,6 +204,14 @@ export function GameSceneLauncher() {
                 options={QUALITY_OPTIONS}
                 value={quality}
                 onChange={setQuality}
+            />
+
+            <SegmentedControl
+                label="Garden profile"
+                description="Switch the seeded mock garden data (profile)."
+                options={PROFILE_OPTIONS}
+                value={profile}
+                onChange={setProfile}
             />
 
             <div className="flex flex-col gap-2">
