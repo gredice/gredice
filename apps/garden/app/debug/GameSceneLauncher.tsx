@@ -128,9 +128,10 @@ function ToggleButton({
 export function GameSceneLauncher() {
     const [mode, setMode] = useState<Mode>('baseline');
     const [quality, setQuality] = useState<Quality>('auto');
-    const [details, setDetails] = useState(false);
-    const [hud, setHud] = useState(true);
-    const [controls, setControls] = useState(true);
+    const [details, setDetails] = useState(true);
+    const [hud, setHud] = useState(false);
+    const [debugHud, setDebugHud] = useState(false);
+    const [controls, setControls] = useState(false);
 
     const href = useMemo(() => {
         const params = new URLSearchParams();
@@ -140,18 +141,21 @@ export function GameSceneLauncher() {
         if (quality !== 'auto') {
             params.set('quality', quality);
         }
-        if (details) {
-            params.set('details', '1');
+        if (!details) {
+            params.set('details', '0');
         }
         if (hud) {
             params.set('hud', '1');
         }
-        if (!controls) {
-            params.set('controls', '0');
+        if (debugHud) {
+            params.set('debugHud', '1');
+        }
+        if (controls) {
+            params.set('controls', '1');
         }
         const queryString = params.toString();
         return `/debug/profile/game${queryString ? `?${queryString}` : ''}`;
-    }, [mode, quality, details, hud, controls]);
+    }, [mode, quality, details, hud, debugHud, controls]);
 
     return (
         <div className="flex flex-col gap-5 rounded-lg border border-neutral-800 bg-neutral-900 p-5">
@@ -193,15 +197,21 @@ export function GameSceneLauncher() {
                 <div className="flex flex-wrap gap-2">
                     <ToggleButton
                         label="Details"
-                        description="Render deferred scene details: mulch, ground decoration (details)."
+                        description="Render scene details: mulch, ground decoration, animals (details)."
                         enabled={details}
                         onToggle={() => setDetails((current) => !current)}
                     />
                     <ToggleButton
                         label="HUD"
-                        description="Show the in-game HUD overlay, including the debug HUD (hud)."
+                        description="Show the in-game HUD overlay (hud)."
                         enabled={hud}
                         onToggle={() => setHud((current) => !current)}
+                    />
+                    <ToggleButton
+                        label="Debug HUD"
+                        description="Show the debug metrics and scene controls (debugHud)."
+                        enabled={debugHud}
+                        onToggle={() => setDebugHud((current) => !current)}
                     />
                     <ToggleButton
                         label="Controls"

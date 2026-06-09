@@ -34,6 +34,13 @@ export function plantFieldStatusLabel(status: string | undefined) {
                 description:
                     'Sjeme je uspješno proklijalo i biljka je krenula rasti.',
             };
+        case 'readyForTransplanting':
+            return {
+                shortLabel: 'Spremna za presađivanje',
+                label: 'Biljka je spremna za presađivanje',
+                description:
+                    'Sadnica je dovoljno razvijena i spremna za presađivanje u gredicu.',
+            };
         case 'firstFlowers':
             return {
                 shortLabel: 'Prvi cvjetovi',

@@ -264,7 +264,8 @@ export function RaisedBedFieldItemPlanted({
         isGreenhouseSeedling &&
         (field.plantStatus === 'pendingVerification' ||
             field.plantStatus === 'sowed' ||
-            field.plantStatus === 'sprouted')
+            field.plantStatus === 'sprouted' ||
+            field.plantStatus === 'readyForTransplanting')
             ? field.plantStatus
             : undefined;
     const localizedStatus = plantFieldStatusLabel(

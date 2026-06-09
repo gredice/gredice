@@ -23,6 +23,11 @@ import {
     isBirdNight,
     pickBirdBehavior,
 } from './birdBehavior';
+import {
+    createBirdTreeLandingTargets,
+    getBirdTreeVisualPerchYOffset,
+    isBirdTreeBlockName,
+} from './birdTreeTargets';
 
 type BirdTarget = {
     id: string;
@@ -189,13 +194,8 @@ const groundBlockNames = new Set([
     'Block_Snow_Falling',
 ]);
 
-const treeBlockNames = new Set(['Tree', 'Pine', 'PineAdvent']);
-
 const visualPerchYOffsets: Record<string, number> = {
     BirdHouse: birdHousePerchYOffset,
-    Tree: 0.9,
-    Pine: 1.32,
-    PineAdvent: 1.32,
     Bush: 0.55,
     Bucket: 0.6,
     Composter: 0.65,
@@ -251,7 +251,7 @@ function isGroundBlockName(name: string) {
 }
 
 function isTreeBlockName(name: string) {
-    return treeBlockNames.has(name);
+    return isBirdTreeBlockName(name);
 }
 
 function isWaterBlockName(name: string) {
@@ -272,6 +272,11 @@ function getVisualPerchYOffset(
     blockData: BlockData[] | null | undefined,
     blockName: string,
 ) {
+    const treePerchYOffset = getBirdTreeVisualPerchYOffset(blockName);
+    if (treePerchYOffset !== null) {
+        return treePerchYOffset;
+    }
+
     return (
         visualPerchYOffsets[blockName] ??
         getBlockHeight(blockData, blockName) ??
@@ -311,6 +316,27 @@ function targetForBlock({
         id: `${behavior}-${block.id}`,
         position: new Vector3(stack.position.x, y, stack.position.z),
     } satisfies BirdTarget;
+}
+
+function targetsForTreeBlock({
+    block,
+    blockData,
+    stack,
+}: {
+    block: Block;
+    blockData: BlockData[] | null | undefined;
+    stack: Stack;
+}) {
+    return createBirdTreeLandingTargets({ block, blockData, stack }).map(
+        (target) =>
+            ({
+                behavior: 'tree',
+                blockId: target.blockId,
+                facingYaw: target.facingYaw,
+                id: `tree-${target.id}`,
+                position: target.position,
+            }) satisfies BirdTarget,
+    );
 }
 
 function circleAnchorForBlock({
@@ -520,12 +546,7 @@ function createBirdHabitats(
 
         if (isTreeBlockName(topBlock.name)) {
             trees.push(
-                targetForBlock({
-                    behavior: 'tree',
-                    block: topBlock,
-                    blockData,
-                    stack,
-                }),
+                ...targetsForTreeBlock({ block: topBlock, blockData, stack }),
             );
             continue;
         }

@@ -28,6 +28,7 @@ const greenhouseSeedlingStatuses = new Set([
     'pendingVerification',
     'sowed',
     'sprouted',
+    'readyForTransplanting',
 ]);
 
 export function isGreenhouseSeedlingField(

@@ -135,6 +135,7 @@ const plantSortFallbackLabel = 'Sorta';
 const sowingCompletedStatuses = new Set([
     'sowed',
     'sprouted',
+    'readyForTransplanting',
     'firstFlowers',
     'firstFruitSet',
     'ready',

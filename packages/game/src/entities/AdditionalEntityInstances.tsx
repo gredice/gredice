@@ -34,6 +34,7 @@ import {
 import { HoverOutline } from './helpers/HoverOutline';
 import { resolveEntityNeighbors } from './helpers/useEntityNeighbors';
 import { RaisedBedFields } from './raisedBed/RaisedBedFields';
+import { RaisedBedGeneratedPlantFieldBatches } from './raisedBed/RaisedBedGeneratedPlantFieldBatches';
 import {
     resolveWaterFoamCorners,
     resolveWaterFoamEdges,
@@ -685,12 +686,21 @@ function RaisedBedInstances({
                     </Suspense>
                 );
             })}
+            <RaisedBedGeneratedPlantFieldBatches
+                blocks={instances.map((instance) => ({
+                    blockId: instance.block.id,
+                    position: instance.position,
+                }))}
+            />
             {instances.map((instance) => (
                 <group
                     key={`Raised_Bed-fields-${instance.id}`}
                     position={instance.position}
                 >
-                    <RaisedBedFields blockId={instance.block.id} />
+                    <RaisedBedFields
+                        blockId={instance.block.id}
+                        generatedPlantsHandledExternally
+                    />
                 </group>
             ))}
             <RaisedBedHoverOutlines

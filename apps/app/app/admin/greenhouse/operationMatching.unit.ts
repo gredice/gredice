@@ -12,6 +12,7 @@ const previousCycleStart = new Date('2026-01-01T08:00:00Z');
 const previousCycleEnd = new Date('2026-02-01T08:00:00Z');
 const activeCycleStart = new Date('2026-03-01T08:00:00Z');
 const sproutedAt = new Date('2026-03-07T08:00:00Z');
+const readyForTransplantingAt = new Date('2026-03-14T08:00:00Z');
 const now = new Date('2026-03-08T08:00:00Z');
 
 function buildCycle(
@@ -115,6 +116,21 @@ test('new transplant operation timestamp follows sprouted date', () => {
             now,
         ).toISOString(),
         sproutedAt.toISOString(),
+    );
+});
+
+test('new transplant operation timestamp prefers ready-for-transplanting date', () => {
+    assert.equal(
+        getSeedlingTransplantingOperationTimestamp(
+            buildField({
+                plantReadyDate: readyForTransplantingAt,
+                plantCycles: [
+                    buildCycle({ plantReadyDate: readyForTransplantingAt }),
+                ],
+            }),
+            now,
+        ).toISOString(),
+        readyForTransplantingAt.toISOString(),
     );
 });
 

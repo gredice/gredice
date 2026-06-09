@@ -1,5 +1,11 @@
+import { useGameFlags } from '../../GameFlagsContext';
 import { useGameSceneDetails } from '../../GameSceneDetailContext';
-import { useCurrentGarden } from '../../hooks/useCurrentGarden';
+import { resolveInGamePlantPreset } from '../../generators/plant/lib/inGamePlantPresets';
+import {
+    useCurrentGarden,
+    useIsSandboxGarden,
+} from '../../hooks/useCurrentGarden';
+import { useAllSorts } from '../../hooks/usePlantSorts';
 import { useShoppingCart } from '../../hooks/useShoppingCart';
 import { useGameState } from '../../useGameState';
 import {
@@ -7,11 +13,37 @@ import {
     getRaisedBedBlockIds,
 } from '../../utils/raisedBedBlocks';
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
-import { RaisedBedPlantField } from './RaisedBedPlantField';
+import {
+    mockPlantPresetLabelsBySortId,
+    RaisedBedPlantField,
+} from './RaisedBedPlantField';
 
-export function RaisedBedFields({ blockId }: { blockId: string }) {
+function shouldRenderGeneratedPlantField(field: {
+    positionIndex: number;
+    plantStatus?: string | null;
+    plantSowDate?: string | null;
+}) {
+    return (
+        Boolean(field.plantSowDate) &&
+        (field.plantStatus === 'sprouted' ||
+            field.plantStatus === 'ready' ||
+            field.plantStatus === 'harvested')
+    );
+}
+
+export function RaisedBedFields({
+    blockId,
+    generatedPlantsHandledExternally = false,
+}: {
+    blockId: string;
+    generatedPlantsHandledExternally?: boolean;
+}) {
     const { renderDetails } = useGameSceneDetails();
+    const flags = useGameFlags();
     const { data: currentGarden } = useCurrentGarden();
+    const { data: sortData } = useAllSorts();
+    const isMock = useGameState((state) => state.isMock);
+    const isSandbox = useIsSandboxGarden();
     const isLocalSandbox = useGameState(
         (state) => state.localSandboxStorageKey !== null,
     );
@@ -56,6 +88,8 @@ export function RaisedBedFields({ blockId }: { blockId: string }) {
             return field;
         }) || []),
     ];
+    const generatedPlantsEnabled =
+        Boolean(flags.enablePlantGeneratorFlag) || isMock || isSandbox;
 
     if (!renderDetails) {
         return null;
@@ -65,6 +99,29 @@ export function RaisedBedFields({ blockId }: { blockId: string }) {
         <>
             {displayedFields.map((field) => {
                 if (!field) return null;
+                if (
+                    generatedPlantsHandledExternally &&
+                    generatedPlantsEnabled &&
+                    field.plantSortId &&
+                    shouldRenderGeneratedPlantField(field)
+                ) {
+                    const sort = sortData?.find(
+                        (item) => item.id === field.plantSortId,
+                    );
+                    const resolvedPlantPreset = resolveInGamePlantPreset([
+                        sort?.information.name,
+                        sort?.information.plant.information?.name,
+                        sort?.information.plant.information?.latinName,
+                        isMock || isSandbox
+                            ? mockPlantPresetLabelsBySortId[field.plantSortId]
+                            : undefined,
+                    ]);
+
+                    if (resolvedPlantPreset) {
+                        return null;
+                    }
+                }
+
                 return (
                     <RaisedBedPlantField
                         key={field.id}

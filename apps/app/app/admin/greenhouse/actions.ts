@@ -64,9 +64,12 @@ export async function createSeedlingTransplantingOperationAction({
     if (!field) {
         throw new Error('Polje gredice nije pronađeno.');
     }
-    if (field.plantStatus !== 'sprouted') {
+    if (
+        field.plantStatus !== 'sprouted' &&
+        field.plantStatus !== 'readyForTransplanting'
+    ) {
         throw new Error(
-            'Radnja presađivanja može se kreirati samo za proklijale biljke.',
+            'Radnja presađivanja može se kreirati samo za proklijale biljke ili biljke spremne za presađivanje.',
         );
     }
 

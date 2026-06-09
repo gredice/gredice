@@ -117,13 +117,15 @@ export function RotatableGroup({
         },
     );
 
+    if (interactionTargetKey) {
+        return <>{children}</>;
+    }
+
     return (
         <group
-            onPointerDown={interactionTargetKey ? undefined : handlePointerDown}
-            onPointerLeave={
-                interactionTargetKey ? undefined : handleRotateCancel
-            }
-            onPointerUp={interactionTargetKey ? undefined : handlePointerUp}
+            onPointerDown={handlePointerDown}
+            onPointerLeave={handleRotateCancel}
+            onPointerUp={handlePointerUp}
         >
             {children}
         </group>

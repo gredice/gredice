@@ -37,6 +37,7 @@ const STATUSES_BEFORE_TRANSPLANT = new Set([
     'pendingVerification',
     'sowed',
     'sprouted',
+    'readyForTransplanting',
 ]);
 
 function canFieldCurrentlyBeInGreenhouse(field: RaisedBedField) {
@@ -70,6 +71,10 @@ const fieldStatusMetadata: Record<string, { label: string; icon: string }> = {
     pendingVerification: { label: 'Čeka verifikaciju', icon: '🔍' },
     sowed: { label: 'Sijano', icon: '🫘' },
     sprouted: { label: 'Proklijalo', icon: '🌱' },
+    readyForTransplanting: {
+        label: 'Spremno za presađivanje',
+        icon: '🪴',
+    },
     firstFlowers: { label: 'Prvi cvjetovi', icon: '🌸' },
     firstFruitSet: { label: 'Prvi plodovi', icon: '🍅' },
     notSprouted: { label: 'Nije proklijalo', icon: '❌' },
@@ -105,6 +110,7 @@ function getCurrentDateKey(status?: string | null) {
         case 'firstFlowers':
         case 'firstFruitSet':
             return 'plantGrowthDate';
+        case 'readyForTransplanting':
         case 'ready':
             return 'plantReadyDate';
         case 'harvested':

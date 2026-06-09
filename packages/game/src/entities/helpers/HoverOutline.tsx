@@ -1,4 +1,4 @@
-import { type RootState, useFrame } from '@react-three/fiber';
+import { addAfterEffect, type RootState, useThree } from '@react-three/fiber';
 import {
     createContext,
     type PropsWithChildren,
@@ -7,6 +7,7 @@ import {
     useLayoutEffect,
     useMemo,
     useRef,
+    useSyncExternalStore,
 } from 'react';
 import {
     Box3,
@@ -34,7 +35,6 @@ import {
 
 const hoverOutlineLayer = 29;
 const maxOutlineThickness = 12;
-const outlineRenderPriority = 1;
 
 type HoverOutlineTarget = {
     active: boolean;
@@ -48,10 +48,14 @@ type HoverOutlineTarget = {
 type HoverOutlineRegistry = {
     deleteTarget: (id: symbol) => void;
     getActiveTargets: () => HoverOutlineTarget[];
+    getSnapshot: () => number;
     setTarget: (id: symbol, target: HoverOutlineTarget) => void;
+    subscribe: (listener: () => void) => () => void;
 };
 
 const HoverOutlineContext = createContext<HoverOutlineRegistry | null>(null);
+const noopSubscribe = () => () => {};
+const zeroSnapshot = () => 0;
 
 function createMaskMaterial() {
     const material = new MeshBasicMaterial({
@@ -248,23 +252,40 @@ function getOutlineScreenBounds({
 }
 
 function useHoverOutlineRegistry() {
+    const listeners = useRef(new Set<() => void>());
     const targets = useRef(new Map<symbol, HoverOutlineTarget>());
+    const version = useRef(0);
 
-    return useMemo<HoverOutlineRegistry>(
-        () => ({
+    return useMemo<HoverOutlineRegistry>(() => {
+        const notify = () => {
+            version.current += 1;
+            for (const listener of listeners.current) {
+                listener();
+            }
+        };
+
+        return {
             deleteTarget: (id) => {
-                targets.current.delete(id);
+                if (!targets.current.delete(id)) {
+                    return;
+                }
+                notify();
             },
             getActiveTargets: () =>
                 Array.from(targets.current.values()).filter(
                     (target) => target.active && target.object.parent,
                 ),
+            getSnapshot: () => version.current,
             setTarget: (id, target) => {
                 targets.current.set(id, target);
+                notify();
             },
-        }),
-        [],
-    );
+            subscribe: (listener) => {
+                listeners.current.add(listener);
+                return () => listeners.current.delete(listener);
+            },
+        };
+    }, []);
 }
 
 function useTargetId() {
@@ -463,110 +484,156 @@ export function HoverOutline({
         return () => registry.deleteTarget(id);
     }, [clampedThickness, color, hovered, id, opacity, priority, registry]);
 
-    return <group ref={ref}>{children}</group>;
+    return (
+        <group ref={ref} name="Interaction:HoverOutlineTarget">
+            {children}
+        </group>
+    );
 }
 
 export function HoverOutlineEffect() {
     const registry = useContext(HoverOutlineContext);
+    const camera = useThree((state) => state.camera);
     const drawingBufferSize = useMemo(() => new Vector2(), []);
+    const gl = useThree((state) => state.gl);
+    const invalidate = useThree((state) => state.invalidate);
     const maskMaterial = useMemo(createMaskMaterial, []);
     const maskRenderTarget = useMaskRenderTarget();
-    const outlineOverlay = useOutlineOverlay();
+    const {
+        camera: outlineCamera,
+        material: outlineMaterial,
+        scene: outlineScene,
+    } = useOutlineOverlay();
+    const scene = useThree((state) => state.scene);
     const screenBoundsScratch = useMemo<ScreenBoundsScratch>(
         () => ({ box: new Box3(), point: new Vector3() }),
         [],
     );
+    const registryVersion = useSyncExternalStore(
+        registry?.subscribe ?? noopSubscribe,
+        registry?.getSnapshot ?? zeroSnapshot,
+        zeroSnapshot,
+    );
+    const hasActiveTargets = (registry?.getActiveTargets().length ?? 0) > 0;
+    const wasActiveRef = useRef(false);
 
     useEffect(() => () => maskMaterial.dispose(), [maskMaterial]);
 
-    useFrame(({ camera, gl, scene }) => {
-        gl.render(scene, camera);
-
-        const targets = registry?.getActiveTargets() ?? [];
-        if (targets.length === 0) {
+    useEffect(() => {
+        if (!registry || !hasActiveTargets) {
             return;
         }
 
-        const targetsByStyle = new Map<string, HoverOutlineTarget[]>();
-        for (const target of targets) {
-            const key = [
-                target.priority,
-                target.color,
-                target.opacity,
-                target.thickness,
-            ].join('|');
-            targetsByStyle.set(key, [
-                ...(targetsByStyle.get(key) ?? []),
-                target,
-            ]);
-        }
+        const renderOutline = () => {
+            const targets = registry.getActiveTargets();
+            if (targets.length === 0) {
+                return;
+            }
 
-        const targetGroups = Array.from(targetsByStyle.values()).sort(
-            (left, right) => {
-                const leftTarget = left[0];
-                const rightTarget = right[0];
-                return (
-                    (leftTarget?.priority ?? 0) - (rightTarget?.priority ?? 0)
+            const targetsByStyle = new Map<string, HoverOutlineTarget[]>();
+            for (const target of targets) {
+                const key = [
+                    target.priority,
+                    target.color,
+                    target.opacity,
+                    target.thickness,
+                ].join('|');
+                targetsByStyle.set(key, [
+                    ...(targetsByStyle.get(key) ?? []),
+                    target,
+                ]);
+            }
+
+            const targetGroups = Array.from(targetsByStyle.values()).sort(
+                (left, right) => {
+                    const leftTarget = left[0];
+                    const rightTarget = right[0];
+                    return (
+                        (leftTarget?.priority ?? 0) -
+                        (rightTarget?.priority ?? 0)
+                    );
+                },
+            );
+
+            for (const targetGroup of targetGroups) {
+                const [firstTarget] = targetGroup;
+                if (!firstTarget) {
+                    continue;
+                }
+
+                renderMask({
+                    camera,
+                    drawingBufferSize,
+                    gl,
+                    maskMaterial,
+                    renderTarget: maskRenderTarget,
+                    scene,
+                    targets: targetGroup,
+                });
+
+                outlineMaterial.uniforms.maskTexture.value =
+                    maskRenderTarget.texture;
+                outlineMaterial.uniforms.outlineColor.value.set(
+                    firstTarget.color,
                 );
-            },
-        );
+                outlineMaterial.uniforms.opacity.value = firstTarget.opacity;
+                const screenBounds = getOutlineScreenBounds({
+                    camera,
+                    drawingBufferSize,
+                    scratch: screenBoundsScratch,
+                    targets: targetGroup,
+                    thickness: firstTarget.thickness,
+                });
 
-        for (const targetGroup of targetGroups) {
-            const [firstTarget] = targetGroup;
-            if (!firstTarget) {
-                continue;
+                if (!screenBounds) {
+                    continue;
+                }
+
+                outlineMaterial.uniforms.screenMin.value.set(
+                    screenBounds.minX,
+                    screenBounds.minY,
+                );
+                outlineMaterial.uniforms.screenMax.value.set(
+                    screenBounds.maxX,
+                    screenBounds.maxY,
+                );
+                outlineMaterial.uniforms.texelSize.value.set(
+                    1 / maskRenderTarget.width,
+                    1 / maskRenderTarget.height,
+                );
+                outlineMaterial.uniforms.thickness.value =
+                    firstTarget.thickness;
+
+                const previousAutoClear = gl.autoClear;
+                gl.autoClear = false;
+                gl.render(outlineScene, outlineCamera);
+                gl.autoClear = previousAutoClear;
             }
+        };
 
-            renderMask({
-                camera,
-                drawingBufferSize,
-                gl,
-                maskMaterial,
-                renderTarget: maskRenderTarget,
-                scene,
-                targets: targetGroup,
-            });
+        return addAfterEffect(renderOutline);
+    }, [
+        camera,
+        drawingBufferSize,
+        gl,
+        hasActiveTargets,
+        maskMaterial,
+        maskRenderTarget,
+        outlineCamera,
+        outlineMaterial,
+        outlineScene,
+        registry,
+        scene,
+        screenBoundsScratch,
+    ]);
 
-            outlineOverlay.material.uniforms.maskTexture.value =
-                maskRenderTarget.texture;
-            outlineOverlay.material.uniforms.outlineColor.value.set(
-                firstTarget.color,
-            );
-            outlineOverlay.material.uniforms.opacity.value =
-                firstTarget.opacity;
-            const screenBounds = getOutlineScreenBounds({
-                camera,
-                drawingBufferSize,
-                scratch: screenBoundsScratch,
-                targets: targetGroup,
-                thickness: firstTarget.thickness,
-            });
-
-            if (!screenBounds) {
-                continue;
-            }
-
-            outlineOverlay.material.uniforms.screenMin.value.set(
-                screenBounds.minX,
-                screenBounds.minY,
-            );
-            outlineOverlay.material.uniforms.screenMax.value.set(
-                screenBounds.maxX,
-                screenBounds.maxY,
-            );
-            outlineOverlay.material.uniforms.texelSize.value.set(
-                1 / maskRenderTarget.width,
-                1 / maskRenderTarget.height,
-            );
-            outlineOverlay.material.uniforms.thickness.value =
-                firstTarget.thickness;
-
-            const previousAutoClear = gl.autoClear;
-            gl.autoClear = false;
-            gl.render(outlineOverlay.scene, outlineOverlay.camera);
-            gl.autoClear = previousAutoClear;
+    useEffect(() => {
+        void registryVersion;
+        if (wasActiveRef.current || hasActiveTargets) {
+            invalidate();
         }
-    }, outlineRenderPriority);
+        wasActiveRef.current = hasActiveTargets;
+    }, [hasActiveTargets, invalidate, registryVersion]);
 
     return null;
 }

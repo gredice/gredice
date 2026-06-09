@@ -286,6 +286,7 @@ export function Stars({ visibility = 1 }: StarsProps) {
     return (
         <points
             ref={pointsRef}
+            name={`Environment:Stars:count:${visibleCount}`}
             frustumCulled={false}
             renderOrder={STAR_RENDERING.renderOrder}
             visible={visibleCount > 0}

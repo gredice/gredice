@@ -29,6 +29,7 @@ const GREENHOUSE_PLANT_STATUSES = new Set([
     'pendingVerification',
     'sowed',
     'sprouted',
+    'readyForTransplanting',
 ]);
 
 const statusLabels: Record<string, string> = {
@@ -37,6 +38,7 @@ const statusLabels: Record<string, string> = {
     pendingVerification: 'Čeka verifikaciju',
     sowed: 'Sijano',
     sprouted: 'Proklijalo',
+    readyForTransplanting: 'Spremno za presađivanje',
 };
 
 type RaisedBed = Awaited<ReturnType<typeof getAllRaisedBeds>>[number];
@@ -79,6 +81,7 @@ function getStatusColor(status?: string | null): ColorPaletteProp {
         case 'sowed':
             return 'primary';
         case 'sprouted':
+        case 'readyForTransplanting':
             return 'success';
         default:
             return 'neutral';
@@ -333,8 +336,10 @@ export default async function GreenhousePage() {
                                                 />
                                             </Table.Cell>
                                             <Table.Cell>
-                                                {field.plantStatus ===
-                                                    'sprouted' &&
+                                                {(field.plantStatus ===
+                                                    'sprouted' ||
+                                                    field.plantStatus ===
+                                                        'readyForTransplanting') &&
                                                 raisedBed.accountId ? (
                                                     <SeedlingTransplantingQuickAction
                                                         raisedBedId={

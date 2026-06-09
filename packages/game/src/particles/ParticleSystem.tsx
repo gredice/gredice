@@ -7,7 +7,7 @@ import {
     useMemo,
     useRef,
 } from 'react';
-import { Euler, type InstancedMesh, Matrix4, Object3D, Vector3 } from 'three';
+import { Euler, type InstancedMesh, Object3D, Vector3 } from 'three';
 
 export enum ParticleType {
     Default = 'default',
@@ -17,6 +17,17 @@ export enum ParticleType {
     Stone = 'stone',
     Water = 'water',
 }
+
+const particlePoolSize = 96;
+const defaultParticleBurstCount = 6;
+const particleTypes = [
+    ParticleType.Default,
+    ParticleType.Hay,
+    ParticleType.Leaf,
+    ParticleType.TreeLeaf,
+    ParticleType.Stone,
+    ParticleType.Water,
+] as const;
 
 interface ParticleContextValue {
     spawn: (
@@ -71,10 +82,9 @@ export function ParticleSystemProvider({ children }: PropsWithChildren) {
     const meshTreeLeaf = useRef<InstancedMesh>(null);
     const meshStone = useRef<InstancedMesh>(null);
     const meshWater = useRef<InstancedMesh>(null);
-    const count = 500;
     const particles = useMemo(() => {
         const temp = [];
-        for (let i = 0; i < count; i++) {
+        for (let i = 0; i < particlePoolSize; i++) {
             temp.push({
                 rotation: {
                     x: 0,
@@ -182,7 +192,7 @@ export function ParticleSystemProvider({ children }: PropsWithChildren) {
     const spawn = (
         type: ParticleType | null | undefined,
         position: Vector3,
-        count = 8,
+        count = defaultParticleBurstCount,
     ) => {
         // Use default particle type if none provided
         const particleType = type ?? ParticleType.Default;
@@ -217,11 +227,27 @@ export function ParticleSystemProvider({ children }: PropsWithChildren) {
     };
 
     const dummy = useMemo(() => new Object3D(), []);
-    const hiddenMatrix = useMemo(() => new Matrix4().makeScale(0, 0, 0), []);
+
+    const getParticleMesh = (type: ParticleType) => {
+        switch (type) {
+            case ParticleType.Default:
+                return meshDefault.current;
+            case ParticleType.Hay:
+                return meshHay.current;
+            case ParticleType.Leaf:
+                return meshLeaf.current;
+            case ParticleType.TreeLeaf:
+                return meshTreeLeaf.current;
+            case ParticleType.Stone:
+                return meshStone.current;
+            case ParticleType.Water:
+                return meshWater.current;
+        }
+    };
 
     useLayoutEffect(() => {
-        // InstancedMesh starts every instance at identity; hide pooled particles
-        // until spawn assigns real transforms.
+        // Keep idle particle pools out of the draw list. Active particles are
+        // compacted to the first N instances per mesh type during useFrame.
         const meshes = [
             meshDefault.current,
             meshHay.current,
@@ -236,23 +262,23 @@ export function ParticleSystemProvider({ children }: PropsWithChildren) {
                 continue;
             }
 
-            for (let i = 0; i < count; i++) {
-                mesh.setMatrixAt(i, hiddenMatrix);
-            }
-            mesh.instanceMatrix.needsUpdate = true;
+            mesh.count = 0;
+            mesh.visible = false;
         }
-    }, [hiddenMatrix]);
+    }, []);
 
     useFrame((_, delta) => {
-        let i = -1;
-        let updateDefaultMesh = false;
-        let updateHayMesh = false;
-        let updateLeafMesh = false;
-        let updateTreeLeafMesh = false;
-        let updateStoneMesh = false;
-        let updateWaterMesh = false;
+        const activeCounts: Record<ParticleType, number> = {
+            [ParticleType.Default]: 0,
+            [ParticleType.Hay]: 0,
+            [ParticleType.Leaf]: 0,
+            [ParticleType.TreeLeaf]: 0,
+            [ParticleType.Stone]: 0,
+            [ParticleType.Water]: 0,
+        };
+        const touchedMeshes = new Set<InstancedMesh>();
+
         for (const p of particles) {
-            i++;
             if (p.life >= p.maxLife) {
                 continue;
             }
@@ -358,56 +384,38 @@ export function ParticleSystemProvider({ children }: PropsWithChildren) {
             dummy.updateMatrix();
 
             p.life = p.life + delta;
-            let targetMesh: InstancedMesh | null = null;
-            switch (p.type) {
-                case ParticleType.Default:
-                    targetMesh = meshDefault.current;
-                    updateDefaultMesh = true;
-                    break;
-                case ParticleType.Hay:
-                    targetMesh = meshHay.current;
-                    updateHayMesh = true;
-                    break;
-                case ParticleType.Leaf:
-                    targetMesh = meshLeaf.current;
-                    updateLeafMesh = true;
-                    break;
-                case ParticleType.TreeLeaf:
-                    targetMesh = meshTreeLeaf.current;
-                    updateTreeLeafMesh = true;
-                    break;
-                case ParticleType.Stone:
-                    targetMesh = meshStone.current;
-                    updateStoneMesh = true;
-                    break;
-                case ParticleType.Water:
-                    targetMesh = meshWater.current;
-                    updateWaterMesh = true;
-                    break;
+            if (p.life >= p.maxLife) {
+                continue;
             }
-            targetMesh?.setMatrixAt(
-                i,
-                p.life < p.maxLife ? dummy.matrix : hiddenMatrix,
-            );
+
+            const targetMesh = getParticleMesh(p.type);
+            if (!targetMesh) {
+                continue;
+            }
+
+            const matrixIndex = activeCounts[p.type];
+            activeCounts[p.type] += 1;
+            targetMesh.setMatrixAt(matrixIndex, dummy.matrix);
+            touchedMeshes.add(targetMesh);
         }
 
-        if (updateDefaultMesh && meshDefault.current) {
-            meshDefault.current.instanceMatrix.needsUpdate = true;
-        }
-        if (updateHayMesh && meshHay.current) {
-            meshHay.current.instanceMatrix.needsUpdate = true;
-        }
-        if (updateLeafMesh && meshLeaf.current) {
-            meshLeaf.current.instanceMatrix.needsUpdate = true;
-        }
-        if (updateTreeLeafMesh && meshTreeLeaf.current) {
-            meshTreeLeaf.current.instanceMatrix.needsUpdate = true;
-        }
-        if (updateStoneMesh && meshStone.current) {
-            meshStone.current.instanceMatrix.needsUpdate = true;
-        }
-        if (updateWaterMesh && meshWater.current) {
-            meshWater.current.instanceMatrix.needsUpdate = true;
+        for (const type of particleTypes) {
+            const mesh = getParticleMesh(type);
+            if (!mesh) {
+                continue;
+            }
+
+            const nextCount = activeCounts[type];
+            mesh.visible = nextCount > 0;
+            if (mesh.count !== nextCount) {
+                mesh.count = nextCount;
+                mesh.instanceMatrix.needsUpdate = true;
+                continue;
+            }
+
+            if (nextCount > 0 && touchedMeshes.has(mesh)) {
+                mesh.instanceMatrix.needsUpdate = true;
+            }
         }
     });
 
@@ -417,20 +425,29 @@ export function ParticleSystemProvider({ children }: PropsWithChildren) {
             {/* Default mesh */}
             <instancedMesh
                 ref={meshDefault}
-                args={[undefined, undefined, count]}
+                name="Particles:default"
+                args={[undefined, undefined, particlePoolSize]}
             >
                 <boxGeometry args={[0.03, 0.03, 0.03]} />
                 <meshStandardMaterial color="#4a270d" />
             </instancedMesh>
 
             {/* Hay mesh */}
-            <instancedMesh ref={meshHay} args={[undefined, undefined, count]}>
+            <instancedMesh
+                ref={meshHay}
+                name="Particles:hay"
+                args={[undefined, undefined, particlePoolSize]}
+            >
                 <boxGeometry args={[0.05, 0.01, 0.01]} />
                 <meshStandardMaterial color="yellow" />
             </instancedMesh>
 
             {/* Leaf mesh */}
-            <instancedMesh ref={meshLeaf} args={[undefined, undefined, count]}>
+            <instancedMesh
+                ref={meshLeaf}
+                name="Particles:leaf"
+                args={[undefined, undefined, particlePoolSize]}
+            >
                 <planeGeometry args={[0.08, 0.05]} />
                 <meshStandardMaterial color="#558b22" side={2} />
             </instancedMesh>
@@ -438,20 +455,29 @@ export function ParticleSystemProvider({ children }: PropsWithChildren) {
             {/* Tree Leaf mesh */}
             <instancedMesh
                 ref={meshTreeLeaf}
-                args={[undefined, undefined, count]}
+                name="Particles:treeLeaf"
+                args={[undefined, undefined, particlePoolSize]}
             >
                 <planeGeometry args={[0.08, 0.05]} />
                 <meshStandardMaterial color="#558b22" side={2} />
             </instancedMesh>
 
             {/* Stone mesh */}
-            <instancedMesh ref={meshStone} args={[undefined, undefined, count]}>
+            <instancedMesh
+                ref={meshStone}
+                name="Particles:stone"
+                args={[undefined, undefined, particlePoolSize]}
+            >
                 <sphereGeometry args={[0.04, 4, 4]} />
                 <meshStandardMaterial color="#555566" />
             </instancedMesh>
 
             {/* Water mesh */}
-            <instancedMesh ref={meshWater} args={[undefined, undefined, count]}>
+            <instancedMesh
+                ref={meshWater}
+                name="Particles:water"
+                args={[undefined, undefined, particlePoolSize]}
+            >
                 <sphereGeometry args={[0.035, 6, 6]} />
                 <meshStandardMaterial
                     color="#8fcfc4"

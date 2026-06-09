@@ -204,8 +204,9 @@ export const Drops = ({ count = 2000 }: DropsProps) => {
     );
 
     return (
-        <group ref={fref}>
+        <group ref={fref} name="Weather:Rain">
             <instancedMesh
+                name={`Weather:RainDrops:count:${count}`}
                 args={[geometry, undefined, count]}
                 frustumCulled={false}
                 renderOrder={35}

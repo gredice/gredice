@@ -188,7 +188,7 @@ function SunflowerDropAtPlacement({
         claimSunflowerDrop.mutate(spawn.spawnId, {
             onSuccess: () => {
                 setHovered(false);
-                spawnParticles(ParticleType.Leaf, drop.particlePosition, 12);
+                spawnParticles(ParticleType.Leaf, drop.particlePosition, 8);
                 onClaimed(origin);
             },
             onError: onRejected,

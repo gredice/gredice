@@ -1003,6 +1003,65 @@ test('greenhouse outlet seedlings preserve effective sowing date', async () => {
     );
 });
 
+test('greenhouse seedlings can be marked ready for transplanting', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const blockId = await createTestBlock(
+        gardenId,
+        'block-ready-for-transplanting',
+    );
+    const raisedBedId = await createTestRaisedBed(gardenId, accountId, blockId);
+    const readyDate = '2026-04-20T09:00:00.000Z';
+
+    await upsertRaisedBedField({
+        raisedBedId,
+        positionIndex: 0,
+    });
+
+    const aggregateId = `${raisedBedId.toString()}|0`;
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(aggregateId, {
+            plantSortId: '101',
+            scheduledDate: null,
+            sowingLocation: 'greenhouse',
+        }),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+            status: 'sowed',
+            effectiveDate: '2026-04-01T00:00:00.000Z',
+        }),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+            status: 'sprouted',
+            effectiveDate: '2026-04-08T00:00:00.000Z',
+        }),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+            status: 'readyForTransplanting',
+            effectiveDate: readyDate,
+        }),
+    );
+
+    const [field] = await getRaisedBedFieldsWithEvents(raisedBedId);
+    assert.strictEqual(field?.sowingLocation, 'greenhouse');
+    assert.strictEqual(field?.plantStatus, 'readyForTransplanting');
+    assert.strictEqual(field?.plantReadyDate?.toISOString(), readyDate);
+
+    const [plantCycle] = await getRaisedBedFieldPlantCycles(raisedBedId);
+    assert.strictEqual(plantCycle?.sowingLocation, 'greenhouse');
+    assert.strictEqual(plantCycle?.plantStatus, 'readyForTransplanting');
+    assert.strictEqual(plantCycle?.plantReadyDate?.toISOString(), readyDate);
+    assert.strictEqual(
+        plantCycle?.statusChanges.at(-1)?.status,
+        'readyForTransplanting',
+    );
+});
+
 test('raised bed field assignment metadata is projected for assign and unassign updates', async () => {
     createTestDb();
     const accountId = await createAccount();

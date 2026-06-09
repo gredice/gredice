@@ -38,18 +38,23 @@ export function PlantStateRequestForm({
     positionIndex,
     currentStatus,
     pendingRequestedStatus,
+    allowedStatuses,
 }: {
     raisedBedId: number;
     positionIndex: number;
     currentStatus?: string | null;
     pendingRequestedStatus?: string | null;
+    allowedStatuses?: readonly string[];
 }) {
     const [open, setOpen] = useState(false);
     const [state, formAction, isPending] = useActionState<
         PlantStateRequestActionState,
         FormData
     >(requestPlantStateChangeAction, null);
-    const groups = getPlantFieldStatusChangeGroups(currentStatus);
+    const groups = getPlantFieldStatusChangeGroups(
+        currentStatus,
+        allowedStatuses,
+    );
 
     useEffect(() => {
         if (state?.success) {

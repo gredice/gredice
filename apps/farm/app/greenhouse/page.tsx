@@ -1,9 +1,7 @@
 import {
-    plantFieldStatusEmoji,
-    plantFieldStatusLabel,
-} from '@gredice/js/plants';
-import {
+    type ApprovalRequest,
     type EntityStandardized,
+    getApprovalRequests,
     getEntitiesFormatted,
     getFarmUserRaisedBeds,
 } from '@gredice/storage';
@@ -15,7 +13,7 @@ import {
     CardOverflow,
     CardTitle,
 } from '@gredice/ui/Card';
-import { Chip, type ColorPaletteProp } from '@gredice/ui/Chip';
+import { Chip } from '@gredice/ui/Chip';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { RaisedBedIdentifierIcon } from '@gredice/ui/RaisedBedIdentifierIcon';
 import { Row } from '@gredice/ui/Row';
@@ -27,6 +25,8 @@ import LoginDialog from '../../components/auth/LoginDialog';
 import { HomeButton } from '../../components/HomeButton';
 import { auth } from '../../lib/auth/auth';
 import { KnownPages } from '../../src/KnownPages';
+import { PlantStateRequestForm } from '../raised-beds/[raisedBedId]/PlantStateRequestForm';
+import { FARM_GREENHOUSE_PLANT_FIELD_STATUSES } from '../raised-beds/[raisedBedId]/plantStatusOptions';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,6 +36,7 @@ const GREENHOUSE_PLANT_STATUSES = new Set([
     'pendingVerification',
     'sowed',
     'sprouted',
+    'readyForTransplanting',
 ]);
 
 type FarmRaisedBed = Awaited<ReturnType<typeof getFarmUserRaisedBeds>>[number];
@@ -121,6 +122,37 @@ function getGreenhouseRaisedBeds(
         .sort(compareRaisedBeds);
 }
 
+function getPendingPlantStatusRequest(
+    requests: ApprovalRequest[],
+    raisedBedId: number,
+    positionIndex: number,
+) {
+    return requests.find(
+        (request) =>
+            request.target.kind === 'raisedBedField.plantStatus' &&
+            request.target.raisedBedId === raisedBedId &&
+            request.target.positionIndex === positionIndex,
+    );
+}
+
+function isRequestForCurrentStatus(
+    request: ApprovalRequest | undefined,
+    currentStatus?: string | null,
+) {
+    if (
+        !request ||
+        !currentStatus ||
+        request.target.kind !== 'raisedBedField.plantStatus'
+    ) {
+        return false;
+    }
+
+    return (
+        !request.target.currentStatus ||
+        request.target.currentStatus === currentStatus
+    );
+}
+
 function formatDate(value?: Date | string | null) {
     if (!value) {
         return '—';
@@ -199,29 +231,6 @@ function sowingDateCell(
     );
 }
 
-function getStatusColor(status?: string | null): ColorPaletteProp {
-    switch (status) {
-        case 'planned':
-            return 'info';
-        case 'pendingVerification':
-            return 'warning';
-        case 'sowed':
-            return 'primary';
-        case 'sprouted':
-            return 'success';
-        default:
-            return 'neutral';
-    }
-}
-
-function getStatusLabel(status?: string | null) {
-    if (status === 'pendingVerification') {
-        return 'Čeka potvrdu';
-    }
-
-    return plantFieldStatusLabel(status ?? undefined).shortLabel;
-}
-
 function getPlantName(
     plantSort: EntityStandardized | undefined,
     plantSortId: number,
@@ -235,10 +244,15 @@ function getPlantName(
 
 async function GreenhousePageContent() {
     const { userId } = await auth(['farmer', 'admin']);
-    const [raisedBeds, plantSorts] = await Promise.all([
-        getFarmUserRaisedBeds(userId),
-        getEntitiesFormatted<EntityStandardized>('plantSort'),
-    ]);
+    const [raisedBeds, plantSorts, pendingPlantStatusRequests] =
+        await Promise.all([
+            getFarmUserRaisedBeds(userId),
+            getEntitiesFormatted<EntityStandardized>('plantSort'),
+            getApprovalRequests({
+                status: 'pending',
+                kind: 'raisedBedField.plantStatus',
+            }),
+        ]);
     const plantSortById = new Map(
         (plantSorts ?? []).map((plantSort) => [plantSort.id, plantSort]),
     );
@@ -352,6 +366,27 @@ async function GreenhousePageContent() {
                                                 plantSort,
                                                 field.plantSortId,
                                             );
+                                            const pendingRequest =
+                                                getPendingPlantStatusRequest(
+                                                    pendingPlantStatusRequests,
+                                                    raisedBed.id,
+                                                    field.positionIndex,
+                                                );
+                                            const activePendingRequest =
+                                                isRequestForCurrentStatus(
+                                                    pendingRequest,
+                                                    field.plantStatus,
+                                                )
+                                                    ? pendingRequest
+                                                    : undefined;
+                                            const pendingRequestedStatus =
+                                                activePendingRequest?.target
+                                                    .kind ===
+                                                'raisedBedField.plantStatus'
+                                                    ? activePendingRequest
+                                                          .target
+                                                          .requestedStatus
+                                                    : null;
 
                                             return (
                                                 <Table.Row
@@ -382,24 +417,23 @@ async function GreenhousePageContent() {
                                                         </div>
                                                     </Table.Cell>
                                                     <Table.Cell>
-                                                        <Chip
-                                                            color={getStatusColor(
-                                                                field.plantStatus,
-                                                            )}
-                                                            size="sm"
-                                                            startDecorator={
-                                                                <span aria-hidden="true">
-                                                                    {plantFieldStatusEmoji(
-                                                                        field.plantStatus ??
-                                                                            undefined,
-                                                                    )}
-                                                                </span>
+                                                        <PlantStateRequestForm
+                                                            raisedBedId={
+                                                                raisedBed.id
                                                             }
-                                                        >
-                                                            {getStatusLabel(
-                                                                field.plantStatus,
-                                                            )}
-                                                        </Chip>
+                                                            positionIndex={
+                                                                field.positionIndex
+                                                            }
+                                                            currentStatus={
+                                                                field.plantStatus
+                                                            }
+                                                            pendingRequestedStatus={
+                                                                pendingRequestedStatus
+                                                            }
+                                                            allowedStatuses={
+                                                                FARM_GREENHOUSE_PLANT_FIELD_STATUSES
+                                                            }
+                                                        />
                                                     </Table.Cell>
                                                     <Table.Cell>
                                                         {sowingDateCell(

@@ -4,6 +4,7 @@ export const FARM_PLANT_FIELD_STATUSES = [
     'pendingVerification',
     'sowed',
     'sprouted',
+    'readyForTransplanting',
     'firstFlowers',
     'firstFruitSet',
     'notSprouted',
@@ -13,12 +14,30 @@ export const FARM_PLANT_FIELD_STATUSES = [
     'removed',
 ] as const;
 
+const FARM_RAISED_BED_PLANT_FIELD_STATUSES = FARM_PLANT_FIELD_STATUSES.filter(
+    (status) => status !== 'readyForTransplanting',
+);
+
+export const FARM_GREENHOUSE_PLANT_FIELD_STATUSES = [
+    'sowed',
+    'sprouted',
+    'readyForTransplanting',
+] as const;
+
 const SENSIBLE_PLANT_FIELD_STATUS_CHANGES: Record<string, string[]> = {
     new: ['planned', 'pendingVerification', 'sowed'],
     planned: ['pendingVerification', 'sowed'],
     pendingVerification: ['sowed', 'sprouted'],
     sowed: ['sprouted', 'notSprouted'],
-    sprouted: ['firstFlowers', 'firstFruitSet', 'ready', 'notSprouted', 'died'],
+    sprouted: [
+        'readyForTransplanting',
+        'firstFlowers',
+        'firstFruitSet',
+        'ready',
+        'notSprouted',
+        'died',
+    ],
+    readyForTransplanting: ['sprouted'],
     firstFlowers: ['firstFruitSet', 'ready', 'died'],
     firstFruitSet: ['ready', 'harvested', 'died'],
     notSprouted: ['removed', 'sowed', 'sprouted'],
@@ -36,15 +55,16 @@ export function isFarmPlantFieldStatus(status: string) {
 
 export function getPlantFieldStatusChangeGroups(
     currentStatus: string | null | undefined,
+    allowedStatuses: readonly string[] = FARM_RAISED_BED_PLANT_FIELD_STATUSES,
 ) {
     const sensibleStatuses = currentStatus
         ? (SENSIBLE_PLANT_FIELD_STATUS_CHANGES[currentStatus] ?? []).filter(
               (status) =>
-                  isFarmPlantFieldStatus(status) && status !== currentStatus,
+                  allowedStatuses.includes(status) && status !== currentStatus,
           )
         : [];
     const sensibleStatusSet = new Set(sensibleStatuses);
-    const otherStatuses = FARM_PLANT_FIELD_STATUSES.filter(
+    const otherStatuses = allowedStatuses.filter(
         (status) => status !== currentStatus && !sensibleStatusSet.has(status),
     );
 

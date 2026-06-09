@@ -72,7 +72,7 @@ export function PlacementDropAnimation({
             spawn(
                 resolveBlockParticleType(block.name),
                 toVector3(particlePosition),
-                12,
+                8,
             );
         };
         const finish = () => {
@@ -103,8 +103,16 @@ export function PlacementDropAnimation({
     ]);
 
     return (
-        <group position={position}>
-            <animated.group position-y={dropOffsetY}>{children}</animated.group>
+        <group
+            name={`Animation:PlacementDrop:${block.name}:${block.id}`}
+            position={position}
+        >
+            <animated.group
+                name={`Animation:PlacementDropOffset:${block.name}:${block.id}`}
+                position-y={dropOffsetY}
+            >
+                {children}
+            </animated.group>
         </group>
     );
 }

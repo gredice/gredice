@@ -866,7 +866,10 @@ function summarizePlantCycle(
                 plantGrowthDate = plantGrowthDate ?? statusEventDate;
             } else if (plantStatus === 'firstFruitSet') {
                 plantGrowthDate = plantGrowthDate ?? statusEventDate;
-            } else if (plantStatus === 'ready') {
+            } else if (
+                plantStatus === 'ready' ||
+                plantStatus === 'readyForTransplanting'
+            ) {
                 plantReadyDate = statusEventDate;
             } else if (plantStatus === 'harvested') {
                 plantHarvestedDate = statusEventDate;
@@ -2728,7 +2731,10 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                     plantGrowthDate = plantGrowthDate ?? statusEventDate;
                 } else if (plantStatus === 'firstFruitSet') {
                     plantGrowthDate = plantGrowthDate ?? statusEventDate;
-                } else if (plantStatus === 'ready') {
+                } else if (
+                    plantStatus === 'ready' ||
+                    plantStatus === 'readyForTransplanting'
+                ) {
                     plantReadyDate = statusEventDate;
                 } else if (plantStatus === 'harvested') {
                     plantHarvestedDate = statusEventDate;

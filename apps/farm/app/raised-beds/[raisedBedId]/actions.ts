@@ -6,6 +6,7 @@ import {
 } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
 import { auth } from '../../../lib/auth/auth';
+import { KnownPages } from '../../../src/KnownPages';
 import { isFarmPlantFieldStatus } from './plantStatusOptions';
 
 export type PlantStateRequestActionState =
@@ -73,6 +74,17 @@ export async function requestPlantStateChangeAction(
         };
     }
 
+    if (
+        requestedStatus === 'readyForTransplanting' &&
+        field.sowingLocation !== 'greenhouse'
+    ) {
+        return {
+            success: false,
+            message:
+                'Stanje spremnosti za presađivanje dostupno je samo za biljke iz staklenika.',
+        };
+    }
+
     try {
         await createPlantStatusApprovalRequest({
             raisedBedId,
@@ -96,8 +108,9 @@ export async function requestPlantStateChangeAction(
         };
     }
 
-    revalidatePath(`/raised-beds/${raisedBedId.toString()}`);
-    revalidatePath('/raised-beds');
+    revalidatePath(KnownPages.RaisedBed(raisedBedId));
+    revalidatePath(KnownPages.RaisedBeds);
+    revalidatePath(KnownPages.Greenhouse);
 
     return {
         success: true,

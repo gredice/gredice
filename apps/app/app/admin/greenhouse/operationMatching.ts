@@ -7,6 +7,7 @@ export type GreenhouseFieldCycleContext = {
     id: number;
     plantCycles?: RaisedBedFieldPlantCycle[] | null;
     plantGrowthDate?: Date | null;
+    plantReadyDate?: Date | null;
 };
 
 export type GreenhouseOperationCycleCandidate = {
@@ -41,6 +42,8 @@ export function getSeedlingTransplantingOperationTimestamp(
     now = new Date(),
 ) {
     return (
+        field.plantReadyDate ??
+        getActivePlantCycle(field)?.plantReadyDate ??
         field.plantGrowthDate ??
         getActivePlantCycle(field)?.plantGrowthDate ??
         now

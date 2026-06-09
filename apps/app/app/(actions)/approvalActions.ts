@@ -53,6 +53,15 @@ export async function approveApprovalRequestAction(requestId: string) {
             );
         }
 
+        if (
+            request.target.requestedStatus === 'readyForTransplanting' &&
+            field.sowingLocation !== 'greenhouse'
+        ) {
+            throw new Error(
+                'Stanje spremnosti za presađivanje može se odobriti samo za biljke iz staklenika.',
+            );
+        }
+
         await raisedBedFieldUpdatePlant({
             raisedBedId: request.target.raisedBedId,
             positionIndex: request.target.positionIndex,

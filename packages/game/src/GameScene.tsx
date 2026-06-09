@@ -2,6 +2,7 @@
 
 import { cx } from '@gredice/ui/utils';
 import {
+    Fragment,
     type HTMLAttributes,
     Suspense,
     useEffect,
@@ -74,6 +75,7 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     noBackground?: boolean;
     noControls?: boolean;
     hideHud?: boolean;
+    debugHud?: boolean;
     noWeather?: boolean;
     noSound?: boolean;
     mockGarden?: boolean;
@@ -83,6 +85,7 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     winterMode?: WinterMode;
     weather?: Partial<GameState['weather']>;
     deferDetails?: boolean;
+    renderDetails?: boolean;
     quality?: GameQualityTier;
     initialQualitySetting?: GameQualitySetting;
 
@@ -174,9 +177,11 @@ export function GameScene({
     hideHud,
     className,
     flags,
+    debugHud,
     quality,
     weather,
     deferDetails,
+    renderDetails: renderDetailsOverride,
     ...rest
 }: GameSceneInnerProps) {
     useFocusPlacedBlock();
@@ -194,7 +199,8 @@ export function GameScene({
         (state) => state.gameQualityCustomProfile,
     );
     const weatherDisabled = noWeather || weatherVisualizationDisabled;
-    const renderDetails = useDeferredSceneDetails(deferDetails);
+    const deferredRenderDetails = useDeferredSceneDetails(deferDetails);
+    const renderDetails = renderDetailsOverride ?? deferredRenderDetails;
     const [sunflowerDropFlyOrigin, setSunflowerDropFlyOrigin] =
         useState<SunflowerDropFlyOrigin | null>(null);
     const autoQualityProfileMetrics = useAutoQualityProfileMetrics(
@@ -244,6 +250,8 @@ export function GameScene({
         return loadingContext ? null : <GardenLoadingIndicator />;
     }
 
+    const showDebugHud = debugHud ?? Boolean(flags?.enableDebugHudFlag);
+
     return (
         <div
             className={cx('animate-in duration-1000 fade-in', className)}
@@ -251,6 +259,7 @@ export function GameScene({
         >
             <GameSceneDetailContext.Provider value={{ renderDetails }}>
                 <Scene
+                    debugStats={showDebugHud}
                     position={cameraPosition}
                     quality={qualityProfile}
                     zoom={
@@ -270,7 +279,7 @@ export function GameScene({
                                 quality={qualityProfile}
                                 weather={weather}
                             />
-                            <group>
+                            <group name="GameScene:Entities">
                                 {garden?.stacks.map((stack) =>
                                     stack.blocks?.map((block, i) => {
                                         if (
@@ -307,9 +316,9 @@ export function GameScene({
                                             )
                                         ) {
                                             return (
-                                                <group key={key}>
+                                                <Fragment key={key}>
                                                     {entityFactory}
-                                                </group>
+                                                </Fragment>
                                             );
                                         }
 
@@ -384,8 +393,14 @@ export function GameScene({
                     </ParticleSystemProvider>
                 </Scene>
             </GameSceneDetailContext.Provider>
-            {!hideHud && <GameHud flags={flags} noWeather={noWeather} />}
-            {hideHud && Boolean(flags?.enableDebugHudFlag) && <DebugHud />}
+            {!hideHud && (
+                <GameHud
+                    debugHud={showDebugHud}
+                    flags={flags}
+                    noWeather={noWeather}
+                />
+            )}
+            {hideHud && showDebugHud && <DebugHud />}
             {sunflowerDropFlyOrigin && (
                 <SunflowerDropFlyAnimation
                     origin={sunflowerDropFlyOrigin}

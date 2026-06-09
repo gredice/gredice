@@ -426,6 +426,7 @@ function statusDate(
 const publicPlantStatusOrder = new Set([
     'sowed',
     'sprouted',
+    'readyForTransplanting',
     'firstFlowers',
     'firstFruitSet',
     'notSprouted',
@@ -448,6 +449,7 @@ function plantStatusTone(
 
     if (
         status === 'sprouted' ||
+        status === 'readyForTransplanting' ||
         status === 'firstFlowers' ||
         status === 'firstFruitSet'
     ) {

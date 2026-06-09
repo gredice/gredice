@@ -16,6 +16,7 @@ export function PlacementGrid() {
 
     return (
         <gridHelper
+            name="Interaction:PlacementGrid"
             args={[
                 100,
                 100,

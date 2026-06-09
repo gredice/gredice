@@ -98,25 +98,32 @@ warnings that will not exactly match production.
 
 The garden app now has a profiling route and report generator for future checks.
 The route `apps/garden/app/debug/profile/game/page.tsx` renders the mock game
-scene without signed-in game data requirements, login UI, HUD, or sound. In dev
-it still inherits app-level providers, so reports can include unrelated
-auth/analytics console noise; isolating that is now part of the profiling cleanup
-step. It supports these stable modes:
+scene without signed-in game data requirements, login UI, HUD, controls, or
+sound, while keeping the normal in-game scene details enabled. In dev it still
+inherits app-level providers, so reports can include unrelated auth/analytics
+console noise; isolating that is now part of the profiling cleanup step. It
+supports these stable modes:
 
-- `/debug/profile/game?mode=baseline&controls=0&quality=medium`
-- `/debug/profile/game?mode=baseline&controls=0&quality=low`
-- `/debug/profile/game?mode=details&controls=0&quality=medium`
-- `/debug/profile/game?mode=rain&controls=0&quality=medium`
-- `/debug/profile/game?mode=snow&controls=0&quality=medium`
-- `/debug/profile/game?mode=cloudy&controls=0&quality=medium`
-- `/debug/profile/game?mode=windy&controls=0&quality=medium`
-- `/debug/profile/game?mode=details&profile=dense&controls=0&quality=medium`
-- `/debug/profile/game?mode=details&profile=plant-heavy&controls=0&quality=medium`
+- `/debug/profile/game?mode=baseline&quality=medium`
+- `/debug/profile/game?mode=details&quality=medium`
+- `/debug/profile/game?mode=rain&quality=medium`
+- `/debug/profile/game?mode=snow&quality=medium`
+- `/debug/profile/game?mode=cloudy&quality=medium`
+- `/debug/profile/game?mode=windy&quality=medium`
+- `/debug/profile/game?mode=details&profile=dense&quality=medium`
+- `/debug/profile/game?mode=details&profile=plant-heavy&quality=medium`
 
 The `quality` query accepts `low`, `medium`, or `high`. When omitted, the game
 uses the automatic quality resolver. The `profile` query accepts `default`,
 `dense`, or `plant-heavy`. Dense profile scenes use deterministic 25x25 mock
-gardens so larger-scene measurements do not depend on signed-in garden data.
+gardens so larger-scene measurements do not depend on signed-in garden data. The
+`details` query defaults to `1`; use `details=0` only when intentionally
+profiling the reduced scene without detail layers such as mulch, ground
+decorations, and animals. Controls, the regular HUD, and the debug HUD are
+hidden by default; add `controls=1`, `hud=1`, or `debugHud=1` only when needed.
+Mobile profile scenarios use `quality=medium`, matching the automatic resolver
+policy that no longer selects the low tier by default. Use `quality=low` only
+for explicit manual low-tier comparisons.
 
 Generate the default production report. This builds the garden app, starts it
 with `pnpm start` on `http://localhost:3101`, profiles the scenarios, and then
@@ -258,9 +265,9 @@ are still dev/headless measurements; use them for relative deltas only.
 | Plants desktop p95 | shadow 8192 -> medium 2048 | 642.6 ms | 434.3 ms | -32.4% |
 
 Canvas backing sizes and active quality metadata are now visible in the Markdown
-report. The important mobile confirmation: the baseline/rain/snow mobile scenes
-now render at `390 x 844` instead of `780 x 1688`, and report low quality with
-shadows off.
+report. Mobile scenarios should be profiled at medium quality by default,
+matching the automatic resolver and using the medium DPR cap instead of the
+manual low-tier cap.
 
 Frame-time budgets still fail in dev because every scenario reports many long
 tasks and low rAF cadence in headless Chromium. The draw-call and triangle deltas
@@ -285,9 +292,9 @@ that the quality gates are active in production output.
 
 The short profile still fails frame-time budgets. The reported p95 values are
 dominated by long headless-browser stalls, so use draw calls, triangles, active
-detail counts, and repeated longer samples for optimization deltas. The useful
-confirmation is that low mobile now eliminates optional ground decorations, and
-clear scenes no longer mount snow overlays.
+detail counts, and repeated longer samples for optimization deltas. These
+historical mobile rows used the manual low tier; current mobile profiling uses
+medium because automatic quality no longer resolves to low.
 
 ### 2026-06-01 dense 25x25 production smoke
 
@@ -315,6 +322,10 @@ The VS Code browser sample stayed at DPR 2 even when different profiles were
 requested, so treat this as a steady-state draw-call sample rather than a true
 desktop-vs-mobile comparison. It ran a 5 second `requestAnimationFrame` sample
 after the scene was already loaded.
+
+Note: the `/debug/plants` row is historical from the older standalone generated
+plant grid. The current `/debug/plants` route uses the normal game scene with
+the `plant-heavy` mock garden profile.
 
 | Route | FPS | p95 frame | Draw calls / 5s | Approx draw calls / frame | Triangles / 5s | Approx triangles / frame |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -391,7 +402,8 @@ Recommended work:
 
 - Continue refining the automatic game quality resolver using viewport, pointer
   type, DPR, memory, CPU cores, and eventually a persisted user override.
-- Keep explicit DPR caps by tier: `1` low/mobile, `1.5` default, `2` high.
+- Keep explicit DPR caps by tier: `1` manual low, `1.5` medium/default, `2`
+  high.
 - The debug HUD now exposes FPS/p95, active tier, DPR cap, canvas backing size,
   shadow size, and weather particle counts.
 - Add adaptive degradation after sustained slow frames: lower DPR, reduce
@@ -507,13 +519,15 @@ time.
   suppress or isolate unrelated auth/analytics requests on debug routes, and
   keep dev-headless frame timing separate from render-work deltas.
 2. Continue batching detail layers: snow overlays and ground decorations are now
-  gated by coverage, zoom, and quality; the next win is batching/instancing
-  active overlays and atlas sprites.
+  gated by coverage, zoom, and quality; ground decorations are batched by atlas
+  page with per-instance sprite UVs, so the next win is active overlay and
+  plant/detail LOD batching.
 3. Replace CPU weather particle loops with shader-driven animation or a mobile
    overlay fallback.
 4. Tighten plant/detail LOD. `deferDetails` is now enabled on the main garden
   route, but dense plant/detail work still needs quality-aware LOD.
-5. Batch atlas sprites; static and animated sprite billboards are already split.
+5. Batch remaining plant/detail billboards; ground atlas sprites now share
+   atlas-page instanced batches.
 6. Evaluate `frameloop="demand"` or adaptive frame-loop modes after optional
    continuous effects are controlled.
 7. Add adaptive quality fallback after sustained slow frames.

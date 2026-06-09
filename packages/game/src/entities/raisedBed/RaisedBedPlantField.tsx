@@ -21,7 +21,7 @@ import {
 import { useGameGLTF } from '../../utils/useGameGLTF';
 import { RaisedBedGeneratedPlantBatch } from './RaisedBedGeneratedPlantBatch';
 
-const mockPlantPresetLabelsBySortId: Record<number, string> = {
+export const mockPlantPresetLabelsBySortId: Record<number, string> = {
     219: 'pepper',
     226: 'cucumber',
     230: 'carrot',

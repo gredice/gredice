@@ -20,6 +20,7 @@ const GREENHOUSE_SEEDLING_STATUSES = new Set([
     'pendingVerification',
     'sowed',
     'sprouted',
+    'readyForTransplanting',
 ]);
 
 const AI_MODEL = process.env.AI_GATEWAY_MODEL ?? 'openai/gpt-5.5';

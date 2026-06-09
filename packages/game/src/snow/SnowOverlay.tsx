@@ -39,6 +39,7 @@ export type SnowMaterialOptions = {
 
 export type SnowOverlayProps = SnowMaterialOptions & {
     geometry: BufferGeometry;
+    debugName?: string;
     minCoverage?: number;
     renderOrder?: number;
     overrideSnow?: number;
@@ -235,6 +236,7 @@ function SnowOverlayMesh({
     });
     return (
         <mesh
+            name={options.debugName ?? 'SnowOverlay'}
             geometry={overlayGeometry}
             material={material}
             renderOrder={renderOrder}

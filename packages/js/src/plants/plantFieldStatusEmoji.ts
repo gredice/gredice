@@ -10,6 +10,8 @@ export function plantFieldStatusEmoji(status: string | undefined) {
             return '🫘';
         case 'sprouted':
             return '🌱';
+        case 'readyForTransplanting':
+            return '🪴';
         case 'firstFlowers':
             return '🌸';
         case 'firstFruitSet':

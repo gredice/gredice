@@ -80,6 +80,7 @@ const VERIFIED_SOWING_STATUSES = new Set([
     'sowed',
     'notSprouted',
     'sprouted',
+    'readyForTransplanting',
     'firstFlowers',
     'firstFruitSet',
     'ready',

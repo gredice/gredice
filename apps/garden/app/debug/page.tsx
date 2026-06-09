@@ -47,9 +47,9 @@ const debugGroups = [
         pages: [
             {
                 href: '/debug/plants',
-                title: 'Plant performance',
+                title: 'Plant-heavy game scene',
                 description:
-                    'Generated plant presets rendered in dense batches.',
+                    'Normal mock game scene prepopulated with planted raised beds.',
             },
         ],
     },

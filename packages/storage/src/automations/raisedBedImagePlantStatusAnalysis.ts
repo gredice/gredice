@@ -24,6 +24,7 @@ const GREENHOUSE_SEEDLING_STATUSES = new Set([
     'pendingVerification',
     'sowed',
     'sprouted',
+    'readyForTransplanting',
 ]);
 
 export const RAISED_BED_IMAGE_PLANT_STATUS_REVIEW_REQUESTER = REVIEW_REQUESTER;

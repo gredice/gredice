@@ -5,11 +5,11 @@ export default function DebugPlantsPage() {
         <div className="flex h-screen w-screen flex-col bg-neutral-900">
             <div className="border-b border-neutral-700 p-4">
                 <h1 className="text-xl font-bold text-white">
-                    Plant Performance Debug View
+                    Plant Garden Debug View
                 </h1>
                 <p className="text-sm text-neutral-400">
-                    Generated presets rendered in dense batches for rollout
-                    validation.
+                    Normal game scene with a plant-heavy mock garden of raised
+                    beds.
                 </p>
             </div>
             <div className="flex-1">
