@@ -24,6 +24,7 @@ import {
     RaisedBedPlantField,
 } from './RaisedBedPlantField';
 import { resolveRaisedBedAgrotextileCoverPositions } from './raisedBedAgrotextileRewards';
+import { resolveRaisedBedHarvestPositions } from './raisedBedHarvestRewards';
 import { resolveRaisedBedSupportPositions } from './raisedBedSupportRewards';
 import { isWateringRewardVisible } from './raisedBedWateringRewards';
 import {
@@ -262,6 +263,60 @@ function RaisedBedFieldSupportVisual({
     );
 }
 
+function RaisedBedFieldHarvestCrate({
+    blockIndex,
+    orientation,
+    positionIndex,
+}: {
+    blockIndex: number;
+    orientation: RaisedBedOrientation;
+    positionIndex: number;
+}) {
+    const position = getRaisedBedFieldSurfacePosition({
+        blockIndex,
+        orientation,
+        positionIndex,
+        y: -0.714,
+    });
+
+    return (
+        <group position={position}>
+            <mesh castShadow position={[0.072, 0.034, -0.078]} renderOrder={4}>
+                <boxGeometry args={[0.13, 0.055, 0.095]} />
+                <meshStandardMaterial color="#8a5b32" roughness={0.95} />
+            </mesh>
+            <mesh position={[0.072, 0.072, -0.128]} renderOrder={5}>
+                <boxGeometry args={[0.14, 0.018, 0.012]} />
+                <meshStandardMaterial color="#b47a43" roughness={0.95} />
+            </mesh>
+            <mesh position={[0.072, 0.072, -0.028]} renderOrder={5}>
+                <boxGeometry args={[0.14, 0.018, 0.012]} />
+                <meshStandardMaterial color="#b47a43" roughness={0.95} />
+            </mesh>
+            <mesh position={[0.006, 0.074, -0.078]} renderOrder={5}>
+                <boxGeometry args={[0.012, 0.018, 0.105]} />
+                <meshStandardMaterial color="#b47a43" roughness={0.95} />
+            </mesh>
+            <mesh position={[0.138, 0.074, -0.078]} renderOrder={5}>
+                <boxGeometry args={[0.012, 0.018, 0.105]} />
+                <meshStandardMaterial color="#b47a43" roughness={0.95} />
+            </mesh>
+            <mesh position={[0.038, 0.094, -0.078]} renderOrder={6}>
+                <sphereGeometry args={[0.018, 8, 6]} />
+                <meshStandardMaterial color="#bf3f31" roughness={0.8} />
+            </mesh>
+            <mesh position={[0.078, 0.1, -0.098]} renderOrder={6}>
+                <sphereGeometry args={[0.018, 8, 6]} />
+                <meshStandardMaterial color="#e0a12f" roughness={0.8} />
+            </mesh>
+            <mesh position={[0.112, 0.094, -0.064]} renderOrder={6}>
+                <sphereGeometry args={[0.017, 8, 6]} />
+                <meshStandardMaterial color="#5f8c44" roughness={0.8} />
+            </mesh>
+        </group>
+    );
+}
+
 export function RaisedBedFields({
     blockId,
     generatedPlantsHandledExternally = false,
@@ -390,6 +445,18 @@ export function RaisedBedFields({
     const visibleSupportPositions = supportPositions.filter(
         (positionIndex) => !agrotextileCoverPositionSet.has(positionIndex),
     );
+    const harvestPositions = raisedBed
+        ? resolveRaisedBedHarvestPositions({
+              blockOffset,
+              fields: raisedBed.fields,
+              raisedBedId: raisedBed.id,
+              visualRewards,
+          })
+        : [];
+    const visibleHarvestPositions = harvestPositions.filter(
+        (positionIndex) => !agrotextileCoverPositionSet.has(positionIndex),
+    );
+    const harvestPositionSet = new Set(visibleHarvestPositions);
 
     return (
         <>
@@ -458,6 +525,8 @@ export function RaisedBedFields({
                         key={field.id}
                         field={{
                             ...field,
+                            harvestedVisual:
+                                harvestPositionSet.has(localPositionIndex),
                             positionIndex: localPositionIndex,
                         }}
                         blockIndex={blockIndex}
@@ -468,6 +537,14 @@ export function RaisedBedFields({
             {visibleSupportPositions.map((positionIndex) => (
                 <RaisedBedFieldSupportVisual
                     key={`raised-bed-field-support-${blockId}-${positionIndex}`}
+                    blockIndex={blockIndex}
+                    orientation={orientation}
+                    positionIndex={positionIndex}
+                />
+            ))}
+            {visibleHarvestPositions.map((positionIndex) => (
+                <RaisedBedFieldHarvestCrate
+                    key={`raised-bed-field-harvest-${blockId}-${positionIndex}`}
                     blockIndex={blockIndex}
                     orientation={orientation}
                     positionIndex={positionIndex}
