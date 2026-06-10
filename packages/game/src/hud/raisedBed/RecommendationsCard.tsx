@@ -9,6 +9,7 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useEffect, useMemo, useRef } from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
+import { sortFavoritesFirst, useFavoriteIds } from '../../hooks/useFavorites';
 import { useOperations } from '../../hooks/useOperations';
 import { usePlantSort } from '../../hooks/usePlantSorts';
 import { usePlants } from '../../hooks/usePlants';
@@ -44,6 +45,7 @@ export function RecommendationsCard({
     plantSortId?: number;
 }) {
     const { track } = useGameAnalytics();
+    const favoriteOperationIds = useFavoriteIds('operation');
     // Fetch and prepare data for recommendations
     const {
         data: operations,
@@ -156,12 +158,18 @@ export function RecommendationsCard({
                 configuredSet.has(operation.information.name),
             );
             if (configuredOperations.length > 0) {
-                return configuredOperations;
+                return sortFavoritesFirst(
+                    configuredOperations,
+                    favoriteOperationIds,
+                );
             }
         }
 
-        return sorted.slice(0, DEFAULT_FEATURED_OPERATION_LIMIT);
-    }, [selectedStage, stageOperations]);
+        return sortFavoritesFirst(
+            sorted.slice(0, DEFAULT_FEATURED_OPERATION_LIMIT),
+            favoriteOperationIds,
+        );
+    }, [favoriteOperationIds, selectedStage, stageOperations]);
 
     const plantHealthIssues = useMemo(() => {
         const plantHealth = plant?.health;
@@ -195,15 +203,18 @@ export function RecommendationsCard({
             return [] as OperationData[];
         }
 
-        return operations
-            .filter((operation) => healthOperationIds.has(operation.id))
-            .sort((left, right) =>
-                left.information.label.localeCompare(
-                    right.information.label,
-                    'hr',
+        return sortFavoritesFirst(
+            operations
+                .filter((operation) => healthOperationIds.has(operation.id))
+                .sort((left, right) =>
+                    left.information.label.localeCompare(
+                        right.information.label,
+                        'hr',
+                    ),
                 ),
-            );
-    }, [healthOperationIds, operations]);
+            favoriteOperationIds,
+        );
+    }, [favoriteOperationIds, healthOperationIds, operations]);
 
     const healthIssueLabels = useMemo(
         () => plantHealthIssues.map((issue) => issue.name),

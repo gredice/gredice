@@ -1,9 +1,101 @@
+import type { FavoriteEntityType, FavoriteItem } from '@gredice/client';
 import { expect, test } from '@playwright/experimental-ct-react';
 import type { Page } from '@playwright/test';
 import { PlantPickerTestStory } from './PlantPickerTestStory';
 
+const favoriteTimestamp = '2026-06-01T00:00:00.000Z';
+
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null;
+}
+
+function favoriteItem({
+    entityId,
+    entityType,
+}: {
+    entityId: number;
+    entityType: FavoriteEntityType;
+}): FavoriteItem {
+    return {
+        id: entityId,
+        entityType,
+        entityId,
+        createdAt: favoriteTimestamp,
+        updatedAt: favoriteTimestamp,
+    };
+}
+
+function isFavoriteRequestBody(value: unknown): value is {
+    entityType: FavoriteEntityType;
+    entityId: number;
+    favorited: boolean;
+} {
+    if (!isRecord(value)) {
+        return false;
+    }
+
+    return (
+        typeof value.entityType === 'string' &&
+        ['plant', 'plantSort', 'operation'].includes(value.entityType) &&
+        typeof value.entityId === 'number' &&
+        typeof value.favorited === 'boolean'
+    );
+}
+
+async function mockFavoriteRequests(
+    page: Page,
+    initialFavorites: FavoriteItem[],
+) {
+    let favorites = [...initialFavorites];
+
+    await page.route('**/api/gredice/api/favorites**', async (route) => {
+        const request = route.request();
+
+        if (request.method() === 'PUT') {
+            const body = request.postDataJSON();
+            if (!isFavoriteRequestBody(body)) {
+                throw new Error('Invalid favorite request body');
+            }
+            favorites = body.favorited
+                ? [
+                      favoriteItem({
+                          entityType: body.entityType,
+                          entityId: body.entityId,
+                      }),
+                      ...favorites.filter(
+                          (favorite) =>
+                              favorite.entityType !== body.entityType ||
+                              favorite.entityId !== body.entityId,
+                      ),
+                  ]
+                : favorites.filter(
+                      (favorite) =>
+                          favorite.entityType !== body.entityType ||
+                          favorite.entityId !== body.entityId,
+                  );
+
+            await route.fulfill({
+                body: JSON.stringify({
+                    favorited: body.favorited,
+                    favorite: body.favorited
+                        ? favoriteItem({
+                              entityType: body.entityType,
+                              entityId: body.entityId,
+                          })
+                        : null,
+                }),
+                contentType: 'application/json',
+                status: 200,
+            });
+            return;
+        }
+
+        await route.fulfill({
+            body: JSON.stringify({ favorites }),
+            contentType: 'application/json',
+            status: 200,
+        });
+    });
 }
 
 async function mockShoppingCartPosts(page: Page) {
@@ -37,6 +129,42 @@ async function mockShoppingCartPosts(page: Page) {
 
     return posts;
 }
+
+test('favorite plants and sorts are ranked first', async ({ mount, page }) => {
+    const favorites = [
+        favoriteItem({ entityType: 'plant', entityId: 2 }),
+        favoriteItem({ entityType: 'plantSort', entityId: 105 }),
+    ];
+    await mockFavoriteRequests(page, favorites);
+
+    await mount(<PlantPickerTestStory favorites={favorites} />);
+
+    await page.getByRole('button', { name: 'Sijanje' }).click();
+
+    const plantRows = page.locator('[data-plant-picker-plant-id]');
+    await expect(plantRows.first()).toContainText('Bosiljak');
+
+    const basilRow = page.locator('[data-plant-picker-plant-id="2"]');
+    await expect(
+        basilRow.getByRole('button', {
+            name: 'Ukloni biljku iz omiljenih',
+        }),
+    ).toBeVisible();
+
+    await page
+        .locator('[data-plant-picker-plant-id="1"]')
+        .getByRole('button')
+        .first()
+        .click();
+
+    const sortRows = page.locator('[data-plant-picker-sort-id]');
+    await expect(sortRows.first()).toContainText('Rajčica San Marzano');
+    await expect(
+        page.locator('[data-plant-picker-sort-id="105"]').getByRole('button', {
+            name: 'Ukloni sortu iz omiljenih',
+        }),
+    ).toBeVisible();
+});
 
 test('plant search keeps keyboard focus while filtering sowing options', async ({
     mount,

@@ -14,8 +14,10 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
+import { sortFavoritesFirst, useFavoriteIds } from '../../hooks/useFavorites';
 import { usePlants } from '../../hooks/usePlants';
 import { KnownPages } from '../../knownPages';
+import { FavoriteToggleButton } from './FavoriteToggleButton';
 import { PlantListItemSkeleton } from './PlantListItemSkeleton';
 import {
     getPlantRelationshipSignal,
@@ -107,6 +109,7 @@ export function PlantsList({
 }) {
     const { track } = useGameAnalytics();
     const { data: plants, isLoading, isError } = usePlants();
+    const favoritePlantIds = useFavoriteIds('plant');
     const normalizedSearch = normalizePlantSearchText(search);
     // Filter plants based on search query
     const filteredPlants =
@@ -128,7 +131,13 @@ export function PlantsList({
 
     // Mark and sort relationship-compatible plants before seasonal recommendations.
     const sortedPlants = filteredPlants
-        ? [...filteredPlants].sort((a, b) => {
+        ? sortFavoritesFirst(filteredPlants, favoritePlantIds).sort((a, b) => {
+              const aFavorite = favoritePlantIds.has(a.id) ? 1 : 0;
+              const bFavorite = favoritePlantIds.has(b.id) ? 1 : 0;
+              if (aFavorite !== bFavorite) {
+                  return bFavorite - aFavorite;
+              }
+
               const aRelationshipScore = getPlantRelationshipSignalSortScore(
                   relationshipSignalsByPlantId.get(a.id)?.status ?? 'neutral',
               );
@@ -185,7 +194,10 @@ export function PlantsList({
                         ? plant.prices.perPlant.toFixed(2)
                         : 'Nepoznato';
                     return (
-                        <Stack key={plant.id}>
+                        <Stack
+                            key={plant.id}
+                            data-plant-picker-plant-id={plant.id}
+                        >
                             <Button
                                 variant="plain"
                                 className="justify-start text-start p-0 h-auto py-2 gap-3 px-4 rounded-none font-normal"
@@ -271,6 +283,11 @@ export function PlantsList({
                                 >
                                     Više informacija...
                                 </Button>
+                                <FavoriteToggleButton
+                                    entityId={plant.id}
+                                    entityType="plant"
+                                    label={plant.information.name}
+                                />
                             </div>
                         </Stack>
                     );

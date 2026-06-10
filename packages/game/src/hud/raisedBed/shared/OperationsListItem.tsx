@@ -15,6 +15,7 @@ import {
     useAnimateFlyToShoppingCart,
 } from '../../../indicators/AnimateFlyTo';
 import { KnownPages } from '../../../knownPages';
+import { FavoriteToggleButton } from '../FavoriteToggleButton';
 import { OperationScheduleModal } from './OperationScheduleModal';
 
 export function OperationsListItem({
@@ -116,7 +117,7 @@ export function OperationsListItem({
     );
 
     return (
-        <Stack key={operation.id}>
+        <Stack key={operation.id} data-operation-id={operation.id}>
             {operationButton}
             <div className="flex flex-wrap gap-y-1 gap-x-2 pr-4 items-center justify-between">
                 <Row>
@@ -153,16 +154,23 @@ export function OperationsListItem({
                         {`U ruksaku (${availableFromInventory ?? 0})`}
                     </Button>
                 </Row>
-                <Button
-                    title="Više informacija"
-                    variant="link"
-                    size="sm"
-                    href={KnownPages.GrediceOperation(
-                        operation.information.label,
-                    )}
-                >
-                    Više informacija...
-                </Button>
+                <Row>
+                    <Button
+                        title="Više informacija"
+                        variant="link"
+                        size="sm"
+                        href={KnownPages.GrediceOperation(
+                            operation.information.label,
+                        )}
+                    >
+                        Više informacija...
+                    </Button>
+                    <FavoriteToggleButton
+                        entityId={operation.id}
+                        entityType="operation"
+                        label={operation.information.label}
+                    />
+                </Row>
             </div>
         </Stack>
     );

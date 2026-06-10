@@ -1,3 +1,4 @@
+import type { FavoriteEntityType, FavoriteItem } from '@gredice/client';
 import { expect, test } from '@playwright/experimental-ct-react';
 import type { Page } from '@playwright/test';
 import {
@@ -15,6 +16,100 @@ import {
 
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
 const DESKTOP_VIEWPORT = { width: 1280, height: 800 };
+const favoriteTimestamp = '2026-06-01T00:00:00.000Z';
+
+function favoriteItem({
+    entityId,
+    entityType,
+}: {
+    entityId: number;
+    entityType: FavoriteEntityType;
+}): FavoriteItem {
+    return {
+        id: entityId,
+        entityType,
+        entityId,
+        createdAt: favoriteTimestamp,
+        updatedAt: favoriteTimestamp,
+    };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+}
+
+function isFavoriteRequestBody(value: unknown): value is {
+    entityType: FavoriteEntityType;
+    entityId: number;
+    favorited: boolean;
+} {
+    if (!isRecord(value)) {
+        return false;
+    }
+
+    return (
+        typeof value.entityType === 'string' &&
+        ['plant', 'plantSort', 'operation'].includes(value.entityType) &&
+        typeof value.entityId === 'number' &&
+        typeof value.favorited === 'boolean'
+    );
+}
+
+async function mockFavoriteRequests(
+    page: Page,
+    initialFavorites: FavoriteItem[],
+) {
+    let favorites = [...initialFavorites];
+
+    await page.route('**/api/gredice/api/favorites**', async (route) => {
+        const request = route.request();
+
+        if (request.method() === 'PUT') {
+            const body = request.postDataJSON();
+            if (!isFavoriteRequestBody(body)) {
+                throw new Error('Invalid favorite request body');
+            }
+            favorites = body.favorited
+                ? [
+                      favoriteItem({
+                          entityType: body.entityType,
+                          entityId: body.entityId,
+                      }),
+                      ...favorites.filter(
+                          (favorite) =>
+                              favorite.entityType !== body.entityType ||
+                              favorite.entityId !== body.entityId,
+                      ),
+                  ]
+                : favorites.filter(
+                      (favorite) =>
+                          favorite.entityType !== body.entityType ||
+                          favorite.entityId !== body.entityId,
+                  );
+
+            await route.fulfill({
+                body: JSON.stringify({
+                    favorited: body.favorited,
+                    favorite: body.favorited
+                        ? favoriteItem({
+                              entityType: body.entityType,
+                              entityId: body.entityId,
+                          })
+                        : null,
+                }),
+                contentType: 'application/json',
+                status: 200,
+            });
+            return;
+        }
+
+        await route.fulfill({
+            body: JSON.stringify({ favorites }),
+            contentType: 'application/json',
+            status: 200,
+        });
+    });
+}
 
 function emptyScenario(): RaisedBedScenario {
     return { fields: [] };
@@ -70,26 +165,42 @@ function plantedGrowingScenario(): RaisedBedScenario {
 }
 
 function plantedGrowingWithRecommendedOperationsScenario(): RaisedBedScenario {
+    const operations = [
+        buildOperation({
+            id: 201,
+            name: 'mock-hoeing',
+            label: 'Okopavanje',
+            stageName: 'maintenance',
+            stageLabel: 'Održavanje',
+            relativeDays: 1,
+        }),
+        buildOperation({
+            id: 202,
+            name: 'mock-weeding',
+            label: 'Uklanjanje korova',
+            stageName: 'maintenance',
+            stageLabel: 'Održavanje',
+            relativeDays: 2,
+        }),
+    ];
+    const tomatoSortWithOperations = {
+        ...testSorts.tomato,
+        information: {
+            ...testSorts.tomato.information,
+            plant: {
+                ...testSorts.tomato.information.plant,
+                information: {
+                    ...testSorts.tomato.information.plant.information,
+                    operations,
+                },
+            },
+        },
+    };
+
     return {
         ...plantedGrowingScenario(),
-        operations: [
-            buildOperation({
-                id: 201,
-                name: 'mock-hoeing',
-                label: 'Okopavanje',
-                stageName: 'maintenance',
-                stageLabel: 'Održavanje',
-                relativeDays: 1,
-            }),
-            buildOperation({
-                id: 202,
-                name: 'mock-weeding',
-                label: 'Uklanjanje korova',
-                stageName: 'maintenance',
-                stageLabel: 'Održavanje',
-                relativeDays: 2,
-            }),
-        ],
+        operations,
+        sorts: [tomatoSortWithOperations],
     };
 }
 
@@ -755,6 +866,58 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
             dialog
                 .locator('[role="tabpanel"]:not([hidden])')
                 .locator('[data-scroll-view]'),
+        ).toBeVisible();
+    });
+
+    test('favorite operations are ranked first in recommendations and operation choices', async ({
+        mount,
+        page,
+    }) => {
+        const favorites = [
+            favoriteItem({ entityType: 'operation', entityId: 202 }),
+        ];
+        await mockFavoriteRequests(page, favorites);
+
+        await mount(
+            <RaisedBedFieldHudStory
+                favorites={favorites}
+                scenario={plantedGrowingWithRecommendedOperationsScenario()}
+                positionIndex={0}
+            />,
+        );
+
+        await page.getByRole('button').first().click();
+
+        const dialog = page.getByRole('dialog');
+        const recommendationsList = dialog.locator(
+            '[data-recommended-operation-list]',
+        );
+        const recommendedOperationRows = recommendationsList.locator(
+            '[data-operation-id]',
+        );
+        await expect(recommendedOperationRows.first()).toContainText(
+            'Uklanjanje korova',
+        );
+
+        await recommendationsList
+            .getByRole('button', {
+                name: 'Sve radnje...',
+            })
+            .click();
+
+        const operationsPanel = dialog.getByRole('tabpanel', {
+            name: 'Radnje',
+        });
+        const operationRows = operationsPanel.locator('[data-operation-id]');
+        await expect(operationRows.first()).toContainText('Uklanjanje korova');
+
+        const favoritedOperationRow = operationsPanel.locator(
+            '[data-operation-id="202"]',
+        );
+        await expect(
+            favoritedOperationRow.getByRole('button', {
+                name: 'Ukloni radnju iz omiljenih',
+            }),
         ).toBeVisible();
     });
 

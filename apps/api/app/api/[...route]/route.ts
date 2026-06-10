@@ -10,6 +10,7 @@ import checkoutRoutes from './checkoutRoutes';
 import dataRoutes from './data';
 import deliveryRoutes from './deliveryRoutes';
 import directoriesRoutes from './directoriesRoutes';
+import favoritesRoutes from './favoritesRoutes';
 import feedbackRoutes from './feedbackRoutes';
 import gardensRoutes from './gardensRoutes';
 import inventoryRoutes from './inventoryRoutes';
@@ -83,6 +84,7 @@ const app = new Hono()
     .route('/directories', directoriesRoutes)
     .route('/accounts', accountsRoutes)
     .route('/users', usersRoutes)
+    .route('/favorites', favoritesRoutes)
     .route('/gardens', gardensRoutes)
     .route('/feedback', feedbackRoutes)
     .route('/occasions', occasionsRoutes)
@@ -100,6 +102,7 @@ const app = new Hono()
 app.get('/docs/auth', docs(authRoutes, 'Auth API', 'auth'))
     .get('/docs/accounts', docs(accountsRoutes, 'Accounts API', 'accounts'))
     .get('/docs/users', docs(usersRoutes, 'Users API', 'users'))
+    .get('/docs/favorites', docs(favoritesRoutes, 'Favorites API', 'favorites'))
     .get('/docs/gardens', docs(gardensRoutes, 'Gardens API', 'gardens'))
     .get('/docs/directories', async (context) =>
         context.json(await openApiDocs()),
@@ -133,4 +136,5 @@ export const DELETE = handle(app);
 export const PATCH = handle(app);
 export const OPTIONS = handle(app);
 
+export { app };
 export type AppType = typeof app;
