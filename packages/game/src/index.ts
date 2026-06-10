@@ -12,6 +12,25 @@ export {
     PLANT_STAGES,
 } from './hud/raisedBed/featuredOperations';
 export { defaultLocalSandboxStorageKey } from './localSandboxGarden';
+export type {
+    AppliedOperationVisualInput,
+    OperationHistoryVisualInput,
+    OperationVisualDefinitionInput,
+    OperationVisualReward,
+    OperationVisualRewardFamily,
+    OperationVisualRewardKind,
+    OperationVisualRewardPolarity,
+    OperationVisualRewardScope,
+    ResolveOperationVisualRewardsInput,
+} from './operationVisualRewards';
+export {
+    filterOperationVisualRewards,
+    getOperationVisualRewardFamily,
+    getOperationVisualRewardPolarity,
+    isAppliedOperationVisualStatus,
+    resolveOperationVisualRewardKind,
+    resolveOperationVisualRewards,
+} from './operationVisualRewards';
 export type { GameQualitySetting, GameQualityTier } from './scene/gameQuality';
 export { resolveSpriteAtlasAssetPaths } from './sprites/resolveSpriteAtlasAssetPaths';
 export { SpriteAtlasBillboard } from './sprites/SpriteAtlasBillboard';
