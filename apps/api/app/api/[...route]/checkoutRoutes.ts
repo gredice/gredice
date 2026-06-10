@@ -6,6 +6,7 @@ import {
     getUser,
     markCartPaidIfAllItemsPaid,
     normalizeShoppingCartInventoryUsage,
+    normalizeShoppingCartScheduledDates,
     OUTLET_RESERVATION_HOLD_MINUTES,
     OutletOfferUnavailableError,
     OutletReservationUnavailableError,
@@ -84,9 +85,16 @@ const app = new Hono<{ Variables: AuthVariables }>()
             if (!initialCart) {
                 return context.json({ error: 'Cart not found' }, 404);
             }
-            const cart =
+            const inventoryNormalizedCart =
                 (await normalizeShoppingCartInventoryUsage(cartId)) ??
                 initialCart;
+            const cart =
+                (await normalizeShoppingCartScheduledDates(
+                    inventoryNormalizedCart.id,
+                    {
+                        defaultMissingScheduledDates: true,
+                    },
+                )) ?? inventoryNormalizedCart;
             if (cart.accountId !== accountId) {
                 console.warn('Account ID mismatch', {
                     accountId,

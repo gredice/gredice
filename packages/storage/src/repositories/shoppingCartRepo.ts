@@ -26,23 +26,48 @@ function getMinimumScheduledDate(baseDate = new Date()) {
     return tomorrow;
 }
 
-function normalizeScheduledDateAdditionalData(additionalData?: string | null) {
+export function getDefaultShoppingCartScheduledDate(baseDate = new Date()) {
+    return getMinimumScheduledDate(baseDate).toISOString();
+}
+
+function normalizeScheduledDateAdditionalData(
+    additionalData?: string | null,
+    {
+        defaultMissingScheduledDate = false,
+    }: { defaultMissingScheduledDate?: boolean } = {},
+) {
     if (!additionalData) {
-        return additionalData ?? null;
+        return defaultMissingScheduledDate
+            ? JSON.stringify({
+                  scheduledDate: getDefaultShoppingCartScheduledDate(),
+              })
+            : (additionalData ?? null);
     }
 
     try {
         const parsed = JSON.parse(additionalData);
-        if (
-            !parsed ||
-            typeof parsed !== 'object' ||
-            !('scheduledDate' in parsed)
-        ) {
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+            return additionalData;
+        }
+
+        if (!('scheduledDate' in parsed)) {
+            if (defaultMissingScheduledDate) {
+                return JSON.stringify({
+                    ...parsed,
+                    scheduledDate: getDefaultShoppingCartScheduledDate(),
+                });
+            }
             return additionalData;
         }
 
         const scheduledDate = parsed.scheduledDate;
         if (typeof scheduledDate !== 'string') {
+            if (defaultMissingScheduledDate) {
+                return JSON.stringify({
+                    ...parsed,
+                    scheduledDate: getDefaultShoppingCartScheduledDate(),
+                });
+            }
             return additionalData;
         }
 
@@ -74,7 +99,12 @@ function normalizeScheduledDateAdditionalData(additionalData?: string | null) {
     }
 }
 
-export async function normalizeShoppingCartScheduledDates(cartId: number) {
+export async function normalizeShoppingCartScheduledDates(
+    cartId: number,
+    {
+        defaultMissingScheduledDates = false,
+    }: { defaultMissingScheduledDates?: boolean } = {},
+) {
     const cart = await getShoppingCart(cartId);
     if (!cart) {
         return cart;
@@ -92,6 +122,9 @@ export async function normalizeShoppingCartScheduledDates(cartId: number) {
             originalAdditionalData: item.additionalData,
             additionalData: normalizeScheduledDateAdditionalData(
                 item.additionalData,
+                {
+                    defaultMissingScheduledDate: defaultMissingScheduledDates,
+                },
             ),
         }))
         .filter((item) => item.additionalData !== item.originalAdditionalData);
@@ -234,9 +267,9 @@ export async function upsertOrRemoveCartItem(
             })
           : null;
 
-    // Prevent deletion of paid items
-    if (!forceDelete && amount <= 0 && existingItem?.status === 'paid') {
-        throw new Error('Cannot delete paid shopping cart item via API');
+    // Prevent API changes to paid items. Historical cart rows are immutable.
+    if (!forceDelete && existingItem?.status === 'paid') {
+        throw new Error('Cannot update paid shopping cart item via API');
     }
 
     if (amount <= 0) {

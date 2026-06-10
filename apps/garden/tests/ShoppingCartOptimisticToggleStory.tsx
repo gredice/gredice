@@ -68,6 +68,16 @@ function createOutletCartItem() {
     } as unknown as ShoppingCartItemData;
 }
 
+function createPaidCartItem() {
+    return {
+        ...cartItem,
+        additionalData: JSON.stringify({
+            scheduledDate: '2040-01-05T00:00:00.000Z',
+        }),
+        status: 'paid',
+    } as unknown as ShoppingCartItemData;
+}
+
 function createOptimisticToggleQueryClient(item = cartItem) {
     const queryClient = new ReactQuery.QueryClient({
         defaultOptions: {
@@ -169,6 +179,16 @@ export function ShoppingCartOptimisticToggleStory() {
 
 export function ShoppingCartOutletCountdownStory() {
     const item = useMemo(() => createOutletCartItem(), []);
+
+    return (
+        <ShoppingCartOptimisticToggleProviders item={item}>
+            <ShoppingCartOptimisticTogglePanel />
+        </ShoppingCartOptimisticToggleProviders>
+    );
+}
+
+export function ShoppingCartPaidItemStory() {
+    const item = useMemo(() => createPaidCartItem(), []);
 
     return (
         <ShoppingCartOptimisticToggleProviders item={item}>

@@ -1,6 +1,7 @@
 import { BackpackIcon } from '@gredice/ui/BackpackIcon';
 import { Chip } from '@gredice/ui/Chip';
 import { IconButton } from '@gredice/ui/IconButton';
+import { Input } from '@gredice/ui/Input';
 import {
     Close,
     Delete,
@@ -10,6 +11,7 @@ import {
     Timer,
 } from '@gredice/ui/icons';
 import { ModalConfirm } from '@gredice/ui/ModalConfirm';
+import { Popper } from '@gredice/ui/Popper';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Row } from '@gredice/ui/Row';
@@ -39,6 +41,93 @@ function formatCountdown(remainingMs: number) {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function parseAdditionalData(additionalData?: string | null) {
+    if (!additionalData) {
+        return {};
+    }
+
+    try {
+        const parsed = JSON.parse(additionalData);
+        return isRecord(parsed) ? parsed : {};
+    } catch {
+        return {};
+    }
+}
+
+function dateFromUnknown(value: unknown) {
+    if (typeof value !== 'string' && !(value instanceof Date)) {
+        return null;
+    }
+
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function getTomorrowDate() {
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+}
+
+function formatDateInput(date: Date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function parseDateInput(date: string) {
+    const [year, month, day] = date.split('-').map(Number);
+    if (!year || !month || !day) {
+        return null;
+    }
+
+    const parsedDate = new Date(Date.UTC(year, month - 1, day));
+    return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
+}
+
+function formatCartDate(date: Date) {
+    return date.toLocaleDateString('hr-HR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    });
+}
+
+type CartItemScheduledDateInfo = {
+    date: Date;
+    source: 'scheduled' | 'outlet' | 'default';
+};
+
+function getCartItemScheduledDateInfo(
+    item: ShoppingCartItemData,
+): CartItemScheduledDateInfo {
+    const outletSowingDate = dateFromUnknown(item.outlet?.sowingDate);
+    if (outletSowingDate) {
+        return {
+            date: outletSowingDate,
+            source: 'outlet',
+        };
+    }
+
+    const additionalData = parseAdditionalData(item.additionalData);
+    const scheduledDate = dateFromUnknown(additionalData.scheduledDate);
+    if (scheduledDate) {
+        return {
+            date: scheduledDate,
+            source: 'scheduled',
+        };
+    }
+
+    return {
+        date: getTomorrowDate(),
+        source: 'default',
+    };
+}
+
 export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const { data: garden } = useCurrentGarden();
     const { data: account } = useCurrentAccount();
@@ -46,20 +135,20 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const { track } = useGameAnalytics();
     const queryClient = useQueryClient();
     const [countdownNowMs, setCountdownNowMs] = useState(() => Date.now());
+    const [datePickerOpen, setDatePickerOpen] = useState(false);
+    const [datePickerError, setDatePickerError] = useState<string | null>(null);
 
     const hasDiscount = typeof item.shopData.discountPrice === 'number';
     const hasRaisedBed = Boolean(item.raisedBedId);
     const hasPosition = typeof item.positionIndex === 'number';
+    const isProcessed = item.status === 'paid';
 
     const raisedBed = hasRaisedBed
         ? garden?.raisedBeds.find((rb) => rb.id === item.raisedBedId)
         : null;
-    const scheduledDateString = item.additionalData
-        ? JSON.parse(item.additionalData).scheduledDate
-        : null;
-    const scheduledDate = scheduledDateString
-        ? new Date(scheduledDateString)
-        : null;
+    const scheduledDateInfo = getCartItemScheduledDateInfo(item);
+    const scheduledDate = scheduledDateInfo.date;
+    const scheduledDateLabel = formatCartDate(scheduledDate);
     const outletHoldExpiresAt = item.outlet?.holdExpiresAt
         ? new Date(item.outlet.holdExpiresAt)
         : null;
@@ -98,6 +187,8 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
           : 'bg-muted';
     const changeCurrencyShoppingCartItem = useSetShoppingCartItem();
     const removeShoppingCartItem = useSetShoppingCartItem();
+    const changeScheduledDateShoppingCartItem = useSetShoppingCartItem();
+    const canChangeScheduledDate = !isProcessed && !hasOutletReservation;
 
     useEffect(() => {
         if (
@@ -205,8 +296,44 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
         });
     }
 
-    // Hide delete button for paid items
-    const isProcessed = item.status === 'paid';
+    async function handleScheduledDateChange(date: string) {
+        const parsedDate = parseDateInput(date);
+        if (!parsedDate) {
+            setDatePickerError('Odaberi datum.');
+            return;
+        }
+
+        const nextScheduledDate = parsedDate.toISOString();
+        const additionalData = {
+            ...parseAdditionalData(item.additionalData),
+            scheduledDate: nextScheduledDate,
+        };
+
+        setDatePickerError(null);
+        track('game_cart_scheduled_date_changed', {
+            entity_id: item.entityId,
+            entity_type: item.entityTypeName,
+            item_id: item.id,
+            scheduled_date: nextScheduledDate,
+        });
+
+        try {
+            await changeScheduledDateShoppingCartItem.mutateAsync({
+                id: item.id,
+                amount: item.amount,
+                entityId: item.entityId,
+                entityTypeName: item.entityTypeName,
+                currency: item.currency,
+                additionalData: JSON.stringify(additionalData),
+                positionIndex: item.positionIndex ?? undefined,
+                gardenId: item.gardenId ?? undefined,
+                raisedBedId: item.raisedBedId ?? undefined,
+            });
+            setDatePickerOpen(false);
+        } catch {
+            setDatePickerError('Promjena datuma nije uspjela.');
+        }
+    }
 
     const plantSort =
         item.entityTypeName === 'plantSort' ? item.entityData : null;
@@ -374,27 +501,90 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                                 )}
                             </Row>
                         </Row>
-                        {scheduledDate && (
-                            <Row>
+                        <Row>
+                            {canChangeScheduledDate ? (
+                                <Popper
+                                    open={datePickerOpen}
+                                    onOpenChange={(open) => {
+                                        setDatePickerOpen(open);
+                                        if (open) {
+                                            setDatePickerError(null);
+                                        }
+                                    }}
+                                    side="bottom"
+                                    align="start"
+                                    sideOffset={8}
+                                    className="w-72 p-3"
+                                    trigger={
+                                        <Chip
+                                            startDecorator={
+                                                <Timer className="size-4" />
+                                            }
+                                            className="bg-muted"
+                                            disabled={
+                                                changeScheduledDateShoppingCartItem.isPending
+                                            }
+                                            onClick={() =>
+                                                setDatePickerError(null)
+                                            }
+                                            title={`Promijeni datum: ${scheduledDateLabel}`}
+                                        >
+                                            <Typography level="body3" secondary>
+                                                {scheduledDateLabel}
+                                            </Typography>
+                                        </Chip>
+                                    }
+                                >
+                                    <Stack spacing={2}>
+                                        <Input
+                                            type="date"
+                                            label="Datum"
+                                            name={`cartItemScheduledDate-${item.id}`}
+                                            className="w-full bg-card"
+                                            value={formatDateInput(
+                                                scheduledDate,
+                                            )}
+                                            min={formatDateInput(
+                                                getTomorrowDate(),
+                                            )}
+                                            disabled={
+                                                changeScheduledDateShoppingCartItem.isPending
+                                            }
+                                            onChange={(event) => {
+                                                void handleScheduledDateChange(
+                                                    event.target.value,
+                                                );
+                                            }}
+                                            required
+                                        />
+                                        {datePickerError ? (
+                                            <Typography
+                                                level="body3"
+                                                className="text-red-600"
+                                            >
+                                                {datePickerError}
+                                            </Typography>
+                                        ) : null}
+                                    </Stack>
+                                </Popper>
+                            ) : (
                                 <Chip
                                     startDecorator={
                                         <Timer className="size-4" />
                                     }
                                     className="bg-muted"
+                                    title={
+                                        scheduledDateInfo.source === 'outlet'
+                                            ? 'Datum sjetve outlet sadnice'
+                                            : 'Datum'
+                                    }
                                 >
                                     <Typography level="body3" secondary>
-                                        {scheduledDate.toLocaleDateString(
-                                            'hr-HR',
-                                            {
-                                                year: 'numeric',
-                                                month: '2-digit',
-                                                day: '2-digit',
-                                            },
-                                        )}
+                                        {scheduledDateLabel}
                                     </Typography>
                                 </Chip>
-                            </Row>
-                        )}
+                            )}
+                        </Row>
                     </Stack>
                     {!isProcessed && (
                         <ModalConfirm
