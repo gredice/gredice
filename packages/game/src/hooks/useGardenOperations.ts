@@ -184,12 +184,14 @@ export function gardenOperationsQueryKey({
 }
 
 export function useGardenOperations({
+    enabled = true,
     includeCompleted,
     pageSize = DEFAULT_PAGE_SIZE,
     raisedBedId,
     raisedBedFieldId,
     positionIndex,
 }: {
+    enabled?: boolean;
     includeCompleted: boolean;
     pageSize?: number;
 } & GardenOperationsScope) {
@@ -225,6 +227,6 @@ export function useGardenOperations({
         },
         initialPageParam: 0,
         getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-        enabled: Boolean(currentGarden?.id),
+        enabled: Boolean(currentGarden?.id) && enabled,
     });
 }
