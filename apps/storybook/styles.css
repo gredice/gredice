@@ -4,6 +4,7 @@
 @source "../farm/components";
 @source "../garden/components";
 @source "../www/components";
+@source "../www/app/trag";
 @source "../../packages/game/src";
 @source "../../packages/ui/src";
 

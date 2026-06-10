@@ -9,6 +9,7 @@ import {
     eq,
     gte,
     inArray,
+    isNotNull,
     isNull,
     like,
     lte,
@@ -138,6 +139,35 @@ export type HarvestTraceLinkAdminDetail = HarvestTraceLinkAdminSummary & {
     plantSortId: number | null;
     fieldPositionIndex: number;
     timeline: PublicHarvestTrace | null;
+};
+
+export type HarvestTraceLinkDeliverySummary = {
+    id: number;
+    publicToken: string;
+    publicPath: string;
+    status: HarvestTraceLinkStatus;
+    harvestOperationId: number;
+    raisedBedFieldId: number;
+    plantPlaceEventId: number;
+};
+
+export type HarvestTraceBackfillResult = {
+    dryRun: boolean;
+    scannedOperations: number;
+    harvestOperations: number;
+    targetLinks: number;
+    existingLinks: number;
+    createdLinks: number;
+    wouldCreateLinks: number;
+    skipped: {
+        missingAccount: number;
+        missingGarden: number;
+        missingRaisedBed: number;
+        missingField: number;
+        missingPlantCycle: number;
+        unsupportedScope: number;
+        notCompleted: number;
+    };
 };
 
 type CreateOrGetHarvestTraceLinkInput = {
@@ -286,6 +316,32 @@ function operationCategoryName(entity: EntityStandardized | null | undefined) {
 
 function normalizedOperationClassifier(value: string | null | undefined) {
     return value?.toLocaleLowerCase('hr-HR').replace(/[\s_-]/g, '') ?? '';
+}
+
+const harvestOperationNames = new Set([
+    'harvestplant',
+    'harvestall',
+    'harvestmature',
+    'harvest50mature',
+    'harvest25mature',
+]);
+
+function isHarvestOperationEntity(
+    entity: EntityStandardized | null | undefined,
+) {
+    const stageName = expandedEntityInformationName(entity?.attributes?.stage);
+    if (normalizedOperationClassifier(stageName) === 'harvest') {
+        return true;
+    }
+
+    return harvestOperationNames.has(
+        normalizedOperationClassifier(entity?.information?.name),
+    );
+}
+
+function operationApplication(entity: EntityStandardized | null | undefined) {
+    const value = entity?.attributes?.application;
+    return typeof value === 'string' ? value : undefined;
 }
 
 function isWateringOperation(label: string, categoryName?: string) {
@@ -1148,6 +1204,41 @@ export async function createOrGetHarvestTraceLink(
     return racedExisting;
 }
 
+export async function getHarvestTraceLinksForOperationIds(
+    operationIds: number[],
+): Promise<HarvestTraceLinkDeliverySummary[]> {
+    const uniqueOperationIds = Array.from(
+        new Set(operationIds.filter((id) => positiveInteger(id))),
+    );
+    if (uniqueOperationIds.length === 0) {
+        return [];
+    }
+
+    const rows = await storage().query.harvestTraceLinks.findMany({
+        where: and(
+            inArray(harvestTraceLinks.harvestOperationId, uniqueOperationIds),
+            eq(harvestTraceLinks.status, 'active'),
+        ),
+        orderBy: [desc(harvestTraceLinks.createdAt)],
+    });
+
+    return rows.flatMap((link) =>
+        typeof link.harvestOperationId === 'number'
+            ? [
+                  {
+                      id: link.id,
+                      publicToken: link.publicToken,
+                      publicPath: link.tracePath,
+                      status: link.status,
+                      harvestOperationId: link.harvestOperationId,
+                      raisedBedFieldId: link.raisedBedFieldId,
+                      plantPlaceEventId: link.plantPlaceEventId,
+                  },
+              ]
+            : [],
+    );
+}
+
 export async function getPublicHarvestTraceByToken(tokenValue: string) {
     const token = normalizeHarvestTraceToken(tokenValue);
     if (!token) {
@@ -1494,4 +1585,267 @@ export async function getHarvestTraceLinksForTarget(input: {
         ),
         orderBy: [desc(harvestTraceLinks.createdAt)],
     });
+}
+
+function cycleMatchesOperationDate(
+    cycle: RaisedBedFieldPlantCycle,
+    operationDate: Date,
+) {
+    if (operationDate < cycle.startedAt) {
+        return false;
+    }
+
+    const cycleEnd = cycle.plantRemovedDate ?? cycle.plantHarvestedDate;
+    if (cycleEnd && operationDate > cycleEnd) {
+        return false;
+    }
+
+    return true;
+}
+
+function chooseTracePlantCycle(
+    cycles: RaisedBedFieldPlantCycle[],
+    positionIndex: number,
+    operationDate: Date,
+) {
+    const positionCycles = cycles
+        .filter((cycle) => cycle.positionIndex === positionIndex)
+        .toSorted((a, b) => a.startedAt.getTime() - b.startedAt.getTime());
+
+    return (
+        positionCycles.findLast((cycle) =>
+            cycleMatchesOperationDate(cycle, operationDate),
+        ) ??
+        positionCycles.findLast((cycle) =>
+            cycle.plantHarvestedDate
+                ? cycle.plantHarvestedDate <= operationDate
+                : false,
+        ) ??
+        positionCycles.at(-1)
+    );
+}
+
+export async function backfillHarvestTraceLinksForCompletedHarvests({
+    dryRun = true,
+    limit = 1000,
+    offset = 0,
+}: {
+    dryRun?: boolean;
+    limit?: number;
+    offset?: number;
+} = {}): Promise<HarvestTraceBackfillResult> {
+    const safeLimit = Math.min(Math.max(Math.trunc(limit), 1), 5000);
+    const safeOffset = Math.max(Math.trunc(offset), 0);
+    const operationRows = await storage()
+        .select({
+            operation: operations,
+            raisedBedAccountId: raisedBeds.accountId,
+            raisedBedGardenId: raisedBeds.gardenId,
+        })
+        .from(operations)
+        .innerJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
+        .innerJoin(gardens, eq(raisedBeds.gardenId, gardens.id))
+        .where(
+            and(
+                eq(operations.entityTypeName, 'operation'),
+                eq(operations.isAccepted, true),
+                eq(operations.isDeleted, false),
+                eq(raisedBeds.isDeleted, false),
+                eq(gardens.isDeleted, false),
+                eq(gardens.isSandbox, false),
+                isNotNull(operations.raisedBedId),
+            ),
+        )
+        .orderBy(asc(operations.timestamp), asc(operations.id))
+        .offset(safeOffset)
+        .limit(safeLimit);
+
+    const result: HarvestTraceBackfillResult = {
+        dryRun,
+        scannedOperations: operationRows.length,
+        harvestOperations: 0,
+        targetLinks: 0,
+        existingLinks: 0,
+        createdLinks: 0,
+        wouldCreateLinks: 0,
+        skipped: {
+            missingAccount: 0,
+            missingGarden: 0,
+            missingRaisedBed: 0,
+            missingField: 0,
+            missingPlantCycle: 0,
+            unsupportedScope: 0,
+            notCompleted: 0,
+        },
+    };
+
+    if (operationRows.length === 0) {
+        return result;
+    }
+
+    const operationIds = operationRows.map((row) => row.operation.id);
+    const uniqueRaisedBedIds = Array.from(
+        new Set(operationRows.map((row) => row.operation.raisedBedId)),
+    ).filter((id): id is number => typeof id === 'number');
+    const [operationStates, operationEntities, fields, existingLinks] =
+        await Promise.all([
+            getOperationsByIds(operationIds),
+            getEntitiesFormatted<EntityStandardized>('operation'),
+            uniqueRaisedBedIds.length > 0
+                ? storage().query.raisedBedFields.findMany({
+                      where: and(
+                          inArray(
+                              raisedBedFields.raisedBedId,
+                              uniqueRaisedBedIds,
+                          ),
+                          eq(raisedBedFields.isDeleted, false),
+                      ),
+                      orderBy: [
+                          asc(raisedBedFields.raisedBedId),
+                          asc(raisedBedFields.positionIndex),
+                      ],
+                  })
+                : Promise.resolve([]),
+            storage().query.harvestTraceLinks.findMany({
+                where: inArray(
+                    harvestTraceLinks.harvestOperationId,
+                    operationIds,
+                ),
+            }),
+        ]);
+
+    const operationsById = new Map(
+        operationStates.map((operation) => [operation.id, operation]),
+    );
+    const operationEntitiesById = new Map(
+        operationEntities.map((entity) => [entity.id, entity]),
+    );
+    const fieldsByRaisedBedId = new Map<number, typeof fields>();
+    for (const field of fields) {
+        const raisedBedFieldsForBed =
+            fieldsByRaisedBedId.get(field.raisedBedId) ?? [];
+        raisedBedFieldsForBed.push(field);
+        fieldsByRaisedBedId.set(field.raisedBedId, raisedBedFieldsForBed);
+    }
+    const existingTargetKeys = new Set(
+        existingLinks.flatMap((link) =>
+            typeof link.harvestOperationId === 'number'
+                ? [
+                      `${link.harvestOperationId}:${link.raisedBedFieldId}:${link.plantPlaceEventId}`,
+                  ]
+                : [],
+        ),
+    );
+    result.existingLinks = existingTargetKeys.size;
+
+    const cyclesByRaisedBedId = new Map<
+        number,
+        Awaited<ReturnType<typeof getRaisedBedFieldPlantCycles>>
+    >();
+    async function getCycles(raisedBedId: number) {
+        const existing = cyclesByRaisedBedId.get(raisedBedId);
+        if (existing) {
+            return existing;
+        }
+
+        const cycles = await getRaisedBedFieldPlantCycles(raisedBedId);
+        cyclesByRaisedBedId.set(raisedBedId, cycles);
+        return cycles;
+    }
+
+    for (const row of operationRows) {
+        const hydratedOperation = operationsById.get(row.operation.id);
+        const operationEntity = operationEntitiesById.get(
+            row.operation.entityId,
+        );
+        if (!isHarvestOperationEntity(operationEntity)) {
+            continue;
+        }
+        result.harvestOperations += 1;
+
+        if (
+            hydratedOperation?.status !== 'completed' &&
+            hydratedOperation?.status !== 'pendingVerification'
+        ) {
+            result.skipped.notCompleted += 1;
+            continue;
+        }
+
+        const accountId = row.operation.accountId ?? row.raisedBedAccountId;
+        const gardenId = row.operation.gardenId ?? row.raisedBedGardenId;
+        const raisedBedId = row.operation.raisedBedId;
+        if (!accountId) {
+            result.skipped.missingAccount += 1;
+            continue;
+        }
+        if (!gardenId) {
+            result.skipped.missingGarden += 1;
+            continue;
+        }
+        if (!raisedBedId) {
+            result.skipped.missingRaisedBed += 1;
+            continue;
+        }
+
+        const operationDate = getOperationTimelineDate(hydratedOperation);
+        const fieldsForBed = fieldsByRaisedBedId.get(raisedBedId) ?? [];
+        const scopedFields =
+            typeof row.operation.raisedBedFieldId === 'number'
+                ? fieldsForBed.filter(
+                      (field) => field.id === row.operation.raisedBedFieldId,
+                  )
+                : operationApplication(operationEntity) === 'raisedBedFull'
+                  ? fieldsForBed
+                  : [];
+        if (scopedFields.length === 0) {
+            if (typeof row.operation.raisedBedFieldId === 'number') {
+                result.skipped.missingField += 1;
+            } else {
+                result.skipped.unsupportedScope += 1;
+            }
+            continue;
+        }
+
+        const cycles = await getCycles(raisedBedId);
+        for (const field of scopedFields) {
+            const cycle = chooseTracePlantCycle(
+                cycles,
+                field.positionIndex,
+                operationDate,
+            );
+            if (!cycle) {
+                result.skipped.missingPlantCycle += 1;
+                continue;
+            }
+
+            const targetKey = `${row.operation.id}:${field.id}:${cycle.plantPlaceEventId}`;
+            result.targetLinks += 1;
+            if (existingTargetKeys.has(targetKey)) {
+                continue;
+            }
+
+            if (dryRun) {
+                result.wouldCreateLinks += 1;
+                continue;
+            }
+
+            const link = await createOrGetHarvestTraceLink({
+                accountId,
+                gardenId,
+                raisedBedId,
+                raisedBedFieldId: field.id,
+                fieldPositionIndex: field.positionIndex,
+                fieldLabel: String(field.positionIndex + 1),
+                plantPlaceEventId: cycle.plantPlaceEventId,
+                plantSortId: cycle.plantSortId,
+                harvestOperationId: row.operation.id,
+            });
+            existingTargetKeys.add(
+                `${link.harvestOperationId}:${link.raisedBedFieldId}:${link.plantPlaceEventId}`,
+            );
+            result.createdLinks += 1;
+        }
+    }
+
+    return result;
 }
