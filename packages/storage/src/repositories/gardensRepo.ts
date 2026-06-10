@@ -1995,7 +1995,6 @@ export async function getAccountGardensMetadata(accountId: string) {
             eq(gardens.accountId, accountId),
             eq(gardens.isDeleted, false),
         ),
-        orderBy: desc(gardens.createdAt),
     });
 }
 

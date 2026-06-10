@@ -102,12 +102,22 @@ test('getAccountGardensMetadata returns account gardens without raised beds', as
         accountId,
         farmId,
     });
+    await createTestGarden({
+        name: 'Later Metadata Garden',
+        accountId,
+        farmId,
+    });
     await createTestGarden({ accountId: otherAccountId, farmId });
     await deleteGarden(deletedGardenId);
 
     const gardens = await getAccountGardensMetadata(accountId);
+    const enrichedGardens = await getAccountGardens(accountId);
     const garden = gardens.find((g) => g.id === gardenId);
 
+    assert.deepStrictEqual(
+        gardens.map((g) => g.id),
+        enrichedGardens.map((g) => g.id),
+    );
     assert.ok(garden);
     assert.strictEqual(garden.name, 'Metadata Garden');
     assert.strictEqual(garden.accountId, accountId);
