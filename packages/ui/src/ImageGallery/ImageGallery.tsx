@@ -634,22 +634,26 @@ export function ImageGallery({
                 onOpenChange={handleModalOpenChange}
                 title="Pregled galerije"
                 dismissible={false}
+                disableMobile
                 className={cx(
-                    'm-0 h-[100dvh] w-[100dvw] max-h-none max-w-none rounded-none border-0 p-0',
-                    'bg-black/60 backdrop-blur',
-                    '[&>div:last-child]:h-full [&>div:last-child]:p-0 [&>div:not(:last-child)]:hidden',
+                    '!inset-0 !m-0 h-auto max-h-none w-auto max-w-none !translate-x-0 !translate-y-0 overflow-hidden rounded-none border-0 p-0',
+                    'bg-black/60 backdrop-blur overscroll-none',
+                    '[&>div:last-child]:h-full [&>div:last-child]:overflow-hidden [&>div:last-child]:p-0 [&>div:not(:last-child)]:hidden',
                 )}
             >
-                <div className="relative flex h-full w-full overflow-clip">
+                <div className="relative flex h-full max-h-full w-full max-w-full min-w-0 overflow-hidden">
                     <p id={imageInstructionsId} className="sr-only">
                         Pritisni Escape za zatvaranje, lijevu ili desnu strelicu
                         za promjenu slike, plus ili minus za zumiranje i nulu za
                         prilagodbu zaslonu.
                     </p>
                     <div
-                        className="absolute right-4 top-4 z-10 flex gap-1"
+                        className="absolute z-10 flex max-w-[calc(100%-1.5rem)] justify-end gap-1 overflow-x-auto"
                         style={{
-                            top: 'calc(env(safe-area-inset-top) + 1rem)',
+                            right: 'calc(env(safe-area-inset-right) + 0.75rem)',
+                            top: 'calc(env(safe-area-inset-top) + 0.75rem)',
+                            WebkitOverflowScrolling: 'touch',
+                            touchAction: 'pan-x',
                         }}
                     >
                         <IconButton
@@ -710,7 +714,19 @@ export function ImageGallery({
                         </IconButton>
                     </div>
 
-                    <div className="flex h-full min-h-0 w-full min-w-0 items-center justify-center pb-32 sm:pb-36">
+                    <div
+                        className="flex h-full min-h-0 w-full min-w-0 items-center justify-center"
+                        style={{
+                            paddingBottom:
+                                'calc(env(safe-area-inset-bottom) + 6.5rem)',
+                            paddingLeft:
+                                'calc(env(safe-area-inset-left) + 0.5rem)',
+                            paddingRight:
+                                'calc(env(safe-area-inset-right) + 0.5rem)',
+                            paddingTop:
+                                'calc(env(safe-area-inset-top) + 4.5rem)',
+                        }}
+                    >
                         <button
                             type="button"
                             ref={imageRef}
@@ -730,7 +746,7 @@ export function ImageGallery({
                             style={{ touchAction: 'none' }}
                         >
                             <span
-                                className="relative flex h-full w-full select-none items-center justify-center transition-transform duration-200 ease-out will-change-transform"
+                                className="relative block h-full w-full select-none transition-transform duration-200 ease-out will-change-transform"
                                 style={{
                                     transform: `scale(${zoomLevel}) translate(${position.x / zoomLevel}px, ${position.y / zoomLevel}px)`,
                                     transformOrigin: 'center center',
@@ -744,7 +760,7 @@ export function ImageGallery({
                                         activeImage?.alt,
                                         safeIndex,
                                     )}
-                                    className="h-auto w-auto max-h-none max-w-none select-none object-contain"
+                                    className="absolute left-1/2 top-1/2 h-auto w-auto max-h-none max-w-none -translate-x-1/2 -translate-y-1/2 select-none object-contain"
                                     draggable={false}
                                     onLoad={handleImageLoad}
                                 />
@@ -755,16 +771,16 @@ export function ImageGallery({
                     <Chip
                         aria-label={`Slika ${safeIndex + 1} od ${images.length}, zumiranje ${Math.round(zoomLevel * 100)} posto`}
                         aria-live="polite"
-                        className="absolute left-4 [top:calc(env(safe-area-inset-top)+1rem)] z-10 select-none border-0 bg-black/60 text-white/80 backdrop-blur"
+                        className="absolute [left:calc(env(safe-area-inset-left)+1rem)] [top:calc(env(safe-area-inset-top)+0.75rem)] z-10 select-none border-0 bg-black/60 text-white/80 backdrop-blur"
                         variant="solid"
                     >
                         {safeIndex + 1}/{images.length} •{' '}
                         {Math.round(zoomLevel * 100)}%
                     </Chip>
 
-                    <div className="absolute bottom-0 left-0 z-10 w-full border-t border-white/10 bg-black/55 px-4 py-3 backdrop-blur [padding-bottom:calc(env(safe-area-inset-bottom)+0.75rem)]">
+                    <div className="absolute bottom-0 left-0 z-10 w-full max-w-full overflow-hidden border-t border-white/10 bg-black/55 py-3 backdrop-blur [padding-bottom:calc(env(safe-area-inset-bottom)+0.75rem)] [padding-left:calc(env(safe-area-inset-left)+1rem)] [padding-right:calc(env(safe-area-inset-right)+1rem)]">
                         <div
-                            className="mx-auto flex max-w-5xl gap-2 overflow-x-auto"
+                            className="mx-auto flex max-w-full gap-2 overflow-x-auto"
                             style={{
                                 WebkitOverflowScrolling: 'touch',
                                 touchAction: 'pan-x',
