@@ -4,7 +4,7 @@ import {
     isOperationVisualRewardDebugProfile,
     operationVisualRewardDebugOperationDefinitions,
 } from '../operationVisualRewardDebugProfile';
-import { useGameState } from '../useGameState';
+import { useOptionalGameState } from '../useGameState';
 
 async function getOperations() {
     const operations = await directoriesClient().GET('/entities/operation');
@@ -14,8 +14,11 @@ async function getOperations() {
 }
 
 export function useOperations() {
-    const isMock = useGameState((state) => state.isMock);
-    const mockGardenProfile = useGameState((state) => state.mockGardenProfile);
+    const isMock = useOptionalGameState((state) => state.isMock, false);
+    const mockGardenProfile = useOptionalGameState(
+        (state) => state.mockGardenProfile,
+        'default',
+    );
     const isOperationRewardDebug =
         isMock && isOperationVisualRewardDebugProfile(mockGardenProfile);
 
