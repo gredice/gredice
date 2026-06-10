@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import {
     type InsertTransaction,
     invoices,
@@ -51,6 +51,19 @@ export async function getCompletedTransactionByStripePaymentId(
             eq(transactions.status, 'completed'),
             eq(transactions.isDeleted, false),
         ),
+    });
+}
+
+export async function withStripePaymentProcessingLock<T>(
+    stripePaymentId: string,
+    callback: () => Promise<T>,
+) {
+    return storage().transaction(async (tx) => {
+        await tx.execute(
+            sql`select pg_advisory_xact_lock(hashtext(${`stripe-payment:${stripePaymentId}`}));`,
+        );
+
+        return callback();
     });
 }
 

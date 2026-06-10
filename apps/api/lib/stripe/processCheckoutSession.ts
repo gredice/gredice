@@ -32,6 +32,7 @@ import {
     spendSunflowers,
     updateRaisedBed,
     upsertRaisedBedField,
+    withStripePaymentProcessingLock,
 } from '@gredice/storage';
 import { getStripeCheckoutSession } from '@gredice/stripe/server';
 import {
@@ -268,6 +269,15 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
         return;
     }
 
+    return withStripePaymentProcessingLock(session.id, () =>
+        processPaidCheckoutSession(checkoutSessionId, session),
+    );
+}
+
+async function processPaidCheckoutSession(
+    checkoutSessionId: string,
+    session: NonNullable<Awaited<ReturnType<typeof getStripeCheckoutSession>>>,
+) {
     const alreadyProcessed = await getCompletedTransactionByStripePaymentId(
         session.id,
     );
