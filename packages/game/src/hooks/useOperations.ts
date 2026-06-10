@@ -20,10 +20,9 @@ export function useOperations() {
         isMock && isOperationVisualRewardDebugProfile(mockGardenProfile);
 
     return useQuery({
-        queryKey: [
-            'operations',
-            isOperationRewardDebug ? mockGardenProfile : 'directory',
-        ],
+        queryKey: isOperationRewardDebug
+            ? ['operations', mockGardenProfile]
+            : ['operations'],
         queryFn: async () =>
             isOperationRewardDebug
                 ? operationVisualRewardDebugOperationDefinitions
