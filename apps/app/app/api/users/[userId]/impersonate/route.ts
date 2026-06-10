@@ -50,7 +50,7 @@ export async function POST(
             httpOnly: false,
             secure: cookieSettings.secure,
             sameSite: 'lax',
-            domain: cookieDomain,
+            domain: cookieSettings.domain,
             expires: new Date(Date.now() + refreshTokenExpiryMs),
         });
 
