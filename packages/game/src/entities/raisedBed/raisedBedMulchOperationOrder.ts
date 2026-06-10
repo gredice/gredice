@@ -1,7 +1,8 @@
 export type AppliedRaisedBedMulchOperationOrderInput = {
     completedAt?: Date | string | null;
     createdAt?: Date | string | null;
-    id: number;
+    id?: number;
+    operationId?: number;
 };
 
 function timestampMs(value: Date | string | null | undefined) {
@@ -35,7 +36,10 @@ function compareAppliedMulchOperationRecency(
         return timestampDiff;
     }
 
-    return left.id - right.id;
+    return (
+        (left.id ?? left.operationId ?? 0) -
+        (right.id ?? right.operationId ?? 0)
+    );
 }
 
 export function appliedMulchOperationsOldestFirst<
