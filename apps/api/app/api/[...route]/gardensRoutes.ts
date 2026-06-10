@@ -23,12 +23,14 @@ import {
     createSandboxGarden,
     deleteGardenStack,
     deleteSandboxGardenCompletely,
+    type EntityStandardized,
     GardenBoxInventoryLimitError,
     GardenDiaryCancelError,
     GardenDiaryRescheduleError,
     getAccount,
     getAccountGardensMetadata,
     getAppliedRaisedBedOperationsForGarden,
+    getEntitiesFormatted,
     getEvents,
     getGarden,
     getGardenBlocks,
@@ -68,6 +70,10 @@ import { isAppliedOperationCurrentForRaisedBedFields } from '../../../lib/garden
 import { resolveGardenBlockPlacement } from '../../../lib/garden/blockPlacementService';
 import { deleteGardenBlock } from '../../../lib/garden/gardenBlocksService';
 import { synchronizeGardenStacksAndRaisedBeds } from '../../../lib/garden/gardenStacksSyncService';
+import {
+    generateGardenVisitSummaryFacts,
+    hashGardenVisitSummaryFacts,
+} from '../../../lib/garden/gardenVisitSummaryService';
 import { isBlockPurchaseAvailableNow } from '../../../lib/garden/nightOnlyBlockPurchases';
 import { purchaseGardenBlock } from '../../../lib/garden/purchaseGardenBlockService';
 import {
@@ -437,6 +443,18 @@ function serializeGardenVisitState(
     };
 }
 
+function serializeGardenVisitSummaryWindow(input: {
+    firstVisit: boolean;
+    since: Date | null;
+    until: Date;
+}) {
+    return {
+        firstVisit: input.firstVisit,
+        since: input.since?.toISOString() ?? null,
+        until: input.until.toISOString(),
+    };
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null;
 }
@@ -772,6 +790,79 @@ const app = new Hono<{ Variables: AuthVariables }>()
             });
 
             return context.json({ state: serializeGardenVisitState(state) });
+        },
+    )
+    .get(
+        '/:gardenId/visit-summary',
+        describeRoute({
+            description:
+                'Generate reliable current-user garden facts since the previous visit marker.',
+            security: authSecurity,
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId } = context.req.valid('param');
+            const gardenIdNumber = parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            const { accountId, userId } = context.get('authContext');
+            const [garden, visitState] = await Promise.all([
+                getGarden(gardenIdNumber),
+                getGardenVisitState({
+                    userId,
+                    accountId,
+                    gardenId: gardenIdNumber,
+                }),
+            ]);
+            if (!garden || garden.accountId !== accountId) {
+                return context.json({ error: 'Garden not found' }, 404);
+            }
+
+            const until = new Date();
+            const since = visitState?.lastOpenedAt ?? null;
+            const window = serializeGardenVisitSummaryWindow({
+                firstVisit: !since,
+                since,
+                until,
+            });
+
+            if (!since) {
+                return context.json({
+                    window,
+                    facts: [],
+                    factsHash: null,
+                    state: serializeGardenVisitState(visitState),
+                });
+            }
+
+            const [operations, plantSorts] = await Promise.all([
+                getAppliedRaisedBedOperationsForGarden(
+                    accountId,
+                    gardenIdNumber,
+                ),
+                getEntitiesFormatted<EntityStandardized>('plantSort'),
+            ]);
+            const facts = generateGardenVisitSummaryFacts({
+                garden,
+                operations,
+                plantSorts,
+                window: { since, until },
+            });
+
+            return context.json({
+                window,
+                facts,
+                factsHash: hashGardenVisitSummaryFacts(facts),
+                state: serializeGardenVisitState(visitState),
+            });
         },
     )
     .post(
