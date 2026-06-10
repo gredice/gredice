@@ -5,6 +5,7 @@ import {
     createTransaction,
     deleteTransaction,
     getAllTransactions,
+    getCompletedTransactionByStripePaymentId,
     getTransaction,
     getTransactionByStripeId,
     type InsertTransaction,
@@ -113,7 +114,34 @@ test('getTransactionByStripeId returns correct transaction', async () => {
     assert.strictEqual(tx?.id, txId);
 });
 
-test('createTransaction currently creates duplicate rows for the same completed stripePaymentId', async () => {
+test('getCompletedTransactionByStripePaymentId returns only completed transactions', async () => {
+    createTestDb();
+    const completedStripePaymentId = randomUUID();
+    const pendingStripePaymentId = randomUUID();
+    const completedTxId = await createTransaction({
+        ...(await baseTransaction()),
+        status: 'completed',
+        stripePaymentId: completedStripePaymentId,
+    });
+    await createTransaction({
+        ...(await baseTransaction()),
+        status: 'pending',
+        stripePaymentId: pendingStripePaymentId,
+    });
+
+    const completedTx = await getCompletedTransactionByStripePaymentId(
+        completedStripePaymentId,
+    );
+    const pendingTx = await getCompletedTransactionByStripePaymentId(
+        pendingStripePaymentId,
+    );
+
+    assert.ok(completedTx);
+    assert.strictEqual(completedTx.id, completedTxId);
+    assert.strictEqual(pendingTx, undefined);
+});
+
+test('createTransaction returns the existing row for the same completed stripePaymentId', async () => {
     createTestDb();
     const accountId = await createTestAccount();
     const stripePaymentId = randomUUID();
@@ -125,11 +153,16 @@ test('createTransaction currently creates duplicate rows for the same completed 
         stripePaymentId,
     };
 
-    await createTransaction(transaction);
-    await createTransaction(transaction);
+    const firstTxId = await createTransaction(transaction);
+    const secondTxId = await createTransaction(transaction);
 
     const txs = await getAllTransactions({ filter: { accountId } });
-    // Documents pre-003 behavior; plan 003 makes this idempotent.
-    assert.strictEqual(txs.length, 2);
+    // Documents post-003 idempotency for re-delivered Stripe checkout sessions.
+    assert.strictEqual(secondTxId, firstTxId);
+    assert.strictEqual(txs.length, 1);
     assert.ok(txs.every((tx) => tx.stripePaymentId === stripePaymentId));
+    const completedTx =
+        await getCompletedTransactionByStripePaymentId(stripePaymentId);
+    assert.ok(completedTx);
+    assert.strictEqual(completedTx.id, firstTxId);
 });

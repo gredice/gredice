@@ -16,7 +16,7 @@ import {
     createOperation,
     createTransaction,
     earnSunflowersForPayment,
-    getAllTransactions,
+    getCompletedTransactionByStripePaymentId,
     getDefaultShoppingCartScheduledDate,
     getInventory,
     getOutletOfferReservationForCartItem,
@@ -32,6 +32,7 @@ import {
     spendSunflowers,
     updateRaisedBed,
     upsertRaisedBedField,
+    withStripePaymentProcessingLock,
 } from '@gredice/storage';
 import { getStripeCheckoutSession } from '@gredice/stripe/server';
 import {
@@ -271,6 +272,25 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
         return;
     }
 
+    return withStripePaymentProcessingLock(session.id, () =>
+        processPaidCheckoutSession(checkoutSessionId, session),
+    );
+}
+
+async function processPaidCheckoutSession(
+    checkoutSessionId: string,
+    session: NonNullable<Awaited<ReturnType<typeof getStripeCheckoutSession>>>,
+) {
+    const alreadyProcessed = await getCompletedTransactionByStripePaymentId(
+        session.id,
+    );
+    if (alreadyProcessed) {
+        console.info(
+            `Checkout session ${checkoutSessionId} already processed; skipping.`,
+        );
+        return;
+    }
+
     console.debug(
         `Processing checkout session ${checkoutSessionId} with amount ${session.amountTotal} cents`,
     );
@@ -283,7 +303,6 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
     }[] = [];
     const scheduledDeliveryEmailKeys = new Set<string>();
     let accountId: string | undefined;
-    let checkedExistingTransactions = false;
     for (const item of session.lineItems?.data ?? []) {
         console.debug(`Item: ${item.id} Quantity: ${item.quantity}`);
 
@@ -405,26 +424,6 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
             }
             accountId = resolvedAccountId;
 
-            // Check if transaction was already processed
-            if (!checkedExistingTransactions) {
-                // TODO: Use pagination and retrieve last N transactions or match via date
-                const transactions = await getAllTransactions({
-                    filter: { accountId },
-                });
-                checkedExistingTransactions = true;
-                const existingTransaction = transactions.find(
-                    (t) =>
-                        t.stripePaymentId === session.id &&
-                        t.status === 'completed',
-                );
-                if (existingTransaction) {
-                    console.info(
-                        `Transaction for session ${checkoutSessionId} already processed for account ${accountId}`,
-                    );
-                    return;
-                }
-            }
-
             // Find cart item by cartItemId for more reliable matching
             const cartItem = cart.items.find(
                 (i) => i.id === itemData.cartItemId,
@@ -544,7 +543,7 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
             ? createTransaction({
                   accountId,
                   amount: session.amountTotal,
-                  stripePaymentId: session.paymentId ?? session.id,
+                  stripePaymentId: session.id,
                   status: 'completed',
                   currency: 'eur',
               })
