@@ -17,6 +17,7 @@ import {
     createTransaction,
     earnSunflowersForPayment,
     getAllTransactions,
+    getDefaultShoppingCartScheduledDate,
     getInventory,
     getOutletOfferReservationForCartItem,
     getRaisedBed,
@@ -26,6 +27,7 @@ import {
     knownEvents,
     markCartPaidIfAllItemsPaid,
     normalizeShoppingCartInventoryUsage,
+    normalizeShoppingCartScheduledDates,
     setCartItemPaid,
     spendSunflowers,
     updateRaisedBed,
@@ -66,13 +68,18 @@ async function processNonStripeCartItems(
     deliveryInfo?: unknown,
     scheduledDeliveryEmailKeys?: Set<string>,
 ): Promise<ShoppingCartItemWithShopData[]> {
-    const cart = await normalizeShoppingCartInventoryUsage(cartId);
-    if (!cart) {
+    const inventoryNormalizedCart =
+        await normalizeShoppingCartInventoryUsage(cartId);
+    if (!inventoryNormalizedCart) {
         console.warn(
             `No cart found for ID ${cartId} when processing non-stripe items.`,
         );
         return [];
     }
+    const cart =
+        (await normalizeShoppingCartScheduledDates(inventoryNormalizedCart.id, {
+            defaultMissingScheduledDates: true,
+        })) ?? inventoryNormalizedCart;
 
     const cartInfo = await getCartInfo(cart.items, accountId);
     if (!cartInfo.allowPurchase) {
@@ -626,13 +633,41 @@ async function outletReservationForCheckout(itemData: {
     return reservation;
 }
 
+function parseAdditionalDataValue(additionalData: unknown) {
+    if (typeof additionalData !== 'string') {
+        return additionalData;
+    }
+
+    try {
+        return JSON.parse(additionalData);
+    } catch {
+        return null;
+    }
+}
+
 function scheduledDateFromAdditionalData(additionalData: unknown) {
-    return typeof additionalData === 'object' &&
-        additionalData != null &&
-        'scheduledDate' in additionalData &&
-        typeof additionalData.scheduledDate === 'string'
-        ? additionalData.scheduledDate
-        : null;
+    const parsedAdditionalData = parseAdditionalDataValue(additionalData);
+    const scheduledDate =
+        typeof parsedAdditionalData === 'object' &&
+        parsedAdditionalData != null &&
+        'scheduledDate' in parsedAdditionalData &&
+        typeof parsedAdditionalData.scheduledDate === 'string'
+            ? parsedAdditionalData.scheduledDate
+            : null;
+    if (!scheduledDate) {
+        return null;
+    }
+
+    return Number.isNaN(new Date(scheduledDate).getTime())
+        ? null
+        : scheduledDate;
+}
+
+function checkoutScheduledDateFromAdditionalData(additionalData: unknown) {
+    return (
+        scheduledDateFromAdditionalData(additionalData) ??
+        getDefaultShoppingCartScheduledDate()
+    );
 }
 
 export async function processItem(itemData: {
@@ -711,8 +746,6 @@ export async function processItem(itemData: {
             )?.id;
         }
 
-        // Try to extract scheduled date from additional data
-        let scheduledDate: string | null = null;
         let additionalData = itemData.additionalData;
         if (typeof additionalData === 'string') {
             try {
@@ -729,14 +762,8 @@ export async function processItem(itemData: {
                 additionalData = null;
             }
         }
-        if (
-            typeof additionalData === 'object' &&
-            additionalData != null &&
-            'scheduledDate' in additionalData &&
-            typeof additionalData.scheduledDate === 'string'
-        ) {
-            scheduledDate = additionalData.scheduledDate;
-        }
+        const scheduledDate =
+            checkoutScheduledDateFromAdditionalData(additionalData);
 
         const operationId = await createOperation({
             accountId: itemData.accountId,
@@ -759,34 +786,25 @@ export async function processItem(itemData: {
             `Created operation ${itemData.entityId} of type ${itemData.entityTypeName} for account ${itemData.accountId} in garden ${itemData.gardenId ?? 'N/A'} with raised bed ${itemData.raisedBedId ?? 'N/A'} and field ${fieldId ?? 'N/A'}.`,
         );
 
-        // Make operation scheduled event if there is schedule date in the request
-        if (scheduledDate) {
-            try {
-                await createEvent(
-                    knownEvents.operations.scheduledV1(operationId.toString(), {
-                        scheduledDate,
-                    }),
-                );
-                console.debug(
-                    `Scheduled operation ${operationId} for date ${scheduledDate}.`,
-                );
-            } catch (error) {
-                console.error(
-                    `Failed to create scheduled event for operation ${operationId}:`,
-                    error,
-                );
-            }
-            const scheduledDateValue = new Date(scheduledDate);
-            if (!Number.isNaN(scheduledDateValue.getTime())) {
-                await notifyOperationUpdate(operationId, 'scheduled', {
-                    scheduledDate: scheduledDateValue.toISOString(),
-                });
-            } else {
-                console.warn(
-                    `Skipping scheduled notification update for operation ${operationId} due to invalid scheduledDate metadata: ${scheduledDate}`,
-                );
-            }
+        // Every purchased operation is scheduled; missing dates default to tomorrow.
+        try {
+            await createEvent(
+                knownEvents.operations.scheduledV1(operationId.toString(), {
+                    scheduledDate,
+                }),
+            );
+            console.debug(
+                `Scheduled operation ${operationId} for date ${scheduledDate}.`,
+            );
+        } catch (error) {
+            console.error(
+                `Failed to create scheduled event for operation ${operationId}:`,
+                error,
+            );
         }
+        await notifyOperationUpdate(operationId, 'scheduled', {
+            scheduledDate: new Date(scheduledDate).toISOString(),
+        });
 
         // Check if this operation/entity is deliverable and create delivery request if needed
         if (itemData.cartId) {
@@ -882,7 +900,9 @@ export async function processItem(itemData: {
                 plantSortId: itemData.entityId,
                 scheduledDate: outletReservation
                     ? null
-                    : scheduledDateFromAdditionalData(itemData.additionalData),
+                    : checkoutScheduledDateFromAdditionalData(
+                          itemData.additionalData,
+                      ),
                 sowingLocation: outletReservation ? 'greenhouse' : undefined,
             }),
         );

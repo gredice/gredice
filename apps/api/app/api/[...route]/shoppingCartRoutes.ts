@@ -247,6 +247,16 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         409,
                     );
                 }
+                if (
+                    error instanceof Error &&
+                    error.message ===
+                        'Cannot update paid shopping cart item via API'
+                ) {
+                    return context.json(
+                        { error: 'Cannot update paid shopping cart item' },
+                        400,
+                    );
+                }
 
                 throw error;
             }
