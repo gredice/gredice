@@ -136,7 +136,7 @@ export const PLANT_STATUS_STAGE_SEQUENCE: Record<
     notSprouted: ['sowing', 'maintenance'],
     ready: ['harvest', 'storage'],
     harvested: ['storage'],
-    died: ['maintenance', 'soilPreparation'],
+    died: ['storage'],
     removed: ['maintenance', 'maintenance'],
 } as const;
 
