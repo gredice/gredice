@@ -1,8 +1,10 @@
 import { createRefreshToken } from '@gredice/storage';
 import { cookies } from 'next/headers';
 import { createJwt, setCookie, withAuth } from '../../../../../lib/auth/auth';
+import { authCookieSettings } from '../../../../../lib/auth/cookieSecurity';
 import { setRefreshCookie } from '../../../../../lib/auth/refreshCookies';
 import {
+    accountCookieName,
     cookieDomain,
     impersonationFlagCookieName,
     impersonationRefreshCookieName,
@@ -21,6 +23,7 @@ export async function POST(
 
     return await withAuth(['admin'], async () => {
         const cookieStore = await cookies();
+        const cookieSettings = await authCookieSettings();
 
         // Save the admin's current refresh token so we can restore the session later
         const adminRefreshToken = cookieStore.get(
@@ -36,7 +39,7 @@ export async function POST(
         // Store admin's refresh token in a backup cookie (httpOnly for security)
         cookieStore.set(impersonationRefreshCookieName, adminRefreshToken, {
             httpOnly: true,
-            secure: true,
+            secure: cookieSettings.secure,
             sameSite: 'lax',
             domain: cookieDomain,
             expires: new Date(Date.now() + refreshTokenExpiryMs),
@@ -45,10 +48,19 @@ export async function POST(
         // Set a non-httpOnly flag cookie so client-side code can detect impersonation
         cookieStore.set(impersonationFlagCookieName, '1', {
             httpOnly: false,
-            secure: true,
+            secure: cookieSettings.secure,
             sameSite: 'lax',
             domain: cookieDomain,
             expires: new Date(Date.now() + refreshTokenExpiryMs),
+        });
+
+        // Reset the active account so the impersonated session chooses from the user's accounts.
+        cookieStore.set(accountCookieName, '', {
+            httpOnly: true,
+            secure: cookieSettings.secure,
+            sameSite: 'lax',
+            domain: cookieSettings.domain,
+            maxAge: 0,
         });
 
         // Create tokens for the impersonated user
@@ -56,8 +68,10 @@ export async function POST(
             createJwt(userId),
             createRefreshToken(userId),
         ]);
-        await setCookie(accessToken);
-        setRefreshCookie(refreshToken);
+        await Promise.all([
+            setCookie(accessToken),
+            setRefreshCookie(refreshToken),
+        ]);
         return new Response(null, { status: 201 });
     });
 }

@@ -15,6 +15,11 @@ type RequestCookieContext = {
     origin?: string;
 };
 
+type AuthCookieSettings = {
+    domain: string | undefined;
+    secure: boolean;
+};
+
 function hostnameFromHostHeader(hostHeader: string) {
     try {
         return new URL(`http://${hostHeader}`).hostname;
@@ -88,18 +93,43 @@ function shouldUseSecureCookiesForContext(context: RequestCookieContext) {
     );
 }
 
+function configuredCookieDomain() {
+    const domain = process.env.COOKIE_DOMAIN?.trim();
+    return domain || undefined;
+}
+
+function inferredGrediceCookieDomain(hostname: string) {
+    if (hostname === 'gredice.com' || hostname.endsWith('.gredice.com')) {
+        return 'gredice.com';
+    }
+
+    if (hostname === 'gredice.test' || hostname.endsWith('.gredice.test')) {
+        return 'gredice.test';
+    }
+
+    return undefined;
+}
+
 function cookieDomainForContext(context: RequestCookieContext) {
     if (isLoopbackHost(context.host)) {
         return undefined;
     }
 
-    return process.env.COOKIE_DOMAIN || undefined;
+    return (
+        configuredCookieDomain() ?? inferredGrediceCookieDomain(context.host)
+    );
 }
 
-export async function authCookieSettings() {
-    const context = await requestCookieContext();
+export function resolveAuthCookieSettingsForContext(
+    context: RequestCookieContext,
+): AuthCookieSettings {
     return {
         domain: cookieDomainForContext(context),
         secure: shouldUseSecureCookiesForContext(context),
     };
+}
+
+export async function authCookieSettings() {
+    const context = await requestCookieContext();
+    return resolveAuthCookieSettingsForContext(context);
 }
