@@ -28,8 +28,11 @@ export interface RaisedBedGeneratedPlantBatchInstance {
 
 interface RaisedBedGeneratedPlantBatchProps {
     definition: PlantDefinition;
+    flowerGrowth?: number;
+    fruitGrowth?: number;
     instances: RaisedBedGeneratedPlantBatchInstance[];
     lodLevel?: PlantLodLevel;
+    showProduce?: boolean;
 }
 
 const ROOT_QUATERNION = new THREE.Quaternion();
@@ -99,8 +102,11 @@ function RaisedBedDetailedPlantBatch({
 
 export function RaisedBedGeneratedPlantBatch({
     definition,
+    flowerGrowth = 1,
+    fruitGrowth = 1,
     instances,
     lodLevel = 'near',
+    showProduce = true,
 }: RaisedBedGeneratedPlantBatchProps) {
     const renderDetailedGeometry = lodLevel === 'near';
     const batchSeed = useMemo(
@@ -155,13 +161,14 @@ export function RaisedBedGeneratedPlantBatch({
                 Math.max(0, instance.generation),
             );
             const plantData = buildPlantRenderData({
-                flowerGrowth: 1,
-                fruitGrowth: 1,
+                flowerGrowth,
+                fruitGrowth,
                 generation: clampedGeneration,
                 lSystemSymbols,
                 plantDefinition: definition,
                 renderDetailedGeometry,
                 seed: instance.seed,
+                showProduce,
             });
             billboards.push({
                 position: instance.position,
@@ -212,7 +219,15 @@ export function RaisedBedGeneratedPlantBatch({
             thorns,
             vegetables,
         } satisfies BatchedPlantRenderData;
-    }, [definition, instances, renderDetailedGeometry, symbols]);
+    }, [
+        definition,
+        flowerGrowth,
+        fruitGrowth,
+        instances,
+        renderDetailedGeometry,
+        showProduce,
+        symbols,
+    ]);
 
     if (!batchedData) {
         return null;

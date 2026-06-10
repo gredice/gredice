@@ -873,6 +873,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         physicalId: raisedBed.physicalId,
                         blockId: raisedBed.blockId,
                         status: raisedBed.status,
+                        weedState: raisedBed.weedState,
                         abandonReason:
                             abandonReasonByRaisedBedId.get(raisedBed.id) ??
                             null,

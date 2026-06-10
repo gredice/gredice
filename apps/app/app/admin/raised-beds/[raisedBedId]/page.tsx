@@ -35,6 +35,7 @@ import { OperationsTableCard } from './OperationsTableCard';
 import { RaisedBedActionsMenu } from './RaisedBedActionsMenu';
 import { RaisedBedPhysicalIdInput } from './RaisedBedPhysicalIdInput';
 import { RaisedBedStatusSelect } from './RaisedBedStatusSelect';
+import { RaisedBedWeedStateSelect } from './RaisedBedWeedStateSelect';
 
 export const dynamic = 'force-dynamic';
 
@@ -121,6 +122,10 @@ export default async function RaisedBedPage({
                     <RaisedBedStatusSelect
                         raisedBedId={raisedBed.id}
                         status={raisedBed.status}
+                    />
+                    <RaisedBedWeedStateSelect
+                        raisedBedId={raisedBed.id}
+                        level={raisedBed.weedState?.level ?? 'none'}
                     />
                 </Stack>
             </EntityDetailsPanelCard>

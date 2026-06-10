@@ -8,6 +8,7 @@ import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Stack } from '@gredice/ui/Stack';
 import { RaisedBedFieldLocationSelector } from '../../app/admin/raised-beds/[raisedBedId]/RaisedBedFieldLocationSelector';
 import { RaisedBedFieldPlantSortSelector } from '../../app/admin/raised-beds/[raisedBedId]/RaisedBedFieldPlantSortSelector';
+import { RaisedBedFieldWeedStateSelector } from '../../app/admin/raised-beds/[raisedBedId]/RaisedBedFieldWeedStateSelector';
 import { NoDataPlaceholder } from '../shared/placeholders/NoDataPlaceholder';
 import { MoveRaisedBedFieldPlantModal } from './MoveRaisedBedFieldPlantModal';
 import {
@@ -452,6 +453,15 @@ function RaisedBedFieldTile({
                 className={raisedBedFieldCardButtonClassName}
             />
         ) : undefined;
+    const weedControl = (
+        <RaisedBedFieldWeedStateSelector
+            raisedBedId={raisedBedId}
+            positionIndex={positionIndex}
+            level={field?.weedState?.level ?? 'none'}
+            variant="plain"
+            className={raisedBedFieldCardSelectClassName}
+        />
+    );
 
     return (
         <RaisedBedFieldCard
@@ -461,6 +471,7 @@ function RaisedBedFieldTile({
             historyControl={historyControl}
             plantSortControl={plantSortControl}
             statusControl={statusControl}
+            weedControl={weedControl}
         />
     );
 }
