@@ -270,6 +270,7 @@ function mockRaisedBedField(
         plantDeadDate: undefined,
         plantHarvestedDate: undefined,
         plantRemovedDate: undefined,
+        weedState: null,
         plantCycles: [
             {
                 aggregateId: `${raisedBedId.toString()}|${field.positionIndex.toString()}`,
@@ -426,6 +427,7 @@ function createProfileRaisedBed(
         physicalId: `profile-raised-bed:${id}`,
         fields: mockRaisedBedFields(id, fieldOffset),
         appliedOperations: [],
+        weedState: null,
         status: 'new',
         abandonReason: null,
         updatedAt: now,
@@ -538,6 +540,7 @@ function mockGarden(
             physicalId: '42',
             fields: mockRaisedBedFields(1, 0),
             appliedOperations: [],
+            weedState: null,
             status: 'new',
             abandonReason: null,
             updatedAt: now,
@@ -552,6 +555,7 @@ function mockGarden(
             blockId: '8',
             fields: mockRaisedBedFields(2, 100),
             appliedOperations: [],
+            weedState: null,
             status: 'new',
             abandonReason: null,
             updatedAt: now,

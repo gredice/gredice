@@ -9,6 +9,8 @@ import {
     abandonRaisedBed,
     getRaisedBed,
     mergeRaisedBeds,
+    type RaisedBedWeedStateLevel,
+    setRaisedBedWeedState as setRaisedBedWeedStateInStorage,
     updateRaisedBed,
 } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
@@ -69,6 +71,39 @@ export async function setRaisedBedStatus(
     }
 
     revalidatePath(KnownPages.Sensors);
+}
+
+export async function setRaisedBedWeedState(
+    raisedBedId: number,
+    level: RaisedBedWeedStateLevel,
+) {
+    await auth(['admin']);
+
+    const raisedBed = await getRaisedBed(raisedBedId);
+    if (!raisedBed) {
+        throw new Error(`Raised bed with ID ${raisedBedId} not found.`);
+    }
+
+    if (raisedBed.weedState?.level === level) {
+        return;
+    }
+
+    await setRaisedBedWeedStateInStorage({
+        level,
+        raisedBedId,
+        source: 'admin',
+    });
+
+    revalidatePath(KnownPages.RaisedBed(raisedBedId));
+    revalidatePath(KnownPages.RaisedBeds);
+
+    if (raisedBed.accountId) {
+        revalidatePath(KnownPages.Account(raisedBed.accountId));
+    }
+
+    if (raisedBed.gardenId) {
+        revalidatePath(KnownPages.Garden(raisedBed.gardenId));
+    }
 }
 
 export async function abandonRaisedBedDueToInactivityAction(

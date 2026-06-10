@@ -167,6 +167,17 @@ export type RaisedBedAbandonPayload = {
     reason?: 'inactivity' | 'user';
 };
 
+export type RaisedBedWeedStateLevel = 'none' | 'light' | 'heavy';
+
+export type RaisedBedWeedStateSource = 'admin' | 'ai';
+
+export type RaisedBedWeedStateSetPayload = {
+    level: RaisedBedWeedStateLevel;
+    source: RaisedBedWeedStateSource;
+    observedAt?: string | null;
+    notes?: string | null;
+};
+
 // ============================================================================
 // Raised bed field event payload types
 // ============================================================================
