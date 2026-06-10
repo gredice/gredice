@@ -10,9 +10,11 @@ import {
     createOperation,
     events,
     getAllOperations,
+    getAppliedRaisedBedOperationsForGarden,
     getAssignableFarmUsersByOperationIds,
     getFarmUserAcceptedOperations,
     getOperationById,
+    getOperations,
     getOperationsPage,
     knownEvents,
     knownEventTypes,
@@ -289,4 +291,154 @@ test('all operations can be filtered by event-derived status', async () => {
         new Set([newOperationId, plannedOperationId]),
     );
     assert.ok(!operationIds.includes(pendingOperationId));
+});
+
+test('getAppliedRaisedBedOperationsForGarden matches the previous in-memory applied raised-bed filter', async () => {
+    createTestDb();
+
+    const accountId = await createAccount();
+    const otherAccountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const otherGardenId = await createTestGarden({ accountId, farmId });
+    const blockId = await createTestBlock(
+        gardenId,
+        'garden-applied-operations-block',
+    );
+    const otherBlockId = await createTestBlock(
+        otherGardenId,
+        'other-garden-applied-operations-block',
+    );
+    const raisedBedId = await createTestRaisedBed(gardenId, accountId, blockId);
+    const otherRaisedBedId = await createTestRaisedBed(
+        otherGardenId,
+        accountId,
+        otherBlockId,
+    );
+
+    const pendingRaisedBedOperationId = await createOperation({
+        entityId: 1,
+        entityTypeName: 'operation',
+        accountId,
+        gardenId,
+        raisedBedId,
+        timestamp: new Date('2040-02-01T00:00:00.000Z'),
+    });
+    const completedRaisedBedOperationId = await createOperation({
+        entityId: 2,
+        entityTypeName: 'operation',
+        accountId,
+        gardenId,
+        raisedBedId,
+        timestamp: new Date('2040-02-02T00:00:00.000Z'),
+    });
+    const plannedRaisedBedOperationId = await createOperation({
+        entityId: 3,
+        entityTypeName: 'operation',
+        accountId,
+        gardenId,
+        raisedBedId,
+        timestamp: new Date('2040-02-03T00:00:00.000Z'),
+    });
+    const pendingGardenOperationId = await createOperation({
+        entityId: 4,
+        entityTypeName: 'operation',
+        accountId,
+        gardenId,
+        timestamp: new Date('2040-02-04T00:00:00.000Z'),
+    });
+    const pendingOtherGardenOperationId = await createOperation({
+        entityId: 5,
+        entityTypeName: 'operation',
+        accountId,
+        gardenId: otherGardenId,
+        raisedBedId: otherRaisedBedId,
+        timestamp: new Date('2040-02-05T00:00:00.000Z'),
+    });
+    const pendingOtherAccountOperationId = await createOperation({
+        entityId: 6,
+        entityTypeName: 'operation',
+        accountId: otherAccountId,
+        gardenId,
+        raisedBedId,
+        timestamp: new Date('2040-02-06T00:00:00.000Z'),
+    });
+
+    await createEvent(
+        knownEvents.operations.completedV1(
+            pendingRaisedBedOperationId.toString(),
+            {
+                completedBy: randomUUID(),
+            },
+        ),
+    );
+    await createEvent(
+        knownEvents.operations.completedV1(
+            completedRaisedBedOperationId.toString(),
+            {
+                completedBy: randomUUID(),
+            },
+        ),
+    );
+    await createEvent(
+        knownEvents.operations.verifiedV1(
+            completedRaisedBedOperationId.toString(),
+            {
+                verifiedBy: randomUUID(),
+            },
+        ),
+    );
+    await createEvent(
+        knownEvents.operations.scheduledV1(
+            plannedRaisedBedOperationId.toString(),
+            {
+                scheduledDate: '2040-02-10T00:00:00.000Z',
+            },
+        ),
+    );
+    await createEvent(
+        knownEvents.operations.completedV1(
+            pendingGardenOperationId.toString(),
+            {
+                completedBy: randomUUID(),
+            },
+        ),
+    );
+    await createEvent(
+        knownEvents.operations.completedV1(
+            pendingOtherGardenOperationId.toString(),
+            {
+                completedBy: randomUUID(),
+            },
+        ),
+    );
+    await createEvent(
+        knownEvents.operations.completedV1(
+            pendingOtherAccountOperationId.toString(),
+            {
+                completedBy: randomUUID(),
+            },
+        ),
+    );
+
+    const oldFilteredOperationIds = (await getOperations(accountId, gardenId))
+        .filter(
+            (operation) =>
+                operation.raisedBedId &&
+                (operation.status === 'completed' ||
+                    operation.status === 'pendingVerification'),
+        )
+        .map((operation) => operation.id);
+    const boundedOperationIds = (
+        await getAppliedRaisedBedOperationsForGarden(accountId, gardenId)
+    ).map((operation) => operation.id);
+
+    assert.deepStrictEqual(
+        new Set(boundedOperationIds),
+        new Set(oldFilteredOperationIds),
+    );
+    assert.deepStrictEqual(
+        new Set(boundedOperationIds),
+        new Set([completedRaisedBedOperationId, pendingRaisedBedOperationId]),
+    );
 });

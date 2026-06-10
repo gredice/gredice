@@ -28,12 +28,12 @@ import {
     GardenDiaryRescheduleError,
     getAccount,
     getAccountGardens,
+    getAppliedRaisedBedOperationsForGarden,
     getEvents,
     getGarden,
     getGardenBlocks,
     getGardenStack,
     getGardenStackForUpdate,
-    getOperations,
     getOperationsPage,
     getRaisedBed,
     getRaisedBedAiHistoryEntries,
@@ -305,7 +305,9 @@ function isAppliedRaisedBedOperationStatus(status: string) {
 }
 
 function serializeAppliedRaisedBedOperation(
-    operation: Awaited<ReturnType<typeof getOperations>>[number],
+    operation: Awaited<
+        ReturnType<typeof getAppliedRaisedBedOperationsForGarden>
+    >[number],
 ) {
     return {
         id: operation.id,
@@ -319,7 +321,7 @@ function serializeAppliedRaisedBedOperation(
 }
 
 function serializeGardenOperation(
-    operation: Awaited<ReturnType<typeof getOperations>>[number],
+    operation: Awaited<ReturnType<typeof getOperationsPage>>['items'][number],
     targetsByRaisedBedFieldId: Map<number, string>,
     targetsByRaisedBedId: Map<number, string>,
 ) {
@@ -735,7 +737,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     getGarden(gardenIdNumber),
                     // getEvents(knownEventTypes.gardens.blockPlace, gardenId, 0, 10000),
                     getGardenBlocks(gardenIdNumber),
-                    getOperations(accountId, gardenIdNumber),
+                    getAppliedRaisedBedOperationsForGarden(
+                        accountId,
+                        gardenIdNumber,
+                    ),
                 ]);
             if (!garden || garden.accountId !== accountId) {
                 return context.json({ error: 'Garden not found' }, 404);
