@@ -16,6 +16,7 @@
                 "FACEBOOK_CLIENT_SECRET",
                 "GOOGLE_CLIENT_ID",
                 "GOOGLE_CLIENT_SECRET",
+                "GREDICE_ADMIN_APP_URL",
                 "GREDICE_GOOGLE_MAPS_API_KEY",
                 "GREDICE_GOOGLE_MAPS_URL_SIGNING_SECRET",
                 "GREDICE_JWT_SIGN_SECRET",
@@ -55,6 +56,7 @@
                 "RESEND_API_KEY",
                 "SIGNALCO_API_KEY",
                 "SLACK_BOT_TOKEN",
+                "SOCIAL_PUBLISHING_QUEUE_SECRET",
                 "STRIPE_SECRETKEY",
                 "STRIPE_WEBHOOK_SECRET",
                 "VERCEL_OIDC_TOKEN"

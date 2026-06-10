@@ -32,6 +32,10 @@
         {
             "path": "/api/internal/cron/achievements",
             "schedule": "0 * * * *"
+        },
+        {
+            "path": "/api/internal/cron/social-publishing",
+            "schedule": "*/5 * * * *"
         }
     ]
 }
