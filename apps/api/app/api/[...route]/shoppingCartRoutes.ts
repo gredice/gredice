@@ -9,6 +9,7 @@ import {
     getOrCreateShoppingCart,
     getOutletOffer,
     getRaisedBed,
+    getShoppingCart,
     getSunflowers,
     normalizeShoppingCartInventoryUsage,
     normalizeShoppingCartScheduledDates,
@@ -152,6 +153,17 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 forceCreate,
             } = context.req.valid('json');
             const { accountId } = context.get('authContext');
+            const cart = await getShoppingCart(cartId);
+            if (!cart || cart.accountId !== accountId) {
+                return context.json({ error: 'Cart not found' }, 404);
+            }
+            // If updating an existing item, it must belong to this cart.
+            if (
+                typeof id === 'number' &&
+                !cart.items.some((item) => item.id === id)
+            ) {
+                return context.json({ error: 'Cart item not found' }, 404);
+            }
             if (outletOfferId && entityTypeName !== 'plantSort') {
                 return context.json(
                     { error: 'Outlet offers can only be used for plant sorts' },
