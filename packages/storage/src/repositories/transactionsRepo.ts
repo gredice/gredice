@@ -14,6 +14,15 @@ export async function createTransaction(transaction: InsertTransaction) {
         throw new Error('Transaction must have an accountId');
     }
 
+    if (transaction.status === 'completed' && transaction.stripePaymentId) {
+        const existing = await getCompletedTransactionByStripePaymentId(
+            transaction.stripePaymentId,
+        );
+        if (existing) {
+            return existing.id;
+        }
+    }
+
     const transactionId = (
         await storage()
             .insert(transactions)
@@ -31,6 +40,18 @@ export async function createTransaction(transaction: InsertTransaction) {
     );
 
     return transactionId;
+}
+
+export async function getCompletedTransactionByStripePaymentId(
+    stripePaymentId: string,
+) {
+    return storage().query.transactions.findFirst({
+        where: and(
+            eq(transactions.stripePaymentId, stripePaymentId),
+            eq(transactions.status, 'completed'),
+            eq(transactions.isDeleted, false),
+        ),
+    });
 }
 
 export async function getTransaction(transactionId: number) {
