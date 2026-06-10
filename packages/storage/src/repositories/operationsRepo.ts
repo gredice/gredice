@@ -6,6 +6,7 @@ import {
     eq,
     gte,
     inArray,
+    isNotNull,
     isNull,
     lte,
     or,
@@ -419,6 +420,12 @@ function getOperationStatusWhere(
     )})`;
 }
 
+const appliedRaisedBedOperationStatuses: OperationStatus[] = [
+    // Keep in sync with isAppliedRaisedBedOperationStatus in the garden route.
+    'completed',
+    'pendingVerification',
+];
+
 function getOperationTimelineSortExpression() {
     const scheduledDateExpression = getOperationScheduledDateExpression();
 
@@ -505,6 +512,36 @@ export async function getOperationsPage(
         nextCursor: pageRows.length > pageSize ? offset + pageSize : null,
         total: totalResult[0]?.count ?? 0,
     };
+}
+
+export async function getAppliedRaisedBedOperationsForGarden(
+    accountId: string,
+    gardenId: number,
+) {
+    const rows = await storage()
+        .select({
+            id: operations.id,
+        })
+        .from(operations)
+        .where(
+            and(
+                getOperationsWhere({ accountId, gardenId }),
+                getOperationStatusWhere(appliedRaisedBedOperationStatuses),
+                isNotNull(operations.raisedBedId),
+            ),
+        )
+        .orderBy(desc(operations.timestamp));
+
+    const operationIds = rows.map((row) => row.id);
+    const hydratedOperations = await getOperationsByIds(operationIds);
+    const hydratedOperationsById = new Map(
+        hydratedOperations.map((operation) => [operation.id, operation]),
+    );
+
+    return operationIds.flatMap((operationId) => {
+        const operation = hydratedOperationsById.get(operationId);
+        return operation ? [operation] : [];
+    });
 }
 
 export async function getAllOperations(filter?: {
