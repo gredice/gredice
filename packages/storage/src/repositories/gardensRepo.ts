@@ -2542,12 +2542,22 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
         }
     }
 
+    const fieldsEventsByAggregateId = new Map<string, typeof fieldsEvents>();
+    for (const event of fieldsEvents) {
+        const aggregateEvents = fieldsEventsByAggregateId.get(
+            event.aggregateId,
+        );
+        if (aggregateEvents) {
+            aggregateEvents.push(event);
+        } else {
+            fieldsEventsByAggregateId.set(event.aggregateId, [event]);
+        }
+    }
+
     // For each field, fetch and apply events
     return fields.map((field) => {
         const aggregateId = `${field.raisedBedId}|${field.positionIndex}`;
-        const events = fieldsEvents.filter(
-            (event) => event.aggregateId === aggregateId,
-        );
+        const events = fieldsEventsByAggregateId.get(aggregateId) ?? [];
 
         // Reduce events to get latest status, plant info, etc.
         let plantStatus: string | undefined;
