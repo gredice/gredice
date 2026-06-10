@@ -8,6 +8,10 @@ import { NoDataPlaceholder } from '@gredice/ui/NoDataPlaceholder';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { memo, useMemo, useState } from 'react';
+import {
+    sortFavoritesFirst,
+    useFavoriteIds,
+} from '../../../hooks/useFavorites';
 import { useOperations } from '../../../hooks/useOperations';
 import { usePlantSort } from '../../../hooks/usePlantSorts';
 import {
@@ -123,6 +127,7 @@ export function OperationsList({
     const { data: plantSort, isLoading: isPlantSortLoading } =
         usePlantSort(plantSortId);
     const { data: cart } = useShoppingCart();
+    const favoriteOperationIds = useFavoriteIds('operation');
     const [, setShoppingCartOpen] = useShoppingCartOpenParam();
     const isLoading =
         isLoadingOperations || (Boolean(plantSortId) && isPlantSortLoading);
@@ -172,7 +177,10 @@ export function OperationsList({
         filteredOperations?.filter(
             (op) => !shoppingCartOperationIds.has(op.id),
         ) ?? [];
-    const sortedOperations = [...cartOperations, ...remainingOperations];
+    const sortedOperations = [
+        ...sortFavoritesFirst(cartOperations, favoriteOperationIds),
+        ...sortFavoritesFirst(remainingOperations, favoriteOperationIds),
+    ];
 
     return (
         <Stack spacing={2}>

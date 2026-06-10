@@ -1,7 +1,8 @@
-import type { PlantData, PlantSortData } from '@gredice/client';
+import type { FavoriteItem, PlantData, PlantSortData } from '@gredice/client';
 import * as ReactQuery from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { type PropsWithChildren, useEffect, useMemo } from 'react';
+import { favoritesQueryKey } from '../../../packages/game/src/hooks/useFavorites';
 import type { OutletOfferData } from '../../../packages/game/src/hooks/useOutletOffers';
 import { PlantPicker } from '../../../packages/game/src/hud/raisedBed/RaisedBedPlantPicker';
 import {
@@ -209,7 +210,7 @@ const tomatoOutletOffers = [
     },
 ] satisfies OutletOfferData[];
 
-function createPlantPickerQueryClient() {
+function createPlantPickerQueryClient(favorites: FavoriteItem[] = []) {
     const queryClient = new ReactQuery.QueryClient({
         defaultOptions: {
             queries: {
@@ -269,14 +270,21 @@ function createPlantPickerQueryClient() {
         items: [],
     });
     queryClient.setQueryData(['outlet-offers'], tomatoOutletOffers);
+    queryClient.setQueryData(favoritesQueryKey, favorites);
     queryClient.setQueryData(['plants'], [tomatoPlant, basilPlant]);
     queryClient.setQueryData(['sorts'], tomatoSorts);
 
     return queryClient;
 }
 
-function PlantPickerTestProviders({ children }: PropsWithChildren) {
-    const queryClient = useMemo(() => createPlantPickerQueryClient(), []);
+function PlantPickerTestProviders({
+    children,
+    favorites = [],
+}: PropsWithChildren<{ favorites?: FavoriteItem[] }>) {
+    const queryClient = useMemo(
+        () => createPlantPickerQueryClient(favorites),
+        [favorites],
+    );
     const gameStore = useMemo(
         () =>
             createGameState({
@@ -319,12 +327,14 @@ function OutletOfferRefetchTestHook() {
 }
 
 export function PlantPickerTestStory({
+    favorites,
     showOutletRefetchControl = false,
 }: {
+    favorites?: FavoriteItem[];
     showOutletRefetchControl?: boolean;
 } = {}) {
     return (
-        <PlantPickerTestProviders>
+        <PlantPickerTestProviders favorites={favorites}>
             {showOutletRefetchControl ? <OutletOfferRefetchTestHook /> : null}
             <PlantPicker
                 gardenId={1}

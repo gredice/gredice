@@ -1,4 +1,5 @@
 export * from './directories-api';
+export * from './favorites';
 export * from './harvest-traces';
 export type { ClientMode, ClientOptions, GardenResponse } from './hono';
 export { client, clientAuthenticated, clientPublic } from './hono';

@@ -9,8 +9,9 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
+import { sortFavoritesFirst, useFavoriteIds } from '../../hooks/useFavorites';
 import type { OutletOfferData } from '../../hooks/useOutletOffers';
 import { usePlantSorts } from '../../hooks/usePlantSorts';
 import {
@@ -18,6 +19,7 @@ import {
     useAnimateFlyToShoppingCart,
 } from '../../indicators/AnimateFlyTo';
 import { KnownPages } from '../../knownPages';
+import { FavoriteToggleButton } from './FavoriteToggleButton';
 import { PlantListItemSkeleton } from './PlantListItemSkeleton';
 import { PlantRelationshipSignalChips } from './PlantsList';
 import {
@@ -87,7 +89,10 @@ function PlantSortListItem({
     ]);
 
     return (
-        <Stack className={cx(selectedSortId === sort.id && 'bg-muted')}>
+        <Stack
+            className={cx(selectedSortId === sort.id && 'bg-muted')}
+            data-plant-picker-sort-id={sort.id}
+        >
             <Button
                 // variant={selectedSortId === sort.id ? "soft" : "plain"}
                 variant="plain"
@@ -177,6 +182,11 @@ function PlantSortListItem({
                 >
                     Više informacija...
                 </Button>
+                <FavoriteToggleButton
+                    entityId={sort.id}
+                    entityType="plantSort"
+                    label={sort.information.name}
+                />
             </Row>
         </Stack>
     );
@@ -192,25 +202,32 @@ export function PlantsSortList({
     outletOffersBySortId,
 }: PlantsSortListProps) {
     const { data: plantSorts, isLoading, isError } = usePlantSorts(plantId);
+    const favoriteSortIds = useFavoriteIds('plantSort');
     const normalizedSearch = search.trim().toLowerCase();
-    const storePlants = plantSorts?.filter(
-        (sort) => sort.store.availableInStore,
-    );
-    const filteredPlantSorts =
-        normalizedSearch.length > 0
-            ? storePlants?.filter((sort) =>
-                  sort.information.name
-                      .toLowerCase()
-                      .includes(normalizedSearch),
-              )
-            : storePlants;
+    const sortedPlantSorts = useMemo(() => {
+        const storePlants = plantSorts?.filter(
+            (sort) => sort.store.availableInStore,
+        );
+        const filteredPlantSorts =
+            normalizedSearch.length > 0
+                ? storePlants?.filter((sort) =>
+                      sort.information.name
+                          .toLowerCase()
+                          .includes(normalizedSearch),
+                  )
+                : storePlants;
+
+        return filteredPlantSorts
+            ? sortFavoritesFirst(filteredPlantSorts, favoriteSortIds)
+            : undefined;
+    }, [favoriteSortIds, normalizedSearch, plantSorts]);
 
     // Select first sort if only one is available
     useEffect(() => {
-        if (filteredPlantSorts?.length === 1 && !selectedSortId) {
-            onChange(filteredPlantSorts[0]);
+        if (sortedPlantSorts?.length === 1 && !selectedSortId) {
+            onChange(sortedPlantSorts[0]);
         }
-    }, [filteredPlantSorts, selectedSortId, onChange]);
+    }, [sortedPlantSorts, selectedSortId, onChange]);
 
     return (
         <>
@@ -223,7 +240,7 @@ export function PlantsSortList({
                 variant="outlined"
                 className="max-h-[40dvh] overflow-y-auto bg-card md:max-h-96"
             >
-                {!isLoading && filteredPlantSorts?.length === 0 && (
+                {!isLoading && sortedPlantSorts?.length === 0 && (
                     <NoDataPlaceholder className="p-4">
                         Nema rezultata
                     </NoDataPlaceholder>
@@ -233,7 +250,7 @@ export function PlantsSortList({
                         // biome-ignore lint/suspicious/noArrayIndexKey: Allowed, skeleton
                         <PlantListItemSkeleton key={index} />
                     ))}
-                {filteredPlantSorts?.map((sort) => (
+                {sortedPlantSorts?.map((sort) => (
                     <PlantSortListItem
                         key={sort.id}
                         sort={sort}

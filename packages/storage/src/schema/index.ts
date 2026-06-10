@@ -24,5 +24,6 @@ export * from './shoppingCartSchema';
 export * from './socialPostsSchema';
 export * from './surveysSchema';
 export * from './transactionSchema';
+export * from './userFavoritesSchema';
 export * from './usersSchema';
 export * from './weatherHistorySchema';
