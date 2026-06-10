@@ -128,6 +128,16 @@ async function expectNoHorizontalOverflow(locator: Locator) {
     expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1);
 }
 
+async function openSavedAiDiaryEntry(page: Page) {
+    const aiEntry = page.locator('[data-diary-entry]').nth(1);
+
+    await aiEntry
+        .getByRole('button', {
+            name: 'Klikni za prikaz savjeta suncokreta',
+        })
+        .click();
+}
+
 test('raised bed diary entries stay inside a narrow mobile card', async ({
     mount,
     page,
@@ -237,8 +247,7 @@ test('saved AI operation links render as scheduling chips', async ({
         await captureShoppingCartPost(page);
     await mount(<RaisedBedDiaryOverflowStory />);
 
-    const aiEntry = page.locator('[data-diary-entry]').nth(1);
-    await aiEntry.getByRole('button').first().click();
+    await openSavedAiDiaryEntry(page);
 
     const dialog = page.getByRole('dialog');
     const chips = dialog.locator('[data-ai-operation-chip]');
@@ -280,8 +289,7 @@ test('saved AI plant operation chip schedules the targeted field', async ({
         await captureShoppingCartPost(page);
     await mount(<RaisedBedDiaryOverflowStory />);
 
-    const aiEntry = page.locator('[data-diary-entry]').nth(1);
-    await aiEntry.getByRole('button').first().click();
+    await openSavedAiDiaryEntry(page);
 
     const dialog = page.getByRole('dialog');
     await dialog
@@ -317,8 +325,7 @@ test('saved AI operation scheduling failures stay recoverable', async ({
     );
     await mount(<RaisedBedDiaryOverflowStory />);
 
-    const aiEntry = page.locator('[data-diary-entry]').nth(1);
-    await aiEntry.getByRole('button').first().click();
+    await openSavedAiDiaryEntry(page);
 
     const dialog = page.getByRole('dialog');
     await dialog.getByRole('button', { name: 'Malčiranje gredice' }).click();

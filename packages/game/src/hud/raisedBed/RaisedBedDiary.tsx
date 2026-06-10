@@ -10,7 +10,7 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import Image from 'next/image';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode } from 'react';
 import { useGameFlags } from '../../GameFlagsContext';
 import { isDiaryCancelTargetEligible } from '../../hooks/useCancelDiaryEntry';
 import { useRaisedBedDiaryEntries } from '../../hooks/useRaisedBedDiaryEntries';
@@ -166,6 +166,47 @@ function diaryEntryActions({
     );
 }
 
+function SavedAiDiaryEntryButton({
+    entry,
+    gardenId,
+}: {
+    entry: DiaryEntry;
+    gardenId: number;
+}) {
+    return (
+        <Modal
+            title={entry.name}
+            className="md:max-w-3xl"
+            trigger={
+                <button
+                    type="button"
+                    className="relative inline-flex h-auto w-fit min-w-0 items-center justify-start gap-2 rounded-md p-0 text-left text-xs font-medium text-primary underline-offset-4 transition-colors hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                    Klikni za prikaz savjeta suncokreta
+                </button>
+            }
+        >
+            <Stack spacing={4}>
+                <DiaryEntryImages
+                    name={entry.name}
+                    imageUrls={entry.imageUrls}
+                />
+                <div className="prose prose-sm max-w-none dark:prose-invert">
+                    <RaisedBedAiOperationMarkdown gardenId={gardenId}>
+                        {entry.description ?? ''}
+                    </RaisedBedAiOperationMarkdown>
+                </div>
+                <Typography
+                    level="body3"
+                    className="text-muted-foreground text-right"
+                >
+                    {entry.timestamp.toLocaleDateString('hr-HR')}
+                </Typography>
+            </Stack>
+        </Modal>
+    );
+}
+
 function DiaryList({
     error,
     gardenId,
@@ -183,229 +224,182 @@ function DiaryList({
     ) => ReactNode;
 }) {
     const aiHistoryByEntryId = relateAiHistory(entries);
-    const [expandedAiEntry, setExpandedAiEntry] = useState<DiaryEntry | null>(
-        null,
-    );
 
     return (
-        <>
-            <List
-                className="w-full max-w-full overflow-x-hidden"
-                data-diary-list
-            >
-                {error && (
-                    <Alert color="danger">
-                        <Typography level="body2">
-                            {
-                                'Došlo je do pogreške prilikom učitavanja dnevnika. Pokušaj ponovno.'
-                            }
-                        </Typography>
-                    </Alert>
-                )}
-                {isLoading && (
-                    <Spinner
-                        loading
-                        loadingLabel="Učitavanje dnevnika..."
-                        className="mx-auto my-8 flex items-center justify-center"
-                    />
-                )}
-                {!isLoading && !entries?.length && (
-                    <ListItem
-                        label={
-                            <Typography level="body2" className="px-2 py-4">
-                                Nema unosa u dnevniku.
-                            </Typography>
+        <List className="w-full max-w-full overflow-x-hidden" data-diary-list>
+            {error && (
+                <Alert color="danger">
+                    <Typography level="body2">
+                        {
+                            'Došlo je do pogreške prilikom učitavanja dnevnika. Pokušaj ponovno.'
                         }
-                    />
-                )}
-                {entries?.map((entry) => {
-                    const aiHistory = aiHistoryByEntryId.get(entry.id);
-                    const entryAction = renderEntryAction?.(entry, aiHistory);
+                    </Typography>
+                </Alert>
+            )}
+            {isLoading && (
+                <Spinner
+                    loading
+                    loadingLabel="Učitavanje dnevnika..."
+                    className="mx-auto my-8 flex items-center justify-center"
+                />
+            )}
+            {!isLoading && !entries?.length && (
+                <ListItem
+                    label={
+                        <Typography level="body2" className="px-2 py-4">
+                            Nema unosa u dnevniku.
+                        </Typography>
+                    }
+                />
+            )}
+            {entries?.map((entry) => {
+                const aiHistory = aiHistoryByEntryId.get(entry.id);
+                const entryAction = renderEntryAction?.(entry, aiHistory);
 
-                    return (
-                        <div
-                            key={entry.id}
-                            className="w-full min-w-0 max-w-full"
-                            data-diary-entry
-                        >
-                            {entry.isMarkdown ? (
-                                <ListItem
-                                    nodeId={entry.id.toString()}
-                                    onSelected={() => setExpandedAiEntry(entry)}
-                                    className="cursor-pointer hover:bg-muted/50 transition-colors max-w-full"
-                                    label={
+                return (
+                    <div
+                        key={entry.id}
+                        className="w-full min-w-0 max-w-full"
+                        data-diary-entry
+                    >
+                        {entry.isMarkdown ? (
+                            <ListItem
+                                className="max-w-full"
+                                label={
+                                    <Row
+                                        spacing={4}
+                                        className="w-full min-w-0 flex-col items-stretch justify-between font-normal sm:flex-row sm:items-start"
+                                    >
                                         <Row
                                             spacing={4}
-                                            className="w-full min-w-0 flex-col items-stretch justify-between font-normal sm:flex-row sm:items-start"
+                                            className="min-w-0 flex-1 items-start"
                                         >
-                                            <Row
-                                                spacing={4}
-                                                className="min-w-0 flex-1 items-start"
+                                            <DiaryEntryImages
+                                                name={entry.name}
+                                                imageUrls={entry.imageUrls}
+                                                className={diaryEntryImagesClassName(
+                                                    entry.imageUrls,
+                                                )}
+                                            />
+                                            <Stack
+                                                className="min-w-0 flex-1"
+                                                data-diary-entry-content
                                             >
-                                                <DiaryEntryImages
-                                                    name={entry.name}
-                                                    imageUrls={entry.imageUrls}
-                                                    className={diaryEntryImagesClassName(
-                                                        entry.imageUrls,
-                                                    )}
-                                                />
-                                                <Stack
-                                                    className="min-w-0 flex-1"
-                                                    data-diary-entry-content
+                                                <Typography
+                                                    level="body1"
+                                                    semiBold
+                                                    className="flex min-w-0 items-center gap-1.5 break-words"
                                                 >
-                                                    <Typography
-                                                        level="body1"
-                                                        semiBold
-                                                        className="flex min-w-0 items-center gap-1.5 break-words"
-                                                    >
-                                                        <Image
-                                                            src="https://cdn.gredice.com/sunflower-large.svg"
-                                                            alt=""
-                                                            width={18}
-                                                            height={18}
-                                                            className="size-[18px] shrink-0"
-                                                        />
-                                                        <span className="min-w-0 break-words">
-                                                            {entry.name}
-                                                        </span>
-                                                    </Typography>
-                                                    <Typography
-                                                        level="body2"
-                                                        className="break-words"
-                                                    >
-                                                        Klikni za prikaz savjeta
-                                                        suncokreta
-                                                    </Typography>
-                                                </Stack>
-                                            </Row>
-                                            <Typography
-                                                level="body2"
-                                                noWrap
-                                                className="shrink-0 self-start sm:self-auto"
+                                                    <Image
+                                                        src="https://cdn.gredice.com/sunflower-large.svg"
+                                                        alt=""
+                                                        width={18}
+                                                        height={18}
+                                                        className="size-[18px] shrink-0"
+                                                    />
+                                                    <span className="min-w-0 break-words">
+                                                        {entry.name}
+                                                    </span>
+                                                </Typography>
+                                                <SavedAiDiaryEntryButton
+                                                    entry={entry}
+                                                    gardenId={gardenId}
+                                                />
+                                            </Stack>
+                                        </Row>
+                                        <Typography
+                                            level="body2"
+                                            noWrap
+                                            className="shrink-0 self-start sm:self-auto"
+                                        >
+                                            {entry.timestamp.toLocaleDateString(
+                                                'hr-HR',
+                                            )}
+                                        </Typography>
+                                    </Row>
+                                }
+                            />
+                        ) : (
+                            <ListItem
+                                className="max-w-full"
+                                label={
+                                    <Row
+                                        spacing={4}
+                                        className="w-full min-w-0 flex-col items-stretch justify-between font-normal sm:flex-row sm:items-start"
+                                    >
+                                        <Row
+                                            spacing={4}
+                                            className="min-w-0 flex-1 items-start"
+                                        >
+                                            <DiaryEntryImages
+                                                name={entry.name}
+                                                imageUrls={entry.imageUrls}
+                                                className={diaryEntryImagesClassName(
+                                                    entry.imageUrls,
+                                                )}
+                                            />
+                                            <Stack
+                                                className="min-w-0 flex-1"
+                                                data-diary-entry-content
                                             >
+                                                <Typography
+                                                    level="body1"
+                                                    semiBold
+                                                    className="break-words"
+                                                >
+                                                    {entry.name}
+                                                </Typography>
+                                                <Typography
+                                                    level="body2"
+                                                    className="break-words"
+                                                >
+                                                    {entry.description}
+                                                </Typography>
+                                                {entryAction && (
+                                                    <div className="mt-2 w-fit max-w-full">
+                                                        {entryAction}
+                                                    </div>
+                                                )}
+                                            </Stack>
+                                        </Row>
+                                        <Stack className="w-full min-w-0 items-start sm:w-auto sm:shrink-0 sm:items-end">
+                                            {entry.status && (
+                                                <Chip
+                                                    color={
+                                                        entry.status === 'Novo'
+                                                            ? 'warning'
+                                                            : entry.status ===
+                                                                'Završeno'
+                                                              ? 'success'
+                                                              : entry.status ===
+                                                                  'Planirano'
+                                                                ? 'info'
+                                                                : entry.status ===
+                                                                        'Neuspješno' ||
+                                                                    entry.status ===
+                                                                        'Otkazano'
+                                                                  ? 'error'
+                                                                  : 'neutral'
+                                                    }
+                                                    className="shrink-0 w-fit max-w-full self-start sm:self-end"
+                                                >
+                                                    {entry.status}
+                                                </Chip>
+                                            )}
+                                            <Typography level="body2" noWrap>
                                                 {entry.timestamp.toLocaleDateString(
                                                     'hr-HR',
                                                 )}
                                             </Typography>
-                                        </Row>
-                                    }
-                                />
-                            ) : (
-                                <ListItem
-                                    className="max-w-full"
-                                    label={
-                                        <Row
-                                            spacing={4}
-                                            className="w-full min-w-0 flex-col items-stretch justify-between font-normal sm:flex-row sm:items-start"
-                                        >
-                                            <Row
-                                                spacing={4}
-                                                className="min-w-0 flex-1 items-start"
-                                            >
-                                                <DiaryEntryImages
-                                                    name={entry.name}
-                                                    imageUrls={entry.imageUrls}
-                                                    className={diaryEntryImagesClassName(
-                                                        entry.imageUrls,
-                                                    )}
-                                                />
-                                                <Stack
-                                                    className="min-w-0 flex-1"
-                                                    data-diary-entry-content
-                                                >
-                                                    <Typography
-                                                        level="body1"
-                                                        semiBold
-                                                        className="break-words"
-                                                    >
-                                                        {entry.name}
-                                                    </Typography>
-                                                    <Typography
-                                                        level="body2"
-                                                        className="break-words"
-                                                    >
-                                                        {entry.description}
-                                                    </Typography>
-                                                    {entryAction && (
-                                                        <div className="mt-2 w-fit max-w-full">
-                                                            {entryAction}
-                                                        </div>
-                                                    )}
-                                                </Stack>
-                                            </Row>
-                                            <Stack className="w-full min-w-0 items-start sm:w-auto sm:shrink-0 sm:items-end">
-                                                {entry.status && (
-                                                    <Chip
-                                                        color={
-                                                            entry.status ===
-                                                            'Novo'
-                                                                ? 'warning'
-                                                                : entry.status ===
-                                                                    'Završeno'
-                                                                  ? 'success'
-                                                                  : entry.status ===
-                                                                      'Planirano'
-                                                                    ? 'info'
-                                                                    : entry.status ===
-                                                                            'Neuspješno' ||
-                                                                        entry.status ===
-                                                                            'Otkazano'
-                                                                      ? 'error'
-                                                                      : 'neutral'
-                                                        }
-                                                        className="shrink-0 w-fit max-w-full self-start sm:self-end"
-                                                    >
-                                                        {entry.status}
-                                                    </Chip>
-                                                )}
-                                                <Typography
-                                                    level="body2"
-                                                    noWrap
-                                                >
-                                                    {entry.timestamp.toLocaleDateString(
-                                                        'hr-HR',
-                                                    )}
-                                                </Typography>
-                                            </Stack>
-                                        </Row>
-                                    }
-                                />
-                            )}
-                        </div>
-                    );
-                })}
-            </List>
-            <Modal
-                open={expandedAiEntry !== null}
-                onOpenChange={(open) => {
-                    if (!open) setExpandedAiEntry(null);
-                }}
-                title={expandedAiEntry?.name ?? 'Savjeti suncokreta'}
-                className="md:max-w-3xl"
-            >
-                {expandedAiEntry && (
-                    <Stack spacing={4}>
-                        <DiaryEntryImages
-                            name={expandedAiEntry.name}
-                            imageUrls={expandedAiEntry.imageUrls}
-                        />
-                        <div className="prose prose-sm max-w-none dark:prose-invert">
-                            <RaisedBedAiOperationMarkdown gardenId={gardenId}>
-                                {expandedAiEntry.description ?? ''}
-                            </RaisedBedAiOperationMarkdown>
-                        </div>
-                        <Typography
-                            level="body3"
-                            className="text-muted-foreground text-right"
-                        >
-                            {expandedAiEntry.timestamp.toLocaleDateString(
-                                'hr-HR',
-                            )}
-                        </Typography>
-                    </Stack>
-                )}
-            </Modal>
-        </>
+                                        </Stack>
+                                    </Row>
+                                }
+                            />
+                        )}
+                    </div>
+                );
+            })}
+        </List>
     );
 }
 

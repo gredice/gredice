@@ -1,5 +1,10 @@
 import type { GameBackgroundPaletteKey } from '@gredice/js/gameBackground';
-import { createContext, useContext, useEffect } from 'react';
+import {
+    createContext,
+    useContext,
+    useEffect,
+    useSyncExternalStore,
+} from 'react';
 import { createStore, useStore } from 'zustand';
 import { createGameAudio, type GameAudio } from './audio/audioMixer';
 import type {
@@ -44,7 +49,11 @@ import {
 } from './utils/weather';
 
 export type WinterMode = 'summer' | 'winter' | 'holiday';
-export type MockGardenProfile = 'default' | 'dense' | 'plant-heavy';
+export type MockGardenProfile =
+    | 'default'
+    | 'dense'
+    | 'operation-rewards'
+    | 'plant-heavy';
 
 export type ActiveDragPreview = {
     source: ActiveDragPreviewTarget;
@@ -599,6 +608,7 @@ export function createGameState({
 
 export type GameStateStore = ReturnType<typeof createGameState>;
 export const GameStateContext = createContext<GameStateStore | null>(null);
+const emptySubscribe = () => () => {};
 const pendingStoreDisposals = new WeakMap<
     GameStateStore,
     ReturnType<typeof setTimeout>
@@ -635,4 +645,17 @@ export function useGameState<T>(selector: (state: GameState) => T): T {
     if (!store)
         throw new Error('Missing GameStateContext.Provider in the tree');
     return useStore(store, selector);
+}
+
+export function useOptionalGameState<T>(
+    selector: (state: GameState) => T,
+    fallback: T,
+): T {
+    const store = useContext(GameStateContext);
+
+    return useSyncExternalStore(
+        store?.subscribe ?? emptySubscribe,
+        () => (store ? selector(store.getState()) : fallback),
+        () => fallback,
+    );
 }

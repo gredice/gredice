@@ -10,6 +10,16 @@ import {
     loadLocalSandboxGarden,
     localSandboxGardenId,
 } from '../localSandboxGarden';
+import {
+    isOperationVisualRewardDebugProfile,
+    type OperationVisualRewardDebugBedState,
+    type OperationVisualRewardDebugScenario,
+    operationVisualRewardDebugNewerTimestamp,
+    operationVisualRewardDebugOlderTimestamp,
+    operationVisualRewardDebugOperationIds,
+    operationVisualRewardDebugScenarios,
+    operationVisualRewardDebugTimestamp,
+} from '../operationVisualRewardDebugProfile';
 import type { Stack } from '../types/Stack';
 import {
     type MockGardenProfile,
@@ -323,6 +333,13 @@ const denseMockGardenBounds = {
     min: -12,
 };
 
+const operationRewardDebugGardenBounds = {
+    maxX: 10,
+    maxZ: 8,
+    minX: -8,
+    minZ: -6,
+};
+
 function mockGardenStackPositionKey(x: number, z: number) {
     return `${x}:${z}`;
 }
@@ -414,6 +431,48 @@ function createDenseMockStacks(winterMode: WinterMode): {
     return { stackByPosition, stacks };
 }
 
+function createOperationRewardDebugStacks(winterMode: WinterMode): {
+    stackByPosition: Map<string, Stack>;
+    stacks: Stack[];
+} {
+    const stackByPosition = new Map<string, Stack>();
+    const stacks: Stack[] = [];
+
+    for (
+        let x = operationRewardDebugGardenBounds.minX;
+        x <= operationRewardDebugGardenBounds.maxX;
+        x += 1
+    ) {
+        for (
+            let z = operationRewardDebugGardenBounds.minZ;
+            z <= operationRewardDebugGardenBounds.maxZ;
+            z += 1
+        ) {
+            const groundName =
+                winterMode === 'winter'
+                    ? 'Block_Snow'
+                    : Math.abs(x * 5 + z * 3) % 6 === 0
+                      ? 'Block_Ground'
+                      : 'Block_Grass';
+            const stack: Stack = {
+                position: new Vector3(x, 0, z),
+                blocks: [
+                    {
+                        id: `operation-reward-ground:${x}:${z}`,
+                        name: groundName,
+                        rotation: Math.abs(x + z) % 4,
+                    },
+                ],
+            };
+
+            stacks.push(stack);
+            stackByPosition.set(mockGardenStackPositionKey(x, z), stack);
+        }
+    }
+
+    return { stackByPosition, stacks };
+}
+
 function createProfileRaisedBed(
     id: number,
     blockId: string,
@@ -453,13 +512,13 @@ function addProfileRaisedBedPair({
     stackByPosition: Map<string, Stack>;
     x: number;
     z: number;
-}) {
+}): MockRaisedBed | null {
     const firstStack = stackByPosition.get(mockGardenStackPositionKey(x, z));
     const secondStack = stackByPosition.get(
         mockGardenStackPositionKey(x, z + 1),
     );
     if (!firstStack || !secondStack) {
-        return;
+        return null;
     }
 
     const firstBlockId = `profile-raised-bed:${id}:0`;
@@ -473,7 +532,223 @@ function addProfileRaisedBedPair({
         name: 'Raised_Bed',
         rotation: 0,
     });
-    raisedBeds.push(createProfileRaisedBed(id, firstBlockId, fieldOffset, now));
+    const raisedBed = createProfileRaisedBed(
+        id,
+        firstBlockId,
+        fieldOffset,
+        now,
+    );
+    raisedBeds.push(raisedBed);
+    return raisedBed;
+}
+
+function completedDebugAppliedOperation({
+    completedAt,
+    entityId,
+    id,
+    raisedBedFieldId,
+}: {
+    completedAt: string;
+    entityId: number;
+    id: number;
+    raisedBedFieldId?: number | null;
+}): MockRaisedBed['appliedOperations'][number] {
+    return {
+        id,
+        entityId,
+        raisedBedFieldId: raisedBedFieldId ?? null,
+        status: 'completed',
+        createdAt: completedAt,
+        completedAt,
+        scheduledDate: null,
+    };
+}
+
+function heavyDebugWeedState(
+    observedAt: string,
+    eventId: number,
+): NonNullable<MockRaisedBed['weedState']> {
+    return {
+        level: 'heavy',
+        source: 'admin',
+        observedAt,
+        updatedAt: observedAt,
+        eventId,
+        notes: 'Operation reward debug profile.',
+    };
+}
+
+function applyOperationRewardDebugState({
+    phase,
+    raisedBed,
+    scenario,
+}: {
+    phase: OperationVisualRewardDebugBedState['label'];
+    raisedBed: MockRaisedBed;
+    scenario: OperationVisualRewardDebugScenario;
+}) {
+    const isAfter = phase === 'After';
+    raisedBed.name = `${scenario.title} ${phase.toLowerCase()}`;
+
+    switch (scenario.kind) {
+        case 'watering':
+            if (isAfter) {
+                raisedBed.appliedOperations = [
+                    completedDebugAppliedOperation({
+                        id: 9501,
+                        entityId:
+                            operationVisualRewardDebugOperationIds.watering,
+                        completedAt: operationVisualRewardDebugTimestamp,
+                    }),
+                ];
+            }
+            break;
+        case 'weeding':
+            raisedBed.weedState = heavyDebugWeedState(
+                operationVisualRewardDebugOlderTimestamp,
+                isAfter ? 9504 : 9503,
+            );
+            if (isAfter) {
+                raisedBed.appliedOperations = [
+                    completedDebugAppliedOperation({
+                        id: 9502,
+                        entityId:
+                            operationVisualRewardDebugOperationIds.weeding,
+                        completedAt: operationVisualRewardDebugNewerTimestamp,
+                    }),
+                ];
+            }
+            break;
+        case 'mulch':
+            if (isAfter) {
+                raisedBed.appliedOperations = [
+                    completedDebugAppliedOperation({
+                        id: 9503,
+                        entityId: operationVisualRewardDebugOperationIds.mulch,
+                        completedAt: operationVisualRewardDebugTimestamp,
+                    }),
+                ];
+            }
+            break;
+        case 'removeMulch':
+            raisedBed.appliedOperations = [
+                completedDebugAppliedOperation({
+                    id: 9504,
+                    entityId: operationVisualRewardDebugOperationIds.mulch,
+                    completedAt: operationVisualRewardDebugOlderTimestamp,
+                }),
+                ...(isAfter
+                    ? [
+                          completedDebugAppliedOperation({
+                              id: 9505,
+                              entityId:
+                                  operationVisualRewardDebugOperationIds.removeMulch,
+                              completedAt:
+                                  operationVisualRewardDebugNewerTimestamp,
+                          }),
+                      ]
+                    : []),
+            ];
+            break;
+        case 'agrotextile':
+            if (isAfter) {
+                raisedBed.appliedOperations = [
+                    completedDebugAppliedOperation({
+                        id: 9506,
+                        entityId:
+                            operationVisualRewardDebugOperationIds.agrotextile,
+                        completedAt: operationVisualRewardDebugTimestamp,
+                    }),
+                ];
+            }
+            break;
+        case 'removeAgrotextile':
+            raisedBed.appliedOperations = [
+                completedDebugAppliedOperation({
+                    id: 9507,
+                    entityId:
+                        operationVisualRewardDebugOperationIds.agrotextile,
+                    completedAt: operationVisualRewardDebugOlderTimestamp,
+                }),
+                ...(isAfter
+                    ? [
+                          completedDebugAppliedOperation({
+                              id: 9508,
+                              entityId:
+                                  operationVisualRewardDebugOperationIds.removeAgrotextile,
+                              completedAt:
+                                  operationVisualRewardDebugNewerTimestamp,
+                          }),
+                      ]
+                    : []),
+            ];
+            break;
+        case 'supports':
+            if (isAfter) {
+                raisedBed.appliedOperations = [
+                    completedDebugAppliedOperation({
+                        id: 9509,
+                        entityId:
+                            operationVisualRewardDebugOperationIds.supports,
+                        completedAt: operationVisualRewardDebugTimestamp,
+                    }),
+                ];
+            }
+            break;
+        case 'harvest':
+            if (isAfter) {
+                raisedBed.appliedOperations = [
+                    completedDebugAppliedOperation({
+                        id: 9510,
+                        entityId:
+                            operationVisualRewardDebugOperationIds.harvest,
+                        completedAt: operationVisualRewardDebugTimestamp,
+                    }),
+                ];
+            }
+            break;
+        case 'photographyUpdate':
+            break;
+    }
+}
+
+function addOperationRewardDebugRaisedBed({
+    fieldOffset,
+    now,
+    raisedBeds,
+    stackByPosition,
+    state,
+    scenario,
+    x,
+    z,
+}: {
+    fieldOffset: number;
+    now: string;
+    raisedBeds: useCurrentGardenResponse['raisedBeds'];
+    stackByPosition: Map<string, Stack>;
+    state: OperationVisualRewardDebugBedState;
+    scenario: OperationVisualRewardDebugScenario;
+    x: number;
+    z: number;
+}) {
+    const raisedBed = addProfileRaisedBedPair({
+        fieldOffset,
+        id: state.raisedBedId,
+        now,
+        raisedBeds,
+        stackByPosition,
+        x,
+        z,
+    });
+    if (!raisedBed) {
+        return;
+    }
+
+    applyOperationRewardDebugState({
+        phase: state.label,
+        raisedBed,
+        scenario,
+    });
 }
 
 function denseMockGarden(
@@ -516,10 +791,62 @@ function denseMockGarden(
     };
 }
 
+function operationRewardDebugMockGarden(
+    winterMode: WinterMode,
+): useCurrentGardenResponse {
+    const now = new Date().toISOString();
+    const { stackByPosition, stacks } =
+        createOperationRewardDebugStacks(winterMode);
+    const raisedBeds: useCurrentGardenResponse['raisedBeds'] = [];
+
+    operationVisualRewardDebugScenarios.forEach((scenario, index) => {
+        const row = Math.floor(index / 3);
+        const column = index % 3;
+        const beforeX = -7 + column * 6;
+        const afterX = beforeX + 2;
+        const z = -5 + row * 5;
+
+        addOperationRewardDebugRaisedBed({
+            fieldOffset: scenario.before.raisedBedId * 100,
+            now,
+            raisedBeds,
+            stackByPosition,
+            state: scenario.before,
+            scenario,
+            x: beforeX,
+            z,
+        });
+        addOperationRewardDebugRaisedBed({
+            fieldOffset: scenario.after.raisedBedId * 100,
+            now,
+            raisedBeds,
+            stackByPosition,
+            state: scenario.after,
+            scenario,
+            x: afterX,
+            z,
+        });
+    });
+
+    return {
+        id: 99997,
+        name: 'Operation reward debug garden',
+        isSandbox: false,
+        backgroundPalette: defaultGameBackgroundPaletteKey,
+        stacks,
+        location: { lat: 45.739, lon: 16.572 },
+        raisedBeds,
+    };
+}
+
 function mockGarden(
     winterMode: WinterMode,
     profile: MockGardenProfile,
 ): useCurrentGardenResponse {
+    if (isOperationVisualRewardDebugProfile(profile)) {
+        return operationRewardDebugMockGarden(winterMode);
+    }
+
     if (profile === 'dense' || profile === 'plant-heavy') {
         return denseMockGarden(winterMode, profile);
     }

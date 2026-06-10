@@ -1,5 +1,10 @@
 import { directoriesClient } from '@gredice/client';
 import { useQuery } from '@tanstack/react-query';
+import {
+    isOperationVisualRewardDebugProfile,
+    operationVisualRewardDebugOperationDefinitions,
+} from '../operationVisualRewardDebugProfile';
+import { useOptionalGameState } from '../useGameState';
 
 async function getOperations() {
     const operations = await directoriesClient().GET('/entities/operation');
@@ -9,9 +14,22 @@ async function getOperations() {
 }
 
 export function useOperations() {
+    const isMock = useOptionalGameState((state) => state.isMock, false);
+    const mockGardenProfile = useOptionalGameState(
+        (state) => state.mockGardenProfile,
+        'default',
+    );
+    const isOperationRewardDebug =
+        isMock && isOperationVisualRewardDebugProfile(mockGardenProfile);
+
     return useQuery({
-        queryKey: ['operations'],
-        queryFn: getOperations,
+        queryKey: isOperationRewardDebug
+            ? ['operations', mockGardenProfile]
+            : ['operations'],
+        queryFn: async () =>
+            isOperationRewardDebug
+                ? operationVisualRewardDebugOperationDefinitions
+                : getOperations(),
         staleTime: 1000 * 60 * 60, // 1 hour
     });
 }

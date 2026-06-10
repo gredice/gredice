@@ -4,15 +4,17 @@ import { getLocalSandboxBlockData } from '../localSandboxBlockData';
 import { useGameState } from '../useGameState';
 
 export function useBlockData() {
+    const isMock = useGameState((state) => state.isMock);
     const localSandboxStorageKey = useGameState(
         (state) => state.localSandboxStorageKey,
     );
     const isLocalSandbox = localSandboxStorageKey !== null;
+    const useLocalBlockData = isLocalSandbox || isMock;
 
     return useQuery({
-        queryKey: isLocalSandbox ? ['blocks', 'local-sandbox'] : ['blocks'],
+        queryKey: useLocalBlockData ? ['blocks', 'local'] : ['blocks'],
         queryFn: async () => {
-            if (isLocalSandbox) {
+            if (useLocalBlockData) {
                 return getLocalSandboxBlockData();
             }
 

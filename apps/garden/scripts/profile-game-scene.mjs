@@ -136,9 +136,21 @@ const denseScenarios = [
     },
 ];
 
+const rewardScenarios = [
+    {
+        name: 'game-operation-rewards-matrix-desktop',
+        path: '/debug/profile/game?mode=details&profile=operation-rewards&controls=1&quality=medium&legend=0',
+        viewport: { width: 1440, height: 1200 },
+        dpr: 1,
+        isMobile: false,
+        budget: 'gameRewards',
+    },
+];
+
 const scenarioSets = {
     core: coreScenarios,
     dense: denseScenarios,
+    rewards: rewardScenarios,
 };
 
 const budgets = {
@@ -222,6 +234,14 @@ const budgets = {
         trianglesPerFrame: 7000000,
         jsHeapMb: 520,
     },
+    gameRewards: {
+        p95FrameMs: 1000,
+        maxFrameMs: 1200,
+        longTaskCount: 12,
+        drawCallsPerFrame: 2400,
+        trianglesPerFrame: 6500000,
+        jsHeapMb: 500,
+    },
 };
 
 function parseArgs(argv) {
@@ -234,6 +254,7 @@ function parseArgs(argv) {
             : defaultOutDir,
         sampleMs: Number(process.env.GAME_PROFILE_SAMPLE_MS ?? 5000),
         scenarioSet: process.env.GAME_PROFILE_SCENARIO_SET ?? 'core',
+        screenshots: process.env.GAME_PROFILE_SCREENSHOTS === '1',
         startServer: process.env.GAME_PROFILE_START_SERVER === '1',
         warmupMs: Number(process.env.GAME_PROFILE_WARMUP_MS ?? 5000),
     };
@@ -269,6 +290,9 @@ function parseArgs(argv) {
             case '--scenario-set':
                 options.scenarioSet = next;
                 index += 1;
+                break;
+            case '--screenshots':
+                options.screenshots = true;
                 break;
             case '--start-server':
                 options.startServer = true;
@@ -307,6 +331,7 @@ function printHelp(options) {
             '  --warmup-ms <ms>       Warmup wait after canvas appears. Default: 5000',
             '  --sample-ms <ms>       requestAnimationFrame sample window. Default: 5000',
             `  --scenario-set <set>    core, dense, all, or comma-separated names. Current: ${options.scenarioSet}`,
+            '  --screenshots           Save a PNG screenshot for each scenario.',
             '  --fail-on-budget       Exit non-zero when a budget check fails.',
             '  --help                 Show this help.',
             '',
@@ -315,6 +340,7 @@ function printHelp(options) {
             '  GAME_PROFILE_START_SERVER=1,',
             '  GAME_PROFILE_WARMUP_MS, GAME_PROFILE_SAMPLE_MS,',
             '  GAME_PROFILE_OUT_DIR, GAME_PROFILE_SCENARIO_SET,',
+            '  GAME_PROFILE_SCREENSHOTS=1,',
             '  GAME_PROFILE_FAIL_ON_BUDGET=1',
             '',
         ].join('\n'),
@@ -322,7 +348,7 @@ function printHelp(options) {
 }
 
 function allScenarios() {
-    return [...coreScenarios, ...denseScenarios];
+    return [...coreScenarios, ...denseScenarios, ...rewardScenarios];
 }
 
 function resolveScenarios(scenarioSet) {
@@ -347,7 +373,7 @@ function resolveScenarios(scenarioSet) {
 
         if (!candidates.length) {
             throw new Error(
-                `Unknown scenario set or scenario: ${token}. Use core, dense, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
+                `Unknown scenario set or scenario: ${token}. Use core, dense, rewards, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
             );
         }
 
@@ -857,6 +883,17 @@ async function measureScenario(browser, baseUrl, scenario, options) {
     const after = Object.fromEntries(
         afterMetrics.metrics.map((metric) => [metric.name, metric.value]),
     );
+    const screenshotPath = options.screenshots
+        ? resolve(options.outDir, 'screenshots', `${scenario.name}.png`)
+        : null;
+    if (screenshotPath) {
+        await mkdir(dirname(screenshotPath), { recursive: true });
+        await page.screenshot({
+            path: screenshotPath,
+            animations: 'disabled',
+            fullPage: false,
+        });
+    }
 
     await context.close();
 
@@ -899,6 +936,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         },
         runtime,
         sample: roundedSample,
+        screenshotPath,
         url,
         name: scenario.name,
     };
@@ -975,8 +1013,8 @@ function buildMarkdown(report) {
         '',
         `Budget status: ${report.summary.failedScenarios === 0 ? 'pass' : 'fail'}`,
         '',
-        '| Scenario | Mode | Profile | Details | Controls | HUD | Debug HUD | Motion | Quality | Canvas | Shadow | Rain/Snow | Overlays/Decor | FPS | p95 | Max | Draw/frame | Triangles/frame | Long tasks | Heap | Budget |',
-        '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |',
+        '| Scenario | Mode | Profile | Details | Controls | HUD | Debug HUD | Motion | Quality | Canvas | Shadow | Rain/Snow | Overlays/Decor | FPS | p95 | Max | Draw/frame | Triangles/frame | Long tasks | Heap | Budget | Screenshot |',
+        '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |',
     ];
 
     for (const scenario of report.scenarios) {
@@ -995,8 +1033,9 @@ function buildMarkdown(report) {
         const detailCounts = scenario.runtime
             ? `${scenario.runtime.instancedSnowOverlayCount ?? 0}+${scenario.runtime.raisedBedMulchOverlayCount ?? 0}/${scenario.runtime.groundDecorationCount ?? 0} decor, visible ${scenario.runtime.groundDecorationVisibleCount ?? 'n/a'}, pages ${scenario.runtime.groundDecorationAtlasPageCount ?? 'n/a'}, chunks ${scenario.runtime.groundDecorationChunkCount ?? 'n/a'}`
             : 'n/a';
+        const screenshot = scenario.screenshotPath ?? 'n/a';
         lines.push(
-            `| ${scenario.name} | ${scenario.requested.mode} | ${scenario.requested.gardenProfile} | ${scenario.requested.details} | ${scenario.requested.controls} | ${scenario.requested.hud} | ${scenario.requested.debugHud} | ${scenario.requested.motion} | ${quality} | ${canvas} | ${shadow} | ${weather} | ${detailCounts} | ${scenario.sample.fps} | ${scenario.sample.p95FrameMs} ms | ${scenario.sample.maxFrameMs} ms | ${scenario.sample.drawCallsPerFrame} | ${scenario.sample.trianglesPerFrame} | ${scenario.sample.longTaskCount} | ${scenario.sample.jsHeapMb ?? 'n/a'} MB | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
+            `| ${scenario.name} | ${scenario.requested.mode} | ${scenario.requested.gardenProfile} | ${scenario.requested.details} | ${scenario.requested.controls} | ${scenario.requested.hud} | ${scenario.requested.debugHud} | ${scenario.requested.motion} | ${quality} | ${canvas} | ${shadow} | ${weather} | ${detailCounts} | ${scenario.sample.fps} | ${scenario.sample.p95FrameMs} ms | ${scenario.sample.maxFrameMs} ms | ${scenario.sample.drawCallsPerFrame} | ${scenario.sample.trianglesPerFrame} | ${scenario.sample.longTaskCount} | ${scenario.sample.jsHeapMb ?? 'n/a'} MB | ${scenario.budget.pass ? 'pass' : 'fail'} | ${screenshot} |`,
         );
     }
 
