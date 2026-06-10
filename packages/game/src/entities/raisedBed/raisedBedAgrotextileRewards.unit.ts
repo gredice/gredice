@@ -146,3 +146,98 @@ test('newer remove-agrotextile reward clears field cover visuals', () => {
         [],
     );
 });
+
+test('newer remove-agrotextile reward clears whole-bed cover visuals', () => {
+    const visualRewards = resolveOperationVisualRewards({
+        appliedOperations: [
+            applied(401, {
+                completedAt: '2026-06-01T08:00:00.000Z',
+                entityId: 1,
+                raisedBedId: 10,
+            }),
+            applied(402, {
+                completedAt: '2026-06-02T08:00:00.000Z',
+                entityId: 2,
+                raisedBedId: 10,
+            }),
+        ],
+        operations,
+    });
+
+    assert.deepStrictEqual(
+        resolveRaisedBedAgrotextileCoverPositions({
+            blockOffset: 0,
+            fields: [{ active: true, id: 50, positionIndex: 1 }],
+            raisedBedId: 10,
+            visualRewards,
+        }),
+        [],
+    );
+});
+
+test('field remove-agrotextile preserves covers on other fields', () => {
+    const visualRewards = resolveOperationVisualRewards({
+        appliedOperations: [
+            applied(501, {
+                completedAt: '2026-06-01T08:00:00.000Z',
+                entityId: 1,
+                raisedBedFieldId: 50,
+                raisedBedId: 10,
+            }),
+            applied(502, {
+                completedAt: '2026-06-01T08:00:00.000Z',
+                entityId: 1,
+                raisedBedFieldId: 51,
+                raisedBedId: 10,
+            }),
+            applied(503, {
+                completedAt: '2026-06-02T08:00:00.000Z',
+                entityId: 2,
+                raisedBedFieldId: 50,
+                raisedBedId: 10,
+            }),
+        ],
+        operations,
+    });
+
+    assert.deepStrictEqual(
+        resolveRaisedBedAgrotextileCoverPositions({
+            blockOffset: 9,
+            fields: [
+                { active: true, id: 50, positionIndex: 10 },
+                { active: true, id: 51, positionIndex: 11 },
+            ],
+            raisedBedId: 10,
+            visualRewards,
+        }),
+        [2],
+    );
+});
+
+test('older remove-agrotextile reward does not clear newer cover visuals', () => {
+    const visualRewards = resolveOperationVisualRewards({
+        appliedOperations: [
+            applied(601, {
+                completedAt: '2026-06-01T08:00:00.000Z',
+                entityId: 2,
+                raisedBedId: 10,
+            }),
+            applied(602, {
+                completedAt: '2026-06-02T08:00:00.000Z',
+                entityId: 1,
+                raisedBedId: 10,
+            }),
+        ],
+        operations,
+    });
+
+    assert.deepStrictEqual(
+        resolveRaisedBedAgrotextileCoverPositions({
+            blockOffset: 0,
+            fields: [],
+            raisedBedId: 10,
+            visualRewards,
+        }),
+        [0, 1, 2, 3, 4, 5, 6, 7, 8],
+    );
+});
