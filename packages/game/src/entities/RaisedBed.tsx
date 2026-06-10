@@ -2,6 +2,8 @@ import { animated } from '@react-spring/three';
 import { Vector3 } from 'three';
 import { useHoveredBlockStore } from '../controls/useHoveredBlockStore';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
+import { useRaisedBedOperationVisualRewards } from '../hooks/useRaisedBedOperationVisualRewards';
+import { useSnapshotTime } from '../hooks/useSnapshotTime';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
@@ -14,6 +16,7 @@ import { useGameGLTF } from '../utils/useGameGLTF';
 import { HoverOutline } from './helpers/HoverOutline';
 import { useEntityNeighbors } from './helpers/useEntityNeighbors';
 import { RaisedBedFields } from './raisedBed/RaisedBedFields';
+import { isWateringRewardVisible } from './raisedBed/raisedBedWateringRewards';
 
 const combinedOverlap = 0.1;
 const halfOverlap = combinedOverlap / 2;
@@ -23,6 +26,9 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
     const currentStackHeight = useStackHeight(stack, block);
     const hoveredBlock = useHoveredBlockStore((state) => state.hoveredBlock);
     const { data: garden } = useCurrentGarden();
+    const raisedBed = findRaisedBedByBlockId(garden, block.id);
+    const visualRewards = useRaisedBedOperationVisualRewards(raisedBed);
+    const currentTime = useSnapshotTime();
     const hoveredRaisedBed = hoveredBlock
         ? findRaisedBedByBlockId(garden, hoveredBlock.id)
         : null;
@@ -109,6 +115,13 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
         shape1 = 'Raised_Bed_O_1';
         shape2 = 'Raised_Bed_O_2';
     }
+    const dirtShape = shape1 === 'Raised_Bed_O_1' ? shape2 : shape1;
+    const hasRaisedBedWateringReward = visualRewards.some(
+        (reward) =>
+            reward.scope === 'raisedBed' &&
+            reward.raisedBedId === raisedBed?.id &&
+            isWateringRewardVisible(reward, currentTime),
+    );
 
     return (
         <>
@@ -157,6 +170,22 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
                         coverageMultiplier={0.9}
                     />
                     <RainWetOverlay geometry={nodes[shape2].geometry} />
+                    {hasRaisedBedWateringReward && (
+                        <mesh
+                            geometry={nodes[dirtShape].geometry}
+                            renderOrder={1}
+                        >
+                            <meshStandardMaterial
+                                color="#2f241d"
+                                depthWrite={false}
+                                opacity={0.28}
+                                polygonOffset
+                                polygonOffsetFactor={-2}
+                                roughness={1}
+                                transparent
+                            />
+                        </mesh>
+                    )}
                 </animated.group>
             </HoverOutline>
             <group position={raisedBedPosition}>

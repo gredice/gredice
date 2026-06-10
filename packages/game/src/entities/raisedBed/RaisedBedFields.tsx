@@ -5,8 +5,10 @@ import {
     useCurrentGarden,
     useIsSandboxGarden,
 } from '../../hooks/useCurrentGarden';
+import { useRaisedBedOperationVisualRewards } from '../../hooks/useRaisedBedOperationVisualRewards';
 import { useAllSorts } from '../../hooks/usePlantSorts';
 import { useShoppingCart } from '../../hooks/useShoppingCart';
+import { useSnapshotTime } from '../../hooks/useSnapshotTime';
 import { useGameState } from '../../useGameState';
 import {
     findRaisedBedByBlockId,
@@ -14,9 +16,56 @@ import {
 } from '../../utils/raisedBedBlocks';
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
 import {
+    getGridPositionFromIndex,
+    type RaisedBedOrientation,
+} from '../../utils/raisedBedOrientation';
+import {
     mockPlantPresetLabelsBySortId,
     RaisedBedPlantField,
 } from './RaisedBedPlantField';
+import { isWateringRewardVisible } from './raisedBedWateringRewards';
+
+function RaisedBedFieldMoistSoilOverlay({
+    blockIndex,
+    orientation,
+    positionIndex,
+}: {
+    blockIndex: number;
+    orientation: RaisedBedOrientation;
+    positionIndex: number;
+}) {
+    const offsetX =
+        orientation === 'vertical' ? 0.31 - blockIndex * 0.05 : 0.27;
+    const offsetZ =
+        orientation === 'vertical' ? 0.27 : 0.27 + blockIndex * 0.05;
+    const multiplierX = orientation === 'vertical' ? 0.285 : 0.27;
+    const multiplierZ = orientation === 'vertical' ? 0.27 : 0.285;
+    const { row, col } = getGridPositionFromIndex(positionIndex, orientation);
+    const position: [number, number, number] = [
+        col * multiplierX - offsetX,
+        -0.748,
+        (2 - row) * multiplierZ - offsetZ,
+    ];
+
+    return (
+        <mesh
+            position={position}
+            rotation={[-Math.PI / 2, 0, 0]}
+            renderOrder={1}
+        >
+            <planeGeometry args={[0.22, 0.22]} />
+            <meshStandardMaterial
+                color="#2f241d"
+                depthWrite={false}
+                opacity={0.3}
+                polygonOffset
+                polygonOffsetFactor={-2}
+                roughness={1}
+                transparent
+            />
+        </mesh>
+    );
+}
 
 function shouldRenderGeneratedPlantField(field: {
     positionIndex: number;
@@ -49,6 +98,8 @@ export function RaisedBedFields({
     );
     const { data: cart } = useShoppingCart(renderDetails && !isLocalSandbox);
     const raisedBed = findRaisedBedByBlockId(currentGarden, blockId);
+    const visualRewards = useRaisedBedOperationVisualRewards(raisedBed);
+    const currentTime = useSnapshotTime();
     const orientation = raisedBed?.orientation ?? 'vertical';
 
     const blockIds =
@@ -95,8 +146,37 @@ export function RaisedBedFields({
         return null;
     }
 
+    const moistFieldIds = new Set(
+        visualRewards
+            .filter(
+                (reward) =>
+                    reward.scope === 'field' &&
+                    reward.raisedBedFieldId != null &&
+                    isWateringRewardVisible(reward, currentTime),
+            )
+            .map((reward) => reward.raisedBedFieldId),
+    );
+
     return (
         <>
+            {displayedFields.map((field) => {
+                if (
+                    !field ||
+                    typeof field.id !== 'number' ||
+                    !moistFieldIds.has(field.id)
+                ) {
+                    return null;
+                }
+
+                return (
+                    <RaisedBedFieldMoistSoilOverlay
+                        key={`raised-bed-field-moist-soil-${field.id}`}
+                        blockIndex={blockIndex}
+                        orientation={orientation}
+                        positionIndex={field.positionIndex - blockOffset}
+                    />
+                );
+            })}
             {displayedFields.map((field) => {
                 if (!field) return null;
                 if (
