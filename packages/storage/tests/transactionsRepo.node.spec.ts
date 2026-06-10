@@ -25,22 +25,55 @@ async function baseTransaction(): Promise<InsertTransaction> {
 
 test('createTransaction and getTransaction', async () => {
     createTestDb();
-    const txId = await createTransaction(await baseTransaction());
+    const transaction = await baseTransaction();
+    const txId = await createTransaction(transaction);
     const tx = await getTransaction(txId);
     assert.ok(tx);
     assert.strictEqual(tx.id, txId);
+    assert.strictEqual(tx.accountId, transaction.accountId);
+    assert.strictEqual(tx.amount, transaction.amount);
+    assert.strictEqual(tx.currency, transaction.currency);
+    assert.strictEqual(tx.status, transaction.status);
+});
+
+test('createTransaction throws when accountId is missing', async () => {
+    createTestDb();
+    await assert.rejects(
+        () =>
+            createTransaction({
+                amount: 100,
+                currency: 'eur',
+                status: 'pending',
+                stripePaymentId: 'stripe-without-account',
+            }),
+        /Transaction must have an accountId/,
+    );
 });
 
 test('getAllTransactions with account filter returns transactions for account', async () => {
     createTestDb();
-    const transaction = await baseTransaction();
-    const txId = await createTransaction(transaction);
-    assert.ok(transaction.accountId != null);
+    const accountId = await createTestAccount();
+    const otherAccountId = await createTestAccount();
+    const txId = await createTransaction({
+        accountId,
+        amount: 100,
+        currency: 'eur',
+        status: 'pending',
+        stripePaymentId: randomUUID(),
+    });
+    const otherTxId = await createTransaction({
+        accountId: otherAccountId,
+        amount: 200,
+        currency: 'eur',
+        status: 'pending',
+        stripePaymentId: randomUUID(),
+    });
     const txs = await getAllTransactions({
-        filter: { accountId: transaction.accountId },
+        filter: { accountId },
     });
     assert.ok(Array.isArray(txs));
     assert.ok(txs.some((t) => t.id === txId));
+    assert.ok(!txs.some((t) => t.id === otherTxId));
 });
 
 test('getAllTransactions returns all transactions', async () => {
@@ -78,4 +111,25 @@ test('getTransactionByStripeId returns correct transaction', async () => {
     const tx = await getTransactionByStripeId(stripePaymentId);
     assert.ok(tx);
     assert.strictEqual(tx?.id, txId);
+});
+
+test('createTransaction currently creates duplicate rows for the same completed stripePaymentId', async () => {
+    createTestDb();
+    const accountId = await createTestAccount();
+    const stripePaymentId = randomUUID();
+    const transaction = {
+        accountId,
+        amount: 100,
+        currency: 'eur',
+        status: 'completed',
+        stripePaymentId,
+    };
+
+    await createTransaction(transaction);
+    await createTransaction(transaction);
+
+    const txs = await getAllTransactions({ filter: { accountId } });
+    // Documents pre-003 behavior; plan 003 makes this idempotent.
+    assert.strictEqual(txs.length, 2);
+    assert.ok(txs.every((tx) => tx.stripePaymentId === stripePaymentId));
 });
