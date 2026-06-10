@@ -46,6 +46,7 @@ export * from './repositories/gardenDiaryCancelRepo';
 export * from './repositories/gardenDiaryRescheduleRepo';
 export * from './repositories/gardenSandboxRepo';
 export * from './repositories/gardensRepo';
+export * from './repositories/gardenVisitStatesRepo';
 export * from './repositories/harvestTraceLinksRepo';
 export * from './repositories/inventoryManagementRepo';
 export * from './repositories/inventoryRepo';

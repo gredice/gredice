@@ -7,9 +7,10 @@ import {
     serial,
     text,
     timestamp,
+    uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import { farms } from './farmsSchema';
-import { accounts } from './usersSchema';
+import { accounts, users } from './usersSchema';
 
 export const gardens = pgTable(
     'gardens',
@@ -76,6 +77,65 @@ export type UpdateGarden = Partial<
 > &
     Pick<typeof gardens.$inferSelect, 'id'>;
 export type SelectGarden = typeof gardens.$inferSelect;
+
+export const gardenVisitStates = pgTable(
+    'garden_visit_states',
+    {
+        id: serial('id').primaryKey(),
+        userId: text('user_id')
+            .notNull()
+            .references(() => users.id),
+        accountId: text('account_id')
+            .notNull()
+            .references(() => accounts.id),
+        gardenId: integer('garden_id')
+            .notNull()
+            .references(() => gardens.id),
+        lastOpenedAt: timestamp('last_opened_at'),
+        lastSummarySeenAt: timestamp('last_summary_seen_at'),
+        lastSummaryFactsHash: text('last_summary_facts_hash'),
+        createdAt: timestamp('created_at').notNull().defaultNow(),
+        updatedAt: timestamp('updated_at')
+            .notNull()
+            .$onUpdate(() => new Date()),
+    },
+    (table) => [
+        uniqueIndex('garden_visit_states_user_account_garden_unique').on(
+            table.userId,
+            table.accountId,
+            table.gardenId,
+        ),
+        index('garden_visit_states_account_garden_idx').on(
+            table.accountId,
+            table.gardenId,
+        ),
+        index('garden_visit_states_garden_id_idx').on(table.gardenId),
+    ],
+);
+
+export const gardenVisitStateRelations = relations(
+    gardenVisitStates,
+    ({ one }) => ({
+        user: one(users, {
+            fields: [gardenVisitStates.userId],
+            references: [users.id],
+            relationName: 'gardenVisitStateUser',
+        }),
+        account: one(accounts, {
+            fields: [gardenVisitStates.accountId],
+            references: [accounts.id],
+            relationName: 'gardenVisitStateAccount',
+        }),
+        garden: one(gardens, {
+            fields: [gardenVisitStates.gardenId],
+            references: [gardens.id],
+            relationName: 'gardenVisitStateGarden',
+        }),
+    }),
+);
+
+export type InsertGardenVisitState = typeof gardenVisitStates.$inferInsert;
+export type SelectGardenVisitState = typeof gardenVisitStates.$inferSelect;
 
 export const gardenStacks = pgTable(
     'garden_stacks',
