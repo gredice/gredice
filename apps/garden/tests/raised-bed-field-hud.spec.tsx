@@ -61,7 +61,7 @@ async function mockFavoriteRequests(
 ) {
     let favorites = [...initialFavorites];
 
-    await page.route('**/api/gredice/favorites**', async (route) => {
+    await page.route('**/api/gredice/api/favorites**', async (route) => {
         const request = route.request();
 
         if (request.method() === 'PUT') {
