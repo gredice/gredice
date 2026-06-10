@@ -266,11 +266,6 @@ export function AccountHud() {
                             onClick={() => track('game_profile_menu_opened')}
                         >
                             <ProfileAvatar variant="transparentOnMobile" />
-                            {hasUnreadNotifications && (
-                                <div className="md:hidden absolute right-0 -top-1">
-                                    <DotIndicator size={14} color={'success'} />
-                                </div>
-                            )}
                         </IconButton>
                     </DropdownMenuTrigger>
                     <ProfileCard />
