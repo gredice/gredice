@@ -235,6 +235,7 @@ async function createAcceptedOperation(input: {
     timestamp: Date;
     completedAt: Date;
     imageUrls?: string[];
+    accepted?: boolean;
     verified?: boolean;
 }) {
     const operationId = await createOperation({
@@ -247,7 +248,9 @@ async function createAcceptedOperation(input: {
         raisedBedFieldId: input.raisedBedFieldId,
         timestamp: input.timestamp,
     });
-    await acceptOperation(operationId);
+    if (input.accepted ?? true) {
+        await acceptOperation(operationId);
+    }
     await createEvent({
         ...knownEvents.operations.completedV1(operationId.toString(), {
             completedBy: randomUUID(),
@@ -443,9 +446,11 @@ async function createHarvestTraceFixture() {
         accountId,
         farmId,
         gardenId,
+        bedCareEntityId,
         harvestEntityId,
         harvestOperationId,
         link,
+        photoEntityId,
         plantPlaceEventId,
         plantSortId,
         raisedBedPhysicalId,
@@ -690,6 +695,62 @@ test('getPublicHarvestTraceByToken includes raised-bed operations and excludes o
     assert.equal(serialized.includes('"harvestOperationId"'), false);
     assert.equal(serialized.includes('"raisedBedFieldId"'), false);
     assert.equal(serialized.includes('Radnja #'), false);
+});
+
+test('getPublicHarvestTraceByToken includes completed operations before acceptance and groups same-day operations', async () => {
+    const fixture = await createHarvestTraceFixture();
+
+    await createAcceptedOperation({
+        accountId: fixture.accountId,
+        farmId: fixture.farmId,
+        gardenId: fixture.gardenId,
+        raisedBedId: fixture.raisedBedId,
+        entityId: fixture.bedCareEntityId,
+        timestamp: new Date('2026-05-12T09:30:00.000Z'),
+        completedAt: new Date('2026-05-12T10:00:00.000Z'),
+        accepted: false,
+    });
+    await createAcceptedOperation({
+        accountId: fixture.accountId,
+        farmId: fixture.farmId,
+        gardenId: fixture.gardenId,
+        raisedBedId: fixture.raisedBedId,
+        entityId: fixture.photoEntityId,
+        timestamp: new Date('2026-05-14T09:30:00.000Z'),
+        completedAt: new Date('2026-05-14T10:00:00.000Z'),
+        imageUrls: ['https://cdn.gredice.com/trace/photo-3.jpg'],
+    });
+    await createAcceptedOperation({
+        accountId: fixture.accountId,
+        farmId: fixture.farmId,
+        gardenId: fixture.gardenId,
+        raisedBedId: fixture.raisedBedId,
+        entityId: fixture.photoEntityId,
+        timestamp: new Date('2026-05-14T10:30:00.000Z'),
+        completedAt: new Date('2026-05-14T11:00:00.000Z'),
+        imageUrls: ['https://cdn.gredice.com/trace/photo-4.jpg'],
+    });
+
+    const trace = await getPublicHarvestTraceByToken(fixture.link.publicToken);
+    assert.ok(trace);
+
+    assert.equal(trace.statistics.wateringCount, 2);
+    assert.equal(trace.statistics.totalWaterLiters, 108);
+    assert.equal(trace.statistics.plantWaterLiters, 6);
+    assert.equal(trace.statistics.imageCount, 4);
+
+    const wateringItems = trace.timeline.filter(
+        (item) => item.title === 'Navodnjavanje (54L)',
+    );
+    assert.equal(wateringItems.length, 1);
+    assert.equal(wateringItems[0]?.operationCount, 2);
+
+    const photoItems = trace.timeline.filter(
+        (item) => item.title === 'Fotografiranje gredice',
+    );
+    assert.equal(photoItems.length, 1);
+    assert.equal(photoItems[0]?.operationCount, 3);
+    assert.equal(photoItems[0]?.images?.length, 4);
 });
 
 test('revoked harvest trace links do not resolve publicly', async () => {

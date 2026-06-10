@@ -70,6 +70,7 @@ export type PublicHarvestTraceTimelineItem = {
     images?: PublicHarvestTraceTimelineImage[];
     location?: PublicHarvestTraceLocation;
     operationCategoryName?: string;
+    operationCount?: number;
     plantStatus?: string;
     tone?: 'seed' | 'growth' | 'ready' | 'harvest' | 'care';
 };
@@ -608,6 +609,71 @@ function compareTimelineItems(
     return left.title.localeCompare(right.title, 'hr');
 }
 
+function timelineDayKey(item: PublicHarvestTraceTimelineItem) {
+    return item.occurredAt.slice(0, 10);
+}
+
+function operationGroupKey(item: PublicHarvestTraceTimelineItem) {
+    if (item.kind !== 'operation') {
+        return null;
+    }
+
+    return [
+        timelineDayKey(item),
+        item.title,
+        item.description ?? '',
+        item.operationCategoryName ?? '',
+        item.imageUrl ?? '',
+        item.imageAlt ?? '',
+    ].join('\u0000');
+}
+
+function mergeTimelineImages(
+    left: PublicHarvestTraceTimelineImage[] | undefined,
+    right: PublicHarvestTraceTimelineImage[] | undefined,
+) {
+    if (!left?.length && !right?.length) {
+        return undefined;
+    }
+
+    const merged: PublicHarvestTraceTimelineImage[] = [];
+    const existingUrls = new Set<string>();
+    addImages(merged, existingUrls, left ?? []);
+    addImages(merged, existingUrls, right ?? []);
+
+    return merged;
+}
+
+function groupSameDayOperations(items: PublicHarvestTraceTimelineItem[]) {
+    const groupedItems: PublicHarvestTraceTimelineItem[] = [];
+    const operationIndexesByKey = new Map<string, number>();
+
+    for (const item of items) {
+        const groupKey = operationGroupKey(item);
+        if (!groupKey) {
+            groupedItems.push(item);
+            continue;
+        }
+
+        const existingIndex = operationIndexesByKey.get(groupKey);
+        if (existingIndex === undefined) {
+            operationIndexesByKey.set(groupKey, groupedItems.length);
+            groupedItems.push(item);
+            continue;
+        }
+
+        const existingItem = groupedItems[existingIndex];
+        groupedItems[existingIndex] = {
+            ...existingItem,
+            operationCount:
+                (existingItem.operationCount ?? 1) + (item.operationCount ?? 1),
+            images: mergeTimelineImages(existingItem.images, item.images),
+        };
+    }
+
+    return groupedItems;
+}
+
 function pushTimelineItem(
     items: PublicHarvestTraceTimelineItem[],
     item: PublicHarvestTraceTimelineItem | null,
@@ -811,7 +877,6 @@ async function getRelevantOperationsForTrace(
                 eq(operations.gardenId, link.gardenId),
                 eq(operations.raisedBedId, link.raisedBedId),
                 eq(operations.isDeleted, false),
-                eq(operations.isAccepted, true),
                 or(
                     eq(operations.raisedBedFieldId, link.raisedBedFieldId),
                     isNull(operations.raisedBedFieldId),
@@ -1089,14 +1154,9 @@ async function buildPublicTrace(
           ].filter(
               (item): item is PublicHarvestTraceStatusDate => item !== null,
           );
-    const sortedTimeline = timeline
-        .toSorted(compareTimelineItems)
-        .filter(
-            (item, index, items) =>
-                index === 0 ||
-                item.title !== items[index - 1]?.title ||
-                item.occurredAt !== items[index - 1]?.occurredAt,
-        );
+    const sortedTimeline = groupSameDayOperations(
+        timeline.toSorted(compareTimelineItems),
+    );
     const imageUrl = entityImageUrl(plantSort);
 
     return {
