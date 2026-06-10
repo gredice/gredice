@@ -1,5 +1,6 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { canAddBlockToGardenBox } from '../gardenBoxInventoryLimits';
 import { handleOptimisticUpdate } from '../helpers/queryHelpers';
 import { useGameState } from '../useGameState';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
@@ -34,6 +35,7 @@ type StoreBlockArgs = {
     blockEntityId?: string;
     blockLabel?: string;
     gardenBoxBlockId: string;
+    onOptimisticUpdate?: () => void;
 };
 
 function incrementInventoryItem(
@@ -41,6 +43,10 @@ function incrementInventoryItem(
     args: StoreBlockArgs,
 ) {
     const entityId = args.blockEntityId ?? args.blockName;
+    if (!canAddBlockToGardenBox(items, entityId)) {
+        return items;
+    }
+
     const existingItemIndex = items.findIndex(
         (item) => item.entityTypeName === 'block' && item.entityId === entityId,
     );
@@ -156,6 +162,9 @@ export function useGardenBoxStoreBlock() {
                     stacks: updatedStacks,
                 },
             );
+            if (previousGarden) {
+                args.onOptimisticUpdate?.();
+            }
 
             await queryClient.cancelQueries({ queryKey: inventoryQueryKey });
             const previousInventory =

@@ -1,10 +1,17 @@
-export type GrediceAppOrigin = 'api' | 'app' | 'farm' | 'garden' | 'www';
+export type GrediceAppOrigin =
+    | 'api'
+    | 'app'
+    | 'farm'
+    | 'garden'
+    | 'news'
+    | 'www';
 
 const localHostnames: Record<GrediceAppOrigin, string> = {
     api: 'api.gredice.test',
     app: 'app.gredice.test',
     farm: 'farma.gredice.test',
     garden: 'vrt.gredice.test',
+    news: 'novosti.gredice.test',
     www: 'www.gredice.test',
 };
 
@@ -13,6 +20,7 @@ const localPorts: Record<GrediceAppOrigin, number> = {
     app: 3003,
     farm: 3002,
     garden: 3001,
+    news: 3007,
     www: 3000,
 };
 
@@ -21,6 +29,7 @@ const productionOrigins: Record<GrediceAppOrigin, string> = {
     app: 'https://app.gredice.com',
     farm: 'https://farma.gredice.com',
     garden: 'https://vrt.gredice.com',
+    news: 'https://www.gredice.com/novosti',
     www: 'https://www.gredice.com',
 };
 
@@ -34,6 +43,8 @@ function configuredPublicOrigin(app: GrediceAppOrigin) {
             return process.env.NEXT_PUBLIC_GREDICE_FARM_ORIGIN;
         case 'garden':
             return process.env.NEXT_PUBLIC_GREDICE_GARDEN_ORIGIN;
+        case 'news':
+            return process.env.NEXT_PUBLIC_GREDICE_NEWS_ORIGIN;
         case 'www':
             return process.env.NEXT_PUBLIC_GREDICE_WWW_ORIGIN;
     }

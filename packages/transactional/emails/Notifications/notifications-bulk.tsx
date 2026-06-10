@@ -25,7 +25,6 @@ export default function EmailNotificationsBulkTemplate({
         'https://7ql7fvz1vzzo6adz.public.blob.vercel-storage.com/operations/1396/c20269d5-5ab2-41c8-9699-3d0420d1a8e5.jpg',
     ],
 
-    appName = 'Gredice',
     appDomain = 'gredice.com',
 }: EmailNotificationsBulkTemplateProps) {
     const newNotificationsPlural =

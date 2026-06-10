@@ -19,7 +19,9 @@ import { GrowthAttributeCards } from './GrowthAttributeCards';
 import { getPlantInforationSections } from './getPlantInforationSections';
 import { HarvestAttributeCards } from './HarvestAttributeCards';
 import { InformationSection } from './InformationSection';
+import { PlantHealthSection } from './PlantHealthSection';
 import { PlantPageHeader } from './PlantPageHeader';
+import { PlantRelationshipsSection } from './PlantRelationshipsSection';
 import { PlantSortsList } from './PlantSortsList';
 import { PlantTips } from './PlantTips';
 import { SowingAttributeCards } from './SowingAttributeCards';
@@ -131,7 +133,14 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                         { label: plant.information.name },
                     ]}
                 />
-                <PlantPageHeader plant={plant} />
+                <PlantPageHeader
+                    plant={plant}
+                    overviewEditTarget={{
+                        entityTypeName: 'plant',
+                        entityId: plant.id,
+                        publicPath: KnownPages.Plant(alias),
+                    }}
+                />
                 {informationSections
                     .filter((section) => section.avaialble)
                     .map((section) => (
@@ -145,11 +154,19 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                             attributeCards={getAttributeCardsForSection(
                                 section.id,
                             )}
+                            editEntityTypeName="plant"
+                            editEntityId={plant.id}
+                            editPublicPath={KnownPages.Plant(alias)}
+                            editSectionKey={section.id}
                         />
                     ))}
                 {(plant.information.tip?.length ?? 0) > 0 && (
                     <PlantTips plant={plant} />
                 )}
+                <PlantHealthSection health={plant.health} />
+                <PlantRelationshipsSection
+                    relationships={plant.relationships}
+                />
                 <PlantSortsList
                     basePlantName={plant.information.name}
                     basePlantId={plant.id}

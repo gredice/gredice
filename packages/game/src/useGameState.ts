@@ -1,9 +1,21 @@
+import type { GameBackgroundPaletteKey } from '@gredice/js/gameBackground';
 import { createContext, useContext, useEffect } from 'react';
-import { getTimes } from 'suncalc';
-import type { OrbitControls } from 'three-stdlib';
 import { createStore, useStore } from 'zustand';
 import { createGameAudio, type GameAudio } from './audio/audioMixer';
-import type { ActiveDragPreviewTarget } from './dragPreviewIdentity';
+import type {
+    GameCameraRigApi,
+    GameCameraSnapshot,
+} from './controls/GameCameraRigApi';
+import type {
+    ActiveDragPreviewTarget,
+    ActiveDragPreviewTargetOffset,
+} from './dragPreviewIdentity';
+import {
+    getGameBackgroundPaletteIndexByKey,
+    getGameBackgroundPaletteKey,
+    getNextGameBackgroundPaletteIndex,
+    normalizeGameBackgroundPaletteIndex,
+} from './scene/backgroundPalettes';
 import {
     type GameQualityCustomProfile,
     type GameQualitySetting,
@@ -14,93 +26,34 @@ import {
 } from './scene/gameQuality';
 import { defaultWaterColors, type WaterColors } from './scene/waterColors';
 import type { Block } from './types/Block';
+import type { Stack } from './types/Stack';
 import { getAudioConfig } from './utils/audioConfig';
 import {
-    ALWAYS_DAY_TIME,
     isDayNightCycleDisabled,
     setDayNightCycleDisabled as persistDayNightCycleDisabled,
 } from './utils/dayNightCycle';
 import { triggerSelectionHaptic } from './utils/haptics';
 import {
+    defaultGameLocation,
+    getGameSunriseSunset,
+    resolveGameTimeOfDay,
+} from './utils/timeOfDay';
+import {
     isWeatherVisualizationDisabled,
     setWeatherVisualizationDisabled as persistWeatherVisualizationDisabled,
 } from './utils/weather';
 
-const sunriseValue = 0.2;
-const sunsetValue = 0.8;
-function getSunriseSunset(
-    { lat, lon }: { lat: number; lon: number },
-    currentTime: Date,
-) {
-    const { sunrise: sunriseStart, sunset: sunsetStart } = getTimes(
-        currentTime,
-        lat,
-        lon,
-    );
-    return { sunrise: sunriseStart, sunset: sunsetStart };
-}
-
-/**
- * Get the current time of day based on the current date and location
- *
- * Uses suncalc to get `sunrise` and sunset times and map them to 0-1 range
- *
- * 0.2 - 0.8 is daytime (sunrise start to sunset start)
- *
- * @returns A number between 0 and 1 representing the current time of day
- */
-function getTimeOfDay(
-    { lat, lon }: { lat: number; lon: number },
-    currentTime: Date,
-) {
-    const { sunrise: sunriseStart, sunset: sunsetStart } = getSunriseSunset(
-        { lat, lon },
-        currentTime,
-    );
-
-    const sunrise = sunriseStart.getHours() * 60 + sunriseStart.getMinutes();
-    const sunset = sunsetStart.getHours() * 60 + sunsetStart.getMinutes();
-
-    // 00 - 0
-    // example: 7:00 - 0.2 (sunriseValue)
-    // example: 19:00 - 0.8 (sunsetValue)
-    // 23:59 - 1
-    const time = currentTime.getHours() * 60 + currentTime.getMinutes();
-    if (time < sunrise) {
-        return (time / sunrise) * sunriseValue;
-    } else if (time < sunset) {
-        return (
-            sunriseValue +
-            ((time - sunrise) / (sunset - sunrise)) *
-                (sunsetValue - sunriseValue)
-        );
-    } else {
-        return (
-            sunsetValue +
-            ((time - sunset) / (24 * 60 - sunset)) * (1 - sunsetValue)
-        );
-    }
-}
-
-function resolveTimeOfDay(currentTime: Date, dayNightCycleDisabled: boolean) {
-    return dayNightCycleDisabled
-        ? ALWAYS_DAY_TIME
-        : getTimeOfDay(defaultLocation, currentTime);
-}
-
-type GameMode = 'normal' | 'edit';
 export type WinterMode = 'summer' | 'winter' | 'holiday';
+export type MockGardenProfile = 'default' | 'dense' | 'plant-heavy';
 
 export type ActiveDragPreview = {
     source: ActiveDragPreviewTarget;
-    attached: ActiveDragPreviewTarget | null;
+    targets: ActiveDragPreviewTargetOffset[];
     hoveredGardenBoxBlockId: string | null;
     relative: {
         x: number;
         z: number;
     };
-    sourceHoverHeight: number;
-    attachedHoverHeight: number;
     isBlocked: boolean;
     isOverRecycler: boolean;
 };
@@ -110,7 +63,14 @@ export type PlacedBlockEffect = {
     amount: number;
 };
 
+export type BlockPlacementDropAnimation = {
+    createdAt: number;
+    particlesSpawned: boolean;
+    sequence: number;
+};
+
 export type AnimalDebugEntry = {
+    debugBehaviors?: string[];
     id: string;
     species: string;
     label: string;
@@ -123,17 +83,73 @@ export type AnimalDebugEntry = {
         y: number;
         z: number;
     };
+    pathfinding?: {
+        blockedCellCount: number;
+        distance: number;
+        nextWaypoint?: {
+            x: number;
+            y: number;
+            z: number;
+        };
+        status: string;
+        targetCell?: {
+            x: number;
+            z: number;
+        };
+        visitedCellCount: number;
+        waypointCount: number;
+    };
     updatedAt: number;
+};
+
+export type AnimalDebugCommand = {
+    behavior: string;
+    createdAt: number;
+    sequence: number;
+    species: string;
+    targetId?: string | null;
+};
+
+export type AnimalDisturbance = {
+    sequence: number;
+    createdAt: number;
+    sourceBlockId: string;
+    sourceBlockName: string;
+    position: {
+        x: number;
+        y: number;
+        z: number;
+    };
+    radius: number;
+};
+
+type WeatherOverride = {
+    cloudy: number;
+    rainy: number;
+    snowy: number;
+    foggy: number;
+    thundery?: number;
+    windSpeed?: number;
+    windDirection?: number;
+    snowAccumulation?: number;
+};
+
+type BackgroundPaletteCycle = {
+    nextKey: GameBackgroundPaletteKey;
+    previousKey: GameBackgroundPaletteKey;
 };
 
 export type GameState = {
     // General
     isMock: boolean;
+    mockGardenProfile: MockGardenProfile;
     winterMode: WinterMode;
     setWinterMode: (winterMode: WinterMode) => void;
     appBaseUrl: string;
     spriteBaseUrl: string;
     audio: GameAudio;
+    localSandboxStorageKey: string | null;
+    localSandboxInitialStacks: Stack[] | null;
     freezeTime?: Date | null;
     setFreezeTime: (freezeTime: Date | null) => void;
     dayNightCycleDisabled: boolean;
@@ -142,19 +158,28 @@ export type GameState = {
     setGameQualityCustomProfile: (profile: GameQualityCustomProfile) => void;
     gameQualitySetting: GameQualitySetting;
     setGameQualitySetting: (setting: GameQualitySetting) => void;
+    backgroundPaletteKey: GameBackgroundPaletteKey;
+    backgroundPaletteIndex: number;
+    cycleBackgroundPalette: () => BackgroundPaletteCycle;
+    setBackgroundPaletteIndex: (index: number) => void;
+    setBackgroundPaletteKey: (
+        key: string | null | undefined,
+    ) => GameBackgroundPaletteKey;
     weatherVisualizationDisabled: boolean;
     setWeatherVisualizationDisabled: (disabled: boolean) => void;
     timeOfDay: number;
     sunsetTime: Date | null;
     sunriseTime: Date | null;
 
-    // Game
-    mode: GameMode;
-    setMode: (mode: GameMode) => void;
-
     // Pickup system
     pickupBlock: Block | null;
     setPickupBlock: (block: Block | null) => void;
+    stationaryPickupOutlineTarget: ActiveDragPreviewTarget | null;
+    setStationaryPickupOutlineTarget: (
+        target: ActiveDragPreviewTarget | null,
+    ) => void;
+    sandboxBlockTrashDropTargetActive: boolean;
+    setSandboxBlockTrashDropTargetActive: (active: boolean) => void;
     activeDragPreview: ActiveDragPreview | null;
     setActiveDragPreview: (dragPreview: ActiveDragPreview | null) => void;
     openGardenBoxBlockId: string | null;
@@ -165,9 +190,21 @@ export type GameState = {
         effect: PlacedBlockEffect,
     ) => void;
     consumePlacedBlockEffect: (blockId: string) => PlacedBlockEffect | null;
+    blockPlacementDropAnimations: Record<string, BlockPlacementDropAnimation>;
+    queueBlockPlacementDropAnimation: (blockId: string) => void;
+    markBlockPlacementDropParticlesSpawned: (blockId: string) => boolean;
+    completeBlockPlacementDropAnimation: (blockId: string) => void;
     animalDebugEntries: AnimalDebugEntry[];
     setAnimalDebugEntry: (entry: AnimalDebugEntry) => void;
     removeAnimalDebugEntry: (id: string) => void;
+    animalDebugCommand: AnimalDebugCommand | null;
+    triggerAnimalDebugBehavior: (
+        command: Omit<AnimalDebugCommand, 'createdAt' | 'sequence'>,
+    ) => void;
+    animalDisturbance: AnimalDisturbance | null;
+    disturbAnimals: (
+        disturbance: Omit<AnimalDisturbance, 'createdAt' | 'sequence'>,
+    ) => void;
 
     // Camera
     view: 'normal' | 'closeup';
@@ -183,26 +220,13 @@ export type GameState = {
     setEditHitboxDebugVisible: (visible: boolean) => void;
     entityRenderModeDebugVisible: boolean;
     setEntityRenderModeDebugVisible: (visible: boolean) => void;
-    weather?: {
-        cloudy: number;
-        rainy: number;
-        snowy: number;
-        foggy: number;
-        thundery?: number;
-        windSpeed?: number;
-        windDirection?: number;
-        snowAccumulation?: number;
-    };
-    setWeather: (weather: {
-        cloudy: number;
-        rainy: number;
-        snowy: number;
-        foggy: number;
-        thundery?: number;
-        windSpeed?: number;
-        windDirection?: number;
-        snowAccumulation?: number;
-    }) => void;
+    animalPathfindingDebugVisible: boolean;
+    setAnimalPathfindingDebugVisible: (visible: boolean) => void;
+    animalTargetsDebugVisible: boolean;
+    setAnimalTargetsDebugVisible: (visible: boolean) => void;
+    weather?: WeatherOverride;
+    setWeather: (weather: WeatherOverride | undefined) => void;
+    clearEnvironmentOverrides: () => void;
 
     // Environment derived state
     snowCoverage: number;
@@ -211,8 +235,10 @@ export type GameState = {
     setWaterColors: (waterColors: WaterColors) => void;
 
     // World
-    orbitControls: OrbitControls | null;
-    setOrbitControls: (ref: OrbitControls | null) => void;
+    gameCamera: GameCameraRigApi | null;
+    setGameCamera: (ref: GameCameraRigApi | null) => void;
+    gameCameraSnapshot: GameCameraSnapshot | null;
+    setGameCameraSnapshot: (snapshot: GameCameraSnapshot) => void;
     worldRotation: number;
     worldRotate: (direction: 'cw' | 'ccw') => void;
     setWorldRotation: (worldRotation: number) => void;
@@ -220,48 +246,65 @@ export type GameState = {
     setIsDragging: (isDragging: boolean) => void;
 };
 
-const defaultLocation = { lat: 45.739, lon: 16.572 };
-
 export function createGameState({
     appBaseUrl,
     spriteBaseUrl,
     dayNightCycleDisabled: initialDayNightCycleDisabled,
     freezeTime,
+    initialBackgroundPalette,
+    initialQualitySetting,
     isMock,
+    localSandboxStorageKey,
+    localSandboxInitialStacks,
+    mockGardenProfile,
     winterMode,
 }: {
     appBaseUrl: string;
     spriteBaseUrl?: string;
     dayNightCycleDisabled?: boolean;
     freezeTime: Date | null;
+    initialBackgroundPalette?: string | null;
+    initialQualitySetting?: GameQualitySetting;
     isMock: boolean;
+    localSandboxStorageKey?: string;
+    localSandboxInitialStacks?: Stack[];
+    mockGardenProfile?: MockGardenProfile;
     winterMode?: WinterMode;
 }) {
     const dayNightCycleDisabled =
         initialDayNightCycleDisabled ?? isDayNightCycleDisabled();
     const gameQualityCustomProfile = getGameQualityCustomProfile();
-    const gameQualitySetting = getGameQualitySetting();
+    const gameQualitySetting = initialQualitySetting ?? getGameQualitySetting();
+    const initialBackgroundPaletteIndex = getGameBackgroundPaletteIndexByKey(
+        initialBackgroundPalette,
+    );
+    const initialBackgroundPaletteKey = getGameBackgroundPaletteKey(
+        initialBackgroundPaletteIndex,
+    );
     const weatherVisualizationDisabled = isWeatherVisualizationDisabled();
     const now = freezeTime ?? new Date();
-    const timeOfDay = resolveTimeOfDay(now, dayNightCycleDisabled);
-    const { sunrise, sunset } = getSunriseSunset(defaultLocation, now);
+    const timeOfDay = resolveGameTimeOfDay(now, dayNightCycleDisabled);
+    const { sunrise, sunset } = getGameSunriseSunset(defaultGameLocation, now);
     return createStore<GameState>((set, get) => ({
         isMock: isMock,
+        mockGardenProfile: mockGardenProfile ?? 'default',
         winterMode: winterMode ?? 'summer',
         setWinterMode: (winterMode) => set({ winterMode }),
         appBaseUrl: appBaseUrl,
         spriteBaseUrl: spriteBaseUrl ?? appBaseUrl,
         audio: createGameAudio(getAudioConfig()),
+        localSandboxStorageKey: localSandboxStorageKey ?? null,
+        localSandboxInitialStacks: localSandboxInitialStacks ?? null,
         freezeTime,
         setFreezeTime: (freezeTime) => {
             const referenceTime = freezeTime ?? new Date();
-            const { sunrise, sunset } = getSunriseSunset(
-                defaultLocation,
+            const { sunrise, sunset } = getGameSunriseSunset(
+                defaultGameLocation,
                 referenceTime,
             );
             set({
                 freezeTime,
-                timeOfDay: resolveTimeOfDay(
+                timeOfDay: resolveGameTimeOfDay(
                     referenceTime,
                     get().dayNightCycleDisabled,
                 ),
@@ -274,7 +317,7 @@ export function createGameState({
             persistDayNightCycleDisabled(disabled);
             set({
                 dayNightCycleDisabled: disabled,
-                timeOfDay: resolveTimeOfDay(
+                timeOfDay: resolveGameTimeOfDay(
                     get().freezeTime ?? new Date(),
                     disabled,
                 ),
@@ -294,6 +337,47 @@ export function createGameState({
             persistGameQualitySetting(setting);
             set({ gameQualitySetting: setting });
         },
+        backgroundPaletteKey: initialBackgroundPaletteKey,
+        backgroundPaletteIndex: initialBackgroundPaletteIndex,
+        cycleBackgroundPalette: () => {
+            triggerSelectionHaptic();
+            const previousKey = get().backgroundPaletteKey;
+            const nextBackgroundPaletteIndex =
+                getNextGameBackgroundPaletteIndex(get().backgroundPaletteIndex);
+            const nextBackgroundPaletteKey = getGameBackgroundPaletteKey(
+                nextBackgroundPaletteIndex,
+            );
+            set({
+                backgroundPaletteKey: nextBackgroundPaletteKey,
+                backgroundPaletteIndex: nextBackgroundPaletteIndex,
+            });
+            return {
+                nextKey: nextBackgroundPaletteKey,
+                previousKey,
+            };
+        },
+        setBackgroundPaletteIndex: (index) => {
+            const backgroundPaletteIndex =
+                normalizeGameBackgroundPaletteIndex(index);
+            set({
+                backgroundPaletteKey: getGameBackgroundPaletteKey(
+                    backgroundPaletteIndex,
+                ),
+                backgroundPaletteIndex,
+            });
+        },
+        setBackgroundPaletteKey: (key) => {
+            const backgroundPaletteIndex =
+                getGameBackgroundPaletteIndexByKey(key);
+            const backgroundPaletteKey = getGameBackgroundPaletteKey(
+                backgroundPaletteIndex,
+            );
+            set({
+                backgroundPaletteKey,
+                backgroundPaletteIndex,
+            });
+            return backgroundPaletteKey;
+        },
         weatherVisualizationDisabled,
         setWeatherVisualizationDisabled: (disabled) => {
             persistWeatherVisualizationDisabled(disabled);
@@ -305,18 +389,16 @@ export function createGameState({
         sunriseTime: sunrise,
         sunsetTime: sunset,
 
-        // Game
-        mode: 'normal',
-        setMode: (mode) => {
-            if (get().view === 'closeup') {
-                set({ view: 'normal' });
-            }
-            set({ mode });
-        },
-
         // Pickaup system
         pickupBlock: null,
         setPickupBlock: (block: Block | null) => set({ pickupBlock: block }),
+        stationaryPickupOutlineTarget: null,
+        setStationaryPickupOutlineTarget: (stationaryPickupOutlineTarget) =>
+            set({ stationaryPickupOutlineTarget }),
+        sandboxBlockTrashDropTargetActive: false,
+        setSandboxBlockTrashDropTargetActive: (
+            sandboxBlockTrashDropTargetActive,
+        ) => set({ sandboxBlockTrashDropTargetActive }),
         activeDragPreview: null,
         setActiveDragPreview: (activeDragPreview) => set({ activeDragPreview }),
         openGardenBoxBlockId: null,
@@ -343,6 +425,57 @@ export function createGameState({
             });
             return effect;
         },
+        blockPlacementDropAnimations: {},
+        queueBlockPlacementDropAnimation: (blockId) =>
+            set((state) => ({
+                blockPlacementDropAnimations: {
+                    ...state.blockPlacementDropAnimations,
+                    [blockId]: {
+                        createdAt: Date.now(),
+                        particlesSpawned: false,
+                        sequence:
+                            (state.blockPlacementDropAnimations[blockId]
+                                ?.sequence ?? 0) + 1,
+                    },
+                },
+            })),
+        markBlockPlacementDropParticlesSpawned: (blockId) => {
+            const animation = get().blockPlacementDropAnimations[blockId];
+            if (!animation || animation.particlesSpawned) {
+                return false;
+            }
+
+            set((state) => {
+                const current = state.blockPlacementDropAnimations[blockId];
+                if (!current || current.particlesSpawned) {
+                    return state;
+                }
+
+                return {
+                    blockPlacementDropAnimations: {
+                        ...state.blockPlacementDropAnimations,
+                        [blockId]: {
+                            ...current,
+                            particlesSpawned: true,
+                        },
+                    },
+                };
+            });
+            return true;
+        },
+        completeBlockPlacementDropAnimation: (blockId) =>
+            set((state) => {
+                if (!state.blockPlacementDropAnimations[blockId]) {
+                    return state;
+                }
+
+                const blockPlacementDropAnimations = {
+                    ...state.blockPlacementDropAnimations,
+                };
+                delete blockPlacementDropAnimations[blockId];
+
+                return { blockPlacementDropAnimations };
+            }),
         animalDebugEntries: [],
         setAnimalDebugEntry: (entry) =>
             set((state) => {
@@ -370,15 +503,30 @@ export function createGameState({
                     (entry) => entry.id !== id,
                 ),
             })),
+        animalDebugCommand: null,
+        triggerAnimalDebugBehavior: (command) =>
+            set((state) => ({
+                animalDebugCommand: {
+                    ...command,
+                    createdAt: Date.now(),
+                    sequence: (state.animalDebugCommand?.sequence ?? 0) + 1,
+                },
+            })),
+        animalDisturbance: null,
+        disturbAnimals: (disturbance) =>
+            set((state) => ({
+                animalDisturbance: {
+                    ...disturbance,
+                    createdAt: Date.now(),
+                    sequence: (state.animalDisturbance?.sequence ?? 0) + 1,
+                },
+            })),
 
         // Camera
         view: 'normal',
         closeupBlock: null,
         setView: ({ view, block }) => {
             const currentView = get().view;
-            if (get().mode === 'edit') {
-                get().setMode('normal');
-            }
 
             if (currentView !== view) {
                 triggerSelectionHaptic();
@@ -392,8 +540,11 @@ export function createGameState({
         },
 
         isDragging: false,
-        orbitControls: null,
-        setOrbitControls: (ref) => set({ orbitControls: ref }),
+        gameCamera: null,
+        setGameCamera: (ref) => set({ gameCamera: ref }),
+        gameCameraSnapshot: null,
+        setGameCameraSnapshot: (gameCameraSnapshot) =>
+            set({ gameCameraSnapshot }),
         worldRotation: 0,
         worldRotate: (direction) =>
             set((state) => ({
@@ -408,7 +559,30 @@ export function createGameState({
         entityRenderModeDebugVisible: false,
         setEntityRenderModeDebugVisible: (entityRenderModeDebugVisible) =>
             set({ entityRenderModeDebugVisible }),
+        animalPathfindingDebugVisible: false,
+        setAnimalPathfindingDebugVisible: (animalPathfindingDebugVisible) =>
+            set({ animalPathfindingDebugVisible }),
+        animalTargetsDebugVisible: false,
+        setAnimalTargetsDebugVisible: (animalTargetsDebugVisible) =>
+            set({ animalTargetsDebugVisible }),
         setWeather: (weather) => set({ weather }),
+        clearEnvironmentOverrides: () => {
+            const referenceTime = new Date();
+            const { sunrise, sunset } = getGameSunriseSunset(
+                defaultGameLocation,
+                referenceTime,
+            );
+            set({
+                freezeTime: null,
+                weather: undefined,
+                timeOfDay: resolveGameTimeOfDay(
+                    referenceTime,
+                    get().dayNightCycleDisabled,
+                ),
+                sunriseTime: sunrise,
+                sunsetTime: sunset,
+            });
+        },
         snowCoverage: 0,
         setSnowCoverage: (snowCoverage) => set({ snowCoverage }),
         waterColors: defaultWaterColors,

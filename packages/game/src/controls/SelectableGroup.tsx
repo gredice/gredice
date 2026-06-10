@@ -21,6 +21,10 @@ export function SelectableGroup({
     }
 
     if (block.name === 'GardenBox') {
+        if (garden?.isSandbox) {
+            return <>{children}</>;
+        }
+
         return (
             <GardenBoxSelectableGroup block={block}>
                 {children}

@@ -10,7 +10,10 @@ const localDomain = 'storybook.dev.gredice.test';
 
 const config: StorybookConfig = {
     stories: ['../stories/**/*.mdx', '../stories/**/*.stories.@(ts|tsx)'],
-    staticDirs: ['../public'],
+    staticDirs: [
+        '../public',
+        { from: '../../www/public/assets/plants', to: '/assets/plants' },
+    ],
     addons: [
         '@storybook/addon-docs',
         '@storybook/addon-a11y',
@@ -30,6 +33,7 @@ const config: StorybookConfig = {
                 '../../packages/ui/src/**/*.tsx',
                 '../../packages/game/src/hud/**/*.tsx',
                 '../app/components/admin/cards/FactCard.tsx',
+                '../app/components/raised-beds/RaisedBedFieldCard.tsx',
                 '../app/components/shared/ServerActionButton.tsx',
                 '../app/components/shared/ServerActionIconButton.tsx',
                 '../app/components/shared/fields/Field.tsx',

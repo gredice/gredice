@@ -14,6 +14,8 @@ export type {
     OperationData,
     OperationFrequencyData,
     PlantData,
+    PlantDiseaseData,
+    PlantPestData,
     PlantSortData,
     PlantStageData,
     paths,

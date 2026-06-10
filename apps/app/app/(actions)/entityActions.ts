@@ -10,6 +10,11 @@ import {
     getEntityIncomingLinks,
     getEntityRaw,
     type IncomingEntityLinkGroup,
+    isPlantHealthAffectedPlantAttributeDefinition,
+    isPlantHealthIssueEntityTypeName,
+    isPlantRelationshipAttributeDefinition,
+    parsePlantRelationshipTargetId,
+    plantHealthOperationIntentForAttributeDefinition,
     type SelectAttributeDefinition,
     type SelectAttributeValue,
     createEntity as storageCreateEntity,
@@ -225,6 +230,125 @@ function entityActionErrorMessage(error: unknown) {
     return 'Promjena statusa nije uspjela.';
 }
 
+async function assertPlantRelationshipValueCanSave({
+    attributeDefinition,
+    attributeValueId,
+    entityId,
+    newValue,
+}: {
+    attributeDefinition: SelectAttributeDefinition;
+    attributeValueId?: number;
+    entityId: number;
+    newValue?: string | null;
+}) {
+    if (!isPlantRelationshipAttributeDefinition(attributeDefinition)) {
+        return;
+    }
+
+    const targetId = parsePlantRelationshipTargetId(newValue);
+    if (!targetId) {
+        return;
+    }
+    if (targetId === entityId) {
+        throw new Error('Biljka ne može biti povezana sama sa sobom.');
+    }
+
+    const [entity, target] = await Promise.all([
+        getEntityRaw(entityId),
+        getEntityRaw(targetId),
+    ]);
+    if (target?.entityTypeName !== 'plant') {
+        throw new Error('Odabrana povezana biljka nije pronađena.');
+    }
+
+    const duplicateValue = entity?.attributes.find(
+        (attribute) =>
+            attribute.attributeDefinitionId === attributeDefinition.id &&
+            attribute.id !== attributeValueId &&
+            attribute.value === String(targetId),
+    );
+    if (duplicateValue) {
+        throw new Error('Ova povezana biljka već je dodana.');
+    }
+}
+
+function referenceEntityTypeName(
+    attributeDefinition: SelectAttributeDefinition,
+) {
+    return attributeDefinition.dataType.startsWith('ref:')
+        ? attributeDefinition.dataType.substring(4)
+        : null;
+}
+
+function parseReferenceTargetId(value: string | null | undefined) {
+    if (!value) {
+        return null;
+    }
+
+    const parsed = Number.parseInt(value, 10);
+    return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+async function assertReferenceValueCanSave({
+    attributeDefinition,
+    attributeValueId,
+    entityId,
+    newValue,
+}: {
+    attributeDefinition: SelectAttributeDefinition;
+    attributeValueId?: number;
+    entityId: number;
+    newValue?: string | null;
+}) {
+    const refTypeName = referenceEntityTypeName(attributeDefinition);
+    if (!refTypeName) {
+        return;
+    }
+
+    const targetId = parseReferenceTargetId(newValue);
+    if (!targetId) {
+        return;
+    }
+    if (
+        refTypeName === attributeDefinition.entityTypeName &&
+        targetId === entityId
+    ) {
+        throw new Error('Zapis ne može biti povezan sam sa sobom.');
+    }
+
+    const [entity, target] = await Promise.all([
+        getEntityRaw(entityId),
+        getEntityRaw(targetId),
+    ]);
+    if (target?.entityTypeName !== refTypeName) {
+        throw new Error('Odabrani povezani zapis nije pronađen.');
+    }
+
+    if (attributeDefinition.multiple) {
+        const duplicateValue = entity?.attributes.find(
+            (attribute) =>
+                attribute.attributeDefinitionId === attributeDefinition.id &&
+                attribute.id !== attributeValueId &&
+                attribute.value === String(targetId),
+        );
+        if (duplicateValue) {
+            throw new Error('Ovaj povezani zapis već je dodan.');
+        }
+    }
+
+    const isPlantHealthReference =
+        isPlantHealthIssueEntityTypeName(attributeDefinition.entityTypeName) &&
+        (isPlantHealthAffectedPlantAttributeDefinition(attributeDefinition) ||
+            plantHealthOperationIntentForAttributeDefinition(
+                attributeDefinition,
+            ));
+    if (isPlantHealthReference && target.state !== 'published') {
+        throw new Error(
+            'Povezane biljke i radnje na bolestima i štetnicima moraju biti objavljene.',
+        );
+    }
+}
+
 export async function updateEntityStateAction(entity: UpdateEntity) {
     await auth(['admin']);
 
@@ -286,6 +410,18 @@ export async function handleValueSave(
     const newAttributeValueValue =
         (newValue?.length ?? 0) <= 0 ? null : newValue;
     const authData = await auth(['admin']);
+    await assertPlantRelationshipValueCanSave({
+        attributeDefinition,
+        attributeValueId,
+        entityId,
+        newValue: newAttributeValueValue,
+    });
+    await assertReferenceValueCanSave({
+        attributeDefinition,
+        attributeValueId,
+        entityId,
+        newValue: newAttributeValueValue,
+    });
 
     await upsertAttributeValue(
         {

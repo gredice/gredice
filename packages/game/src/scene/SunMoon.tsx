@@ -1,8 +1,8 @@
 'use client';
 
-import { useFrame, useThree } from '@react-three/fiber';
+import { useThree } from '@react-three/fiber';
 import chroma from 'chroma-js';
-import { useMemo, useRef } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
 import { getMoonIllumination, getMoonPosition, getPosition } from 'suncalc';
 import {
     AdditiveBlending,
@@ -17,6 +17,7 @@ import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useSnapshotTime } from '../hooks/useSnapshotTime';
 import { useGameState } from '../useGameState';
 import { altAzToScenePosition, timeOfDayToDate } from './Environment';
+import { visualDayNightTimes } from './visualDayNight';
 
 // World-space size of the billboard planes. The visible disc is a fraction of
 // this (see shader), leaving room around the disc for the soft glow to fade to
@@ -101,7 +102,14 @@ const sunColorScale = chroma
         chroma.temperature(3500),
         chroma.temperature(2200),
     ])
-    .domain([0.2, 0.23, 0.28, 0.72, 0.77, 0.8]);
+    .domain([
+        visualDayNightTimes.sunrise,
+        visualDayNightTimes.dawnLightEnd,
+        visualDayNightTimes.dayStart,
+        0.72,
+        visualDayNightTimes.sunset,
+        visualDayNightTimes.nightStart,
+    ]);
 
 function smoothstep(edge0: number, edge1: number, x: number) {
     const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)));
@@ -188,7 +196,9 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
     const dayNightCycleDisabled = useGameState(
         (state) => state.dayNightCycleDisabled,
     );
+    const gameCamera = useGameState((state) => state.gameCamera);
     const { data: garden } = useCurrentGarden();
+    const camera = useThree((state) => state.camera);
     const { width: viewportWidth, height: viewportHeight } = useThree(
         (state) => state.size,
     );
@@ -248,7 +258,7 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
     const rightRef = useRef(new Vector3());
     const viewUpRef = useRef(new Vector3());
 
-    useFrame(({ camera }) => {
+    const updateSunMoon = useCallback(() => {
         if (!sunMesh.current || !moonMesh.current) return;
 
         const orthographic = camera as OrthographicCamera;
@@ -361,12 +371,35 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
             moonMaterial.uniforms.uOpacity.value = 0;
             moonMesh.current.visible = false;
         }
-    });
+    }, [
+        camera,
+        currentTime,
+        dayNightCycleDisabled,
+        location.lat,
+        location.lon,
+        moonMaterial,
+        sunMaterial,
+        sunViewportTuning.horizontalOffsetMultiplier,
+        sunViewportTuning.sizeMultiplier,
+        sunViewportTuning.verticalOffsetMultiplier,
+        timeOfDay,
+        visibility,
+    ]);
+
+    useLayoutEffect(() => {
+        if (!gameCamera) {
+            updateSunMoon();
+            return;
+        }
+
+        return gameCamera.subscribe(() => updateSunMoon());
+    }, [gameCamera, updateSunMoon]);
 
     return (
         <>
             <mesh
                 ref={sunMesh}
+                name="Environment:SunBillboard"
                 frustumCulled={false}
                 renderOrder={-1}
                 material={sunMaterial}
@@ -375,6 +408,7 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
             </mesh>
             <mesh
                 ref={moonMesh}
+                name="Environment:MoonBillboard"
                 frustumCulled={false}
                 renderOrder={-1}
                 material={moonMaterial}

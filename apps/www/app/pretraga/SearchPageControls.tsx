@@ -1,11 +1,13 @@
 'use client';
 
+import {
+    SearchCategoryFilters,
+    type SearchCategoryValue,
+} from '@gredice/ui/PublicChrome';
 import { usePostHog } from '@posthog/next';
 import type { Route } from 'next';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useRef } from 'react';
-import { SearchCategoryFilters } from '../../components/search/SearchCategoryFilters';
-import type { SearchCategoryValue } from '../../components/search/searchCategories';
 import { PageFilterInputNoSSR } from '../../components/shared/PageFilterInputNoSSR';
 
 export function SearchPageControls({

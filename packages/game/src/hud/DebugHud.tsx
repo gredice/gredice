@@ -1,30 +1,62 @@
 'use client';
 
 import { Button } from '@gredice/ui/Button';
-import { Checkbox } from '@gredice/ui/Checkbox';
 import { DebugPanel, DebugPanelSection } from '@gredice/ui/DebugControls';
+import { IconButton } from '@gredice/ui/IconButton';
+import {
+    AI,
+    Cloud,
+    Custom,
+    Desktop,
+    Droplets,
+    Fence,
+    FullWidth,
+    Ghost,
+    Graph,
+    Layers,
+    Lightning,
+    MapPin,
+    Moon,
+    Reset,
+    Settings,
+    Snowflake,
+    Sun,
+    SunMoon,
+    Thermometer,
+    Wind,
+} from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Slider } from '@gredice/ui/Slider';
 import { Stack } from '@gredice/ui/Stack';
-import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
+import type {
+    ComponentType,
+    CSSProperties,
+    ReactNode,
+    PointerEvent as ReactPointerEvent,
+} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Vector3 } from 'three';
+import { useBlockData } from '../hooks/useBlockData';
+import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useLiveTime } from '../hooks/useLiveTime';
 import { useWeatherNow } from '../hooks/useWeatherNow';
+import { animateSunflowerPointToHud } from '../indicators/SunflowerTransfer/useSunflowerTransferAnimation';
 import {
     type GameProfileMetadata,
     readGameProfileMetadata,
 } from '../scene/gameProfileMetadata';
-import { type AnimalDebugEntry, useGameState } from '../useGameState';
+import { useGameState } from '../useGameState';
+import { clampTimeOfDay, createDateForGameTimeOfDay } from '../utils/timeOfDay';
+import { TimeOfDayVisualization } from './components/TimeOfDayVisualization';
+import {
+    getSpecialEntityDebugEntries,
+    type SpecialEntityDebugEntry,
+    SUNFLOWER_SPECIAL_ENTITY_REWARD_AMOUNT,
+} from './specialEntityDebug';
 
-function getTimeOfDayFromDate(date: Date) {
-    const totalSeconds =
-        date.getHours() * 60 * 60 + date.getMinutes() * 60 + date.getSeconds();
-    return totalSeconds / (24 * 60 * 60);
-}
-
-// Avoid thrashing the time-of-day slider when the live clock only moves by a
-// handful of milliseconds between frames.
-const TIME_OF_DAY_SYNC_THRESHOLD = 0.0005;
+type IconType = ComponentType<{ className?: string }>;
 
 function clampToRange(value: number, min: number, max: number) {
     if (value < min) {
@@ -38,14 +70,22 @@ function clampToRange(value: number, min: number, max: number) {
     return value;
 }
 
-function formatTimeLabel(value: number) {
-    const clamped = clampToRange(value, 0, 1);
-    const totalSeconds = Math.round(clamped * 24 * 60 * 60);
-    const hours = Math.floor(totalSeconds / (60 * 60));
-    const minutes = Math.floor((totalSeconds % (60 * 60)) / 60);
+function formatClockLabel(timeOfDay: number) {
+    const totalMinutes = Math.round(clampTimeOfDay(timeOfDay) * 24 * 60);
+    const hours = Math.floor(totalMinutes / 60) % 24;
+    const minutes = totalMinutes % 60;
     return `${hours.toString().padStart(2, '0')}:${minutes
         .toString()
         .padStart(2, '0')}`;
+}
+
+function formatTime(date: Date | null | undefined) {
+    return (
+        date?.toLocaleTimeString('hr-HR', {
+            hour: '2-digit',
+            minute: '2-digit',
+        }) ?? 'n/a'
+    );
 }
 
 function formatPercent(value: number) {
@@ -55,7 +95,7 @@ function formatPercent(value: number) {
 function formatWindSpeed(value: number) {
     const intensity = Math.round(value);
     const labels = ['None', 'Light', 'Moderate', 'Strong'];
-    return `${intensity} - ${labels[intensity] || 'Unknown'}`;
+    return `${intensity} · ${labels[intensity] || 'Unknown'}`;
 }
 
 function formatWindDirection(value: number) {
@@ -70,8 +110,64 @@ function formatMetric(value: number | null | undefined, suffix = '') {
         : 'n/a';
 }
 
-function formatAnimalPosition(position: AnimalDebugEntry['position']) {
+function formatCount(value: number | null | undefined) {
+    return typeof value === 'number' && Number.isFinite(value)
+        ? Math.round(value).toLocaleString('hr-HR')
+        : 'n/a';
+}
+
+function formatTemperature(value: number | null | undefined) {
+    return typeof value === 'number' && Number.isFinite(value)
+        ? `${Math.round(value)}°C`
+        : 'n/a';
+}
+
+function formatDebugPosition(position: { x: number; y: number; z: number }) {
     return `${formatMetric(position.x)}, ${formatMetric(position.y)}, ${formatMetric(position.z)}`;
+}
+
+function InfoRow({
+    icon: Icon,
+    label,
+    value,
+}: {
+    icon: IconType;
+    label: string;
+    value: ReactNode;
+}) {
+    return (
+        <div className="flex items-center justify-between gap-2 text-[11px] leading-tight">
+            <span className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
+                <Icon className="size-3 shrink-0" />
+                <span className="truncate">{label}</span>
+            </span>
+            <span className="shrink-0 text-right font-mono tabular-nums">
+                {value}
+            </span>
+        </div>
+    );
+}
+
+function WeatherSliderLabel({
+    icon: Icon,
+    label,
+    value,
+}: {
+    icon: IconType;
+    label: string;
+    value: string;
+}) {
+    return (
+        <span className="flex w-full items-center justify-between gap-2 text-xs">
+            <span className="inline-flex min-w-0 items-center gap-1.5">
+                <Icon className="size-3.5 shrink-0 text-muted-foreground" />
+                <span className="truncate">{label}</span>
+            </span>
+            <span className="shrink-0 text-right font-mono tabular-nums text-muted-foreground">
+                {value}
+            </span>
+        </span>
+    );
 }
 
 type FrameStats = {
@@ -163,11 +259,13 @@ function useProfileHudSnapshot() {
 }
 
 const SNOW_ACCUMULATION_PRESETS = [
-    { label: '0 cm', value: 0 },
-    { label: 'Light 5 cm', value: 5 },
-    { label: 'Medium 15 cm', value: 15 },
-    { label: 'Heavy 30 cm', value: 30 },
+    { label: '0', value: 0 },
+    { label: '5', value: 5 },
+    { label: '15', value: 15 },
+    { label: '30', value: 30 },
 ] as const;
+
+const QUALITY_OPTIONS = ['auto', 'low', 'medium', 'high'] as const;
 
 const PANEL_MARGIN_PX = 16;
 const PANEL_STORAGE_KEY = 'gredice.debugPanel.position';
@@ -181,7 +279,16 @@ export function DebugHud() {
     const setWeather = useGameState((s) => s.setWeather);
     const currentTime = useLiveTime();
     const setFreezeTime = useGameState((s) => s.setFreezeTime);
+    const timeOfDay = useGameState((s) => s.timeOfDay);
+    const sunriseTime = useGameState((s) => s.sunriseTime);
+    const sunsetTime = useGameState((s) => s.sunsetTime);
+    const setDayNightCycleDisabled = useGameState(
+        (s) => s.setDayNightCycleDisabled,
+    );
     const animalDebugEntries = useGameState((s) => s.animalDebugEntries);
+    const triggerAnimalDebugBehavior = useGameState(
+        (s) => s.triggerAnimalDebugBehavior,
+    );
     const editHitboxDebugVisible = useGameState(
         (s) => s.editHitboxDebugVisible,
     );
@@ -194,10 +301,61 @@ export function DebugHud() {
     const setEntityRenderModeDebugVisible = useGameState(
         (s) => s.setEntityRenderModeDebugVisible,
     );
+    const animalPathfindingDebugVisible = useGameState(
+        (s) => s.animalPathfindingDebugVisible,
+    );
+    const setAnimalPathfindingDebugVisible = useGameState(
+        (s) => s.setAnimalPathfindingDebugVisible,
+    );
+    const animalTargetsDebugVisible = useGameState(
+        (s) => s.animalTargetsDebugVisible,
+    );
+    const setAnimalTargetsDebugVisible = useGameState(
+        (s) => s.setAnimalTargetsDebugVisible,
+    );
+    const gameQualitySetting = useGameState((s) => s.gameQualitySetting);
+    const setGameQualitySetting = useGameState((s) => s.setGameQualitySetting);
+    const gameCamera = useGameState((s) => s.gameCamera);
     const frameStats = useFrameStats();
     const profileSnapshot = useProfileHudSnapshot();
 
+    const { data: blockData } = useBlockData();
+    const { data: garden } = useCurrentGarden();
     const { data: weather } = useWeatherNow();
+    const specialEntityDebugEntries = useMemo(
+        () =>
+            getSpecialEntityDebugEntries({
+                blockData,
+                stacks: garden?.stacks,
+            }),
+        [blockData, garden?.stacks],
+    );
+
+    const forceSunflowerReward = useCallback(
+        (entry: SpecialEntityDebugEntry) => {
+            if (!gameCamera) {
+                return;
+            }
+
+            const target = gameCamera.projectToScreen(
+                new Vector3(
+                    entry.position.x,
+                    entry.position.y,
+                    entry.position.z,
+                ),
+            );
+
+            if (!target) {
+                return;
+            }
+
+            animateSunflowerPointToHud({
+                amount: SUNFLOWER_SPECIAL_ENTITY_REWARD_AMOUNT,
+                from: target,
+            });
+        },
+        [gameCamera],
+    );
 
     const panelWrapperRef = useRef<HTMLDivElement>(null);
     const panelSizeRef = useRef({ width: 0, height: 0 });
@@ -454,14 +612,12 @@ export function DebugHud() {
         };
     }, [handlePanelPointerMove, handlePanelPointerUp]);
 
-    const [timeOfDay, setTimeOfDay] = useState(() =>
-        getTimeOfDayFromDate(currentTime),
-    );
     const [overrideWeather, setOverrideWeather] = useState(false);
     const [cloudy, setCloudy] = useState(weather?.cloudy ?? 0);
     const [rainy, setRainy] = useState(weather?.rainy ?? 0);
     const [snowy, setSnowy] = useState(weather?.snowy ?? 0);
     const [foggy, setFoggy] = useState(weather?.foggy ?? 0);
+    const [thundery, setThundery] = useState(weather?.thundery ?? 0);
     const [windSpeed, setWindSpeed] = useState(
         typeof weather?.windSpeed === 'number' ? weather.windSpeed : 0,
     );
@@ -474,23 +630,20 @@ export function DebugHud() {
             : 0,
     );
 
-    useEffect(() => {
-        const nextTimeOfDay = getTimeOfDayFromDate(currentTime);
-        setTimeOfDay((previous) =>
-            Math.abs(previous - nextTimeOfDay) < TIME_OF_DAY_SYNC_THRESHOLD
-                ? previous
-                : nextTimeOfDay,
-        );
-    }, [currentTime]);
+    const updateTimeOfDay = useCallback(
+        (nextTimeOfDay: number) => {
+            setDayNightCycleDisabled(false);
+            setFreezeTime(
+                createDateForGameTimeOfDay(currentTime, nextTimeOfDay),
+            );
+        },
+        [currentTime, setDayNightCycleDisabled, setFreezeTime],
+    );
 
-    useEffect(() => {
-        const seconds = clampToRange(timeOfDay, 0, 1) * 24 * 60 * 60;
-        const date = new Date();
-        date.setHours(seconds / 60 / 60);
-        date.setMinutes((seconds / 60) % 60);
-        date.setSeconds(seconds % 60);
-        setFreezeTime(date);
-    }, [timeOfDay, setFreezeTime]);
+    const resetTime = useCallback(() => {
+        setDayNightCycleDisabled(false);
+        setFreezeTime(null);
+    }, [setDayNightCycleDisabled, setFreezeTime]);
 
     useEffect(() => {
         if (overrideWeather) {
@@ -499,31 +652,10 @@ export function DebugHud() {
                 rainy,
                 snowy,
                 foggy,
+                thundery,
                 windSpeed,
                 windDirection,
                 snowAccumulation,
-            });
-            return;
-        }
-
-        if (weather) {
-            setWeather({
-                cloudy: weather.cloudy ?? 0,
-                rainy: weather.rainy ?? 0,
-                snowy: weather.snowy ?? 0,
-                foggy: weather.foggy ?? 0,
-                windSpeed:
-                    typeof weather.windSpeed === 'number'
-                        ? weather.windSpeed
-                        : undefined,
-                windDirection:
-                    typeof weather.windDirection === 'number'
-                        ? weather.windDirection
-                        : undefined,
-                snowAccumulation:
-                    typeof weather.snowAccumulation === 'number'
-                        ? weather.snowAccumulation
-                        : undefined,
             });
         }
     }, [
@@ -532,10 +664,10 @@ export function DebugHud() {
         rainy,
         snowy,
         foggy,
+        thundery,
         windSpeed,
         windDirection,
         snowAccumulation,
-        weather,
         setWeather,
     ]);
 
@@ -548,6 +680,9 @@ export function DebugHud() {
         setRainy(weather.rainy ?? 0);
         setSnowy(weather.snowy ?? 0);
         setFoggy(weather.foggy ?? 0);
+        setThundery(
+            typeof weather.thundery === 'number' ? weather.thundery : 0,
+        );
         setWindSpeed(
             typeof weather.windSpeed === 'number' ? weather.windSpeed : 0,
         );
@@ -563,19 +698,10 @@ export function DebugHud() {
         );
     }, [weather, overrideWeather]);
 
-    const handleOverrideChange = (checked: boolean | 'indeterminate') => {
-        setOverrideWeather(checked === true);
-    };
-    const handleEditHitboxDebugChange = (
-        checked: boolean | 'indeterminate',
-    ) => {
-        setEditHitboxDebugVisible(checked === true);
-    };
-    const handleEntityRenderModeDebugChange = (
-        checked: boolean | 'indeterminate',
-    ) => {
-        setEntityRenderModeDebugVisible(checked === true);
-    };
+    const resetWeather = useCallback(() => {
+        // Drop the override and fall back to the live forecast.
+        setOverrideWeather(false);
+    }, []);
 
     const weatherControlsDisabled = !overrideWeather;
 
@@ -602,6 +728,19 @@ export function DebugHud() {
         ? { top: `${panelPosition.y}px`, left: `${panelPosition.x}px` }
         : { bottom: `${PANEL_MARGIN_PX}px`, right: `${PANEL_MARGIN_PX}px` };
 
+    const isDaytime = timeOfDay >= 0.2 && timeOfDay <= 0.8;
+    const qualityTier = profileSnapshot?.qualityTier ?? 'n/a';
+    const canvasSize =
+        profileSnapshot?.canvasWidth && profileSnapshot.canvasHeight
+            ? `${profileSnapshot.canvasWidth}×${profileSnapshot.canvasHeight}`
+            : 'n/a';
+    const shadowMapMode =
+        profileSnapshot?.shadowMapAutoUpdate === false
+            ? profileSnapshot.shadowMapDynamicRefreshMs
+                ? `cached · ${profileSnapshot.shadowMapDynamicRefreshMs}ms dynamic`
+                : 'cached'
+            : 'auto';
+
     return (
         <div
             className="pointer-events-none fixed z-50"
@@ -609,147 +748,516 @@ export function DebugHud() {
         >
             <div ref={panelWrapperRef} className="pointer-events-auto">
                 <DebugPanel
-                    title="Env"
+                    title="Debug"
                     dragging={isDraggingPanel}
+                    defaultCollapsed
+                    collapsedSummary={
+                        <span className="inline-flex items-center gap-1">
+                            <Graph className="size-3 shrink-0" />
+                            <span className="inline-block w-[5ch] text-right tabular-nums">
+                                {formatMetric(frameStats.fps)}
+                            </span>
+                            <span className="shrink-0">
+                                FPS · {qualityTier}
+                            </span>
+                        </span>
+                    }
                     onDragHandlePointerDown={handlePanelPointerDown}
                 >
-                    <Stack spacing={4}>
-                        <DebugPanelSection title="Performance">
-                            <Stack
-                                spacing={2}
-                                className="text-xs font-mono leading-5"
-                            >
-                                <div>
-                                    FPS {formatMetric(frameStats.fps)} / p95{' '}
-                                    {formatMetric(frameStats.p95FrameMs, ' ms')}
-                                </div>
-                                <div>
-                                    Tier {profileSnapshot?.qualityTier ?? 'n/a'}{' '}
-                                    / DPR{' '}
-                                    {formatMetric(profileSnapshot?.dprCap)} of{' '}
-                                    {formatMetric(profileSnapshot?.reportedDpr)}
-                                </div>
-                                <div>
-                                    Canvas{' '}
-                                    {profileSnapshot?.canvasWidth &&
-                                    profileSnapshot.canvasHeight
-                                        ? `${profileSnapshot.canvasWidth}x${profileSnapshot.canvasHeight}`
-                                        : 'n/a'}
-                                </div>
-                                <div>
-                                    Shadow{' '}
-                                    {profileSnapshot?.shadowsEnabled
-                                        ? `${profileSnapshot.shadowMapSize}px`
-                                        : 'off'}
-                                </div>
-                                <div>
-                                    Weather{' '}
-                                    {profileSnapshot?.rainParticleCount ?? 0} /{' '}
-                                    {profileSnapshot?.snowParticleCount ?? 0}
-                                </div>
-                                <div>
-                                    Details snow{' '}
-                                    {profileSnapshot?.instancedSnowOverlayCount ??
-                                        0}{' '}
-                                    / mulch{' '}
-                                    {profileSnapshot?.raisedBedMulchOverlayCount ??
-                                        0}{' '}
-                                    / decor{' '}
-                                    {profileSnapshot?.groundDecorationCount ??
-                                        0}
-                                </div>
+                    <Stack spacing={2}>
+                        <DebugPanelSection title="Performance" icon={Graph}>
+                            <Stack spacing={1}>
+                                <InfoRow
+                                    icon={Graph}
+                                    label="FPS"
+                                    value={`${formatMetric(frameStats.fps)} · p95 ${formatMetric(frameStats.p95FrameMs)} ms`}
+                                />
+                                <InfoRow
+                                    icon={Desktop}
+                                    label="Quality"
+                                    value={`${qualityTier} · DPR ${formatMetric(profileSnapshot?.dprCap)}/${formatMetric(profileSnapshot?.reportedDpr)}`}
+                                />
+                                <InfoRow
+                                    icon={FullWidth}
+                                    label="Canvas"
+                                    value={canvasSize}
+                                />
+                                <InfoRow
+                                    icon={Graph}
+                                    label="Render calls"
+                                    value={formatCount(
+                                        profileSnapshot?.rendererRenderCalls,
+                                    )}
+                                />
+                                <InfoRow
+                                    icon={Layers}
+                                    label="Triangles"
+                                    value={formatCount(
+                                        profileSnapshot?.rendererTriangles,
+                                    )}
+                                />
+                                <InfoRow
+                                    icon={Custom}
+                                    label="Shaders"
+                                    value={formatCount(
+                                        profileSnapshot?.rendererShaders,
+                                    )}
+                                />
+                                <InfoRow
+                                    icon={Layers}
+                                    label="Geometries"
+                                    value={formatCount(
+                                        profileSnapshot?.rendererGeometries,
+                                    )}
+                                />
+                                <InfoRow
+                                    icon={Desktop}
+                                    label="Textures"
+                                    value={formatCount(
+                                        profileSnapshot?.rendererTextures,
+                                    )}
+                                />
+                                <InfoRow
+                                    icon={FullWidth}
+                                    label="Lines"
+                                    value={formatCount(
+                                        profileSnapshot?.rendererLines,
+                                    )}
+                                />
+                                <InfoRow
+                                    icon={MapPin}
+                                    label="Points"
+                                    value={formatCount(
+                                        profileSnapshot?.rendererPoints,
+                                    )}
+                                />
+                                <InfoRow
+                                    icon={Settings}
+                                    label="Matrices"
+                                    value={formatCount(
+                                        profileSnapshot?.rendererMatrices,
+                                    )}
+                                />
+                                <InfoRow
+                                    icon={Sun}
+                                    label="Shadows"
+                                    value={
+                                        profileSnapshot?.shadowsEnabled
+                                            ? `${profileSnapshot.shadowMapSize}px · ${shadowMapMode} · ${profileSnapshot.shadowMapInvalidationCount ?? 0} invalidations`
+                                            : 'off'
+                                    }
+                                />
+                                <InfoRow
+                                    icon={Cloud}
+                                    label="Cloud shadows"
+                                    value={`${profileSnapshot?.cloudProjectedShadowCount ?? 0} projected · ${profileSnapshot?.cloudRealShadowCasterCount ?? 0} real`}
+                                />
+                                <InfoRow
+                                    icon={Droplets}
+                                    label="Particles"
+                                    value={`rain ${profileSnapshot?.rainParticleCount ?? 0} · snow ${profileSnapshot?.snowParticleCount ?? 0}`}
+                                />
+                                <InfoRow
+                                    icon={Layers}
+                                    label="Overlays"
+                                    value={`snow ${profileSnapshot?.instancedSnowOverlayCount ?? 0} · mulch ${profileSnapshot?.raisedBedMulchOverlayCount ?? 0} · decor ${profileSnapshot?.groundDecorationCount ?? 0}`}
+                                />
+                                <InfoRow
+                                    icon={Settings}
+                                    label="Decor density"
+                                    value={formatMetric(
+                                        profileSnapshot?.groundDecorationDensity,
+                                    )}
+                                />
+                                <InfoRow
+                                    icon={Fence}
+                                    label="Decor chunks"
+                                    value={
+                                        profileSnapshot?.groundDecorationVisibleCount !==
+                                        undefined
+                                            ? `${profileSnapshot.groundDecorationVisibleCount} visible · ${profileSnapshot.groundDecorationAtlasPageCount ?? 0} pages · ${profileSnapshot.groundDecorationChunkCount ?? 0} chunks`
+                                            : 'n/a'
+                                    }
+                                />
                             </Stack>
+                            <Row spacing={1}>
+                                {QUALITY_OPTIONS.map((option) => (
+                                    <Button
+                                        key={option}
+                                        size="xs"
+                                        className="flex-1 px-1 capitalize"
+                                        variant={
+                                            gameQualitySetting === option
+                                                ? 'solid'
+                                                : 'outlined'
+                                        }
+                                        onClick={() =>
+                                            setGameQualitySetting(option)
+                                        }
+                                    >
+                                        {option}
+                                    </Button>
+                                ))}
+                            </Row>
                         </DebugPanelSection>
-                        <DebugPanelSection title="Animals">
-                            <Stack
-                                spacing={2}
-                                className="text-xs font-mono leading-5"
-                            >
-                                {animalDebugEntries.length === 0 ? (
-                                    <div>No active animals</div>
-                                ) : (
-                                    animalDebugEntries.map((entry) => (
+                        <DebugPanelSection title="Animals" icon={Ghost}>
+                            {animalDebugEntries.length === 0 ? (
+                                <Typography
+                                    level="body3"
+                                    secondary
+                                    className="italic"
+                                >
+                                    No active animals
+                                </Typography>
+                            ) : (
+                                <Stack spacing={1}>
+                                    {animalDebugEntries.map((entry) => (
                                         <div
                                             key={entry.id}
-                                            className="rounded-md border border-border/50 bg-card/60 p-2"
+                                            className="rounded-md border border-border/50 bg-card/60 p-1.5 text-[11px] leading-tight"
                                         >
-                                            <div className="flex justify-between gap-3">
-                                                <span>
-                                                    {entry.species}{' '}
-                                                    {entry.label}
+                                            <div className="flex items-center justify-between gap-2">
+                                                <span className="inline-flex min-w-0 items-center gap-1 font-medium">
+                                                    <Ghost className="size-3 shrink-0 text-muted-foreground" />
+                                                    <span className="truncate">
+                                                        {entry.species}{' '}
+                                                        {entry.label}
+                                                    </span>
                                                 </span>
-                                                <span>{entry.phase}</span>
+                                                <span className="shrink-0 rounded bg-muted px-1 font-mono">
+                                                    {entry.phase}
+                                                </span>
                                             </div>
-                                            <div>Playing {entry.activity}</div>
-                                            <div>
-                                                Behavior {entry.behavior} /{' '}
-                                                target {entry.targetId}
+                                            <div className="mt-0.5 text-muted-foreground">
+                                                {entry.activity} ·{' '}
+                                                {entry.behavior} →{' '}
+                                                {entry.targetId || 'none'}
                                             </div>
-                                            <div>
-                                                Pos{' '}
-                                                {formatAnimalPosition(
+                                            {entry.pathfinding ? (
+                                                <div className="mt-1 rounded bg-muted/70 px-1.5 py-1 font-mono text-[10px] text-muted-foreground">
+                                                    pathfinding{' '}
+                                                    {entry.pathfinding.status} ·{' '}
+                                                    {
+                                                        entry.pathfinding
+                                                            .waypointCount
+                                                    }{' '}
+                                                    wp ·{' '}
+                                                    {entry.pathfinding.distance}
+                                                    b ·{' '}
+                                                    {
+                                                        entry.pathfinding
+                                                            .visitedCellCount
+                                                    }{' '}
+                                                    checked ·{' '}
+                                                    {
+                                                        entry.pathfinding
+                                                            .blockedCellCount
+                                                    }{' '}
+                                                    blocked
+                                                    {entry.pathfinding
+                                                        .nextWaypoint
+                                                        ? ` · next ${formatDebugPosition(entry.pathfinding.nextWaypoint)}`
+                                                        : ''}
+                                                </div>
+                                            ) : null}
+                                            <div className="inline-flex items-center gap-1 font-mono text-muted-foreground">
+                                                <MapPin className="size-3 shrink-0" />
+                                                {formatDebugPosition(
                                                     entry.position,
                                                 )}
                                             </div>
+                                            {entry.debugBehaviors?.length ? (
+                                                <div className="mt-1.5 flex flex-wrap gap-1">
+                                                    {entry.debugBehaviors.map(
+                                                        (behavior) => (
+                                                            <Button
+                                                                key={`${entry.id}-${behavior}`}
+                                                                size="xs"
+                                                                className="h-6 px-1.5 text-[10px]"
+                                                                variant={
+                                                                    entry.behavior ===
+                                                                    behavior
+                                                                        ? 'solid'
+                                                                        : 'outlined'
+                                                                }
+                                                                onClick={() =>
+                                                                    triggerAnimalDebugBehavior(
+                                                                        {
+                                                                            behavior,
+                                                                            species:
+                                                                                entry.species,
+                                                                            targetId:
+                                                                                entry.id,
+                                                                        },
+                                                                    )
+                                                                }
+                                                            >
+                                                                {behavior}
+                                                            </Button>
+                                                        ),
+                                                    )}
+                                                </div>
+                                            ) : null}
                                         </div>
-                                    ))
-                                )}
-                            </Stack>
+                                    ))}
+                                </Stack>
+                            )}
                         </DebugPanelSection>
-                        <DebugPanelSection title="Scene">
-                            <Stack spacing={2} className="text-xs">
-                                <Checkbox
-                                    label="Show edit hitboxes"
-                                    checked={editHitboxDebugVisible}
-                                    onCheckedChange={
-                                        handleEditHitboxDebugChange
-                                    }
-                                />
-                                <Checkbox
-                                    label="Show render modes"
-                                    checked={entityRenderModeDebugVisible}
-                                    onCheckedChange={
-                                        handleEntityRenderModeDebugChange
-                                    }
-                                />
-                                {entityRenderModeDebugVisible && (
-                                    <div className="grid gap-1 font-mono leading-5">
-                                        <span className="text-emerald-400">
-                                            Green instanced
-                                        </span>
-                                        <span className="text-amber-400">
-                                            Amber component
-                                        </span>
-                                    </div>
-                                )}
-                            </Stack>
+                        <DebugPanelSection title="Special entities" icon={AI}>
+                            {specialEntityDebugEntries.length === 0 ? (
+                                <Typography
+                                    level="body3"
+                                    secondary
+                                    className="italic"
+                                >
+                                    No active special entities
+                                </Typography>
+                            ) : (
+                                <Stack spacing={1}>
+                                    {specialEntityDebugEntries.map((entry) => (
+                                        <div
+                                            key={entry.id}
+                                            className="rounded-md border border-border/50 bg-card/60 p-1.5 text-[11px] leading-tight"
+                                        >
+                                            <div className="flex items-center justify-between gap-2">
+                                                <span className="inline-flex min-w-0 items-center gap-1 font-medium">
+                                                    <AI className="size-3 shrink-0 text-muted-foreground" />
+                                                    <span className="truncate">
+                                                        {entry.label}
+                                                    </span>
+                                                </span>
+                                                <span className="shrink-0 rounded bg-muted px-1 font-mono">
+                                                    {entry.kind}
+                                                </span>
+                                            </div>
+                                            <div className="mt-0.5 truncate text-muted-foreground">
+                                                {entry.blockName} ·{' '}
+                                                {entry.blockId}
+                                            </div>
+                                            <div className="inline-flex items-center gap-1 font-mono text-muted-foreground">
+                                                <MapPin className="size-3 shrink-0" />
+                                                {formatDebugPosition(
+                                                    entry.position,
+                                                )}
+                                            </div>
+                                            <Button
+                                                size="xs"
+                                                className="mt-1.5 h-6 px-1.5 text-[10px]"
+                                                disabled={!gameCamera}
+                                                variant="outlined"
+                                                onClick={() =>
+                                                    forceSunflowerReward(entry)
+                                                }
+                                            >
+                                                Spawn reward
+                                            </Button>
+                                        </div>
+                                    ))}
+                                </Stack>
+                            )}
                         </DebugPanelSection>
-                        <DebugPanelSection title="Time">
-                            <Slider
-                                label={formatTimeLabel(timeOfDay)}
-                                min={0}
-                                max={1}
-                                step={0.01}
-                                value={[timeOfDay]}
-                                onValueChange={(value) => {
-                                    const [nextValue] = value;
-                                    if (typeof nextValue === 'number') {
-                                        setTimeOfDay(
-                                            clampToRange(nextValue, 0, 1),
-                                        );
+                        <DebugPanelSection title="Scene" icon={Layers}>
+                            <Row spacing={1} className="flex-wrap">
+                                <Button
+                                    size="xs"
+                                    className="flex-1"
+                                    startDecorator={
+                                        <Fence className="size-3.5" />
                                     }
-                                }}
+                                    variant={
+                                        editHitboxDebugVisible
+                                            ? 'solid'
+                                            : 'outlined'
+                                    }
+                                    onClick={() =>
+                                        setEditHitboxDebugVisible(
+                                            !editHitboxDebugVisible,
+                                        )
+                                    }
+                                >
+                                    Edit hitboxes
+                                </Button>
+                                <Button
+                                    size="xs"
+                                    className="flex-1"
+                                    startDecorator={
+                                        <Layers className="size-3.5" />
+                                    }
+                                    variant={
+                                        entityRenderModeDebugVisible
+                                            ? 'solid'
+                                            : 'outlined'
+                                    }
+                                    onClick={() =>
+                                        setEntityRenderModeDebugVisible(
+                                            !entityRenderModeDebugVisible,
+                                        )
+                                    }
+                                >
+                                    Render modes
+                                </Button>
+                                <Button
+                                    size="xs"
+                                    className="flex-1"
+                                    startDecorator={
+                                        <Graph className="size-3.5" />
+                                    }
+                                    variant={
+                                        animalPathfindingDebugVisible
+                                            ? 'solid'
+                                            : 'outlined'
+                                    }
+                                    onClick={() =>
+                                        setAnimalPathfindingDebugVisible(
+                                            !animalPathfindingDebugVisible,
+                                        )
+                                    }
+                                >
+                                    Pathfinding
+                                </Button>
+                                <Button
+                                    size="xs"
+                                    className="flex-1"
+                                    startDecorator={
+                                        <MapPin className="size-3.5" />
+                                    }
+                                    variant={
+                                        animalTargetsDebugVisible
+                                            ? 'solid'
+                                            : 'outlined'
+                                    }
+                                    onClick={() =>
+                                        setAnimalTargetsDebugVisible(
+                                            !animalTargetsDebugVisible,
+                                        )
+                                    }
+                                >
+                                    Animal targets
+                                </Button>
+                            </Row>
+                            {entityRenderModeDebugVisible && (
+                                <div className="grid gap-0.5 font-mono text-[11px]">
+                                    <span className="text-emerald-500">
+                                        ● instanced
+                                    </span>
+                                    <span className="text-amber-500">
+                                        ● component
+                                    </span>
+                                </div>
+                            )}
+                        </DebugPanelSection>
+                        <DebugPanelSection
+                            title="Time"
+                            icon={SunMoon}
+                            action={
+                                <IconButton
+                                    type="button"
+                                    size="sm"
+                                    variant="plain"
+                                    title="Reset time"
+                                    className="size-6 rounded-full"
+                                    onClick={resetTime}
+                                >
+                                    <Reset className="size-3.5" />
+                                </IconButton>
+                            }
+                        >
+                            <TimeOfDayVisualization
+                                interactive
+                                onChange={updateTimeOfDay}
+                                timeOfDay={timeOfDay}
                             />
+                            <Row
+                                justifyContent="space-between"
+                                className="text-[11px]"
+                            >
+                                <Typography
+                                    level="body3"
+                                    className="inline-flex items-center gap-1 whitespace-nowrap"
+                                >
+                                    <Sun className="size-3 text-amber-500" />
+                                    {formatTime(sunriseTime)}
+                                </Typography>
+                                <Typography
+                                    level="body3"
+                                    className={cx(
+                                        'inline-flex items-center gap-1 whitespace-nowrap font-mono font-medium',
+                                        isDaytime
+                                            ? 'text-amber-600 dark:text-amber-300'
+                                            : 'text-blue-600 dark:text-blue-300',
+                                    )}
+                                >
+                                    {isDaytime ? (
+                                        <Sun className="size-3" />
+                                    ) : (
+                                        <Moon className="size-3" />
+                                    )}
+                                    {formatTime(currentTime)} ·{' '}
+                                    {formatClockLabel(timeOfDay)}
+                                </Typography>
+                                <Typography
+                                    level="body3"
+                                    className="inline-flex items-center gap-1 whitespace-nowrap"
+                                >
+                                    <Moon className="size-3 text-blue-500" />
+                                    {formatTime(sunsetTime)}
+                                </Typography>
+                            </Row>
                         </DebugPanelSection>
-                        <DebugPanelSection title="Weather">
-                            <Checkbox
-                                label="Override"
-                                checked={overrideWeather}
-                                onCheckedChange={handleOverrideChange}
-                            />
-                            <Stack spacing={2} className="pt-1">
+                        <DebugPanelSection
+                            title="Weather"
+                            icon={Cloud}
+                            action={
+                                <IconButton
+                                    type="button"
+                                    size="sm"
+                                    variant="plain"
+                                    title="Reset weather"
+                                    className="size-6 rounded-full"
+                                    disabled={weatherControlsDisabled}
+                                    onClick={resetWeather}
+                                >
+                                    <Reset className="size-3.5" />
+                                </IconButton>
+                            }
+                        >
+                            {weather ? (
+                                <Stack spacing={1}>
+                                    <InfoRow
+                                        icon={Thermometer}
+                                        label="Temperature"
+                                        value={formatTemperature(
+                                            weather.temperature,
+                                        )}
+                                    />
+                                    <InfoRow
+                                        icon={Cloud}
+                                        label="Source"
+                                        value={`${weather.source ?? 'n/a'}${weather.isStale ? ' (stale)' : ''}`}
+                                    />
+                                </Stack>
+                            ) : null}
+                            <Button
+                                size="xs"
+                                className="self-start"
+                                startDecorator={<Custom className="size-3.5" />}
+                                variant={overrideWeather ? 'solid' : 'outlined'}
+                                onClick={() =>
+                                    setOverrideWeather((current) => !current)
+                                }
+                            >
+                                Override forecast
+                            </Button>
+                            <Stack spacing={2}>
                                 <Slider
-                                    label={`Cloud ${formatPercent(cloudy)}`}
+                                    aria-label="Clouds"
+                                    label={
+                                        <WeatherSliderLabel
+                                            icon={Cloud}
+                                            label="Clouds"
+                                            value={formatPercent(cloudy)}
+                                        />
+                                    }
                                     min={0}
                                     max={1}
                                     step={0.01}
@@ -765,7 +1273,14 @@ export function DebugHud() {
                                     }}
                                 />
                                 <Slider
-                                    label={`Rain ${formatPercent(rainy)}`}
+                                    aria-label="Rain"
+                                    label={
+                                        <WeatherSliderLabel
+                                            icon={Droplets}
+                                            label="Rain"
+                                            value={formatPercent(rainy)}
+                                        />
+                                    }
                                     min={0}
                                     max={1}
                                     step={0.01}
@@ -781,7 +1296,14 @@ export function DebugHud() {
                                     }}
                                 />
                                 <Slider
-                                    label={`Snow ${formatPercent(snowy)}`}
+                                    aria-label="Snow"
+                                    label={
+                                        <WeatherSliderLabel
+                                            icon={Snowflake}
+                                            label="Snow"
+                                            value={formatPercent(snowy)}
+                                        />
+                                    }
                                     min={0}
                                     max={1}
                                     step={0.01}
@@ -797,7 +1319,14 @@ export function DebugHud() {
                                     }}
                                 />
                                 <Slider
-                                    label={`Fog ${formatPercent(foggy)}`}
+                                    aria-label="Fog"
+                                    label={
+                                        <WeatherSliderLabel
+                                            icon={Cloud}
+                                            label="Fog"
+                                            value={formatPercent(foggy)}
+                                        />
+                                    }
                                     min={0}
                                     max={1}
                                     step={0.01}
@@ -813,7 +1342,37 @@ export function DebugHud() {
                                     }}
                                 />
                                 <Slider
-                                    label={`Wind ${formatWindSpeed(windSpeed)}`}
+                                    aria-label="Thunder"
+                                    label={
+                                        <WeatherSliderLabel
+                                            icon={Lightning}
+                                            label="Thunder"
+                                            value={formatPercent(thundery)}
+                                        />
+                                    }
+                                    min={0}
+                                    max={1}
+                                    step={0.01}
+                                    value={[thundery]}
+                                    disabled={weatherControlsDisabled}
+                                    onValueChange={(value) => {
+                                        const [nextValue] = value;
+                                        if (typeof nextValue === 'number') {
+                                            setThundery(
+                                                clampToRange(nextValue, 0, 1),
+                                            );
+                                        }
+                                    }}
+                                />
+                                <Slider
+                                    aria-label="Wind"
+                                    label={
+                                        <WeatherSliderLabel
+                                            icon={Wind}
+                                            label="Wind"
+                                            value={formatWindSpeed(windSpeed)}
+                                        />
+                                    }
                                     min={0}
                                     max={3}
                                     step={1}
@@ -829,7 +1388,16 @@ export function DebugHud() {
                                     }}
                                 />
                                 <Slider
-                                    label={`Dir ${formatWindDirection(windDirection)}`}
+                                    aria-label="Wind direction"
+                                    label={
+                                        <WeatherSliderLabel
+                                            icon={Wind}
+                                            label="Direction"
+                                            value={formatWindDirection(
+                                                windDirection,
+                                            )}
+                                        />
+                                    }
                                     min={0}
                                     max={315}
                                     step={45}
@@ -845,7 +1413,14 @@ export function DebugHud() {
                                     }}
                                 />
                                 <Slider
-                                    label={`Accum ${snowAccumulation} cm`}
+                                    aria-label="Snow cover"
+                                    label={
+                                        <WeatherSliderLabel
+                                            icon={Snowflake}
+                                            label="Snow cover"
+                                            value={`${snowAccumulation} cm`}
+                                        />
+                                    }
                                     min={0}
                                     max={50}
                                     step={1}
@@ -860,11 +1435,16 @@ export function DebugHud() {
                                         }
                                     }}
                                 />
-                                <Row spacing={2} className="flex-wrap">
+                                <Row spacing={1} alignItems="center">
+                                    <span className="inline-flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground">
+                                        <Snowflake className="size-3.5" />
+                                        cm
+                                    </span>
                                     {SNOW_ACCUMULATION_PRESETS.map((preset) => (
                                         <Button
                                             key={preset.label}
-                                            size="sm"
+                                            size="xs"
+                                            className="flex-1 px-1"
                                             disabled={weatherControlsDisabled}
                                             onClick={() =>
                                                 setSnowAccumulation(

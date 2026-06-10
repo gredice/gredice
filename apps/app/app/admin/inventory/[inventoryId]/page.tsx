@@ -25,20 +25,28 @@ import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navig
 import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPageTitle';
 import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
+import { InventoryFilters } from './InventoryFilters';
 import { InventoryItemsTable } from './InventoryItemsTable';
 import { InventoryStatusProgress } from './InventoryStatusProgress';
+import { normalizeInventoryStateFilter } from './inventoryStatus';
 
 export const dynamic = 'force-dynamic';
 
 export default async function InventoryConfigPage({
     params,
+    searchParams,
 }: {
     params: Promise<{ inventoryId: string }>;
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
     await auth(['admin']);
 
     const { inventoryId } = await params;
+    const urlParams = await searchParams;
     const id = parseInt(inventoryId, 10);
+    const stateFilter = normalizeInventoryStateFilter(
+        typeof urlParams.state === 'string' ? urlParams.state : '',
+    );
 
     const config = await getInventoryConfig(id);
 
@@ -151,16 +159,20 @@ export default async function InventoryConfigPage({
                 />
 
                 <EntityDetailsPropertiesLayout properties={propertiesPanel}>
-                    <Card>
-                        <CardOverflow>
-                            <InventoryItemsTable
-                                inventoryConfigId={id}
-                                entityTypeName={config.entityTypeName}
-                                items={tableItems}
-                                tracksSerialNumbers={tracksSerialNumbers}
-                            />
-                        </CardOverflow>
-                    </Card>
+                    <Stack spacing={3}>
+                        <InventoryFilters />
+                        <Card>
+                            <CardOverflow>
+                                <InventoryItemsTable
+                                    inventoryConfigId={id}
+                                    entityTypeName={config.entityTypeName}
+                                    items={tableItems}
+                                    tracksSerialNumbers={tracksSerialNumbers}
+                                    stateFilter={stateFilter}
+                                />
+                            </CardOverflow>
+                        </Card>
+                    </Stack>
                 </EntityDetailsPropertiesLayout>
             </Stack>
         </EntityDetailsPropertiesProvider>

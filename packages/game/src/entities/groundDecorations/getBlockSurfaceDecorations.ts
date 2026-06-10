@@ -20,6 +20,7 @@ export type BlockSurfaceFlowerDecorationPlacement = {
     position: [number, number, number];
     rotation: number;
     scale: number;
+    spriteName: string;
 };
 
 export type BlockSurfaceDecorationPlacement =
@@ -87,16 +88,18 @@ function pickSpriteName(rng: SeededRNG, surface: GroundDecorationSurface) {
     return sprites[spriteIndex] ?? sprites[0];
 }
 
-function pickFlowerColor(
+function pickFlowerVariant(
     rng: SeededRNG,
-    colors: readonly string[],
-): string | undefined {
-    const colorIndex = Math.min(
-        colors.length - 1,
-        Math.floor(rng.nextFloat() * colors.length),
+    variants: NonNullable<
+        (typeof groundDecorationOptions)[GroundDecorationSurface]['flowers']
+    >['variants'],
+) {
+    const variantIndex = Math.min(
+        variants.length - 1,
+        Math.floor(rng.nextFloat() * variants.length),
     );
 
-    return colors[colorIndex];
+    return variants[variantIndex];
 }
 
 function findDecorationPosition(
@@ -226,13 +229,13 @@ function getFlowerPlacements({
             }
         }
 
-        const color = pickFlowerColor(rng, flowerOptions.colors);
-        if (!color) {
+        const variant = pickFlowerVariant(rng, flowerOptions.variants);
+        if (!variant) {
             continue;
         }
 
         flowers.push({
-            color,
+            color: variant.color,
             kind: 'flower',
             position: [
                 flowerX,
@@ -252,6 +255,7 @@ function getFlowerPlacements({
                 flowerOptions.scaleRange[0],
                 flowerOptions.scaleRange[1],
             ),
+            spriteName: variant.spriteName,
         });
     }
 
@@ -261,7 +265,7 @@ function getFlowerPlacements({
 export function getBlockSurfaceDecorations(options: {
     block: Block;
     density?: number;
-    gardenId: number | null | undefined;
+    gardenId: number | string | null | undefined;
     surface: GroundDecorationSurface;
 }) {
     const { block, density = 1, gardenId, surface } = options;

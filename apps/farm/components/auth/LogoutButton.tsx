@@ -34,7 +34,7 @@ export function LogoutButton() {
     return (
         <IconButton
             title="Odjavi se"
-            variant="outlined"
+            variant="plain"
             loading={loading}
             onClick={handleLogout}
             className="whitespace-nowrap"

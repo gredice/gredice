@@ -1,6 +1,6 @@
 ---
 name: gredice-cms-page-authoring
-description: Author, review, or implement Gredice CMS page content and CMS page tooling. Use for SectionData JSON, supported CMS page sections, admin CMS page forms, public CMS rendering, slug validation, publish readiness, preview behavior, meta title, meta description, canonical path, noIndex, and CMS page routes in apps/app, apps/www, apps/api, or packages/storage.
+description: "Use for Gredice CMS page content/tooling: section JSON, admin/public rendering, slug/publish metadata, preview, and CMS routes/schema."
 ---
 
 # Gredice CMS Page Authoring
@@ -102,19 +102,6 @@ Public metadata uses:
 
 ## Validation
 
-For repository logic changes:
-
-```bash
-pnpm test --filter @gredice/storage
-pnpm test --filter www
-pnpm build --filter www
-pnpm build --filter app
-```
-
-For CMS content JSON only, validate it parses as an array and uses supported components. If editing docs or sample JSON only, run:
-
-```bash
-git diff --check
-```
+For repository logic changes, validate the owning storage, public `www`, and admin `app` surfaces that changed. For CMS content JSON only, verify it parses as an array and uses supported components. Docs or sample JSON only: `git diff --check`.
 
 Query the database only when asked to inspect or modify existing CMS page rows. Prefer source-defined validation for authoring guidance.

@@ -13,14 +13,21 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { useMarkAllNotificationsRead } from '../../hooks/useMarkAllNotificationsRead';
+import {
+    type NotificationPreferenceUpdate,
+    useNotificationPreferences,
+    useSaveNotificationPreferences,
+} from '../../hooks/useNotificationPreferences';
 import { usePushPermissionOnboarding } from '../../hooks/usePushPermissionOnboarding';
 import { NotificationList } from '../../hud/NotificationList';
+import {
+    isNotificationsView,
+    type NotificationsFilter,
+    type NotificationsView,
+} from '../../notificationFilters';
+import { WhatsNewNotificationToggle } from './WhatsNewNotificationToggle';
 
 type ApiClient = ReturnType<typeof clientAuthenticated>;
-
-type NotificationPreferenceUpdate = NonNullable<
-    Parameters<ApiClient['api']['notifications']['preferences']['$put']>[0]
->['json']['preferences'][number];
 
 type PushDeviceUpdate = NonNullable<
     Parameters<ApiClient['api']['notifications']['devices'][':id']['$patch']>[0]
@@ -31,8 +38,6 @@ type DigestFrequency = NonNullable<
 >;
 type DigestPeriod = Exclude<DigestFrequency, 'off'>;
 
-type NotificationsView = 'notifications' | 'settings';
-type NotificationsFilter = 'unread' | 'all';
 type NotificationPreferenceItem = {
     category: string;
     channel: NotificationPreferenceUpdate['channel'];
@@ -43,7 +48,6 @@ type NotificationPreferenceItem = {
     quietHoursEligible: boolean;
 };
 
-const notificationPreferencesKey = ['notifications', 'preferences'];
 const notificationDevicesKey = ['notifications', 'devices'];
 const notificationPushStatusKey = ['notifications', 'push-status'];
 const defaultQuietHoursStartMinute = 22 * 60;
@@ -87,10 +91,20 @@ const categoryPreferences: NotificationPreferenceItem[] = [
         channel: 'push',
         defaultEnabled: true,
         description:
-            'Radovi u vrtu, promjene termina i berba. Hitna upozorenja o vrtu ostaju odmah vidljiva.',
+            'Radovi u vrtu, promjene termina, berba i zdravstvena upozorenja o vrtu.',
         digestEligible: true,
         label: 'Radovi i berba u vrtu',
         quietHoursEligible: true,
+    },
+    {
+        category: 'weather_alerts',
+        channel: 'push',
+        defaultEnabled: false,
+        description:
+            'Upozorenja za grmljavinu, vjetar, kišu, snijeg, poledicu i druge vremenske rizike za regiju vrta.',
+        digestEligible: false,
+        label: 'Vremenska upozorenja',
+        quietHoursEligible: false,
     },
     {
         category: 'reminders',
@@ -132,14 +146,6 @@ const digestFrequencyItems: Array<{
     { label: 'Dnevno', value: 'daily' },
     { label: 'Tjedno', value: 'weekly' },
 ];
-
-function isNotificationsView(value: string): value is NotificationsView {
-    return value === 'notifications' || value === 'settings';
-}
-
-function isNotificationsFilter(value: string): value is NotificationsFilter {
-    return value === 'unread' || value === 'all';
-}
 
 function isDigestPeriod(value: string): value is DigestPeriod {
     return digestFrequencyItems.some((item) => item.value === value);
@@ -207,11 +213,19 @@ function pushStatusLabel(status: string | undefined) {
     }
 }
 
-export function NotificationsTab() {
+type NotificationsTabProps = {
+    initialFilter?: NotificationsFilter;
+    initialView?: NotificationsView;
+};
+
+export function NotificationsTab({
+    initialFilter = 'unread',
+    initialView = 'notifications',
+}: NotificationsTabProps = {}) {
     const [activeView, setActiveView] =
-        useState<NotificationsView>('notifications');
+        useState<NotificationsView>(initialView);
     const [notificationsFilter, setNotificationsFilter] =
-        useState<NotificationsFilter>('unread');
+        useState<NotificationsFilter>(initialFilter);
     const [quietHoursEnabled, setQuietHoursEnabled] = useState(false);
     const [quietHoursStartMinute, setQuietHoursStartMinute] = useState(
         defaultQuietHoursStartMinute,
@@ -227,16 +241,15 @@ export function NotificationsTab() {
     const pushOnboarding = usePushPermissionOnboarding();
     const queryClient = useQueryClient();
 
-    const preferencesQuery = useQuery({
-        queryKey: notificationPreferencesKey,
-        queryFn: async () => {
-            const response =
-                await clientAuthenticated().api.notifications.preferences.$get();
-            if (!response.ok)
-                throw new Error('Postavke obavijesti nisu učitane');
-            return (await response.json()).preferences;
-        },
-    });
+    useEffect(() => {
+        setNotificationsFilter(initialFilter);
+    }, [initialFilter]);
+
+    useEffect(() => {
+        setActiveView(initialView);
+    }, [initialView]);
+
+    const preferencesQuery = useNotificationPreferences();
 
     const devicesQuery = useQuery({
         queryKey: notificationDevicesKey,
@@ -261,20 +274,7 @@ export function NotificationsTab() {
         },
     });
 
-    const savePreferencesMutation = useMutation({
-        mutationFn: async (preferences: NotificationPreferenceUpdate[]) => {
-            const response =
-                await clientAuthenticated().api.notifications.preferences.$put({
-                    json: { preferences },
-                });
-            if (!response.ok)
-                throw new Error('Postavke obavijesti nisu spremljene');
-        },
-        onSuccess: () =>
-            queryClient.invalidateQueries({
-                queryKey: notificationPreferencesKey,
-            }),
-    });
+    const savePreferencesMutation = useSaveNotificationPreferences();
 
     const updateDeviceMutation = useMutation({
         mutationFn: async ({
@@ -497,9 +497,6 @@ export function NotificationsTab() {
                                 <SelectItems
                                     value={notificationsFilter}
                                     onValueChange={(value) => {
-                                        if (!isNotificationsFilter(value)) {
-                                            return;
-                                        }
                                         track(
                                             'game_notifications_filter_changed',
                                             {
@@ -544,6 +541,7 @@ export function NotificationsTab() {
                 </TabsContent>
                 <TabsContent value="settings" className="mt-3">
                     <Stack spacing={2}>
+                        <WhatsNewNotificationToggle />
                         <Card className="bg-card p-2">
                             <Stack spacing={2}>
                                 <Typography level="body1" semiBold>

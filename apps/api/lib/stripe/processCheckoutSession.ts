@@ -10,13 +10,16 @@ import {
 } from '@gredice/notifications';
 import {
     consumeInventoryItem,
+    convertOutletReservationForCartItem,
     createDeliveryRequest,
     createEvent,
     createOperation,
     createTransaction,
     earnSunflowersForPayment,
     getAllTransactions,
+    getDefaultShoppingCartScheduledDate,
     getInventory,
+    getOutletOfferReservationForCartItem,
     getRaisedBed,
     getRaisedBedFieldsWithEvents,
     getShoppingCart,
@@ -24,6 +27,7 @@ import {
     knownEvents,
     markCartPaidIfAllItemsPaid,
     normalizeShoppingCartInventoryUsage,
+    normalizeShoppingCartScheduledDates,
     setCartItemPaid,
     spendSunflowers,
     updateRaisedBed,
@@ -64,13 +68,18 @@ async function processNonStripeCartItems(
     deliveryInfo?: unknown,
     scheduledDeliveryEmailKeys?: Set<string>,
 ): Promise<ShoppingCartItemWithShopData[]> {
-    const cart = await normalizeShoppingCartInventoryUsage(cartId);
-    if (!cart) {
+    const inventoryNormalizedCart =
+        await normalizeShoppingCartInventoryUsage(cartId);
+    if (!inventoryNormalizedCart) {
         console.warn(
             `No cart found for ID ${cartId} when processing non-stripe items.`,
         );
         return [];
     }
+    const cart =
+        (await normalizeShoppingCartScheduledDates(inventoryNormalizedCart.id, {
+            defaultMissingScheduledDates: true,
+        })) ?? inventoryNormalizedCart;
 
     const cartInfo = await getCartInfo(cart.items, accountId);
     if (!cartInfo.allowPurchase) {
@@ -131,6 +140,7 @@ async function processNonStripeCartItems(
                 setCartItemPaid(item.id),
                 processItem({
                     accountId,
+                    cartItemId: item.id,
                     entityId: item.entityId,
                     entityTypeName: item.entityTypeName,
                     cartId: item.cartId,
@@ -212,6 +222,7 @@ async function processNonStripeCartItems(
                 setCartItemPaid(item.id),
                 processItem({
                     accountId,
+                    cartItemId: item.id,
                     entityId: item.entityId,
                     entityTypeName: item.entityTypeName,
                     cartId: item.cartId,
@@ -291,7 +302,15 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
         purchasedItems.push({
             name:
                 typeof product?.name === 'string'
-                    ? product.name
+                    ? `${product.name}${
+                          product.metadata?.outletOfferId
+                              ? ` (Outlet #${product.metadata.outletOfferId}${
+                                    product.metadata.outletSowingDate
+                                        ? `, sjetva ${product.metadata.outletSowingDate.slice(0, 10)}`
+                                        : ''
+                                })`
+                              : ''
+                      }`
                     : (product?.metadata?.name ?? null),
             quantity: item.quantity ?? null,
             amountSubtotal:
@@ -323,6 +342,18 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
                 : undefined,
             additionalData: product?.metadata.additionalData
                 ? JSON.parse(product.metadata.additionalData)
+                : undefined,
+            outletOfferId: product?.metadata.outletOfferId
+                ? parseInt(product.metadata.outletOfferId, 10)
+                : undefined,
+            outletReservationId: product?.metadata.outletReservationId
+                ? parseInt(product.metadata.outletReservationId, 10)
+                : undefined,
+            outletSowingDate: product?.metadata.outletSowingDate ?? undefined,
+            outletInitialPlantStatus:
+                product?.metadata.outletInitialPlantStatus ?? undefined,
+            outletPriceCents: product?.metadata.outletPriceCents
+                ? parseInt(product.metadata.outletPriceCents, 10)
                 : undefined,
             currency: 'eur',
         };
@@ -553,15 +584,107 @@ async function assertRaisedBedAllowsCheckoutItem(raisedBedId?: number | null) {
     return true;
 }
 
+async function outletReservationForCheckout(itemData: {
+    cartItemId?: number | null;
+    entityId: string | null | undefined;
+    outletOfferId?: number | null;
+    outletReservationId?: number | null;
+}) {
+    if (!itemData.cartItemId) {
+        return null;
+    }
+
+    const reservation = await getOutletOfferReservationForCartItem(
+        itemData.cartItemId,
+    );
+    if (!reservation) {
+        if (itemData.outletOfferId || itemData.outletReservationId) {
+            throw new Error(
+                `Outlet reservation not found for cart item ${itemData.cartItemId}.`,
+            );
+        }
+
+        return null;
+    }
+
+    if (
+        itemData.outletReservationId &&
+        itemData.outletReservationId !== reservation.id
+    ) {
+        throw new Error(
+            `Outlet reservation mismatch for cart item ${itemData.cartItemId}.`,
+        );
+    }
+    if (
+        itemData.outletOfferId &&
+        itemData.outletOfferId !== reservation.outletOfferId
+    ) {
+        throw new Error(
+            `Outlet offer mismatch for cart item ${itemData.cartItemId}.`,
+        );
+    }
+    if (reservation.outletOffer.plantSortId.toString() !== itemData.entityId) {
+        throw new Error(
+            `Outlet plant sort mismatch for cart item ${itemData.cartItemId}.`,
+        );
+    }
+
+    await convertOutletReservationForCartItem(itemData.cartItemId);
+    return reservation;
+}
+
+function parseAdditionalDataValue(additionalData: unknown) {
+    if (typeof additionalData !== 'string') {
+        return additionalData;
+    }
+
+    try {
+        return JSON.parse(additionalData);
+    } catch {
+        return null;
+    }
+}
+
+function scheduledDateFromAdditionalData(additionalData: unknown) {
+    const parsedAdditionalData = parseAdditionalDataValue(additionalData);
+    const scheduledDate =
+        typeof parsedAdditionalData === 'object' &&
+        parsedAdditionalData != null &&
+        'scheduledDate' in parsedAdditionalData &&
+        typeof parsedAdditionalData.scheduledDate === 'string'
+            ? parsedAdditionalData.scheduledDate
+            : null;
+    if (!scheduledDate) {
+        return null;
+    }
+
+    return Number.isNaN(new Date(scheduledDate).getTime())
+        ? null
+        : scheduledDate;
+}
+
+function checkoutScheduledDateFromAdditionalData(additionalData: unknown) {
+    return (
+        scheduledDateFromAdditionalData(additionalData) ??
+        getDefaultShoppingCartScheduledDate()
+    );
+}
+
 export async function processItem(itemData: {
     entityId: string | null | undefined;
     entityTypeName: string | null | undefined;
     accountId: string | null | undefined;
+    cartItemId?: number | null;
     cartId: number | null | undefined;
     gardenId: number | null | undefined;
     raisedBedId: number | null | undefined;
     positionIndex: number | null | undefined;
     additionalData: unknown | null | undefined;
+    outletOfferId?: number | null;
+    outletReservationId?: number | null;
+    outletSowingDate?: string | null;
+    outletInitialPlantStatus?: string | null;
+    outletPriceCents?: number | null;
     currency: string | null;
     amount_total: number; // Amount in cents or sunflowers
     scheduledDeliveryEmailKeys?: Set<string>;
@@ -623,8 +746,6 @@ export async function processItem(itemData: {
             )?.id;
         }
 
-        // Try to extract scheduled date from additional data
-        let scheduledDate: string | null = null;
         let additionalData = itemData.additionalData;
         if (typeof additionalData === 'string') {
             try {
@@ -641,14 +762,8 @@ export async function processItem(itemData: {
                 additionalData = null;
             }
         }
-        if (
-            typeof additionalData === 'object' &&
-            additionalData != null &&
-            'scheduledDate' in additionalData &&
-            typeof additionalData.scheduledDate === 'string'
-        ) {
-            scheduledDate = additionalData.scheduledDate;
-        }
+        const scheduledDate =
+            checkoutScheduledDateFromAdditionalData(additionalData);
 
         const operationId = await createOperation({
             accountId: itemData.accountId,
@@ -671,34 +786,25 @@ export async function processItem(itemData: {
             `Created operation ${itemData.entityId} of type ${itemData.entityTypeName} for account ${itemData.accountId} in garden ${itemData.gardenId ?? 'N/A'} with raised bed ${itemData.raisedBedId ?? 'N/A'} and field ${fieldId ?? 'N/A'}.`,
         );
 
-        // Make operation scheduled event if there is schedule date in the request
-        if (scheduledDate) {
-            try {
-                await createEvent(
-                    knownEvents.operations.scheduledV1(operationId.toString(), {
-                        scheduledDate,
-                    }),
-                );
-                console.debug(
-                    `Scheduled operation ${operationId} for date ${scheduledDate}.`,
-                );
-            } catch (error) {
-                console.error(
-                    `Failed to create scheduled event for operation ${operationId}:`,
-                    error,
-                );
-            }
-            const scheduledDateValue = new Date(scheduledDate);
-            if (!Number.isNaN(scheduledDateValue.getTime())) {
-                await notifyOperationUpdate(operationId, 'scheduled', {
-                    scheduledDate: scheduledDateValue.toISOString(),
-                });
-            } else {
-                console.warn(
-                    `Skipping scheduled notification update for operation ${operationId} due to invalid scheduledDate metadata: ${scheduledDate}`,
-                );
-            }
+        // Every purchased operation is scheduled; missing dates default to tomorrow.
+        try {
+            await createEvent(
+                knownEvents.operations.scheduledV1(operationId.toString(), {
+                    scheduledDate,
+                }),
+            );
+            console.debug(
+                `Scheduled operation ${operationId} for date ${scheduledDate}.`,
+            );
+        } catch (error) {
+            console.error(
+                `Failed to create scheduled event for operation ${operationId}:`,
+                error,
+            );
         }
+        await notifyOperationUpdate(operationId, 'scheduled', {
+            scheduledDate: new Date(scheduledDate).toISOString(),
+        });
 
         // Check if this operation/entity is deliverable and create delivery request if needed
         if (itemData.cartId) {
@@ -782,27 +888,43 @@ export async function processItem(itemData: {
             return;
         }
 
-        await Promise.all([
-            upsertRaisedBedField({
-                positionIndex: itemData.positionIndex,
-                raisedBedId: itemData.raisedBedId,
+        const outletReservation = await outletReservationForCheckout(itemData);
+        const aggregateId = `${itemData.raisedBedId}|${itemData.positionIndex}`;
+
+        await upsertRaisedBedField({
+            positionIndex: itemData.positionIndex,
+            raisedBedId: itemData.raisedBedId,
+        });
+        await createEvent(
+            knownEvents.raisedBedFields.plantPlaceV1(aggregateId, {
+                plantSortId: itemData.entityId,
+                scheduledDate: outletReservation
+                    ? null
+                    : checkoutScheduledDateFromAdditionalData(
+                          itemData.additionalData,
+                      ),
+                sowingLocation: outletReservation ? 'greenhouse' : undefined,
             }),
-            createEvent(
-                knownEvents.raisedBedFields.plantPlaceV1(
-                    `${itemData.raisedBedId}|${itemData.positionIndex}`,
-                    {
-                        plantSortId: itemData.entityId,
-                        scheduledDate:
-                            typeof itemData.additionalData === 'object' &&
-                            itemData.additionalData != null &&
-                            'scheduledDate' in itemData.additionalData &&
-                            typeof itemData.additionalData.scheduledDate ===
-                                'string'
-                                ? itemData.additionalData.scheduledDate
-                                : null,
-                    },
-                ),
-            ),
+        );
+        if (outletReservation) {
+            await createEvent(
+                knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+                    status: 'sowed',
+                    effectiveDate:
+                        outletReservation.heldSowingDate.toISOString(),
+                }),
+            );
+
+            if (outletReservation.heldInitialPlantStatus !== 'sowed') {
+                await createEvent(
+                    knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+                        status: outletReservation.heldInitialPlantStatus,
+                    }),
+                );
+            }
+        }
+
+        await Promise.all([
             updateRaisedBed({
                 id: itemData.raisedBedId,
                 status: 'active',
@@ -812,6 +934,17 @@ export async function processItem(itemData: {
         console.debug(
             `Placed plant sort ${itemData.entityId} in raised bed ${itemData.raisedBedId} at position ${itemData.positionIndex}.`,
         );
+        if (outletReservation && itemData.accountId) {
+            (await getPostHogClient()).capture({
+                distinctId: itemData.accountId,
+                event: 'outlet_reservation_converted',
+                properties: {
+                    outlet_offer_id: outletReservation.outletOfferId,
+                    outlet_reservation_id: outletReservation.id,
+                    cart_item_id: itemData.cartItemId,
+                },
+            });
+        }
     } else {
         console.error(
             `Unsupported item type for entityId ${itemData.entityId} in order.`,

@@ -12,9 +12,8 @@ interface LeavesProps {
     colors: THREE.Color[];
     type: PlantDefinition['leaf']['type'];
     animate?: boolean;
+    debugName?: string;
 }
-
-const MAX_LEAF_INSTANCES = 10000;
 
 const leafGeometries = {
     round: new THREE.CircleGeometry(1, 6),
@@ -106,8 +105,10 @@ export function Leaves({
     colors,
     type,
     animate = true,
+    debugName,
 }: LeavesProps) {
     const leafRef = useRef<THREE.InstancedMesh | null>(null);
+    const instanceCapacity = Math.max(matrices.length, 1);
     const swayUniforms = usePlantSway(`${seed}-leaves`, {
         amplitude: 0.11,
         enabled: animate,
@@ -120,12 +121,12 @@ export function Leaves({
     );
     const leafInstanceColor = useMemo(() => {
         const attribute = new THREE.InstancedBufferAttribute(
-            new Float32Array(MAX_LEAF_INSTANCES * 3),
+            new Float32Array(instanceCapacity * 3),
             3,
         );
         attribute.setUsage(THREE.DynamicDrawUsage);
         return attribute;
-    }, []);
+    }, [instanceCapacity]);
 
     useLayoutEffect(() => {
         const updateInstances = (
@@ -149,6 +150,9 @@ export function Leaves({
                 mesh.material.needsUpdate = true;
             }
             mesh.count = matrices.length;
+            mesh.visible = matrices.length > 0;
+            mesh.computeBoundingBox();
+            mesh.computeBoundingSphere();
         };
 
         updateInstances(leafRef.current, colors, leafInstanceColor);
@@ -160,10 +164,15 @@ export function Leaves({
         };
     }, [geometry]);
 
+    if (matrices.length === 0) {
+        return null;
+    }
+
     return (
         <instancedMesh
             ref={leafRef}
-            args={[geometry, undefined, MAX_LEAF_INSTANCES]}
+            name={debugName ?? `PlantLeaves:${type}:count:${matrices.length}`}
+            args={[geometry, undefined, instanceCapacity]}
             castShadow
         >
             <CSM

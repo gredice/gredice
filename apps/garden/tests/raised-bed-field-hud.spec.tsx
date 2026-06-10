@@ -553,7 +553,7 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         const stack = page.locator('[data-field-icon-stack]');
         await expect(stack).toBeVisible();
         await expect(
-            stack.locator('span.bg-blue-600 svg.lucide-sprout'),
+            stack.locator('button.bg-blue-600 svg.lucide-sprout'),
         ).toBeVisible();
     });
 
@@ -615,7 +615,7 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         const stack = page.locator('[data-field-icon-stack]');
         await expect(stack).toBeVisible();
         await expect(
-            stack.locator('span.bg-green-600 svg.lucide-check'),
+            stack.locator('button.bg-green-600 svg.lucide-check'),
         ).toBeVisible();
     });
 
@@ -682,7 +682,7 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         const stack = page.locator('[data-field-icon-stack]');
         await expect(stack).toBeVisible();
         await expect(
-            stack.locator('span.bg-blue-600 svg.lucide-sprout'),
+            stack.locator('button.bg-blue-600 svg.lucide-sprout'),
         ).toBeVisible();
         await expect(
             page.getByRole('button', { name: /Povijest biljke / }),
@@ -803,6 +803,199 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
                 (element) => element.scrollWidth - element.clientWidth,
             ),
         ).toBeLessThanOrEqual(1);
+    });
+
+    test('diary tab allows rescheduling future active operation cards', async ({
+        mount,
+        page,
+    }) => {
+        const scenario = plantedGrowingWithOperationHistoryScenario();
+        const operation = scenario.operationHistoryItems?.[0];
+
+        if (!operation) {
+            throw new Error('Expected operation history item.');
+        }
+
+        await mount(
+            <RaisedBedFieldHudStory
+                scenario={{
+                    ...scenario,
+                    operationHistoryItems: [
+                        {
+                            ...operation,
+                            scheduledDate: '2026-05-20T00:00:00.000Z',
+                            scheduledAt: '2026-05-19T00:00:00.000Z',
+                            completedAt: null,
+                            verifiedAt: null,
+                            imageUrls: [],
+                            completionNotes: null,
+                        },
+                    ],
+                }}
+                positionIndex={0}
+            />,
+        );
+
+        await page.getByRole('button').first().click();
+
+        const dialog = page.getByRole('dialog');
+        await dialog.getByRole('tab', { name: /Dnevnik/ }).click();
+
+        await expect(
+            dialog.getByText('Površinsko zalijevanje gredice (20L)'),
+        ).toBeVisible();
+        await expect(dialog.getByText('Zakazano:')).toHaveCount(0);
+        await expect(
+            dialog.locator('[data-operation-media="plant"]').first(),
+        ).toBeVisible();
+        await expect(
+            dialog.locator('[data-operation-media-badge]').first(),
+        ).toBeVisible();
+
+        await dialog.getByRole('button', { name: '20. svibnja 2026.' }).click();
+
+        await expect(
+            page.getByText('Novi datum', { exact: true }),
+        ).toBeVisible();
+        await expect(
+            page.getByRole('button', { name: 'Spremi' }),
+        ).toBeVisible();
+    });
+
+    test('diary tab disables same-day schedule changes with a tooltip', async ({
+        mount,
+        page,
+    }) => {
+        const scenario = plantedGrowingWithOperationHistoryScenario();
+        const operation = scenario.operationHistoryItems?.[0];
+
+        if (!operation) {
+            throw new Error('Expected operation history item.');
+        }
+
+        await mount(
+            <RaisedBedFieldHudStory
+                scenario={{
+                    ...scenario,
+                    operationHistoryItems: [
+                        {
+                            ...operation,
+                            status: 'planned',
+                            scheduledDate: '2026-05-13T00:00:00.000Z',
+                            scheduledAt: '2026-05-12T00:00:00.000Z',
+                            completedAt: null,
+                            verifiedAt: null,
+                            imageUrls: [],
+                            completionNotes: null,
+                            statusHistory: [
+                                {
+                                    status: 'new',
+                                    changedAt: '2026-05-12T00:00:00.000Z',
+                                },
+                                {
+                                    status: 'planned',
+                                    changedAt: '2026-05-12T00:00:00.000Z',
+                                },
+                            ],
+                        },
+                    ],
+                }}
+                positionIndex={0}
+            />,
+        );
+
+        await page.getByRole('button').first().click();
+
+        const dialog = page.getByRole('dialog');
+        await dialog.getByRole('tab', { name: /Dnevnik/ }).click();
+
+        const scheduleButton = dialog.getByRole('button', {
+            name: '13. svibnja 2026.',
+        });
+        await expect(scheduleButton).toBeDisabled();
+
+        await scheduleButton.locator('xpath=..').hover();
+        await expect(
+            page
+                .getByRole('tooltip')
+                .getByText(
+                    'Datum radnje zakazane za danas više nije moguće promijeniti.',
+                ),
+        ).toBeVisible();
+    });
+
+    test('diary tab shows Zakaži for active operation cards without a scheduled date', async ({
+        mount,
+        page,
+    }) => {
+        const scenario = plantedGrowingWithOperationHistoryScenario();
+        const operation = scenario.operationHistoryItems?.[0];
+
+        if (!operation) {
+            throw new Error('Expected operation history item.');
+        }
+
+        await mount(
+            <RaisedBedFieldHudStory
+                scenario={{
+                    ...scenario,
+                    operationHistoryItems: [
+                        {
+                            ...operation,
+                            status: 'planned',
+                            scheduledDate: null,
+                            scheduledAt: null,
+                            completedAt: null,
+                            verifiedAt: null,
+                            imageUrls: [],
+                            completionNotes: null,
+                            statusHistory: [
+                                {
+                                    status: 'new',
+                                    changedAt: '2026-05-12T00:00:00.000Z',
+                                },
+                            ],
+                        },
+                    ],
+                }}
+                positionIndex={0}
+            />,
+        );
+
+        await page.getByRole('button').first().click();
+
+        const dialog = page.getByRole('dialog');
+        await dialog.getByRole('tab', { name: /Dnevnik/ }).click();
+        await dialog.getByRole('button', { name: 'Zakaži' }).click();
+
+        await expect(
+            page.getByText('Novi datum', { exact: true }),
+        ).toBeVisible();
+        await expect(
+            page.getByRole('button', { name: 'Spremi' }),
+        ).toBeVisible();
+    });
+
+    test('diary tab shows completed schedule dates as text instead of buttons', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldHudStory
+                scenario={plantedGrowingWithOperationHistoryScenario()}
+                positionIndex={0}
+            />,
+        );
+
+        await page.getByRole('button').first().click();
+
+        const dialog = page.getByRole('dialog');
+        await dialog.getByRole('tab', { name: /Dnevnik/ }).click();
+
+        await expect(dialog.getByText('10. svibnja 2026.')).toBeVisible();
+        await expect(
+            dialog.getByRole('button', { name: '10. svibnja 2026.' }),
+        ).toHaveCount(0);
     });
 
     test('raised bed diary operation history does not overflow the modal', async ({

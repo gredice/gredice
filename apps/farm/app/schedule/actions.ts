@@ -4,11 +4,12 @@ import {
     buildRaisedBedFieldPlantUpdatePayload,
     createEvent,
     getFarmUserAcceptedOperationById,
+    getFarmUserPrintableHarvestTraceLinkIds,
     getFarmUserRaisedBeds,
     getOperationById,
     getRaisedBed,
     knownEvents,
-    queueSeasonalSowingOfferOperations,
+    markHarvestTraceLinksPrinted,
 } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
 import { auth } from '../../lib/auth/auth';
@@ -193,15 +194,28 @@ export async function completeFarmPlanting(
         ),
     );
 
-    if (nextStatus === 'sowed' && raisedBed.accountId) {
-        const gardenId = raisedBed.gardenId;
-        await queueSeasonalSowingOfferOperations({
-            accountId: raisedBed.accountId,
-            ...(gardenId ? { gardenId } : {}),
-            raisedBedId,
-        });
-    }
+    revalidateSchedule();
 
+    return { success: true };
+}
+
+export async function markHarvestTraceLabelsPrintedAction(
+    traceLinkIds: number[],
+) {
+    const {
+        user: { role },
+        userId,
+    } = await auth(['admin', 'farmer']);
+
+    const printableTraceLinkIds =
+        role === 'admin'
+            ? traceLinkIds
+            : await getFarmUserPrintableHarvestTraceLinkIds(
+                  userId,
+                  traceLinkIds,
+              );
+
+    await markHarvestTraceLinksPrinted(printableTraceLinkIds);
     revalidateSchedule();
 
     return { success: true };

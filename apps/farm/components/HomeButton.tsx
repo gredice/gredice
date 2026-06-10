@@ -1,19 +1,26 @@
-'use client';
-
-import { IconButton } from '@gredice/ui/IconButton';
+import { Button } from '@gredice/ui/Button';
 import { ArrowLeft } from '@gredice/ui/icons';
-import { useRouter } from 'next/navigation';
 
-export function HomeButton() {
-    const router = useRouter();
+interface HomeButtonProps {
+    className?: string;
+    href?: string;
+    title?: string;
+}
 
+export function HomeButton({
+    className,
+    href = '/',
+    title = 'Povratak na početnu',
+}: HomeButtonProps) {
     return (
-        <IconButton
-            title="Povratak na početnu"
+        <Button
+            aria-label={title}
+            className={`aspect-square px-0 ${className ?? ''}`}
+            href={href}
+            title={title}
             variant="plain"
-            onClick={() => router.push('/')}
         >
             <ArrowLeft className="size-4 shrink-0" />
-        </IconButton>
+        </Button>
     );
 }

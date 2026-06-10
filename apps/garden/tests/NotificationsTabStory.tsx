@@ -2,6 +2,7 @@ import * as ReactQuery from '@tanstack/react-query';
 import { type PropsWithChildren, useMemo } from 'react';
 import { GameAnalyticsProvider } from '../../../packages/game/src/analytics/GameAnalyticsContext';
 import { NotificationsTab } from '../../../packages/game/src/modals/components/NotificationsTab';
+import type { NotificationsFilter } from '../../../packages/game/src/notificationFilters';
 
 const currentUser = {
     avatarUrl: null,
@@ -13,6 +14,8 @@ const currentUser = {
     email: 'test@example.com',
     id: 'test-user',
     userName: 'test-user',
+    whatsNewLastSeenAt: null,
+    whatsNewPopupDisabled: false,
 };
 
 function createQueryClient() {
@@ -41,11 +44,15 @@ function Providers({ children }: PropsWithChildren) {
     );
 }
 
-export function NotificationsTabStory() {
+export function NotificationsTabStory({
+    initialFilter,
+}: {
+    initialFilter?: NotificationsFilter;
+}) {
     return (
         <Providers>
             <div className="w-[520px] p-4">
-                <NotificationsTab />
+                <NotificationsTab initialFilter={initialFilter} />
             </div>
         </Providers>
     );

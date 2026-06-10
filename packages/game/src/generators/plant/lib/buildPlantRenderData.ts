@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { VegetableData } from '../parts/vegetables';
 import { vegetableMaterialProps } from '../parts/vegetables';
 import type { LSystemSymbol } from './l-system';
@@ -28,6 +27,12 @@ interface StemPathPoint {
     radius: number;
 }
 
+export interface PlantStemSegment {
+    endRadius: number;
+    matrix: THREE.Matrix4;
+    startRadius: number;
+}
+
 export interface PlantLodSummary {
     accentCenterY: number;
     accentColor?: string;
@@ -42,7 +47,7 @@ export interface PlantLodSummary {
 }
 
 export interface PlantRenderData {
-    stemGeometry: THREE.BufferGeometry;
+    stemSegments: PlantStemSegment[];
     leaves: THREE.Matrix4[];
     leafColors: THREE.Color[];
     flowers: THREE.Matrix4[];
@@ -64,9 +69,9 @@ interface BuildPlantRenderDataOptions {
     showProduce?: boolean;
 }
 
-function createStemTubeGeometry(path: StemPathPoint[]): THREE.BufferGeometry {
+function createStemSegments(path: StemPathPoint[]): PlantStemSegment[] {
     if (path.length < 2) {
-        return new THREE.BufferGeometry();
+        return [];
     }
 
     const curve = new THREE.CatmullRomCurve3(
@@ -99,73 +104,36 @@ function createStemTubeGeometry(path: StemPathPoint[]): THREE.BufferGeometry {
         };
     });
 
-    const vertices: number[] = [];
-    const normals: number[] = [];
-    const indices: number[] = [];
+    const segments: PlantStemSegment[] = [];
+    const segmentQuaternion = new THREE.Quaternion();
+    const segmentScale = new THREE.Vector3(1, 1, 1);
 
-    for (let pathIndex = 0; pathIndex < sampledPath.length; pathIndex++) {
-        const { position, quaternion, radius } = sampledPath[pathIndex];
+    for (let index = 0; index < sampledPath.length - 1; index += 1) {
+        const start = sampledPath[index];
+        const end = sampledPath[index + 1];
+        const direction = end.position.clone().sub(start.position);
+        const length = direction.length();
 
-        for (
-            let radialIndex = 0;
-            radialIndex <= RADIAL_SEGMENTS;
-            radialIndex++
-        ) {
-            const angle = (radialIndex / RADIAL_SEGMENTS) * Math.PI * 2;
-            const localOffset = new THREE.Vector3(
-                Math.cos(angle) * radius,
-                0,
-                Math.sin(angle) * radius,
-            );
-            localOffset.applyQuaternion(quaternion);
-
-            vertices.push(
-                position.x + localOffset.x,
-                position.y + localOffset.y,
-                position.z + localOffset.z,
-            );
-
-            if (radius > 0) {
-                const normal = localOffset.normalize();
-                normals.push(normal.x, normal.y, normal.z);
-            } else {
-                const forward = new THREE.Vector3(0, 1, 0).applyQuaternion(
-                    quaternion,
-                );
-                normals.push(forward.x, forward.y, forward.z);
-            }
+        if (length <= MIN_SEGMENT_LENGTH) {
+            continue;
         }
+
+        direction.normalize();
+        segmentQuaternion.setFromUnitVectors(STEM_UP, direction);
+        segmentScale.set(1, length, 1);
+
+        segments.push({
+            endRadius: end.radius,
+            matrix: new THREE.Matrix4().compose(
+                start.position,
+                segmentQuaternion.clone(),
+                segmentScale.clone(),
+            ),
+            startRadius: start.radius,
+        });
     }
 
-    const ringSize = RADIAL_SEGMENTS + 1;
-    for (let pathIndex = 0; pathIndex < sampledPath.length - 1; pathIndex++) {
-        for (
-            let radialIndex = 0;
-            radialIndex < RADIAL_SEGMENTS;
-            radialIndex++
-        ) {
-            const a = pathIndex * ringSize + radialIndex;
-            const b = (pathIndex + 1) * ringSize + radialIndex;
-            const c = pathIndex * ringSize + radialIndex + 1;
-            const d = (pathIndex + 1) * ringSize + radialIndex + 1;
-
-            indices.push(a, b, c);
-            indices.push(c, b, d);
-        }
-    }
-
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute(
-        'position',
-        new THREE.Float32BufferAttribute(vertices, 3),
-    );
-    geometry.setAttribute(
-        'normal',
-        new THREE.Float32BufferAttribute(normals, 3),
-    );
-    geometry.setIndex(indices);
-
-    return geometry;
+    return segments;
 }
 
 function getLifecycleGrowth(
@@ -762,18 +730,9 @@ export function buildPlantRenderData({
         });
     }
 
-    const stemGeometry = renderDetailedGeometry
-        ? (() => {
-              const stemTubeGeometries = stemPaths.map(createStemTubeGeometry);
-              const mergedStemGeometry = stemTubeGeometries.length
-                  ? mergeGeometries(stemTubeGeometries)
-                  : new THREE.BufferGeometry();
-              stemTubeGeometries.forEach((geometry) => {
-                  geometry.dispose();
-              });
-              return mergedStemGeometry;
-          })()
-        : new THREE.BufferGeometry();
+    const stemSegments = renderDetailedGeometry
+        ? stemPaths.flatMap(createStemSegments)
+        : [];
 
     if (showLeaves) {
         dominantColor.lerp(baseLeafColor, 0.68);
@@ -821,7 +780,7 @@ export function buildPlantRenderData({
             stemColor: plantDefinition.stem.color,
             stemWidth: Math.max(maxStemRadius * 4.5, 0.05),
         },
-        stemGeometry,
+        stemSegments,
         thorns: thornsData,
         vegetables: vegetablesData,
     };

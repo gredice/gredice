@@ -9,11 +9,17 @@ import { useCreateGarden } from '../../hooks/useCreateGarden';
 type CreateGardenModalProps = {
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    /** Create a sandbox ("play") garden instead of a real garden. */
+    isSandbox?: boolean;
+    /** Called with the id of the newly created garden. */
+    onCreated?: (gardenId: number) => void;
 };
 
 export function CreateGardenModal({
     open,
     onOpenChange,
+    isSandbox,
+    onCreated,
 }: CreateGardenModalProps) {
     const createGarden = useCreateGarden();
     const { track } = useGameAnalytics();
@@ -32,17 +38,28 @@ export function CreateGardenModal({
         try {
             track('game_garden_create_submitted', {
                 name_length: nextName.length,
+                is_sandbox: Boolean(isSandbox),
             });
-            await createGarden.mutateAsync({ name: nextName });
+            const created = await createGarden.mutateAsync({
+                name: nextName,
+                isSandbox,
+            });
             setNewGardenName('');
             onOpenChange(false);
+            if (created?.id != null) {
+                onCreated?.(created.id);
+            }
         } catch (error) {
             console.error('Failed to create garden', error);
         }
     };
 
     return (
-        <Modal open={open} onOpenChange={onOpenChange} title="Kreiraj novi vrt">
+        <Modal
+            open={open}
+            onOpenChange={onOpenChange}
+            title={isSandbox ? 'Kreiraj vrt za igru' : 'Kreiraj novi vrt'}
+        >
             <form onSubmit={handleCreateGarden}>
                 <Stack spacing={4}>
                     <Input
@@ -53,7 +70,11 @@ export function CreateGardenModal({
                         onChange={(event) =>
                             setNewGardenName(event.target.value)
                         }
-                        placeholder="Unesite naziv vrta..."
+                        placeholder={
+                            isSandbox
+                                ? 'Unesite naziv vrta za igru...'
+                                : 'Unesite naziv vrta...'
+                        }
                         required
                         disabled={createGarden.isPending}
                     />
@@ -64,7 +85,7 @@ export function CreateGardenModal({
                         loading={createGarden.isPending}
                         disabled={isCreateDisabled}
                     >
-                        Kreiraj vrt
+                        {isSandbox ? 'Kreiraj vrt za igru' : 'Kreiraj vrt'}
                     </Button>
                 </Stack>
             </form>

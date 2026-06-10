@@ -1,0 +1,40 @@
+import {
+    CalloutBlock,
+    CardGrid,
+    CtaBand,
+    DataTable,
+    EmbedBlock,
+    Faq1,
+    Feature1,
+    Footer1,
+    GalleryGrid,
+    Heading1,
+    HtmlBlock,
+    MarkdownBlock,
+    MediaBlock,
+    MetricGrid,
+    StepList,
+    TextBlock,
+} from '@gredice/ui/cms';
+import { PageHeaderSection } from '@gredice/ui/PageHeader';
+import { memo } from 'react';
+
+export const sectionsComponentRegistry = {
+    Heading1: memo(Heading1),
+    TextBlock: memo(TextBlock),
+    MarkdownBlock: memo(MarkdownBlock),
+    HtmlBlock: memo(HtmlBlock),
+    MediaBlock: memo(MediaBlock),
+    CardGrid: memo(CardGrid),
+    MetricGrid: memo(MetricGrid),
+    StepList: memo(StepList),
+    DataTable: memo(DataTable),
+    GalleryGrid: memo(GalleryGrid),
+    CalloutBlock: memo(CalloutBlock),
+    EmbedBlock: memo(EmbedBlock),
+    CtaBand: memo(CtaBand),
+    Faq1: memo(Faq1),
+    Feature1: memo(Feature1),
+    Footer1: memo(Footer1),
+    PageHeader: memo(PageHeaderSection),
+};

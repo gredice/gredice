@@ -19,6 +19,7 @@ import {
     mergeRaisedBeds,
     moveRaisedBedFieldPlantHistory,
     storage,
+    updateActiveRaisedBedFieldPlantStatusEventCreatedAt,
     upsertOrRemoveCartItem,
     upsertRaisedBedField,
 } from '@gredice/storage';
@@ -952,6 +953,56 @@ test('raised bed field sowing location is projected from schedule events', async
     assert.strictEqual(plantCycle?.sowingLocation, 'direct');
 });
 
+test('greenhouse outlet seedlings preserve effective sowing date', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const blockId = await createTestBlock(gardenId, 'block-outlet-seedling');
+    const raisedBedId = await createTestRaisedBed(gardenId, accountId, blockId);
+    const sowingDate = '2026-04-01T00:00:00.000Z';
+
+    await upsertRaisedBedField({
+        raisedBedId,
+        positionIndex: 0,
+    });
+
+    const aggregateId = `${raisedBedId.toString()}|0`;
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(aggregateId, {
+            plantSortId: '101',
+            scheduledDate: null,
+            sowingLocation: 'greenhouse',
+        }),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+            status: 'sowed',
+            effectiveDate: sowingDate,
+        }),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+            status: 'sprouted',
+        }),
+    );
+
+    const [field] = await getRaisedBedFieldsWithEvents(raisedBedId);
+    assert.strictEqual(field?.sowingLocation, 'greenhouse');
+    assert.strictEqual(field?.plantStatus, 'sprouted');
+    assert.strictEqual(field?.plantSowDate?.toISOString(), sowingDate);
+    assert.ok(field?.plantGrowthDate);
+
+    const [plantCycle] = await getRaisedBedFieldPlantCycles(raisedBedId);
+    assert.strictEqual(plantCycle?.sowingLocation, 'greenhouse');
+    assert.strictEqual(plantCycle?.plantStatus, 'sprouted');
+    assert.strictEqual(plantCycle?.plantSowDate?.toISOString(), sowingDate);
+    assert.strictEqual(
+        plantCycle?.statusChanges[0]?.occurredAt.toISOString(),
+        sowingDate,
+    );
+});
+
 test('raised bed field assignment metadata is projected for assign and unassign updates', async () => {
     createTestDb();
     const accountId = await createAccount();
@@ -1022,6 +1073,117 @@ test('raised bed field assignment metadata is projected for assign and unassign 
     assert.strictEqual(field.assignedUserId, null);
     assert.strictEqual(field.assignedBy, null);
     assert.strictEqual(field.assignedAt, undefined);
+});
+
+test('active plant status date updates the existing status event', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const blockId = await createTestBlock(gardenId, 'block-status-date-edit');
+    const raisedBedId = await createTestRaisedBed(gardenId, accountId, blockId);
+
+    await upsertRaisedBedField({
+        raisedBedId,
+        positionIndex: 0,
+    });
+
+    const aggregateId = `${raisedBedId.toString()}|0`;
+    await createEvent({
+        ...knownEvents.raisedBedFields.plantPlaceV1(aggregateId, {
+            plantSortId: '101',
+            scheduledDate: null,
+        }),
+        createdAt: new Date('2026-01-01T12:00:00.000Z'),
+    });
+    await createEvent({
+        ...knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+            status: 'sowed',
+        }),
+        createdAt: new Date('2026-01-02T12:00:00.000Z'),
+    });
+    await createEvent({
+        ...knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+            status: 'sprouted',
+        }),
+        createdAt: new Date('2026-01-10T12:00:00.000Z'),
+    });
+    await createEvent({
+        ...knownEvents.raisedBedFields.plantScheduleV1(aggregateId, {
+            scheduledDate: null,
+        }),
+        createdAt: new Date('2026-01-15T12:00:00.000Z'),
+    });
+
+    const eventsBefore = await getPlantEventsForAggregate(aggregateId);
+    const sproutedEventBefore = eventsBefore.find((event) => {
+        const data = event.data as Record<string, unknown> | null;
+        return data?.status === 'sprouted';
+    });
+    assert.ok(sproutedEventBefore);
+
+    const tooEarlyUpdated =
+        await updateActiveRaisedBedFieldPlantStatusEventCreatedAt({
+            raisedBedId,
+            positionIndex: 0,
+            status: 'sprouted',
+            createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        });
+    const tooLateUpdated =
+        await updateActiveRaisedBedFieldPlantStatusEventCreatedAt({
+            raisedBedId,
+            positionIndex: 0,
+            status: 'sprouted',
+            createdAt: new Date('2026-01-16T12:00:00.000Z'),
+        });
+
+    assert.strictEqual(tooEarlyUpdated, false);
+    assert.strictEqual(tooLateUpdated, false);
+
+    const eventsAfterRejectedEdits =
+        await getPlantEventsForAggregate(aggregateId);
+    const sproutedEventAfterRejectedEdits = eventsAfterRejectedEdits.find(
+        (event) => {
+            const data = event.data as Record<string, unknown> | null;
+            return data?.status === 'sprouted';
+        },
+    );
+    assert.strictEqual(
+        sproutedEventAfterRejectedEdits?.createdAt.toISOString(),
+        '2026-01-10T12:00:00.000Z',
+    );
+
+    const updated = await updateActiveRaisedBedFieldPlantStatusEventCreatedAt({
+        raisedBedId,
+        positionIndex: 0,
+        status: 'sprouted',
+        createdAt: new Date('2026-01-12T12:00:00.000Z'),
+    });
+
+    assert.strictEqual(updated, true);
+
+    const eventsAfter = await getPlantEventsForAggregate(aggregateId);
+    const sproutedEventsAfter = eventsAfter.filter((event) => {
+        const data = event.data as Record<string, unknown> | null;
+        return data?.status === 'sprouted';
+    });
+    assert.strictEqual(eventsAfter.length, eventsBefore.length);
+    assert.strictEqual(sproutedEventsAfter.length, 1);
+    assert.strictEqual(sproutedEventsAfter[0]?.id, sproutedEventBefore.id);
+    assert.strictEqual(
+        sproutedEventsAfter[0]?.createdAt.toISOString(),
+        '2026-01-12T12:00:00.000Z',
+    );
+
+    const raisedBed = await getRaisedBed(raisedBedId);
+    const field = raisedBed?.fields.find(
+        (candidate) => candidate.positionIndex === 0,
+    );
+    assert.strictEqual(field?.plantStatus, 'sprouted');
+    assert.strictEqual(
+        field?.plantGrowthDate?.toISOString(),
+        '2026-01-12T12:00:00.000Z',
+    );
 });
 
 test('upsertRaisedBedField reuses the same row after a field is deleted and planted again', async () => {

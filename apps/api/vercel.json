@@ -34,6 +34,14 @@
             "schedule": "0 * * * *"
         },
         {
+            "path": "/api/internal/cron/automations",
+            "schedule": "*/5 * * * *"
+        },
+        {
+            "path": "/api/internal/cron/outlet-lifecycle",
+            "schedule": "*/5 * * * *"
+        },
+        {
             "path": "/api/internal/cron/social-publishing",
             "schedule": "*/5 * * * *"
         }

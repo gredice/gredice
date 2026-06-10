@@ -136,6 +136,128 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/community-edits/entities/{entityType}/{entityId}/fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * /community-edits/entities/{entityType}/{entityId}/fields
+         * @description List public-editable fields for an authenticated user editing a directory entity.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    sectionKey?: string;
+                };
+                header?: never;
+                path: {
+                    entityType: string;
+                    entityId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Editable fields for the entity. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["community-edit-fields-response"];
+                    };
+                };
+                /** @description Entity or field lookup failed. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Authentication is required. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/community-edits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * /community-edits
+         * @description Submit a pending community edit request for admin approval. Live directory content is not changed by this endpoint.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["community-edit-submit-request"];
+                };
+            };
+            responses: {
+                /** @description Community edit request was created and is pending admin approval. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["community-edit-submit-response"];
+                    };
+                };
+                /** @description Invalid entity, field, data type, value, or unchanged submission. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Authentication is required. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Submitted base value hash is stale and the user should reload current content. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/entities/plant": {
         parameters: {
             query?: never;
@@ -604,6 +726,84 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/entities/plantDisease": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * /entities/plantDisease
+         * @description Get all entities of type plantDisease.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["entity-plantDisease"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/entities/plantPest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * /entities/plantPest
+         * @description Get all entities of type plantPest.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["entity-plantPest"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/entities/occasions": {
         parameters: {
             query?: never;
@@ -690,6 +890,54 @@ export interface components {
             /** Format: uri */
             url: string;
         };
+        "plant-relationship": {
+            id: number;
+            slug: string;
+            name: string;
+            latinName?: string;
+            image?: {
+                cover?: components["schemas"]["image"];
+            };
+            /** @enum {string} */
+            relationship: "companion" | "antagonist";
+        };
+        "plant-health-operation": {
+            id: number;
+            slug: string;
+            name: string;
+            label?: string;
+        };
+        "plant-health-affected-plant": {
+            id: number;
+            slug: string;
+            name: string;
+            latinName?: string;
+            image?: {
+                cover?: components["schemas"]["image"];
+            };
+        };
+        "plant-health-issue": {
+            id: number;
+            slug: string;
+            name: string;
+            /** @enum {string} */
+            kind: "disease" | "pest";
+            shortDescription?: string;
+            symptoms?: string;
+            conditions?: string;
+            image?: {
+                cover?: components["schemas"]["image"];
+            };
+            operations?: {
+                prevention?: components["schemas"]["plant-health-operation"][];
+                reduction?: components["schemas"]["plant-health-operation"][];
+                alleviation?: components["schemas"]["plant-health-operation"][];
+            };
+        };
+        "plant-health": {
+            diseases?: components["schemas"]["plant-health-issue"][];
+            pests?: components["schemas"]["plant-health-issue"][];
+        };
         "section-data": {
             component: string;
         } & {
@@ -699,12 +947,17 @@ export interface components {
             slug: string;
             title: string;
             /** @enum {string} */
+            contentKind?: "page" | "blog" | "changelog";
+            category?: string | null;
+            tags?: string[];
+            /** @enum {string} */
             state: "published";
             /** Format: date-time */
             publishedAt?: string | null;
             metaTitle?: string | null;
             metaDescription?: string | null;
             metaImageUrl?: string | null;
+            seoImageUrl?: string | null;
             /** Format: date-time */
             updatedAt: string;
         };
@@ -739,6 +992,52 @@ export interface components {
             offset: number;
             count: number;
             results: components["schemas"]["directory-search-result"][];
+        };
+        "community-edit-field": {
+            entityTypeName: string;
+            entityId: number;
+            fieldKey: string;
+            sectionKey: string;
+            attributeDefinitionId: number;
+            attributeValueId?: number | null;
+            attributePath: string;
+            dataType: string;
+            /** @enum {string} */
+            controlType: "boolean" | "json" | "markdown" | "number" | "range" | "reference" | "text";
+            multiple: boolean;
+            publicLabel: string;
+            helpText?: string;
+            currentValue: string | null;
+            baseValueHash: string;
+        };
+        "community-edit-fields-response": {
+            entityTypeName: string;
+            entityId: number;
+            sectionKey: string | null;
+            fields: components["schemas"]["community-edit-field"][];
+        };
+        "community-edit-change-submit": {
+            fieldKey: string;
+            /** @description Serialized proposed value. Type is validated against the editable field registry. Text and markdown submissions are stored with replayable patches so non-overlapping edits on the same attribute can be approved later. */
+            proposedValue: unknown;
+            /** @description Hash returned by the editable fields endpoint. A stale hash is rejected at submission time; accepted text and markdown requests can later replay their stored patch over unrelated approved edits. */
+            baseValueHash?: string | null;
+        };
+        "community-edit-submit-request": {
+            entityTypeName: string;
+            entityId: number;
+            publicPath: string;
+            sectionKey?: string | null;
+            submitterNote?: string | null;
+            changes: components["schemas"]["community-edit-change-submit"][];
+        };
+        "community-edit-submit-response": {
+            /** @enum {string} */
+            status: "pending_admin_approval";
+            requestId: number;
+            /** @enum {string} */
+            requestStatus: "pending";
+            changeCount: number;
         };
         "entity-plant": {
             id: number;
@@ -952,6 +1251,12 @@ export interface components {
                 /** @description (da li je polje čisto nakon branja biljke; u suprotnom je pokrebna radnja uklanjanja biljke) */
                 cleanHarvest: boolean;
             };
+            relationships?: {
+                /** @description Biljke koje se preporučuju kao dobri susjedi u gredici. Veza se prikazuje obostrano, pa ju treba unijeti samo na jednoj biljci. */
+                companions?: components["schemas"]["plant-relationship"][];
+                /** @description Biljke koje se ne preporučuju saditi u neposrednoj blizini. Veza se prikazuje obostrano, pa ju treba unijeti samo na jednoj biljci. */
+                antagonists?: components["schemas"]["plant-relationship"][];
+            };
             image: {
                 cover: components["schemas"]["image"];
             };
@@ -962,6 +1267,7 @@ export interface components {
             store: {
                 availableInStore: boolean;
             };
+            health?: components["schemas"]["plant-health"];
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -1181,6 +1487,12 @@ export interface components {
                         water: string;
                         /** @description (da li je polje čisto nakon branja biljke; u suprotnom je pokrebna radnja uklanjanja biljke) */
                         cleanHarvest: boolean;
+                    };
+                    relationships?: {
+                        /** @description Biljke koje se preporučuju kao dobri susjedi u gredici. Veza se prikazuje obostrano, pa ju treba unijeti samo na jednoj biljci. */
+                        companions?: components["schemas"]["plant-relationship"][];
+                        /** @description Biljke koje se ne preporučuju saditi u neposrednoj blizini. Veza se prikazuje obostrano, pa ju treba unijeti samo na jednoj biljci. */
+                        antagonists?: components["schemas"]["plant-relationship"][];
                     };
                     image: {
                         cover: components["schemas"]["image"];
@@ -1472,6 +1784,12 @@ export interface components {
                         /** @description (da li je polje čisto nakon branja biljke; u suprotnom je pokrebna radnja uklanjanja biljke) */
                         cleanHarvest: boolean;
                     };
+                    relationships?: {
+                        /** @description Biljke koje se preporučuju kao dobri susjedi u gredici. Veza se prikazuje obostrano, pa ju treba unijeti samo na jednoj biljci. */
+                        companions?: components["schemas"]["plant-relationship"][];
+                        /** @description Biljke koje se ne preporučuju saditi u neposrednoj blizini. Veza se prikazuje obostrano, pa ju treba unijeti samo na jednoj biljci. */
+                        antagonists?: components["schemas"]["plant-relationship"][];
+                    };
                     image: {
                         cover: components["schemas"]["image"];
                     };
@@ -1688,6 +2006,12 @@ export interface components {
                                 water: string;
                                 /** @description (da li je polje čisto nakon branja biljke; u suprotnom je pokrebna radnja uklanjanja biljke) */
                                 cleanHarvest: boolean;
+                            };
+                            relationships?: {
+                                /** @description Biljke koje se preporučuju kao dobri susjedi u gredici. Veza se prikazuje obostrano, pa ju treba unijeti samo na jednoj biljci. */
+                                companions?: components["schemas"]["plant-relationship"][];
+                                /** @description Biljke koje se ne preporučuju saditi u neposrednoj blizini. Veza se prikazuje obostrano, pa ju treba unijeti samo na jednoj biljci. */
+                                antagonists?: components["schemas"]["plant-relationship"][];
                             };
                             image: {
                                 cover: components["schemas"]["image"];
@@ -2026,6 +2350,12 @@ export interface components {
                 type: string;
                 /** @description Blok je moguće kupiti samo tijekom noći. */
                 nightOnlyPurchase: boolean;
+                /** @description Širina nevidljive zone za odabir i povlačenje bloka u vrtu. */
+                hitboxWidth?: number;
+                /** @description Visina nevidljive zone za odabir i povlačenje bloka u vrtu. */
+                hitboxHeight?: number;
+                /** @description Dubina nevidljive zone za odabir i povlačenje bloka u vrtu. */
+                hitboxDepth?: number;
             };
             prices: {
                 sunflowers: number;
@@ -2071,6 +2401,96 @@ export interface components {
                 description?: string;
                 supplier?: string;
                 productUrl?: string;
+            };
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        "entity-plantDisease": {
+            id: number;
+            entityType: {
+                /** @default 21 */
+                id: number;
+                /** @default plantDisease */
+                name: string;
+                /** @default Bolesti biljaka */
+                label: string;
+            };
+            slug: string;
+            information: {
+                name: string;
+                label?: string;
+                shortDescription: string;
+                description?: string;
+            };
+            symptoms: {
+                symptoms: string;
+            };
+            conditions: {
+                favorableConditions: string;
+                severity?: string;
+            };
+            relationships: {
+                /** @description Biljke na koje se bolest ili štetnik odnosi. Veza se održava na ovom zapisu, a javne biljke dobiju izvedeni prikaz. */
+                affectedPlants: components["schemas"]["plant-health-affected-plant"][];
+            };
+            operations?: {
+                prevention?: components["schemas"]["plant-health-operation"][];
+                reduction?: components["schemas"]["plant-health-operation"][];
+                alleviation?: components["schemas"]["plant-health-operation"][];
+            };
+            review?: {
+                sources?: {
+                    label: string;
+                    url: string;
+                }[];
+                reviewNotes?: string;
+            };
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        "entity-plantPest": {
+            id: number;
+            entityType: {
+                /** @default 22 */
+                id: number;
+                /** @default plantPest */
+                name: string;
+                /** @default Štetnici biljaka */
+                label: string;
+            };
+            slug: string;
+            information: {
+                name: string;
+                label?: string;
+                shortDescription: string;
+                description?: string;
+            };
+            symptoms: {
+                symptoms: string;
+            };
+            conditions: {
+                favorableConditions: string;
+                severity?: string;
+            };
+            relationships: {
+                /** @description Biljke na koje se bolest ili štetnik odnosi. Veza se održava na ovom zapisu, a javne biljke dobiju izvedeni prikaz. */
+                affectedPlants: components["schemas"]["plant-health-affected-plant"][];
+            };
+            operations?: {
+                prevention?: components["schemas"]["plant-health-operation"][];
+                reduction?: components["schemas"]["plant-health-operation"][];
+                alleviation?: components["schemas"]["plant-health-operation"][];
+            };
+            review?: {
+                sources?: {
+                    label: string;
+                    url: string;
+                }[];
+                reviewNotes?: string;
             };
             /** Format: date-time */
             createdAt: string;

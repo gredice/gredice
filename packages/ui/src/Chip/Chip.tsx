@@ -18,7 +18,10 @@ export type ColorPaletteProp =
     | 'success'
     | 'neutral';
 
-export type ChipProps = Omit<HTMLAttributes<HTMLElement>, 'color' | 'onClick'> & {
+export type ChipProps = Omit<
+    HTMLAttributes<HTMLElement>,
+    'color' | 'onClick'
+> & {
     disabled?: boolean;
     color?: ColorPaletteProp;
     variant?: 'plain' | 'outlined' | 'soft' | 'solid';
@@ -121,7 +124,7 @@ export const Chip = forwardRef<HTMLElement, ChipProps>(function Chip(
         </>
     );
     const mergedClassName = cx(
-        'm-0 inline-flex min-w-0 shrink-0 items-center gap-1 rounded-full border font-medium whitespace-nowrap transition-colors',
+        'm-0 inline-flex w-fit max-w-full min-w-0 shrink-0 items-center gap-1 rounded-full border font-medium whitespace-nowrap transition-colors',
         variantColorClassNames[variant][color],
         sizeClassNames[size],
         disabled && 'pointer-events-none opacity-50',

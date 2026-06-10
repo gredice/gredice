@@ -1,22 +1,26 @@
 import 'server-only';
-import { and, desc, eq, sql } from 'drizzle-orm';
+import type { OperationData } from '@gredice/directory-types';
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import {
-    type InsertFarmerPayoutRequest,
-    type InsertOperationPrice,
     farmerPayoutRequests,
-    type PayoutStatus,
+    farmUsers,
+    gardens,
+    type InsertOperationPrice,
     operationPrices,
+    operations,
+    type PayoutStatus,
+    raisedBeds,
     type SelectFarmerPayoutRequest,
     type SelectOperationPrice,
 } from '../schema';
 import { storage } from '../storage';
-import { createReceipt } from './invoicesRepo';
-import { getFarmUserAcceptedOperations } from './operationsRepo';
-import { getRaisedBedFieldPlantCycles } from './gardensRepo';
+import { getEntitiesFormatted } from './entitiesRepo';
 import { createEvent, knownEvents } from './eventsRepo';
+import { getRaisedBedFieldPlantCycles } from './gardensRepo';
+import { createReceipt } from './invoicesRepo';
 import { createNotification } from './notificationsRepo';
+import { getFarmAcceptedOperations } from './operationsRepo';
 import { getUser } from './usersRepo';
-import { farmUsers, gardens, raisedBeds } from '../schema';
 
 // ── Operation Prices ─────────────────────────────────────────────────────────
 
@@ -38,14 +42,19 @@ export async function getAllOperationPrices(): Promise<SelectOperationPrice[]> {
 export async function upsertOperationPrice(
     input: InsertOperationPrice,
 ): Promise<SelectOperationPrice> {
-    const isEntitySpecific = input.entityId !== null && input.entityId !== undefined;
+    const isEntitySpecific =
+        input.entityId !== null && input.entityId !== undefined;
 
     const [row] = await storage()
         .insert(operationPrices)
         .values(input)
         .onConflictDoUpdate({
             target: isEntitySpecific
-                ? [operationPrices.farmId, operationPrices.entityTypeName, operationPrices.entityId]
+                ? [
+                      operationPrices.farmId,
+                      operationPrices.entityTypeName,
+                      operationPrices.entityId,
+                  ]
                 : [operationPrices.farmId, operationPrices.entityTypeName],
             targetWhere: isEntitySpecific
                 ? sql`${operationPrices.entityId} IS NOT NULL`
@@ -61,9 +70,7 @@ export async function upsertOperationPrice(
 }
 
 export async function deleteOperationPrice(id: number): Promise<void> {
-    await storage()
-        .delete(operationPrices)
-        .where(eq(operationPrices.id, id));
+    await storage().delete(operationPrices).where(eq(operationPrices.id, id));
 }
 
 // ── Sowing helpers ────────────────────────────────────────────────────────────
@@ -81,9 +88,29 @@ const VERIFIED_SOWING_STATUSES = new Set([
     'removed',
 ]);
 
-// Returns one entry per verified sowing cycle, with the farmId it belongs to
-async function getVerifiedSowingsForFarmer(
-    userId: string,
+const SOWING_DURATION_MINUTES = 5;
+
+function getOperationDurationMinutes(operationData: OperationData | undefined) {
+    const durationValue = operationData?.attributes?.duration;
+
+    if (typeof durationValue === 'number' && Number.isFinite(durationValue)) {
+        return Math.max(durationValue, 0);
+    }
+
+    if (typeof durationValue === 'string') {
+        const parsed = Number.parseFloat(durationValue);
+        if (Number.isFinite(parsed)) {
+            return Math.max(parsed, 0);
+        }
+    }
+
+    return 0;
+}
+
+// Returns one entry per verified sowing cycle for a farm.
+async function getVerifiedSowingsForFarm(
+    farmId: number,
+    verifiedFrom?: Date,
 ): Promise<{ farmId: number; sowingLocation: string }[]> {
     const raisedBedRows = await storage()
         .select({
@@ -92,10 +119,9 @@ async function getVerifiedSowingsForFarmer(
         })
         .from(raisedBeds)
         .innerJoin(gardens, eq(raisedBeds.gardenId, gardens.id))
-        .innerJoin(farmUsers, eq(gardens.farmId, farmUsers.farmId))
         .where(
             and(
-                eq(farmUsers.userId, userId),
+                eq(gardens.farmId, farmId),
                 eq(raisedBeds.isDeleted, false),
                 eq(gardens.isDeleted, false),
             ),
@@ -110,6 +136,14 @@ async function getVerifiedSowingsForFarmer(
                 farmId: row.farmId,
                 sowingLocation: cycle.sowingLocation,
                 plantStatus: cycle.plantStatus,
+                verifiedAt:
+                    cycle.plantSowDate ??
+                    cycle.plantGrowthDate ??
+                    cycle.plantDeadDate ??
+                    cycle.plantReadyDate ??
+                    cycle.plantHarvestedDate ??
+                    cycle.plantRemovedDate ??
+                    cycle.endedAt,
             }));
         }),
     );
@@ -119,16 +153,78 @@ async function getVerifiedSowingsForFarmer(
         .filter(
             (c) =>
                 c.plantStatus !== undefined &&
-                VERIFIED_SOWING_STATUSES.has(c.plantStatus),
+                VERIFIED_SOWING_STATUSES.has(c.plantStatus) &&
+                (!verifiedFrom ||
+                    (c.verifiedAt && c.verifiedAt > verifiedFrom)),
         );
+}
+
+async function getOperationEffectiveFarmIds(operationIds: number[]) {
+    const uniqueOperationIds = Array.from(new Set(operationIds));
+    if (uniqueOperationIds.length === 0) {
+        return new Map<number, number>();
+    }
+
+    const rows = await storage()
+        .select({
+            operationId: operations.id,
+            farmId: sql<
+                number | null
+            >`coalesce(${operations.farmId}, ${gardens.farmId})`,
+        })
+        .from(operations)
+        .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
+        .leftJoin(
+            gardens,
+            eq(
+                gardens.id,
+                sql<
+                    number | null
+                >`coalesce(${operations.gardenId}, ${raisedBeds.gardenId})`,
+            ),
+        )
+        .where(inArray(operations.id, uniqueOperationIds));
+
+    return new Map(
+        rows
+            .filter((row) => row.farmId !== null)
+            .map((row) => [row.operationId, row.farmId]),
+    );
+}
+
+function getLastPaidPayoutAt(payouts: SelectFarmerPayoutRequest[]) {
+    return payouts
+        .filter((payout) => payout.status === 'paid')
+        .map((payout) => payout.paidAt ?? payout.updatedAt ?? payout.createdAt)
+        .filter((paidAt): paidAt is Date => paidAt instanceof Date)
+        .sort((left, right) => right.getTime() - left.getTime())[0];
+}
+
+function getOperationPayoutEligibleAt(operation: {
+    verifiedAt?: Date;
+    completedAt?: Date;
+    timestamp: Date;
+}) {
+    return operation.verifiedAt ?? operation.completedAt ?? operation.timestamp;
+}
+
+async function isUserAssignedToFarm(userId: string, farmId: number) {
+    const farmUser = await storage().query.farmUsers.findFirst({
+        where: and(eq(farmUsers.userId, userId), eq(farmUsers.farmId, farmId)),
+    });
+
+    return Boolean(farmUser);
 }
 
 // ── Farmer Balance ────────────────────────────────────────────────────────────
 
 export type FarmerEarning = {
     entityTypeName: string;
-    entityTypeLabel?: string;
+    entityId: number | null;
+    entityLabel?: string;
     operationCount: number;
+    durationMinutes: number;
+    totalDurationMinutes: number;
     pricePerUnit: number;
     totalEarned: number;
     currency: string;
@@ -139,21 +235,35 @@ export type FarmerBalance = {
     totalPaid: number;
     totalPending: number;
     availableBalance: number;
+    totalDurationMinutes: number;
     currency: string;
     earningsByType: FarmerEarning[];
 };
 
 export async function getFarmerBalance(
-    userId: string,
+    _userId: string,
     farmId: number,
 ): Promise<FarmerBalance> {
-    const [prices, completedOperations, payouts, verifiedSowings] =
-        await Promise.all([
-            getOperationPrices(farmId),
-            getFarmUserAcceptedOperations(userId, { status: 'completed' }),
-            getFarmerPayoutRequests(userId, farmId),
-            getVerifiedSowingsForFarmer(userId),
-        ]);
+    const [prices, payouts, operationsData] = await Promise.all([
+        getOperationPrices(farmId),
+        getFarmPayoutRequests(farmId),
+        getEntitiesFormatted<OperationData>('operation'),
+    ]);
+    const lastPaidPayoutAt = getLastPaidPayoutAt(payouts);
+    const [completedOperations, verifiedSowings] = await Promise.all([
+        getFarmAcceptedOperations(farmId, { status: 'completed' }),
+        getVerifiedSowingsForFarm(farmId, lastPaidPayoutAt),
+    ]);
+    const payableOperations = completedOperations.filter((operation) => {
+        if (!lastPaidPayoutAt) {
+            return true;
+        }
+
+        return getOperationPayoutEligibleAt(operation) > lastPaidPayoutAt;
+    });
+    const completedOperationFarmIds = await getOperationEffectiveFarmIds(
+        payableOperations.map((operation) => operation.id),
+    );
 
     // Two maps: entityId-keyed (for specific operations) and typeName-keyed (for sowing)
     const priceByEntityId = new Map<number, SelectOperationPrice>(
@@ -162,17 +272,29 @@ export async function getFarmerBalance(
             .map((p) => [p.entityId as number, p]),
     );
     const priceByTypeName = new Map<string, SelectOperationPrice>(
-        prices.filter((p) => p.entityId === null).map((p) => [p.entityTypeName, p]),
+        prices
+            .filter((p) => p.entityId === null)
+            .map((p) => [p.entityTypeName, p]),
+    );
+    const operationLabelById = new Map(
+        operationsData.map((operation) => [
+            operation.id,
+            operation.information?.label || operation.information?.name,
+        ]),
+    );
+    const operationDurationById = new Map(
+        operationsData.map((operation) => [
+            operation.id,
+            getOperationDurationMinutes(operation),
+        ]),
     );
 
     const earningsByKey = new Map<string, FarmerEarning>();
     let currency = 'eur';
 
     // Operations
-    for (const op of completedOperations) {
-        const opFarmId =
-            op.farmId ??
-            (op as unknown as { garden?: { farmId?: number } }).garden?.farmId;
+    for (const op of payableOperations) {
+        const opFarmId = completedOperationFarmIds.get(op.id);
         if (opFarmId !== farmId) continue;
 
         // Look up price by entityId first, then fall back to entityTypeName
@@ -183,16 +305,22 @@ export async function getFarmerBalance(
 
         currency = price.currency;
         const priceValue = parseFloat(price.pricePerUnit);
+        const durationMinutes = operationDurationById.get(op.entityId) ?? 0;
         const key = `operation:${op.entityId}`;
         const existing = earningsByKey.get(key);
 
         if (existing) {
             existing.operationCount += 1;
+            existing.totalDurationMinutes += durationMinutes;
             existing.totalEarned += priceValue;
         } else {
             earningsByKey.set(key, {
                 entityTypeName: op.entityTypeName,
+                entityId: op.entityId,
+                entityLabel: operationLabelById.get(op.entityId),
                 operationCount: 1,
+                durationMinutes,
+                totalDurationMinutes: durationMinutes,
                 pricePerUnit: priceValue,
                 totalEarned: priceValue,
                 currency: price.currency,
@@ -217,11 +345,15 @@ export async function getFarmerBalance(
 
         if (existing) {
             existing.operationCount += 1;
+            existing.totalDurationMinutes += SOWING_DURATION_MINUTES;
             existing.totalEarned += priceValue;
         } else {
             earningsByKey.set(typeName, {
                 entityTypeName: typeName,
+                entityId: null,
                 operationCount: 1,
+                durationMinutes: SOWING_DURATION_MINUTES,
+                totalDurationMinutes: SOWING_DURATION_MINUTES,
                 pricePerUnit: priceValue,
                 totalEarned: priceValue,
                 currency: price.currency,
@@ -233,6 +365,10 @@ export async function getFarmerBalance(
         (acc, e) => acc + e.totalEarned,
         0,
     );
+    const totalDurationMinutes = Array.from(earningsByKey.values()).reduce(
+        (acc, e) => acc + e.totalDurationMinutes,
+        0,
+    );
 
     const totalPaid = payouts
         .filter((p) => p.status === 'paid')
@@ -242,16 +378,14 @@ export async function getFarmerBalance(
         .filter((p) => p.status === 'pending' || p.status === 'approved')
         .reduce((acc, p) => acc + parseFloat(p.requestedAmount), 0);
 
-    const availableBalance = Math.max(
-        0,
-        totalEarned - totalPaid - totalPending,
-    );
+    const availableBalance = Math.max(0, totalEarned - totalPending);
 
     return {
         totalEarned,
         totalPaid,
         totalPending,
         availableBalance,
+        totalDurationMinutes,
         currency,
         earningsByType: Array.from(earningsByKey.values()),
     };
@@ -268,6 +402,9 @@ export async function createPayoutRequest(
 ): Promise<SelectFarmerPayoutRequest> {
     if (requestedAmount <= 0) {
         throw new Error('Iznos isplate mora biti veći od nule.');
+    }
+    if (!(await isUserAssignedToFarm(userId, farmId))) {
+        throw new Error('Nemaš pristup odabranoj farmi.');
     }
 
     return storage().transaction(async (tx) => {
@@ -325,6 +462,15 @@ export async function getFarmerPayoutRequests(
                 ? eq(farmerPayoutRequests.farmId, farmId)
                 : undefined,
         ),
+        orderBy: desc(farmerPayoutRequests.createdAt),
+    });
+}
+
+export async function getFarmPayoutRequests(
+    farmId: number,
+): Promise<SelectFarmerPayoutRequest[]> {
+    return storage().query.farmerPayoutRequests.findMany({
+        where: eq(farmerPayoutRequests.farmId, farmId),
         orderBy: desc(farmerPayoutRequests.createdAt),
     });
 }
@@ -418,7 +564,12 @@ export async function approvePayoutRequest(
     );
 
     // Notify the farmer
-    await notifyFarmerPayoutStatus(existing.userId, 'approved', parseFloat(existing.requestedAmount), existing.currency);
+    await notifyFarmerPayoutStatus(
+        existing.userId,
+        'approved',
+        parseFloat(existing.requestedAmount),
+        existing.currency,
+    );
 
     return row;
 }
@@ -451,7 +602,12 @@ export async function rejectPayoutRequest(
     );
 
     // Notify the farmer
-    await notifyFarmerPayoutStatus(existing.userId, 'rejected', parseFloat(existing.requestedAmount), existing.currency);
+    await notifyFarmerPayoutStatus(
+        existing.userId,
+        'rejected',
+        parseFloat(existing.requestedAmount),
+        existing.currency,
+    );
 
     return row;
 }
@@ -515,7 +671,12 @@ export async function markPayoutAsPaid(
     );
 
     // Notify the farmer
-    await notifyFarmerPayoutStatus(existing.userId, 'paid', parseFloat(existing.requestedAmount), existing.currency);
+    await notifyFarmerPayoutStatus(
+        existing.userId,
+        'paid',
+        parseFloat(existing.requestedAmount),
+        existing.currency,
+    );
 
     return { payoutRequest: row, receiptId };
 }
@@ -534,7 +695,10 @@ async function notifyFarmerPayoutStatus(
         const accountId = user.accounts[0].account.id;
         const amountStr = `${amount.toFixed(2)} ${currency.toUpperCase()}`;
 
-        const messages: Record<typeof status, { header: string; content: string }> = {
+        const messages: Record<
+            typeof status,
+            { header: string; content: string }
+        > = {
             approved: {
                 header: 'Zahtjev za isplatu odobren',
                 content: `Tvoj zahtjev za isplatu ${amountStr} je odobren. Uskoro će biti obrađen.`,

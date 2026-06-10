@@ -11,6 +11,8 @@ export const publicSearchCategoryByDirectoryEntityType = {
     operation: { slug: 'operations', label: 'Radnje' },
     block: { slug: 'blocks', label: 'Blokovi' },
     plantSort: { slug: 'sorts', label: 'Sorte' },
+    plantDisease: { slug: 'diseases', label: 'Bolesti' },
+    plantPest: { slug: 'pests', label: 'Štetnici' },
     seed: { slug: 'seeds', label: 'Sjeme' },
 } satisfies Partial<
     Record<DirectoryEntityTypeName, PublicSearchCategoryConfig>
@@ -71,6 +73,14 @@ export const PublicDirectoryPaths = {
     Operation(alias: string) {
         return `/radnje/${toPublicPageAlias(alias)}`;
     },
+    PlantDiseases: '/bolesti',
+    PlantDisease(alias: string) {
+        return `/bolesti/${toPublicPageAlias(alias)}`;
+    },
+    PlantPests: '/stetnici',
+    PlantPest(alias: string) {
+        return `/stetnici/${toPublicPageAlias(alias)}`;
+    },
     FAQ: '/cesta-pitanja',
     LegalOccasions: '/legalno/natjecaji',
     Occasion(alias: string) {
@@ -129,6 +139,14 @@ export function resolveDirectoryEntityPublicPathFromParts({
             return entityTitle
                 ? PublicDirectoryPaths.Operation(entityTitle)
                 : null;
+        case 'plantDisease':
+            return entityTitle
+                ? PublicDirectoryPaths.PlantDisease(entityTitle)
+                : null;
+        case 'plantPest':
+            return entityTitle
+                ? PublicDirectoryPaths.PlantPest(entityTitle)
+                : null;
         case 'block':
             return entityTitle ? PublicDirectoryPaths.Block(entityTitle) : null;
         case 'faq':
@@ -178,6 +196,18 @@ export function resolveDirectoryEntityPublicPath(
                 parentName: input.entity.information.plant.information.name,
             });
         case 'operation':
+            return resolveDirectoryEntityPublicPathFromParts({
+                entityTypeName: input.entityTypeName,
+                name: input.entity.information.name,
+                label: input.entity.information.label,
+            });
+        case 'plantDisease':
+            return resolveDirectoryEntityPublicPathFromParts({
+                entityTypeName: input.entityTypeName,
+                name: input.entity.information.name,
+                label: input.entity.information.label,
+            });
+        case 'plantPest':
             return resolveDirectoryEntityPublicPathFromParts({
                 entityTypeName: input.entityTypeName,
                 name: input.entity.information.name,

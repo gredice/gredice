@@ -69,7 +69,7 @@ export async function POST(request: Request) {
     const refreshResult = await doUseRefreshToken(adminRefreshToken);
     if (!refreshResult) {
         // Backup token is invalid/expired — clear impersonation cookies and redirect
-        clearImpersonationCookies(cookieStore);
+        await clearImpersonationCookies(cookieStore);
         return Response.redirect(getAdminUrl(request));
     }
 
@@ -84,7 +84,7 @@ export async function POST(request: Request) {
     await setRefreshCookie(newRefreshToken);
 
     // Clear impersonation cookies
-    clearImpersonationCookies(cookieStore);
+    await clearImpersonationCookies(cookieStore);
 
     return Response.redirect(getAdminUrl(request));
 }

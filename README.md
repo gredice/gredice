@@ -32,50 +32,25 @@ Gredice is a Turborepo monorepo for the Gredice platform. It includes the public
 
 ## Getting Started
 
-Prerequirenments:
-
-- [nvm](https://github.com/nvm-sh/nvm)
-  - [Node.js](https://nodejs.org/) (managed through nvm)
-  - [corepack](https://github.com/nodejs/corepack) (managed through npm)
-  - [pnpm](https://pnpm.io/) (managed through corepack)
-  - [Vercel CLI](https://vercel.com/cli) (managed through pnpm)
-- [Docker](https://www.docker.com/)
+Requirements: nvm/Node.js `>=24`, Corepack-managed pnpm, Vercel CLI, and Docker.
 
 ```bash
 nvm use
-npm install corepack
 corepack enable
 pnpm i -g vercel
 pnpm install
-vercel login
 pnpm bootstrap
 pnpm doctor
 pnpm dev
 ```
 
-The default dev command starts the main apps through local HTTPS domains such as `https://www.gredice.test`, `https://vrt.gredice.test`, and `https://api.gredice.test`. Linked Git worktrees use deterministic app and proxy port offsets so they can run beside another checkout; use the port-qualified HTTPS URLs printed by `pnpm dev` in those worktrees. The `status` app is intentionally excluded so normal startup stays fast. Use `pnpm dev:all` when you need to validate every app (including `status`) can start in a fresh worktree, and use `pnpm --filter=status dev` for status-only development.
+`pnpm dev` starts the main local HTTPS apps. `status` is separate. For domains, certificates, env files, worktree port offsets, generated assets, and command details, see [WORKSPACE.md](./WORKSPACE.md).
 
-`pnpm bootstrap` prepares a fresh worktree as far as local permissions and credentials allow.
-`pnpm doctor` runs the same checks in read-only mode and exits non-zero when required dependencies are missing.
-
-For local domains, certificates, environment files, generated assets, and detailed commands, see [WORKSPACE.md](./WORKSPACE.md).
-
-For fresh worktrees, copy each app's `.env.example` into `.env` before smoke testing. Real external secrets are only needed for explicit integration flows (for example payments, analytics, and OAuth).
+Run `vercel login` if bootstrap or environment checks report missing auth.
 
 ## Documentation
 
-- [AGENTS.md](./AGENTS.md): entry point for AI collaborators.
-- [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md): expectations for respectful project participation and reporting concerns.
-- [CONTRIBUTING.md](./CONTRIBUTING.md): setup, development, validation, issue, and pull request guidance.
-- [WORKSPACE.md](./WORKSPACE.md): repo layout, setup, commands, package boundaries, and local development servers.
-- [FRONTEND.md](./FRONTEND.md): Next.js, React, TypeScript, shared UI, Storybook, and app structure rules.
-- [DESIGN.md](./DESIGN.md): visual and interaction design standards.
-- [PRODUCT_SENSE.md](./PRODUCT_SENSE.md): product expectations, user roles, language, and domain behavior.
-- [QUALITY_SCORE.md](./QUALITY_SCORE.md): quality rubric, validation commands, type standards, and review expectations.
-- [RELIABILITY.md](./RELIABILITY.md): data integrity, migrations, background work, observability, and failure handling.
-- [SECURITY.md](./SECURITY.md): auth, secrets, data exposure, validation, payments, and unsafe rendering.
-- [SEO.md](./SEO.md): metadata, structured data, sitemap, canonical URL, and public page rules.
-- [docs/game-entity-creation.md](./docs/game-entity-creation.md): model-to-shop workflow for garden game entities and purchasable blocks.
+[AGENTS.md](./AGENTS.md) is the AI entry point. [CONTRIBUTING.md](./CONTRIBUTING.md) covers contributor flow. The main operating guides are [WORKSPACE.md](./WORKSPACE.md), [FRONTEND.md](./FRONTEND.md), [DESIGN.md](./DESIGN.md), [PRODUCT_SENSE.md](./PRODUCT_SENSE.md), [QUALITY_SCORE.md](./QUALITY_SCORE.md), [RELIABILITY.md](./RELIABILITY.md), [SECURITY.md](./SECURITY.md), and [SEO.md](./SEO.md). Focused docs live under [docs](./docs).
 
 ## API Reference
 
@@ -83,7 +58,7 @@ See the [API Reference](https://api.gredice.com) for the official API documentat
 
 ## Contributing
 
-We welcome community contributions. See [CONTRIBUTING.md](./CONTRIBUTING.md) for setup, development, validation, issue, and pull request guidance, and follow the [Code of Conduct](./CODE_OF_CONDUCT.md) in project spaces.
+See [CONTRIBUTING.md](./CONTRIBUTING.md) and follow the [Code of Conduct](./CODE_OF_CONDUCT.md).
 
 ![Alt](https://repobeats.axiom.co/api/embed/ba847f4d1fae06c8250692c08295602bca8de554.svg "Repobeats analytics image")
 

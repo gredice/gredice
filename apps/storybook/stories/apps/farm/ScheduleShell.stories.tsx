@@ -1,7 +1,7 @@
 import { FarmScheduleSectionSkeleton } from '@apps/farm/app/schedule/FarmScheduleSectionSkeleton';
-import { ScheduleDateNavigation } from '@apps/farm/app/schedule/ScheduleDateNavigation';
 import { HomeButton } from '@apps/farm/components/HomeButton';
 import { Row } from '@gredice/ui/Row';
+import { ScheduleDateNavigation } from '@gredice/ui/ScheduleDateNavigation';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
@@ -12,6 +12,7 @@ const meta = {
     tags: ['autodocs'],
     args: {
         date: new Date('2026-05-21T00:00:00'),
+        basePath: '/schedule',
     },
     parameters: {
         docs: {
@@ -33,6 +34,7 @@ const meta = {
                     </Row>
                     <ScheduleDateNavigation
                         date={new Date('2026-05-21T00:00:00')}
+                        basePath="/schedule"
                     />
                 </Row>
                 <FarmScheduleSectionSkeleton />

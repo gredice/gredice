@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { GameSceneLauncher } from './GameSceneLauncher';
 
 const debugGroups = [
     {
@@ -6,55 +7,38 @@ const debugGroups = [
         pages: [
             {
                 href: '/debug/entities',
-                title: 'Entity grid',
-                description: 'All registered garden entities in one 3D scene.',
+                title: 'Entity sandbox',
+                description:
+                    'Sandbox scene with all placeable debug blocks in separate stacks.',
             },
             {
-                href: '/debug/entities/FireflyJar?zoom=130&static=1',
-                title: 'Single entity viewer',
+                href: '/debug/entities/FireflyJar',
+                title: 'Single entity sandbox',
                 description:
-                    'One entity rendered with EntityViewer. Replace the path segment with any entity name.',
+                    'One block rendered through the standard sandbox scene. Replace the path segment with any block name.',
             },
         ],
     },
     {
-        title: 'Game Scene Profiles',
+        title: 'Game Scene',
         pages: [
             {
-                href: '/debug/profile/game',
-                title: 'Baseline',
-                description: 'Full mock garden scene for baseline rendering.',
-            },
-            {
-                href: '/debug/profile/game?mode=details',
-                title: 'Details',
+                href: '/debug/sandbox',
+                title: 'Local sandbox',
                 description:
-                    'Mock garden scene with deferred detail rendering enabled.',
+                    'Playable sandbox scene backed by browser local storage.',
             },
             {
-                href: '/debug/profile/game?mode=rain&quality=low',
-                title: 'Rain',
-                description: 'Mock garden scene with rainy weather.',
+                href: '/debug/animals',
+                title: 'Animal sandbox',
+                description:
+                    'Animal behavior scene with spawn presets, entity placement, and debug controls.',
             },
             {
-                href: '/debug/profile/game?mode=snow&quality=low',
-                title: 'Snow',
-                description: 'Mock garden scene with winter weather.',
-            },
-            {
-                href: '/debug/profile/game?mode=night&quality=low',
-                title: 'Night',
-                description: 'Mock garden scene at night.',
-            },
-            {
-                href: '/debug/profile/game?mode=storm&quality=low',
-                title: 'Storm',
-                description: 'Mock garden scene with heavy rain and thunder.',
-            },
-            {
-                href: '/debug/profile/game?mode=autumn&quality=low',
-                title: 'Autumn',
-                description: 'Mock garden scene with autumn time and wind.',
+                href: '/debug/profile/game',
+                title: 'Game profile viewer',
+                description:
+                    'Mocked garden scene profiles for weather, season, quality, and HUD checks.',
             },
         ],
     },
@@ -63,9 +47,9 @@ const debugGroups = [
         pages: [
             {
                 href: '/debug/plants',
-                title: 'Plant performance',
+                title: 'Plant-heavy game scene',
                 description:
-                    'Generated plant presets rendered in dense batches.',
+                    'Normal mock game scene prepopulated with planted raised beds.',
             },
         ],
     },
@@ -86,6 +70,9 @@ export default function DebugIndexPage() {
                         <h2 className="text-sm font-semibold uppercase text-neutral-500">
                             {group.title}
                         </h2>
+                        {group.title === 'Game Scene' ? (
+                            <GameSceneLauncher />
+                        ) : null}
                         <div className="grid gap-3 md:grid-cols-2">
                             {group.pages.map((page) => (
                                 <Link

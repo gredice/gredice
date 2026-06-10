@@ -2,21 +2,21 @@ import { type components, directoriesClient } from '@gredice/client';
 import { Card } from '@gredice/ui/Card';
 import { Search, Warning } from '@gredice/ui/icons';
 import { PageHeader } from '@gredice/ui/PageHeader';
-import { Row } from '@gredice/ui/Row';
-import { Stack } from '@gredice/ui/Stack';
-import { Typography } from '@gredice/ui/Typography';
 import {
     normalizeSearchCategory,
     searchCategoryParam,
     searchPageLimit,
-} from '../../components/search/searchCategories';
+} from '@gredice/ui/PublicChrome';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { SearchInteractive } from './SearchInteractive';
 import { SearchPageControls } from './SearchPageControls';
 
 export const revalidate = 300;
 
 const pageDescription =
-    'Pronađi biljke, sorte, radnje, blokove i sjeme na Gredice webu.';
+    'Pronađi biljke, sorte, radnje, bolesti, štetnike, blokove i sjeme na Gredice webu.';
 
 export const metadata = {
     title: 'Pretraga',

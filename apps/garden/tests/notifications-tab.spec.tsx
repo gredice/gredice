@@ -16,8 +16,10 @@ type MockEndpoint<T> = {
 type RecordedNotificationRequests = {
     deviceDeletes: string[];
     devicePatches: unknown[];
+    notificationReads: Array<string | null>;
     preferencesUpdates: unknown[];
     testSends: number;
+    userPatches: unknown[];
 };
 
 const defaultPreferences = [
@@ -26,6 +28,15 @@ const defaultPreferences = [
         channel: 'push',
         digestFrequency: 'off',
         enabled: false,
+        quietHoursEndMinute: null,
+        quietHoursStartMinute: null,
+        scope: 'global',
+    },
+    {
+        category: 'weather_alerts',
+        channel: 'push',
+        digestFrequency: 'off',
+        enabled: true,
         quietHoursEndMinute: null,
         quietHoursStartMinute: null,
         scope: 'global',
@@ -78,9 +89,9 @@ const defaultDevices = [
 ];
 
 function createDeferred(): Deferred {
-    let resolve = () => undefined;
+    let resolve: () => void = () => undefined;
     const promise = new Promise<void>((next) => {
-        resolve = next;
+        resolve = () => next();
     });
     return { promise, resolve };
 }
@@ -118,8 +129,10 @@ async function mockNotificationSettingsApi(
     const recorded: RecordedNotificationRequests = {
         deviceDeletes: [],
         devicePatches: [],
+        notificationReads: [],
         preferencesUpdates: [],
         testSends: 0,
+        userPatches: [],
     };
     const preferences = options.preferences ?? {
         body: { preferences: defaultPreferences },
@@ -153,6 +166,27 @@ async function mockNotificationSettingsApi(
                 email: 'test@example.com',
                 id: 'test-user',
                 userName: 'test-user',
+                whatsNewLastSeenAt: null,
+                whatsNewPopupDisabled: false,
+            });
+            return;
+        }
+
+        if (pathname.includes('/api/users/test-user') && method === 'PATCH') {
+            recorded.userPatches.push(request.postDataJSON());
+            await fulfillJson(route, {
+                avatarUrl: null,
+                birthday: null,
+                birthdayLastRewardAt: null,
+                birthdayLastUpdatedAt: null,
+                createdAt: '2026-01-01T00:00:00.000Z',
+                displayName: 'Test User',
+                email: 'test@example.com',
+                id: 'test-user',
+                userName: 'test-user',
+                whatsNewLastSeenAt: null,
+                whatsNewPopupDisabled:
+                    request.postDataJSON().whatsNewPopupDisabled,
             });
             return;
         }
@@ -219,6 +253,9 @@ async function mockNotificationSettingsApi(
         }
 
         if (pathname.endsWith('/api/notifications') && method === 'GET') {
+            recorded.notificationReads.push(
+                new URL(request.url()).searchParams.get('read'),
+            );
             await fulfillJson(route, []);
             return;
         }
@@ -247,6 +284,17 @@ test('notification tabs size to their labels', async ({ mount, page }) => {
     });
 
     expect(widths.list).toBeLessThan(widths.parent * 0.75);
+});
+
+test('notification list starts with the requested all filter', async ({
+    mount,
+    page,
+}) => {
+    const recorded = await mockNotificationSettingsApi(page);
+
+    await mount(<NotificationsTabStory initialFilter="all" />);
+
+    await expect.poll(() => recorded.notificationReads).toContain('true');
 });
 
 test('notification settings shows loading, status, and empty device states', async ({
@@ -323,6 +371,28 @@ test('notification settings explains required groups and hydrates saved preferen
         '07:00',
     );
     await expect(page.getByText('Tjedno')).toBeVisible();
+});
+
+test('notification settings toggles the what is new widget', async ({
+    mount,
+    page,
+}) => {
+    const recorded = await mockNotificationSettingsApi(page);
+
+    await mount(<NotificationsTabStory />);
+    await page.getByRole('tab', { name: 'Postavke' }).click();
+
+    const whatsNewSwitch = page.getByRole('switch', {
+        name: 'Prikaži widget Što je novo u vrtu',
+    });
+    await expect(whatsNewSwitch).toBeChecked();
+
+    await whatsNewSwitch.click();
+
+    await expect.poll(() => recorded.userPatches.length).toBe(1);
+    expect(recorded.userPatches[0]).toMatchObject({
+        whatsNewPopupDisabled: true,
+    });
 });
 
 test('notification settings shows endpoint errors without hiding the settings tab', async ({

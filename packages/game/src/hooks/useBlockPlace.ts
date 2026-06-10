@@ -1,8 +1,13 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+    createLocalSandboxBlockId,
+    persistLocalSandboxGarden,
+} from '../localSandboxGarden';
 import { useGameState } from '../useGameState';
 import {
     createOptimisticBlockPlacement,
+    removeOptimisticBlockId,
     replaceOptimisticBlockId,
 } from './optimisticBlockPlacement';
 import { useBlockData } from './useBlockData';
@@ -15,6 +20,20 @@ const optimisticBlockIdPrefix = 'optimistic-block';
 type CurrentGardenData = NonNullable<
     ReturnType<typeof useCurrentGarden>['data']
 >;
+
+type BlockPlaceVariables = {
+    blockName: string;
+    expectedExistingBlocks?: string[];
+    localBlockId?: string;
+    position?: BlockPlacePosition;
+};
+
+type BlockPlacePosition = {
+    x: number;
+    y: number;
+};
+
+const placementQueues = new Map<string, Promise<void>>();
 
 async function getBlockPlacementError(response: Response) {
     const responseText = await response.text();
@@ -32,22 +51,69 @@ async function getBlockPlacementError(response: Response) {
     }
 }
 
+function createOptimisticBlockId(blockName: string) {
+    const timestamp = Date.now().toString(36);
+    const randomSuffix = Math.random().toString(36).slice(2);
+    return `${optimisticBlockIdPrefix}:${blockName}:${timestamp}:${randomSuffix}`;
+}
+
+async function runQueuedPlacement<T>(
+    queueKey: string,
+    task: () => Promise<T>,
+): Promise<T> {
+    const previous = placementQueues.get(queueKey) ?? Promise.resolve();
+    const current = previous.catch(() => undefined).then(task);
+    const currentQueue = current.then(
+        () => undefined,
+        () => undefined,
+    );
+    placementQueues.set(queueKey, currentQueue);
+
+    try {
+        return await current;
+    } finally {
+        if (placementQueues.get(queueKey) === currentQueue) {
+            placementQueues.delete(queueKey);
+        }
+    }
+}
+
 export function useBlockPlace() {
     const queryClient = useQueryClient();
     const { data: garden } = useCurrentGarden();
     const { data: blockData } = useBlockData();
+    const localSandboxStorageKey = useGameState(
+        (state) => state.localSandboxStorageKey,
+    );
     const winterMode = useGameState((state) => state.winterMode);
     const queuePlacedBlockEffect = useGameState(
         (state) => state.queuePlacedBlockEffect,
     );
-    const gardenQueryKey = currentGardenKeys(winterMode, garden?.id);
+    const queueBlockPlacementDropAnimation = useGameState(
+        (state) => state.queueBlockPlacementDropAnimation,
+    );
+    const gardenQueryKey = currentGardenKeys(
+        winterMode,
+        garden?.id,
+        undefined,
+        localSandboxStorageKey,
+    );
 
     return useMutation({
         mutationKey,
-        mutationFn: async ({ blockName }: { blockName: string }) => {
+        mutationFn: async (variables: BlockPlaceVariables) => {
             if (!garden) {
                 throw new Error('No garden selected');
             }
+
+            if (localSandboxStorageKey) {
+                return {
+                    id:
+                        variables.localBlockId ??
+                        createLocalSandboxBlockId(variables.blockName),
+                };
+            }
+
             const response = await clientAuthenticated().api.gardens[
                 ':gardenId'
             ].blocks.$post({
@@ -55,7 +121,16 @@ export function useBlockPlace() {
                     gardenId: garden.id.toString(),
                 },
                 json: {
-                    blockName,
+                    blockName: variables.blockName,
+                    ...(variables.expectedExistingBlocks
+                        ? {
+                              expectedExistingBlocks:
+                                  variables.expectedExistingBlocks,
+                          }
+                        : {}),
+                    ...(variables.position
+                        ? { position: variables.position }
+                        : {}),
                 },
             });
             if (!response.ok) {
@@ -64,49 +139,79 @@ export function useBlockPlace() {
 
             return await response.json();
         },
-        onMutate: async ({ blockName }) => {
+        onMutate: async (variables) => {
             if (!garden) {
                 return;
             }
 
-            const currentGarden =
-                queryClient.getQueryData<CurrentGardenData>(gardenQueryKey) ??
-                garden;
-            const optimisticBlockId = `${optimisticBlockIdPrefix}:${blockName}:${Date.now().toString(36)}`;
-            const optimisticPlacement = createOptimisticBlockPlacement(
-                currentGarden,
-                blockData,
-                blockName,
-                optimisticBlockId,
+            return await runQueuedPlacement(
+                JSON.stringify(gardenQueryKey),
+                async () => {
+                    await queryClient.cancelQueries({
+                        queryKey: gardenQueryKey,
+                    });
+                    const currentGarden =
+                        queryClient.getQueryData<CurrentGardenData>(
+                            gardenQueryKey,
+                        ) ?? garden;
+                    const optimisticBlockId = localSandboxStorageKey
+                        ? createLocalSandboxBlockId(variables.blockName)
+                        : createOptimisticBlockId(variables.blockName);
+                    variables.localBlockId = localSandboxStorageKey
+                        ? optimisticBlockId
+                        : undefined;
+                    const optimisticPlacement = createOptimisticBlockPlacement(
+                        currentGarden,
+                        blockData,
+                        variables.blockName,
+                        optimisticBlockId,
+                    );
+                    if (!optimisticPlacement) {
+                        return;
+                    }
+
+                    variables.position = {
+                        x: optimisticPlacement.position.x,
+                        y: optimisticPlacement.position.z,
+                    };
+                    variables.expectedExistingBlocks =
+                        optimisticPlacement.existingBlocks;
+                    const nextGarden = {
+                        ...currentGarden,
+                        stacks: optimisticPlacement.stacks,
+                    };
+                    queueBlockPlacementDropAnimation(optimisticBlockId);
+                    queryClient.setQueryData<CurrentGardenData>(
+                        gardenQueryKey,
+                        nextGarden,
+                    );
+                    if (localSandboxStorageKey) {
+                        persistLocalSandboxGarden(
+                            localSandboxStorageKey,
+                            nextGarden,
+                        );
+                    }
+
+                    const placedBlockData = blockData?.find(
+                        (block) =>
+                            block.information.name === variables.blockName,
+                    );
+                    // Sandbox gardens build for free — no sunflowers are spent.
+                    const amount = garden.isSandbox
+                        ? 0
+                        : (placedBlockData?.prices.sunflowers ?? 0);
+                    if (amount > 0) {
+                        queuePlacedBlockEffect(optimisticBlockId, {
+                            kind: 'sunflowers',
+                            amount,
+                        });
+                    }
+
+                    return {
+                        optimisticBlockId,
+                    };
+                },
             );
-            if (!optimisticPlacement) {
-                return;
-            }
-
-            await queryClient.cancelQueries({ queryKey: gardenQueryKey });
-            const previousGarden =
-                queryClient.getQueryData<CurrentGardenData>(gardenQueryKey) ??
-                currentGarden;
-            queryClient.setQueryData<CurrentGardenData>(gardenQueryKey, {
-                ...currentGarden,
-                stacks: optimisticPlacement.stacks,
-            });
-
-            const placedBlockData = blockData?.find(
-                (block) => block.information.name === blockName,
-            );
-            const amount = placedBlockData?.prices.sunflowers ?? 0;
-            if (amount > 0) {
-                queuePlacedBlockEffect(optimisticBlockId, {
-                    kind: 'sunflowers',
-                    amount,
-                });
-            }
-
-            return {
-                optimisticBlockId,
-                previousGarden,
-            };
         },
         onSuccess: (data, _variables, context) => {
             if (!context?.optimisticBlockId) {
@@ -127,14 +232,24 @@ export function useBlockPlace() {
         },
         onError: (error, _variables, context) => {
             console.error('Error creating block', error);
-            if (context?.previousGarden) {
-                queryClient.setQueryData(
+            if (context?.optimisticBlockId) {
+                queryClient.setQueryData<CurrentGardenData | null>(
                     gardenQueryKey,
-                    context.previousGarden,
+                    (currentGarden) =>
+                        currentGarden
+                            ? removeOptimisticBlockId(
+                                  currentGarden,
+                                  context.optimisticBlockId,
+                              )
+                            : currentGarden,
                 );
             }
         },
         onSettled: async () => {
+            if (localSandboxStorageKey) {
+                return;
+            }
+
             await queryClient.invalidateQueries({
                 queryKey: currentAccountKeys,
             });

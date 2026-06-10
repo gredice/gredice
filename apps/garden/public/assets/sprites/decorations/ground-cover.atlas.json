@@ -33,6 +33,21 @@
             },
             "index": 0,
             "spriteCount": 16
+        },
+        {
+            "atlas": {
+                "cellSize": 512,
+                "columns": 4,
+                "height": 2048,
+                "innerSize": 480,
+                "offsetX": 0,
+                "offsetY": 0,
+                "padding": 16,
+                "rows": 4,
+                "width": 2048
+            },
+            "index": 1,
+            "spriteCount": 6
         }
     ],
     "sprites": {
@@ -187,6 +202,120 @@
             },
             "page": 0,
             "source": "apps/garden/data/sriptes/extracted/ground-cover/desert/08.png"
+        },
+        "flower__blue": {
+            "aspect": 1,
+            "cell": {
+                "column": 0,
+                "height": 512,
+                "row": 0,
+                "width": 512,
+                "x": 0,
+                "y": 0
+            },
+            "frame": {
+                "height": 256,
+                "width": 256,
+                "x": 128,
+                "y": 240
+            },
+            "page": 1,
+            "source": "apps/garden/data/sriptes/extracted/ground-cover/flower/blue.png"
+        },
+        "flower__cream": {
+            "aspect": 1,
+            "cell": {
+                "column": 1,
+                "height": 512,
+                "row": 0,
+                "width": 512,
+                "x": 512,
+                "y": 0
+            },
+            "frame": {
+                "height": 256,
+                "width": 256,
+                "x": 640,
+                "y": 240
+            },
+            "page": 1,
+            "source": "apps/garden/data/sriptes/extracted/ground-cover/flower/cream.png"
+        },
+        "flower__orange": {
+            "aspect": 1,
+            "cell": {
+                "column": 2,
+                "height": 512,
+                "row": 0,
+                "width": 512,
+                "x": 1024,
+                "y": 0
+            },
+            "frame": {
+                "height": 256,
+                "width": 256,
+                "x": 1152,
+                "y": 240
+            },
+            "page": 1,
+            "source": "apps/garden/data/sriptes/extracted/ground-cover/flower/orange.png"
+        },
+        "flower__pink": {
+            "aspect": 1,
+            "cell": {
+                "column": 3,
+                "height": 512,
+                "row": 0,
+                "width": 512,
+                "x": 1536,
+                "y": 0
+            },
+            "frame": {
+                "height": 256,
+                "width": 256,
+                "x": 1664,
+                "y": 240
+            },
+            "page": 1,
+            "source": "apps/garden/data/sriptes/extracted/ground-cover/flower/pink.png"
+        },
+        "flower__violet": {
+            "aspect": 1,
+            "cell": {
+                "column": 0,
+                "height": 512,
+                "row": 1,
+                "width": 512,
+                "x": 0,
+                "y": 512
+            },
+            "frame": {
+                "height": 256,
+                "width": 256,
+                "x": 128,
+                "y": 752
+            },
+            "page": 1,
+            "source": "apps/garden/data/sriptes/extracted/ground-cover/flower/violet.png"
+        },
+        "flower__yellow": {
+            "aspect": 1,
+            "cell": {
+                "column": 1,
+                "height": 512,
+                "row": 1,
+                "width": 512,
+                "x": 512,
+                "y": 512
+            },
+            "frame": {
+                "height": 256,
+                "width": 256,
+                "x": 640,
+                "y": 752
+            },
+            "page": 1,
+            "source": "apps/garden/data/sriptes/extracted/ground-cover/flower/yellow.png"
         },
         "grass__01": {
             "aspect": 1.919463087248322,

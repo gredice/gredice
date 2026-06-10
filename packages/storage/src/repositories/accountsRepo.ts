@@ -126,6 +126,7 @@ export async function getSunflowers(accountId: string) {
     const events = await getEvents(
         [
             knownEventTypes.accounts.earnSunflowers,
+            knownEventTypes.accounts.earnSunflowerDrop,
             knownEventTypes.accounts.spendSunflowers,
         ],
         [accountId],
@@ -148,6 +149,7 @@ export async function getSunflowersHistory(
     const earnEvents = await getEvents(
         [
             knownEventTypes.accounts.earnSunflowers,
+            knownEventTypes.accounts.earnSunflowerDrop,
             knownEventTypes.accounts.spendSunflowers,
         ],
         [accountId],

@@ -1,14 +1,29 @@
 import { Edges } from '@react-three/drei';
+import type { ThreeEvent } from '@react-three/fiber';
 import type { PropsWithChildren } from 'react';
+import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
+import {
+    createBlockInteractionTargetKey,
+    useBlockInteractionTargetRegistration,
+} from '../controls/BlockInteractionRegistry';
 import { PickableGroup } from '../controls/PickableGroup';
 import { RotatableGroup } from '../controls/RotatableGroup';
 import { SelectableGroup } from '../controls/SelectableGroup';
+import { useDeferredSingleClick } from '../controls/useDeferredSingleClick';
+import { useHoveredBlockStore } from '../controls/useHoveredBlockStore';
 import { useBlockData } from '../hooks/useBlockData';
-import { useIsEditMode } from '../hooks/useIsEditMode';
+import {
+    useCurrentGarden,
+    useIsSandboxGarden,
+} from '../hooks/useCurrentGarden';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useGameState } from '../useGameState';
+import { useSetRaisedBedCloseupParam } from '../useRaisedBedCloseup';
+import { useGiftBoxParam } from '../useUrlState';
 import { useStackHeight } from '../utils/getStackHeight';
+import { findRaisedBedByBlockId } from '../utils/raisedBedBlocks';
 import { entityNameMap } from './entityNameMap';
+import { QueuedPlacementDropAnimation } from './helpers/PlacementDropAnimation';
 
 export type EntityFactoryProps = {
     name: string;
@@ -40,6 +55,7 @@ function EntityRenderModeDebugOverlay({
 
     return (
         <mesh
+            name={`Debug:EntityRenderMode:${instanced ? 'instanced' : 'component'}:${block.name}:${block.id}`}
             position={[
                 stack.position.x,
                 currentStackHeight + overlayHeight / 2,
@@ -64,35 +80,110 @@ function EntityRenderModeDebugOverlay({
     );
 }
 
-function InstancedEntityControlTarget({
+function EntityPlacementDropAnimation({
+    children,
     stack,
     block,
-}: Pick<EntityInstanceProps, 'stack' | 'block'>) {
-    const { data: blockData } = useBlockData();
+}: PropsWithChildren<Pick<EntityInstanceProps, 'stack' | 'block'>>) {
     const currentStackHeight = useStackHeight(stack, block);
-    const editHitboxDebugVisible = useGameState(
-        (state) => state.editHitboxDebugVisible,
-    );
-    const blockHeight =
-        blockData?.find((entity) => entity.information.name === block.name)
-            ?.attributes.height ?? 1;
-    const hitboxHeight = Math.max(blockHeight, 0.35);
 
     return (
-        <mesh
-            position={[
+        <QueuedPlacementDropAnimation
+            block={block}
+            particlePosition={[
                 stack.position.x,
-                currentStackHeight + hitboxHeight / 2,
+                currentStackHeight,
                 stack.position.z,
             ]}
         >
-            <boxGeometry args={[1, hitboxHeight, 1]} />
-            <meshBasicMaterial visible={false} />
-            {editHitboxDebugVisible && (
-                <Edges color="#22d3ee" renderOrder={10_000} threshold={1} />
-            )}
-        </mesh>
+            {children}
+        </QueuedPlacementDropAnimation>
     );
+}
+
+function InstancedEntitySelectionRegistration({
+    block,
+    blockIndex,
+    interactionTargetKey,
+    stack,
+}: Pick<EntityInstanceProps, 'stack' | 'block'> & {
+    blockIndex: number;
+    interactionTargetKey: string | undefined;
+}) {
+    const { data: garden } = useCurrentGarden();
+    const { track } = useGameAnalytics();
+    const hovered = useHoveredBlockStore();
+    const isSandbox = useIsSandboxGarden();
+    const hasActiveDragPreview = useGameState((state) =>
+        Boolean(state.activeDragPreview),
+    );
+    const setOpenGardenBoxBlockId = useGameState(
+        (state) => state.setOpenGardenBoxBlockId,
+    );
+    const { mutate: setRaisedBedCloseupParam } = useSetRaisedBedCloseupParam();
+    const [, setGiftBoxParam] = useGiftBoxParam();
+    const raisedBed =
+        block.name === 'Raised_Bed'
+            ? findRaisedBedByBlockId(garden, block.id)
+            : null;
+    const selectable =
+        block.name === 'GardenBox' ||
+        block.name.startsWith('GiftBox_') ||
+        Boolean(raisedBed);
+    const handleSelected = useDeferredSingleClick(() => {
+        if (block.name === 'GardenBox') {
+            if (!isSandbox && !hasActiveDragPreview) {
+                setOpenGardenBoxBlockId(block.id);
+            }
+            return;
+        }
+
+        if (block.name === 'Raised_Bed' && raisedBed) {
+            track('game_raised_bed_opened', {
+                block_id: block.id,
+                raised_bed_name: raisedBed.name,
+            });
+            setRaisedBedCloseupParam(raisedBed.name);
+            hovered.setHoveredBlock(null);
+            return;
+        }
+
+        if (block.name.startsWith('GiftBox_')) {
+            setGiftBoxParam(block.id);
+        }
+    });
+
+    useBlockInteractionTargetRegistration(
+        interactionTargetKey,
+        interactionTargetKey
+            ? {
+                  block,
+                  blockIndex,
+                  stack,
+              }
+            : undefined,
+        {
+            onSelectClick: (event: ThreeEvent<MouseEvent>) => {
+                handleSelected(event);
+            },
+            ...(selectable
+                ? {
+                      onPointerEnter: (event: ThreeEvent<PointerEvent>) => {
+                          event.stopPropagation();
+                          hovered.setHoveredBlock(block);
+                      },
+                      onPointerLeave: (event: ThreeEvent<PointerEvent>) => {
+                          if (hovered.hoveredBlock === block) {
+                              event.stopPropagation();
+                              hovered.setHoveredBlock(null);
+                          }
+                      },
+                  }
+                : {}),
+        },
+    );
+
+    return null;
 }
 
 export function EntityFactory({
@@ -103,10 +194,17 @@ export function EntityFactory({
     noRenderInView,
     ...rest
 }: EntityFactoryProps & EntityInstanceProps) {
-    const isEditMode = useIsEditMode();
     const EntityComponent = entityNameMap[name];
     const view = useGameState((state) => state.view);
     const isInstancedInView = noRenderInView?.includes(name) ?? false;
+    const blockIndex = stack.blocks.indexOf(block);
+    const interactionTargetKey = isInstancedInView
+        ? createBlockInteractionTargetKey({
+              blockId: block.id,
+              blockIndex,
+              stackPosition: stack.position,
+          })
+        : undefined;
 
     if (!EntityComponent) {
         console.error(
@@ -117,7 +215,7 @@ export function EntityFactory({
     }
 
     if (isInstancedInView) {
-        if (!isEditMode) {
+        if (noControl || view === 'closeup') {
             return (
                 <EntityRenderModeDebugOverlay
                     stack={stack}
@@ -127,67 +225,53 @@ export function EntityFactory({
             );
         }
 
-        const controlTarget = (
+        return (
             <>
-                <InstancedEntityControlTarget stack={stack} block={block} />
-                <EntityRenderModeDebugOverlay
+                <InstancedEntitySelectionRegistration
+                    block={block}
+                    blockIndex={blockIndex}
+                    interactionTargetKey={interactionTargetKey}
+                    stack={stack}
+                />
+                <PickableGroup
                     stack={stack}
                     block={block}
-                    instanced
-                />
+                    interactionTargetKey={interactionTargetKey}
+                    noControl={noControl}
+                    renderPickupOutline={false}
+                >
+                    <RotatableGroup
+                        block={block}
+                        blockIndex={blockIndex}
+                        interactionTargetKey={interactionTargetKey}
+                        stack={stack}
+                    >
+                        <EntityRenderModeDebugOverlay
+                            stack={stack}
+                            block={block}
+                            instanced
+                        />
+                    </RotatableGroup>
+                </PickableGroup>
             </>
         );
-        const isTopBlock =
-            stack.blocks.indexOf(block) === stack.blocks.length - 1;
-
-        if (!isTopBlock) {
-            return (
-                <RotatableGroup block={block}>{controlTarget}</RotatableGroup>
-            );
-        }
-
-        return (
-            <PickableGroup stack={stack} block={block} noControl={noControl}>
-                <RotatableGroup block={block}>{controlTarget}</RotatableGroup>
-            </PickableGroup>
-        );
     }
 
-    if (!isEditMode) {
-        if (noControl) {
-            return (
-                <>
-                    <EntityRenderModeDebugOverlay
-                        stack={stack}
-                        block={block}
-                        instanced={false}
-                    />
-                    <EntityComponent stack={stack} block={block} {...rest} />
-                </>
-            );
-        }
-
-        const SelectableGroupWrapper =
-            view !== 'closeup'
-                ? SelectableGroup
-                : (props: PropsWithChildren) => <>{props.children}</>;
-
+    if (noControl || view === 'closeup') {
         return (
-            <SelectableGroupWrapper block={block}>
+            <>
                 <EntityRenderModeDebugOverlay
                     stack={stack}
                     block={block}
                     instanced={false}
                 />
                 <EntityComponent stack={stack} block={block} {...rest} />
-            </SelectableGroupWrapper>
+            </>
         );
     }
 
-    // Non-top blocks are not pickable
-    const isTopBlock = stack.blocks.indexOf(block) === stack.blocks.length - 1;
-    if (!isTopBlock) {
-        return (
+    const entityContent = (
+        <EntityPlacementDropAnimation stack={stack} block={block}>
             <RotatableGroup block={block}>
                 <EntityRenderModeDebugOverlay
                     stack={stack}
@@ -196,19 +280,14 @@ export function EntityFactory({
                 />
                 <EntityComponent stack={stack} block={block} {...rest} />
             </RotatableGroup>
-        );
-    }
+        </EntityPlacementDropAnimation>
+    );
 
     return (
-        <PickableGroup stack={stack} block={block} noControl={noControl}>
-            <RotatableGroup block={block}>
-                <EntityRenderModeDebugOverlay
-                    stack={stack}
-                    block={block}
-                    instanced={false}
-                />
-                <EntityComponent stack={stack} block={block} {...rest} />
-            </RotatableGroup>
-        </PickableGroup>
+        <SelectableGroup block={block}>
+            <PickableGroup stack={stack} block={block} noControl={noControl}>
+                {entityContent}
+            </PickableGroup>
+        </SelectableGroup>
     );
 }

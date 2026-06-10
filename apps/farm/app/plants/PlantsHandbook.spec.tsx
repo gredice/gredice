@@ -1,5 +1,6 @@
 import type { EntityStandardized } from '@gredice/storage';
 import { expect, test } from '@playwright/experimental-ct-react';
+import { PlantSortDetails } from './PlantSortDetails';
 import { PlantsHandbook } from './PlantsHandbook';
 
 const tomatoPlant = {
@@ -33,6 +34,14 @@ const basilSort = {
     },
 } satisfies EntityStandardized;
 
+const pepperSort = {
+    id: 103,
+    information: {
+        name: 'Paprika',
+        description: 'Njega uključuje:\n- zalijevanje\n- berbu',
+    },
+} satisfies EntityStandardized;
+
 test('plant handbook search includes parent plant alternative names', async ({
     mount,
     page,
@@ -46,9 +55,25 @@ test('plant handbook search includes parent plant alternative names', async ({
     await expect(searchInput).toBeFocused();
     await expect(searchInput).toHaveValue('paradajz');
     await expect(
-        page.getByRole('button', { name: /Cherry rajčica/ }),
+        page.getByRole('link', { name: /Cherry rajčica/ }),
     ).toBeVisible();
     await expect(
-        page.getByRole('button', { name: /Genovese bosiljak/ }),
+        page.getByRole('link', { name: /Genovese bosiljak/ }),
     ).toHaveCount(0);
+});
+
+test('plant sort details render description markdown', async ({
+    mount,
+    page,
+}) => {
+    await mount(<PlantSortDetails plantSort={pepperSort} />);
+
+    await expect(page.getByText('Njega uključuje:')).toBeVisible();
+    await expect(
+        page.getByRole('listitem').filter({ hasText: 'zalijevanje' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('listitem').filter({ hasText: 'berbu' }),
+    ).toBeVisible();
+    await expect(page.getByText('- zalijevanje')).toHaveCount(0);
 });

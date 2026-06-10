@@ -13,6 +13,7 @@ import { useGameState } from '../useGameState';
 
 type RainWetOverlayProps = {
     geometry: BufferGeometry;
+    debugName?: string;
     minRain?: number;
     intensityMultiplier?: number;
     drySpeed?: number;
@@ -36,9 +37,15 @@ varying vec3 vWorldPos;
 varying vec3 vWorldNormal;
 
 void main() {
-    vec4 worldPos = modelMatrix * vec4(position, 1.0);
+    vec4 localPos = vec4(position, 1.0);
+    vec3 objectNormal = normal;
+    #ifdef USE_INSTANCING
+        localPos = instanceMatrix * localPos;
+        objectNormal = normalize(mat3(instanceMatrix) * objectNormal);
+    #endif
+    vec4 worldPos = modelMatrix * localPos;
     vWorldPos = worldPos.xyz;
-    vWorldNormal = normalize(mat3(modelMatrix) * normal);
+    vWorldNormal = normalize(mat3(modelMatrix) * objectNormal);
     gl_Position = projectionMatrix * viewMatrix * worldPos;
 }
 `;
@@ -92,9 +99,21 @@ export function RainWetOverlay(props: RainWetOverlayProps) {
     return <RainWetOverlayEffect {...props} />;
 }
 
-function RainWetOverlayEffect({
-    geometry,
+export function useRainWetOverlayVisible({
+    intensityMultiplier = 1,
     minRain = 0.08,
+}: Pick<RainWetOverlayProps, 'intensityMultiplier' | 'minRain'> = {}) {
+    const flags = useGameFlags();
+    const rainAmount = useGameState((state) => state.weather?.rainy ?? 0);
+
+    return (
+        flags.enableRainWetOverlayFlag &&
+        rainAmount * intensityMultiplier >= minRain
+    );
+}
+
+export function useRainWetOverlayMaterial({
+    geometry,
     intensityMultiplier = 1,
     drySpeed = 1.8,
     wetSpeed = 5,
@@ -102,10 +121,18 @@ function RainWetOverlayEffect({
     darkness = 1,
     glossiness = 0.7,
     bounds,
-}: RainWetOverlayProps) {
+}: Pick<
+    RainWetOverlayProps,
+    | 'bounds'
+    | 'darkness'
+    | 'drySpeed'
+    | 'geometry'
+    | 'glossiness'
+    | 'intensityMultiplier'
+    | 'topSurfaceBias'
+    | 'wetSpeed'
+>) {
     const rainAmount = useGameState((state) => state.weather?.rainy ?? 0);
-    const shouldRender = rainAmount * intensityMultiplier >= minRain;
-
     const resolvedBounds = useMemo(() => {
         if (bounds) return bounds;
         if (!geometry.boundingBox) {
@@ -183,9 +210,39 @@ function RainWetOverlayEffect({
         );
     });
 
+    return material;
+}
+
+function RainWetOverlayEffect({
+    debugName = 'RainWetOverlay',
+    geometry,
+    minRain = 0.08,
+    intensityMultiplier = 1,
+    drySpeed = 1.8,
+    wetSpeed = 5,
+    topSurfaceBias = 1.8,
+    darkness = 1,
+    glossiness = 0.7,
+    bounds,
+}: RainWetOverlayProps) {
+    const shouldRender = useRainWetOverlayVisible({
+        intensityMultiplier,
+        minRain,
+    });
+    const material = useRainWetOverlayMaterial({
+        bounds,
+        darkness,
+        drySpeed,
+        geometry,
+        glossiness,
+        intensityMultiplier,
+        topSurfaceBias,
+        wetSpeed,
+    });
+
     if (!shouldRender && material.uniforms.uWetness.value < 0.01) {
         return null;
     }
 
-    return <mesh geometry={geometry} material={material} />;
+    return <mesh name={debugName} geometry={geometry} material={material} />;
 }

@@ -98,8 +98,7 @@ const buttonColorClassNames = {
     },
     outlined: {
         primary: 'text-primary hover:bg-primary/10',
-        secondary:
-            'text-secondary-foreground hover:bg-secondary/40',
+        secondary: 'text-secondary-foreground hover:bg-secondary/40',
         danger: 'border-red-300 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950',
         error: 'border-red-300 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950',
         warning:

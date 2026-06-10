@@ -1,6 +1,6 @@
 ---
 name: gredice-public-docs-seo
-description: Create, update, or review public Gredice documentation, content pages, metadata, structured data, sitemap behavior, public Croatian copy, FAQ/legal/plant/operation/block/recipe pages, CMS-rendered public routes, and SEO-sensitive work in apps/www or apps/status.
+description: "Use for public Gredice content/SEO in apps/www or status: metadata, structured data, sitemap, Croatian copy, FAQ/legal/product pages, CMS routes."
 ---
 
 # Gredice Public Docs SEO
@@ -88,20 +88,4 @@ Follow `PRODUCT_SENSE.md`:
 
 ## Validation
 
-Use targeted commands:
-
-```bash
-pnpm build --filter www
-pnpm test --filter www
-pnpm lint --filter www
-```
-
-For content-only changes, `git diff --check` may be enough when metadata, routing, sitemap, and rendering behavior are untouched.
-
-For visual layout changes, start the app and inspect responsive behavior:
-
-```bash
-pnpm --filter www dev
-```
-
-Use screenshots when validating public first-view content, responsive layout, or structured visual changes.
+Use targeted `www` lint/test/build checks when metadata, routing, sitemap, rendering, or public behavior changes. Content-only docs may only need `git diff --check`. For visual layout changes, start `www`, inspect responsive behavior, and capture screenshots when first-view or structured visual content changed.

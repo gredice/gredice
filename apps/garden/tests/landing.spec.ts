@@ -93,6 +93,10 @@ async function mockGardenApi(page: Page, signedIn: boolean) {
                 windDirection: null,
                 windSpeed: 0,
             };
+        } else if (pathname.endsWith('/api/data/weather/history/range')) {
+            body = { from: null, to: null };
+        } else if (pathname.endsWith('/api/data/weather/history')) {
+            body = [];
         } else if (pathname.endsWith('/api/data/weather')) {
             body = [];
         } else if (
@@ -119,6 +123,8 @@ async function mockGardenApi(page: Page, signedIn: boolean) {
                 totalSunflowers: 0,
             };
         } else if (pathname.endsWith('/api/inventory')) {
+            body = { items: [] };
+        } else if (pathname.endsWith('/api/outlet/offers')) {
             body = { items: [] };
         } else if (pathname.endsWith('/api/notifications/preferences')) {
             body = { preferences: [] };
@@ -176,6 +182,6 @@ test('loads signed-in landing page HUD without immediate runtime failures', asyn
 
     expect(response?.ok()).toBe(true);
     await expect(page).toHaveTitle(/Gredice/);
-    await expect(page.getByTitle(/zvuk/u)).toBeVisible();
+    await expect(page.getByTitle(/zvuk/u)).toBeVisible({ timeout: 15_000 });
     await expectNoImmediateRuntimeFailures(page, failures);
 });

@@ -7,15 +7,13 @@ import {
     useQueryStates,
 } from 'nuqs';
 
-// Game mode parameter (Croatian: "uredivanje" = editing)
-// true = edit mode, false/undefined = normal mode
-export function useGameModeParam() {
-    return useQueryState('uredivanje', parseAsBoolean.withDefault(false));
-}
-
 // Shopping cart modal parameter (Croatian: "kosarica" = cart)
 export function useShoppingCartOpenParam() {
     return useQueryState('kosarica', parseAsBoolean.withDefault(false));
+}
+
+export function useOutletOpenParam() {
+    return useQueryState('outlet', parseAsString);
 }
 
 // Backpack/Inventory modal parameter (Croatian: "ruksak" = backpack)
@@ -53,6 +51,20 @@ export function useRaisedBedCloseupParam() {
     return useQueryState('gredica', parseAsString);
 }
 
+const raisedBedCloseupParamParsers = {
+    gredica: parseAsString,
+    polje: parseAsInteger,
+};
+
+export function useRaisedBedCloseupParams() {
+    return useQueryStates(raisedBedCloseupParamParsers);
+}
+
+// Raised bed field details parameter (Croatian: "polje" = field)
+export function useRaisedBedFieldDetailsParam() {
+    return useQueryState('polje', parseAsInteger);
+}
+
 // Gift box modal parameter (Croatian: "poklon-kutija" = gift box)
 export function useGiftBoxParam() {
     return useQueryState('poklon-kutija', parseAsString);
@@ -65,11 +77,12 @@ export function useCurrentGardenIdParam() {
 
 // Serializer for building URLs with query params
 export const urlStateSerializer = createSerializer({
-    uredivanje: parseAsBoolean,
     kosarica: parseAsBoolean,
+    outlet: parseAsString,
     ruksak: parseAsBoolean,
     'ruksak-kartica': parseAsString,
     gredica: parseAsString,
+    polje: parseAsInteger,
     'poklon-kutija': parseAsString,
     vrt: parseAsInteger,
 });

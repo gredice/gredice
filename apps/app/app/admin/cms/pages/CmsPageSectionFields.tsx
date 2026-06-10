@@ -14,6 +14,7 @@ import type {
     CmsPageFeatureData,
     CmsPageSectionData,
 } from './CmsPageFormTypes';
+import { CmsPageMarkdownEditor } from './CmsPageMarkdownEditor';
 
 type CmsPageSectionFieldsProps = {
     section?: CmsPageEditableSection;
@@ -601,6 +602,26 @@ export function CmsPageSectionFields({
                 }
 
                 if (field.type === 'textarea') {
+                    if (
+                        section.data.component === 'MarkdownBlock' &&
+                        field.key === 'markdown'
+                    ) {
+                        return (
+                            <CmsPageMarkdownEditor
+                                key={`${section.id}-${field.key}`}
+                                value={textValue(section.data[field.key])}
+                                label={field.label}
+                                required={field.required}
+                                helperText={field.helperText}
+                                placeholder={field.placeholder}
+                                error={error}
+                                onChange={(value) =>
+                                    updateField(field.key, value)
+                                }
+                            />
+                        );
+                    }
+
                     return (
                         <label className="space-y-1" key={field.key}>
                             <span className="block text-sm font-medium">

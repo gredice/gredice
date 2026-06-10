@@ -45,7 +45,40 @@ const cartItem = {
     },
 } as unknown as ShoppingCartItemData;
 
-function createOptimisticToggleQueryClient() {
+function createOutletCartItem() {
+    return {
+        ...cartItem,
+        shopData: {
+            ...cartItem.shopData,
+            discountDescription: 'Outlet sadnica',
+            discountPrice: 1.2,
+        },
+        outlet: {
+            offerId: 1,
+            reservationId: 1,
+            status: 'held',
+            holdExpiresAt: new Date(Date.now() + 90_000).toISOString(),
+            endAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+            sowingDate: '2026-04-15T00:00:00.000Z',
+            initialPlantStatus: 'sprouted',
+            outletPrice: 1.2,
+            comparePrice: 2.5,
+            expired: false,
+        },
+    } as unknown as ShoppingCartItemData;
+}
+
+function createPaidCartItem() {
+    return {
+        ...cartItem,
+        additionalData: JSON.stringify({
+            scheduledDate: '2040-01-05T00:00:00.000Z',
+        }),
+        status: 'paid',
+    } as unknown as ShoppingCartItemData;
+}
+
+function createOptimisticToggleQueryClient(item = cartItem) {
     const queryClient = new ReactQuery.QueryClient({
         defaultOptions: {
             queries: { retry: false, staleTime: Infinity },
@@ -74,7 +107,7 @@ function createOptimisticToggleQueryClient() {
         allowPurchase: true,
         hasDeliverableItems: false,
         id: 1,
-        items: [cartItem],
+        items: [item],
         notes: [],
         total: 2.5,
         totalSunflowers: 0,
@@ -85,8 +118,12 @@ function createOptimisticToggleQueryClient() {
 
 function ShoppingCartOptimisticToggleProviders({
     children,
-}: PropsWithChildren) {
-    const queryClient = useMemo(() => createOptimisticToggleQueryClient(), []);
+    item,
+}: PropsWithChildren<{ item?: ShoppingCartItemData }>) {
+    const queryClient = useMemo(
+        () => createOptimisticToggleQueryClient(item),
+        [item],
+    );
     const gameStore = useMemo(
         () =>
             createGameState({
@@ -135,6 +172,26 @@ function ShoppingCartOptimisticTogglePanel() {
 export function ShoppingCartOptimisticToggleStory() {
     return (
         <ShoppingCartOptimisticToggleProviders>
+            <ShoppingCartOptimisticTogglePanel />
+        </ShoppingCartOptimisticToggleProviders>
+    );
+}
+
+export function ShoppingCartOutletCountdownStory() {
+    const item = useMemo(() => createOutletCartItem(), []);
+
+    return (
+        <ShoppingCartOptimisticToggleProviders item={item}>
+            <ShoppingCartOptimisticTogglePanel />
+        </ShoppingCartOptimisticToggleProviders>
+    );
+}
+
+export function ShoppingCartPaidItemStory() {
+    const item = useMemo(() => createPaidCartItem(), []);
+
+    return (
+        <ShoppingCartOptimisticToggleProviders item={item}>
             <ShoppingCartOptimisticTogglePanel />
         </ShoppingCartOptimisticToggleProviders>
     );

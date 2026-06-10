@@ -1,6 +1,7 @@
 'use client';
 
 export type GameQualityTier = 'low' | 'medium' | 'high';
+type GameQualityAutoTier = Exclude<GameQualityTier, 'low'>;
 export type GameQualityProfileTier = GameQualityTier | 'custom';
 export type GameQualitySetting = GameQualityTier | 'auto' | 'custom';
 export type GameCloudShadowMode = 'hard' | 'soft';
@@ -65,6 +66,10 @@ export const gameQualityProfiles = {
 const GAME_QUALITY_SETTING_STORAGE_KEY = 'game-quality-setting';
 const GAME_QUALITY_CUSTOM_PROFILE_STORAGE_KEY = 'game-quality-custom-profile';
 const shadowMapSizeOptions = [1024, 2048, 4096];
+const autoGameQualityTiers = {
+    constrained: 'medium',
+    standard: 'medium',
+} satisfies Record<'constrained' | 'standard', GameQualityAutoTier>;
 let cachedGameQualitySetting: GameQualitySetting | undefined;
 let cachedGameQualityCustomProfile: GameQualityCustomProfile | undefined;
 
@@ -255,9 +260,9 @@ export function getGameQualityAutoProfileMetrics():
 
 function resolveAutoGameQualityTier(
     metrics = getGameQualityAutoProfileMetrics(),
-): GameQualityTier {
+): GameQualityAutoTier {
     if (metrics === undefined) {
-        return 'medium';
+        return autoGameQualityTiers.standard;
     }
 
     if (
@@ -269,10 +274,10 @@ function resolveAutoGameQualityTier(
             metrics.coreCount <= 4 &&
             metrics.dpr > 1.25)
     ) {
-        return 'low';
+        return autoGameQualityTiers.constrained;
     }
 
-    return 'medium';
+    return autoGameQualityTiers.standard;
 }
 
 export function resolveGameQualityProfile(

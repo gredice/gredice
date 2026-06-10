@@ -54,6 +54,7 @@ import { EntityDetailsStickyHeader } from './EntityDetailsStickyHeader';
 import { EntityInventoryCard } from './EntityInventoryCard';
 import { EntityLinksPanel } from './EntityLinksPanel';
 import { HistoryRevisionListClient } from './HistoryRevisionListClient';
+import { PlantRelationshipAuthoringPanel } from './PlantRelationshipAuthoringPanel';
 
 export const dynamic = 'force-dynamic';
 
@@ -499,13 +500,21 @@ export default async function EntityDetailsPage(props: {
                                     value={category.name}
                                     key={category.name}
                                 >
-                                    <AttributeCategoryDetails
-                                        entity={entity}
-                                        category={category}
-                                        attributeDefinitions={
-                                            attributeDefinitions
-                                        }
-                                    />
+                                    <Stack spacing={4}>
+                                        <AttributeCategoryDetails
+                                            entity={entity}
+                                            category={category}
+                                            attributeDefinitions={
+                                                attributeDefinitions
+                                            }
+                                        />
+                                        {params.entityType === 'plant' &&
+                                        category.name === 'relationships' ? (
+                                            <PlantRelationshipAuthoringPanel
+                                                entityId={entityId}
+                                            />
+                                        ) : null}
+                                    </Stack>
                                 </TabsContent>
                             ))}
 

@@ -1,11 +1,11 @@
 'use client';
 
 import { Billboard } from '@react-three/drei';
-import { useFrame } from '@react-three/fiber';
-import { useEffect, useMemo, useRef } from 'react';
-import type { Mesh, Texture } from 'three';
-import { Color, PlaneGeometry } from 'three';
+import { useCallback, useEffect, useLayoutEffect, useMemo } from 'react';
+import type { IUniform, Texture } from 'three';
+import { Color, PlaneGeometry, Vector4 } from 'three';
 import { SeededRNG } from '../generators/plant/lib/rng';
+import { useSceneTimeUniform } from '../scene/SceneTime';
 import { useGameState } from '../useGameState';
 import { resolveSpriteAtlasAssetPaths } from './resolveSpriteAtlasAssetPaths';
 import { getSpriteBrightness } from './spriteLighting';
@@ -17,11 +17,13 @@ type SpriteAtlasBillboardProps = {
     alphaTest?: number;
     atlasBasePath: string;
     depthWrite?: boolean;
+    debugName?: string;
     follow?: boolean;
     height?: number;
     opacity?: number;
     position?: [number, number, number];
     renderOrder?: number;
+    rotationZ?: number;
     spriteName: string;
     windDirection?: number;
     windSpeed?: number;
@@ -44,10 +46,12 @@ type WobbleAnimation = {
 type BillboardMeshProps = {
     alphaTest: number;
     color: Color;
+    debugName: string;
     depthWrite: boolean;
     geometry: PlaneGeometry;
     opacity: number;
     renderOrder?: number;
+    rotationZ: number;
     texture: Texture;
 };
 
@@ -55,19 +59,144 @@ type AnimatedBillboardMeshProps = BillboardMeshProps & {
     wobbleAnimation: WobbleAnimation;
 };
 
+type SpriteWobbleShaderUniforms = {
+    uSpriteWobbleDirections: IUniform<Vector4>;
+    uSpriteWobbleFrequencies: IUniform<Vector4>;
+    uSpriteWobbleParams: IUniform<Vector4>;
+    uTime: IUniform<number>;
+};
+
+type SpriteWobbleShader = {
+    uniforms: Record<string, IUniform<unknown>>;
+    vertexShader: string;
+};
+
 function resolvePageBasePath(atlasBasePath: string, pageIndex: number) {
     return pageIndex === 0 ? atlasBasePath : `${atlasBasePath}.${pageIndex}`;
+}
+
+function createSpriteWobbleShaderUniforms(
+    timeUniform: IUniform<number>,
+): SpriteWobbleShaderUniforms {
+    return {
+        uSpriteWobbleDirections: {
+            value: new Vector4(),
+        },
+        uSpriteWobbleFrequencies: {
+            value: new Vector4(),
+        },
+        uSpriteWobbleParams: {
+            value: new Vector4(),
+        },
+        uTime: timeUniform,
+    };
+}
+
+function updateSpriteWobbleShaderUniforms(
+    uniforms: SpriteWobbleShaderUniforms,
+    wobbleAnimation: WobbleAnimation,
+) {
+    uniforms.uSpriteWobbleDirections.value.set(
+        wobbleAnimation.directionX,
+        wobbleAnimation.directionZ,
+        wobbleAnimation.wobbleAmplitude,
+        wobbleAnimation.gustScale,
+    );
+    uniforms.uSpriteWobbleFrequencies.value.set(
+        wobbleAnimation.directionalPrimaryFrequency,
+        wobbleAnimation.directionalSecondaryFrequency,
+        wobbleAnimation.crossPrimaryFrequency,
+        wobbleAnimation.crossSecondaryFrequency,
+    );
+    uniforms.uSpriteWobbleParams.value.set(
+        wobbleAnimation.gustFrequency,
+        wobbleAnimation.phase,
+        wobbleAnimation.secondaryPhase,
+        0,
+    );
+}
+
+function applySpriteWobbleShader(
+    shader: SpriteWobbleShader,
+    uniforms: SpriteWobbleShaderUniforms,
+) {
+    shader.uniforms.uTime = uniforms.uTime;
+    shader.uniforms.uSpriteWobbleDirections = uniforms.uSpriteWobbleDirections;
+    shader.uniforms.uSpriteWobbleFrequencies =
+        uniforms.uSpriteWobbleFrequencies;
+    shader.uniforms.uSpriteWobbleParams = uniforms.uSpriteWobbleParams;
+    shader.vertexShader = shader.vertexShader.replace(
+        '#include <common>',
+        `
+#include <common>
+uniform float uTime;
+uniform vec4 uSpriteWobbleDirections;
+uniform vec4 uSpriteWobbleFrequencies;
+uniform vec4 uSpriteWobbleParams;
+
+mat3 spriteWobbleRotationX(float angle) {
+    float s = sin(angle);
+    float c = cos(angle);
+    return mat3(
+        1.0, 0.0, 0.0,
+        0.0, c, -s,
+        0.0, s, c
+    );
+}
+
+mat3 spriteWobbleRotationZ(float angle) {
+    float s = sin(angle);
+    float c = cos(angle);
+    return mat3(
+        c, -s, 0.0,
+        s, c, 0.0,
+        0.0, 0.0, 1.0
+    );
+}
+`,
+    );
+    shader.vertexShader = shader.vertexShader.replace(
+        '#include <begin_vertex>',
+        `
+#include <begin_vertex>
+float directionalWave =
+    sin(uTime * uSpriteWobbleFrequencies.x + uSpriteWobbleParams.y) * 0.9 +
+    cos(uTime * uSpriteWobbleFrequencies.y + uSpriteWobbleParams.z) * 0.35 +
+    sin(uTime * uSpriteWobbleParams.x + uSpriteWobbleParams.y * 0.5) *
+        uSpriteWobbleDirections.w;
+float crossWave =
+    sin(uTime * uSpriteWobbleFrequencies.z + uSpriteWobbleParams.z * 0.7) *
+        0.75 +
+    cos(uTime * uSpriteWobbleFrequencies.w + uSpriteWobbleParams.y) * 0.3;
+float spriteRotationX =
+    uSpriteWobbleDirections.y * directionalWave *
+        uSpriteWobbleDirections.z +
+    uSpriteWobbleDirections.x * crossWave *
+        uSpriteWobbleDirections.z * 0.55;
+float spriteRotationZ =
+    -uSpriteWobbleDirections.x * directionalWave *
+        uSpriteWobbleDirections.z +
+    uSpriteWobbleDirections.y * crossWave *
+        uSpriteWobbleDirections.z * 0.55;
+transformed =
+    spriteWobbleRotationZ(spriteRotationZ) *
+    spriteWobbleRotationX(spriteRotationX) *
+    transformed;
+`,
+    );
 }
 
 export function SpriteAtlasBillboard({
     alphaTest = 0.05,
     atlasBasePath,
+    debugName,
     depthWrite = false,
     follow = true,
     height = 1,
     opacity = 1,
     position = [0, 0, 0],
     renderOrder,
+    rotationZ = 0,
     spriteName,
     windDirection = 0,
     windSpeed = 0,
@@ -78,6 +207,8 @@ export function SpriteAtlasBillboard({
         () => resolveSpriteAtlasAssetPaths(atlasBasePath),
         [atlasBasePath],
     );
+    const resolvedDebugName =
+        debugName ?? `SpriteAtlasBillboard:${atlasBasePath}:${spriteName}`;
     const brightness = getSpriteBrightness(timeOfDay, weather);
     const color = useMemo(() => {
         return new Color().setScalar(brightness);
@@ -223,14 +354,20 @@ export function SpriteAtlasBillboard({
     }
 
     return (
-        <Billboard follow={follow} position={position}>
+        <Billboard
+            follow={follow}
+            name={`${resolvedDebugName}:billboard`}
+            position={position}
+        >
             <SpriteAtlasBillboardMesh
                 alphaTest={alphaTest}
                 color={color}
+                debugName={resolvedDebugName}
                 depthWrite={depthWrite}
                 geometry={geometry}
                 opacity={opacity}
                 renderOrder={renderOrder}
+                rotationZ={rotationZ}
                 texture={texture}
                 wobbleAnimation={wobbleAnimation}
             />
@@ -257,14 +394,21 @@ function SpriteAtlasBillboardMesh({
 function StaticSpriteAtlasBillboardMesh({
     alphaTest,
     color,
+    debugName,
     depthWrite,
     geometry,
     opacity,
     renderOrder,
+    rotationZ,
     texture,
 }: BillboardMeshProps) {
     return (
-        <mesh renderOrder={renderOrder} receiveShadow>
+        <mesh
+            name={`${debugName}:mesh`}
+            renderOrder={renderOrder}
+            receiveShadow
+            rotation={[0, 0, rotationZ]}
+        >
             <primitive attach="geometry" object={geometry} />
             <meshLambertMaterial
                 alphaTest={alphaTest}
@@ -281,76 +425,44 @@ function StaticSpriteAtlasBillboardMesh({
 function AnimatedSpriteAtlasBillboardMesh({
     alphaTest,
     color,
+    debugName,
     depthWrite,
     geometry,
     opacity,
     renderOrder,
+    rotationZ,
     texture,
     wobbleAnimation,
 }: AnimatedBillboardMeshProps) {
-    const meshRef = useRef<Mesh | null>(null);
-
-    useFrame(({ clock }) => {
-        const mesh = meshRef.current;
-        if (!mesh) {
-            return;
-        }
-
-        const time = clock.getElapsedTime();
-        const directionalWave =
-            Math.sin(
-                time * wobbleAnimation.directionalPrimaryFrequency +
-                    wobbleAnimation.phase,
-            ) *
-                0.9 +
-            Math.cos(
-                time * wobbleAnimation.directionalSecondaryFrequency +
-                    wobbleAnimation.secondaryPhase,
-            ) *
-                0.35 +
-            Math.sin(
-                time * wobbleAnimation.gustFrequency +
-                    wobbleAnimation.phase * 0.5,
-            ) *
-                wobbleAnimation.gustScale;
-        const crossWave =
-            Math.sin(
-                time * wobbleAnimation.crossPrimaryFrequency +
-                    wobbleAnimation.secondaryPhase * 0.7,
-            ) *
-                0.75 +
-            Math.cos(
-                time * wobbleAnimation.crossSecondaryFrequency +
-                    wobbleAnimation.phase,
-            ) *
-                0.3;
-
-        mesh.rotation.x =
-            wobbleAnimation.directionZ *
-                directionalWave *
-                wobbleAnimation.wobbleAmplitude +
-            wobbleAnimation.directionX *
-                crossWave *
-                wobbleAnimation.wobbleAmplitude *
-                0.55;
-        mesh.rotation.z =
-            -wobbleAnimation.directionX *
-                directionalWave *
-                wobbleAnimation.wobbleAmplitude +
-            wobbleAnimation.directionZ *
-                crossWave *
-                wobbleAnimation.wobbleAmplitude *
-                0.55;
-    });
+    const timeUniform = useSceneTimeUniform();
+    const wobbleUniforms = useMemo(
+        () => createSpriteWobbleShaderUniforms(timeUniform),
+        [timeUniform],
+    );
+    useLayoutEffect(() => {
+        updateSpriteWobbleShaderUniforms(wobbleUniforms, wobbleAnimation);
+    }, [wobbleAnimation, wobbleUniforms]);
+    const handleBeforeCompile = useCallback(
+        (shader: SpriteWobbleShader) => {
+            applySpriteWobbleShader(shader, wobbleUniforms);
+        },
+        [wobbleUniforms],
+    );
 
     return (
-        <mesh ref={meshRef} renderOrder={renderOrder} receiveShadow>
+        <mesh
+            name={`${debugName}:animatedMesh`}
+            renderOrder={renderOrder}
+            receiveShadow
+            rotation={[0, 0, rotationZ]}
+        >
             <primitive attach="geometry" object={geometry} />
             <meshLambertMaterial
                 alphaTest={alphaTest}
                 color={color}
                 depthWrite={depthWrite}
                 map={texture}
+                onBeforeCompile={handleBeforeCompile}
                 opacity={opacity}
                 transparent
             />

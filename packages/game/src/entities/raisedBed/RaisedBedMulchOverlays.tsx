@@ -1,5 +1,10 @@
 import { useEffect } from 'react';
 import type { BufferGeometry, Material } from 'three';
+import {
+    type ActiveDragPreviewTarget,
+    createActiveDragPreviewTarget,
+    getActiveDragPreviewTargetPositionOffset,
+} from '../../dragPreviewIdentity';
 import { useBlockData } from '../../hooks/useBlockData';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useOperations } from '../../hooks/useOperations';
@@ -14,7 +19,7 @@ import { SnowOverlay } from '../../snow/SnowOverlay';
 import { snowPresets } from '../../snow/snowPresets';
 import type { Block } from '../../types/Block';
 import type { Stack } from '../../types/Stack';
-import { useGameState } from '../../useGameState';
+import { type ActiveDragPreview, useGameState } from '../../useGameState';
 import { getStackHeight } from '../../utils/getStackHeight';
 import { getRaisedBedBlockIds } from '../../utils/raisedBedBlocks';
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
@@ -58,6 +63,7 @@ type RaisedBedPlacement = {
     origin: [number, number, number];
     rotationQuarterTurns: number;
     stack: Stack;
+    stackBlockIndex: number;
 };
 
 type MulchVisual = {
@@ -163,6 +169,36 @@ function getBlockPlacement(garden: CurrentGardenData, blockId: string) {
     }
 
     return null;
+}
+
+function activeDragTargetMatchesRaisedBedPlacement(
+    target: ActiveDragPreviewTarget,
+    garden: CurrentGardenData,
+) {
+    const placement = getBlockPlacement(garden, target.blockId);
+
+    return (
+        placement?.block.name === 'Raised_Bed' &&
+        placement.stackBlockIndex === target.blockIndex &&
+        placement.stack.position.x === target.stackPosition.x &&
+        placement.stack.position.z === target.stackPosition.z
+    );
+}
+
+function activeDragPreviewTouchesRaisedBed(
+    preview: ActiveDragPreview | null,
+    garden: CurrentGardenData | null | undefined,
+) {
+    if (!preview || !garden) {
+        return false;
+    }
+
+    return (
+        activeDragTargetMatchesRaisedBedPlacement(preview.source, garden) ||
+        preview.targets.some((target) =>
+            activeDragTargetMatchesRaisedBedPlacement(target, garden),
+        )
+    );
 }
 
 function getRaisedBedNeighbors(
@@ -589,6 +625,14 @@ export function RaisedBedMulchOverlays({
         MulchWood: useGameGLTF('MulchWood'),
     };
     const qualityProfile = quality ?? resolveGameQualityProfile();
+    const activeDragPreview = useGameState((state) =>
+        activeDragPreviewTouchesRaisedBed(
+            state.activeDragPreview,
+            currentGarden,
+        )
+            ? state.activeDragPreview
+            : null,
+    );
     const snowCoverage = useGameState((state) => state.snowCoverage);
     const renderSnow = snowCoverage >= qualityProfile.snowOverlayMinCoverage;
 
@@ -622,20 +666,34 @@ export function RaisedBedMulchOverlays({
                 placement.block,
             );
             const surfaceGeometry = getRaisedBedSurfaceGeometry(neighbors);
+            const origin = getRaisedBedOrigin(
+                blockData,
+                placement.stack,
+                placement.block,
+                neighbors,
+            );
+            const dragPreviewOffset = getActiveDragPreviewTargetPositionOffset(
+                createActiveDragPreviewTarget({
+                    blockId: placement.block.id,
+                    blockIndex: placement.stackBlockIndex,
+                    stackPosition: placement.stack.position,
+                }),
+                activeDragPreview,
+            );
 
             placements.push({
                 block: placement.block,
                 blockIndex,
                 blockOffset: Math.max(blockIds.length - 1 - blockIndex, 0) * 9,
                 dirtGeometryName: surfaceGeometry.dirtGeometryName,
-                origin: getRaisedBedOrigin(
-                    blockData,
-                    placement.stack,
-                    placement.block,
-                    neighbors,
-                ),
+                origin: [
+                    origin[0] + (dragPreviewOffset?.x ?? 0),
+                    origin[1] + (dragPreviewOffset?.y ?? 0),
+                    origin[2] + (dragPreviewOffset?.z ?? 0),
+                ],
                 rotationQuarterTurns: surfaceGeometry.rotationQuarterTurns,
                 stack: placement.stack,
+                stackBlockIndex: placement.stackBlockIndex,
             });
         }
 

@@ -46,7 +46,7 @@ const messageTypes = {
     },
 };
 
-export function WelcomeMessage() {
+export function WelcomeMessage({ onClosed }: { onClosed?: () => void }) {
     const { data: dailyReward } = useDailyReward();
     const claimDailyReward = useClaimDailyReward();
     const shouldShow = Boolean(dailyReward?.canClaim);
@@ -102,6 +102,7 @@ export function WelcomeMessage() {
             if (dailyReward?.canClaim) {
                 claimDailyReward.mutate();
             }
+            onClosed?.();
         }, animationDuration + 50);
     };
 

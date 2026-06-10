@@ -1,20 +1,31 @@
+import { gameBackgroundPaletteKeys } from '@gredice/js/gameBackground';
 import { userAllowedPlantStatusTransitions } from '@gredice/js/plants';
 import {
     isRaisedBedAbandoned,
     RAISED_BED_ABANDON_OPERATION_ENTITY_ID,
     RAISED_BED_OPERATION_ENTITY_TYPE_NAME,
 } from '@gredice/js/raisedBeds';
+import { notifyOperationUpdate } from '@gredice/notifications';
 import { signalcoClient } from '@gredice/signalco';
 import {
     abandonRaisedBed,
     addGardenBoxInventoryItem,
     buildRaisedBedFieldPlantUpdatePayload,
+    cancelGardenDiaryOperation,
+    cancelGardenDiaryRaisedBedField,
+    clearSandboxField,
     countAiRequestEventsSince,
+    countRaisedBedsByAccount,
     createDefaultGardenForAccount,
     createEvent,
     createGardenBlock,
     createGardenStack,
+    createSandboxGarden,
     deleteGardenStack,
+    deleteSandboxGardenCompletely,
+    GardenBoxInventoryLimitError,
+    GardenDiaryCancelError,
+    GardenDiaryRescheduleError,
     getAccount,
     getAccountGardens,
     getEvents,
@@ -30,8 +41,12 @@ import {
     getRaisedBedFieldDiaryEntries,
     getRaisedBedIdsByAccount,
     getRaisedBedSensors,
+    getSandboxGardenDeletionCandidate,
     knownEvents,
     knownEventTypes,
+    rescheduleGardenDiaryOperation,
+    rescheduleGardenDiaryRaisedBedField,
+    sowSandboxField,
     spendSunflowers,
     storage,
     deleteGardenBlock as storageDeleteGardenBlock,
@@ -40,7 +55,7 @@ import {
     updateGardenStack,
     updateRaisedBed,
 } from '@gredice/storage';
-import { Hono } from 'hono';
+import { type Context, Hono } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
@@ -54,7 +69,10 @@ import { isBlockPurchaseAvailableNow } from '../../../lib/garden/nightOnlyBlockP
 import { purchaseGardenBlock } from '../../../lib/garden/purchaseGardenBlockService';
 import {
     AI_REQUEST_QUOTAS,
+    AI_REQUEST_WEEKLY_LIMIT_PER_ACTIVE_RAISED_BED,
     type AiRequestKind,
+    getRaisedBedImageAnalysisWeeklyLimit,
+    normalizeAnalysisReferenceDate,
     RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND,
     streamRaisedBedImageAnalysis,
     validateImageUrls,
@@ -79,6 +97,7 @@ const analyzeImageBodySchema = z
     .object({
         imageUrl: z.url().optional(),
         imageUrls: z.array(z.url()).min(1).optional(),
+        referenceDate: z.iso.datetime().optional(),
     })
     .refine((body) => Boolean(body.imageUrl || body.imageUrls?.length), {
         message: 'At least one image URL is required',
@@ -95,6 +114,10 @@ const storeBlockInGardenBoxBodySchema = z.object({
     blockIndex: z.number().int().min(0),
 });
 
+const rescheduleDiaryItemBodySchema = z.object({
+    scheduledDate: z.string().trim().min(1),
+});
+
 function normalizeAnalysisImageUrls(body: AnalyzeImageBody) {
     const imageUrls = body.imageUrls?.length
         ? body.imageUrls
@@ -103,6 +126,38 @@ function normalizeAnalysisImageUrls(body: AnalyzeImageBody) {
           : [];
 
     return Array.from(new Set(imageUrls));
+}
+
+function getAnalysisReferenceDate(body: AnalyzeImageBody) {
+    return normalizeAnalysisReferenceDate(body.referenceDate);
+}
+
+function diaryRescheduleErrorResponse(
+    context: Context,
+    error: GardenDiaryRescheduleError,
+) {
+    switch (error.statusCode) {
+        case 400:
+            return context.json({ error: error.message }, 400);
+        case 404:
+            return context.json({ error: error.message }, 404);
+        case 409:
+            return context.json({ error: error.message }, 409);
+    }
+}
+
+function diaryCancelErrorResponse(
+    context: Context,
+    error: GardenDiaryCancelError,
+) {
+    switch (error.statusCode) {
+        case 400:
+            return context.json({ error: error.message }, 400);
+        case 404:
+            return context.json({ error: error.message }, 404);
+        case 409:
+            return context.json({ error: error.message }, 409);
+    }
 }
 
 const aiTextStreamResponseInit = {
@@ -136,13 +191,53 @@ async function getAiRequestQuotaUsage(
     requestKind: AiRequestKind,
 ) {
     const quota = AI_REQUEST_QUOTAS[requestKind];
-    const used = await countRecentAiRequests(accountId, requestKind);
+    const [used, limitDetails] = await Promise.all([
+        countRecentAiRequests(accountId, requestKind),
+        getAiRequestQuotaLimit(accountId, requestKind),
+    ]);
 
     return {
         ...quota,
+        ...limitDetails,
         used,
-        remaining: Math.max(0, quota.limit - used),
+        remaining: Math.max(0, limitDetails.limit - used),
     };
+}
+
+async function getAiRequestQuotaLimit(
+    accountId: string,
+    requestKind: AiRequestKind,
+) {
+    switch (requestKind) {
+        case RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND: {
+            const activeRaisedBedCount = await countRaisedBedsByAccount(
+                accountId,
+                { status: 'active' },
+            );
+
+            return {
+                activeRaisedBedCount,
+                limit: getRaisedBedImageAnalysisWeeklyLimit(
+                    activeRaisedBedCount,
+                ),
+                limitPerActiveRaisedBed:
+                    AI_REQUEST_WEEKLY_LIMIT_PER_ACTIVE_RAISED_BED,
+            };
+        }
+    }
+
+    const unreachable: never = requestKind;
+    throw new Error(`Unsupported AI request kind: ${unreachable}`);
+}
+
+type AiRequestQuotaUsage = Awaited<ReturnType<typeof getAiRequestQuotaUsage>>;
+
+function formatAiQuotaExceededError(aiQuota: AiRequestQuotaUsage) {
+    if (aiQuota.activeRaisedBedCount === 0) {
+        return 'AI savjeti dostupni su za aktivne gredice. Aktivirajte gredicu pa pokušajte ponovno.';
+    }
+
+    return `Iskoristili ste tjedni limit AI savjeta (${aiQuota.used.toString()}/${aiQuota.limit.toString()}). Za svaku aktivnu gredicu dostupno je ${aiQuota.limitPerActiveRaisedBed.toString()} savjeta tjedno. Pokušajte ponovno kasnije.`;
 }
 
 async function countRecentRaisedBedImageAnalyses(
@@ -191,6 +286,7 @@ async function trackGardenCreated(input: {
     gardenId: number;
     name?: string;
     userId: string;
+    isSandbox?: boolean;
 }) {
     await (await getPostHogClient()).capture({
         distinctId: input.userId,
@@ -199,6 +295,7 @@ async function trackGardenCreated(input: {
             account_id: input.accountId,
             garden_id: input.gardenId,
             has_custom_name: Boolean(input.name?.trim()),
+            is_sandbox: Boolean(input.isSandbox),
         },
     });
 }
@@ -338,6 +435,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 gardens.map((garden) => ({
                     id: garden.id,
                     name: garden.name,
+                    isSandbox: garden.isSandbox,
+                    backgroundPalette: garden.backgroundPalette,
                     createdAt: garden.createdAt,
                 })),
             );
@@ -352,17 +451,23 @@ const app = new Hono<{ Variables: AuthVariables }>()
             'json',
             z.object({
                 name: z.string().trim().min(1).optional(),
+                isSandbox: z.boolean().optional(),
             }),
         ),
         authValidator(['user', 'admin']),
         async (context) => {
             const { accountId, userId } = context.get('authContext');
-            const { name } = context.req.valid('json');
-            const gardenId = await createDefaultGardenForAccount({
+            const { name, isSandbox } = context.req.valid('json');
+            const gardenId = isSandbox
+                ? await createSandboxGarden({ accountId, name })
+                : await createDefaultGardenForAccount({ accountId, name });
+            await trackGardenCreated({
                 accountId,
+                gardenId,
                 name,
+                userId,
+                isSandbox,
             });
-            await trackGardenCreated({ accountId, gardenId, name, userId });
             return context.json({ id: gardenId }, 201);
         },
     )
@@ -489,6 +594,120 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 nextCursor: operationsPage.nextCursor,
                 total: operationsPage.total,
             });
+        },
+    )
+    .post(
+        '/:gardenId/operations/:operationId/reschedule',
+        describeRoute({
+            description:
+                'Reschedule a planned in-game diary operation for the current user',
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+                operationId: z.string(),
+            }),
+        ),
+        zValidator('json', rescheduleDiaryItemBodySchema),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, operationId } = context.req.valid('param');
+            const { scheduledDate } = context.req.valid('json');
+            const gardenIdNumber = Number.parseInt(gardenId, 10);
+            const operationIdNumber = Number.parseInt(operationId, 10);
+
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+            if (Number.isNaN(operationIdNumber)) {
+                return context.json({ error: 'Invalid operation ID' }, 400);
+            }
+
+            const { accountId } = context.get('authContext');
+
+            try {
+                const result = await rescheduleGardenDiaryOperation({
+                    accountId,
+                    gardenId: gardenIdNumber,
+                    operationId: operationIdNumber,
+                    scheduledDate,
+                });
+
+                await notifyOperationUpdate(operationIdNumber, 'rescheduled', {
+                    scheduledDate: result.scheduledDate.toISOString(),
+                });
+
+                return context.json(
+                    { scheduledDate: result.scheduledDate.toISOString() },
+                    200,
+                );
+            } catch (error) {
+                if (error instanceof GardenDiaryRescheduleError) {
+                    return diaryRescheduleErrorResponse(context, error);
+                }
+
+                console.error('Error rescheduling diary operation:', error);
+                return context.json(
+                    { error: 'Failed to reschedule operation' },
+                    500,
+                );
+            }
+        },
+    )
+    .post(
+        '/:gardenId/operations/:operationId/cancel',
+        describeRoute({
+            description:
+                'Cancel a planned in-game diary operation for the current user and refund sunflowers',
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+                operationId: z.string(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, operationId } = context.req.valid('param');
+            const gardenIdNumber = Number.parseInt(gardenId, 10);
+            const operationIdNumber = Number.parseInt(operationId, 10);
+
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+            if (Number.isNaN(operationIdNumber)) {
+                return context.json({ error: 'Invalid operation ID' }, 400);
+            }
+
+            const { accountId, userId } = context.get('authContext');
+
+            try {
+                const result = await cancelGardenDiaryOperation({
+                    accountId,
+                    canceledBy: userId,
+                    gardenId: gardenIdNumber,
+                    operationId: operationIdNumber,
+                });
+
+                await notifyOperationUpdate(operationIdNumber, 'canceled', {
+                    canceledBy: userId,
+                    reason: result.reason,
+                });
+
+                return context.json({ refundAmount: result.refundAmount }, 200);
+            } catch (error) {
+                if (error instanceof GardenDiaryCancelError) {
+                    return diaryCancelErrorResponse(context, error);
+                }
+
+                console.error('Error canceling diary operation:', error);
+                return context.json(
+                    { error: 'Failed to cancel operation' },
+                    500,
+                );
+            }
         },
     )
     .get(
@@ -631,6 +850,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
             return context.json({
                 id: garden.id,
                 name: garden.name,
+                isSandbox: garden.isSandbox,
+                backgroundPalette: garden.backgroundPalette,
+                farmId: garden.farmId,
                 latitude: garden.farm.latitude,
                 longitude: garden.farm.longitude,
                 stacks,
@@ -757,6 +979,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/:gardenId',
         describeRoute({
             description: 'Update garden information',
+            security: authSecurity,
         }),
         zValidator(
             'param',
@@ -768,12 +991,13 @@ const app = new Hono<{ Variables: AuthVariables }>()
             'json',
             z.object({
                 name: z.string().min(1).optional(),
+                backgroundPalette: z.enum(gameBackgroundPaletteKeys).optional(),
             }),
         ),
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId } = context.req.valid('param');
-            const { name } = context.req.valid('json');
+            const { backgroundPalette, name } = context.req.valid('json');
             const gardenIdNumber = parseInt(gardenId, 10);
             if (Number.isNaN(gardenIdNumber)) {
                 return context.json({ error: 'Invalid garden ID' }, 400);
@@ -786,16 +1010,72 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             // Update garden with provided fields
-            const updateData: { id: number; name?: string } = {
+            const updateData: {
+                backgroundPalette?: string;
+                id: number;
+                name?: string;
+            } = {
                 id: gardenIdNumber,
             };
             if (name !== undefined) {
                 updateData.name = name.trim();
             }
+            if (backgroundPalette !== undefined) {
+                updateData.backgroundPalette = backgroundPalette;
+            }
 
             await updateGarden(updateData);
 
             return context.json({ success: true });
+        },
+    )
+    .delete(
+        '/:gardenId',
+        describeRoute({
+            description:
+                'Delete a sandbox garden accessible to the current user, including related blocks, raised beds, notifications, operations, cart rows, transactions, and events. Real gardens cannot be deleted from this endpoint. Large deletions may return 202 and should be retried until complete.',
+            security: authSecurity,
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId } = context.req.valid('param');
+            const gardenIdNumber = parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            const { user } = context.get('authContext');
+            const garden =
+                await getSandboxGardenDeletionCandidate(gardenIdNumber);
+            if (!garden) {
+                return context.json(
+                    { success: true, complete: true, deletedRows: 0 },
+                    200,
+                );
+            }
+            if (!user.accountIds.includes(garden.accountId)) {
+                return context.json({ error: 'Garden not found' }, 404);
+            }
+
+            if (!garden.isSandbox) {
+                return context.json(
+                    { error: 'Only sandbox gardens can be deleted' },
+                    400,
+                );
+            }
+
+            const result = await deleteSandboxGardenCompletely(gardenIdNumber);
+
+            return context.json(
+                { success: true, ...result },
+                result.complete ? 200 : 202,
+            );
         },
     )
     // See: https://datatracker.ietf.org/doc/html/rfc6902
@@ -1391,7 +1671,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const gardenBox = gardenBlocks.find(
                 (candidate) => candidate.id === gardenBoxBlockId,
             );
-            if (!gardenBox || gardenBox.name !== 'GardenBox') {
+            if (gardenBox?.name !== 'GardenBox') {
                 return context.json({ error: 'Garden box not found' }, 404);
             }
 
@@ -1430,53 +1710,68 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
             const inventoryEntityId = inventoryBlock.id.toString();
-            const result = await storage().transaction(async (tx) => {
-                const currentSourceStack = await getGardenStackForUpdate(
-                    gardenIdNumber,
-                    {
-                        x: sourcePosition.x,
-                        y: sourcePosition.z,
-                    },
-                    tx,
-                );
-                if (
-                    !currentSourceStack ||
-                    currentSourceStack.blocks[blockIndex] !== blockId
-                ) {
-                    return {
-                        ok: false,
-                        error: 'Source block no longer matches the garden',
-                        status: 409,
-                    } as const;
+            let result:
+                | { ok: true }
+                | { ok: false; error: string; status: ContentfulStatusCode };
+            try {
+                result = await storage().transaction(async (tx) => {
+                    const currentSourceStack = await getGardenStackForUpdate(
+                        gardenIdNumber,
+                        {
+                            x: sourcePosition.x,
+                            y: sourcePosition.z,
+                        },
+                        tx,
+                    );
+                    if (
+                        !currentSourceStack ||
+                        currentSourceStack.blocks[blockIndex] !== blockId
+                    ) {
+                        return {
+                            ok: false,
+                            error: 'Source block no longer matches the garden',
+                            status: 409,
+                        } as const;
+                    }
+
+                    const nextSourceBlocks = currentSourceStack.blocks.filter(
+                        (_sourceBlockId, index) => index !== blockIndex,
+                    );
+                    await updateGardenStack(
+                        gardenIdNumber,
+                        {
+                            x: sourcePosition.x,
+                            y: sourcePosition.z,
+                            blocks: nextSourceBlocks,
+                        },
+                        tx,
+                    );
+                    await storageDeleteGardenBlock(
+                        gardenIdNumber,
+                        block.id,
+                        tx,
+                    );
+                    await addGardenBoxInventoryItem(
+                        accountId,
+                        gardenIdNumber,
+                        gardenBoxBlockId,
+                        {
+                            entityTypeName: 'block',
+                            entityId: inventoryEntityId,
+                            amount: 1,
+                            source: 'gardenBox:drop',
+                        },
+                        tx,
+                    );
+                    return { ok: true } as const;
+                });
+            } catch (error) {
+                if (error instanceof GardenBoxInventoryLimitError) {
+                    return context.json({ error: error.message }, 400);
                 }
 
-                const nextSourceBlocks = currentSourceStack.blocks.filter(
-                    (_sourceBlockId, index) => index !== blockIndex,
-                );
-                await updateGardenStack(
-                    gardenIdNumber,
-                    {
-                        x: sourcePosition.x,
-                        y: sourcePosition.z,
-                        blocks: nextSourceBlocks,
-                    },
-                    tx,
-                );
-                await storageDeleteGardenBlock(gardenIdNumber, block.id, tx);
-                await addGardenBoxInventoryItem(
-                    accountId,
-                    gardenIdNumber,
-                    gardenBoxBlockId,
-                    {
-                        entityTypeName: 'block',
-                        entityId: inventoryEntityId,
-                        amount: 1,
-                        source: 'gardenBox:drop',
-                    },
-                    tx,
-                );
-                return { ok: true } as const;
-            });
+                throw error;
+            }
             if (!result.ok) {
                 return context.json({ error: result.error }, result.status);
             }
@@ -1549,6 +1844,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             'json',
             z.object({
                 blockName: z.string(),
+                expectedExistingBlocks: z.array(z.string()).optional(),
                 position: z
                     .object({
                         x: z.number().int(),
@@ -1583,7 +1879,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
-            const { blockName, position } = context.req.valid('json');
+            const { blockName, expectedExistingBlocks, position } =
+                context.req.valid('json');
 
             // Retrieve block information (cost)
             const block = blockData.find(
@@ -1596,28 +1893,32 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
             const cost = block.prices?.sunflowers ?? 0;
-            if (cost <= 0) {
-                return context.json(
-                    { error: 'Requested block not for sale' },
-                    400,
-                );
-            }
+            // Sandbox ("play") gardens build for free: no cost, no inventory,
+            // no night-only restriction and nothing is debited.
+            if (!garden.isSandbox) {
+                if (cost <= 0) {
+                    return context.json(
+                        { error: 'Requested block not for sale' },
+                        400,
+                    );
+                }
 
-            if (
-                !isBlockPurchaseAvailableNow({
-                    block,
-                    location: {
-                        lat: garden.farm?.latitude,
-                        lon: garden.farm?.longitude,
-                    },
-                })
-            ) {
-                return context.json(
-                    {
-                        error: 'Ovaj blok moguće je kupiti samo noću.',
-                    },
-                    400,
-                );
+                if (
+                    !isBlockPurchaseAvailableNow({
+                        block,
+                        location: {
+                            lat: garden.farm?.latitude,
+                            lon: garden.farm?.longitude,
+                        },
+                    })
+                ) {
+                    return context.json(
+                        {
+                            error: 'Ovaj blok moguće je kupiti samo noću.',
+                        },
+                        400,
+                    );
+                }
             }
 
             const blockNameById = new Map(
@@ -1645,18 +1946,35 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             const { x, y, existingBlocks } = placement.placement;
+            if (
+                expectedExistingBlocks &&
+                (expectedExistingBlocks.length !== existingBlocks.length ||
+                    expectedExistingBlocks.some(
+                        (blockId, index) => blockId !== existingBlocks[index],
+                    ))
+            ) {
+                return context.json(
+                    {
+                        error: 'Invalid block placement: stack changed while placing block',
+                    },
+                    409,
+                );
+            }
+
             const hasTargetStack = garden.stacks.some(
                 (stack) => stack.positionX === x && stack.positionY === y,
             );
             const purchaseResult = await purchaseGardenBlock({
                 accountId,
                 blockName,
-                cost,
+                cost: garden.isSandbox ? 0 : cost,
                 dependencies: {
                     createGardenBlock,
                     createGardenStack,
                     deleteGardenBlock: storageDeleteGardenBlock,
-                    spendSunflowers,
+                    spendSunflowers: garden.isSandbox
+                        ? async () => undefined
+                        : spendSunflowers,
                     synchronizeGardenStacksAndRaisedBeds,
                     updateGardenStack,
                 },
@@ -1736,7 +2054,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
         describeRoute({
             description: 'Delete a block in a garden.',
             summary:
-                'Recycles the block by default and refunds the sunflowers.',
+                'Recycles the block by default and refunds the sunflowers outside sandbox gardens.',
+            security: authSecurity,
+            tags: ['Gardens'],
         }),
         zValidator(
             'param',
@@ -2080,9 +2400,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId, raisedBedId } = context.req.valid('param');
-            const imageUrls = normalizeAnalysisImageUrls(
-                context.req.valid('json'),
-            );
+            const body = context.req.valid('json');
+            const imageUrls = normalizeAnalysisImageUrls(body);
+            const referenceDate = getAnalysisReferenceDate(body);
             const firstImageUrl = imageUrls[0];
             if (!firstImageUrl) {
                 return context.json({ error: 'Image URL is required' }, 400);
@@ -2120,7 +2440,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
             if (aiQuota.used >= aiQuota.limit) {
                 return context.json(
                     {
-                        error: `Dosegnut je tjedni limit AI zahtjeva (${aiQuota.limit.toString()}/tjedan). Pokušaj ponovno kasnije.`,
+                        code: 'ai_quota_exceeded',
+                        error: formatAiQuotaExceededError(aiQuota),
                     },
                     429,
                 );
@@ -2144,6 +2465,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     gardenId: gardenIdNumber,
                     raisedBed,
                     imageUrls,
+                    referenceDate,
                 },
                 async (analysis) => {
                     await createEvent(
@@ -2155,6 +2477,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
                                 imageUrls,
                                 model: analysis.model,
                                 analyzedAt: analysis.analyzedAt,
+                                referenceDate:
+                                    referenceDate?.toISOString() ?? undefined,
                                 accountId,
                                 aiRequestKind:
                                     RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND,
@@ -2345,6 +2669,128 @@ const app = new Hono<{ Variables: AuthVariables }>()
             });
         },
     )
+    .post(
+        '/:gardenId/raised-beds/:raisedBedId/fields/:positionIndex/reschedule',
+        describeRoute({
+            description:
+                'Reschedule a planned in-game diary raised-bed field sowing for the current user',
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+                raisedBedId: z.string(),
+                positionIndex: z.string(),
+            }),
+        ),
+        zValidator('json', rescheduleDiaryItemBodySchema),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, raisedBedId, positionIndex } =
+                context.req.valid('param');
+            const { scheduledDate } = context.req.valid('json');
+            const gardenIdNumber = Number.parseInt(gardenId, 10);
+            const raisedBedIdNumber = Number.parseInt(raisedBedId, 10);
+            const positionIndexNumber = Number.parseInt(positionIndex, 10);
+
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+            if (Number.isNaN(raisedBedIdNumber)) {
+                return context.json({ error: 'Invalid raised bed ID' }, 400);
+            }
+            if (Number.isNaN(positionIndexNumber) || positionIndexNumber < 0) {
+                return context.json({ error: 'Invalid position index' }, 400);
+            }
+
+            const { accountId } = context.get('authContext');
+
+            try {
+                const result = await rescheduleGardenDiaryRaisedBedField({
+                    accountId,
+                    gardenId: gardenIdNumber,
+                    raisedBedId: raisedBedIdNumber,
+                    positionIndex: positionIndexNumber,
+                    scheduledDate,
+                });
+
+                return context.json(
+                    { scheduledDate: result.scheduledDate.toISOString() },
+                    200,
+                );
+            } catch (error) {
+                if (error instanceof GardenDiaryRescheduleError) {
+                    return diaryRescheduleErrorResponse(context, error);
+                }
+
+                console.error(
+                    'Error rescheduling diary raised bed field:',
+                    error,
+                );
+                return context.json(
+                    { error: 'Failed to reschedule raised bed field' },
+                    500,
+                );
+            }
+        },
+    )
+    .post(
+        '/:gardenId/raised-beds/:raisedBedId/fields/:positionIndex/cancel',
+        describeRoute({
+            description:
+                'Cancel a planned in-game diary raised-bed field sowing for the current user and refund sunflowers',
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+                raisedBedId: z.string(),
+                positionIndex: z.string(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, raisedBedId, positionIndex } =
+                context.req.valid('param');
+            const gardenIdNumber = Number.parseInt(gardenId, 10);
+            const raisedBedIdNumber = Number.parseInt(raisedBedId, 10);
+            const positionIndexNumber = Number.parseInt(positionIndex, 10);
+
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+            if (Number.isNaN(raisedBedIdNumber)) {
+                return context.json({ error: 'Invalid raised bed ID' }, 400);
+            }
+            if (Number.isNaN(positionIndexNumber) || positionIndexNumber < 0) {
+                return context.json({ error: 'Invalid position index' }, 400);
+            }
+
+            const { accountId, userId } = context.get('authContext');
+
+            try {
+                const result = await cancelGardenDiaryRaisedBedField({
+                    accountId,
+                    canceledBy: userId,
+                    gardenId: gardenIdNumber,
+                    raisedBedId: raisedBedIdNumber,
+                    positionIndex: positionIndexNumber,
+                });
+
+                return context.json({ refundAmount: result.refundAmount }, 200);
+            } catch (error) {
+                if (error instanceof GardenDiaryCancelError) {
+                    return diaryCancelErrorResponse(context, error);
+                }
+
+                console.error('Error canceling diary raised bed field:', error);
+                return context.json(
+                    { error: 'Failed to cancel raised bed field' },
+                    500,
+                );
+            }
+        },
+    )
     .patch(
         '/:gardenId/raised-beds/:raisedBedId/fields/:positionIndex',
         describeRoute({
@@ -2503,6 +2949,129 @@ const app = new Hono<{ Variables: AuthVariables }>()
         },
     )
     .post(
+        '/:gardenId/raised-beds/:raisedBedId/fields/:positionIndex/sandbox-plant',
+        describeRoute({
+            description:
+                'Plant a sort into a sandbox raised bed field at a chosen age',
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+                raisedBedId: z.string(),
+                positionIndex: z.string(),
+            }),
+        ),
+        zValidator(
+            'json',
+            z.object({
+                plantSortId: z.number().int().positive(),
+                // How old the plant should render, in days (0 = freshly sown).
+                ageDays: z.number().int().min(0).max(3650).default(0),
+                status: z.string().optional(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, raisedBedId, positionIndex } =
+                context.req.valid('param');
+            const { plantSortId, ageDays, status } = context.req.valid('json');
+
+            const gardenIdNumber = parseInt(gardenId, 10);
+            const raisedBedIdNumber = parseInt(raisedBedId, 10);
+            const positionIndexNumber = parseInt(positionIndex, 10);
+            if (
+                Number.isNaN(gardenIdNumber) ||
+                Number.isNaN(raisedBedIdNumber) ||
+                Number.isNaN(positionIndexNumber) ||
+                positionIndexNumber < 0
+            ) {
+                return context.json({ error: 'Invalid parameters' }, 400);
+            }
+
+            const { accountId } = context.get('authContext');
+            const garden = await getGarden(gardenIdNumber);
+            if (!garden || garden.accountId !== accountId) {
+                return context.json({ error: 'Garden not found' }, 404);
+            }
+            if (!garden.isSandbox) {
+                return context.json(
+                    { error: 'Garden is not a sandbox garden' },
+                    400,
+                );
+            }
+
+            const raisedBed = await getRaisedBed(raisedBedIdNumber);
+            if (!raisedBed || raisedBed.gardenId !== gardenIdNumber) {
+                return context.json({ error: 'Raised bed not found' }, 404);
+            }
+
+            const sowDate = new Date();
+            sowDate.setDate(sowDate.getDate() - ageDays);
+
+            await sowSandboxField({
+                raisedBedId: raisedBedIdNumber,
+                positionIndex: positionIndexNumber,
+                plantSortId,
+                sowDate,
+                status,
+            });
+
+            return context.json({ success: true }, 200);
+        },
+    )
+    .delete(
+        '/:gardenId/raised-beds/:raisedBedId/fields/:positionIndex',
+        describeRoute({
+            description: 'Clear a sandbox raised bed field',
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+                raisedBedId: z.string(),
+                positionIndex: z.string(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, raisedBedId, positionIndex } =
+                context.req.valid('param');
+
+            const gardenIdNumber = parseInt(gardenId, 10);
+            const raisedBedIdNumber = parseInt(raisedBedId, 10);
+            const positionIndexNumber = parseInt(positionIndex, 10);
+            if (
+                Number.isNaN(gardenIdNumber) ||
+                Number.isNaN(raisedBedIdNumber) ||
+                Number.isNaN(positionIndexNumber) ||
+                positionIndexNumber < 0
+            ) {
+                return context.json({ error: 'Invalid parameters' }, 400);
+            }
+
+            const { accountId } = context.get('authContext');
+            const garden = await getGarden(gardenIdNumber);
+            if (!garden || garden.accountId !== accountId) {
+                return context.json({ error: 'Garden not found' }, 404);
+            }
+            if (!garden.isSandbox) {
+                return context.json(
+                    { error: 'Garden is not a sandbox garden' },
+                    400,
+                );
+            }
+
+            const raisedBed = await getRaisedBed(raisedBedIdNumber);
+            if (!raisedBed || raisedBed.gardenId !== gardenIdNumber) {
+                return context.json({ error: 'Raised bed not found' }, 404);
+            }
+
+            await clearSandboxField(raisedBedIdNumber, positionIndexNumber);
+            return context.json({ success: true }, 200);
+        },
+    )
+    .post(
         '/:gardenId/raised-beds/:raisedBedId/fields/:positionIndex/analyze-image',
         describeRoute({
             description:
@@ -2521,9 +3090,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
         async (context) => {
             const { gardenId, raisedBedId, positionIndex } =
                 context.req.valid('param');
-            const imageUrls = normalizeAnalysisImageUrls(
-                context.req.valid('json'),
-            );
+            const body = context.req.valid('json');
+            const imageUrls = normalizeAnalysisImageUrls(body);
+            const referenceDate = getAnalysisReferenceDate(body);
             const firstImageUrl = imageUrls[0];
             if (!firstImageUrl) {
                 return context.json({ error: 'Image URL is required' }, 400);
@@ -2582,7 +3151,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
             if (aiQuota.used >= aiQuota.limit) {
                 return context.json(
                     {
-                        error: `Dosegnut je tjedni limit AI zahtjeva (${aiQuota.limit.toString()}/tjedan). Pokušaj ponovno kasnije.`,
+                        code: 'ai_quota_exceeded',
+                        error: formatAiQuotaExceededError(aiQuota),
                     },
                     429,
                 );
@@ -2607,6 +3177,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     raisedBed,
                     positionIndex: positionIndexNumber,
                     imageUrls,
+                    referenceDate,
                 },
                 async (analysis) => {
                     await createEvent(
@@ -2618,6 +3189,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
                                 imageUrls,
                                 model: analysis.model,
                                 analyzedAt: analysis.analyzedAt,
+                                referenceDate:
+                                    referenceDate?.toISOString() ?? undefined,
                                 accountId,
                                 aiRequestKind:
                                     RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND,

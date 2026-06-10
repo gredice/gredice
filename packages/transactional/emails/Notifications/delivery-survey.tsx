@@ -19,7 +19,7 @@ export interface DeliverySurveyEmailTemplateProps {
 
 export default function DeliverySurveyEmailTemplate({
     email = 'login@example.com',
-    surveyUrl = 'https://form.typeform.com/to/X727vyBk',
+    surveyUrl = 'https://vrt.gredice.com/ankete',
     deliveryPeriod,
     deliveryCount,
     appName = 'Gredice',

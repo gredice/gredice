@@ -14,9 +14,12 @@ import feedbackRoutes from './feedbackRoutes';
 import gardensRoutes from './gardensRoutes';
 import inventoryRoutes from './inventoryRoutes';
 import newsletterRoutes from './newsletterRoutes';
+import newsRoutes from './newsRoutes';
 import notificationsRoutes from './notificationsRoutes';
 import occasionsRoutes from './occasionsRoutes';
+import outletRoutes from './outletRoutes';
 import shoppingCartRoutes from './shoppingCartRoutes';
+import surveysRoutes from './surveysRoutes';
 import usersRoutes from './usersRoutes';
 
 export const dynamic = 'force-dynamic';
@@ -89,7 +92,10 @@ const app = new Hono()
     .route('/delivery', deliveryRoutes)
     .route('/data', dataRoutes)
     .route('/notifications', notificationsRoutes)
-    .route('/newsletter', newsletterRoutes);
+    .route('/surveys', surveysRoutes)
+    .route('/newsletter', newsletterRoutes)
+    .route('/news', newsRoutes)
+    .route('/outlet', outletRoutes);
 
 app.get('/docs/auth', docs(authRoutes, 'Auth API', 'auth'))
     .get('/docs/accounts', docs(accountsRoutes, 'Accounts API', 'accounts'))
@@ -112,10 +118,13 @@ app.get('/docs/auth', docs(authRoutes, 'Auth API', 'auth'))
         '/docs/notifications',
         docs(notificationsRoutes, 'Notifications API', 'notifications'),
     )
+    .get('/docs/surveys', docs(surveysRoutes, 'Surveys API', 'surveys'))
     .get(
         '/docs/newsletter',
         docs(newsletterRoutes, 'Newsletter API', 'newsletter'),
-    );
+    )
+    .get('/docs/news', docs(newsRoutes, 'News API', 'news'))
+    .get('/docs/outlet', docs(outletRoutes, 'Outlet API', 'outlet'));
 
 export const GET = handle(app);
 export const POST = handle(app);

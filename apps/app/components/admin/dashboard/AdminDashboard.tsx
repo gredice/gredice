@@ -1,5 +1,11 @@
-import { getEntityTypes, getSetting, SettingsKeys } from '@gredice/storage';
+import {
+    getEntityTypes,
+    getPendingAchievementsCount,
+    getSetting,
+    SettingsKeys,
+} from '@gredice/storage';
 import { auth } from '../../../lib/auth/auth';
+import { getPendingAdminApprovalTaskCount } from '../../../src/approvalTasks';
 import {
     buildDashboardQuickActionOptions,
     getDashboardQuickActionsFromConfig,
@@ -17,19 +23,23 @@ export async function AdminDashboard({ searchParams }: AdminDashboardProps) {
     const params = await searchParams;
     const selectedPeriod = params?.period || '7';
 
-    const [data, entityTypes, dashboardQuickActionsSetting] = await Promise.all(
-        [
-            getAnalyticsData(
-                selectedPeriod === 'custom'
-                    ? undefined
-                    : Number(selectedPeriod),
-                params?.from,
-                params?.to,
-            ),
-            getEntityTypes(),
-            getSetting(SettingsKeys.DashboardQuickActions),
-        ],
-    );
+    const [
+        data,
+        entityTypes,
+        dashboardQuickActionsSetting,
+        pendingAchievementsCount,
+        pendingApprovalTasksCount,
+    ] = await Promise.all([
+        getAnalyticsData(
+            selectedPeriod === 'custom' ? undefined : Number(selectedPeriod),
+            params?.from,
+            params?.to,
+        ),
+        getEntityTypes(),
+        getSetting(SettingsKeys.DashboardQuickActions),
+        getPendingAchievementsCount(),
+        getPendingAdminApprovalTaskCount(),
+    ]);
 
     const quickActionOptions = buildDashboardQuickActionOptions(
         entityTypes.map((entityType) => ({
@@ -58,6 +68,10 @@ export async function AdminDashboard({ searchParams }: AdminDashboardProps) {
             initialAiData={data.ai}
             initialSunflowersData={data.sunflowers}
             initialQuickActions={quickActions}
+            initialQuickActionBadgeCounts={{
+                pendingAchievementsCount,
+                pendingApprovalTasksCount,
+            }}
             initialPeriod={selectedPeriod}
             initialFrom={params?.from}
             initialTo={params?.to}

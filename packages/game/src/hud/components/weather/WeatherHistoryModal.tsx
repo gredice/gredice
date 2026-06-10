@@ -17,14 +17,12 @@ import {
     useWeatherHistoryRange,
 } from '../../../hooks/useWeatherHistory';
 
-export function WeatherHistoryModal({
-    trigger,
-    open,
-    onOpenChange,
+export function WeatherHistoryPanel({
+    className,
+    enabled = true,
 }: {
-    trigger?: React.ReactNode;
-    open?: boolean;
-    onOpenChange?: (open: boolean) => void;
+    className?: string;
+    enabled?: boolean;
 }) {
     const [range, setRange] = useState<WeatherChartsRange>(() =>
         getDefaultWeatherRange(),
@@ -34,33 +32,57 @@ export function WeatherHistoryModal({
     const { data: history, isLoading: historyLoading } = useWeatherHistory(
         range.from,
         range.to,
+        enabled,
     );
-    const { data: forecast, isLoading: forecastLoading } = useWeatherForecast();
-    const { data: historyRange } = useWeatherHistoryRange();
+    const { data: forecast, isLoading: forecastLoading } =
+        useWeatherForecast(enabled);
+    const { data: historyRange } = useWeatherHistoryRange(enabled);
 
     const bounds = getWeatherDataBounds(historyRange?.from, forecast);
 
     return (
+        <div className={className}>
+            <WeatherCharts
+                history={history}
+                forecast={forecast}
+                range={range}
+                bounds={bounds}
+                onRangeChange={setRange}
+                metric={metric}
+                onMetricChange={setMetric}
+                isLoading={historyLoading || forecastLoading}
+                compact
+            />
+        </div>
+    );
+}
+
+export function WeatherHistoryModal({
+    trigger,
+    open,
+    onOpenChange,
+}: {
+    trigger?: React.ReactNode;
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
+}) {
+    const [internalOpen, setInternalOpen] = useState(false);
+    const isOpen = open ?? internalOpen;
+
+    function handleOpenChange(nextOpen: boolean) {
+        setInternalOpen(nextOpen);
+        onOpenChange?.(nextOpen);
+    }
+
+    return (
         <Modal
             trigger={trigger}
-            open={open}
-            onOpenChange={onOpenChange}
+            open={isOpen}
+            onOpenChange={handleOpenChange}
             title="Vremenske prilike"
             className="w-full max-w-3xl"
         >
-            <div className="pt-2">
-                <WeatherCharts
-                    history={history}
-                    forecast={forecast}
-                    range={range}
-                    bounds={bounds}
-                    onRangeChange={setRange}
-                    metric={metric}
-                    onMetricChange={setMetric}
-                    isLoading={historyLoading || forecastLoading}
-                    compact
-                />
-            </div>
+            <WeatherHistoryPanel className="pt-2" enabled={isOpen} />
         </Modal>
     );
 }

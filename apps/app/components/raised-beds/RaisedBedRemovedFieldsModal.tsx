@@ -10,6 +10,7 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { MoveRaisedBedFieldPlantModal } from './MoveRaisedBedFieldPlantModal';
+import { raisedBedFieldCardButtonClassName } from './RaisedBedFieldCard';
 
 export type RemovedFieldDetails = {
     id: number;
@@ -70,6 +71,7 @@ export function RaisedBedRemovedFieldsModal({
                     variant="plain"
                     size="sm"
                     title={`Povijest (${fields.length})`}
+                    className={raisedBedFieldCardButtonClassName}
                 >
                     <Timer className="size-4 shrink-0" />
                 </IconButton>

@@ -14,6 +14,7 @@ import {
     Calendar,
     Euro,
     Fence,
+    MapPinHouse,
     Settings,
     Shield,
     Sprout,
@@ -27,6 +28,7 @@ import { Suspense } from 'react';
 import LoginDialog from '../components/auth/LoginDialog';
 import { LogoutButton } from '../components/auth/LogoutButton';
 import { auth } from '../lib/auth/auth';
+import { FarmDashboardGreeting } from './FarmDashboardGreeting';
 
 function formatDate(date?: Date | string | null) {
     if (!date) {
@@ -69,7 +71,6 @@ function formatCoordinate(value?: number | null) {
 async function FarmerDashboard() {
     const { userId } = await auth(['farmer', 'admin']);
     const [dbUser, farms] = await Promise.all([getUser(userId), getFarms()]);
-    const showDebugTools = process.env.NODE_ENV === 'development';
 
     if (!dbUser) {
         return (
@@ -96,9 +97,10 @@ async function FarmerDashboard() {
                             className="flex-wrap items-start gap-3"
                         >
                             <Stack className="min-w-0">
-                                <Typography level="h4" component="h1" semiBold>
-                                    {`Dobrodošli, ${displayName}!`}
-                                </Typography>
+                                <FarmDashboardGreeting
+                                    displayName={displayName}
+                                    initialDateIso={new Date().toISOString()}
+                                />
                                 <Typography
                                     level="body2"
                                     className="text-muted-foreground"
@@ -108,7 +110,18 @@ async function FarmerDashboard() {
                                     vremenu.
                                 </Typography>
                             </Stack>
-                            <LogoutButton />
+                            <Row spacing={1} className="shrink-0">
+                                <Button
+                                    aria-label="Postavke"
+                                    className="aspect-square px-0"
+                                    href="/settings"
+                                    title="Postavke"
+                                    variant="plain"
+                                >
+                                    <Settings className="size-4 shrink-0" />
+                                </Button>
+                                <LogoutButton />
+                            </Row>
                         </Row>
                         <Row spacing={2} className="flex-wrap gap-y-2">
                             <Chip
@@ -118,9 +131,6 @@ async function FarmerDashboard() {
                                 {role?.label ?? dbUser.role}
                             </Chip>
                             <Chip color="neutral">Član od {joinDate}</Chip>
-                            <Chip color="neutral">
-                                Povezanih računa: {dbUser.accounts.length}
-                            </Chip>
                         </Row>
                     </Stack>
                 </CardContent>
@@ -137,72 +147,70 @@ async function FarmerDashboard() {
                         </Stack>
                     </CardHeader>
                     <CardOverflow>
-                        <Stack spacing={4} className="p-4">
+                        <div className="grid grid-cols-2 gap-3 p-4">
                             <Button
                                 variant="solid"
                                 size="lg"
-                                className="justify-start"
-                                startDecorator={<Calendar className="size-4" />}
+                                fullWidth
+                                className="h-24 flex-col text-center text-base"
+                                startDecorator={<Calendar className="size-6" />}
                                 href="/schedule"
                             >
-                                Pregled dnevnih zadataka
+                                Dnevni zadaci
                             </Button>
                             <Button
-                                variant="outlined"
+                                variant="soft"
                                 size="lg"
-                                className="justify-start"
-                                startDecorator={<Fence className="size-4" />}
+                                fullWidth
+                                className="h-24 flex-col text-center text-base"
+                                startDecorator={<Fence className="size-6" />}
                                 href="/raised-beds"
                             >
-                                Pregled svih gredica
+                                Gredice
                             </Button>
                             <Button
                                 variant="soft"
                                 size="lg"
-                                className="justify-start"
-                                startDecorator={<BookA className="size-4" />}
+                                fullWidth
+                                className="h-24 flex-col text-center text-base"
+                                startDecorator={
+                                    <MapPinHouse className="size-6" />
+                                }
+                                href="/greenhouse"
+                            >
+                                Staklenik
+                            </Button>
+                            <Button
+                                variant="soft"
+                                size="lg"
+                                fullWidth
+                                className="h-24 flex-col text-center text-base"
+                                startDecorator={<BookA className="size-6" />}
                                 href="/operations"
                             >
-                                Priručnik radnji
+                                Radnje
                             </Button>
                             <Button
                                 variant="soft"
                                 size="lg"
-                                className="justify-start"
-                                startDecorator={<Sprout className="size-4" />}
+                                fullWidth
+                                className="h-24 flex-col text-center text-base"
+                                startDecorator={<Sprout className="size-6" />}
                                 href="/plants"
                             >
-                                Priručnik biljaka
+                                Biljke
                             </Button>
                             <Button
                                 variant="soft"
                                 size="lg"
-                                className="justify-start"
-                                startDecorator={<Euro className="size-4" />}
+                                fullWidth
+                                className="h-24 flex-col text-center text-base"
+                                startDecorator={<Euro className="size-6" />}
                                 href="/payouts"
                             >
-                                Moje isplate
+                                Isplate
                             </Button>
-                            <Button
-                                variant="soft"
-                                size="lg"
-                                className="justify-start"
-                                startDecorator={<Settings className="size-4" />}
-                                href="/settings"
-                            >
-                                Postavke
-                            </Button>
-                            {showDebugTools && (
-                                <Button
-                                    variant="outlined"
-                                    size="lg"
-                                    className="justify-start"
-                                    href="/debug/labels"
-                                >
-                                    Debug etiketa
-                                </Button>
-                            )}
-                        </Stack>
+                        </div>
                     </CardOverflow>
                 </Card>
                 <Card className="h-full">

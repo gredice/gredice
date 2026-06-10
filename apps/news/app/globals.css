@@ -1,0 +1,184 @@
+@import "tailwindcss";
+@config "../tailwind.config.ts";
+@source "../../../packages/ui/src";
+
+@layer base {
+    :root {
+        /* Summer hue: 28, Winter hue: 202 */
+        --baseHue: 28;
+
+        --background: var(--baseHue) 76.5% 98%;
+        --foreground: var(--baseHue) 47.4% 11.2%;
+
+        --muted: var(--baseHue) 40% 96.1%;
+        --muted-foreground: var(--baseHue) 16.3% 24%;
+
+        --popover: 0 0% 100%;
+        --popover-foreground: var(--baseHue) 47.4% 11.2%;
+
+        --card: 0 0% 100%;
+        --card-transparent: 0 0% 100%;
+        --card-foreground: var(--baseHue) 47.4% 11.2%;
+
+        --border: var(--baseHue) 31.8% 91.4%;
+        --input: var(--baseHue) 31.8% 91.4%;
+
+        --primary: var(--baseHue) 47.4% 11.2%;
+        --primary-foreground: var(--baseHue) 40% 98%;
+
+        --secondary: var(--baseHue) 40% 96.1%;
+        --secondary-foreground: var(--baseHue) 35.4% 26%;
+
+        --tertiary: var(--baseHue) 40% 80.1%;
+        --tertiary-foreground: var(--baseHue) 20% 24%;
+
+        --accent: var(--baseHue) 40% 90.1%;
+        --accent-foreground: var(--baseHue) 47.4% 11.2%;
+
+        --destructive: 0 100% 50%;
+        --destructive-foreground: 210 40% 98%;
+
+        --ring: var(--baseHue) 20.2% 65.1%;
+
+        --radius: 0.5rem;
+
+        --light-display: visible;
+        --dark-display: none;
+
+        --bg-selection: hsl(137, 40%, 24%);
+        --text-selection: #fff;
+    }
+
+    .dark {
+        --hue: 212;
+
+        --background: var(--hue) 16% 19%;
+        --foreground: var(--hue) 47% 92%;
+
+        --muted: var(--hue) 16% 10%;
+        --muted-foreground: var(--hue) 16% 98%;
+
+        --popover: var(--hue) 16% 19%;
+        --popover-foreground: var(--hue) 47% 89%;
+
+        --card: var(--hue) 16% 10%;
+        --card-transparent: var(--hue) 0% 0%;
+        --card-foreground: var(--hue) 17% 92%;
+
+        --border: var(--hue) 16% 25%;
+        --input: var(--hue) 31% 9%;
+
+        --primary: var(--hue) 16% 98%;
+        --primary-foreground: var(--hue) 40% 20%;
+
+        --secondary: var(--hue) 47% 25%;
+        --secondary-foreground: var(--hue) 10% 86%;
+
+        --tertiary: var(--hue) 16% 10%;
+        --tertiary-foreground: var(--hue) 10% 86%;
+
+        --accent: var(--hue) 20% 25%;
+        --accent-foreground: var(--hue) 47% 92%;
+
+        --destructive: 0 100% 50%;
+        --destructive-foreground: 210 40% 98%;
+
+        --ring: var(--hue) 20% 65%;
+
+        --radius: 0.5rem;
+
+        --light-display: none;
+        --dark-display: visible;
+
+        --bg-selection: hsl(137, 40%, 90%);
+        --text-selection: #000;
+    }
+
+    * {
+        border-color: hsl(var(--border));
+    }
+
+    /* Enable smooth color transitions when switching themes */
+    *,
+    *::before,
+    *::after {
+        transition:
+            background-color 0.3s ease,
+            border-color 0.3s ease,
+            color 0.3s ease;
+    }
+
+    body {
+        background-color: hsl(var(--background));
+        color: hsl(var(--foreground));
+        font-feature-settings:
+            "rlig" 1,
+            "calt" 1;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        font-family: var(--font-montserrat), sans-serif;
+    }
+
+    button,
+    [role="button"] {
+        cursor: auto;
+    }
+
+    :target {
+        scroll-margin-top: 4rem;
+    }
+
+    ::selection {
+        background: var(--bg-selection);
+        color: var(--text-selection);
+    }
+}
+
+@keyframes avatar-in {
+    from {
+        opacity: 0;
+        transform: scale(0.5);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes scale-in {
+    from {
+        opacity: 0;
+        transform: scale(0);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+svg.lucide {
+    stroke-width: 1.75px;
+}
+
+@layer utilities {
+    .animate-scale-in {
+        animation: scale-in 0.15s ease-out;
+    }
+
+    .site-footer .text-muted-foreground,
+    .site-footer .text-tertiary-foreground {
+        color: hsl(var(--foreground));
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .animate-scale-in {
+        animation: none;
+    }
+}

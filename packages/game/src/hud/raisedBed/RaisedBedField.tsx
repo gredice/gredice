@@ -9,9 +9,12 @@ import {
     useSensors,
 } from '@dnd-kit/core';
 import { rectSwappingStrategy, SortableContext } from '@dnd-kit/sortable';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Heart, History, Lightning } from '@gredice/ui/icons';
+import { cx } from '@gredice/ui/utils';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
+import { useAllSorts } from '../../hooks/usePlantSorts';
 import {
     type ShoppingCartItemData,
     useShoppingCart,
@@ -21,9 +24,15 @@ import { isRaisedBedAbandoned } from '../../raisedBedConstants';
 import { getRaisedBedBlockIds } from '../../utils/raisedBedBlocks';
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
 import { getPositionIndexFromGrid } from '../../utils/raisedBedOrientation';
+import {
+    getRaisedBedFieldRelationshipIndicators,
+    type RaisedBedFieldRelationshipIndicator as RaisedBedFieldRelationshipIndicatorData,
+    type RaisedBedFieldRelationshipIndicatorDirection,
+} from './plantRelationshipSignals';
 import { RaisedBedFieldAbandoned } from './RaisedBedFieldAbandoned';
 import { RaisedBedFieldInvalidShape } from './RaisedBedFieldInvalidShape';
 import { RaisedBedFieldItem } from './RaisedBedFieldItem';
+import { RaisedBedFieldRelationshipIndicator } from './RaisedBedFieldRelationshipIndicator';
 import { SortableFieldItem } from './SortableFieldItem';
 
 type PendingFieldMove = {
@@ -33,6 +42,41 @@ type PendingFieldMove = {
     sequence: number;
     toPositionIndex: number;
 };
+
+type RaisedBedFieldLayerPreferences = {
+    showPlantHistoryBadges: boolean;
+    showRelationshipIndicators: boolean;
+};
+
+type RaisedBedFieldRelationshipIndicatorLayer =
+    RaisedBedFieldRelationshipIndicatorData & {
+        showBadge: boolean;
+    };
+
+const RAISED_BED_FIELD_LAYER_PREFERENCES_STORAGE_KEY =
+    'gredice:raised-bed-field-layer-preferences';
+const DEFAULT_RAISED_BED_FIELD_LAYER_PREFERENCES: RaisedBedFieldLayerPreferences =
+    {
+        showPlantHistoryBadges: true,
+        showRelationshipIndicators: true,
+    };
+const OPPOSITE_RELATIONSHIP_DIRECTIONS: Record<
+    RaisedBedFieldRelationshipIndicatorDirection,
+    RaisedBedFieldRelationshipIndicatorDirection
+> = {
+    bottom: 'top',
+    bottomLeft: 'topRight',
+    bottomRight: 'topLeft',
+    left: 'right',
+    right: 'left',
+    top: 'bottom',
+    topLeft: 'bottomRight',
+    topRight: 'bottomLeft',
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+}
 
 function isRaisedBedCartPlantItem(
     item: ShoppingCartItemData,
@@ -48,6 +92,101 @@ function isRaisedBedCartPlantItem(
     );
 }
 
+function readRaisedBedFieldLayerPreferences(): RaisedBedFieldLayerPreferences {
+    if (typeof window === 'undefined') {
+        return DEFAULT_RAISED_BED_FIELD_LAYER_PREFERENCES;
+    }
+
+    try {
+        const storedValue = window.localStorage.getItem(
+            RAISED_BED_FIELD_LAYER_PREFERENCES_STORAGE_KEY,
+        );
+        if (!storedValue) {
+            return DEFAULT_RAISED_BED_FIELD_LAYER_PREFERENCES;
+        }
+
+        const parsedValue: unknown = JSON.parse(storedValue);
+        if (!isRecord(parsedValue)) {
+            return DEFAULT_RAISED_BED_FIELD_LAYER_PREFERENCES;
+        }
+
+        return {
+            showPlantHistoryBadges:
+                typeof parsedValue.showPlantHistoryBadges === 'boolean'
+                    ? parsedValue.showPlantHistoryBadges
+                    : DEFAULT_RAISED_BED_FIELD_LAYER_PREFERENCES.showPlantHistoryBadges,
+            showRelationshipIndicators:
+                typeof parsedValue.showRelationshipIndicators === 'boolean'
+                    ? parsedValue.showRelationshipIndicators
+                    : DEFAULT_RAISED_BED_FIELD_LAYER_PREFERENCES.showRelationshipIndicators,
+        };
+    } catch {
+        return DEFAULT_RAISED_BED_FIELD_LAYER_PREFERENCES;
+    }
+}
+
+function writeRaisedBedFieldLayerPreferences(
+    preferences: RaisedBedFieldLayerPreferences,
+) {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    try {
+        window.localStorage.setItem(
+            RAISED_BED_FIELD_LAYER_PREFERENCES_STORAGE_KEY,
+            JSON.stringify(preferences),
+        );
+    } catch {
+        // Layer visibility is a convenience preference; ignore storage failures.
+    }
+}
+
+function addRelationshipIndicatorLayer(
+    indicatorsByPosition: Map<
+        number,
+        RaisedBedFieldRelationshipIndicatorLayer[]
+    >,
+    indicator: RaisedBedFieldRelationshipIndicatorLayer,
+) {
+    const indicators = indicatorsByPosition.get(indicator.positionIndex) ?? [];
+    indicators.push(indicator);
+    indicatorsByPosition.set(indicator.positionIndex, indicators);
+}
+
+function RaisedBedFieldLayerToggle({
+    children,
+    isPressed,
+    label,
+    onClick,
+    storageName,
+}: {
+    children: ReactNode;
+    isPressed: boolean;
+    label: string;
+    onClick: () => void;
+    storageName: 'history' | 'relationships';
+}) {
+    return (
+        <button
+            aria-label={label}
+            aria-pressed={isPressed}
+            className={cx(
+                'inline-flex size-10 items-center justify-center rounded-md border-2 border-white shadow-md ring-1 ring-black/10 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700',
+                isPressed
+                    ? 'bg-gradient-to-br from-lime-100/90 to-lime-100/80 text-primary hover:text-primary/80 dark:from-lime-200/80 dark:to-lime-200/70 dark:text-primary-foreground dark:hover:text-primary-foreground/80'
+                    : 'bg-white/85 text-lime-950 hover:bg-white',
+            )}
+            data-raised-bed-layer-control={storageName}
+            onClick={onClick}
+            title={label}
+            type="button"
+        >
+            {children}
+        </button>
+    );
+}
+
 export function RaisedBedField({
     gardenId,
     raisedBedId,
@@ -57,6 +196,7 @@ export function RaisedBedField({
 }) {
     const { data: garden } = useCurrentGarden();
     const { data: cart, isLoading: isCartLoading } = useShoppingCart();
+    const { data: allSorts } = useAllSorts();
     const { track } = useGameAnalytics();
     const swapPositions = useSwapShoppingCartPositions();
     const [pendingMove, setPendingMove] = useState<PendingFieldMove | null>(
@@ -65,7 +205,16 @@ export function RaisedBedField({
     const moveSequenceRef = useRef(0);
     const [dropAnimationDisabled, setDropAnimationDisabled] = useState(false);
     const [isHudDialogOpen, setIsHudDialogOpen] = useState(false);
+    const [layerPreferences, setLayerPreferences] = useState(
+        readRaisedBedFieldLayerPreferences,
+    );
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
+    const plantHistoryToggleLabel = layerPreferences.showPlantHistoryBadges
+        ? 'Sakrij prethodne biljke'
+        : 'Prikaži prethodne biljke';
+    const relationshipsToggleLabel = layerPreferences.showRelationshipIndicators
+        ? 'Sakrij dobre i loše susjede'
+        : 'Prikaži dobre i loše susjede';
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -115,6 +264,10 @@ export function RaisedBedField({
 
         return () => observer.disconnect();
     }, []);
+
+    useEffect(() => {
+        writeRaisedBedFieldLayerPreferences(layerPreferences);
+    }, [layerPreferences]);
 
     // Determine which positions have cart items (draggable)
     const baseCartItemsByPosition = useMemo(() => {
@@ -223,6 +376,33 @@ export function RaisedBedField({
             .filter((field) => isRaisedBedFieldOccupied(field))
             .map((field) => field.positionIndex),
     );
+    const relationshipIndicatorsByPosition = new Map<
+        number,
+        RaisedBedFieldRelationshipIndicatorLayer[]
+    >();
+    if (layerPreferences.showRelationshipIndicators) {
+        for (const indicator of getRaisedBedFieldRelationshipIndicators({
+            blockCount,
+            cartItems: Array.from(cartItemsByPosition.values()),
+            fields: raisedBed.fields,
+            gardenId,
+            raisedBedId,
+            sorts: allSorts,
+        })) {
+            addRelationshipIndicatorLayer(relationshipIndicatorsByPosition, {
+                ...indicator,
+                showBadge: true,
+            });
+            addRelationshipIndicatorLayer(relationshipIndicatorsByPosition, {
+                ...indicator,
+                direction:
+                    OPPOSITE_RELATIONSHIP_DIRECTIONS[indicator.direction],
+                neighborPositionIndex: indicator.positionIndex,
+                positionIndex: indicator.neighborPositionIndex,
+                showBadge: false,
+            });
+        }
+    }
 
     function handleDragEnd(event: DragEndEvent) {
         if (isHudDialogOpen) return;
@@ -281,8 +461,48 @@ export function RaisedBedField({
     const sortableItems = allPositionIndices.map((pos) => pos.toString());
 
     return (
-        <>
-            <div></div>
+        <div className="relative size-full">
+            <div className="absolute -left-12 bottom-0 z-30 flex flex-col gap-2">
+                <RaisedBedFieldLayerToggle
+                    isPressed={layerPreferences.showPlantHistoryBadges}
+                    label={plantHistoryToggleLabel}
+                    onClick={() =>
+                        setLayerPreferences((current) => ({
+                            ...current,
+                            showPlantHistoryBadges:
+                                !current.showPlantHistoryBadges,
+                        }))
+                    }
+                    storageName="history"
+                >
+                    <History aria-hidden className="size-5" />
+                </RaisedBedFieldLayerToggle>
+                <RaisedBedFieldLayerToggle
+                    isPressed={layerPreferences.showRelationshipIndicators}
+                    label={relationshipsToggleLabel}
+                    onClick={() =>
+                        setLayerPreferences((current) => ({
+                            ...current,
+                            showRelationshipIndicators:
+                                !current.showRelationshipIndicators,
+                        }))
+                    }
+                    storageName="relationships"
+                >
+                    <span className="flex items-center justify-center gap-0.5">
+                        <Heart
+                            aria-hidden
+                            className="size-3.5 shrink-0 fill-current"
+                            strokeWidth={3}
+                        />
+                        <Lightning
+                            aria-hidden
+                            className="size-4 shrink-0 fill-current"
+                            strokeWidth={3}
+                        />
+                    </span>
+                </RaisedBedFieldLayerToggle>
+            </div>
             <DndContext
                 id={`raised-bed-field-${gardenId}-${raisedBedId}`}
                 sensors={sensors}
@@ -346,24 +566,46 @@ export function RaisedBedField({
                                                 showHandle={isInCart}
                                             >
                                                 {({ isDragging }) => (
-                                                    <RaisedBedFieldItem
-                                                        cartPlantItem={
-                                                            cartItemsByPosition.get(
-                                                                positionIndex,
-                                                            ) ?? null
-                                                        }
-                                                        gardenId={gardenId}
-                                                        isCartPending={
-                                                            isCartLoading
-                                                        }
-                                                        raisedBedId={
-                                                            raisedBedId
-                                                        }
-                                                        positionIndex={
-                                                            positionIndex
-                                                        }
-                                                        isDragging={isDragging}
-                                                    />
+                                                    <div className="relative size-full">
+                                                        <RaisedBedFieldItem
+                                                            cartPlantItem={
+                                                                cartItemsByPosition.get(
+                                                                    positionIndex,
+                                                                ) ?? null
+                                                            }
+                                                            gardenId={gardenId}
+                                                            isCartPending={
+                                                                isCartLoading
+                                                            }
+                                                            raisedBedId={
+                                                                raisedBedId
+                                                            }
+                                                            showPlantHistoryBadges={
+                                                                layerPreferences.showPlantHistoryBadges
+                                                            }
+                                                            positionIndex={
+                                                                positionIndex
+                                                            }
+                                                            isDragging={
+                                                                isDragging
+                                                            }
+                                                        />
+                                                        {relationshipIndicatorsByPosition
+                                                            .get(positionIndex)
+                                                            ?.map(
+                                                                (indicator) => (
+                                                                    <RaisedBedFieldRelationshipIndicator
+                                                                        key={`${indicator.positionIndex.toString()}-${indicator.neighborPositionIndex.toString()}-${indicator.status}-${indicator.showBadge ? 'badge' : 'connector'}`}
+                                                                        indicator={
+                                                                            indicator
+                                                                        }
+                                                                        showBadge={
+                                                                            indicator.showBadge
+                                                                        }
+                                                                    />
+                                                                ),
+                                                            )}
+                                                    </div>
                                                 )}
                                             </SortableFieldItem>
                                         </div>
@@ -374,6 +616,6 @@ export function RaisedBedField({
                     </div>
                 </SortableContext>
             </DndContext>
-        </>
+        </div>
     );
 }

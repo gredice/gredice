@@ -1,6 +1,6 @@
 ---
 name: gredice-game-asset-docs
-description: Document Gredice garden game, 3D scene, generated assets, model exports, sprite atlases, performance profiling, quality tiers, canvas behavior, game asset source files, and verification workflows in apps/garden, packages/game, packages/cdn, assets, or docs/game-scene-performance.md.
+description: Use for docs on Gredice garden game assets, 3D scene, model exports, sprite atlases, performance, quality tiers, and canvas behavior.
 ---
 
 # Gredice Game Asset Docs
@@ -107,15 +107,6 @@ When docs claim visual behavior, verify with a browser or screenshots:
 
 ## Validation
 
-Use targeted checks:
-
-```bash
-pnpm build --filter garden
-pnpm test --filter garden
-pnpm lint --filter @gredice/game
-pnpm generate:game-assets
-pnpm --filter @gredice/cdn run regenerate-cdn:decoration-atlas
-git diff --check
-```
+Use targeted `@gredice/game` checks and `garden`/`www` typechecks when runtime behavior changes. Run asset or atlas generators only when source assets/manifests changed. Run app builds and Playwright suites only for routing, static assets, bundling, production behavior, visual behavior, or user flows. Docs-only changes need `git diff --check`.
 
 Do not hand-edit generated model output unless the generator is broken and the temporary nature of the change is explicitly documented.

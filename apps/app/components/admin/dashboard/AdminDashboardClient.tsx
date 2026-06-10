@@ -4,7 +4,29 @@ import type { getAnalyticsTotals } from '@gredice/storage';
 import { Button } from '@gredice/ui/Button';
 import { Chip } from '@gredice/ui/Chip';
 import { Input } from '@gredice/ui/Input';
-import { Calendar, Euro, File, Hammer, Truck } from '@gredice/ui/icons';
+import {
+    AI,
+    Bank,
+    Calendar,
+    Cloud,
+    Euro,
+    Fence,
+    File,
+    Hammer,
+    Inbox,
+    Lightning,
+    Mail,
+    Map as MapIcon,
+    Megaphone,
+    Settings,
+    ShoppingCart,
+    SmileHappy,
+    Sprout,
+    Success,
+    Tally3,
+    Truck,
+    User,
+} from '@gredice/ui/icons';
 import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Row } from '@gredice/ui/Row';
 import { SelectItems } from '@gredice/ui/SelectItems';
@@ -13,7 +35,11 @@ import { Typography } from '@gredice/ui/Typography';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { formatAiCostUsd } from '../../../src/ai/aiAnalyticsCost';
-import type { DashboardQuickActionOption } from '../../../src/dashboardQuickActions';
+import {
+    type DashboardQuickActionBadgeCounts,
+    type DashboardQuickActionOption,
+    getDashboardQuickActionBadge,
+} from '../../../src/dashboardQuickActions';
 import { KnownPages } from '../../../src/KnownPages';
 import { FactCard } from '../cards/FactCard';
 import { EntityTypeIcon } from '../directories/EntityTypeIcon';
@@ -59,16 +85,56 @@ function quickActionIcon(quickAction: { href: string; icon?: string | null }) {
     }
 
     switch (quickAction.href) {
+        case KnownPages.Accounts:
+            return <Bank className="size-4" />;
+        case KnownPages.Achievements:
+        case KnownPages.Sunflowers:
+            return <Success className="size-4" />;
+        case KnownPages.AiAnalytics:
+            return <AI className="size-4" />;
+        case KnownPages.Approvals:
+        case KnownPages.CommunicationInbox:
+            return <Inbox className="size-4" />;
+        case KnownPages.Automations:
+            return <Lightning className="size-4" />;
+        case KnownPages.CommunicationEmails:
+            return <Mail className="size-4" />;
+        case KnownPages.DeliveryRequests:
+        case KnownPages.DeliverySlots:
+            return <Truck className="size-4" />;
+        case KnownPages.FarmerPayouts:
+        case KnownPages.FarmerPrices:
+        case KnownPages.Transactions:
+            return <Euro className="size-4" />;
+        case KnownPages.Farms:
+            return <MapIcon className="size-4" />;
+        case KnownPages.Gardens:
+            return <Fence className="size-4" />;
+        case KnownPages.Inventory:
+        case KnownPages.SowingStatistics:
+            return <Tally3 className="size-4" />;
+        case KnownPages.Notifications:
+        case KnownPages.SocialPublishing:
+            return <Megaphone className="size-4" />;
+        case KnownPages.Occasions:
         case KnownPages.Schedule:
             return <Calendar className="size-4" />;
         case KnownPages.RaisedBeds:
-            return <RaisedBedIcon className="size-4" />;
+            return <RaisedBedIcon className="size-4" physicalId={null} />;
+        case KnownPages.Greenhouse:
+            return <Sprout className="size-4" />;
         case KnownPages.Operations:
             return <Hammer className="size-4" />;
-        case KnownPages.DeliveryRequests:
-            return <Truck className="size-4" />;
-        case KnownPages.Transactions:
-            return <Euro className="size-4" />;
+        case KnownPages.Settings:
+            return <Settings className="size-4" />;
+        case KnownPages.ShoppingCarts:
+            return <ShoppingCart className="size-4" />;
+        case KnownPages.Users:
+            return <User className="size-4" />;
+        case KnownPages.Weather:
+            return <Cloud className="size-4" />;
+        case KnownPages.Feedback:
+            return <SmileHappy className="size-4" />;
         default:
             return <File className="size-4" />;
     }
@@ -78,6 +144,7 @@ export function AdminDashboardClient({
     initialAnalyticsData,
     initialEntitiesData,
     initialQuickActions,
+    initialQuickActionBadgeCounts,
     initialPeriod = '7',
     initialOperationsDurationData,
     initialWeekdayRegistrations,
@@ -88,6 +155,7 @@ export function AdminDashboardClient({
 }: {
     initialAnalyticsData: Awaited<ReturnType<typeof getAnalyticsTotals>>;
     initialQuickActions: DashboardQuickActionOption[];
+    initialQuickActionBadgeCounts: DashboardQuickActionBadgeCounts;
     initialEntitiesData: EntityData[];
     initialPeriod?: string;
     initialOperationsDurationData: OperationsDurationData;
@@ -200,15 +268,27 @@ export function AdminDashboardClient({
     return (
         <Stack spacing={4}>
             <Row spacing={2} className="flex-wrap">
-                {initialQuickActions.map((quickAction) => (
-                    <Chip
-                        key={quickAction.id}
-                        href={quickAction.href}
-                        startDecorator={quickActionIcon(quickAction)}
-                    >
-                        {quickAction.label}
-                    </Chip>
-                ))}
+                {initialQuickActions.map((quickAction) => {
+                    const badge = getDashboardQuickActionBadge(
+                        quickAction,
+                        initialQuickActionBadgeCounts,
+                    );
+
+                    return (
+                        <Chip
+                            key={quickAction.id}
+                            href={quickAction.href}
+                            startDecorator={quickActionIcon(quickAction)}
+                        >
+                            {quickAction.label}
+                            {badge != null && badge > 0 ? (
+                                <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground">
+                                    {badge}
+                                </span>
+                            ) : null}
+                        </Chip>
+                    );
+                })}
             </Row>
             <Stack spacing={2}>
                 <Row justifyContent="space-between">

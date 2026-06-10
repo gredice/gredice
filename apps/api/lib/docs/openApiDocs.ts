@@ -3,6 +3,9 @@ import {
     type ExtendedAttributeDefinition,
     getAttributeDefinitions,
     getEntityTypes,
+    isPlantHealthAffectedPlantAttributeDefinition,
+    isPlantRelationshipAttributeDefinition,
+    plantHealthOperationIntentForAttributeDefinition,
 } from '@gredice/storage';
 import type { OpenAPIV3_1 } from 'openapi-types';
 
@@ -194,6 +197,36 @@ async function resolvePropertyData(
     attributeDefinition: DirectoryAttributeDefinition,
     loadAttributeDefinitions: AttributeDefinitionLoader = getAttributeDefinitions,
 ) {
+    if (isPlantHealthAffectedPlantAttributeDefinition(attributeDefinition)) {
+        return {
+            type: 'array',
+            items: {
+                $ref: '#/components/schemas/plant-health-affected-plant',
+            },
+            description: attributeDefinition.description || undefined,
+        } satisfies OpenAPIV3_1.SchemaObject;
+    }
+
+    if (plantHealthOperationIntentForAttributeDefinition(attributeDefinition)) {
+        return {
+            type: 'array',
+            items: {
+                $ref: '#/components/schemas/plant-health-operation',
+            },
+            description: attributeDefinition.description || undefined,
+        } satisfies OpenAPIV3_1.SchemaObject;
+    }
+
+    if (isPlantRelationshipAttributeDefinition(attributeDefinition)) {
+        return {
+            type: 'array',
+            items: {
+                $ref: '#/components/schemas/plant-relationship',
+            },
+            description: attributeDefinition.description || undefined,
+        } satisfies OpenAPIV3_1.SchemaObject;
+    }
+
     if (attributeDefinition.dataType.startsWith('json|')) {
         const propertyData = resolveJsonPropertyData(
             attributeDefinition.dataType.substring(5),
@@ -345,6 +378,15 @@ async function openApiEntitiesDoc(
         ...attributeProperties,
     };
 
+    if (entityType.name === 'plant') {
+        properties = {
+            ...properties,
+            health: {
+                $ref: '#/components/schemas/plant-health',
+            },
+        };
+    }
+
     properties = {
         ...properties,
         createdAt: {
@@ -441,6 +483,20 @@ export async function openApiDocs(
         security: [],
         paths: {},
         components: {
+            securitySchemes: {
+                bearerAuth: {
+                    type: 'http',
+                    scheme: 'bearer',
+                    bearerFormat: 'JWT',
+                    description: 'Use access token when calling API directly.',
+                },
+                cookieAuth: {
+                    type: 'apiKey',
+                    in: 'cookie',
+                    name: 'gredice_session',
+                    description: 'Session cookie used by web clients.',
+                },
+            },
             schemas: {
                 image: {
                     type: 'object',
@@ -451,6 +507,156 @@ export async function openApiDocs(
                         },
                     },
                     required: ['url'],
+                },
+                'plant-relationship': {
+                    type: 'object',
+                    properties: {
+                        id: {
+                            type: 'number',
+                        },
+                        slug: {
+                            type: 'string',
+                        },
+                        name: {
+                            type: 'string',
+                        },
+                        latinName: {
+                            type: 'string',
+                        },
+                        image: {
+                            type: 'object',
+                            properties: {
+                                cover: {
+                                    $ref: '#/components/schemas/image',
+                                },
+                            },
+                        },
+                        relationship: {
+                            type: 'string',
+                            enum: ['companion', 'antagonist'],
+                        },
+                    },
+                    required: ['id', 'slug', 'name', 'relationship'],
+                },
+                'plant-health-operation': {
+                    type: 'object',
+                    properties: {
+                        id: {
+                            type: 'number',
+                        },
+                        slug: {
+                            type: 'string',
+                        },
+                        name: {
+                            type: 'string',
+                        },
+                        label: {
+                            type: 'string',
+                        },
+                    },
+                    required: ['id', 'slug', 'name'],
+                },
+                'plant-health-affected-plant': {
+                    type: 'object',
+                    properties: {
+                        id: {
+                            type: 'number',
+                        },
+                        slug: {
+                            type: 'string',
+                        },
+                        name: {
+                            type: 'string',
+                        },
+                        latinName: {
+                            type: 'string',
+                        },
+                        image: {
+                            type: 'object',
+                            properties: {
+                                cover: {
+                                    $ref: '#/components/schemas/image',
+                                },
+                            },
+                        },
+                    },
+                    required: ['id', 'slug', 'name'],
+                },
+                'plant-health-issue': {
+                    type: 'object',
+                    properties: {
+                        id: {
+                            type: 'number',
+                        },
+                        slug: {
+                            type: 'string',
+                        },
+                        name: {
+                            type: 'string',
+                        },
+                        kind: {
+                            type: 'string',
+                            enum: ['disease', 'pest'],
+                        },
+                        shortDescription: {
+                            type: 'string',
+                        },
+                        symptoms: {
+                            type: 'string',
+                        },
+                        conditions: {
+                            type: 'string',
+                        },
+                        image: {
+                            type: 'object',
+                            properties: {
+                                cover: {
+                                    $ref: '#/components/schemas/image',
+                                },
+                            },
+                        },
+                        operations: {
+                            type: 'object',
+                            properties: {
+                                prevention: {
+                                    type: 'array',
+                                    items: {
+                                        $ref: '#/components/schemas/plant-health-operation',
+                                    },
+                                },
+                                reduction: {
+                                    type: 'array',
+                                    items: {
+                                        $ref: '#/components/schemas/plant-health-operation',
+                                    },
+                                },
+                                alleviation: {
+                                    type: 'array',
+                                    items: {
+                                        $ref: '#/components/schemas/plant-health-operation',
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    required: ['id', 'slug', 'name', 'kind'],
+                },
+                'plant-health': {
+                    type: 'object',
+                    properties: {
+                        diseases: {
+                            type: 'array',
+                            items: {
+                                $ref: '#/components/schemas/plant-health-issue',
+                            },
+                        },
+                        pests: {
+                            type: 'array',
+                            items: {
+                                $ref: '#/components/schemas/plant-health-issue',
+                            },
+                        },
+                    },
                 },
             },
         },
@@ -572,6 +778,96 @@ export async function openApiDocs(
         },
     };
 
+    paths['/community-edits/entities/{entityType}/{entityId}/fields'] = {
+        get: {
+            summary: '/community-edits/entities/{entityType}/{entityId}/fields',
+            description:
+                'List public-editable fields for an authenticated user editing a directory entity.',
+            security: [{ cookieAuth: [] }, { bearerAuth: [] }],
+            parameters: [
+                {
+                    name: 'entityType',
+                    in: 'path',
+                    required: true,
+                    schema: { type: 'string' },
+                },
+                {
+                    name: 'entityId',
+                    in: 'path',
+                    required: true,
+                    schema: { type: 'integer', minimum: 1 },
+                },
+                {
+                    name: 'sectionKey',
+                    in: 'query',
+                    required: false,
+                    schema: { type: 'string' },
+                },
+            ],
+            responses: {
+                200: {
+                    description: 'Editable fields for the entity.',
+                    content: {
+                        'application/json': {
+                            schema: {
+                                $ref: '#/components/schemas/community-edit-fields-response',
+                            },
+                        },
+                    },
+                },
+                401: {
+                    description: 'Authentication is required.',
+                },
+                400: {
+                    description: 'Entity or field lookup failed.',
+                },
+            },
+        },
+    };
+
+    paths['/community-edits'] = {
+        post: {
+            summary: '/community-edits',
+            description:
+                'Submit a pending community edit request for admin approval. Live directory content is not changed by this endpoint.',
+            security: [{ cookieAuth: [] }, { bearerAuth: [] }],
+            requestBody: {
+                required: true,
+                content: {
+                    'application/json': {
+                        schema: {
+                            $ref: '#/components/schemas/community-edit-submit-request',
+                        },
+                    },
+                },
+            },
+            responses: {
+                201: {
+                    description:
+                        'Community edit request was created and is pending admin approval.',
+                    content: {
+                        'application/json': {
+                            schema: {
+                                $ref: '#/components/schemas/community-edit-submit-response',
+                            },
+                        },
+                    },
+                },
+                400: {
+                    description:
+                        'Invalid entity, field, data type, value, or unchanged submission.',
+                },
+                401: {
+                    description: 'Authentication is required.',
+                },
+                409: {
+                    description:
+                        'Submitted base value hash is stale and the user should reload current content.',
+                },
+            },
+        },
+    };
+
     if (baseDoc.components?.schemas) {
         baseDoc.components.schemas['section-data'] = {
             type: 'object',
@@ -589,11 +885,21 @@ export async function openApiDocs(
             properties: {
                 slug: { type: 'string' },
                 title: { type: 'string' },
+                contentKind: {
+                    type: 'string',
+                    enum: ['page', 'blog', 'changelog'],
+                },
+                category: { type: ['string', 'null'] },
+                tags: {
+                    type: 'array',
+                    items: { type: 'string' },
+                },
                 state: { type: 'string', enum: ['published'] },
                 publishedAt: { type: ['string', 'null'], format: 'date-time' },
                 metaTitle: { type: ['string', 'null'] },
                 metaDescription: { type: ['string', 'null'] },
                 metaImageUrl: { type: ['string', 'null'] },
+                seoImageUrl: { type: ['string', 'null'] },
                 updatedAt: { type: 'string', format: 'date-time' },
             },
         };
@@ -665,6 +971,116 @@ export async function openApiDocs(
                         $ref: '#/components/schemas/directory-search-result',
                     },
                 },
+            },
+        };
+        baseDoc.components.schemas['community-edit-field'] = {
+            type: 'object',
+            required: [
+                'entityTypeName',
+                'entityId',
+                'fieldKey',
+                'sectionKey',
+                'attributeDefinitionId',
+                'attributePath',
+                'dataType',
+                'controlType',
+                'multiple',
+                'publicLabel',
+                'currentValue',
+                'baseValueHash',
+            ],
+            properties: {
+                entityTypeName: { type: 'string' },
+                entityId: { type: 'integer' },
+                fieldKey: { type: 'string' },
+                sectionKey: { type: 'string' },
+                attributeDefinitionId: { type: 'integer' },
+                attributeValueId: { type: ['integer', 'null'] },
+                attributePath: { type: 'string' },
+                dataType: { type: 'string' },
+                controlType: {
+                    type: 'string',
+                    enum: [
+                        'boolean',
+                        'json',
+                        'markdown',
+                        'number',
+                        'range',
+                        'reference',
+                        'text',
+                    ],
+                },
+                multiple: { type: 'boolean' },
+                publicLabel: { type: 'string' },
+                helpText: { type: 'string' },
+                currentValue: { type: ['string', 'null'] },
+                baseValueHash: { type: 'string' },
+            },
+        };
+        baseDoc.components.schemas['community-edit-fields-response'] = {
+            type: 'object',
+            required: ['entityTypeName', 'entityId', 'sectionKey', 'fields'],
+            properties: {
+                entityTypeName: { type: 'string' },
+                entityId: { type: 'integer' },
+                sectionKey: { type: ['string', 'null'] },
+                fields: {
+                    type: 'array',
+                    items: {
+                        $ref: '#/components/schemas/community-edit-field',
+                    },
+                },
+            },
+        };
+        baseDoc.components.schemas['community-edit-change-submit'] = {
+            type: 'object',
+            required: ['fieldKey', 'proposedValue'],
+            properties: {
+                fieldKey: { type: 'string' },
+                proposedValue: {
+                    description:
+                        'Serialized proposed value. Type is validated against the editable field registry. Text and markdown submissions are stored with replayable patches so non-overlapping edits on the same attribute can be approved later.',
+                },
+                baseValueHash: {
+                    type: ['string', 'null'],
+                    description:
+                        'Hash returned by the editable fields endpoint. A stale hash is rejected at submission time; accepted text and markdown requests can later replay their stored patch over unrelated approved edits.',
+                },
+            },
+        };
+        baseDoc.components.schemas['community-edit-submit-request'] = {
+            type: 'object',
+            required: ['entityTypeName', 'entityId', 'publicPath', 'changes'],
+            properties: {
+                entityTypeName: { type: 'string' },
+                entityId: { type: 'integer', minimum: 1 },
+                publicPath: { type: 'string' },
+                sectionKey: { type: ['string', 'null'] },
+                submitterNote: { type: ['string', 'null'], maxLength: 2000 },
+                changes: {
+                    type: 'array',
+                    minItems: 1,
+                    maxItems: 20,
+                    items: {
+                        $ref: '#/components/schemas/community-edit-change-submit',
+                    },
+                },
+            },
+        };
+        baseDoc.components.schemas['community-edit-submit-response'] = {
+            type: 'object',
+            required: ['status', 'requestId', 'requestStatus', 'changeCount'],
+            properties: {
+                status: {
+                    type: 'string',
+                    enum: ['pending_admin_approval'],
+                },
+                requestId: { type: 'integer' },
+                requestStatus: {
+                    type: 'string',
+                    enum: ['pending'],
+                },
+                changeCount: { type: 'integer' },
             },
         };
     }

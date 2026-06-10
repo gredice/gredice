@@ -12,9 +12,11 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { UserAvatar } from '@gredice/ui/UserAvatar';
 import { CompletePlantingModal } from './CompletePlantingModal';
+import { ScheduleTaskAgeIndicatorChip } from './ScheduleTaskAgeIndicatorChip';
 import type { FarmScheduleDayData } from './scheduleData';
 import {
     formatMinutes,
+    getFieldPhysicalPositionIndex,
     groupRaisedBedsForSchedule,
     isFieldApproved,
     isFieldCompleted,
@@ -34,6 +36,7 @@ interface FarmSchedulePlantingsSectionProps {
 function buildFieldLabel(
     field: FarmRaisedBedField,
     plantSortById: Map<number, EntityStandardized>,
+    physicalPositionIndex: number,
 ) {
     const taskName =
         field.sowingLocation === 'greenhouse'
@@ -43,15 +46,21 @@ function buildFieldLabel(
         ? plantSortById.get(field.plantSortId)
         : null;
     if (!field.plantSortId || !sort) {
-        return `${field.positionIndex + 1} - ${taskName}: ? Nepoznato`;
+        return `${physicalPositionIndex} - ${taskName}: ? Nepoznato`;
     }
 
+    const totalPlants = getPlantsPerFieldCount(sort);
+    return `${physicalPositionIndex} - ${taskName}: ${totalPlants ?? '?'} ${sort.information?.name ?? 'Nepoznato'}`;
+}
+
+function getPlantsPerFieldCount(
+    plantSort: EntityStandardized | null | undefined,
+) {
     const seedingDistance =
-        sort.information?.plant?.attributes?.seedingDistance;
-    const totalPlants = seedingDistance
+        plantSort?.information?.plant?.attributes?.seedingDistance;
+    return typeof seedingDistance === 'number'
         ? calculatePlantsPerField(seedingDistance).totalPlants
         : null;
-    return `${field.positionIndex + 1} - ${taskName}: ${totalPlants ?? '?'} ${sort.information?.name ?? 'Nepoznato'}`;
 }
 
 export function FarmSchedulePlantingsSection({
@@ -95,42 +104,64 @@ export function FarmSchedulePlantingsSection({
                             (left, right) =>
                                 left.positionIndex - right.positionIndex,
                         )
-                        .map((field) => ({
-                            ...field,
-                            label: buildFieldLabel(field, plantSortById),
-                        }));
+                        .map((field) => {
+                            const physicalPositionIndex =
+                                getFieldPhysicalPositionIndex(
+                                    field,
+                                    groupedRaisedBeds,
+                                );
 
+                            return {
+                                ...field,
+                                physicalPositionIndex,
+                                label: buildFieldLabel(
+                                    field,
+                                    plantSortById,
+                                    physicalPositionIndex,
+                                ),
+                            };
+                        });
                     const totalDuration =
                         dayFields.length * PLANTING_TASK_DURATION_MINUTES;
 
                     return (
                         <Stack key={key} spacing={2}>
-                            <Row
-                                spacing={2}
-                                className="items-center flex-wrap gap-y-1"
-                            >
-                                {physicalId ? (
-                                    <RaisedBedLabel physicalId={physicalId} />
-                                ) : (
-                                    <Typography semiBold>
-                                        Gredica bez fizičkog ID-a
-                                    </Typography>
-                                )}
-                                <Typography
-                                    level="body2"
-                                    className="text-muted-foreground"
+                            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+                                <div className="min-w-0">
+                                    {physicalId ? (
+                                        <RaisedBedLabel
+                                            physicalId={physicalId}
+                                        />
+                                    ) : (
+                                        <Typography
+                                            semiBold
+                                            className="truncate"
+                                        >
+                                            Gredica bez fizičkog ID-a
+                                        </Typography>
+                                    )}
+                                </div>
+                                <Row
+                                    spacing={2}
+                                    className="justify-end text-right"
                                 >
-                                    {dayFields.length} sijanja
-                                </Typography>
-                                {totalDuration > 0 && (
                                     <Typography
                                         level="body2"
-                                        className="text-muted-foreground"
+                                        className="whitespace-nowrap text-muted-foreground"
                                     >
-                                        Vrijeme: {formatMinutes(totalDuration)}
+                                        {dayFields.length} sijanja
                                     </Typography>
-                                )}
-                            </Row>
+                                    {totalDuration > 0 && (
+                                        <Typography
+                                            level="body2"
+                                            className="whitespace-nowrap text-muted-foreground"
+                                        >
+                                            Vrijeme:{' '}
+                                            {formatMinutes(totalDuration)}
+                                        </Typography>
+                                    )}
+                                </Row>
+                            </div>
                             <Stack spacing={2}>
                                 {dayFields.map((field) => {
                                     const completed = isFieldCompleted(
@@ -257,6 +288,13 @@ export function FarmSchedulePlantingsSection({
                                                                     'Danas'
                                                                 )}
                                                             </Typography>
+                                                            {!completed && (
+                                                                <ScheduleTaskAgeIndicatorChip
+                                                                    scheduledDate={
+                                                                        field.plantScheduledDate
+                                                                    }
+                                                                />
+                                                            )}
                                                         </Row>
                                                     </Stack>
                                                 </Row>

@@ -15,8 +15,8 @@ import {
     getRaisedBedFieldsWithEvents,
     knownEvents,
     moveRaisedBedFieldPlantHistory,
-    queueSeasonalSowingOfferOperations,
     type RaisedBedFieldSowingLocation,
+    updateActiveRaisedBedFieldPlantStatusEventCreatedAt,
 } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
 import type { EntityStandardized } from '../../lib/@types/EntityStandardized';
@@ -29,11 +29,13 @@ async function revalidateRaisedBedPaths(raisedBed: {
     gardenId?: number | null;
 }) {
     revalidatePath(KnownPages.Schedule);
+    revalidatePath(KnownPages.Greenhouse);
     if (raisedBed.accountId)
         revalidatePath(KnownPages.Account(raisedBed.accountId));
     if (raisedBed.gardenId)
         revalidatePath(KnownPages.Garden(raisedBed.gardenId));
     revalidatePath(KnownPages.RaisedBed(raisedBed.id));
+    revalidatePath(KnownPages.Greenhouse);
 }
 
 async function applyRaisedBedFieldPlantUpdate({
@@ -41,16 +43,23 @@ async function applyRaisedBedFieldPlantUpdate({
     positionIndex,
     status,
     plantSortId,
+    timestamp,
 }: {
     raisedBed: NonNullable<Awaited<ReturnType<typeof getRaisedBed>>>;
     positionIndex: number;
     status?: string;
     plantSortId?: number;
+    timestamp?: string;
 }) {
     const aggregateId = `${raisedBed.id.toString()}|${positionIndex.toString()}`;
     const existingField = raisedBed.fields.find(
         (field) => field.positionIndex === positionIndex && field.active,
     );
+    const createdAt = timestamp ? new Date(timestamp) : undefined;
+    if (createdAt && Number.isNaN(createdAt.getTime())) {
+        throw new Error('Invalid plant status timestamp.');
+    }
+
     if (plantSortId && existingField?.plantSortId !== plantSortId) {
         await createEvent(
             knownEvents.raisedBedFields.plantReplaceSortV1(aggregateId, {
@@ -60,33 +69,38 @@ async function applyRaisedBedFieldPlantUpdate({
     }
 
     if (status) {
-        await createEvent(
-            knownEvents.raisedBedFields.plantUpdateV1(
-                aggregateId,
-                buildRaisedBedFieldPlantUpdatePayload(
-                    status,
-                    existingField?.assignedUserIds,
+        const statusChanged = existingField?.plantStatus !== status;
+        if (!statusChanged) {
+            if (createdAt) {
+                const updated =
+                    await updateActiveRaisedBedFieldPlantStatusEventCreatedAt({
+                        raisedBedId: raisedBed.id,
+                        positionIndex,
+                        status,
+                        createdAt,
+                    });
+                if (!updated) {
+                    throw new Error(
+                        'Datum stanja mora ostati u redoslijedu događaja biljke.',
+                    );
+                }
+            }
+        } else {
+            await createEvent({
+                ...knownEvents.raisedBedFields.plantUpdateV1(
+                    aggregateId,
+                    buildRaisedBedFieldPlantUpdatePayload(
+                        status,
+                        existingField?.assignedUserIds,
+                    ),
                 ),
-            ),
-        );
-
-        if (
-            status === 'sowed' &&
-            existingField &&
-            existingField.plantStatus !== 'sowed' &&
-            raisedBed.accountId
-        ) {
-            const gardenId = raisedBed.gardenId;
-            await queueSeasonalSowingOfferOperations({
-                accountId: raisedBed.accountId,
-                ...(gardenId ? { gardenId } : {}),
-                raisedBedId: raisedBed.id,
+                ...(createdAt ? { createdAt } : {}),
             });
         }
     }
 
     const sortIdToUse = plantSortId ?? existingField?.plantSortId;
-    if (sortIdToUse && status) {
+    if (sortIdToUse && status && existingField?.plantStatus !== status) {
         const sortData =
             await getEntityFormatted<EntityStandardized>(sortIdToUse);
         if (sortData) {
@@ -132,7 +146,9 @@ async function applyRaisedBedFieldPlantUpdate({
                     header,
                     content,
                     linkUrl: raisedBed.name
-                        ? getRaisedBedCloseupUrl(raisedBed.name)
+                        ? getRaisedBedCloseupUrl(raisedBed.name, {
+                              positionIndex,
+                          })
                         : undefined,
                     timestamp: new Date(),
                 });
@@ -205,11 +221,13 @@ export async function raisedBedFieldUpdatePlant({
     positionIndex,
     status,
     plantSortId,
+    timestamp,
 }: {
     raisedBedId: number;
     positionIndex: number;
     status?: string;
     plantSortId?: number;
+    timestamp?: string;
 }) {
     await auth(['admin']);
 
@@ -223,6 +241,7 @@ export async function raisedBedFieldUpdatePlant({
         positionIndex,
         status,
         plantSortId,
+        timestamp,
     });
 
     await revalidateRaisedBedPaths(raisedBed);
@@ -244,7 +263,7 @@ export async function verifyRaisedBedPlantingAction(
     const field = raisedBed.fields.find(
         (item) => item.positionIndex === positionIndex && item.active,
     );
-    if (!field || field.plantStatus !== 'pendingVerification') {
+    if (field?.plantStatus !== 'pendingVerification') {
         throw new Error('Sijanje ne čeka verifikaciju.');
     }
 
@@ -391,14 +410,21 @@ export async function rescheduleRaisedBedFieldAction(formData: FormData) {
         throw new Error('Field or plant sort not found.');
     }
 
+    const aggregateId = `${raisedBedId}|${positionIndex}`;
+
     await createEvent(
-        knownEvents.raisedBedFields.plantScheduleV1(
-            `${raisedBedId}|${positionIndex}`,
-            {
-                scheduledDate: new Date(scheduledDate).toISOString(),
-            },
-        ),
+        knownEvents.raisedBedFields.plantScheduleV1(aggregateId, {
+            scheduledDate: new Date(scheduledDate).toISOString(),
+        }),
     );
+
+    if (field.plantStatus === 'pendingVerification') {
+        await createEvent(
+            knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+                status: 'planned',
+            }),
+        );
+    }
 
     revalidatePath(KnownPages.Schedule);
     if (raisedBed.accountId)
@@ -436,23 +462,15 @@ export async function setRaisedBedFieldSowingLocationAction(
         return { success: true };
     }
 
-    const activeCycle = field.plantCycles?.find((cycle) => cycle.active);
-    const sowingMoment =
-        field.plantSowDate ??
-        activeCycle?.startedAt ??
-        field.plantScheduledDate ??
-        undefined;
-
-    await createEvent({
-        ...knownEvents.raisedBedFields.plantScheduleV1(
+    await createEvent(
+        knownEvents.raisedBedFields.plantScheduleV1(
             `${raisedBedId}|${positionIndex}`,
             {
                 scheduledDate: field.plantScheduledDate?.toISOString() ?? null,
                 sowingLocation,
             },
         ),
-        ...(sowingMoment ? { createdAt: new Date(sowingMoment) } : {}),
-    });
+    );
 
     await revalidateRaisedBedPaths(raisedBed);
 
@@ -531,6 +549,11 @@ export async function cancelRaisedBedFieldAction(formData: FormData) {
                   raisedBedId: raisedBed.id,
                   header,
                   content,
+                  linkUrl: raisedBed.name
+                      ? getRaisedBedCloseupUrl(raisedBed.name, {
+                            positionIndex,
+                        })
+                      : undefined,
                   timestamp: new Date(),
               })
             : undefined,

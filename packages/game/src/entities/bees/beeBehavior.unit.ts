@@ -5,6 +5,7 @@ import {
     getBeeCount,
     getBeeDwellSeconds,
     getBeeHabitatGroups,
+    getBeeSpawnHabitatGroups,
     getBeeWanderHoverSeconds,
     isBeeActive,
     isBeeDaytime,
@@ -79,6 +80,37 @@ test('groups nearby flowers into one bee habitat', () => {
     assert.deepEqual(
         groups.map((group) => group.map((target) => target.id)),
         [['a', 'b'], ['c']],
+    );
+});
+
+test('requires flower entity spawn targets before creating bee habitats', () => {
+    const groups = getBeeSpawnHabitatGroups({
+        spawnTargets: [],
+        additionalTargets: [
+            { id: 'raised-bed-flower', position: { x: 0, z: 0 } },
+            { id: 'cactus-flower', position: { x: 1, z: 1 } },
+        ],
+    });
+
+    assert.equal(groups.length, 0);
+});
+
+test('adds nearby non-spawn flowers to flower entity habitats', () => {
+    const tulipTargets = [
+        { id: 'tulip-a', position: { x: 0, z: 0 } },
+        { id: 'tulip-b', position: { x: 0.3, z: 0.2 } },
+    ];
+    const groups = getBeeSpawnHabitatGroups({
+        spawnTargets: tulipTargets,
+        additionalTargets: [
+            { id: 'raised-bed-flower', position: { x: 2, z: 2 } },
+            { id: 'far-grass-flower', position: { x: 12, z: 0 } },
+        ],
+    });
+
+    assert.deepEqual(
+        groups.map((group) => group.map((target) => target.id)),
+        [['tulip-a', 'tulip-b', 'raised-bed-flower']],
     );
 });
 

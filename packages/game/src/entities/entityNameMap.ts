@@ -26,6 +26,7 @@ import { BlockWater } from './BlockWater';
 import { Bucket } from './Bucket';
 import { Bush } from './Bush';
 import { Cactus } from './Cactus';
+import { CatPillow } from './CatPillow';
 import { Composter } from './Composter';
 import { DeadTree } from './DeadTree';
 import { DesertStone } from './DesertStone';
@@ -38,6 +39,7 @@ import { GiftBoxGreenGold } from './GiftBoxGreenGold';
 import { GiftBoxPurpleSilver } from './GiftBoxPurpleSilver';
 import { GiftBoxRedWhite } from './GiftBoxRedWhite';
 import { GiftBoxWhiteGreen } from './GiftBoxWhiteGreen';
+import { PaintRoller } from './PaintRoller';
 import { Pine } from './Pine';
 import { PineAdvent } from './PineAdvent';
 import { Pot } from './Pot';
@@ -54,6 +56,7 @@ import { StoneLarge } from './StoneLarge';
 import { StoneMedium } from './StoneMedium';
 import { StoneSmall } from './StoneSmall';
 import { Stool } from './Stool';
+import { Sunflower } from './Sunflower';
 import { Tree } from './Tree';
 import { Tulip } from './Tulip';
 import { WateringCan } from './WateringCan';
@@ -89,8 +92,11 @@ export const entityNameMap: Record<
     Stool: Stool,
     Bucket: Bucket,
     WateringCan: WateringCan,
+    PaintRoller: PaintRoller,
     WaterWell: WaterWell,
     BirdHouse: BirdHouse,
+    CatPillow: CatPillow,
+    Cat_Pillow: CatPillow,
     FireflyJar: FireflyJar,
     GiftBox_RedWhite: GiftBoxRedWhite,
     GiftBox_GreenGold: GiftBoxGreenGold,
@@ -113,6 +119,7 @@ export const entityNameMap: Record<
     ShovelSmall: ShovelSmall,
     Snowman: Snowman,
     Tulip: Tulip,
+    Sunflower: Sunflower,
     CactusBarrel: Cactus,
     CactusColumnCluster: Cactus,
     CactusPricklyPear: Cactus,

@@ -21,18 +21,23 @@ import {
     Bank,
     Calendar,
     Cloud,
+    Discount,
+    Edit,
     Euro,
     Fence,
     File,
     Hammer,
     Home,
     Inbox,
+    Lightning,
+    Link,
     Mail,
     Map as MapIcon,
     Megaphone,
     Settings,
     ShoppingCart,
     SmileHappy,
+    Sprout,
     Success,
     Tally3,
     Truck,
@@ -43,6 +48,7 @@ import { usePathname } from 'next/navigation';
 import type { CSSProperties } from 'react';
 import { useContext, useState } from 'react';
 import { reorderEntityType } from '../../../app/(actions)/entityActions';
+import { getDashboardQuickActionBadge } from '../../../src/dashboardQuickActions';
 import { KnownPages } from '../../../src/KnownPages';
 import { EntityTypeIcon } from '../directories/EntityTypeIcon';
 import { adminPages } from './adminPages';
@@ -70,18 +76,56 @@ function quickActionIcon(quickAction: { href: string; icon?: string | null }) {
     }
 
     switch (quickAction.href) {
+        case KnownPages.Accounts:
+            return <Bank className="size-5" />;
+        case KnownPages.Achievements:
+        case KnownPages.Sunflowers:
+            return <Success className="size-5" />;
+        case KnownPages.AiAnalytics:
+            return <AI className="size-5" />;
+        case KnownPages.Approvals:
+        case KnownPages.CommunicationInbox:
+            return <Inbox className="size-5" />;
+        case KnownPages.Automations:
+            return <Lightning className="size-5" />;
+        case KnownPages.CommunicationEmails:
+            return <Mail className="size-5" />;
+        case KnownPages.DeliveryRequests:
+        case KnownPages.DeliverySlots:
+            return <Truck className="size-5" />;
+        case KnownPages.FarmerPayouts:
+        case KnownPages.FarmerPrices:
+        case KnownPages.Transactions:
+            return <Euro className="size-5" />;
+        case KnownPages.Outlet:
+            return <Discount className="size-5" />;
+        case KnownPages.Farms:
+            return <MapIcon className="size-5" />;
+        case KnownPages.Gardens:
+            return <Fence className="size-5" />;
+        case KnownPages.Inventory:
+        case KnownPages.SowingStatistics:
+            return <Tally3 className="size-5" />;
+        case KnownPages.Notifications:
+        case KnownPages.SocialPublishing:
+            return <Megaphone className="size-5" />;
+        case KnownPages.Occasions:
         case KnownPages.Schedule:
             return <Calendar className="size-5" />;
+        case KnownPages.Greenhouse:
+            return <Sprout className="size-5" />;
         case KnownPages.RaisedBeds:
             return <RaisedBedIcon className="size-5" physicalId={null} />;
         case KnownPages.Operations:
             return <Hammer className="size-5" />;
-        case KnownPages.DeliveryRequests:
-            return <Truck className="size-5" />;
-        case KnownPages.Transactions:
-            return <Euro className="size-5" />;
-        case KnownPages.Sunflowers:
-            return <Success className="size-5" />;
+        case KnownPages.Settings:
+            return <Settings className="size-5" />;
+        case KnownPages.Users:
+            return <User className="size-5" />;
+        case KnownPages.Weather:
+            return <Cloud className="size-5" />;
+        case KnownPages.Feedback:
+            return <SmileHappy className="size-5" />;
         default:
             return <File className="size-5" />;
     }
@@ -199,6 +243,12 @@ export function Nav({
     const pendingAchievementsCount = navContext?.pendingAchievementsCount ?? 0;
     const pendingApprovalTasksCount =
         navContext?.pendingApprovalTasksCount ?? 0;
+    const pendingCommunityEditRequestsCount =
+        navContext?.pendingCommunityEditRequestsCount ?? 0;
+    const quickActionBadgeCounts = {
+        pendingAchievementsCount,
+        pendingApprovalTasksCount,
+    };
     const quickActions = navContext?.quickActions || [];
     const hasDirectoryRecords =
         categorizedTypes.length > 0 ||
@@ -229,6 +279,10 @@ export function Nav({
                         label={quickAction.label}
                         icon={quickActionIcon(quickAction)}
                         onClick={onItemClick}
+                        badge={getDashboardQuickActionBadge(
+                            quickAction,
+                            quickActionBadgeCounts,
+                        )}
                         compact={compact}
                     />
                 ))}
@@ -248,6 +302,14 @@ export function Nav({
                     label={adminPages.DirectoriesActivity.label}
                     icon={<File className="size-5" />}
                     onClick={onItemClick}
+                    compact={compact}
+                />
+                <NavItem
+                    href={adminPages.CommunityEdits.href}
+                    label={adminPages.CommunityEdits.label}
+                    icon={<Edit className="size-5" />}
+                    onClick={onItemClick}
+                    badge={pendingCommunityEditRequestsCount}
                     compact={compact}
                 />
                 {hasDirectoryRecords && (
@@ -390,6 +452,7 @@ export function Nav({
                         adminPages.Transactions.href,
                         adminPages.Sunflowers.href,
                         adminPages.Receipts.href,
+                        adminPages.Outlet.href,
                     ])}
                     compact={compact}
                 >
@@ -433,6 +496,14 @@ export function Nav({
                         compact={compact}
                         nested
                     />
+                    <NavItem
+                        href={adminPages.Outlet.href}
+                        label={adminPages.Outlet.label}
+                        icon={<Discount className="size-5" />}
+                        onClick={onItemClick}
+                        compact={compact}
+                        nested
+                    />
                 </NavGroup>
                 <NavGroup
                     label="Vrtovi"
@@ -442,6 +513,8 @@ export function Nav({
                         adminPages.Weather.href,
                         adminPages.Gardens.href,
                         adminPages.RaisedBeds.href,
+                        adminPages.Greenhouse.href,
+                        adminPages.HarvestTraces.href,
                         adminPages.Operations.href,
                         adminPages.FarmerPayouts.href,
                         adminPages.FarmerPrices.href,
@@ -486,9 +559,25 @@ export function Nav({
                         nested
                     />
                     <NavItem
+                        href={adminPages.Greenhouse.href}
+                        label={adminPages.Greenhouse.label}
+                        icon={<Sprout className="size-5" />}
+                        onClick={onItemClick}
+                        compact={compact}
+                        nested
+                    />
+                    <NavItem
                         href={adminPages.Operations.href}
                         label={adminPages.Operations.label}
                         icon={<Hammer className="size-5" />}
+                        onClick={onItemClick}
+                        compact={compact}
+                        nested
+                    />
+                    <NavItem
+                        href={adminPages.HarvestTraces.href}
+                        label={adminPages.HarvestTraces.label}
+                        icon={<Link className="size-5" />}
                         onClick={onItemClick}
                         compact={compact}
                         nested
@@ -512,6 +601,14 @@ export function Nav({
                 </NavGroup>
             </NavSection>
             <NavSection label="Upravljanje" compact={compact}>
+                <NavItem
+                    href={adminPages.Approvals.href}
+                    label={adminPages.Approvals.label}
+                    icon={<Inbox className="size-5" />}
+                    onClick={onItemClick}
+                    badge={pendingApprovalTasksCount}
+                    compact={compact}
+                />
                 <NavGroup
                     label="Inventar"
                     icon={<Tally3 className="size-5" />}
@@ -542,22 +639,12 @@ export function Nav({
                     label="Logistika"
                     icon={<Truck className="size-5" />}
                     forceOpen={includesSelectedPath(pathname, [
-                        adminPages.Approvals.href,
                         adminPages.Schedule.href,
                         adminPages.DeliverySlots.href,
                         adminPages.DeliveryRequests.href,
                     ])}
                     compact={compact}
                 >
-                    <NavItem
-                        href={adminPages.Approvals.href}
-                        label={adminPages.Approvals.label}
-                        icon={<Inbox className="size-5" />}
-                        onClick={onItemClick}
-                        badge={pendingApprovalTasksCount}
-                        compact={compact}
-                        nested
-                    />
                     <NavItem
                         href={adminPages.Schedule.href}
                         label={adminPages.Schedule.label}
@@ -654,6 +741,13 @@ export function Nav({
                 </NavGroup>
             </NavSection>
             <NavSection label="Sustavi" compact={compact}>
+                <NavItem
+                    href={adminPages.Automations.href}
+                    label={adminPages.Automations.label}
+                    icon={<Lightning className="size-5" />}
+                    onClick={onItemClick}
+                    compact={compact}
+                />
                 <NavGroup
                     label="Održavanje"
                     icon={<File className="size-5" />}
@@ -691,24 +785,13 @@ export function Nav({
                 </NavGroup>
             </NavSection>
             <NavSection label="Postavke" compact={compact}>
-                <NavGroup
-                    label="Aplikacija"
+                <NavItem
+                    href={adminPages.Settings.href}
+                    label={adminPages.Settings.label}
                     icon={<Settings className="size-5" />}
-                    forceOpen={isSelectedPath(
-                        pathname,
-                        adminPages.Settings.href,
-                    )}
+                    onClick={onItemClick}
                     compact={compact}
-                >
-                    <NavItem
-                        href={adminPages.Settings.href}
-                        label={adminPages.Settings.label}
-                        icon={<Settings className="size-5" />}
-                        onClick={onItemClick}
-                        compact={compact}
-                        nested
-                    />
-                </NavGroup>
+                />
             </NavSection>
         </div>
     );

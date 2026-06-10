@@ -5,6 +5,7 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import type { ReactNode } from 'react';
+import { CommunityEditButton } from '../../../components/community-edits/CommunityEditButton';
 import { ExpandableText } from '../../../components/shared/ExpandableText';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
@@ -23,6 +24,10 @@ export type InformationSectionProps = {
     sortContent?: string | null | undefined;
     operations?: PlantData['information']['operations'] | null | undefined;
     attributeCards?: ReactNode;
+    editEntityTypeName?: 'plant' | 'plantSort';
+    editEntityId?: number;
+    editPublicPath?: string;
+    editSectionKey?: string;
 };
 
 function isPublicOperation(operation: Pick<OperationData, 'attributes'>) {
@@ -37,6 +42,10 @@ export async function InformationSection({
     sortContent,
     operations,
     attributeCards,
+    editEntityTypeName,
+    editEntityId,
+    editPublicPath,
+    editSectionKey = id,
 }: InformationSectionProps) {
     const hasContent = Boolean(content?.trim());
     const hasSortContent = Boolean(sortContent?.trim());
@@ -156,10 +165,19 @@ export async function InformationSection({
                 {attributeCards}
                 <Stack
                     className={cx(
-                        'border rounded-lg p-2 h-fit',
+                        'relative border rounded-lg px-2 pb-2 pt-3 h-fit',
                         !applicableOperations?.length && 'justify-center',
                     )}
                 >
+                    <Typography
+                        level="body3"
+                        component="span"
+                        semiBold
+                        uppercase
+                        className="absolute -top-2 left-3 bg-background px-1 leading-none"
+                    >
+                        RADNJE
+                    </Typography>
                     {(applicableOperations?.length ?? 0) <= 0 && (
                         <div className="py-4">
                             <NoDataPlaceholder>
@@ -172,14 +190,23 @@ export async function InformationSection({
                     )}
                 </Stack>
             </Stack>
-            <FeedbackModal
-                className="md:group-hover:opacity-100 md:opacity-0 transition-opacity ml-auto"
-                topic="www/plants/information"
-                data={{
-                    plantId: plantId,
-                    sectionId: id,
-                }}
-            />
+            <div className="ml-auto flex items-center gap-1 md:opacity-0 md:transition-opacity md:group-hover:opacity-100 md:group-focus-within:opacity-100">
+                {editEntityTypeName && editEntityId && editPublicPath ? (
+                    <CommunityEditButton
+                        entityTypeName={editEntityTypeName}
+                        entityId={editEntityId}
+                        publicPath={editPublicPath}
+                        sectionKey={editSectionKey}
+                    />
+                ) : null}
+                <FeedbackModal
+                    topic="www/plants/information"
+                    data={{
+                        plantId: plantId,
+                        sectionId: id,
+                    }}
+                />
+            </div>
         </div>
     );
 }

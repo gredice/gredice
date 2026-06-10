@@ -17,10 +17,15 @@ import { HarvestLabelPreviewCanvas } from '../../../components/labels/HarvestLab
 import { DebugFieldLabel } from './DebugFieldLabel';
 import { DebugTextInput } from './DebugTextInput';
 
+const DEMO_TRACE_URL = 'https://www.gredice.com/trag/demo-berba-2026';
+
 const DEFAULT_LABEL_DATA: HarvestLabelData = {
     raisedBedPhysicalId: '12B',
     fieldIndex: 4,
+    operationLabel: 'Berba',
     plantSortName: 'Salata Batavia',
+    dateLabel: '02.06.2026.',
+    traceUrl: DEMO_TRACE_URL,
 };
 
 const LABEL_SAMPLES: Array<{
@@ -28,23 +33,29 @@ const LABEL_SAMPLES: Array<{
     data: HarvestLabelData;
 }> = [
     {
-        label: 'Salata',
+        label: 'Salata s QR',
         data: DEFAULT_LABEL_DATA,
     },
     {
-        label: 'Špinat',
+        label: 'Bez QR traga',
         data: {
             raisedBedPhysicalId: '3A',
             fieldIndex: 2,
+            operationLabel: 'Berba',
             plantSortName: 'Mladi špinat',
+            dateLabel: '02.06.2026.',
         },
     },
     {
-        label: 'Rajčica',
+        label: 'Dugi nazivi',
         data: {
             raisedBedPhysicalId: '18',
             fieldIndex: 7,
-            plantSortName: 'Cherry rajčica',
+            operationLabel: 'Branje 25% najzrelijih plodova',
+            plantSortName: 'Grah mahunar Meraviglia di Veneya a grano nero',
+            dateLabel: '02.06.2026.',
+            traceUrl:
+                'https://www.gredice.com/trag/demo-berba-cherry-rajcica-polje-18-7-2026',
         },
     },
 ];
@@ -73,16 +84,6 @@ export function HarvestLabelDebugPage() {
                 <Row spacing={4} justifyContent="space-between">
                     <Row spacing={2} className="items-start">
                         <HomeButton />
-                        <Stack spacing={1}>
-                            <Typography level="h4" component="h1">
-                                Debug etiketa
-                            </Typography>
-                            <Typography className="text-muted-foreground">
-                                Pregled koristi isti canvas renderer i isti
-                                fiksni profil ispisa kao etiketa u rasporedu
-                                berbe.
-                            </Typography>
-                        </Stack>
                     </Row>
                     <Button variant="outlined" href="/schedule">
                         Otvori raspored
@@ -130,6 +131,16 @@ export function HarvestLabelDebugPage() {
                                     />
                                 </div>
                                 <DebugTextInput
+                                    label="Naziv radnje"
+                                    value={labelData.operationLabel ?? ''}
+                                    onChange={(value) =>
+                                        setLabelData((current) => ({
+                                            ...current,
+                                            operationLabel: value,
+                                        }))
+                                    }
+                                />
+                                <DebugTextInput
                                     label="Sorta biljke"
                                     value={labelData.plantSortName}
                                     onChange={(value) =>
@@ -139,6 +150,54 @@ export function HarvestLabelDebugPage() {
                                         }))
                                     }
                                 />
+                                <DebugTextInput
+                                    label="Datum"
+                                    value={labelData.dateLabel ?? ''}
+                                    onChange={(value) =>
+                                        setLabelData((current) => ({
+                                            ...current,
+                                            dateLabel: value,
+                                        }))
+                                    }
+                                />
+                                <DebugTextInput
+                                    label="QR trag URL"
+                                    value={labelData.traceUrl ?? ''}
+                                    onChange={(value) =>
+                                        setLabelData((current) => ({
+                                            ...current,
+                                            traceUrl: value.trim()
+                                                ? value
+                                                : undefined,
+                                        }))
+                                    }
+                                />
+                                <div className="flex flex-wrap gap-2">
+                                    <Button
+                                        variant="outlined"
+                                        type="button"
+                                        onClick={() =>
+                                            setLabelData((current) => ({
+                                                ...current,
+                                                traceUrl: DEMO_TRACE_URL,
+                                            }))
+                                        }
+                                    >
+                                        Uključi QR
+                                    </Button>
+                                    <Button
+                                        variant="outlined"
+                                        type="button"
+                                        onClick={() =>
+                                            setLabelData((current) => ({
+                                                ...current,
+                                                traceUrl: undefined,
+                                            }))
+                                        }
+                                    >
+                                        Ukloni QR
+                                    </Button>
+                                </div>
 
                                 <Stack spacing={3}>
                                     <DebugFieldLabel title="Brzi primjeri" />

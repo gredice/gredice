@@ -45,6 +45,7 @@ import {
     knownEventTypes,
 } from './eventsRepo';
 import { getRaisedBed, getRaisedBedFieldsWithEvents } from './gardensRepo';
+import { getHarvestTraceLinksForOperationIds } from './harvestTraceLinksRepo';
 import { getOperationById, getOperationsByIds } from './operationsRepo';
 import { getPickupLocation } from './pickupLocationsRepo';
 import { closeTimeSlot, getTimeSlot } from './timeSlotsRepo';
@@ -653,30 +654,40 @@ export async function getDeliveryRequestsWithEvents(
         ),
     );
 
-    const [operationsWithState, operationEntities, fields] = await Promise.all([
-        getOperationsByIds(filteredOperationIds),
-        getEntitiesFormatted<OperationData>('operation').catch((error) => {
-            console.error('Failed to fetch operation entities:', error);
-            return null;
-        }),
-        uniqueRaisedBedIds.length > 0
-            ? Promise.all(
-                  uniqueRaisedBedIds.map(async (raisedBedId) => {
-                      try {
-                          return await getRaisedBedFieldsWithEvents(
-                              raisedBedId,
-                          );
-                      } catch (error) {
-                          console.error(
-                              'Failed to fetch raised bed fields:',
-                              error,
-                          );
-                          return [];
-                      }
-                  }),
-              ).then((fieldGroups) => fieldGroups.flat())
-            : Promise.resolve([]),
-    ]);
+    const [operationsWithState, operationEntities, fields, traceLinks] =
+        await Promise.all([
+            getOperationsByIds(filteredOperationIds),
+            getEntitiesFormatted<OperationData>('operation').catch((error) => {
+                console.error('Failed to fetch operation entities:', error);
+                return null;
+            }),
+            uniqueRaisedBedIds.length > 0
+                ? Promise.all(
+                      uniqueRaisedBedIds.map(async (raisedBedId) => {
+                          try {
+                              return await getRaisedBedFieldsWithEvents(
+                                  raisedBedId,
+                              );
+                          } catch (error) {
+                              console.error(
+                                  'Failed to fetch raised bed fields:',
+                                  error,
+                              );
+                              return [];
+                          }
+                      }),
+                  ).then((fieldGroups) => fieldGroups.flat())
+                : Promise.resolve([]),
+            getHarvestTraceLinksForOperationIds(filteredOperationIds).catch(
+                (error) => {
+                    console.error(
+                        'Failed to fetch harvest trace links:',
+                        error,
+                    );
+                    return [];
+                },
+            ),
+        ]);
 
     const operationsById = new Map(
         operationsWithState.map((operation) => [operation.id, operation]),
@@ -688,6 +699,27 @@ export async function getDeliveryRequestsWithEvents(
         ]),
     );
     const fieldsById = new Map(fields.map((field) => [field.id, field]));
+    const traceLinksByOperationId = new Map<
+        number,
+        (typeof traceLinks)[number]
+    >();
+    const traceLinkCountsByOperationId = new Map<number, number>();
+    for (const link of traceLinks) {
+        if (!traceLinksByOperationId.has(link.harvestOperationId)) {
+            traceLinksByOperationId.set(link.harvestOperationId, link);
+        }
+        traceLinkCountsByOperationId.set(
+            link.harvestOperationId,
+            (traceLinkCountsByOperationId.get(link.harvestOperationId) ?? 0) +
+                1,
+        );
+    }
+    const traceLinksByOperationAndFieldId = new Map(
+        traceLinks.map((link) => [
+            `${link.harvestOperationId}:${link.raisedBedFieldId}`,
+            link,
+        ]),
+    );
     const plantSortIds = Array.from(
         new Set(
             filteredRows
@@ -734,6 +766,19 @@ export async function getDeliveryRequestsWithEvents(
                           raisedBedFieldWithEvents.plantSortId,
                       ) ?? null)
                     : null;
+            const traceLink =
+                typeof raisedBedFieldId === 'number'
+                    ? (traceLinksByOperationAndFieldId.get(
+                          `${request.operationId}:${raisedBedFieldId}`,
+                      ) ??
+                      (traceLinkCountsByOperationId.get(request.operationId) ===
+                      1
+                          ? traceLinksByOperationId.get(request.operationId)
+                          : undefined))
+                    : traceLinkCountsByOperationId.get(request.operationId) ===
+                        1
+                      ? traceLinksByOperationId.get(request.operationId)
+                      : undefined;
 
             return {
                 id: request.id,
@@ -754,6 +799,13 @@ export async function getDeliveryRequestsWithEvents(
                 requestNotes: projection.requestNotes,
                 deliveryNotes: projection.deliveryNotes,
                 surveySent: projection.surveySent,
+                trace: traceLink
+                    ? {
+                          id: traceLink.id,
+                          publicToken: traceLink.publicToken,
+                          publicPath: traceLink.publicPath,
+                      }
+                    : null,
                 createdAt: request.createdAt,
                 updatedAt: request.updatedAt,
                 accountId: projection.accountId,

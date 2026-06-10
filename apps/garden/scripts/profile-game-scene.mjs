@@ -9,10 +9,10 @@ const appRoot = resolve(__dirname, '..');
 const defaultBaseUrl = 'http://localhost:3001';
 const defaultOutDir = resolve(appRoot, 'test-results/game-profile');
 
-const defaultScenarios = [
+const coreScenarios = [
     {
         name: 'game-baseline-desktop',
-        path: '/debug/profile/game?mode=baseline&controls=0&quality=medium',
+        path: '/debug/profile/game?mode=baseline&quality=medium',
         viewport: { width: 1280, height: 720 },
         dpr: 1,
         isMobile: false,
@@ -20,7 +20,7 @@ const defaultScenarios = [
     },
     {
         name: 'game-baseline-mobile',
-        path: '/debug/profile/game?mode=baseline&controls=0&quality=low',
+        path: '/debug/profile/game?mode=baseline&quality=medium',
         viewport: { width: 390, height: 844 },
         dpr: 3,
         isMobile: true,
@@ -28,7 +28,7 @@ const defaultScenarios = [
     },
     {
         name: 'game-details-desktop',
-        path: '/debug/profile/game?mode=details&controls=0&quality=medium',
+        path: '/debug/profile/game?mode=details&quality=medium',
         viewport: { width: 1280, height: 720 },
         dpr: 1,
         isMobile: false,
@@ -36,7 +36,7 @@ const defaultScenarios = [
     },
     {
         name: 'game-rain-mobile',
-        path: '/debug/profile/game?mode=rain&controls=0&quality=low',
+        path: '/debug/profile/game?mode=rain&quality=medium',
         viewport: { width: 390, height: 844 },
         dpr: 3,
         isMobile: true,
@@ -44,7 +44,7 @@ const defaultScenarios = [
     },
     {
         name: 'game-snow-mobile',
-        path: '/debug/profile/game?mode=snow&controls=0&quality=low',
+        path: '/debug/profile/game?mode=snow&quality=medium',
         viewport: { width: 390, height: 844 },
         dpr: 3,
         isMobile: true,
@@ -59,6 +59,87 @@ const defaultScenarios = [
         budget: 'plants',
     },
 ];
+
+const denseScenarios = [
+    {
+        name: 'game-dense-25x25-desktop',
+        path: '/debug/profile/game?mode=details&profile=dense&quality=medium',
+        viewport: { width: 1280, height: 720 },
+        dpr: 1,
+        isMobile: false,
+        budget: 'gameDense',
+    },
+    {
+        name: 'game-dense-25x25-high-desktop',
+        path: '/debug/profile/game?mode=details&profile=dense&quality=high',
+        viewport: { width: 1280, height: 720 },
+        dpr: 1,
+        isMobile: false,
+        budget: 'gameDenseHigh',
+    },
+    {
+        name: 'game-dense-25x25-controls-desktop',
+        path: '/debug/profile/game?mode=details&profile=dense&controls=1&quality=medium',
+        viewport: { width: 1280, height: 720 },
+        dpr: 1,
+        isMobile: false,
+        budget: 'gameDense',
+    },
+    {
+        name: 'game-dense-25x25-camera-motion',
+        path: '/debug/profile/game?mode=details&profile=dense&controls=1&quality=medium',
+        viewport: { width: 1280, height: 720 },
+        dpr: 1,
+        isMobile: false,
+        budget: 'gameDenseMotion',
+        motion: 'pan-zoom-rotate',
+    },
+    {
+        name: 'game-dense-25x25-rain-desktop',
+        path: '/debug/profile/game?mode=rain&profile=dense&quality=medium',
+        viewport: { width: 1280, height: 720 },
+        dpr: 1,
+        isMobile: false,
+        budget: 'gameDenseWeather',
+    },
+    {
+        name: 'game-dense-25x25-snow-desktop',
+        path: '/debug/profile/game?mode=snow&profile=dense&quality=medium',
+        viewport: { width: 1280, height: 720 },
+        dpr: 1,
+        isMobile: false,
+        budget: 'gameDenseWeather',
+    },
+    {
+        name: 'game-dense-25x25-cloudy-desktop',
+        path: '/debug/profile/game?mode=cloudy&profile=dense&quality=medium',
+        viewport: { width: 1280, height: 720 },
+        dpr: 1,
+        isMobile: false,
+        budget: 'gameDenseWeather',
+    },
+    {
+        name: 'game-dense-25x25-windy-desktop',
+        path: '/debug/profile/game?mode=windy&profile=dense&quality=medium',
+        viewport: { width: 1280, height: 720 },
+        dpr: 1,
+        isMobile: false,
+        budget: 'gameDenseWeather',
+    },
+    {
+        name: 'game-plant-heavy-25x25-desktop',
+        path: '/debug/profile/game?mode=details&profile=plant-heavy&quality=medium',
+        viewport: { width: 1280, height: 720 },
+        dpr: 1,
+        isMobile: false,
+        budget: 'gameDensePlants',
+    },
+];
+
+const scenarioSets = {
+    core: coreScenarios,
+    dense: denseScenarios,
+};
 
 const budgets = {
     game: {
@@ -101,6 +182,46 @@ const budgets = {
         trianglesPerFrame: 1600000,
         jsHeapMb: 260,
     },
+    gameDense: {
+        p95FrameMs: 50,
+        maxFrameMs: 220,
+        longTaskCount: 4,
+        drawCallsPerFrame: 1200,
+        trianglesPerFrame: 4000000,
+        jsHeapMb: 360,
+    },
+    gameDenseHigh: {
+        p95FrameMs: 66.7,
+        maxFrameMs: 260,
+        longTaskCount: 6,
+        drawCallsPerFrame: 1400,
+        trianglesPerFrame: 5000000,
+        jsHeapMb: 420,
+    },
+    gameDenseMotion: {
+        p95FrameMs: 66.7,
+        maxFrameMs: 260,
+        longTaskCount: 6,
+        drawCallsPerFrame: 1400,
+        trianglesPerFrame: 5000000,
+        jsHeapMb: 420,
+    },
+    gameDenseWeather: {
+        p95FrameMs: 66.7,
+        maxFrameMs: 280,
+        longTaskCount: 8,
+        drawCallsPerFrame: 1500,
+        trianglesPerFrame: 5500000,
+        jsHeapMb: 440,
+    },
+    gameDensePlants: {
+        p95FrameMs: 83.3,
+        maxFrameMs: 320,
+        longTaskCount: 10,
+        drawCallsPerFrame: 1800,
+        trianglesPerFrame: 7000000,
+        jsHeapMb: 520,
+    },
 };
 
 function parseArgs(argv) {
@@ -112,6 +233,7 @@ function parseArgs(argv) {
             ? resolve(appRoot, process.env.GAME_PROFILE_OUT_DIR)
             : defaultOutDir,
         sampleMs: Number(process.env.GAME_PROFILE_SAMPLE_MS ?? 5000),
+        scenarioSet: process.env.GAME_PROFILE_SCENARIO_SET ?? 'core',
         startServer: process.env.GAME_PROFILE_START_SERVER === '1',
         warmupMs: Number(process.env.GAME_PROFILE_WARMUP_MS ?? 5000),
     };
@@ -142,6 +264,10 @@ function parseArgs(argv) {
                 break;
             case '--sample-ms':
                 options.sampleMs = Number(next);
+                index += 1;
+                break;
+            case '--scenario-set':
+                options.scenarioSet = next;
                 index += 1;
                 break;
             case '--start-server':
@@ -180,6 +306,7 @@ function printHelp(options) {
             '  --out-dir <path>       Report directory. Default: test-results/game-profile',
             '  --warmup-ms <ms>       Warmup wait after canvas appears. Default: 5000',
             '  --sample-ms <ms>       requestAnimationFrame sample window. Default: 5000',
+            `  --scenario-set <set>    core, dense, all, or comma-separated names. Current: ${options.scenarioSet}`,
             '  --fail-on-budget       Exit non-zero when a budget check fails.',
             '  --help                 Show this help.',
             '',
@@ -187,10 +314,65 @@ function printHelp(options) {
             '  GAME_PROFILE_BASE_URL, GAME_PROFILE_BUILD=1,',
             '  GAME_PROFILE_START_SERVER=1,',
             '  GAME_PROFILE_WARMUP_MS, GAME_PROFILE_SAMPLE_MS,',
-            '  GAME_PROFILE_OUT_DIR, GAME_PROFILE_FAIL_ON_BUDGET=1',
+            '  GAME_PROFILE_OUT_DIR, GAME_PROFILE_SCENARIO_SET,',
+            '  GAME_PROFILE_FAIL_ON_BUDGET=1',
             '',
         ].join('\n'),
     );
+}
+
+function allScenarios() {
+    return [...coreScenarios, ...denseScenarios];
+}
+
+function resolveScenarios(scenarioSet) {
+    const tokens = scenarioSet
+        .split(',')
+        .map((token) => token.trim())
+        .filter(Boolean);
+    const selected =
+        tokens.length > 0
+            ? tokens
+            : [process.env.GAME_PROFILE_SCENARIO_SET ?? 'core'];
+    const scenarios = [];
+    const seen = new Set();
+    const knownScenarios = allScenarios();
+
+    for (const token of selected) {
+        const candidates =
+            token === 'all'
+                ? knownScenarios
+                : (scenarioSets[token] ??
+                  knownScenarios.filter((scenario) => scenario.name === token));
+
+        if (!candidates.length) {
+            throw new Error(
+                `Unknown scenario set or scenario: ${token}. Use core, dense, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
+            );
+        }
+
+        for (const scenario of candidates) {
+            if (!seen.has(scenario.name)) {
+                scenarios.push(scenario);
+                seen.add(scenario.name);
+            }
+        }
+    }
+
+    return scenarios;
+}
+
+function getScenarioRequest(path) {
+    const url = new URL(path, 'http://profile.local');
+    return {
+        controls: url.searchParams.get('controls') ?? '0',
+        details: url.searchParams.get('details') ?? '1',
+        debugHud: url.searchParams.get('debugHud') ?? '0',
+        gardenProfile: url.searchParams.get('profile') ?? 'default',
+        hud: url.searchParams.get('hud') ?? '0',
+        mode: url.searchParams.get('mode') ?? 'baseline',
+        quality: url.searchParams.get('quality') ?? 'auto',
+    };
 }
 
 function installBrowserMetrics() {
@@ -277,6 +459,44 @@ function installBrowserMetrics() {
 
 async function wait(milliseconds) {
     await new Promise((resolveWait) => setTimeout(resolveWait, milliseconds));
+}
+
+async function runScenarioMotion(page, scenario, sampleMs) {
+    if (scenario.motion !== 'pan-zoom-rotate') {
+        await wait(sampleMs);
+        return;
+    }
+
+    const canvasBox = await page.locator('canvas').first().boundingBox();
+    if (!canvasBox) {
+        await wait(sampleMs);
+        return;
+    }
+
+    const centerX = canvasBox.x + canvasBox.width * 0.52;
+    const centerY = canvasBox.y + canvasBox.height * 0.52;
+    const startedAt = Date.now();
+    let direction = 1;
+
+    while (Date.now() - startedAt < sampleMs - 120) {
+        await page.mouse.move(centerX, centerY);
+        await page.mouse.down();
+        await page.mouse.move(
+            centerX + 180 * direction,
+            centerY + 80 * direction,
+            { steps: 14 },
+        );
+        await page.mouse.up();
+        await page.mouse.wheel(0, direction > 0 ? -420 : 360);
+        await page.keyboard.press(direction > 0 ? 'KeyQ' : 'KeyW');
+        direction *= -1;
+        await wait(120);
+    }
+
+    const remainingMs = sampleMs - (Date.now() - startedAt);
+    if (remainingMs > 0) {
+        await wait(remainingMs);
+    }
 }
 
 async function isReachable(baseUrl) {
@@ -443,13 +663,30 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             new Promise((resolveWarmup) => setTimeout(resolveWarmup, warmupMs)),
         options.warmupMs,
     );
+    const request = getScenarioRequest(scenario.path);
+    const profileMetadata = await page.evaluate(() => {
+        const element = document.querySelector('[data-game-profile-mode]');
+        if (!(element instanceof HTMLElement)) {
+            return null;
+        }
+
+        return {
+            controls: element.dataset.gameProfileControls ?? null,
+            details: element.dataset.gameProfileDetails ?? null,
+            debugHud: element.dataset.gameProfileDebugHud ?? null,
+            gardenProfile: element.dataset.gameProfileGardenProfile ?? null,
+            hud: element.dataset.gameProfileHud ?? null,
+            mode: element.dataset.gameProfileMode ?? null,
+            quality: element.dataset.gameProfileQuality ?? null,
+        };
+    });
 
     const beforeMetrics = await cdp.send('Performance.getMetrics');
     const before = Object.fromEntries(
         beforeMetrics.metrics.map((metric) => [metric.name, metric.value]),
     );
 
-    const sample = await page.evaluate(async (sampleMs) => {
+    const samplePromise = page.evaluate(async (sampleMs) => {
         const canvas = document.querySelector('canvas');
         const metrics = globalThis.__gameProfileMetrics;
         if (metrics) {
@@ -523,6 +760,10 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             trianglesPerFrame: submittedTriangles / Math.max(1, frames),
         };
     }, options.sampleMs);
+    if (scenario.motion) {
+        await runScenarioMotion(page, scenario, options.sampleMs);
+    }
+    const sample = await samplePromise;
 
     const runtime = await page.evaluate(() => {
         const metadata = globalThis.__grediceGameProfile;
@@ -531,8 +772,28 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         }
 
         return {
+            cloudProjectedShadowCount:
+                typeof metadata.cloudProjectedShadowCount === 'number'
+                    ? metadata.cloudProjectedShadowCount
+                    : null,
+            cloudRealShadowCasterCount:
+                typeof metadata.cloudRealShadowCasterCount === 'number'
+                    ? metadata.cloudRealShadowCasterCount
+                    : null,
+            cloudVisualCount:
+                typeof metadata.cloudVisualCount === 'number'
+                    ? metadata.cloudVisualCount
+                    : null,
             dprCap:
                 typeof metadata.dprCap === 'number' ? metadata.dprCap : null,
+            groundDecorationAtlasPageCount:
+                typeof metadata.groundDecorationAtlasPageCount === 'number'
+                    ? metadata.groundDecorationAtlasPageCount
+                    : null,
+            groundDecorationChunkCount:
+                typeof metadata.groundDecorationChunkCount === 'number'
+                    ? metadata.groundDecorationChunkCount
+                    : null,
             groundDecorationCount:
                 typeof metadata.groundDecorationCount === 'number'
                     ? metadata.groundDecorationCount
@@ -540,6 +801,10 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             groundDecorationDensity:
                 typeof metadata.groundDecorationDensity === 'number'
                     ? metadata.groundDecorationDensity
+                    : null,
+            groundDecorationVisibleCount:
+                typeof metadata.groundDecorationVisibleCount === 'number'
+                    ? metadata.groundDecorationVisibleCount
                     : null,
             instancedSnowOverlayCount:
                 typeof metadata.instancedSnowOverlayCount === 'number'
@@ -556,6 +821,14 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             raisedBedMulchOverlayCount:
                 typeof metadata.raisedBedMulchOverlayCount === 'number'
                     ? metadata.raisedBedMulchOverlayCount
+                    : null,
+            shadowMapAutoUpdate:
+                typeof metadata.shadowMapAutoUpdate === 'boolean'
+                    ? metadata.shadowMapAutoUpdate
+                    : null,
+            shadowMapInvalidationCount:
+                typeof metadata.shadowMapInvalidationCount === 'number'
+                    ? metadata.shadowMapInvalidationCount
                     : null,
             shadowMapSize:
                 typeof metadata.shadowMapSize === 'number'
@@ -611,8 +884,17 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         pageErrors,
         path: scenario.path,
         requested: {
+            controls: profileMetadata?.controls ?? request.controls,
+            details: profileMetadata?.details ?? request.details,
+            debugHud: profileMetadata?.debugHud ?? request.debugHud,
             dpr: scenario.dpr,
+            gardenProfile:
+                profileMetadata?.gardenProfile ?? request.gardenProfile,
+            hud: profileMetadata?.hud ?? request.hud,
             isMobile: scenario.isMobile,
+            mode: profileMetadata?.mode ?? request.mode,
+            motion: scenario.motion ?? 'none',
+            quality: profileMetadata?.quality ?? request.quality,
             viewport: scenario.viewport,
         },
         runtime,
@@ -687,13 +969,14 @@ function buildMarkdown(report) {
         '',
         `Build: ${report.options.build ? 'yes' : 'no'}`,
         `Server: ${report.options.managedServer ? 'managed pnpm start' : 'external'}`,
+        `Scenario set: ${report.options.scenarioSet}`,
         `Warmup: ${report.options.warmupMs} ms`,
         `Sample: ${report.options.sampleMs} ms`,
         '',
         `Budget status: ${report.summary.failedScenarios === 0 ? 'pass' : 'fail'}`,
         '',
-        '| Scenario | Quality | Canvas | Shadow | Rain/Snow | Overlays/Decor | FPS | p95 | Max | Draw/frame | Triangles/frame | Long tasks | Heap | Budget |',
-        '| --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |',
+        '| Scenario | Mode | Profile | Details | Controls | HUD | Debug HUD | Motion | Quality | Canvas | Shadow | Rain/Snow | Overlays/Decor | FPS | p95 | Max | Draw/frame | Triangles/frame | Long tasks | Heap | Budget |',
+        '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |',
     ];
 
     for (const scenario of report.scenarios) {
@@ -703,17 +986,17 @@ function buildMarkdown(report) {
         const quality = scenario.runtime?.qualityTier ?? 'n/a';
         const shadow = scenario.runtime
             ? scenario.runtime.shadowsEnabled
-                ? `${scenario.runtime.shadowMapSize}px`
+                ? `${scenario.runtime.shadowMapSize}px, ${scenario.runtime.shadowMapAutoUpdate === false ? 'cached' : 'auto'}, invalidations ${scenario.runtime.shadowMapInvalidationCount ?? 'n/a'}, cloud ${scenario.runtime.cloudProjectedShadowCount ?? 'n/a'} projected/${scenario.runtime.cloudRealShadowCasterCount ?? 'n/a'} real`
                 : 'off'
             : 'n/a';
         const weather = scenario.runtime
             ? `${scenario.runtime.rainParticleCount ?? 0}/${scenario.runtime.snowParticleCount ?? 0}`
             : 'n/a';
         const detailCounts = scenario.runtime
-            ? `${scenario.runtime.instancedSnowOverlayCount ?? 0}+${scenario.runtime.raisedBedMulchOverlayCount ?? 0}/${scenario.runtime.groundDecorationCount ?? 0}`
+            ? `${scenario.runtime.instancedSnowOverlayCount ?? 0}+${scenario.runtime.raisedBedMulchOverlayCount ?? 0}/${scenario.runtime.groundDecorationCount ?? 0} decor, visible ${scenario.runtime.groundDecorationVisibleCount ?? 'n/a'}, pages ${scenario.runtime.groundDecorationAtlasPageCount ?? 'n/a'}, chunks ${scenario.runtime.groundDecorationChunkCount ?? 'n/a'}`
             : 'n/a';
         lines.push(
-            `| ${scenario.name} | ${quality} | ${canvas} | ${shadow} | ${weather} | ${detailCounts} | ${scenario.sample.fps} | ${scenario.sample.p95FrameMs} ms | ${scenario.sample.maxFrameMs} ms | ${scenario.sample.drawCallsPerFrame} | ${scenario.sample.trianglesPerFrame} | ${scenario.sample.longTaskCount} | ${scenario.sample.jsHeapMb ?? 'n/a'} MB | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
+            `| ${scenario.name} | ${scenario.requested.mode} | ${scenario.requested.gardenProfile} | ${scenario.requested.details} | ${scenario.requested.controls} | ${scenario.requested.hud} | ${scenario.requested.debugHud} | ${scenario.requested.motion} | ${quality} | ${canvas} | ${shadow} | ${weather} | ${detailCounts} | ${scenario.sample.fps} | ${scenario.sample.p95FrameMs} ms | ${scenario.sample.maxFrameMs} ms | ${scenario.sample.drawCallsPerFrame} | ${scenario.sample.trianglesPerFrame} | ${scenario.sample.longTaskCount} | ${scenario.sample.jsHeapMb ?? 'n/a'} MB | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
         );
     }
 
@@ -766,6 +1049,8 @@ async function main() {
         printHelp(options);
         return;
     }
+
+    const profileScenarios = resolveScenarios(options.scenarioSet);
 
     if (options.startServer && (await isReachable(options.baseUrl))) {
         throw new Error(
@@ -826,7 +1111,7 @@ async function main() {
 
     try {
         const scenarios = [];
-        for (const scenario of defaultScenarios) {
+        for (const scenario of profileScenarios) {
             console.log(`Profiling ${scenario.name}...`);
             scenarios.push(
                 await measureScenario(
@@ -848,6 +1133,7 @@ async function main() {
                 build: options.build,
                 managedServer: options.startServer,
                 sampleMs: options.sampleMs,
+                scenarioSet: options.scenarioSet,
                 warmupMs: options.warmupMs,
             },
             scenarios,

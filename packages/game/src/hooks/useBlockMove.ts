@@ -2,26 +2,47 @@ import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Vector3 } from 'three';
 import { handleOptimisticUpdate } from '../helpers/queryHelpers';
+import { persistLocalSandboxGarden } from '../localSandboxGarden';
+import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
 
 const mutationKey = ['gardens', 'current', 'blockMove'];
 
-type MoveArgs = {
+type MoveBlockArgs = {
     sourcePosition: { x: number; z: number };
     destinationPosition: { x: number; z: number };
     blockIndex: number;
     sourceBlockId?: string;
-    attached?: {
-        sourcePosition: { x: number; z: number };
-        destinationPosition: { x: number; z: number };
-        blockIndex: number;
-        sourceBlockId?: string;
-    };
 };
 
+type MoveArgs = MoveBlockArgs & {
+    additionalBlocks?: MoveBlockArgs[];
+    attached?: MoveBlockArgs;
+    onOptimisticUpdate?: () => void;
+};
+
+type MovePatchOperation = {
+    op: 'move';
+    from: string;
+    path: string;
+};
+
+function getMoveBlocks(args: MoveArgs): MoveBlockArgs[] {
+    return [
+        {
+            sourcePosition: args.sourcePosition,
+            destinationPosition: args.destinationPosition,
+            blockIndex: args.blockIndex,
+            sourceBlockId: args.sourceBlockId,
+        },
+        ...(args.additionalBlocks ?? []),
+        ...(args.attached ? [args.attached] : []),
+    ];
+}
+
 function moveBlockOptimistically(
-    stacks: { position: Vector3; blocks: { id: string }[] }[],
+    stacks: Stack[],
     sourcePosition: { x: number; z: number },
     destinationPosition: { x: number; z: number },
     blockIndex: number,
@@ -103,36 +124,34 @@ function moveBlockOptimistically(
 export function useBlockMove() {
     const queryClient = useQueryClient();
     const { data: garden } = useCurrentGarden();
+    const localSandboxStorageKey = useGameState(
+        (state) => state.localSandboxStorageKey,
+    );
     const winterMode = useGameState((state) => state.winterMode);
-    const gardenQueryKey = currentGardenKeys(winterMode, garden?.id);
+    const gardenQueryKey = currentGardenKeys(
+        winterMode,
+        garden?.id,
+        undefined,
+        localSandboxStorageKey,
+    );
 
     return useMutation({
         mutationKey,
-        mutationFn: async ({
-            sourcePosition,
-            destinationPosition,
-            blockIndex,
-            attached,
-        }: MoveArgs) => {
+        mutationFn: async (args: MoveArgs) => {
             if (!garden) {
                 throw new Error('No garden selected');
             }
-            const gardenId = garden.id;
-            const operations = [
-                {
-                    op: 'move' as const,
-                    from: `/${sourcePosition.x}/${sourcePosition.z}/${blockIndex}`,
-                    path: `/${destinationPosition.x}/${destinationPosition.z}/-`,
-                },
-            ];
-
-            if (attached) {
-                operations.push({
-                    op: 'move',
-                    from: `/${attached.sourcePosition.x}/${attached.sourcePosition.z}/${attached.blockIndex}`,
-                    path: `/${attached.destinationPosition.x}/${attached.destinationPosition.z}/-`,
-                });
+            if (localSandboxStorageKey) {
+                return;
             }
+            const gardenId = garden.id;
+            const operations: MovePatchOperation[] = getMoveBlocks(args).map(
+                (moveBlock) => ({
+                    op: 'move',
+                    from: `/${moveBlock.sourcePosition.x}/${moveBlock.sourcePosition.z}/${moveBlock.blockIndex}`,
+                    path: `/${moveBlock.destinationPosition.x}/${moveBlock.destinationPosition.z}/-`,
+                }),
+            );
 
             await clientAuthenticated().api.gardens[':gardenId'].stacks.$patch({
                 param: {
@@ -141,39 +160,26 @@ export function useBlockMove() {
                 json: operations,
             });
         },
-        onMutate: async ({
-            sourcePosition,
-            destinationPosition,
-            blockIndex,
-            sourceBlockId,
-            attached,
-        }) => {
+        onMutate: async (args) => {
             if (!garden) {
                 return;
             }
 
             if (
-                sourcePosition.x === destinationPosition.x &&
-                sourcePosition.z === destinationPosition.z
+                args.sourcePosition.x === args.destinationPosition.x &&
+                args.sourcePosition.z === args.destinationPosition.z
             ) {
                 return;
             }
 
-            let updatedStacks = moveBlockOptimistically(
-                garden.stacks,
-                sourcePosition,
-                destinationPosition,
-                blockIndex,
-                sourceBlockId,
-            );
-
-            if (attached) {
+            let updatedStacks = garden.stacks;
+            for (const moveBlock of getMoveBlocks(args)) {
                 updatedStacks = moveBlockOptimistically(
                     updatedStacks,
-                    attached.sourcePosition,
-                    attached.destinationPosition,
-                    attached.blockIndex,
-                    attached.sourceBlockId,
+                    moveBlock.sourcePosition,
+                    moveBlock.destinationPosition,
+                    moveBlock.blockIndex,
+                    moveBlock.sourceBlockId,
                 );
             }
 
@@ -184,6 +190,15 @@ export function useBlockMove() {
                     stacks: [...updatedStacks],
                 },
             );
+            if (localSandboxStorageKey) {
+                persistLocalSandboxGarden(localSandboxStorageKey, {
+                    ...garden,
+                    stacks: updatedStacks,
+                });
+            }
+            if (previousItem) {
+                args.onOptimisticUpdate?.();
+            }
 
             return {
                 previousItem,
@@ -196,6 +211,10 @@ export function useBlockMove() {
             }
         },
         onSettled: async () => {
+            if (localSandboxStorageKey) {
+                return;
+            }
+
             if (queryClient.isMutating({ mutationKey }) === 1) {
                 await queryClient.invalidateQueries({
                     queryKey: gardenQueryKey,

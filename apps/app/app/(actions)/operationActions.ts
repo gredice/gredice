@@ -25,6 +25,7 @@ import {
     getRaisedBed,
     type InsertOperation,
     knownEvents,
+    unacceptOperation,
 } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
 import type { EntityStandardized } from '../../lib/@types/EntityStandardized';
@@ -44,6 +45,20 @@ function normalizeCompletionNotes(notes?: string) {
     }
 
     return normalizedNotes;
+}
+
+function buildRaisedBedNotificationLink(
+    raisedBedName: string | null | undefined,
+    positionIndex: number | null | undefined,
+) {
+    if (!raisedBedName) {
+        return undefined;
+    }
+
+    return getRaisedBedCloseupUrl(
+        raisedBedName,
+        typeof positionIndex === 'number' ? { positionIndex } : undefined,
+    );
 }
 
 async function assertRaisedBedAllowsNewOperation(raisedBedId?: number) {
@@ -113,7 +128,7 @@ export async function createOperationAction(formData: FormData) {
             ? new Date(formData.get('timestamp') as string)
             : undefined,
     };
-    await assertRaisedBedAllowsNewOperation(operation.raisedBedId);
+    await assertRaisedBedAllowsNewOperation(operation.raisedBedId ?? undefined);
     const operationId = await createOperation(operation);
     if (scheduledDate) {
         await createEvent(
@@ -133,6 +148,8 @@ export async function createOperationAction(formData: FormData) {
         revalidatePath(KnownPages.Garden(operation.gardenId));
     if (operation.raisedBedId)
         revalidatePath(KnownPages.RaisedBed(operation.raisedBedId));
+    revalidatePath(KnownPages.Operations);
+    revalidatePath(KnownPages.Operation(operationId));
     return { success: true };
 }
 
@@ -323,11 +340,18 @@ export async function bulkCreateOperationsAction(
             : undefined;
         const selectedAssignedUserId =
             getStringFormValue(formData, 'assignedUserId') || undefined;
+        const approveOnCreate =
+            getStringFormValue(formData, 'approve') === 'true';
         const targets = formData
             .getAll('targets')
             .filter((value): value is string => typeof value === 'string');
         if (targets.length === 0) {
             throw new Error('Odaberite barem jednu ciljnu lokaciju.');
+        }
+        if (approveOnCreate && !selectedAssignedUserId) {
+            throw new Error(
+                'Radnje ne mogu biti potvrđene prije nego što korisnik bude dodijeljen.',
+            );
         }
         const parsedTargets = targets.map(parseOperationTarget);
         await assertRaisedBedTargetsAllowNewOperations(parsedTargets);
@@ -415,6 +439,10 @@ export async function bulkCreateOperationsAction(
                     selectedAssignedUserId,
                 ]);
             }
+            if (approveOnCreate) {
+                await acceptOperation(operationId);
+                await notifyOperationUpdate(operationId, 'approved');
+            }
             createdCount += 1;
         }
 
@@ -470,18 +498,13 @@ export async function rescheduleOperationAction(formData: FormData) {
             scheduledDate: newDate.toISOString(),
         }),
     );
+    await unacceptOperation(operationId);
 
     await notifyOperationUpdate(operationId, 'rescheduled', {
         scheduledDate: newDate.toISOString(),
     });
 
-    revalidatePath(KnownPages.Schedule);
-    if (operation.accountId)
-        revalidatePath(KnownPages.Account(operation.accountId));
-    if (operation.gardenId)
-        revalidatePath(KnownPages.Garden(operation.gardenId));
-    if (operation.raisedBedId)
-        revalidatePath(KnownPages.RaisedBed(operation.raisedBedId));
+    await revalidateOperationPaths(operation);
     return { success: true };
 }
 
@@ -498,13 +521,7 @@ export async function acceptOperationAction(operationId: number) {
     }
     await acceptOperation(operationId);
     await notifyOperationUpdate(operationId, 'approved');
-    revalidatePath(KnownPages.Schedule);
-    if (operation.accountId)
-        revalidatePath(KnownPages.Account(operation.accountId));
-    if (operation.gardenId)
-        revalidatePath(KnownPages.Garden(operation.gardenId));
-    if (operation.raisedBedId)
-        revalidatePath(KnownPages.RaisedBed(operation.raisedBedId));
+    await revalidateOperationPaths(operation);
 }
 
 export async function assignOperationUserAction(
@@ -568,13 +585,7 @@ export async function assignOperationUserAction(
         await notifyOperationAssignedUsers(operationId, newlyAssignedUserIds);
     }
 
-    revalidatePath(KnownPages.Schedule);
-    if (operation.accountId)
-        revalidatePath(KnownPages.Account(operation.accountId));
-    if (operation.gardenId)
-        revalidatePath(KnownPages.Garden(operation.gardenId));
-    if (operation.raisedBedId)
-        revalidatePath(KnownPages.RaisedBed(operation.raisedBedId));
+    await revalidateOperationPaths(operation);
 
     return { success: true };
 }
@@ -587,6 +598,7 @@ async function revalidateOperationPaths(
     revalidatePath(KnownPages.Operation(operation.id));
     if (operation.accountId)
         revalidatePath(KnownPages.Account(operation.accountId));
+    if (operation.farmId) revalidatePath(KnownPages.Farm(operation.farmId));
     if (operation.gardenId)
         revalidatePath(KnownPages.Garden(operation.gardenId));
     if (operation.raisedBedId)
@@ -610,15 +622,15 @@ async function buildOperationCompletionNotification(
                 `Raised bed with ID ${operation.raisedBedId} not found.`,
             );
         } else {
-            if (raisedBed.name) {
-                linkUrl = getRaisedBedCloseupUrl(raisedBed.name);
-            }
-
             const positionIndex = operation.raisedBedFieldId
                 ? raisedBed.fields.find(
                       (field) => field.id === operation.raisedBedFieldId,
                   )?.positionIndex
                 : null;
+            linkUrl = buildRaisedBedNotificationLink(
+                raisedBed.name,
+                positionIndex,
+            );
             if (typeof positionIndex === 'number') {
                 content = `Danas je na gredici **${raisedBed.name}** za polje **${positionIndex + 1}** odrađeno **${operationData?.information?.label}**.`;
             } else {
@@ -833,6 +845,7 @@ export async function cancelOperationAction(formData: FormData) {
     const operationData = await getEntityFormatted<EntityStandardized>(
         operation.entityId,
     );
+    let linkUrl: string | undefined;
 
     // Calculate refund amount (operation price in sunflowers - multiplied by 1000 as per checkout logic)
     const refundAmount = operationData?.prices?.perOperation
@@ -858,6 +871,10 @@ export async function cancelOperationAction(formData: FormData) {
             } else {
                 content = `Radnja **${operationData?.information?.label}** na gredici **${raisedBed.name}** je otkazana.`;
             }
+            linkUrl = buildRaisedBedNotificationLink(
+                raisedBed.name,
+                positionIndex,
+            );
         }
     }
 
@@ -897,16 +914,11 @@ export async function cancelOperationAction(formData: FormData) {
                   raisedBedId: operation.raisedBedId,
                   header,
                   content,
+                  linkUrl,
                   timestamp: new Date(),
               })
             : undefined,
     ]);
 
-    revalidatePath(KnownPages.Schedule);
-    if (operation.accountId)
-        revalidatePath(KnownPages.Account(operation.accountId));
-    if (operation.gardenId)
-        revalidatePath(KnownPages.Garden(operation.gardenId));
-    if (operation.raisedBedId)
-        revalidatePath(KnownPages.RaisedBed(operation.raisedBedId));
+    await revalidateOperationPaths(operation);
 }

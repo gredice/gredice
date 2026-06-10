@@ -22,7 +22,7 @@ export async function POST() {
 
     await clearCookie();
     await clearRefreshCookie();
-    clearImpersonationCookies(await cookies());
+    await clearImpersonationCookies(await cookies());
 
     return new Response(null, { status: 200 });
 }

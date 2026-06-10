@@ -7,8 +7,11 @@ import { MOUSE, Vector3 } from 'three';
 import { v4 as uuidv4 } from 'uuid';
 import { EntityFactory } from '../entities/EntityFactory';
 import { GameFlagsContext } from '../GameFlagsContext';
+import { GameSceneDetailContext } from '../GameSceneDetailContext';
 import { DebugHud } from '../hud/DebugHud';
+import { ParticleSystemProvider } from '../particles/ParticleSystem';
 import { Environment, StaticEnvironment } from '../scene/Environment';
+import type { GameQualityProfile } from '../scene/gameQuality';
 import { Scene } from '../scene/Scene';
 import type { Block } from '../types/Block';
 import {
@@ -27,6 +30,7 @@ export type EntityViewerProps = HTMLAttributes<HTMLDivElement> & {
     noControl?: boolean;
     staticEnvironment?: boolean;
     debugHud?: boolean;
+    renderDetails?: boolean;
     showBackground?: boolean;
     /**
      * Zoom level of the camera
@@ -39,6 +43,11 @@ export type EntityViewerProps = HTMLAttributes<HTMLDivElement> & {
      * @default 0
      */
     rotation?: number;
+    /**
+     * Optional render quality override. When omitted the scene auto-detects the
+     * quality profile. Used by snapshot generation to render at a higher dpr.
+     */
+    quality?: GameQualityProfile;
 };
 
 export function EntityViewer({
@@ -50,8 +59,10 @@ export function EntityViewer({
     noControl,
     staticEnvironment,
     debugHud,
+    renderDetails = true,
     showBackground,
     rotation = 0,
+    quality,
     ...rest
 }: EntityViewerProps) {
     const storeRef = useRef<GameStateStore>(null);
@@ -85,6 +96,37 @@ export function EntityViewer({
         blocks: [block],
     };
     const orbitTarget: [number, number, number] = itemPosition ?? [0.5, 0, 0.5];
+    const sceneChildren = (
+        <>
+            {staticEnvironment ? (
+                <StaticEnvironment noBackground={!showBackground} />
+            ) : (
+                <Environment noBackground={!showBackground} noSound noWeather />
+            )}
+            <EntityFactory
+                name={entityName}
+                stack={stack}
+                block={block}
+                noControl={noControl}
+                rotation={normalizedRotation}
+                variant={variant}
+            />
+            {!noControl && (
+                <OrbitControls
+                    enableDamping
+                    screenSpacePanning={false}
+                    minZoom={20}
+                    maxZoom={220}
+                    target={orbitTarget}
+                    mouseButtons={{
+                        LEFT: MOUSE.PAN,
+                        MIDDLE: MOUSE.DOLLY,
+                        RIGHT: MOUSE.ROTATE,
+                    }}
+                />
+            )}
+        </>
+    );
 
     return (
         <QueryClientProvider client={client}>
@@ -95,44 +137,20 @@ export function EntityViewer({
                         enableRainWetOverlayFlag: debugHud,
                     }}
                 >
-                    <Scene
-                        position={100}
-                        zoom={zoom ?? 90}
-                        className={className}
-                        {...rest}
-                    >
-                        {staticEnvironment ? (
-                            <StaticEnvironment noBackground={!showBackground} />
-                        ) : (
-                            <Environment
-                                noBackground={!showBackground}
-                                noSound
-                                noWeather
-                            />
-                        )}
-                        <EntityFactory
-                            name={entityName}
-                            stack={stack}
-                            block={block}
-                            noControl={noControl}
-                            rotation={normalizedRotation}
-                            variant={variant}
-                        />
-                        {!noControl && (
-                            <OrbitControls
-                                enableDamping
-                                screenSpacePanning={false}
-                                minZoom={20}
-                                maxZoom={220}
-                                target={orbitTarget}
-                                mouseButtons={{
-                                    LEFT: MOUSE.PAN,
-                                    MIDDLE: MOUSE.DOLLY,
-                                    RIGHT: MOUSE.ROTATE,
-                                }}
-                            />
-                        )}
-                    </Scene>
+                    <GameSceneDetailContext.Provider value={{ renderDetails }}>
+                        <Scene
+                            debugStats={debugHud}
+                            position={100}
+                            zoom={zoom ?? 90}
+                            quality={quality}
+                            className={className}
+                            {...rest}
+                        >
+                            <ParticleSystemProvider>
+                                {sceneChildren}
+                            </ParticleSystemProvider>
+                        </Scene>
+                    </GameSceneDetailContext.Provider>
                     {debugHud && <DebugHud />}
                 </GameFlagsContext.Provider>
             </GameStateContext.Provider>

@@ -1,3 +1,4 @@
+import type { BlockData } from '@gredice/client';
 import { isNightOnlyBlockPurchase, isNightTimeOfDay } from '@gredice/js/blocks';
 import { BlockImage } from '@gredice/ui/BlockImage';
 import { Button } from '@gredice/ui/Button';
@@ -11,10 +12,10 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import Image from 'next/image';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useBlockData } from '../hooks/useBlockData';
 import { useBlockPlace } from '../hooks/useBlockPlace';
-import { useIsEditMode } from '../hooks/useIsEditMode';
+import { useIsSandboxGarden } from '../hooks/useCurrentGarden';
 import { KnownPages } from '../knownPages';
 import { useGameState } from '../useGameState';
 import { HudCard } from './components/HudCard';
@@ -66,17 +67,18 @@ const items: HudItem[] = [
     {
         type: 'picker',
         label: 'Gredice',
-        imageSrc: 'https://www.gredice.com/assets/blocks/Raised_Bed.png',
+        imageSrc: 'https://www.gredice.com/assets/blocks/Raised_Bed.webp',
         items: [{ type: 'entity', name: 'Raised_Bed' }],
     },
     { type: 'separator' },
     {
         type: 'picker',
         label: 'Alat',
-        imageSrc: 'https://www.gredice.com/assets/blocks/GardenBox.png',
+        imageSrc: 'https://www.gredice.com/assets/blocks/GardenBox.webp',
         items: [
             { type: 'entity', name: 'Bucket' },
             { type: 'entity', name: 'WateringCan' },
+            { type: 'entity', name: 'PaintRoller' },
             { type: 'entity', name: 'Composter' },
             { type: 'entity', name: 'GardenBox' },
             { type: 'entity', name: 'ShovelSmall' },
@@ -85,26 +87,26 @@ const items: HudItem[] = [
     {
         type: 'picker',
         label: 'Dekoracija',
-        imageSrc: 'https://www.gredice.com/assets/blocks/Tree.png',
+        imageSrc: 'https://www.gredice.com/assets/blocks/Tree.webp',
         items: [
             {
                 type: 'picker',
                 label: 'Posude',
                 imageSrc:
-                    'https://www.gredice.com/assets/blocks/PotRoundedBowl.png',
+                    'https://www.gredice.com/assets/blocks/PotRoundedBowl.webp',
                 items: potItems,
             },
             {
                 type: 'picker',
                 label: 'Kamenje',
                 imageSrc:
-                    'https://www.gredice.com/assets/blocks/StoneMedium.png',
+                    'https://www.gredice.com/assets/blocks/StoneMedium.webp',
                 items: rockItems,
             },
             {
                 type: 'picker',
                 label: 'Malč',
-                imageSrc: 'https://www.gredice.com/assets/blocks/MulchHey.png',
+                imageSrc: 'https://www.gredice.com/assets/blocks/MulchHey.webp',
                 items: mulchItems,
             },
             { type: 'entity', name: 'Shade' },
@@ -113,12 +115,14 @@ const items: HudItem[] = [
             { type: 'entity', name: 'WaterWell' },
             { type: 'entity', name: 'BirdHouse' },
             { type: 'entity', name: 'FireflyJar' },
+            { type: 'entity', name: 'CatPillow' },
             { type: 'entity', name: 'Bush' },
             { type: 'entity', name: 'Tree' },
             { type: 'entity', name: 'Pine' },
             { type: 'entity', name: 'DeadTreeTall' },
             { type: 'entity', name: 'DeadTreeStump' },
             { type: 'entity', name: 'Tulip' },
+            { type: 'entity', name: 'Sunflower' },
             { type: 'entity', name: 'CactusBarrel' },
             { type: 'entity', name: 'CactusColumnCluster' },
             { type: 'entity', name: 'CactusPricklyPear' },
@@ -128,7 +132,7 @@ const items: HudItem[] = [
         type: 'picker',
         label: 'Blokovi',
         imageSrc:
-            'https://www.gredice.com/assets/blocks/Block_Icon_GroundOverGrass.png',
+            'https://www.gredice.com/assets/blocks/Block_Icon_GroundOverGrass.webp',
         items: [
             { type: 'entity', name: 'Block_Grass' },
             { type: 'entity', name: 'Block_Ground' },
@@ -151,6 +155,126 @@ const items: HudItem[] = [
     },
 ];
 
+const sandboxHiddenEntityNames = new Set(['GardenBox']);
+const sandboxPickerImageSrcByLabel = new Map([
+    ['Alat', 'https://www.gredice.com/assets/blocks/WateringCan.webp'],
+]);
+
+function collectEntityNames(hudItems: HudItem[], names = new Set<string>()) {
+    for (const item of hudItems) {
+        if (item.type === 'entity') {
+            names.add(item.name);
+        } else if (item.type === 'picker') {
+            collectEntityNames(item.items, names);
+        }
+    }
+
+    return names;
+}
+
+const defaultHudEntityNames = collectEntityNames(items);
+
+function getSandboxExtraItemsByPicker(
+    blockData: BlockData[] | null | undefined,
+) {
+    const extraItemsByPicker: Record<
+        'Blokovi' | 'Dekoracija',
+        HudItemEntity[]
+    > = {
+        Blokovi: [],
+        Dekoracija: [],
+    };
+
+    if (!blockData) {
+        return extraItemsByPicker;
+    }
+
+    const names = new Set<string>();
+
+    for (const block of blockData) {
+        const name = block.information.name;
+
+        if (
+            defaultHudEntityNames.has(name) ||
+            names.has(name) ||
+            sandboxHiddenEntityNames.has(name)
+        ) {
+            continue;
+        }
+
+        names.add(name);
+        const pickerLabel = name.startsWith('Block_')
+            ? 'Blokovi'
+            : 'Dekoracija';
+        extraItemsByPicker[pickerLabel].push({ type: 'entity', name });
+    }
+
+    return extraItemsByPicker;
+}
+
+function getSandboxHudItems(hudItems: HudItem[]): HudItem[] {
+    return hudItems.flatMap<HudItem>((item) => {
+        if (item.type === 'entity') {
+            return sandboxHiddenEntityNames.has(item.name) ? [] : [item];
+        }
+
+        if (item.type === 'picker') {
+            const imageSrc =
+                sandboxPickerImageSrcByLabel.get(item.label) ?? item.imageSrc;
+
+            return [
+                {
+                    ...item,
+                    imageSrc,
+                    items: getSandboxHudItems(item.items),
+                },
+            ];
+        }
+
+        return [item];
+    });
+}
+
+function getHudItems({
+    blockData,
+    isSandbox,
+}: {
+    blockData: BlockData[] | null | undefined;
+    isSandbox: boolean;
+}) {
+    if (!isSandbox) {
+        return items;
+    }
+
+    const sandboxItems = getSandboxHudItems(items);
+    const sandboxExtraItemsByPicker = getSandboxExtraItemsByPicker(blockData);
+    if (
+        sandboxExtraItemsByPicker.Blokovi.length === 0 &&
+        sandboxExtraItemsByPicker.Dekoracija.length === 0
+    ) {
+        return sandboxItems;
+    }
+
+    return sandboxItems.map((item) => {
+        if (
+            item.type === 'picker' &&
+            (item.label === 'Blokovi' || item.label === 'Dekoracija')
+        ) {
+            const sandboxExtraItems = sandboxExtraItemsByPicker[item.label];
+            if (sandboxExtraItems.length === 0) {
+                return item;
+            }
+
+            return {
+                ...item,
+                items: [...item.items, ...sandboxExtraItems],
+            };
+        }
+
+        return item;
+    });
+}
+
 function PlaceEntityButton({
     name,
     simple,
@@ -161,25 +285,31 @@ function PlaceEntityButton({
     const { data: blockData } = useBlockData();
     const placeBlock = useBlockPlace();
     const timeOfDay = useGameState((state) => state.timeOfDay);
+    // Sandbox ("play") gardens build for free — every block is placeable
+    // regardless of price or night-only availability.
+    const isSandbox = useIsSandboxGarden();
 
     const block = blockData?.find((block) => block.information.name === name);
     if (!block) return null;
     const hasSunflowerPrice = Boolean(block.prices.sunflowers);
     const isAvailableNow =
-        !isNightOnlyBlockPurchase(block) || isNightTimeOfDay(timeOfDay);
+        isSandbox ||
+        !isNightOnlyBlockPurchase(block) ||
+        isNightTimeOfDay(timeOfDay);
+    const isPlaceable = isSandbox || hasSunflowerPrice;
 
-    async function placeEntity() {
+    function placeEntity() {
         if (!blockData) {
             console.warn('Cannot place entity, missing data');
             return;
         }
 
-        await placeBlock.mutateAsync({
+        placeBlock.mutate({
             blockName: name,
         });
     }
 
-    if (!hasSunflowerPrice && simple) return null;
+    if (!isPlaceable && simple) return null;
 
     const errorMessage =
         placeBlock.error instanceof Error ? placeBlock.error.message : null;
@@ -196,24 +326,22 @@ function PlaceEntityButton({
                 onClick={placeEntity}
                 size={simple ? 'sm' : 'md'}
                 variant="soft"
-                disabled={
-                    !hasSunflowerPrice ||
-                    !isAvailableNow ||
-                    placeBlock.isPending
-                }
+                disabled={!isPlaceable || !isAvailableNow}
                 endDecorator={
                     <Row
                         className={cx(
                             !simple &&
                                 'rounded-full p-1 gap border border-primary/15 bg-primary/15 text-primary w-fit pr-2',
-                            !block.prices.sunflowers && 'pl-2',
+                            !isSandbox && !block.prices.sunflowers && 'pl-2',
                         )}
                     >
-                        {hasSunflowerPrice && isAvailableNow
-                            ? `${placeBlock.isPending ? '⏳' : '🌻'} ${block.prices.sunflowers}`
-                            : availabilityMessage
-                              ? 'Noću'
-                              : 'Nedostupno'}
+                        {isSandbox
+                            ? '🌻 0'
+                            : hasSunflowerPrice && isAvailableNow
+                              ? `🌻 ${block.prices.sunflowers}`
+                              : availabilityMessage
+                                ? 'Noću'
+                                : 'Nedostupno'}
                     </Row>
                 }
             >
@@ -312,22 +440,31 @@ function SubPickerButton({
     onOpen: () => void;
 }) {
     return (
-        <IconButton
-            aria-label={picker.label}
-            size="lg"
-            className="size-16"
-            variant="plain"
-            onClick={onOpen}
-        >
-            <Image
-                src={picker.imageSrc}
-                alt={picker.label}
-                className="absolute size-10 -mb-4"
-                width={40}
-                height={40}
-            />
-            <Navigate className="absolute top-0.5 right-0.5 text-muted-foreground size-4" />
-        </IconButton>
+        <Stack spacing={2} alignItems="center">
+            <IconButton
+                aria-label={picker.label}
+                size="lg"
+                className="size-16"
+                variant="plain"
+                onClick={onOpen}
+            >
+                <Image
+                    src={picker.imageSrc}
+                    alt={picker.label}
+                    className="absolute size-10 -mb-4"
+                    width={40}
+                    height={40}
+                />
+                <Navigate className="absolute top-0.5 right-0.5 text-muted-foreground size-4" />
+            </IconButton>
+            <span
+                aria-hidden="true"
+                data-items-picker-group-label
+                className="flex h-8 max-w-20 items-center justify-center px-1 text-center text-xs font-medium leading-tight text-muted-foreground"
+            >
+                {picker.label}
+            </span>
+        </Stack>
     );
 }
 
@@ -388,10 +525,7 @@ function PickerItem({ label, items, imageSrc }: HudItemPicker) {
                 {currentItems.map((item) => {
                     if (item.type === 'entity') {
                         return (
-                            <EntityItem
-                                key={`entity:${item.name}`}
-                                {...item}
-                            />
+                            <EntityItem key={`entity:${item.name}`} {...item} />
                         );
                     } else if (item.type === 'picker') {
                         return (
@@ -411,11 +545,17 @@ function PickerItem({ label, items, imageSrc }: HudItemPicker) {
 }
 
 export function ItemsHud() {
-    const isEditMode = useIsEditMode();
+    const { data: blockData } = useBlockData();
+    const isSandbox = useIsSandboxGarden();
+    const hudItems = useMemo(
+        () => getHudItems({ blockData, isSandbox }),
+        [blockData, isSandbox],
+    );
+
     return (
         <HudCard
             data-items-hud
-            open={isEditMode}
+            open
             position="bottom"
             className="static mx-auto w-fit max-w-[calc(100vw-1rem)] overflow-x-auto md:px-1 pointer-events-auto"
             animateHeight
@@ -425,7 +565,7 @@ export function ItemsHud() {
                 className="min-w-max md:px-1"
                 justifyContent="center"
             >
-                {items.map((item, index) => {
+                {hudItems.map((item, index) => {
                     if (item.type === 'separator') {
                         return (
                             <Divider

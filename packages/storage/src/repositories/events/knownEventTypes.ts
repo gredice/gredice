@@ -3,6 +3,8 @@ export const knownEventTypes = {
         create: 'account.create',
         assignUser: 'account.assignUser',
         earnSunflowers: 'account.earnSunflowers',
+        sunflowerDropSpawn: 'account.sunflowerDrop.spawn',
+        earnSunflowerDrop: 'account.earnSunflowerDrop',
         referral: 'account.referral.v1',
         spendSunflowers: 'account.spendSunflowers',
         aiRequest: 'account.aiRequest',

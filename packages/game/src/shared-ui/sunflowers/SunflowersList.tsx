@@ -79,6 +79,20 @@ function sunflowerReasonToDescription(reason: string) {
             label: 'Dnevna aktivnost',
         };
     }
+    if (reason === 'sunflowerDrop') {
+        return {
+            icon: (
+                <Image
+                    src="https://cdn.gredice.com/sunflower-large.svg"
+                    alt="Suncokret"
+                    width={40}
+                    height={40}
+                    className="size-10"
+                />
+            ),
+            label: 'Suncokret iz vrta',
+        };
+    }
     if (reason === 'payment') {
         return {
             icon: <span className="text-4xl text-center size-10">💰</span>,

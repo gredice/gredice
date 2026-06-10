@@ -21,9 +21,5 @@ function getStatusMetadata(status: EmailStatus) {
 export function EmailStatusBadge({ status }: { status: EmailStatus }) {
     const { label, color } = getStatusMetadata(status);
 
-    return (
-        <Chip color={color} className="w-fit">
-            {label}
-        </Chip>
-    );
+    return <Chip color={color}>{label}</Chip>;
 }

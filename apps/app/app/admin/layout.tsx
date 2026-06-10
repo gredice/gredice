@@ -1,6 +1,7 @@
 import {
     getEntityTypesOrganizedByCategories,
     getPendingAchievementsCount,
+    getPendingCommunityEditRequestsCount,
     getSetting,
     SettingsKeys,
 } from '@gredice/storage';
@@ -8,9 +9,9 @@ import { SignedOut } from '@gredice/ui/auth';
 import { AuthProtectedSection } from '@gredice/ui/auth/server';
 import { type PropsWithChildren, Suspense } from 'react';
 import {
+    AdminDesktopFrame,
     AdminPageCardHeader,
     AdminPageHeaderProvider,
-    DesktopNav,
     DesktopNavProvider,
     LoginDialog,
 } from '../../components/admin/navigation';
@@ -49,11 +50,13 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
         { categorizedTypes, uncategorizedTypes, shadowTypes },
         pendingAchievementsCount,
         pendingApprovalTasksCount,
+        pendingCommunityEditRequestsCount,
         dashboardQuickActionsSetting,
     ] = await Promise.all([
         getEntityTypesOrganizedByCategories(),
         getPendingAchievementsCount(),
         getPendingAdminApprovalTaskCount(),
+        getPendingCommunityEditRequestsCount(),
         getSetting(SettingsKeys.DashboardQuickActions),
     ]);
 
@@ -86,37 +89,29 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
                 shadowTypes={shadowTypes}
                 pendingAchievementsCount={pendingAchievementsCount}
                 pendingApprovalTasksCount={pendingApprovalTasksCount}
+                pendingCommunityEditRequestsCount={
+                    pendingCommunityEditRequestsCount
+                }
                 quickActions={quickActions}
             >
                 <div className="grow bg-secondary/40" data-gredice-admin-shell>
                     <main className="relative h-full min-h-screen">
                         <DesktopNavProvider>
-                            <div
-                                className="flex min-h-full flex-row gap-3 md:gap-4 md:p-4"
-                                data-gredice-admin-frame
-                            >
-                                {/* Desktop Navigation */}
-                                <DesktopNav />
-                                {/* Main Content */}
+                            <AdminDesktopFrame>
                                 <div
-                                    className="min-h-full grow"
-                                    data-gredice-admin-content
+                                    className="min-h-full border bg-[var(--admin-page-content-background)] p-3 md:rounded-2xl md:p-4"
+                                    data-gredice-admin-content-panel
                                 >
-                                    <div
-                                        className="min-h-full border bg-[var(--admin-page-content-background)] p-3 md:rounded-2xl md:p-4"
-                                        data-gredice-admin-content-panel
-                                    >
-                                        <AuthProtectedSection auth={authAdmin}>
-                                            <Suspense>
-                                                <AdminPageHeaderProvider>
-                                                    <AdminPageCardHeader />
-                                                    {children}
-                                                </AdminPageHeaderProvider>
-                                            </Suspense>
-                                        </AuthProtectedSection>
-                                    </div>
+                                    <AuthProtectedSection auth={authAdmin}>
+                                        <Suspense>
+                                            <AdminPageHeaderProvider>
+                                                <AdminPageCardHeader />
+                                                {children}
+                                            </AdminPageHeaderProvider>
+                                        </Suspense>
+                                    </AuthProtectedSection>
                                 </div>
-                            </div>
+                            </AdminDesktopFrame>
                         </DesktopNavProvider>
                         <SignedOut>
                             <LoginDialog />

@@ -3,13 +3,17 @@ import type { NavContextType } from './NavContext';
 
 const idRouteTitlePrefixes = new Map([
     ['/admin/accounts', 'Račun'],
+    ['/admin/automations', 'Automatizacija'],
     ['/admin/cms/pages', 'Stranica'],
+    ['/admin/community-edits', 'Prijedlog zajednice'],
     ['/admin/communication/emails', 'Email'],
     ['/admin/farms', 'Farma'],
     ['/admin/gardens', 'Vrt'],
+    ['/admin/harvest-traces', 'QR trag'],
     ['/admin/inventory', 'Zaliha'],
     ['/admin/invoices', 'Ponuda'],
     ['/admin/operations', 'Radnja'],
+    ['/admin/outlet', 'Outlet ponuda'],
     ['/admin/raised-beds', 'Gredica'],
     ['/admin/receipts', 'Fiskalni račun'],
     ['/admin/shopping-carts', 'Košarica'],
@@ -172,6 +176,21 @@ function resolveCmsPageTitle(pathname: string) {
     return null;
 }
 
+function resolveOutletTitle(pathname: string) {
+    if (pathname === '/admin/outlet/create') {
+        return 'Nova outlet ponuda';
+    }
+
+    const outletOfferEditMatch = pathname.match(
+        /^\/admin\/outlet\/([^/]+)\/edit$/,
+    );
+    if (outletOfferEditMatch?.[1]) {
+        return `Uredi outlet ponudu ${decodePathSegment(outletOfferEditMatch[1])}`;
+    }
+
+    return null;
+}
+
 export function resolveAdminRouteTitle(
     pathname: string,
     navContext: NavContextType | undefined,
@@ -185,6 +204,10 @@ export function resolveAdminRouteTitle(
 
     if (pathname === '/admin/logout') {
         return 'Odjava';
+    }
+
+    if (pathname === '/admin/automations/create') {
+        return 'Nova automatizacija';
     }
 
     const directoryTitle = resolveDirectoryTitle(pathname, navContext);
@@ -205,6 +228,11 @@ export function resolveAdminRouteTitle(
     const cmsPageTitle = resolveCmsPageTitle(pathname);
     if (cmsPageTitle) {
         return cmsPageTitle;
+    }
+
+    const outletTitle = resolveOutletTitle(pathname);
+    if (outletTitle) {
+        return outletTitle;
     }
 
     const idSeparatorIndex = pathname.lastIndexOf('/');

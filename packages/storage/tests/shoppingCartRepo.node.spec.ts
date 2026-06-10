@@ -240,6 +240,32 @@ test('paid items are not included in new cart queries', async () => {
     assert.ok(!carts.some((c) => c.id === cart.id));
 });
 
+test('paid cart items cannot be updated through cart upsert', async () => {
+    createTestDb();
+    const accountId = await createTestAccount();
+    const cart = await getOrCreateShoppingCart(accountId);
+    if (!cart) throw new Error('Cart not created');
+    const itemId = await upsertOrRemoveCartItem(
+        null,
+        cart.id,
+        'entity-1',
+        'plant',
+        1,
+    );
+    assert.ok(itemId, 'Item ID should be defined');
+
+    await setCartItemPaid(itemId);
+
+    await assert.rejects(
+        () => upsertOrRemoveCartItem(itemId, cart.id, 'entity-1', 'plant', 2),
+        /Cannot update paid shopping cart item via API/,
+    );
+    await assert.rejects(
+        () => upsertOrRemoveCartItem(itemId, cart.id, 'entity-1', 'plant', 0),
+        /Cannot update paid shopping cart item via API/,
+    );
+});
+
 test('normalizeShoppingCartInventoryUsage moves duplicate inventory usage back to eur', async () => {
     createTestDb();
     const accountId = await createTestAccount();
@@ -501,4 +527,63 @@ test('normalizeShoppingCartScheduledDates updates past scheduled dates in cart',
         futureDate.toISOString(),
         expectedTomorrow.toISOString(),
     ]);
+});
+
+test('normalizeShoppingCartScheduledDates can default missing scheduled dates to tomorrow', async () => {
+    createTestDb();
+    const fixedNow = new Date('2024-01-15T12:00:00Z');
+    test.mock.timers.enable({ now: fixedNow });
+    try {
+        const accountId = await createTestAccount();
+        const cart = await getOrCreateShoppingCart(accountId);
+        if (!cart) throw new Error('Cart not created');
+
+        await upsertOrRemoveCartItem(null, cart.id, 'entity-1', 'operation', 1);
+        await upsertOrRemoveCartItem(
+            null,
+            cart.id,
+            'entity-2',
+            'plantSort',
+            1,
+            undefined,
+            undefined,
+            undefined,
+            JSON.stringify({
+                delivery: {
+                    mode: 'pickup',
+                },
+            }),
+            undefined,
+            true,
+        );
+
+        const normalizedCart = await normalizeShoppingCartScheduledDates(
+            cart.id,
+            {
+                defaultMissingScheduledDates: true,
+            },
+        );
+        assert.ok(normalizedCart);
+
+        const expectedTomorrow = new Date(
+            Date.UTC(
+                fixedNow.getUTCFullYear(),
+                fixedNow.getUTCMonth(),
+                fixedNow.getUTCDate() + 1,
+            ),
+        ).toISOString();
+        const additionalData = normalizedCart.items.map((item) =>
+            item.additionalData ? JSON.parse(item.additionalData) : null,
+        );
+
+        assert.deepStrictEqual(
+            additionalData.map((data) => data?.scheduledDate),
+            [expectedTomorrow, expectedTomorrow],
+        );
+        assert.deepStrictEqual(additionalData[1]?.delivery, {
+            mode: 'pickup',
+        });
+    } finally {
+        test.mock.timers.reset();
+    }
 });

@@ -1,19 +1,10 @@
-import { type MutableRefObject, useEffect, useRef } from 'react';
-import { Vector3 } from 'three';
-import type { OrbitControls } from 'three-stdlib';
+import { useEffect, useRef } from 'react';
 import { animateSunflowerHudToPoint } from '../indicators/SunflowerTransfer/useSunflowerTransferAnimation';
 import { useGameState } from '../useGameState';
 import { useCurrentGarden } from './useCurrentGarden';
 
-const focusAnimationDurationMs = 650;
 const sunflowerAnimationDelayMs = 420;
 const reducedMotionQuery = '(prefers-reduced-motion: reduce)';
-
-function easeInOutCubic(progress: number) {
-    return progress < 0.5
-        ? 4 * progress * progress * progress
-        : 1 - (-2 * progress + 2) ** 3 / 2;
-}
 
 function prefersReducedMotion() {
     return (
@@ -23,99 +14,18 @@ function prefersReducedMotion() {
     );
 }
 
-function focusOrbitControlsOnPosition({
-    animationFrameRef,
-    orbitControls,
-    targetPosition,
-}: {
-    animationFrameRef: MutableRefObject<number | null>;
-    orbitControls: OrbitControls;
-    targetPosition: Vector3;
-}) {
-    if (animationFrameRef.current !== null) {
-        window.cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
-    }
-
-    const offset = new Vector3().subVectors(
-        targetPosition,
-        orbitControls.target,
-    );
-    const startTarget = orbitControls.target.clone();
-    const endTarget = startTarget.clone().add(offset);
-    const startCameraPosition = orbitControls.object.position.clone();
-    const endCameraPosition = startCameraPosition.clone().add(offset);
-
-    if (prefersReducedMotion()) {
-        orbitControls.target.copy(endTarget);
-        orbitControls.object.position.copy(endCameraPosition);
-        orbitControls.update();
-        return;
-    }
-
-    const startTime = performance.now();
-    const step = (currentTime: number) => {
-        const progress = Math.min(
-            (currentTime - startTime) / focusAnimationDurationMs,
-            1,
-        );
-        const easedProgress = easeInOutCubic(progress);
-
-        orbitControls.target.lerpVectors(startTarget, endTarget, easedProgress);
-        orbitControls.object.position.lerpVectors(
-            startCameraPosition,
-            endCameraPosition,
-            easedProgress,
-        );
-        orbitControls.update();
-
-        if (progress < 1) {
-            animationFrameRef.current = window.requestAnimationFrame(step);
-            return;
-        }
-
-        animationFrameRef.current = null;
-    };
-
-    animationFrameRef.current = window.requestAnimationFrame(step);
-}
-
-function getWorldScreenPoint({
-    orbitControls,
-    position,
-}: {
-    orbitControls: OrbitControls;
-    position: Vector3;
-}) {
-    if (!orbitControls.domElement) {
-        return null;
-    }
-
-    const rect = orbitControls.domElement.getBoundingClientRect();
-    const projected = position.clone().project(orbitControls.object);
-
-    return {
-        x: rect.left + ((projected.x + 1) / 2) * rect.width,
-        y: rect.top + ((-projected.y + 1) / 2) * rect.height,
-    };
-}
-
 export function useFocusPlacedBlock() {
     const { data: garden } = useCurrentGarden();
-    const orbitControls = useGameState((state) => state.orbitControls);
+    const gameCamera = useGameState((state) => state.gameCamera);
     const consumePlacedBlockEffect = useGameState(
         (state) => state.consumePlacedBlockEffect,
     );
 
     const previousPlacements = useRef<Set<string> | null>(null);
-    const animationFrameRef = useRef<number | null>(null);
     const sunflowerTimeoutsRef = useRef<number[]>([]);
 
     useEffect(() => {
         return () => {
-            if (animationFrameRef.current !== null) {
-                window.cancelAnimationFrame(animationFrameRef.current);
-            }
             for (const timeoutId of sunflowerTimeoutsRef.current) {
                 window.clearTimeout(timeoutId);
             }
@@ -147,14 +57,11 @@ export function useFocusPlacedBlock() {
             (entry) => !previousPlacements.current?.has(entry.key),
         );
 
-        if (newPlacements.length > 0 && orbitControls) {
+        if (newPlacements.length > 0 && gameCamera) {
             const latestPlacement = newPlacements.at(-1);
             if (latestPlacement?.position) {
-                const targetPosition = latestPlacement.position.clone();
-                focusOrbitControlsOnPosition({
-                    animationFrameRef,
-                    orbitControls,
-                    targetPosition,
+                gameCamera.focus(latestPlacement.position.clone(), {
+                    immediate: prefersReducedMotion(),
                 });
             }
 
@@ -166,10 +73,9 @@ export function useFocusPlacedBlock() {
 
                 const timeoutId = window.setTimeout(
                     () => {
-                        const target = getWorldScreenPoint({
-                            orbitControls,
-                            position: placement.position,
-                        });
+                        const target = gameCamera.projectToScreen(
+                            placement.position,
+                        );
                         if (!target) {
                             return;
                         }
@@ -186,5 +92,5 @@ export function useFocusPlacedBlock() {
         }
 
         previousPlacements.current = currentPlacements;
-    }, [consumePlacedBlockEffect, garden, orbitControls]);
+    }, [consumePlacedBlockEffect, gameCamera, garden]);
 }

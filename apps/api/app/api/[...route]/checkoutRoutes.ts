@@ -6,6 +6,12 @@ import {
     getUser,
     markCartPaidIfAllItemsPaid,
     normalizeShoppingCartInventoryUsage,
+    normalizeShoppingCartScheduledDates,
+    OUTLET_RESERVATION_HOLD_MINUTES,
+    OutletOfferUnavailableError,
+    OutletReservationUnavailableError,
+    releaseOutletReservationsForCart,
+    reserveOutletOffer,
     setCartItemPaid,
     spendSunflowers,
 } from '@gredice/storage';
@@ -26,6 +32,17 @@ import {
 } from '../../../lib/hono/authValidator';
 import { getPostHogClient } from '../../../lib/posthog-server';
 import { processItem } from '../../../lib/stripe/processCheckoutSession';
+
+const STRIPE_MIN_CHECKOUT_SESSION_LIFETIME_MINUTES = 30;
+const OUTLET_CHECKOUT_HOLD_MINUTES = Math.max(
+    OUTLET_RESERVATION_HOLD_MINUTES,
+    // Stripe requires checkout sessions to expire at least 30 minutes out.
+    STRIPE_MIN_CHECKOUT_SESSION_LIFETIME_MINUTES + 1,
+);
+
+function addMinutes(date: Date, minutes: number) {
+    return new Date(date.getTime() + minutes * 60 * 1000);
+}
 
 const app = new Hono<{ Variables: AuthVariables }>()
     .post(
@@ -68,9 +85,16 @@ const app = new Hono<{ Variables: AuthVariables }>()
             if (!initialCart) {
                 return context.json({ error: 'Cart not found' }, 404);
             }
-            const cart =
+            const inventoryNormalizedCart =
                 (await normalizeShoppingCartInventoryUsage(cartId)) ??
                 initialCart;
+            const cart =
+                (await normalizeShoppingCartScheduledDates(
+                    inventoryNormalizedCart.id,
+                    {
+                        defaultMissingScheduledDates: true,
+                    },
+                )) ?? inventoryNormalizedCart;
             if (cart.accountId !== accountId) {
                 console.warn('Account ID mismatch', {
                     accountId,
@@ -88,6 +112,46 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const cartInfo = await getCartInfo(cart.items, accountId);
             if (!cartInfo.allowPurchase) {
                 return context.json({ error: 'Cart in invalid state' }, 400);
+            }
+            const outletCheckoutStartedAt = new Date();
+            const outletCheckoutExpiresAt = addMinutes(
+                outletCheckoutStartedAt,
+                OUTLET_CHECKOUT_HOLD_MINUTES,
+            );
+            let hasOutletStripeItems = false;
+            for (const item of cartInfo.items) {
+                if (
+                    item.status === 'paid' ||
+                    item.currency !== 'eur' ||
+                    !item.outlet
+                ) {
+                    continue;
+                }
+                hasOutletStripeItems = true;
+
+                try {
+                    await reserveOutletOffer({
+                        offerId: item.outlet.offerId,
+                        accountId,
+                        cartId: item.cartId,
+                        cartItemId: item.id,
+                        quantity: item.amount,
+                        now: outletCheckoutStartedAt,
+                        holdMinutes: OUTLET_CHECKOUT_HOLD_MINUTES,
+                    });
+                } catch (error) {
+                    if (
+                        error instanceof OutletOfferUnavailableError ||
+                        error instanceof OutletReservationUnavailableError
+                    ) {
+                        return context.json(
+                            { error: 'Outlet offer is not available' },
+                            409,
+                        );
+                    }
+
+                    throw error;
+                }
             }
 
             const requiresStripePayment = cartInfo.items.some(
@@ -127,6 +191,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                                 setCartItemPaid(item.id),
                                 processItem({
                                     accountId,
+                                    cartItemId: item.id,
                                     ...item,
                                     amount_total: sunflowerAmount,
                                     scheduledDeliveryEmailKeys,
@@ -173,6 +238,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             setCartItemPaid(item.id),
                             processItem({
                                 accountId,
+                                cartItemId: item.id,
                                 ...item,
                                 amount_total: 0,
                                 scheduledDeliveryEmailKeys,
@@ -262,6 +328,21 @@ const app = new Hono<{ Variables: AuthVariables }>()
                                     ? { delivery: deliveryInfo }
                                     : {}),
                             }),
+                            outletOfferId: item.outlet?.offerId ?? null,
+                            outletReservationId:
+                                item.outlet?.reservationId ?? null,
+                            outletSowingDate:
+                                item.outlet?.sowingDate.toISOString() ?? null,
+                            outletInitialPlantStatus:
+                                item.outlet?.initialPlantStatus ?? null,
+                            outletPriceCents:
+                                typeof item.outlet?.outletPrice === 'number'
+                                    ? Math.round(item.outlet.outletPrice * 100)
+                                    : null,
+                            outletComparePriceCents:
+                                typeof item.outlet?.comparePrice === 'number'
+                                    ? Math.round(item.outlet.comparePrice * 100)
+                                    : null,
                         },
                     },
                     price: {
@@ -282,6 +363,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     },
                     {
                         items: stripeItems,
+                        expiresAt: hasOutletStripeItems
+                            ? outletCheckoutExpiresAt
+                            : undefined,
                     },
                 );
 
@@ -359,6 +443,26 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     );
                 }
                 await stripeSessionCancel(sessionId);
+                const outletCartIds = new Set<number>();
+                for (const item of session.lineItems?.data ?? []) {
+                    const product = item.price?.product;
+                    if (typeof product === 'string' || product?.deleted) {
+                        continue;
+                    }
+
+                    const cartId = product?.metadata.cartId
+                        ? parseInt(product.metadata.cartId, 10)
+                        : undefined;
+                    if (cartId && product?.metadata.outletOfferId) {
+                        outletCartIds.add(cartId);
+                    }
+                }
+
+                await Promise.all(
+                    Array.from(outletCartIds).map((cartId) =>
+                        releaseOutletReservationsForCart(cartId),
+                    ),
+                );
             } catch (error) {
                 console.error(
                     'Error retrieving or cancelling Stripe checkout session',

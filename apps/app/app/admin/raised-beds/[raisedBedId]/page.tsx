@@ -3,10 +3,11 @@ import {
     RAISED_BED_ABANDONED_ACTIONS_DISABLED_MESSAGE,
     RAISED_BED_ABANDONED_DUE_TO_INACTIVITY_MESSAGE,
 } from '@gredice/js/raisedBeds';
-import { getRaisedBed } from '@gredice/storage';
+import { getRaisedBed, getRaisedBedDiaryEntries } from '@gredice/storage';
 import { Alert } from '@gredice/ui/Alert';
 import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
 import { Card, CardHeader, CardOverflow, CardTitle } from '@gredice/ui/Card';
+import { ImageGallery } from '@gredice/ui/ImageGallery';
 import { Warning } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -37,17 +38,63 @@ import { RaisedBedStatusSelect } from './RaisedBedStatusSelect';
 
 export const dynamic = 'force-dynamic';
 
+const RECENT_RAISED_BED_IMAGE_LIMIT = 12;
+const recentRaisedBedImageDateFormatter = new Intl.DateTimeFormat('hr-HR', {
+    dateStyle: 'short',
+});
+
+function recentRaisedBedImages(
+    entries: Awaited<ReturnType<typeof getRaisedBedDiaryEntries>>,
+    raisedBedId: number,
+) {
+    const seen = new Set<string>();
+
+    return entries
+        .flatMap((entry) =>
+            (entry.imageUrls ?? []).flatMap((url, index) => {
+                const trimmedUrl = url.trim();
+
+                if (!trimmedUrl || seen.has(trimmedUrl)) {
+                    return [];
+                }
+
+                seen.add(trimmedUrl);
+
+                return {
+                    src: trimmedUrl,
+                    alt: `${entry.name || 'Slika gredice'} ${raisedBedId}-${
+                        index + 1
+                    }`,
+                    dateLabel:
+                        entry.timestamp instanceof Date
+                            ? recentRaisedBedImageDateFormatter.format(
+                                  entry.timestamp,
+                              )
+                            : undefined,
+                };
+            }),
+        )
+        .slice(0, RECENT_RAISED_BED_IMAGE_LIMIT);
+}
+
 export default async function RaisedBedPage({
     params,
+    searchParams,
 }: {
     params: Promise<{ raisedBedId: number }>;
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
     const { raisedBedId } = await params;
+    const resolvedSearchParams = await searchParams;
     await auth(['admin']);
     const raisedBed = await getRaisedBed(raisedBedId);
     if (!raisedBed) {
         notFound();
     }
+    const recentImages = recentRaisedBedImages(
+        await getRaisedBedDiaryEntries(raisedBed.id),
+        raisedBed.id,
+    );
     const raisedBedTitle =
         raisedBed.name || `Gredica ${raisedBed.physicalId ?? raisedBed.id}`;
     const isAbandoned = isRaisedBedAbandoned(raisedBed.status);
@@ -134,6 +181,14 @@ export default async function RaisedBedPage({
                     heading="Gredica"
                 />
                 <EntityDetailsPropertiesLayout properties={propertiesPanel}>
+                    {recentImages.length > 0 && (
+                        <ImageGallery
+                            images={recentImages}
+                            previewWidth={240}
+                            previewHeight={160}
+                            previewVariant="carousel"
+                        />
+                    )}
                     {isAbandoned && (
                         <Alert
                             color="warning"
@@ -155,12 +210,12 @@ export default async function RaisedBedPage({
                             </Stack>
                         </Alert>
                     )}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        <Card className="h-fit">
+                    <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
+                        <Card className="min-w-0 overflow-hidden">
                             <CardHeader>
                                 <CardTitle>Polja</CardTitle>
                             </CardHeader>
-                            <CardOverflow className="mt-0">
+                            <CardOverflow className="mt-0 min-w-0 overflow-hidden">
                                 <Suspense>
                                     <RaisedBedFieldsTable
                                         raisedBedId={raisedBed.id}
@@ -186,15 +241,16 @@ export default async function RaisedBedPage({
                         )}
                         <Card>
                             <CardHeader>
-                                <CardTitle>Događaji</CardTitle>
+                                <CardTitle id="raised-bed-events">
+                                    Događaji
+                                </CardTitle>
                             </CardHeader>
-                            <CardOverflow>
-                                <Suspense>
-                                    <RaisedBedEventsTable
-                                        raisedBedId={raisedBed.id}
-                                    />
-                                </Suspense>
-                            </CardOverflow>
+                            <Suspense>
+                                <RaisedBedEventsTable
+                                    raisedBedId={raisedBed.id}
+                                    searchParams={resolvedSearchParams}
+                                />
+                            </Suspense>
                         </Card>
                     </div>
                 </EntityDetailsPropertiesLayout>

@@ -90,15 +90,12 @@ export async function InvoicesTable({
                             </div>
                         </Table.Cell>
                         <Table.Cell>
-                            <Chip
-                                color={getStatusColor(invoice.status)}
-                                className="w-fit"
-                            >
+                            <Chip color={getStatusColor(invoice.status)}>
                                 {getStatusLabel(invoice.status)}
                             </Chip>
                         </Table.Cell>
                         <Table.Cell>
-                            <Chip color="success" className="w-fit">
+                            <Chip color="success">
                                 {invoice.totalAmount}
                                 {invoice.currency === 'eur'
                                     ? '€'
@@ -126,7 +123,6 @@ export async function InvoicesTable({
                                         startDecorator={
                                             <ExternalLink className="size-4 shrink-0" />
                                         }
-                                        className="w-fit"
                                     >
                                         #{invoice.transactionId}
                                     </Chip>

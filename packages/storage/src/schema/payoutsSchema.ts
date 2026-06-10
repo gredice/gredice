@@ -9,8 +9,8 @@ import {
     timestamp,
     uniqueIndex,
 } from 'drizzle-orm/pg-core';
-import { receipts } from './invoiceSchema';
 import { farms } from './farmsSchema';
+import { receipts } from './invoiceSchema';
 import { users } from './usersSchema';
 
 // entityTypeName values:

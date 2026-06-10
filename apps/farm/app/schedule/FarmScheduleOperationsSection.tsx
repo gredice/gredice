@@ -7,11 +7,12 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { UserAvatar } from '@gredice/ui/UserAvatar';
 import { CompleteOperationModal } from './CompleteOperationModal';
-import { HarvestOperationPrintModal } from './HarvestOperationPrintModal';
 import { OperationCompletionAttachments } from './OperationCompletionAttachments';
+import { ScheduleTaskAgeIndicatorChip } from './ScheduleTaskAgeIndicatorChip';
 import type { FarmScheduleDayData } from './scheduleData';
 import {
     formatMinutes,
+    getFieldPhysicalPositionIndex,
     getOperationDurationMinutes,
     groupRaisedBedsForSchedule,
     isOperationCompleted,
@@ -51,55 +52,12 @@ function buildOperationLabel(
         ? plantSortById.get(field.plantSortId)
         : undefined;
     const physicalPositionIndex = field
-        ? (field.positionIndex + 1).toString()
+        ? getFieldPhysicalPositionIndex(field, raisedBeds).toString()
         : '';
     const isFullRaisedBed =
         operationData?.attributes?.application === 'raisedBedFull';
 
     return `${isFullRaisedBed || !physicalPositionIndex ? '' : `${physicalPositionIndex} - `}${operationData?.information?.label ?? operation.entityId}${sort ? `: ${sort.information?.name ?? 'Nepoznato'}` : ''}`;
-}
-
-function shouldPrintHarvestLabel(
-    operationData: EntityStandardized | undefined,
-) {
-    return (
-        (operationData as { attributes?: { printLabel?: unknown } } | undefined)
-            ?.attributes?.printLabel === true
-    );
-}
-
-function buildHarvestLabelData(
-    operation: FarmOperation,
-    raisedBeds: FarmRaisedBed[],
-    plantSortById: Map<number, EntityStandardized>,
-) {
-    if (!operation.raisedBedFieldId || operation.raisedBedId === null) {
-        return null;
-    }
-
-    const raisedBed = raisedBeds.find(
-        (candidate) => candidate.id === operation.raisedBedId,
-    );
-    const field = raisedBed?.fields.find(
-        (candidate) => candidate.id === operation.raisedBedFieldId,
-    );
-    const plantSortName = field?.plantSortId
-        ? plantSortById.get(field.plantSortId)?.information?.name
-        : undefined;
-
-    if (!raisedBed?.physicalId || field?.positionIndex === undefined) {
-        return null;
-    }
-
-    if (!plantSortName) {
-        return null;
-    }
-
-    return {
-        raisedBedPhysicalId: raisedBed.physicalId,
-        fieldIndex: field.positionIndex + 1,
-        plantSortName,
-    };
 }
 
 export function FarmScheduleOperationsSection({
@@ -167,23 +125,12 @@ export function FarmScheduleOperationsSection({
             }),
         );
 
-    function renderOperationCard(
-        operation: FarmOperationCardData,
-        groupedRaisedBeds: FarmRaisedBed[],
-    ) {
+    function renderOperationCard(operation: FarmOperationCardData) {
         const completed = isOperationCompleted(operation.status);
         const operationData = operationDataById.get(operation.entityId);
         const canComplete =
             !completed &&
             (!operation.assignedUserId || operation.assignedUserId === userId);
-        const harvestLabelData =
-            !completed && shouldPrintHarvestLabel(operationData)
-                ? buildHarvestLabelData(
-                      operation,
-                      groupedRaisedBeds,
-                      plantSortById,
-                  )
-                : null;
         const attachImages = Boolean(
             operationData?.conditions?.completionAttachImages ||
                 operationData?.conditions?.completionAttachImagesRequired,
@@ -283,6 +230,11 @@ export function FarmScheduleOperationsSection({
                                         'Danas'
                                     )}
                                 </Typography>
+                                {!completed && (
+                                    <ScheduleTaskAgeIndicatorChip
+                                        scheduledDate={operation.scheduledDate}
+                                    />
+                                )}
                                 {!completed &&
                                     completionRequirementTexts.length > 0 && (
                                         <Typography
@@ -294,12 +246,6 @@ export function FarmScheduleOperationsSection({
                                             )}
                                         </Typography>
                                     )}
-                                {harvestLabelData && (
-                                    <HarvestOperationPrintModal
-                                        operationLabel={operation.label}
-                                        labelData={harvestLabelData}
-                                    />
-                                )}
                             </Row>
                         </Stack>
                     </Row>
@@ -352,7 +298,7 @@ export function FarmScheduleOperationsSection({
                     </Row>
                     <Stack spacing={2}>
                         {farmOperations.map((operation) =>
-                            renderOperationCard(operation, raisedBeds),
+                            renderOperationCard(operation),
                         )}
                     </Stack>
                 </Stack>
@@ -398,32 +344,42 @@ export function FarmScheduleOperationsSection({
 
                     return (
                         <Stack key={key} spacing={2}>
-                            <Row
-                                spacing={2}
-                                className="items-center flex-wrap gap-y-1"
-                            >
-                                {physicalId ? (
-                                    <RaisedBedLabel physicalId={physicalId} />
-                                ) : (
-                                    <Typography semiBold>
-                                        Gredica bez fizičkog ID-a
-                                    </Typography>
-                                )}
-                                <Typography
-                                    level="body2"
-                                    className="text-muted-foreground"
+                            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+                                <div className="min-w-0">
+                                    {physicalId ? (
+                                        <RaisedBedLabel
+                                            physicalId={physicalId}
+                                        />
+                                    ) : (
+                                        <Typography
+                                            semiBold
+                                            className="truncate"
+                                        >
+                                            Gredica bez fizičkog ID-a
+                                        </Typography>
+                                    )}
+                                </div>
+                                <Row
+                                    spacing={2}
+                                    className="justify-end text-right"
                                 >
-                                    {dayOperations.length} zadataka
-                                </Typography>
-                                {totalDuration > 0 && (
                                     <Typography
                                         level="body2"
-                                        className="text-muted-foreground"
+                                        className="whitespace-nowrap text-muted-foreground"
                                     >
-                                        Vrijeme: {formatMinutes(totalDuration)}
+                                        {dayOperations.length} zadataka
                                     </Typography>
-                                )}
-                            </Row>
+                                    {totalDuration > 0 && (
+                                        <Typography
+                                            level="body2"
+                                            className="whitespace-nowrap text-muted-foreground"
+                                        >
+                                            Vrijeme:{' '}
+                                            {formatMinutes(totalDuration)}
+                                        </Typography>
+                                    )}
+                                </Row>
+                            </div>
                             <Stack spacing={2}>
                                 {dayOperations.map((operation) => {
                                     const completed = isOperationCompleted(
@@ -437,15 +393,6 @@ export function FarmScheduleOperationsSection({
                                         (!operation.assignedUserId ||
                                             operation.assignedUserId ===
                                                 userId);
-                                    const harvestLabelData =
-                                        !completed &&
-                                        shouldPrintHarvestLabel(operationData)
-                                            ? buildHarvestLabelData(
-                                                  operation,
-                                                  groupedRaisedBeds,
-                                                  plantSortById,
-                                              )
-                                            : null;
                                     const attachImages = Boolean(
                                         operationData?.conditions
                                             ?.completionAttachImages ||
@@ -583,6 +530,13 @@ export function FarmScheduleOperationsSection({
                                                                     'Danas'
                                                                 )}
                                                             </Typography>
+                                                            {!completed && (
+                                                                <ScheduleTaskAgeIndicatorChip
+                                                                    scheduledDate={
+                                                                        operation.scheduledDate
+                                                                    }
+                                                                />
+                                                            )}
                                                             {!completed &&
                                                                 completionRequirementTexts.length >
                                                                     0 && (
@@ -595,16 +549,6 @@ export function FarmScheduleOperationsSection({
                                                                         )}
                                                                     </Typography>
                                                                 )}
-                                                            {harvestLabelData && (
-                                                                <HarvestOperationPrintModal
-                                                                    operationLabel={
-                                                                        operation.label
-                                                                    }
-                                                                    labelData={
-                                                                        harvestLabelData
-                                                                    }
-                                                                />
-                                                            )}
                                                         </Row>
                                                     </Stack>
                                                 </Row>

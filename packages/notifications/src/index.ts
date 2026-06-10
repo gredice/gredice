@@ -5,6 +5,7 @@ import {
     type DeliveryRequestState,
     getDeliveryRequest,
     getEntityFormatted,
+    getFarm,
     getGarden,
     getNotificationSetting,
     getOperationById,
@@ -154,6 +155,15 @@ async function buildOperationContext(
             }
         }
 
+        if (operation.farmId && !farmSlackChannelId) {
+            const farm = await getFarm(operation.farmId);
+            if (farm) {
+                farmName = farm.name ?? farmName;
+                farmId = farm.id;
+                farmSlackChannelId = farm.slackChannelId ?? farmSlackChannelId;
+            }
+        }
+
         const locationDescription =
             locationParts.length > 0
                 ? Array.from(new Set(locationParts)).join(' · ')
@@ -199,7 +209,7 @@ async function getSlackChannelId(
 ): Promise<string | undefined> {
     try {
         const setting = await getNotificationSetting(key);
-        if (!setting || setting.enabled !== 'true') {
+        if (setting?.enabled !== 'true') {
             return undefined;
         }
 

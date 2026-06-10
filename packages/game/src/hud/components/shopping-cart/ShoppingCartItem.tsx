@@ -1,6 +1,7 @@
 import { BackpackIcon } from '@gredice/ui/BackpackIcon';
 import { Chip } from '@gredice/ui/Chip';
 import { IconButton } from '@gredice/ui/IconButton';
+import { Input } from '@gredice/ui/Input';
 import {
     Close,
     Delete,
@@ -10,41 +11,230 @@ import {
     Timer,
 } from '@gredice/ui/icons';
 import { ModalConfirm } from '@gredice/ui/ModalConfirm';
+import { Popper } from '@gredice/ui/Popper';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import type { CSSProperties } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { type CSSProperties, useEffect, useState } from 'react';
 import { useGameAnalytics } from '../../../analytics/GameAnalyticsContext';
 import { useCurrentAccount } from '../../../hooks/useCurrentAccount';
 import { useCurrentGarden } from '../../../hooks/useCurrentGarden';
 import { useInventory } from '../../../hooks/useInventory';
 import { useSetShoppingCartItem } from '../../../hooks/useSetShoppingCartItem';
-import type { ShoppingCartItemData } from '../../../hooks/useShoppingCart';
+import {
+    type ShoppingCartItemData,
+    useShoppingCartQueryKey,
+} from '../../../hooks/useShoppingCart';
 import { ButtonPricePickPaymentMethod } from './ButtonPricePickPaymentMethod';
+
+const outletReservationCountdownIntervalMs = 1000;
+const outletReservationRefetchBufferMs = 500;
+const urgentOutletReservationThresholdMs = 5 * 60 * 1000;
+
+function formatCountdown(remainingMs: number) {
+    const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function parseAdditionalData(additionalData?: string | null) {
+    if (!additionalData) {
+        return {};
+    }
+
+    try {
+        const parsed = JSON.parse(additionalData);
+        return isRecord(parsed) ? parsed : {};
+    } catch {
+        return {};
+    }
+}
+
+function dateFromUnknown(value: unknown) {
+    if (typeof value !== 'string' && !(value instanceof Date)) {
+        return null;
+    }
+
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function getTomorrowDate() {
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+}
+
+function formatDateInput(date: Date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function parseDateInput(date: string) {
+    const [year, month, day] = date.split('-').map(Number);
+    if (!year || !month || !day) {
+        return null;
+    }
+
+    const parsedDate = new Date(Date.UTC(year, month - 1, day));
+    return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
+}
+
+function formatCartDate(date: Date) {
+    return date.toLocaleDateString('hr-HR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    });
+}
+
+type CartItemScheduledDateInfo = {
+    date: Date;
+    source: 'scheduled' | 'outlet' | 'default';
+};
+
+function getCartItemScheduledDateInfo(
+    item: ShoppingCartItemData,
+): CartItemScheduledDateInfo {
+    const outletSowingDate = dateFromUnknown(item.outlet?.sowingDate);
+    if (outletSowingDate) {
+        return {
+            date: outletSowingDate,
+            source: 'outlet',
+        };
+    }
+
+    const additionalData = parseAdditionalData(item.additionalData);
+    const scheduledDate = dateFromUnknown(additionalData.scheduledDate);
+    if (scheduledDate) {
+        return {
+            date: scheduledDate,
+            source: 'scheduled',
+        };
+    }
+
+    return {
+        date: getTomorrowDate(),
+        source: 'default',
+    };
+}
 
 export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const { data: garden } = useCurrentGarden();
     const { data: account } = useCurrentAccount();
     const { data: inventory } = useInventory();
     const { track } = useGameAnalytics();
+    const queryClient = useQueryClient();
+    const [countdownNowMs, setCountdownNowMs] = useState(() => Date.now());
+    const [datePickerOpen, setDatePickerOpen] = useState(false);
+    const [datePickerError, setDatePickerError] = useState<string | null>(null);
 
     const hasDiscount = typeof item.shopData.discountPrice === 'number';
     const hasRaisedBed = Boolean(item.raisedBedId);
     const hasPosition = typeof item.positionIndex === 'number';
+    const isProcessed = item.status === 'paid';
 
     const raisedBed = hasRaisedBed
         ? garden?.raisedBeds.find((rb) => rb.id === item.raisedBedId)
         : null;
-    const scheduledDateString = item.additionalData
-        ? JSON.parse(item.additionalData).scheduledDate
+    const scheduledDateInfo = getCartItemScheduledDateInfo(item);
+    const scheduledDate = scheduledDateInfo.date;
+    const scheduledDateLabel = formatCartDate(scheduledDate);
+    const outletHoldExpiresAt = item.outlet?.holdExpiresAt
+        ? new Date(item.outlet.holdExpiresAt)
         : null;
-    const scheduledDate = scheduledDateString
-        ? new Date(scheduledDateString)
-        : null;
+    const hasOutletReservation = Boolean(item.outlet);
+    const outletReservationExpiredFromApi = item.outlet?.expired ?? false;
+    const outletHoldExpiresAtMs = outletHoldExpiresAt?.getTime() ?? null;
+    const outletReservationRemainingMs =
+        outletHoldExpiresAtMs != null
+            ? outletHoldExpiresAtMs - countdownNowMs
+            : null;
+    const outletReservationExpired =
+        outletReservationExpiredFromApi ||
+        (outletReservationRemainingMs != null &&
+            outletReservationRemainingMs <= 0);
+    const outletReservationText = outletReservationExpired
+        ? 'Rezervacija istekla'
+        : outletReservationRemainingMs != null
+          ? `Istječe za ${formatCountdown(outletReservationRemainingMs)}`
+          : 'Rezervirano';
+    const outletReservationTitle = outletReservationExpired
+        ? 'Outlet cijena više nije rezervirana.'
+        : outletHoldExpiresAt
+          ? `Outlet cijena čuva se do ${outletHoldExpiresAt.toLocaleTimeString(
+                'hr-HR',
+                {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                },
+            )}.`
+          : undefined;
+    const outletReservationChipClassName = outletReservationExpired
+        ? 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-100'
+        : (outletReservationRemainingMs ?? Number.POSITIVE_INFINITY) <=
+            urgentOutletReservationThresholdMs
+          ? 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-100'
+          : 'bg-muted';
     const changeCurrencyShoppingCartItem = useSetShoppingCartItem();
     const removeShoppingCartItem = useSetShoppingCartItem();
+    const changeScheduledDateShoppingCartItem = useSetShoppingCartItem();
+    const canChangeScheduledDate = !isProcessed && !hasOutletReservation;
+
+    useEffect(() => {
+        if (
+            !hasOutletReservation ||
+            outletReservationExpiredFromApi ||
+            !outletHoldExpiresAtMs
+        ) {
+            return;
+        }
+
+        setCountdownNowMs(Date.now());
+        const interval = window.setInterval(() => {
+            setCountdownNowMs(Date.now());
+        }, outletReservationCountdownIntervalMs);
+
+        return () => window.clearInterval(interval);
+    }, [
+        hasOutletReservation,
+        outletReservationExpiredFromApi,
+        outletHoldExpiresAtMs,
+    ]);
+
+    useEffect(() => {
+        if (
+            !hasOutletReservation ||
+            outletReservationExpiredFromApi ||
+            !outletHoldExpiresAtMs
+        ) {
+            return;
+        }
+
+        const delayMs = Math.max(outletHoldExpiresAtMs - Date.now(), 0);
+        const timeout = window.setTimeout(() => {
+            setCountdownNowMs(Date.now());
+            void queryClient.invalidateQueries({
+                queryKey: useShoppingCartQueryKey,
+            });
+        }, delayMs + outletReservationRefetchBufferMs);
+
+        return () => window.clearTimeout(timeout);
+    }, [
+        hasOutletReservation,
+        outletReservationExpiredFromApi,
+        outletHoldExpiresAtMs,
+        queryClient,
+    ]);
 
     const usesInventory = item.currency === 'inventory';
     const availableFromInventory = inventory?.items?.find(
@@ -106,8 +296,44 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
         });
     }
 
-    // Hide delete button for paid items
-    const isProcessed = item.status === 'paid';
+    async function handleScheduledDateChange(date: string) {
+        const parsedDate = parseDateInput(date);
+        if (!parsedDate) {
+            setDatePickerError('Odaberi datum.');
+            return;
+        }
+
+        const nextScheduledDate = parsedDate.toISOString();
+        const additionalData = {
+            ...parseAdditionalData(item.additionalData),
+            scheduledDate: nextScheduledDate,
+        };
+
+        setDatePickerError(null);
+        track('game_cart_scheduled_date_changed', {
+            entity_id: item.entityId,
+            entity_type: item.entityTypeName,
+            item_id: item.id,
+            scheduled_date: nextScheduledDate,
+        });
+
+        try {
+            await changeScheduledDateShoppingCartItem.mutateAsync({
+                id: item.id,
+                amount: item.amount,
+                entityId: item.entityId,
+                entityTypeName: item.entityTypeName,
+                currency: item.currency,
+                additionalData: JSON.stringify(additionalData),
+                positionIndex: item.positionIndex ?? undefined,
+                gardenId: item.gardenId ?? undefined,
+                raisedBedId: item.raisedBedId ?? undefined,
+            });
+            setDatePickerOpen(false);
+        } catch {
+            setDatePickerError('Promjena datuma nije uspjela.');
+        }
+    }
 
     const plantSort =
         item.entityTypeName === 'plantSort' ? item.entityData : null;
@@ -221,6 +447,23 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                             </Row>
                         </Row>
                     )}
+                {item.outlet && (
+                    <Row className="flex-wrap" spacing={1}>
+                        <Chip className="bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-100">
+                            <Typography level="body3">
+                                Outlet sadnica
+                            </Typography>
+                        </Chip>
+                        <Chip
+                            className={outletReservationChipClassName}
+                            title={outletReservationTitle}
+                        >
+                            <Typography level="body3">
+                                {outletReservationText}
+                            </Typography>
+                        </Chip>
+                    </Row>
+                )}
                 <Row justifyContent="space-between">
                     <Stack spacing={1}>
                         <Row spacing={2}>
@@ -258,27 +501,90 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                                 )}
                             </Row>
                         </Row>
-                        {scheduledDate && (
-                            <Row>
+                        <Row>
+                            {canChangeScheduledDate ? (
+                                <Popper
+                                    open={datePickerOpen}
+                                    onOpenChange={(open) => {
+                                        setDatePickerOpen(open);
+                                        if (open) {
+                                            setDatePickerError(null);
+                                        }
+                                    }}
+                                    side="bottom"
+                                    align="start"
+                                    sideOffset={8}
+                                    className="w-72 p-3"
+                                    trigger={
+                                        <Chip
+                                            startDecorator={
+                                                <Timer className="size-4" />
+                                            }
+                                            className="bg-muted"
+                                            disabled={
+                                                changeScheduledDateShoppingCartItem.isPending
+                                            }
+                                            onClick={() =>
+                                                setDatePickerError(null)
+                                            }
+                                            title={`Promijeni datum: ${scheduledDateLabel}`}
+                                        >
+                                            <Typography level="body3" secondary>
+                                                {scheduledDateLabel}
+                                            </Typography>
+                                        </Chip>
+                                    }
+                                >
+                                    <Stack spacing={2}>
+                                        <Input
+                                            type="date"
+                                            label="Datum"
+                                            name={`cartItemScheduledDate-${item.id}`}
+                                            className="w-full bg-card"
+                                            value={formatDateInput(
+                                                scheduledDate,
+                                            )}
+                                            min={formatDateInput(
+                                                getTomorrowDate(),
+                                            )}
+                                            disabled={
+                                                changeScheduledDateShoppingCartItem.isPending
+                                            }
+                                            onChange={(event) => {
+                                                void handleScheduledDateChange(
+                                                    event.target.value,
+                                                );
+                                            }}
+                                            required
+                                        />
+                                        {datePickerError ? (
+                                            <Typography
+                                                level="body3"
+                                                className="text-red-600"
+                                            >
+                                                {datePickerError}
+                                            </Typography>
+                                        ) : null}
+                                    </Stack>
+                                </Popper>
+                            ) : (
                                 <Chip
                                     startDecorator={
                                         <Timer className="size-4" />
                                     }
                                     className="bg-muted"
+                                    title={
+                                        scheduledDateInfo.source === 'outlet'
+                                            ? 'Datum sjetve outlet sadnice'
+                                            : 'Datum'
+                                    }
                                 >
                                     <Typography level="body3" secondary>
-                                        {scheduledDate.toLocaleDateString(
-                                            'hr-HR',
-                                            {
-                                                year: 'numeric',
-                                                month: '2-digit',
-                                                day: '2-digit',
-                                            },
-                                        )}
+                                        {scheduledDateLabel}
                                     </Typography>
                                 </Chip>
-                            </Row>
-                        )}
+                            )}
+                        </Row>
                     </Stack>
                     {!isProcessed && (
                         <ModalConfirm

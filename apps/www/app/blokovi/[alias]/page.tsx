@@ -12,7 +12,9 @@ import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
+import { CommunityEditButton } from '../../../components/community-edits/CommunityEditButton';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
+import { KnownPages } from '../../../src/KnownPages';
 import { matchesPageAlias, toPageAlias } from '../../../src/pageAliases';
 import { BlocksList } from './BlocksList';
 
@@ -105,6 +107,7 @@ export default async function BlockPage(props: PageProps<'/blokovi/[alias]'>) {
     if (!entity) {
         notFound();
     }
+    const blockPath = KnownPages.Block(alias);
 
     return (
         <div className="border-b">
@@ -124,10 +127,35 @@ export default async function BlockPage(props: PageProps<'/blokovi/[alias]'>) {
                         }
                         header={entity.information.label}
                         subHeader={entity.information.shortDescription}
-                    />
+                    >
+                        <Row className="justify-end">
+                            <CommunityEditButton
+                                entityTypeName="block"
+                                entityId={entity.id}
+                                publicPath={blockPath}
+                                sectionKey="overview"
+                            />
+                        </Row>
+                    </PageHeader>
                     <Markdown>{entity.information.fullDescription}</Markdown>
+                    <Row className="justify-end">
+                        <CommunityEditButton
+                            entityTypeName="block"
+                            entityId={entity.id}
+                            publicPath={blockPath}
+                            sectionKey="description"
+                        />
+                    </Row>
                     <Stack spacing={2}>
-                        <Typography level="h5">Svojstva</Typography>
+                        <Row className="justify-between">
+                            <Typography level="h5">Svojstva</Typography>
+                            <CommunityEditButton
+                                entityTypeName="block"
+                                entityId={entity.id}
+                                publicPath={blockPath}
+                                sectionKey="attributes"
+                            />
+                        </Row>
                         <BlockAttributes {...entity} />
                     </Stack>
                     <Row spacing={4}>

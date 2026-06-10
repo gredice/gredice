@@ -1,11 +1,7 @@
 import 'server-only';
 
 import { and, asc, desc, gte, lte } from 'drizzle-orm';
-import {
-    type InsertWeatherHistory,
-    storage,
-    weatherHistory,
-} from '..';
+import { type InsertWeatherHistory, storage, weatherHistory } from '..';
 
 export async function insertWeatherHistory(data: InsertWeatherHistory) {
     const result = await storage()

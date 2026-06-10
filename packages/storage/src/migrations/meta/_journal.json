@@ -274,6 +274,97 @@
       "when": 1780071062280,
       "tag": "0038_weather_history",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1780142354177,
+      "tag": "0039_repair_weather_payout_prices",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1780144657470,
+      "tag": "0040_graceful_malice",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1780168963649,
+      "tag": "0041_chunky_eternity",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1780397292635,
+      "tag": "0042_aberrant_mystique",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1780420050748,
+      "tag": "0043_hard_nocturne",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1780435935069,
+      "tag": "0044_oval_avengers",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1780524686823,
+      "tag": "0045_tiny_gorilla_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1780526884928,
+      "tag": "0046_acoustic_komodo",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1780566986595,
+      "tag": "0047_vengeful_wind_dancer",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1780579269751,
+      "tag": "0048_clean_harrier",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1780605352930,
+      "tag": "0049_strange_true_believers",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1780752323728,
+      "tag": "0050_naive_gunslinger",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1780754412207,
+      "tag": "0051_long_starhawk",
+      "breakpoints": true
     }
   ]
 }

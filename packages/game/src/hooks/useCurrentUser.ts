@@ -23,6 +23,7 @@ async function getCurrentUser() {
         createdAt,
         birthdayLastUpdatedAt,
         birthdayLastRewardAt,
+        whatsNewLastSeenAt,
         ...currentUser
     } = await response.json();
     return {
@@ -34,13 +35,17 @@ async function getCurrentUser() {
         birthdayLastRewardAt: birthdayLastRewardAt
             ? new Date(birthdayLastRewardAt)
             : null,
+        whatsNewLastSeenAt: whatsNewLastSeenAt
+            ? new Date(whatsNewLastSeenAt)
+            : null,
     };
 }
 
-export function useCurrentUser() {
+export function useCurrentUser(enabled = true) {
     return useQuery({
         queryKey: queryKey.currentUser,
         queryFn: getCurrentUser,
+        enabled,
         retry: false,
         staleTime: 1000 * 60 * 60, // 1 hour
     });

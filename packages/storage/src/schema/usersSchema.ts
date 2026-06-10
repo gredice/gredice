@@ -1,5 +1,6 @@
 import { relations } from 'drizzle-orm';
 import {
+    boolean,
     index,
     integer,
     pgEnum,
@@ -121,6 +122,10 @@ export const users = pgTable(
         birthdayMonth: smallint('birthday_month'),
         birthdayYear: smallint('birthday_year'),
         birthdayLastUpdatedAt: timestamp('birthday_last_updated_at'),
+        whatsNewLastSeenAt: timestamp('whats_new_last_seen_at'),
+        whatsNewPopupDisabled: boolean('whats_new_popup_disabled')
+            .notNull()
+            .default(false),
         createdAt: timestamp('created_at').notNull().defaultNow(),
         updatedAt: timestamp('updated_at')
             .notNull()

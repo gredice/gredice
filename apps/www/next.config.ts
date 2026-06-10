@@ -9,6 +9,7 @@ import {
 
 const app = getAppByName('www');
 const apiApp = getAppByName('api');
+const newsApp = getAppByName('news');
 // Use the Vercel deployment ID (or git commit SHA) as a cache-busting tag.
 // Assets are not truly immutable – they change when game models or sprites are updated.
 // CDN (s-maxage) is purged automatically by Vercel on each deployment.
@@ -70,8 +71,25 @@ const nextConfig: NextConfig = {
                       getAppDevPort(apiApp),
                   )
                 : 'https://api.gredice.com');
+        const newsHost =
+            process.env.GREDICE_NEWS_HOST ??
+            (isDev
+                ? localAppHostnameUrl(
+                      newsApp,
+                      'localhost',
+                      getAppDevPort(newsApp),
+                  )
+                : 'https://novosti.gredice.com');
 
         return [
+            {
+                source: '/novosti',
+                destination: `${newsHost}/novosti`,
+            },
+            {
+                source: '/novosti/:path*',
+                destination: `${newsHost}/novosti/:path*`,
+            },
             {
                 source: '/api/gredice/:path*',
                 destination: `${apiHost}/:path*`,

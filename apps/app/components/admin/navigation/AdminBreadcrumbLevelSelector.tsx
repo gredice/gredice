@@ -4,18 +4,21 @@ import {
     AI,
     Bank,
     Calendar,
+    Discount,
     Euro,
     Fence,
     File,
     Hammer,
     Home,
     Inbox,
+    Lightning,
     Mail,
     Map as MapIcon,
     Megaphone,
     Settings,
     ShoppingCart,
     SmileHappy,
+    Sprout,
     Success,
     Tally3,
     Truck,
@@ -32,6 +35,7 @@ import {
 import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
+import { AdminBreadcrumbSelectorLink } from './AdminBreadcrumbSelectorLink';
 import { AdminBreadcrumbSelectorTrigger } from './AdminBreadcrumbSelectorTrigger';
 import { adminBreadcrumbPages, adminPages } from './adminPages';
 
@@ -114,6 +118,7 @@ const breadcrumbSections: {
             },
             { ...adminPages.Sunflowers, icon: <Success className="size-4" /> },
             { ...adminPages.Receipts, icon: <File className="size-4" /> },
+            { ...adminPages.Outlet, icon: <Discount className="size-4" /> },
             { ...adminPages.Users, icon: <User className="size-4" /> },
             { ...adminPages.Farms, icon: <MapIcon className="size-4" /> },
             { ...adminPages.Gardens, icon: <Fence className="size-4" /> },
@@ -121,12 +126,14 @@ const breadcrumbSections: {
                 ...adminPages.RaisedBeds,
                 icon: <RaisedBedIcon className="size-4" physicalId={null} />,
             },
+            { ...adminPages.Greenhouse, icon: <Sprout className="size-4" /> },
             { ...adminPages.Operations, icon: <Hammer className="size-4" /> },
         ],
     },
     {
         title: 'Upravljanje',
         pages: [
+            { ...adminPages.Approvals, icon: <Inbox className="size-4" /> },
             { ...adminPages.Inventory, icon: <Tally3 className="size-4" /> },
             { ...adminPages.Occasions, icon: <Calendar className="size-4" /> },
             { ...adminPages.Schedule, icon: <Calendar className="size-4" /> },
@@ -156,21 +163,26 @@ const breadcrumbSections: {
                 ...adminPages.Notifications,
                 icon: <Megaphone className="size-4" />,
             },
+            { ...adminPages.Surveys, icon: <Tally3 className="size-4" /> },
             { ...adminPages.Feedback, icon: <SmileHappy className="size-4" /> },
+        ],
+    },
+    {
+        title: 'Sustavi',
+        pages: [
+            {
+                ...adminPages.Automations,
+                icon: <Lightning className="size-4" />,
+            },
+            { ...adminPages.Sensors, icon: <File className="size-4" /> },
+            { ...adminPages.Cache, icon: <File className="size-4" /> },
+            { ...adminPages.AiAnalytics, icon: <AI className="size-4" /> },
         ],
     },
     {
         title: 'Postavke',
         pages: [
             { ...adminPages.Settings, icon: <Settings className="size-4" /> },
-        ],
-    },
-    {
-        title: 'Sustavi',
-        pages: [
-            { ...adminPages.Sensors, icon: <File className="size-4" /> },
-            { ...adminPages.Cache, icon: <File className="size-4" /> },
-            { ...adminPages.AiAnalytics, icon: <AI className="size-4" /> },
         ],
     },
 ];
@@ -181,32 +193,40 @@ export function AdminBreadcrumbLevelSelector() {
         resolveCurrentTopLevel(pathname) ?? adminBreadcrumbPages[0];
 
     return (
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <AdminBreadcrumbSelectorTrigger>
-                    {currentTopLevel.label}
-                </AdminBreadcrumbSelectorTrigger>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-                {breadcrumbSections.map((section, index) => (
-                    <div key={section.title}>
-                        <DropdownMenuLabel className="text-muted-foreground text-xs">
-                            {section.title}
-                        </DropdownMenuLabel>
-                        {section.pages.map((page) => (
-                            <DropdownMenuItem key={page.href} href={page.href}>
-                                <div className="flex items-center gap-2">
-                                    {page.icon}
-                                    <span>{page.label}</span>
-                                </div>
-                            </DropdownMenuItem>
-                        ))}
-                        {index < breadcrumbSections.length - 1 && (
-                            <DropdownMenuSeparator />
-                        )}
-                    </div>
-                ))}
-            </DropdownMenuContent>
-        </DropdownMenu>
+        <span className="inline-flex min-w-0 items-center gap-0.5">
+            <AdminBreadcrumbSelectorLink href={currentTopLevel.href}>
+                {currentTopLevel.label}
+            </AdminBreadcrumbSelectorLink>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <AdminBreadcrumbSelectorTrigger
+                        aria-label={`Prikaži podizbornik za ${currentTopLevel.label}`}
+                    />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                    {breadcrumbSections.map((section, index) => (
+                        <div key={section.title}>
+                            <DropdownMenuLabel className="text-muted-foreground text-xs">
+                                {section.title}
+                            </DropdownMenuLabel>
+                            {section.pages.map((page) => (
+                                <DropdownMenuItem
+                                    key={page.href}
+                                    href={page.href}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        {page.icon}
+                                        <span>{page.label}</span>
+                                    </div>
+                                </DropdownMenuItem>
+                            ))}
+                            {index < breadcrumbSections.length - 1 && (
+                                <DropdownMenuSeparator />
+                            )}
+                        </div>
+                    ))}
+                </DropdownMenuContent>
+            </DropdownMenu>
+        </span>
     );
 }

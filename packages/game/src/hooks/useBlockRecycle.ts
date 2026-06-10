@@ -1,6 +1,7 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { handleOptimisticUpdate } from '../helpers/queryHelpers';
+import { persistLocalSandboxGarden } from '../localSandboxGarden';
 import { useGameState } from '../useGameState';
 import { currentAccountKeys } from './useCurrentAccount';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
@@ -38,9 +39,17 @@ async function removeShoppingCartItems(
 export function useBlockRecycle() {
     const queryClient = useQueryClient();
     const { data: garden } = useCurrentGarden();
-    const { data: shoppingCart } = useShoppingCart();
+    const localSandboxStorageKey = useGameState(
+        (state) => state.localSandboxStorageKey,
+    );
+    const { data: shoppingCart } = useShoppingCart(!localSandboxStorageKey);
     const winterMode = useGameState((state) => state.winterMode);
-    const gardenQueryKey = currentGardenKeys(winterMode, garden?.id);
+    const gardenQueryKey = currentGardenKeys(
+        winterMode,
+        garden?.id,
+        undefined,
+        localSandboxStorageKey,
+    );
 
     return useMutation({
         mutationKey,
@@ -57,10 +66,14 @@ export function useBlockRecycle() {
                 position: { x: number; z: number };
                 blockIndex: number;
             };
+            onOptimisticUpdate?: () => void;
         }) => {
             console.debug('Recycling block', position, blockIndex);
             if (!garden) {
                 throw new Error('No garden selected');
+            }
+            if (localSandboxStorageKey) {
+                return;
             }
             const gardenId = garden.id;
             await clientAuthenticated().api.gardens[':gardenId'].stacks.$patch({
@@ -87,7 +100,13 @@ export function useBlockRecycle() {
                 await removeShoppingCartItems(shoppingCart, raisedBedId);
             }
         },
-        onMutate: async ({ position, blockIndex, raisedBedId, attached }) => {
+        onMutate: async ({
+            position,
+            blockIndex,
+            raisedBedId,
+            attached,
+            onOptimisticUpdate,
+        }) => {
             if (!garden) {
                 return;
             }
@@ -130,6 +149,15 @@ export function useBlockRecycle() {
                     stacks: [...updatedStacks],
                 },
             );
+            if (localSandboxStorageKey) {
+                persistLocalSandboxGarden(localSandboxStorageKey, {
+                    ...garden,
+                    stacks: updatedStacks,
+                });
+            }
+            if (previousItem) {
+                onOptimisticUpdate?.();
+            }
 
             // Optimistically remove from shopping cart if raisedBedId is provided
             let previousShoppingCart: ShoppingCartData | undefined;
@@ -166,6 +194,10 @@ export function useBlockRecycle() {
             }
         },
         onSettled: async (_data, _error, variables) => {
+            if (localSandboxStorageKey) {
+                return;
+            }
+
             // Invalidate queries only on last mutation
             if (queryClient.isMutating({ mutationKey }) === 1) {
                 await queryClient.invalidateQueries({

@@ -14,10 +14,15 @@ import {
     verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { slugify } from '@gredice/js/slug';
-import type { SelectCmsPage } from '@gredice/storage';
+import type {
+    CmsPageContentKind,
+    CmsPageState,
+    SelectCmsPage,
+} from '@gredice/storage';
 import {
     type CmsPageSectionComponent,
     type CmsPageSectionPreset,
+    type CmsPageTextSectionField,
     cmsPageSectionComponents,
     cmsPageSectionPresets,
 } from '@gredice/storage/cmsPageSections';
@@ -25,6 +30,7 @@ import { Button } from '@gredice/ui/Button';
 import { ButtonGroup, buttonGroupItemClassName } from '@gredice/ui/ButtonGroup';
 import { Card } from '@gredice/ui/Card';
 import { Checkbox } from '@gredice/ui/Checkbox';
+import { Container } from '@gredice/ui/Container';
 import {
     type CmsPageRenderMaxWidth,
     type CmsPageRenderMode,
@@ -41,6 +47,7 @@ import {
     Add,
     ArrowDown,
     ArrowUp,
+    Auto,
     Close,
     Code,
     Delete,
@@ -62,8 +69,10 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@gredice/ui/Menu';
+import { ModalConfirm } from '@gredice/ui/ModalConfirm';
 import { PanelSection } from '@gredice/ui/PanelSection';
 import { Row } from '@gredice/ui/Row';
+import { SelectItems } from '@gredice/ui/SelectItems';
 import {
     SidePanelLayout,
     SidePanelToggleButton,
@@ -78,6 +87,7 @@ import {
     useMemo,
     useRef,
     useState,
+    useTransition,
 } from 'react';
 import {
     AdminPageHeader,
@@ -86,10 +96,12 @@ import {
 import { sectionsComponentRegistry } from '../../../../components/shared/sectionsComponentRegistry';
 import { KnownPages } from '../../../../src/KnownPages';
 import type { CmsPageAutosaveState, CmsPageFormState } from './actions';
+import { CmsPageCoverImageField } from './CmsPageCoverImageField';
 import type {
     CmsPageEditableSection,
     CmsPageSectionData,
 } from './CmsPageFormTypes';
+import { CmsPageMarkdownEditor } from './CmsPageMarkdownEditor';
 import { CmsPageSectionFields } from './CmsPageSectionFields';
 import {
     CmsPageSectionLibrary,
@@ -98,6 +110,7 @@ import {
     SectionInfoModal,
 } from './CmsPageSectionLibrary';
 import { CmsPageSortablePreviewSection } from './CmsPageSortablePreviewSection';
+import { CmsPageTagsInput } from './CmsPageTagsInput';
 import {
     type CmsPreviewViewport,
     cmsPagePreviewViewportClassNames,
@@ -106,6 +119,7 @@ import {
 
 type CmsPageFormProps = {
     page?: SelectCmsPage;
+    template?: CmsPageFormTemplate;
     formId?: string;
     breadcrumbs?: ReactNode;
     heading?: ReactNode;
@@ -114,6 +128,28 @@ type CmsPageFormProps = {
         formData: FormData,
     ) => Promise<CmsPageFormState>;
     autosaveAction?: (formData: FormData) => Promise<CmsPageAutosaveState>;
+    deleteAction?: () => Promise<void>;
+};
+
+type ParsedCmsPageSections = {
+    isStructured: boolean;
+    sections: CmsPageSectionData[];
+    renderMode: CmsPageRenderMode;
+    renderMaxWidth: CmsPageRenderMaxWidth;
+};
+
+export type CmsPageFormTemplate = {
+    contentKind: CmsPageContentKind;
+    title?: string;
+    slug?: string;
+    content?: string;
+    category?: string;
+    tags?: string[];
+    metaTitle?: string;
+    metaDescription?: string;
+    metaImageUrl?: string;
+    seoImageUrl?: string;
+    publishedAt?: Date | string | null;
 };
 
 const cmsPageSectionComponentsByName = new Map<string, CmsPageSectionComponent>(
@@ -172,7 +208,7 @@ function writeStoredPanelCollapsedState(key: string, collapsed: boolean) {
     }
 }
 
-function parseSections(content?: string | null) {
+function parseSections(content?: string | null): ParsedCmsPageSections {
     if (!content) {
         return {
             isStructured: true,
@@ -204,8 +240,10 @@ function parseSections(content?: string | null) {
         const document = parseCmsPageContentDocument(parsed);
         return {
             isStructured: true,
-            renderMode: document.renderMode,
-            renderMaxWidth: document.renderMaxWidth,
+            renderMode: normalizeCmsPageRenderMode(document.renderMode),
+            renderMaxWidth: normalizeCmsPageRenderMaxWidth(
+                document.renderMaxWidth,
+            ),
             sections: document.sectionsData.filter(
                 (section): section is CmsPageSectionData =>
                     Boolean(section) &&
@@ -553,6 +591,15 @@ function sectionFieldErrors(section: CmsPageEditableSection) {
     );
 }
 
+function isMarkdownBlockField(
+    field: CmsPageSectionComponent['fields'][number],
+): field is CmsPageTextSectionField & {
+    key: 'markdown';
+    type: 'textarea';
+} {
+    return field.type === 'textarea' && field.key === 'markdown';
+}
+
 function formatLastSavedAt(value: number | null) {
     if (!value) return null;
     return new Intl.DateTimeFormat('hr-HR', {
@@ -560,6 +607,24 @@ function formatLastSavedAt(value: number | null) {
         minute: '2-digit',
         second: '2-digit',
     }).format(new Date(value));
+}
+
+function formatDateTimeLocalValue(value: Date | string | null | undefined) {
+    if (!value) {
+        return '';
+    }
+
+    const date = typeof value === 'string' ? new Date(value) : value;
+    if (Number.isNaN(date.getTime())) {
+        return '';
+    }
+
+    const pad = (part: number) => String(part).padStart(2, '0');
+    return (
+        `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
+            date.getDate(),
+        )}` + `T${pad(date.getHours())}:${pad(date.getMinutes())}`
+    );
 }
 
 function normalizeCmsPageSlugInput(value: string) {
@@ -571,9 +636,73 @@ function normalizeCmsPageSlugInput(value: string) {
         .join('/');
 }
 
+function automaticSlugForTitle(title: string, contentKind: CmsPageContentKind) {
+    const normalizedTitle = normalizeCmsPageSlugInput(title);
+    if (!normalizedTitle) {
+        return '';
+    }
+
+    if (contentKind === 'blog') {
+        return `novosti/${normalizedTitle}`;
+    }
+
+    if (contentKind === 'changelog') {
+        return `novosti/sto-je-novo/${normalizedTitle}`;
+    }
+
+    return normalizedTitle;
+}
+
+function normalizeFormContentKind(
+    value: CmsPageContentKind | string | null | undefined,
+): CmsPageContentKind {
+    if (value === 'blog' || value === 'changelog' || value === 'page') {
+        return value;
+    }
+
+    return 'page';
+}
+
+function normalizeFormPageState(
+    value: CmsPageState | string | null | undefined,
+): CmsPageState {
+    if (value === 'draft' || value === 'in-review' || value === 'published') {
+        return value;
+    }
+
+    return 'draft';
+}
+
 function canonicalPathFromSlug(value: string) {
     const normalized = normalizeCmsPageSlugInput(value);
     return normalized ? `/${normalized}` : '';
+}
+
+function cmsPageOgPreviewUrl({
+    contentKind,
+    imageUrl,
+    tags,
+    title,
+}: {
+    contentKind: CmsPageContentKind;
+    imageUrl: string;
+    tags: string[];
+    title: string;
+}) {
+    const searchParams = new URLSearchParams();
+    searchParams.set('contentKind', contentKind);
+    searchParams.set('title', title.trim() || 'Gredice');
+    if (imageUrl.trim()) {
+        searchParams.set('imageUrl', imageUrl.trim());
+    }
+
+    for (const tag of tags) {
+        if (tag.trim()) {
+            searchParams.append('tag', tag.trim());
+        }
+    }
+
+    return `/admin/cms/pages/og-preview?${searchParams.toString()}`;
 }
 
 function updateSectionData(
@@ -595,17 +724,25 @@ function updateSectionData(
 
 export function CmsPageForm({
     page,
+    template,
     formId,
     breadcrumbs,
     heading,
     action,
     autosaveAction,
+    deleteAction,
 }: CmsPageFormProps) {
     const [state, formAction, pending] = useActionState(action, null);
+    const [isDeletePending, startDeleteTransition] = useTransition();
     const reactId = useId();
     const resolvedFormId = formId ?? reactId;
-    const initialTitle = page?.title ?? '';
-    const initialSlug = page?.slug ?? '';
+    const initialContentKind = normalizeFormContentKind(
+        page?.contentKind ?? template?.contentKind,
+    );
+    const [contentKind, setContentKind] =
+        useState<CmsPageContentKind>(initialContentKind);
+    const initialTitle = page?.title ?? template?.title ?? '';
+    const initialSlug = page?.slug ?? template?.slug ?? '';
     const storedCanonicalPath = page?.canonicalPath ?? '';
     const initialCanonicalPath =
         storedCanonicalPath.trim().length > 0
@@ -616,7 +753,7 @@ export function CmsPageForm({
     const [isCustomSlug, setIsCustomSlug] = useState(
         () =>
             initialSlug.length > 0 &&
-            initialSlug !== normalizeCmsPageSlugInput(initialTitle),
+            initialSlug !== automaticSlugForTitle(initialTitle, contentKind),
     );
     const [canonicalPath, setCanonicalPath] = useState(initialCanonicalPath);
     const [isCustomCanonicalPath, setIsCustomCanonicalPath] = useState(
@@ -624,21 +761,21 @@ export function CmsPageForm({
             storedCanonicalPath.trim().length > 0 &&
             storedCanonicalPath !== canonicalPathFromSlug(initialSlug),
     );
-    const currentPageState = page?.state ?? 'draft';
+    const currentPageState = normalizeFormPageState(page?.state);
     const isPublished = currentPageState === 'published';
-    const nextPublishState = isPublished ? 'draft' : 'published';
-    const publishButtonLabel = isPublished
-        ? 'Vrati u izradu'
-        : page
-          ? 'Objavi'
-          : 'Kreiraj i objavi';
+    const isInReview = currentPageState === 'in-review';
+    const [publishedAt, setPublishedAt] = useState(() =>
+        formatDateTimeLocalValue(page?.publishedAt ?? template?.publishedAt),
+    );
+    const publishButtonLabel = page ? 'Objavi' : 'Kreiraj i objavi';
+    const reviewButtonLabel = page ? 'Označi za pregled' : 'Kreiraj za pregled';
     const newSectionIdPrefix = useMemo(
         () => `${reactId}-${page?.id ?? 'new'}`,
         [page?.id, reactId],
     );
     const parsedSections = useMemo(
-        () => parseSections(page?.content),
-        [page?.content],
+        () => parseSections(page?.content ?? template?.content),
+        [page?.content, template?.content],
     );
     const [pageRenderMode, setPageRenderMode] = useState<CmsPageRenderMode>(
         parsedSections.renderMode,
@@ -652,9 +789,11 @@ export function CmsPageForm({
     const preserveFallbackContent =
         !parsedSections.isStructured && Boolean(page?.content);
     const [rawMode, setRawMode] = useState(preserveFallbackContent);
-    const [rawContent, setRawContent] = useState(page?.content ?? '');
+    const [rawContent, setRawContent] = useState(
+        page?.content ?? template?.content ?? '',
+    );
     const [rawError, setRawError] = useState<string | null>(null);
-    const storedMetaTitle = page?.metaTitle ?? '';
+    const storedMetaTitle = page?.metaTitle ?? template?.metaTitle ?? '';
     const initialMetaTitle =
         storedMetaTitle.trim().length > 0 ? storedMetaTitle : initialTitle;
     const [metaTitle, setMetaTitle] = useState(initialMetaTitle);
@@ -664,8 +803,31 @@ export function CmsPageForm({
             storedMetaTitle !== initialTitle,
     );
     const [metaDescription, setMetaDescription] = useState(
-        page?.metaDescription ?? '',
+        page?.metaDescription ?? template?.metaDescription ?? '',
     );
+    const [metaImageUrl, setMetaImageUrl] = useState(
+        page?.metaImageUrl ?? template?.metaImageUrl ?? '',
+    );
+    const [seoImageUrl, setSeoImageUrl] = useState(
+        page?.seoImageUrl ?? template?.seoImageUrl ?? '',
+    );
+    const [category, setCategory] = useState(
+        page?.category ?? template?.category ?? '',
+    );
+    const [tags, setTags] = useState(() => page?.tags ?? template?.tags ?? []);
+    const generatedOgPreviewUrl = useMemo(
+        () =>
+            cmsPageOgPreviewUrl({
+                contentKind,
+                imageUrl: metaImageUrl,
+                tags,
+                title,
+            }),
+        [contentKind, metaImageUrl, tags, title],
+    );
+    const effectiveOgPreviewUrl = seoImageUrl.trim()
+        ? seoImageUrl.trim()
+        : generatedOgPreviewUrl;
     const builderContent = useMemo(
         () => stringifySections(sections, pageRenderMode, pageRenderMaxWidth),
         [pageRenderMaxWidth, pageRenderMode, sections],
@@ -684,6 +846,7 @@ export function CmsPageForm({
     const latestAutosaveSnapshot = useRef(autosaveSnapshot);
     const [autosaveStatus, setAutosaveStatus] = useState('saved');
     const [autosaveMessage, setAutosaveMessage] = useState<string | null>(null);
+    const [deleteError, setDeleteError] = useState<string | null>(null);
     const [lastSavedAt, setLastSavedAt] = useState<number | null>(
         () => page?.updatedAt?.getTime() ?? null,
     );
@@ -695,7 +858,7 @@ export function CmsPageForm({
     const [insertAtEnd, setInsertAtEnd] = useState(false);
     const [sectionSearch, setSectionSearch] = useState('');
     const [previewViewport, setPreviewViewport] =
-        useState<CmsPreviewViewport>('desktop');
+        useState<CmsPreviewViewport>('auto');
     const {
         containerRef: previewViewportContainerRef,
         supportedViewports: supportedPreviewViewports,
@@ -914,6 +1077,20 @@ export function CmsPageForm({
             label: 'Slug stranice je upisan.',
         },
         {
+            id: 'content-kind',
+            checked: Boolean(contentKind),
+            label: 'Vrsta sadržaja je odabrana.',
+        },
+        ...(contentKind === 'blog'
+            ? [
+                  {
+                      id: 'category',
+                      checked: category.trim().length > 0,
+                      label: 'Kategorija blog objave je upisana.',
+                  },
+              ]
+            : []),
+        {
             id: 'content-structure',
             checked: contentStructured,
             label: 'Sadržaj je ispravno strukturiran.',
@@ -969,6 +1146,26 @@ export function CmsPageForm({
         ? 'Prilagođeni meta naslov.'
         : 'Automatski se popunjava iz naslova stranice.';
     const formattedLastSavedAt = formatLastSavedAt(lastSavedAt);
+    const canDeletePage = Boolean(page && deleteAction && !isPublished);
+
+    const handleDeletePage = () => {
+        if (!deleteAction) {
+            return;
+        }
+
+        startDeleteTransition(async () => {
+            setDeleteError(null);
+            try {
+                await deleteAction();
+            } catch (error) {
+                setDeleteError(
+                    error instanceof Error
+                        ? error.message
+                        : 'Brisanje stranice nije uspjelo.',
+                );
+            }
+        });
+    };
 
     const insertSectionData = (data: CmsPageSectionData, index?: number) => {
         const sectionId = nextSectionId.current;
@@ -1008,6 +1205,40 @@ export function CmsPageForm({
                     value={currentPageState}
                     readOnly
                 />
+                <SelectItems<CmsPageContentKind>
+                    name="contentKind"
+                    label="Vrsta sadržaja"
+                    value={contentKind}
+                    items={[
+                        {
+                            value: 'page',
+                            label: 'Stranica',
+                        },
+                        {
+                            value: 'blog',
+                            label: 'Blog objava',
+                        },
+                        {
+                            value: 'changelog',
+                            label: 'Changelog zapis',
+                        },
+                    ]}
+                    onValueChange={(nextContentKind) => {
+                        setContentKind(nextContentKind);
+                        if (!isCustomSlug) {
+                            const nextSlug = automaticSlugForTitle(
+                                title,
+                                nextContentKind,
+                            );
+                            setSlug(nextSlug);
+                            if (!isCustomCanonicalPath) {
+                                setCanonicalPath(
+                                    canonicalPathFromSlug(nextSlug),
+                                );
+                            }
+                        }
+                    }}
+                />
                 <Input
                     name="title"
                     label="Naslov"
@@ -1017,8 +1248,10 @@ export function CmsPageForm({
                         const nextTitle = event.target.value;
                         setTitle(nextTitle);
                         if (!isCustomSlug) {
-                            const nextSlug =
-                                normalizeCmsPageSlugInput(nextTitle);
+                            const nextSlug = automaticSlugForTitle(
+                                nextTitle,
+                                contentKind,
+                            );
                             setSlug(nextSlug);
                             if (!isCustomCanonicalPath) {
                                 setCanonicalPath(
@@ -1053,8 +1286,10 @@ export function CmsPageForm({
                                     type="button"
                                     variant="plain"
                                     onClick={() => {
-                                        const nextSlug =
-                                            normalizeCmsPageSlugInput(title);
+                                        const nextSlug = automaticSlugForTitle(
+                                            title,
+                                            contentKind,
+                                        );
                                         setIsCustomSlug(false);
                                         setSlug(nextSlug);
                                         if (!isCustomCanonicalPath) {
@@ -1097,6 +1332,48 @@ export function CmsPageForm({
                         )}
                     </Row>
                 </Stack>
+                <Input
+                    name="category"
+                    label="Kategorija"
+                    value={category}
+                    fullWidth
+                    helperText={
+                        contentKind === 'blog'
+                            ? 'Obavezno za Blog objave. Koristi se za filtriranje.'
+                            : 'Opcionalno. Najčešće se koristi za Blog objave.'
+                    }
+                    onChange={(event) => setCategory(event.target.value)}
+                    required={contentKind === 'blog'}
+                />
+                <CmsPageTagsInput
+                    name="tags"
+                    label="Tagovi"
+                    value={tags}
+                    helperText="Upiši tag i pritisni Enter, Tab ili zarez za dodavanje."
+                    placeholder="npr. Vrt, Biljke"
+                    onChange={(nextTags) => {
+                        setTags(nextTags);
+                        setFormRevision((current) => current + 1);
+                    }}
+                />
+                <Input
+                    name="publishedAt"
+                    label="Datum objave"
+                    type="datetime-local"
+                    value={publishedAt}
+                    fullWidth
+                    helperText="Određuje javni datum i poredak novosti. Ako ostane prazno, objava dobiva trenutno vrijeme pri objavi."
+                    onChange={(event) => setPublishedAt(event.target.value)}
+                />
+                <CmsPageCoverImageField
+                    name="metaImageUrl"
+                    pageId={page?.id}
+                    value={metaImageUrl}
+                    onChange={(nextMetaImageUrl) => {
+                        setMetaImageUrl(nextMetaImageUrl);
+                        setFormRevision((current) => current + 1);
+                    }}
+                />
                 {autosaveAction && (
                     <div className="space-y-1">
                         <div className="flex items-center justify-between gap-3">
@@ -1200,11 +1477,43 @@ export function CmsPageForm({
                     helperText={`${metaDescription.length}/160 znakova`}
                     onChange={(event) => setMetaDescription(event.target.value)}
                 />
-                <Input
-                    name="metaImageUrl"
-                    label="Meta slika URL"
-                    type="url"
-                    defaultValue={page?.metaImageUrl ?? ''}
+                <Stack spacing={2}>
+                    <div className="space-y-1">
+                        <Typography level="body3" semiBold>
+                            OG pregled
+                        </Typography>
+                        <Typography
+                            level="body3"
+                            className="text-muted-foreground"
+                        >
+                            {seoImageUrl.trim()
+                                ? 'Koristi se prilagođena SEO slika.'
+                                : 'Koristi se generirana OG slika s naslovom, tagovima, logotipom i naslovnom slikom ako postoji.'}
+                        </Typography>
+                    </div>
+                    <div className="overflow-hidden rounded-md border bg-muted">
+                        {/** biome-ignore lint/performance/noImgElement: Admin preview renders generated and arbitrary SEO image URLs. */}
+                        <img
+                            alt="OG pregled CMS stranice"
+                            className="aspect-[1200/630] w-full object-cover"
+                            src={effectiveOgPreviewUrl}
+                        />
+                    </div>
+                </Stack>
+                <CmsPageCoverImageField
+                    name="seoImageUrl"
+                    pageId={page?.id}
+                    value={seoImageUrl}
+                    label="SEO slika"
+                    modalTitle="SEO slika"
+                    usage="seo"
+                    emptyLabel="Nema prilagođene SEO slike."
+                    uploadEmptyLabel="Odaberite jednu sliku za SEO override."
+                    description="Opcionalno. Ako je postavljena, koristi se umjesto generirane OG slike za društvene mreže."
+                    onChange={(nextSeoImageUrl) => {
+                        setSeoImageUrl(nextSeoImageUrl);
+                        setFormRevision((current) => current + 1);
+                    }}
                 />
                 <Input
                     name="canonicalPath"
@@ -1295,26 +1604,112 @@ export function CmsPageForm({
                         ))}
                     </Stack>
                 )}
-                <Button
-                    type="submit"
-                    name="publishState"
-                    value={nextPublishState}
-                    variant={isPublished ? 'outlined' : 'solid'}
-                    fullWidth
-                    disabled={nextPublishState === 'published' && !publishReady}
-                    loading={pending}
-                    startDecorator={<Megaphone className="size-4" />}
-                >
-                    {publishButtonLabel}
-                </Button>
-                {nextPublishState === 'published' && !publishReady ? (
+                {!isPublished && !isInReview ? (
+                    <Button
+                        type="submit"
+                        name="publishState"
+                        value="in-review"
+                        variant="outlined"
+                        fullWidth
+                        disabled={!publishReady}
+                        loading={pending}
+                        startDecorator={<Megaphone className="size-4" />}
+                    >
+                        {reviewButtonLabel}
+                    </Button>
+                ) : null}
+                {!isPublished ? (
+                    <Button
+                        type="submit"
+                        name="publishState"
+                        value="published"
+                        variant="solid"
+                        fullWidth
+                        disabled={!publishReady}
+                        loading={pending}
+                        startDecorator={<Megaphone className="size-4" />}
+                    >
+                        {publishButtonLabel}
+                    </Button>
+                ) : null}
+                {isPublished || isInReview ? (
+                    <Button
+                        type="submit"
+                        name="publishState"
+                        value="draft"
+                        variant="outlined"
+                        fullWidth
+                        loading={pending}
+                    >
+                        Vrati u izradu
+                    </Button>
+                ) : null}
+                {!isPublished && !publishReady ? (
                     <Typography level="body3" secondary>
-                        Dovrši sve provjere prije objave.
+                        Dovrši sve provjere prije označavanja za pregled ili
+                        objave.
                     </Typography>
                 ) : null}
             </Stack>
         </PanelSection>
     );
+
+    const deletePanel =
+        page && deleteAction ? (
+            <PanelSection title="Brisanje" contentClassName="px-4 pt-1">
+                <Stack spacing={3}>
+                    <Typography level="body3" secondary>
+                        {isPublished
+                            ? 'Vrati stranicu u izradu prije brisanja.'
+                            : 'Brisanjem se stranica uklanja iz aktivnog CMS popisa.'}
+                    </Typography>
+                    {deleteError ? (
+                        <Typography level="body3" className="text-red-600">
+                            {deleteError}
+                        </Typography>
+                    ) : null}
+                    {canDeletePage ? (
+                        <ModalConfirm
+                            title="Potvrda brisanja CMS stranice"
+                            header="Brisanje stranice"
+                            confirmLabel="Obriši"
+                            onConfirm={handleDeletePage}
+                            trigger={
+                                <Button
+                                    type="button"
+                                    variant="outlined"
+                                    color="danger"
+                                    fullWidth
+                                    loading={isDeletePending}
+                                    startDecorator={
+                                        <Delete className="size-4" />
+                                    }
+                                >
+                                    Obriši stranicu
+                                </Button>
+                            }
+                        >
+                            <Typography>
+                                Jeste li sigurni da želite obrisati stranicu{' '}
+                                <strong>{page.title}</strong>? Ova akcija se ne
+                                može poništiti iz CMS sučelja.
+                            </Typography>
+                        </ModalConfirm>
+                    ) : (
+                        <Button
+                            type="button"
+                            variant="outlined"
+                            color="danger"
+                            fullWidth
+                            disabled
+                            startDecorator={<Delete className="size-4" />}
+                        >
+                            Obriši stranicu
+                        </Button>
+                    )}
+                </Stack>
+            </PanelSection>
+        ) : null;
 
     const editorModeControls = (
         <ButtonGroup legend="Editor mode" size="sm">
@@ -1366,6 +1761,19 @@ export function CmsPageForm({
 
     const previewViewportControls = (
         <ButtonGroup legend="Preview viewport" size="sm">
+            <Button
+                type="button"
+                variant={previewViewport === 'auto' ? 'solid' : 'plain'}
+                size="sm"
+                className={buttonGroupItemClassName({ iconOnly: true })}
+                aria-pressed={previewViewport === 'auto'}
+                aria-label="Auto preview"
+                title="Auto preview"
+                disabled={rawMode}
+                onClick={() => setPreviewViewport('auto')}
+            >
+                <Auto className="size-4" />
+            </Button>
             <Button
                 type="button"
                 variant={previewViewport === 'mobile' ? 'solid' : 'plain'}
@@ -1672,6 +2080,12 @@ export function CmsPageForm({
             </Button>
         </Row>
     ) : undefined;
+    const selectedSectionPanelFields =
+        selectedSection?.data.component === 'MarkdownBlock'
+            ? (selectedSectionComponent?.fields ?? []).filter(
+                  (field) => !isMarkdownBlockField(field),
+              )
+            : (selectedSectionComponent?.fields ?? []);
 
     return (
         <>
@@ -1727,6 +2141,7 @@ export function CmsPageForm({
                                         {pageDetailsPanel}
                                         {seoPanel}
                                         {publishReadinessPanel}
+                                        {deletePanel}
                                     </Stack>
                                 }
                             >
@@ -1880,8 +2295,7 @@ export function CmsPageForm({
                                                             selectedSection
                                                         }
                                                         fields={
-                                                            selectedSectionComponent?.fields ??
-                                                            []
+                                                            selectedSectionPanelFields
                                                         }
                                                         fieldErrors={
                                                             selectedSectionErrors
@@ -1903,6 +2317,7 @@ export function CmsPageForm({
 
                                         {seoPanel}
                                         {publishReadinessPanel}
+                                        {deletePanel}
                                     </Stack>
                                 }
                             >
@@ -1947,6 +2362,74 @@ export function CmsPageForm({
                                                         <Stack spacing={4}>
                                                             {sections.map(
                                                                 (section) => {
+                                                                    const isSelectedMarkdownSection =
+                                                                        section.id ===
+                                                                            selectedSectionId &&
+                                                                        section
+                                                                            .data
+                                                                            .component ===
+                                                                            'MarkdownBlock';
+                                                                    const sectionComponent =
+                                                                        cmsPageSectionComponentsByName.get(
+                                                                            section
+                                                                                .data
+                                                                                .component,
+                                                                        );
+                                                                    const markdownField =
+                                                                        sectionComponent?.fields.find(
+                                                                            isMarkdownBlockField,
+                                                                        );
+                                                                    const previewSectionRenderMode =
+                                                                        sectionRenderMode(
+                                                                            section,
+                                                                        );
+                                                                    const resolvedSectionRenderMode =
+                                                                        previewSectionRenderMode ===
+                                                                        'inherit'
+                                                                            ? pageRenderMode
+                                                                            : previewSectionRenderMode;
+                                                                    const resolvedSectionRenderMaxWidth =
+                                                                        previewSectionRenderMode ===
+                                                                        'container'
+                                                                            ? sectionRenderMaxWidth(
+                                                                                  section,
+                                                                              )
+                                                                            : pageRenderMaxWidth;
+                                                                    const constrainInlineMarkdownEditor =
+                                                                        previewViewport !==
+                                                                        'desktop';
+                                                                    const inlineMarkdownEditor =
+                                                                        isSelectedMarkdownSection &&
+                                                                        markdownField ? (
+                                                                            <CmsPageMarkdownEditor
+                                                                                variant="inline"
+                                                                                value={sectionValue(
+                                                                                    section,
+                                                                                    markdownField.key,
+                                                                                )}
+                                                                                placeholder={
+                                                                                    markdownField.placeholder
+                                                                                }
+                                                                                error={sectionFieldErrors(
+                                                                                    section,
+                                                                                ).get(
+                                                                                    markdownField.key,
+                                                                                )}
+                                                                                onChange={(
+                                                                                    value,
+                                                                                ) =>
+                                                                                    updateSectionData(
+                                                                                        section.id,
+                                                                                        {
+                                                                                            ...section.data,
+                                                                                            [markdownField.key]:
+                                                                                                value,
+                                                                                        },
+                                                                                        setSections,
+                                                                                    )
+                                                                                }
+                                                                            />
+                                                                        ) : null;
                                                                     const customRenderIndicator =
                                                                         sectionRenderCustomIndicator(
                                                                             section,
@@ -1996,21 +2479,50 @@ export function CmsPageForm({
                                                                                 )
                                                                             }
                                                                         >
-                                                                            <SectionsView
-                                                                                sectionsData={[
-                                                                                    section.data,
-                                                                                ]}
-                                                                                componentsRegistry={
-                                                                                    sectionsComponentRegistry
-                                                                                }
-                                                                                renderMode={
-                                                                                    pageRenderMode
-                                                                                }
-                                                                                renderMaxWidth={
-                                                                                    pageRenderMaxWidth
-                                                                                }
-                                                                                debug
-                                                                            />
+                                                                            {inlineMarkdownEditor ? (
+                                                                                <div
+                                                                                    className="@container/cms w-full"
+                                                                                    data-cms-preview-interactive="true"
+                                                                                >
+                                                                                    <section className="py-12">
+                                                                                        {resolvedSectionRenderMode ===
+                                                                                            'fullWidth' ||
+                                                                                        !constrainInlineMarkdownEditor ? (
+                                                                                            <div className="w-full">
+                                                                                                {
+                                                                                                    inlineMarkdownEditor
+                                                                                                }
+                                                                                            </div>
+                                                                                        ) : (
+                                                                                            <Container
+                                                                                                maxWidth={
+                                                                                                    resolvedSectionRenderMaxWidth
+                                                                                                }
+                                                                                            >
+                                                                                                {
+                                                                                                    inlineMarkdownEditor
+                                                                                                }
+                                                                                            </Container>
+                                                                                        )}
+                                                                                    </section>
+                                                                                </div>
+                                                                            ) : (
+                                                                                <SectionsView
+                                                                                    sectionsData={[
+                                                                                        section.data,
+                                                                                    ]}
+                                                                                    componentsRegistry={
+                                                                                        sectionsComponentRegistry
+                                                                                    }
+                                                                                    renderMode={
+                                                                                        pageRenderMode
+                                                                                    }
+                                                                                    renderMaxWidth={
+                                                                                        pageRenderMaxWidth
+                                                                                    }
+                                                                                    debug
+                                                                                />
+                                                                            )}
                                                                         </CmsPageSortablePreviewSection>
                                                                     );
                                                                 },

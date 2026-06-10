@@ -4,9 +4,46 @@ import { resolveGardenBlockPlacement } from './blockPlacementService';
 
 const blockDataByName = new Map([
     ['Block_Grass', { attributes: { stackable: true, height: 1 } }],
+    ['Block_Water', { attributes: { stackable: true, height: 1 } }],
     ['Raised_Bed', { attributes: { stackable: true, height: 1 } }],
     ['Shade', { attributes: { stackable: false, height: 1 } }],
 ]);
+
+const maxSpiralSteps = 1000;
+
+function spiral(step: number) {
+    const r = Math.floor((Math.sqrt(step + 1) - 1) / 2) + 1;
+    const p = (8 * r * (r - 1)) / 2;
+    const en = r * 2;
+    const a = (1 + step - p) % (r * 8);
+
+    switch (Math.floor(a / (r * 2))) {
+        case 0:
+            return { x: a - r, y: -r };
+        case 1:
+            return { x: r, y: (a % en) - r };
+        case 2:
+            return { x: r - (a % en), y: r };
+        case 3:
+            return { x: -r, y: r - (a % en) };
+        default:
+            return { x: 0, y: 0 };
+    }
+}
+
+function createWaterOnlyPlacementSearch() {
+    const blockNameById = new Map([['water-origin', 'Block_Water']]);
+    const stacks = [{ positionX: 0, positionY: 0, blocks: ['water-origin'] }];
+
+    for (let step = 0; step < maxSpiralSteps; step++) {
+        const { x, y } = spiral(step);
+        const blockId = `water-${step}`;
+        blockNameById.set(blockId, 'Block_Water');
+        stacks.push({ positionX: x, positionY: y, blocks: [blockId] });
+    }
+
+    return { blockNameById, stacks };
+}
 
 describe('resolveGardenBlockPlacement', () => {
     it('skips invalid raised-bed positions near origin and finds the first valid slot', () => {
@@ -71,6 +108,51 @@ describe('resolveGardenBlockPlacement', () => {
         assert.deepStrictEqual(placement, {
             valid: false,
             error: 'Invalid block placement: ground blocks can only be placed on empty stacks',
+        });
+    });
+
+    it('prefers a valid non-water stack over a valid water stack', () => {
+        const placement = resolveGardenBlockPlacement({
+            blockName: 'Shade',
+            stacks: [
+                { positionX: 0, positionY: 0, blocks: ['water-a'] },
+                { positionX: 0, positionY: -1, blocks: ['grass-a'] },
+            ],
+            blockNameById: new Map([
+                ['water-a', 'Block_Water'],
+                ['grass-a', 'Block_Grass'],
+            ]),
+            blockDataByName,
+        });
+
+        assert.deepStrictEqual(placement, {
+            valid: true,
+            placement: {
+                x: 0,
+                y: -1,
+                index: 1,
+                existingBlocks: ['grass-a'],
+            },
+        });
+    });
+
+    it('uses a water stack when no non-water placement is available', () => {
+        const { blockNameById, stacks } = createWaterOnlyPlacementSearch();
+        const placement = resolveGardenBlockPlacement({
+            blockName: 'Shade',
+            stacks,
+            blockNameById,
+            blockDataByName,
+        });
+
+        assert.deepStrictEqual(placement, {
+            valid: true,
+            placement: {
+                x: 0,
+                y: 0,
+                index: 1,
+                existingBlocks: ['water-origin'],
+            },
         });
     });
 });

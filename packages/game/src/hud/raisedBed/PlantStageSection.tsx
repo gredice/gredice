@@ -156,7 +156,7 @@ function StageDurationDetails({
                     aria-label={`${label}: ${durationText}`}
                     title={`${label}: ${durationText}`}
                 >
-                    <Chip className="w-fit cursor-pointer" size="sm">
+                    <Chip className="cursor-pointer" size="sm">
                         {durationText}
                     </Chip>
                 </button>

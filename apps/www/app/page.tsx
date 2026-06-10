@@ -20,7 +20,10 @@ import { WinterModeToggle } from '../components/WinterModeToggle';
 import { KnownPages } from '../src/KnownPages';
 import { LandingGameScene, LandingGameSignupCta } from './LandingGameScene';
 import { NewsletterSignUp } from './NewsletterSignUp';
+import { OutletLandingSection } from './outlet/OutletLandingSection';
 import { PlantsShowcase } from './PlantsShowcase';
+
+export const dynamic = 'force-dynamic';
 
 const sectionsData: SectionData[] = [
     {
@@ -71,7 +74,7 @@ function PlantsStatisticsLoading() {
 async function PlantsStatistics() {
     try {
         const response = await clientPublic().api.data.statistics.plants.$get();
-        if (!response || response.status !== 200) {
+        if (response?.status !== 200) {
             return null;
         }
 
@@ -290,6 +293,9 @@ export default function Home() {
                     componentsRegistry={sectionsComponentRegistry}
                 />
                 <StepsSection />
+                <Suspense fallback={null}>
+                    <OutletLandingSection />
+                </Suspense>
                 <Stack spacing={8}>
                     <Stack spacing={2}>
                         <Typography level="body1" semiBold tertiary>

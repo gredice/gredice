@@ -20,12 +20,52 @@ function normalizeSitemapPath(path) {
     return search ? `${normalizedPathname}?${search}` : normalizedPathname;
 }
 
+const sourceCmsPagePaths = ['/kvaliteta-i-sigurnost-uroda'];
+const staticNewsPaths = ['/novosti', '/novosti/sto-je-novo'];
+
+async function addNewsFeedPaths({ baseUrl, sitemapPaths }) {
+    const feedPaths = ['/api/news/blog', '/api/news/changelog'];
+
+    await Promise.all(
+        feedPaths.map(async (feedPath) => {
+            let response;
+            try {
+                response = await fetch(`${baseUrl}${feedPath}`);
+            } catch {
+                return;
+            }
+
+            if (!response.ok) {
+                return;
+            }
+
+            /** @type {{ items?: Array<{ path?: string; noIndex?: boolean; publishedAt?: string | null }> }} */
+            const feed = await response.json();
+            for (const item of feed.items ?? []) {
+                if (!item.path || item.noIndex || !item.publishedAt) {
+                    continue;
+                }
+
+                sitemapPaths.add(item.path);
+            }
+        }),
+    );
+}
+
 /** @type {import('next-sitemap').IConfig} */
 module.exports = {
     siteUrl: process.env.SITE_URL || 'https://www.gredice.com',
     generateRobotsTxt: true,
+    exclude: ['/trag/*'],
     robotsTxtOptions: {
         includeHost: false,
+        policies: [
+            {
+                userAgent: '*',
+                allow: '/',
+                disallow: ['/trag/'],
+            },
+        ],
     },
     transform: async (config, path) => ({
         loc: normalizeSitemapPath(path),
@@ -35,22 +75,25 @@ module.exports = {
         alternateRefs: config.alternateRefs ?? [],
     }),
     additionalPaths: async (config) => {
+        const sitemapPaths = new Set([
+            ...sourceCmsPagePaths,
+            ...staticNewsPaths,
+        ]);
         const baseUrl = process.env.API_URL || 'https://api.gredice.com';
         let response;
         try {
             response = await fetch(`${baseUrl}/api/directories/pages`);
         } catch {
-            return [];
+            return Promise.all(
+                Array.from(sitemapPaths).map((path) =>
+                    config.transform(config, path),
+                ),
+            );
         }
 
-        if (!response.ok) {
-            return [];
-        }
-
-        /** @type {Array<{ slug: string; noIndex?: boolean; state: string; publishedAt?: string | null }>} */
-        const pages = await response.json();
-        const seen = new Set();
-        const sitemapPaths = await Promise.all(
+        if (response.ok) {
+            /** @type {Array<{ slug: string; noIndex?: boolean; state: string; publishedAt?: string | null }>} */
+            const pages = await response.json();
             pages
                 .filter(
                     (page) =>
@@ -59,15 +102,18 @@ module.exports = {
                         !page.noIndex,
                 )
                 .map((page) => `/${page.slug}`)
-                .filter((path) => {
-                    if (seen.has(path)) {
-                        return false;
-                    }
-                    seen.add(path);
-                    return true;
-                })
-                .map((path) => config.transform(config, path)),
+                .forEach((path) => {
+                    sitemapPaths.add(path);
+                });
+        }
+
+        await addNewsFeedPaths({ baseUrl, sitemapPaths });
+
+        const transformedPaths = await Promise.all(
+            Array.from(sitemapPaths).map((path) =>
+                config.transform(config, path),
+            ),
         );
-        return sitemapPaths.filter(Boolean);
+        return transformedPaths.filter(Boolean);
     },
 };

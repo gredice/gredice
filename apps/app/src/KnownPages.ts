@@ -7,8 +7,13 @@ export const KnownPages = {
     Settings: '/admin/settings',
     Directories: '/admin/directories',
     DirectoriesActivity: '/admin/directories/activity',
+    CommunityEdits: '/admin/community-edits',
+    CommunityEdit: (requestId: number) =>
+        `/admin/community-edits/${requestId}` as Route,
     CmsPages: '/admin/cms/pages',
     CmsPageCreate: '/admin/cms/pages/create',
+    CmsPageCreateTemplate: (template: 'blog' | 'changelog') =>
+        `/admin/cms/pages/create?template=${template}` as Route,
     CmsPageEdit: (pageId: number) => `/admin/cms/pages/${pageId}/edit` as Route,
     CmsPagePreview: (pageId: number) =>
         `/admin/cms/pages/${pageId}/preview` as Route,
@@ -44,6 +49,10 @@ export const KnownPages = {
     User: (userId: string) => `/admin/users/${userId}` as Route,
     Schedule: '/admin/schedule',
     Approvals: '/admin/approvals',
+    Automations: '/admin/automations',
+    AutomationCreate: '/admin/automations/create',
+    Automation: (automationId: number) =>
+        `/admin/automations/${automationId}` as Route,
     SowingStatistics: '/admin/statistics/sowing',
     Accounts: '/admin/accounts',
     Account: (accountId: string) => `/admin/accounts/${accountId}` as Route,
@@ -60,10 +69,15 @@ export const KnownPages = {
     CommunicationSlack: '/admin/communication/slack',
     Feedback: '/admin/feedback',
     Notifications: '/admin/communication/notifications',
+    Surveys: '/admin/surveys',
     Logout: '/admin/logout',
     RaisedBeds: '/admin/raised-beds',
     RaisedBed: (raisedBedId: number) =>
         `/admin/raised-beds/${raisedBedId}` as Route,
+    Greenhouse: '/admin/greenhouse',
+    HarvestTraces: '/admin/harvest-traces',
+    HarvestTrace: (traceId: number) =>
+        `/admin/harvest-traces/${traceId}` as Route,
     Transactions: '/admin/transactions',
     Transaction: (transactionId: number) =>
         `/admin/transactions/${transactionId}` as Route,
@@ -76,6 +90,11 @@ export const KnownPages = {
     ShoppingCarts: '/admin/shopping-carts',
     ShoppingCart: (cartId: number) =>
         `/admin/shopping-carts/${cartId}` as Route,
+    Outlet: '/admin/outlet',
+    OutletCreate: '/admin/outlet/create',
+    OutletOffer: (offerId: number) => `/admin/outlet/${offerId}` as Route,
+    OutletOfferEdit: (offerId: number) =>
+        `/admin/outlet/${offerId}/edit` as Route,
     Operations: '/admin/operations',
     Operation: (operationId: number) =>
         `/admin/operations/${operationId}` as Route,

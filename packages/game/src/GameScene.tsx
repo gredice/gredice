@@ -2,21 +2,30 @@
 
 import { cx } from '@gredice/ui/utils';
 import {
+    Fragment,
     type HTMLAttributes,
     Suspense,
     useEffect,
     useMemo,
     useState,
 } from 'react';
-import { Controls } from './controls/Controls';
+import { BlockInteractionLayer } from './controls/BlockInteractionLayer';
+import { BlockInteractionRegistryProvider } from './controls/BlockInteractionRegistry';
+import { GameCameraRig } from './controls/GameCameraRig';
 import { Bees } from './entities/bees/Bees';
 import { Birds } from './entities/birds/Birds';
+import { Cats } from './entities/cats/Cats';
 import { EntityFactory } from './entities/EntityFactory';
 import {
     EntityInstances,
     instancedBlockNames,
 } from './entities/EntityInstances';
 import { RaisedBedMulchOverlays } from './entities/raisedBed/RaisedBedMulchOverlays';
+import {
+    SunflowerDropFlyAnimation,
+    type SunflowerDropFlyOrigin,
+    SunflowerDropReward,
+} from './entities/SunflowerDropReward';
 import type { GameFeatureFlags } from './GameFlagsContext';
 import { GameHud } from './GameHud';
 import { useGameLoading } from './GameLoadingContext';
@@ -27,23 +36,31 @@ import {
     farGameCameraZoom,
 } from './gameCamera';
 import { useBlockData } from './hooks/useBlockData';
+import { useClearSandboxEnvironmentOverrides } from './hooks/useClearSandboxEnvironmentOverrides';
 import { useCurrentGarden } from './hooks/useCurrentGarden';
 import { useDeferredSceneDetails } from './hooks/useDeferredSceneDetails';
 import { useFocusPlacedBlock } from './hooks/useFocusPlacedBlock';
 import { useWeatherNow } from './hooks/useWeatherNow';
 import { DebugHud } from './hud/DebugHud';
-import { EditModeGrid } from './indicators/EditModeGrid';
 import { GardenLoadingIndicator } from './indicators/GardenLoadingIndicator';
+import { PlacementGrid } from './indicators/PlacementGrid';
 import { ParticleSystemProvider } from './particles/ParticleSystem';
 import { Environment } from './scene/Environment';
 import {
     type GameQualityAutoProfileMetrics,
+    type GameQualitySetting,
     type GameQualityTier,
     getGameQualityAutoProfileMetrics,
     resolveGameQualityProfile,
 } from './scene/gameQuality';
 import { Scene } from './scene/Scene';
-import { type GameState, useGameState, type WinterMode } from './useGameState';
+import type { Stack } from './types/Stack';
+import {
+    type GameState,
+    type MockGardenProfile,
+    useGameState,
+    type WinterMode,
+} from './useGameState';
 import { useRaisedBedCloseup } from './useRaisedBedCloseup';
 
 export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
@@ -58,17 +75,25 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     noBackground?: boolean;
     noControls?: boolean;
     hideHud?: boolean;
+    debugHud?: boolean;
     noWeather?: boolean;
     noSound?: boolean;
     mockGarden?: boolean;
+    mockGardenProfile?: MockGardenProfile;
+    localSandboxStorageKey?: string;
+    localSandboxInitialStacks?: Stack[];
     winterMode?: WinterMode;
     weather?: Partial<GameState['weather']>;
     deferDetails?: boolean;
+    renderDetails?: boolean;
     quality?: GameQualityTier;
+    initialQualitySetting?: GameQualitySetting;
 
     // Development purposes
     flags?: GameFeatureFlags;
 };
+
+type GameSceneInnerProps = Omit<GameSceneProps, 'initialQualitySetting'>;
 
 function useAutoQualityProfileMetrics(enabled: boolean) {
     const [metrics, setMetrics] = useState<
@@ -120,6 +145,28 @@ function useAutoQualityProfileMetrics(enabled: boolean) {
     return metrics;
 }
 
+function shouldRenderEntityFactoryForBlock({
+    blockName,
+    blockIndex,
+    noControls,
+    stackLength,
+}: {
+    blockName: string;
+    blockIndex: number;
+    noControls: boolean | undefined;
+    stackLength: number;
+}) {
+    if (!instancedBlockNames.includes(blockName)) {
+        return true;
+    }
+
+    if (noControls) {
+        return false;
+    }
+
+    return blockIndex >= 0 && blockIndex < stackLength;
+}
+
 export function GameScene({
     cameraPosition = defaultGameCameraPosition,
     zoom = 'normal',
@@ -130,15 +177,20 @@ export function GameScene({
     hideHud,
     className,
     flags,
+    debugHud,
     quality,
     weather,
     deferDetails,
+    renderDetails: renderDetailsOverride,
     ...rest
-}: GameSceneProps) {
+}: GameSceneInnerProps) {
     useFocusPlacedBlock();
     useRaisedBedCloseup();
     const weatherVisualizationDisabled = useGameState(
         (state) => state.weatherVisualizationDisabled,
+    );
+    const isLocalSandbox = useGameState(
+        (state) => state.localSandboxStorageKey !== null,
     );
     const gameQualitySetting = useGameState(
         (state) => state.gameQualitySetting,
@@ -147,7 +199,10 @@ export function GameScene({
         (state) => state.gameQualityCustomProfile,
     );
     const weatherDisabled = noWeather || weatherVisualizationDisabled;
-    const renderDetails = useDeferredSceneDetails(deferDetails);
+    const deferredRenderDetails = useDeferredSceneDetails(deferDetails);
+    const renderDetails = renderDetailsOverride ?? deferredRenderDetails;
+    const [sunflowerDropFlyOrigin, setSunflowerDropFlyOrigin] =
+        useState<SunflowerDropFlyOrigin | null>(null);
     const autoQualityProfileMetrics = useAutoQualityProfileMetrics(
         quality === undefined && gameQualitySetting === 'auto',
     );
@@ -167,8 +222,21 @@ export function GameScene({
     // Start non-critical metadata early, but don't block the first scene frame.
     useBlockData();
     const { data: garden, isLoading: gardenLoading } = useCurrentGarden();
-    useWeatherNow(!weatherDisabled && !weather);
+    const setBackgroundPaletteKey = useGameState(
+        (state) => state.setBackgroundPaletteKey,
+    );
+    const gardenBackgroundPalette = garden?.backgroundPalette;
+    useClearSandboxEnvironmentOverrides(garden);
+    useWeatherNow(!isLocalSandbox && !weatherDisabled && !weather);
     const isLoading = gardenLoading;
+
+    useEffect(() => {
+        if (!gardenBackgroundPalette) {
+            return;
+        }
+
+        setBackgroundPaletteKey(gardenBackgroundPalette);
+    }, [gardenBackgroundPalette, setBackgroundPaletteKey]);
 
     const loadingContext = useGameLoading();
     useEffect(() => {
@@ -182,6 +250,8 @@ export function GameScene({
         return loadingContext ? null : <GardenLoadingIndicator />;
     }
 
+    const showDebugHud = debugHud ?? Boolean(flags?.enableDebugHudFlag);
+
     return (
         <div
             className={cx('animate-in duration-1000 fade-in', className)}
@@ -189,6 +259,7 @@ export function GameScene({
         >
             <GameSceneDetailContext.Provider value={{ renderDetails }}>
                 <Scene
+                    debugStats={showDebugHud}
                     position={cameraPosition}
                     quality={qualityProfile}
                     zoom={
@@ -199,71 +270,143 @@ export function GameScene({
                     className="!absolute"
                 >
                     <ParticleSystemProvider>
-                        <EditModeGrid />
-                        <Environment
-                            noBackground={noBackground}
-                            noWeather={weatherDisabled}
-                            noSound={noSound}
-                            quality={qualityProfile}
-                            weather={weather}
-                        />
-                        <group>
-                            {garden?.stacks.map((stack) =>
-                                stack.blocks?.map((block, i) => (
-                                    <Suspense
-                                        // biome-ignore lint/suspicious/noArrayIndexKey: Using array index as key is acceptable here because block IDs are unique within a stack, and the order of blocks within a stack is unlikely to change. Using block.id alone is not sufficient as it may not be unique across different stacks.
-                                        key={`${stack.position.x}|${stack.position.y}|${stack.position.z}|${block.id}-${block.name}-${i}`}
-                                        fallback={null}
-                                    >
-                                        <EntityFactory
-                                            name={block.name}
-                                            stack={stack}
-                                            block={block}
-                                            stacks={garden.stacks}
-                                            rotation={block.rotation}
-                                            variant={block.variant}
-                                            noRenderInView={instancedBlockNames}
-                                            noControl={noControls}
+                        <BlockInteractionRegistryProvider>
+                            <PlacementGrid />
+                            <Environment
+                                noBackground={noBackground}
+                                noWeather={weatherDisabled}
+                                noSound={noSound}
+                                quality={qualityProfile}
+                                weather={weather}
+                            />
+                            <group name="GameScene:Entities">
+                                {garden?.stacks.map((stack) =>
+                                    stack.blocks?.map((block, i) => {
+                                        if (
+                                            !shouldRenderEntityFactoryForBlock({
+                                                blockName: block.name,
+                                                blockIndex: i,
+                                                noControls,
+                                                stackLength:
+                                                    stack.blocks.length,
+                                            })
+                                        ) {
+                                            return null;
+                                        }
+
+                                        const entityFactory = (
+                                            <EntityFactory
+                                                name={block.name}
+                                                stack={stack}
+                                                block={block}
+                                                stacks={garden.stacks}
+                                                rotation={block.rotation}
+                                                variant={block.variant}
+                                                noRenderInView={
+                                                    instancedBlockNames
+                                                }
+                                                noControl={noControls}
+                                            />
+                                        );
+                                        const key = `${stack.position.x}|${stack.position.y}|${stack.position.z}|${block.id}-${block.name}-${i}`;
+
+                                        if (
+                                            instancedBlockNames.includes(
+                                                block.name,
+                                            )
+                                        ) {
+                                            return (
+                                                <Fragment key={key}>
+                                                    {entityFactory}
+                                                </Fragment>
+                                            );
+                                        }
+
+                                        return (
+                                            <Suspense key={key} fallback={null}>
+                                                {entityFactory}
+                                            </Suspense>
+                                        );
+                                    }),
+                                )}
+                                {!isLocalSandbox &&
+                                    renderDetails &&
+                                    zoom !== 'far' && (
+                                        <Suspense fallback={null}>
+                                            <RaisedBedMulchOverlays
+                                                quality={qualityProfile}
+                                            />
+                                        </Suspense>
+                                    )}
+                                <EntityInstances
+                                    quality={qualityProfile}
+                                    renderGroundDecorations={
+                                        renderDetails && zoom !== 'far'
+                                    }
+                                    stacks={garden?.stacks}
+                                    renderDetails={renderDetails}
+                                />
+                                {renderDetails && zoom !== 'far' && (
+                                    <Suspense fallback={null}>
+                                        <SunflowerDropReward
+                                            enabled={!isLocalSandbox}
+                                            garden={garden}
+                                            onClaimed={
+                                                setSunflowerDropFlyOrigin
+                                            }
                                         />
                                     </Suspense>
-                                )),
-                            )}
-                            {renderDetails && zoom !== 'far' && (
-                                <Suspense fallback={null}>
-                                    <RaisedBedMulchOverlays
-                                        quality={qualityProfile}
-                                    />
-                                </Suspense>
-                            )}
-                            <EntityInstances
-                                quality={qualityProfile}
-                                renderGroundDecorations={
-                                    renderDetails && zoom !== 'far'
-                                }
-                                stacks={garden?.stacks}
-                                renderDetails={renderDetails}
-                            />
-                            {renderDetails && zoom !== 'far' && (
-                                <Suspense fallback={null}>
-                                    <Birds stacks={garden?.stacks} />
-                                </Suspense>
-                            )}
-                            {renderDetails && zoom !== 'far' && (
-                                <Suspense fallback={null}>
-                                    <Bees
-                                        garden={garden}
-                                        weather={weather}
-                                        weatherDisabled={weatherDisabled}
-                                    />
-                                </Suspense>
-                            )}
-                        </group>
-                        {!noControls && <Controls />}
+                                )}
+                                <BlockInteractionLayer
+                                    controlsEnabled={!noControls}
+                                    stacks={garden?.stacks}
+                                />
+                                {renderDetails && zoom !== 'far' && (
+                                    <Suspense fallback={null}>
+                                        <Birds stacks={garden?.stacks} />
+                                    </Suspense>
+                                )}
+                                {renderDetails && zoom !== 'far' && (
+                                    <Suspense fallback={null}>
+                                        <Cats
+                                            stacks={garden?.stacks}
+                                            weather={weather}
+                                            weatherDisabled={weatherDisabled}
+                                        />
+                                    </Suspense>
+                                )}
+                                {renderDetails && zoom !== 'far' && (
+                                    <Suspense fallback={null}>
+                                        <Bees
+                                            garden={garden}
+                                            groundDecorationDensity={
+                                                qualityProfile.groundDecorationDensity
+                                            }
+                                            weather={weather}
+                                            weatherDisabled={weatherDisabled}
+                                        />
+                                    </Suspense>
+                                )}
+                            </group>
+                            <GameCameraRig controlsEnabled={!noControls} />
+                        </BlockInteractionRegistryProvider>
                     </ParticleSystemProvider>
                 </Scene>
             </GameSceneDetailContext.Provider>
-            {!hideHud && <GameHud flags={flags} noWeather={noWeather} />}
-            {hideHud && Boolean(flags?.enableDebugHudFlag) && <DebugHud />}
+            {!hideHud && (
+                <GameHud
+                    debugHud={showDebugHud}
+                    flags={flags}
+                    noWeather={noWeather}
+                />
+            )}
+            {hideHud && showDebugHud && <DebugHud />}
+            {sunflowerDropFlyOrigin && (
+                <SunflowerDropFlyAnimation
+                    origin={sunflowerDropFlyOrigin}
+                    onDone={() => setSunflowerDropFlyOrigin(null)}
+                />
+            )}
         </div>
     );
 }

@@ -1,9 +1,12 @@
 'use server';
 
+import { randomUUID } from 'node:crypto';
+import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import {
     type CreateCmsPageInput,
     createCmsPage,
     getCmsPage,
+    isCmsPageContentKind,
     isCmsPageState,
     restoreCmsPageRevision,
     softDeleteCmsPage,
@@ -14,6 +17,15 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
+
+const maxCmsMarkdownImageSizeBytes = 10 * 1024 * 1024;
+const cmsMarkdownImageContentTypeExtensions: Record<string, string> = {
+    'image/avif': 'avif',
+    'image/gif': 'gif',
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+};
 
 export type CmsPageFormState = {
     success: false;
@@ -36,10 +48,64 @@ function formOptionalText(formData: FormData, key: string) {
     return value.length > 0 ? value : null;
 }
 
+function toCmsImagePathSegment(value: string) {
+    const normalized = value
+        .trim()
+        .toLowerCase()
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9_-]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 80);
+
+    return normalized || 'image';
+}
+
+function cmsMarkdownImageFileName(file: File) {
+    const trimmedName = file.name.trim();
+    const extensionSeparatorIndex = trimmedName.lastIndexOf('.');
+    const hasExtension =
+        extensionSeparatorIndex > 0 &&
+        extensionSeparatorIndex < trimmedName.length - 1;
+    const rawName = hasExtension
+        ? trimmedName.slice(0, extensionSeparatorIndex)
+        : trimmedName;
+    const contentTypeExtension =
+        cmsMarkdownImageContentTypeExtensions[file.type];
+
+    if (!contentTypeExtension) {
+        throw new Error('Podržane su samo AVIF, GIF, JPEG, PNG i WebP slike.');
+    }
+
+    return `${toCmsImagePathSegment(rawName)}.${contentTypeExtension}`;
+}
+
+function cmsCdnPublicUrl(pathname: string) {
+    const { CDN_R2_PUBLIC_URL } = process.env;
+    if (!CDN_R2_PUBLIC_URL) {
+        throw new Error('CDN konfiguracija nije postavljena.');
+    }
+
+    return `${CDN_R2_PUBLIC_URL.replace(/\/+$/u, '')}/${pathname}`;
+}
+
 function formCmsPageState(formData: FormData) {
     const value =
         formText(formData, 'publishState') || formText(formData, 'state');
     return isCmsPageState(value) ? value : 'draft';
+}
+
+function formCmsPageContentKind(formData: FormData) {
+    const value = formText(formData, 'contentKind');
+    return isCmsPageContentKind(value) ? value : 'page';
+}
+
+function formTags(formData: FormData) {
+    return formData
+        .getAll('tags')
+        .flatMap((value) => (typeof value === 'string' ? value.split(',') : []))
+        .map((value) => value.trim())
+        .filter((value) => value.length > 0);
 }
 
 function cmsPageInputFromForm(formData: FormData): CreateCmsPageInput {
@@ -50,12 +116,17 @@ function cmsPageInputFromForm(formData: FormData): CreateCmsPageInput {
         title,
         slug,
         state: formCmsPageState(formData),
+        contentKind: formCmsPageContentKind(formData),
+        category: formOptionalText(formData, 'category'),
+        tags: formTags(formData),
         content: formOptionalText(formData, 'content'),
         metaTitle: formOptionalText(formData, 'metaTitle'),
         metaDescription: formOptionalText(formData, 'metaDescription'),
         metaImageUrl: formOptionalText(formData, 'metaImageUrl'),
+        seoImageUrl: formOptionalText(formData, 'seoImageUrl'),
         canonicalPath: formOptionalText(formData, 'canonicalPath'),
         noIndex: formData.get('noIndex') === 'on',
+        publishedAt: formOptionalText(formData, 'publishedAt'),
     };
 }
 
@@ -67,6 +138,62 @@ function cmsPageErrorMessage(error: unknown) {
     return 'Spremanje stranice nije uspjelo.';
 }
 
+export async function uploadCmsMarkdownImage(formData: FormData) {
+    await auth(['admin']);
+
+    const file = formData.get('file');
+    if (!(file instanceof File)) {
+        throw new Error('Slika je obavezna.');
+    }
+
+    if (file.size <= 0) {
+        throw new Error('Slika je prazna.');
+    }
+
+    if (file.size > maxCmsMarkdownImageSizeBytes) {
+        throw new Error('Slika smije imati najviše 10 MB.');
+    }
+
+    const {
+        CDN_R2_ACCESS_KEY_ID,
+        CDN_R2_SECRET_ACCESS_KEY,
+        CDN_R2_BUCKET_NAME,
+        CDN_R2_ENDPOINT,
+    } = process.env;
+    if (
+        !CDN_R2_ACCESS_KEY_ID ||
+        !CDN_R2_SECRET_ACCESS_KEY ||
+        !CDN_R2_BUCKET_NAME ||
+        !CDN_R2_ENDPOINT
+    ) {
+        throw new Error('R2 konfiguracija nije postavljena.');
+    }
+
+    const safeFileName = cmsMarkdownImageFileName(file);
+    const pathname = `cms/markdown/${randomUUID()}-${safeFileName}`;
+    const client = new S3Client({
+        region: 'auto',
+        endpoint: CDN_R2_ENDPOINT,
+        credentials: {
+            accessKeyId: CDN_R2_ACCESS_KEY_ID,
+            secretAccessKey: CDN_R2_SECRET_ACCESS_KEY,
+        },
+    });
+
+    await client.send(
+        new PutObjectCommand({
+            Bucket: CDN_R2_BUCKET_NAME,
+            Key: pathname,
+            Body: Buffer.from(await file.arrayBuffer()),
+            ContentType: file.type,
+        }),
+    );
+
+    return {
+        url: cmsCdnPublicUrl(pathname),
+    };
+}
+
 function revalidateCmsPagePaths(pageId: number) {
     revalidatePath(KnownPages.CmsPages);
     revalidatePath(KnownPages.CmsPageEdit(pageId));
@@ -76,6 +203,10 @@ function revalidatePublicCmsPagePaths(slug: string) {
     revalidatePath(`/${slug}`);
     revalidatePath('/api/directories/pages');
     revalidatePath(`/api/directories/pages/${slug}`);
+    revalidatePath('/api/news/blog');
+    revalidatePath('/api/news/changelog');
+    revalidatePath('/novosti');
+    revalidatePath('/novosti/sto-je-novo');
 }
 
 export async function createCmsPageAction(
@@ -226,12 +357,16 @@ export async function unpublishCmsPageAction(pageId: number) {
 
 export async function deleteCmsPageAction(pageId: number) {
     const authContext = await auth(['admin']);
+    const page = await getCmsPage(pageId);
 
     await softDeleteCmsPage(pageId, {
         id: authContext.user.id,
         name: authContext.user.userName,
     });
     revalidateCmsPagePaths(pageId);
+    if (page?.slug) {
+        revalidatePublicCmsPagePaths(page.slug);
+    }
     redirect(KnownPages.CmsPages);
 }
 

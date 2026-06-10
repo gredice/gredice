@@ -1,28 +1,25 @@
 'use client';
 
-import { useLayoutEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import CSM from 'three-custom-shader-material';
 import { useGeneratedLSystemSymbolsBatch } from '../../generators/plant/hooks/useGeneratedLSystem';
-import { usePlantSway } from '../../generators/plant/hooks/usePlantSway';
-import { buildPlantRenderData } from '../../generators/plant/lib/buildPlantRenderData';
+import {
+    buildPlantRenderData,
+    type PlantStemSegment,
+} from '../../generators/plant/lib/buildPlantRenderData';
 import {
     MAX_PLANT_GENERATION,
     type PlantDefinition,
 } from '../../generators/plant/lib/plant-definitions';
-import {
-    createStemSurfaceUniforms,
-    stemSurfaceFragmentShader,
-    stemSurfaceVertexShader,
-} from '../../generators/plant/lib/plant-stem-material';
-import { PlantGenerator } from '../../generators/plant/PlantGenerator';
+import type { PlantLodLevel } from '../../generators/plant/lib/plantLod';
 import { Flowers } from '../../generators/plant/parts/flowers';
 import { Leaves } from '../../generators/plant/parts/leaves';
+import { PlantBillboardBatch } from '../../generators/plant/parts/PlantBillboard';
+import { Stems } from '../../generators/plant/parts/stems';
 import { Thorns } from '../../generators/plant/parts/thorns';
 import { Vegetables } from '../../generators/plant/parts/vegetables';
 
-interface RaisedBedGeneratedPlantBatchInstance {
+export interface RaisedBedGeneratedPlantBatchInstance {
     generation: number;
     position: readonly [number, number, number];
     scale: number;
@@ -32,26 +29,84 @@ interface RaisedBedGeneratedPlantBatchInstance {
 interface RaisedBedGeneratedPlantBatchProps {
     definition: PlantDefinition;
     instances: RaisedBedGeneratedPlantBatchInstance[];
+    lodLevel?: PlantLodLevel;
 }
 
 const ROOT_QUATERNION = new THREE.Quaternion();
 
+type BatchedPlantRenderData = {
+    billboards: Array<{
+        position: readonly [number, number, number];
+        scale: number;
+        seed: string;
+        summary: ReturnType<typeof buildPlantRenderData>['lodSummary'];
+    }>;
+    flowers: THREE.Matrix4[];
+    leafColors: THREE.Color[];
+    leaves: THREE.Matrix4[];
+    stemSegments: PlantStemSegment[];
+    thorns: THREE.Matrix4[];
+    vegetables: ReturnType<typeof buildPlantRenderData>['vegetables'];
+};
+
+function RaisedBedDetailedPlantBatch({
+    batchSeed,
+    batchedData,
+    definition,
+}: {
+    batchSeed: string;
+    batchedData: BatchedPlantRenderData;
+    definition: PlantDefinition;
+}) {
+    return (
+        <group name={`RaisedBedPlantBatch:${definition.name}:near`}>
+            <Stems
+                seed={batchSeed}
+                segments={batchedData.stemSegments}
+                stem={definition.stem}
+                debugName={`RaisedBedPlantStems:${definition.name}:segments:${batchedData.stemSegments.length}`}
+            />
+            <Leaves
+                seed={`${batchSeed}-leaves`}
+                matrices={batchedData.leaves}
+                colors={batchedData.leafColors}
+                type={definition.leaf.type}
+                debugName={`RaisedBedPlantLeaves:${definition.name}:count:${batchedData.leaves.length}`}
+            />
+            {definition.flower.enabled && (
+                <Flowers
+                    seed={`${batchSeed}-flowers`}
+                    matrices={batchedData.flowers}
+                    color={definition.flower.color}
+                />
+            )}
+            {definition.vegetable.enabled && (
+                <Vegetables
+                    seed={`${batchSeed}-vegetables`}
+                    vegetables={batchedData.vegetables}
+                />
+            )}
+            {definition.thorn?.enabled && (
+                <Thorns
+                    seed={`${batchSeed}-thorns`}
+                    matrices={batchedData.thorns}
+                    color={definition.thorn.color}
+                />
+            )}
+        </group>
+    );
+}
+
 export function RaisedBedGeneratedPlantBatch({
     definition,
     instances,
+    lodLevel = 'near',
 }: RaisedBedGeneratedPlantBatchProps) {
+    const renderDetailedGeometry = lodLevel === 'near';
     const batchSeed = useMemo(
         () =>
             `${definition.name}:${instances.map((instance) => instance.seed).join('|')}`,
         [definition.name, instances],
-    );
-    const stemSwayUniforms = usePlantSway(batchSeed, {
-        amplitude: 0.055,
-        speed: 1.1,
-    });
-    const stemSurfaceUniforms = useMemo(
-        () => createStemSurfaceUniforms(definition.stem),
-        [definition.stem],
     );
     const tasks = useMemo(() => {
         return instances.map((instance) => ({
@@ -78,7 +133,7 @@ export function RaisedBedGeneratedPlantBatch({
         const rootPosition = new THREE.Vector3();
         const rootScale = new THREE.Vector3();
         const rootMatrix = new THREE.Matrix4();
-        const stemGeometries: THREE.BufferGeometry[] = [];
+        const stemSegments: PlantStemSegment[] = [];
         const leaves: THREE.Matrix4[] = [];
         const leafColors: THREE.Color[] = [];
         const flowers: THREE.Matrix4[] = [];
@@ -86,6 +141,12 @@ export function RaisedBedGeneratedPlantBatch({
             typeof buildPlantRenderData
         >['vegetables'] = [];
         const thorns: THREE.Matrix4[] = [];
+        const billboards: Array<{
+            position: readonly [number, number, number];
+            scale: number;
+            seed: string;
+            summary: ReturnType<typeof buildPlantRenderData>['lodSummary'];
+        }> = [];
 
         symbols.forEach((lSystemSymbols, index) => {
             const instance = instances[index];
@@ -99,21 +160,30 @@ export function RaisedBedGeneratedPlantBatch({
                 generation: clampedGeneration,
                 lSystemSymbols,
                 plantDefinition: definition,
-                renderDetailedGeometry: true,
+                renderDetailedGeometry,
                 seed: instance.seed,
+            });
+            billboards.push({
+                position: instance.position,
+                scale: instance.scale,
+                seed: instance.seed,
+                summary: plantData.lodSummary,
             });
 
             rootPosition.set(...instance.position);
             rootScale.setScalar(instance.scale);
             rootMatrix.compose(rootPosition, ROOT_QUATERNION, rootScale);
 
-            if (plantData.stemGeometry.getAttribute('position')) {
-                plantData.stemGeometry.applyMatrix4(rootMatrix);
-                stemGeometries.push(plantData.stemGeometry);
-            } else {
-                plantData.stemGeometry.dispose();
+            if (!renderDetailedGeometry) {
+                return;
             }
 
+            plantData.stemSegments.forEach((segment) => {
+                stemSegments.push({
+                    ...segment,
+                    matrix: segment.matrix.clone().premultiply(rootMatrix),
+                });
+            });
             plantData.leaves.forEach((matrix) => {
                 leaves.push(matrix.clone().premultiply(rootMatrix));
             });
@@ -133,95 +203,36 @@ export function RaisedBedGeneratedPlantBatch({
                 thorns.push(matrix.clone().premultiply(rootMatrix));
             });
         });
-        const stemGeometry = stemGeometries.length
-            ? mergeGeometries(stemGeometries)
-            : new THREE.BufferGeometry();
-        stemGeometries.forEach((geometry) => {
-            geometry.dispose();
-        });
-
         return {
+            billboards,
             flowers,
             leafColors,
             leaves,
-            stemGeometry,
+            stemSegments,
             thorns,
             vegetables,
-        };
-    }, [definition, instances, symbols]);
-
-    useLayoutEffect(() => {
-        return () => {
-            batchedData?.stemGeometry.dispose();
-        };
-    }, [batchedData]);
+        } satisfies BatchedPlantRenderData;
+    }, [definition, instances, renderDetailedGeometry, symbols]);
 
     if (!batchedData) {
         return null;
     }
 
-    if (instances.length <= 1 && symbols[0]) {
-        const [instance] = instances;
-
+    if (lodLevel !== 'near') {
         return (
-            <group
-                position={instance.position}
-                scale={[instance.scale, instance.scale, instance.scale]}
-            >
-                <PlantGenerator
-                    plantDefinition={definition}
-                    lSystemSymbols={symbols[0]}
-                    generation={instance.generation}
-                    seed={instance.seed}
-                    flowerGrowth={1}
-                    fruitGrowth={1}
-                />
-            </group>
+            <PlantBillboardBatch
+                billboards={batchedData.billboards}
+                debugName={`RaisedBedPlantBillboards:${definition.name}`}
+                level={lodLevel}
+            />
         );
     }
 
     return (
-        <group>
-            <mesh geometry={batchedData.stemGeometry} castShadow>
-                <CSM
-                    baseMaterial={THREE.MeshStandardMaterial}
-                    vertexShader={stemSurfaceVertexShader}
-                    fragmentShader={stemSurfaceFragmentShader}
-                    uniforms={{
-                        ...stemSwayUniforms,
-                        ...stemSurfaceUniforms,
-                    }}
-                    color={definition.stem.color}
-                    roughness={0.8}
-                    metalness={0.2}
-                />
-            </mesh>
-            <Leaves
-                seed={`${batchSeed}-leaves`}
-                matrices={batchedData.leaves}
-                colors={batchedData.leafColors}
-                type={definition.leaf.type}
-            />
-            {definition.flower.enabled && (
-                <Flowers
-                    seed={`${batchSeed}-flowers`}
-                    matrices={batchedData.flowers}
-                    color={definition.flower.color}
-                />
-            )}
-            {definition.vegetable.enabled && (
-                <Vegetables
-                    seed={`${batchSeed}-vegetables`}
-                    vegetables={batchedData.vegetables}
-                />
-            )}
-            {definition.thorn?.enabled && (
-                <Thorns
-                    seed={`${batchSeed}-thorns`}
-                    matrices={batchedData.thorns}
-                    color={definition.thorn.color}
-                />
-            )}
-        </group>
+        <RaisedBedDetailedPlantBatch
+            batchSeed={batchSeed}
+            batchedData={batchedData}
+            definition={definition}
+        />
     );
 }

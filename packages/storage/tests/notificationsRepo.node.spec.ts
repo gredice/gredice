@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
+    accountUsers,
     backfillNotificationRolloutDefaults,
     cancelNotificationCampaign,
     cleanupNotificationRetention,
@@ -131,6 +132,276 @@ test('createNotification routes and queues deliverable push by default', async (
                 status: attempt.status,
             })),
         [{ pushSubscriptionId: subscriptionId, status: 'queued' }],
+    );
+});
+
+test('weather alert notifications are suppressed when no preference opt-in exists', async () => {
+    createTestDb();
+    await ensureFarmId();
+    const userName = `push-weather-default-${randomUUID()}@example.com`;
+    const userId = await createUserWithPassword(userName, 'password');
+    const user = await getUser(userId);
+    assert.ok(user);
+    const accountId = user.accounts[0]?.accountId;
+    assert.ok(accountId);
+
+    await storage()
+        .insert(webPushSubscriptions)
+        .values({
+            id: randomUUID(),
+            accountId,
+            userId,
+            endpoint: `https://example.com/weather-${randomUUID()}`,
+            p256dh: 'k',
+            auth: 'a',
+            enabled: true,
+            permissionState: 'granted',
+        });
+
+    const notificationId = await createNotification({
+        accountId,
+        userId,
+        header: 'Weather alert',
+        content: 'Weather alerts default off',
+        category: 'weather_alerts',
+        timestamp: new Date(),
+    });
+
+    const attempts = await storage()
+        .select({
+            channel: notificationDeliveryAttempts.channel,
+            provider: notificationDeliveryAttempts.provider,
+            providerResponseCode:
+                notificationDeliveryAttempts.providerResponseCode,
+        })
+        .from(notificationDeliveryAttempts)
+        .where(eq(notificationDeliveryAttempts.notificationId, notificationId));
+
+    assert.deepEqual(
+        attempts
+            .filter((attempt) => attempt.provider === 'router')
+            .map((attempt) => ({
+                channel: attempt.channel,
+                reason: attempt.providerResponseCode,
+            }))
+            .sort((left, right) => left.channel.localeCompare(right.channel)),
+        [
+            { channel: 'email', reason: 'preference_disabled' },
+            { channel: 'in_app', reason: 'preference_disabled' },
+            { channel: 'push', reason: 'preference_disabled' },
+        ],
+    );
+    assert.equal(
+        attempts.some((attempt) => attempt.provider === 'web_push_queue'),
+        false,
+    );
+});
+
+test('createNotification expands account-wide push to account users', async () => {
+    createTestDb();
+    await ensureFarmId();
+    const firstUserId = await createUserWithPassword(
+        `push-account-wide-first-${randomUUID()}@example.com`,
+        'password',
+    );
+    const firstUser = await getUser(firstUserId);
+    assert.ok(firstUser);
+    const accountId = firstUser.accounts[0]?.accountId;
+    assert.ok(accountId);
+    const secondUserId = await createUserWithPassword(
+        `push-account-wide-second-${randomUUID()}@example.com`,
+        'password',
+    );
+    await storage().insert(accountUsers).values({
+        accountId,
+        userId: secondUserId,
+    });
+
+    const firstSubscriptionId = randomUUID();
+    const secondSubscriptionId = randomUUID();
+    await storage()
+        .insert(webPushSubscriptions)
+        .values([
+            {
+                id: firstSubscriptionId,
+                accountId,
+                userId: firstUserId,
+                endpoint: `https://example.com/${firstSubscriptionId}`,
+                p256dh: 'k',
+                auth: 'a',
+                enabled: true,
+                permissionState: 'granted',
+            },
+            {
+                id: secondSubscriptionId,
+                accountId,
+                userId: secondUserId,
+                endpoint: `https://example.com/${secondSubscriptionId}`,
+                p256dh: 'k',
+                auth: 'a',
+                enabled: true,
+                permissionState: 'granted',
+            },
+        ]);
+
+    const notificationId = await createNotification({
+        accountId,
+        header: 'Account-wide push',
+        content: 'Account members should receive push delivery',
+        category: 'general',
+        timestamp: new Date(),
+    });
+
+    const attempts = await storage()
+        .select({
+            channel: notificationDeliveryAttempts.channel,
+            provider: notificationDeliveryAttempts.provider,
+            providerResponseCode:
+                notificationDeliveryAttempts.providerResponseCode,
+            pushSubscriptionId: notificationDeliveryAttempts.pushSubscriptionId,
+            status: notificationDeliveryAttempts.status,
+            userId: notificationDeliveryAttempts.userId,
+        })
+        .from(notificationDeliveryAttempts)
+        .where(eq(notificationDeliveryAttempts.notificationId, notificationId));
+
+    const pushRouterAttempts = attempts
+        .filter(
+            (attempt) =>
+                attempt.provider === 'router' && attempt.channel === 'push',
+        )
+        .sort((left, right) =>
+            (left.userId ?? '').localeCompare(right.userId ?? ''),
+        );
+    assert.deepEqual(
+        pushRouterAttempts.map((attempt) => ({
+            providerResponseCode: attempt.providerResponseCode,
+            status: attempt.status,
+            userId: attempt.userId,
+        })),
+        [firstUserId, secondUserId].sort().map((userId) => ({
+            providerResponseCode: 'eligible_immediate',
+            status: 'accepted',
+            userId,
+        })),
+    );
+
+    const queuedPushAttempts = attempts
+        .filter((attempt) => attempt.provider === 'web_push_queue')
+        .sort((left, right) =>
+            (left.pushSubscriptionId ?? '').localeCompare(
+                right.pushSubscriptionId ?? '',
+            ),
+        );
+    assert.deepEqual(
+        queuedPushAttempts.map((attempt) => ({
+            pushSubscriptionId: attempt.pushSubscriptionId,
+            status: attempt.status,
+        })),
+        [firstSubscriptionId, secondSubscriptionId].sort().map((id) => ({
+            pushSubscriptionId: id,
+            status: 'queued',
+        })),
+    );
+});
+
+test('account-wide push fan-out respects each user preference', async () => {
+    createTestDb();
+    await ensureFarmId();
+    const enabledUserId = await createUserWithPassword(
+        `push-account-pref-enabled-${randomUUID()}@example.com`,
+        'password',
+    );
+    const enabledUser = await getUser(enabledUserId);
+    assert.ok(enabledUser);
+    const accountId = enabledUser.accounts[0]?.accountId;
+    assert.ok(accountId);
+    const disabledUserId = await createUserWithPassword(
+        `push-account-pref-disabled-${randomUUID()}@example.com`,
+        'password',
+    );
+    await storage().insert(accountUsers).values({
+        accountId,
+        userId: disabledUserId,
+    });
+
+    const enabledSubscriptionId = randomUUID();
+    const disabledSubscriptionId = randomUUID();
+    await storage()
+        .insert(webPushSubscriptions)
+        .values([
+            {
+                id: enabledSubscriptionId,
+                accountId,
+                userId: enabledUserId,
+                endpoint: `https://example.com/${enabledSubscriptionId}`,
+                p256dh: 'k',
+                auth: 'a',
+                enabled: true,
+                permissionState: 'granted',
+            },
+            {
+                id: disabledSubscriptionId,
+                accountId,
+                userId: disabledUserId,
+                endpoint: `https://example.com/${disabledSubscriptionId}`,
+                p256dh: 'k',
+                auth: 'a',
+                enabled: true,
+                permissionState: 'granted',
+            },
+        ]);
+    const category = `account-wide-preference-${randomUUID()}`;
+    await storage().insert(notificationUserChannelPreferences).values({
+        userId: disabledUserId,
+        category,
+        channel: 'push',
+        enabled: false,
+    });
+
+    const notificationId = await createNotification({
+        accountId,
+        header: 'Account preference push',
+        content: 'One account member disabled push for this category',
+        category,
+        timestamp: new Date(),
+    });
+
+    const attempts = await storage()
+        .select({
+            channel: notificationDeliveryAttempts.channel,
+            provider: notificationDeliveryAttempts.provider,
+            providerResponseCode:
+                notificationDeliveryAttempts.providerResponseCode,
+            pushSubscriptionId: notificationDeliveryAttempts.pushSubscriptionId,
+            userId: notificationDeliveryAttempts.userId,
+        })
+        .from(notificationDeliveryAttempts)
+        .where(eq(notificationDeliveryAttempts.notificationId, notificationId));
+
+    assert.ok(
+        attempts.some(
+            (attempt) =>
+                attempt.provider === 'router' &&
+                attempt.channel === 'push' &&
+                attempt.userId === enabledUserId &&
+                attempt.providerResponseCode === 'eligible_immediate',
+        ),
+    );
+    assert.ok(
+        attempts.some(
+            (attempt) =>
+                attempt.provider === 'router' &&
+                attempt.channel === 'push' &&
+                attempt.userId === disabledUserId &&
+                attempt.providerResponseCode === 'preference_disabled',
+        ),
+    );
+    assert.deepEqual(
+        attempts
+            .filter((attempt) => attempt.provider === 'web_push_queue')
+            .map((attempt) => attempt.pushSubscriptionId),
+        [enabledSubscriptionId],
     );
 });
 
@@ -1017,6 +1288,29 @@ test('backfillNotificationRolloutDefaults limits subscription updates with batch
     assert.ok(result.subscriptionsMarkedGranted >= 1);
     assert.ok(result.deniedSubscriptionsDisabled >= 1);
     assert.ok(result.deviceLabelsBackfilled >= 1);
+
+    const weatherAlertPreferences = await storage()
+        .select({
+            channel: notificationUserChannelPreferences.channel,
+            enabled: notificationUserChannelPreferences.enabled,
+        })
+        .from(notificationUserChannelPreferences)
+        .where(
+            eq(notificationUserChannelPreferences.category, 'weather_alerts'),
+        );
+    assert.deepEqual(
+        weatherAlertPreferences
+            .map((preference) => ({
+                channel: preference.channel,
+                enabled: preference.enabled,
+            }))
+            .sort((left, right) => left.channel.localeCompare(right.channel)),
+        [
+            { channel: 'email', enabled: false },
+            { channel: 'in_app', enabled: false },
+            { channel: 'push', enabled: false },
+        ],
+    );
 
     const subscriptions = await storage()
         .select({

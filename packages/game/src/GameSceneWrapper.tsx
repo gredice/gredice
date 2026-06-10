@@ -18,7 +18,11 @@ export function GameSceneWrapper({
     flags,
     freezeTime,
     dayNightCycleDisabled,
+    initialQualitySetting,
     mockGarden,
+    mockGardenProfile,
+    localSandboxStorageKey,
+    localSandboxInitialStacks,
     winterMode,
     ...rest
 }: GameSceneProps) {
@@ -29,7 +33,11 @@ export function GameSceneWrapper({
             spriteBaseUrl,
             dayNightCycleDisabled,
             freezeTime: freezeTime || null,
+            initialQualitySetting,
             isMock: mockGarden || false,
+            localSandboxStorageKey,
+            localSandboxInitialStacks,
+            mockGardenProfile,
             winterMode: winterMode ?? 'summer',
         });
     }
@@ -48,6 +56,14 @@ export function GameSceneWrapper({
             storeRef.current.getState().setFreezeTime(freezeTime ?? null);
         }
     }, [freezeTime]);
+
+    useEffect(() => {
+        if (initialQualitySetting && storeRef.current) {
+            storeRef.current.setState({
+                gameQualitySetting: initialQualitySetting,
+            });
+        }
+    }, [initialQualitySetting]);
 
     const resolvedAppBaseUrl = appBaseUrl ?? '';
     preloadGameAssetModels(resolvedAppBaseUrl, groundGameAssetNames);

@@ -23,6 +23,7 @@ export type NavLinkItem = {
 
 export type PageNavProps = PropsWithChildren<{
     logo: ReactNode;
+    logoHref?: string;
     links?: (NavLinkItem | ReactElement)[];
 }>;
 
@@ -48,7 +49,12 @@ function renderNavItem(item: NavLinkItem | ReactElement, mobile = false) {
     );
 }
 
-export function PageNav({ logo, links, children }: PageNavProps) {
+export function PageNav({
+    logo,
+    logoHref = '/',
+    links,
+    children,
+}: PageNavProps) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
     const menuId = useId();
@@ -118,7 +124,7 @@ export function PageNav({ logo, links, children }: PageNavProps) {
                         <div className="flex h-full min-w-0 flex-1 flex-col items-start justify-center md:flex-none">
                             <Link
                                 className="block min-w-0 [&>svg]:max-w-full"
-                                href="/"
+                                href={logoHref}
                                 onClick={closeMobileMenu}
                             >
                                 {logo}

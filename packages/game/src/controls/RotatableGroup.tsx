@@ -4,35 +4,40 @@ import type { Vector3 } from 'three';
 import { useBlockRotate } from '../hooks/useBlockRotate';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import type { Block } from '../types/Block';
+import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
 import { findAttachedRaisedBedBlockId } from '../utils/raisedBedBlocks';
+import { useBlockInteractionTargetRegistration } from './BlockInteractionRegistry';
 
 const ROTATE_DRAG_THRESHOLD = 0.1;
+const DOUBLE_TAP_THRESHOLD_MS = 320;
 
 export function RotatableGroup({
     children,
     block,
-}: PropsWithChildren<{ block: Block }>) {
+    interactionTargetKey,
+    stack,
+    blockIndex,
+}: PropsWithChildren<{
+    block: Block;
+    blockIndex?: number;
+    interactionTargetKey?: string;
+    stack?: Stack;
+}>) {
     const blockRotate = useBlockRotate();
     const { data: garden } = useCurrentGarden();
     const effectsAudioMixer = useGameState((state) => state.audio.effects);
     const isDragging = useGameState((state) => state.isDragging);
+    const pickupBlock = useGameState((state) => state.pickupBlock);
     const swipeSound = effectsAudioMixer.useSoundEffect(
         'https://cdn.gredice.com/sounds/effects/Swipe Generic 01.mp3',
     );
 
-    const rotateInitiated = useRef<Vector3>(null);
-    const doubleClickDownTimeStamp = useRef(0);
-    const firstClickTimeStamp = useRef(0);
+    const rotatePointerDownPoint = useRef<Vector3 | null>(null);
+    const firstTapTimeStamp = useRef(0);
 
-    async function doRotate(
-        event: ThreeEvent<globalThis.PointerEvent> | ThreeEvent<MouseEvent>,
-    ) {
-        if (!rotateInitiated.current) return;
-
-        if (isDragging) return;
-
-        event.stopPropagation();
+    function doRotate() {
+        if (isDragging || pickupBlock) return false;
 
         const attachedRaisedBedBlockId =
             block.name === 'Raised_Bed' && garden
@@ -47,50 +52,73 @@ export function RotatableGroup({
             rotation: block.rotation + 1,
             blockIds,
         });
-        rotateInitiated.current = null;
 
         swipeSound.play();
+        return true;
     }
 
     function handlePointerDown(event: ThreeEvent<globalThis.PointerEvent>) {
-        if (event.button === 2) {
-            rotateInitiated.current = event.point;
+        if (event.button !== 0) {
+            return;
         }
 
-        doubleClickDownTimeStamp.current = Date.now();
-        if (
-            doubleClickDownTimeStamp.current - firstClickTimeStamp.current >
-            1000
-        ) {
-            firstClickTimeStamp.current = 0;
-        }
+        rotatePointerDownPoint.current = event.point.clone();
     }
 
     function handleRotateCancel() {
-        rotateInitiated.current = null;
+        rotatePointerDownPoint.current = null;
     }
 
     function handlePointerUp(event: ThreeEvent<globalThis.PointerEvent>) {
-        if (
-            rotateInitiated.current &&
-            event.point.distanceTo(rotateInitiated.current) >
-                ROTATE_DRAG_THRESHOLD
-        ) {
-            rotateInitiated.current = null;
+        if (event.button !== 0) {
+            return;
+        }
+
+        const pointerDownPoint = rotatePointerDownPoint.current;
+        rotatePointerDownPoint.current = null;
+
+        if (!pointerDownPoint) {
+            return;
+        }
+
+        if (event.point.distanceTo(pointerDownPoint) > ROTATE_DRAG_THRESHOLD) {
+            firstTapTimeStamp.current = 0;
             return;
         }
 
         const now = Date.now();
-        if (now - firstClickTimeStamp.current < 600) {
-            rotateInitiated.current = event.point;
-            firstClickTimeStamp.current = 0;
-        } else if (now - doubleClickDownTimeStamp.current < 300) {
-            firstClickTimeStamp.current = now;
+        if (now - firstTapTimeStamp.current >= DOUBLE_TAP_THRESHOLD_MS) {
+            firstTapTimeStamp.current = now;
+            return;
         }
 
-        if (!rotateInitiated.current) return;
+        firstTapTimeStamp.current = 0;
 
-        doRotate(event);
+        if (doRotate()) {
+            event.stopPropagation();
+        }
+    }
+
+    useBlockInteractionTargetRegistration(
+        interactionTargetKey && stack && blockIndex !== undefined
+            ? interactionTargetKey
+            : undefined,
+        stack && blockIndex !== undefined
+            ? {
+                  block,
+                  blockIndex,
+                  stack,
+              }
+            : undefined,
+        {
+            onRotatePointerDown: handlePointerDown,
+            onRotatePointerLeave: handleRotateCancel,
+            onRotatePointerUp: handlePointerUp,
+        },
+    );
+
+    if (interactionTargetKey) {
+        return <>{children}</>;
     }
 
     return (

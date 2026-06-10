@@ -1,9 +1,21 @@
 import type { PlantData, PlantSortData } from '@gredice/client';
 import * as ReactQuery from '@tanstack/react-query';
-import type { PropsWithChildren } from 'react';
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
+import { type PropsWithChildren, useEffect, useMemo } from 'react';
+import type { OutletOfferData } from '../../../packages/game/src/hooks/useOutletOffers';
 import { PlantPicker } from '../../../packages/game/src/hud/raisedBed/RaisedBedPlantPicker';
+import {
+    createGameState,
+    GameStateContext,
+} from '../../../packages/game/src/useGameState';
 
 const now = '2026-05-13T00:00:00.000Z';
+
+declare global {
+    interface Window {
+        __grediceRemoveOutlet302?: () => void;
+    }
+}
 
 const tomatoPlant = {
     id: 1,
@@ -144,6 +156,59 @@ const tomatoSorts = [
     ),
 ];
 
+const tomatoOutletOffers = [
+    {
+        id: 301,
+        plantSort: {
+            id: tomatoSort.id,
+            name: tomatoSort.information.name,
+            description: tomatoSort.information.shortDescription,
+            imageUrl: null,
+            plant: {
+                id: tomatoPlant.id,
+                name: tomatoPlant.information.name,
+            },
+        },
+        sowingDate: '2026-04-01T00:00:00.000Z',
+        initialPlantStatus: 'sprouted',
+        imageUrls: [],
+        outletPrice: 1.2,
+        comparePrice: 1.5,
+        quantity: 2,
+        remainingQuantity: 2,
+        reservedQuantity: 0,
+        soldQuantity: 0,
+        startAt: '2026-05-01T00:00:00.000Z',
+        endAt: '2026-06-01T00:00:00.000Z',
+        url: 'https://www.gredice.test/outlet?offer=301',
+    },
+    {
+        id: 302,
+        plantSort: {
+            id: tomatoSort.id,
+            name: tomatoSort.information.name,
+            description: tomatoSort.information.shortDescription,
+            imageUrl: null,
+            plant: {
+                id: tomatoPlant.id,
+                name: tomatoPlant.information.name,
+            },
+        },
+        sowingDate: '2026-04-15T00:00:00.000Z',
+        initialPlantStatus: 'sprouted',
+        imageUrls: [],
+        outletPrice: 1.3,
+        comparePrice: 1.5,
+        quantity: 3,
+        remainingQuantity: 3,
+        reservedQuantity: 0,
+        soldQuantity: 0,
+        startAt: '2026-05-01T00:00:00.000Z',
+        endAt: '2026-06-15T00:00:00.000Z',
+        url: 'https://www.gredice.test/outlet?offer=302',
+    },
+] satisfies OutletOfferData[];
+
 function createPlantPickerQueryClient() {
     const queryClient = new ReactQuery.QueryClient({
         defaultOptions: {
@@ -152,8 +217,50 @@ function createPlantPickerQueryClient() {
             },
         },
     });
+    const garden = {
+        id: 1,
+        name: 'Mock vrt',
+        stacks: [],
+        location: { lat: 45.739, lon: 16.572 },
+        raisedBeds: [
+            {
+                id: 1,
+                name: 'Mock gredica',
+                blockId: 'raised-bed-1',
+                physicalId: '1',
+                fields: Array.from({ length: 18 }, (_, index) => ({
+                    id: index + 1,
+                    positionIndex: index,
+                    active: true,
+                    plantSortId: null,
+                    plantStatus: null,
+                    plantSowedAt: null,
+                    plantReadyToHarvestAt: null,
+                    plantHarvestedAt: null,
+                    plantRemovedAt: null,
+                    plantSort: null,
+                    plantStage: null,
+                    plantStageId: null,
+                    plantStageUpdatedAt: null,
+                    plantSowingLocation: 'direct',
+                })),
+                appliedOperations: [],
+                status: 'new' as const,
+                abandonReason: null,
+                isValid: true,
+                orientation: 'horizontal' as const,
+                createdAt: now,
+                updatedAt: now,
+            },
+        ],
+    };
 
     queryClient.setQueryData(['currentUser'], { id: 'test-user' });
+    queryClient.setQueryData(
+        ['gardens'],
+        [{ id: 1, name: 'Mock vrt', isSandbox: false, createdAt: now }],
+    );
+    queryClient.setQueryData(['gardens', 'current', 'summer', 1], garden);
     queryClient.setQueryData(['shopping-cart'], {
         id: 1,
         items: [],
@@ -161,6 +268,7 @@ function createPlantPickerQueryClient() {
     queryClient.setQueryData(['inventory'], {
         items: [],
     });
+    queryClient.setQueryData(['outlet-offers'], tomatoOutletOffers);
     queryClient.setQueryData(['plants'], [tomatoPlant, basilPlant]);
     queryClient.setQueryData(['sorts'], tomatoSorts);
 
@@ -168,16 +276,56 @@ function createPlantPickerQueryClient() {
 }
 
 function PlantPickerTestProviders({ children }: PropsWithChildren) {
+    const queryClient = useMemo(() => createPlantPickerQueryClient(), []);
+    const gameStore = useMemo(
+        () =>
+            createGameState({
+                appBaseUrl: 'http://localhost',
+                freezeTime: new Date('2026-05-13T12:00:00.000Z'),
+                isMock: false,
+                winterMode: 'summer',
+            }),
+        [],
+    );
+
     return (
-        <ReactQuery.QueryClientProvider client={createPlantPickerQueryClient()}>
-            {children}
-        </ReactQuery.QueryClientProvider>
+        <NuqsTestingAdapter>
+            <ReactQuery.QueryClientProvider client={queryClient}>
+                <GameStateContext.Provider value={gameStore}>
+                    {children}
+                </GameStateContext.Provider>
+            </ReactQuery.QueryClientProvider>
+        </NuqsTestingAdapter>
     );
 }
 
-export function PlantPickerTestStory() {
+function OutletOfferRefetchTestHook() {
+    const queryClient = ReactQuery.useQueryClient();
+
+    useEffect(() => {
+        window.__grediceRemoveOutlet302 = () => {
+            queryClient.setQueryData(
+                ['outlet-offers'],
+                tomatoOutletOffers.filter((offer) => offer.id !== 302),
+            );
+        };
+
+        return () => {
+            delete window.__grediceRemoveOutlet302;
+        };
+    }, [queryClient]);
+
+    return null;
+}
+
+export function PlantPickerTestStory({
+    showOutletRefetchControl = false,
+}: {
+    showOutletRefetchControl?: boolean;
+} = {}) {
     return (
         <PlantPickerTestProviders>
+            {showOutletRefetchControl ? <OutletOfferRefetchTestHook /> : null}
             <PlantPicker
                 gardenId={1}
                 raisedBedId={1}

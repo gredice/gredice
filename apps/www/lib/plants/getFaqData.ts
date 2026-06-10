@@ -1,5 +1,6 @@
 import { directoriesClient } from '@gredice/client';
 import { cache } from 'react';
+import { mergeQualityHarvestSafetyFaqEntries } from './qualityHarvestSafetyFaq';
 
 export const getFaqData = cache(async () => {
     try {
@@ -10,9 +11,9 @@ export const getFaqData = cache(async () => {
             return [];
         }
 
-        return data ?? [];
+        return mergeQualityHarvestSafetyFaqEntries(data ?? []);
     } catch (error) {
         console.error('Failed to fetch faq data', error);
-        return [];
+        return mergeQualityHarvestSafetyFaqEntries([]);
     }
 });

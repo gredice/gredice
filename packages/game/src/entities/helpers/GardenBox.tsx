@@ -1,5 +1,5 @@
 import { animated, useSpring } from '@react-spring/three';
-import type { ThreeEvent } from '@react-three/fiber';
+import { useDeferredSingleClick } from '../../controls/useDeferredSingleClick';
 import { useHoveredBlockStore } from '../../controls/useHoveredBlockStore';
 import { RainWetOverlay } from '../../rain/RainWetOverlay';
 import { SnowOverlay } from '../../snow/SnowOverlay';
@@ -18,10 +18,17 @@ export function GardenBox({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes, materials } = useGameGLTF('GardenBox');
     const [animatedRotation] = useAnimatedEntityRotation(rotation + 2);
     const currentStackHeight = useStackHeight(stack, block);
+    const isLocalSandbox = useGameState(
+        (state) => state.localSandboxStorageKey !== null,
+    );
     const hovered =
         useHoveredBlockStore((state) => state.hoveredBlock) === block;
-    const mode = useGameState((state) => state.mode);
-    const activeDragPreview = useGameState((state) => state.activeDragPreview);
+    const hoveredGardenBoxBlockId = useGameState(
+        (state) => state.activeDragPreview?.hoveredGardenBoxBlockId ?? null,
+    );
+    const hasActiveDragPreview = useGameState((state) =>
+        Boolean(state.activeDragPreview),
+    );
     const openGardenBoxBlockId = useGameState(
         (state) => state.openGardenBoxBlockId,
     );
@@ -29,8 +36,9 @@ export function GardenBox({ stack, block, rotation }: EntityInstanceProps) {
         (state) => state.setOpenGardenBoxBlockId,
     );
     const isLidOpen =
-        activeDragPreview?.hoveredGardenBoxBlockId === block.id ||
-        openGardenBoxBlockId === block.id;
+        !isLocalSandbox &&
+        (hoveredGardenBoxBlockId === block.id ||
+            openGardenBoxBlockId === block.id);
     const { rotation: lidRotation } = useSpring({
         config: {
             mass: 0.18,
@@ -40,16 +48,15 @@ export function GardenBox({ stack, block, rotation }: EntityInstanceProps) {
         rotation: [isLidOpen ? lidOpenRotation : lidClosedRotation, 0, 0],
     });
 
-    function handleClick(event: ThreeEvent<MouseEvent>) {
-        event.stopPropagation();
-        if (mode !== 'normal' || activeDragPreview) return;
+    const handleClick = useDeferredSingleClick(() => {
+        if (isLocalSandbox || hasActiveDragPreview) return;
 
         setOpenGardenBoxBlockId(block.id);
-    }
+    });
 
     return (
         <HoverOutline
-            hovered={hovered || isLidOpen}
+            hovered={!isLocalSandbox && (hovered || isLidOpen)}
             thickness={7}
             color="#f8fafc"
         >

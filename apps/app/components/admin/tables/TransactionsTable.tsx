@@ -84,14 +84,14 @@ export async function TransactionsTable({ accountId }: { accountId?: string }) {
                                 </Table.Cell>
                             )}
                             <Table.Cell>
-                                <Chip color="info" className="w-fit">
+                                <Chip color="info">
                                     <Typography component="span" noWrap>
                                         {transaction.status}
                                     </Typography>
                                 </Chip>
                             </Table.Cell>
                             <Table.Cell>
-                                <Chip color="success" className="w-fit">
+                                <Chip color="success">
                                     <Typography component="span" noWrap>
                                         €{(transaction.amount / 100).toFixed(2)}
                                     </Typography>
@@ -100,13 +100,13 @@ export async function TransactionsTable({ accountId }: { accountId?: string }) {
                             <Table.Cell>
                                 <Row spacing={2}>
                                     {hasNoInvoices ? (
-                                        <Chip color="error" className="w-fit">
+                                        <Chip color="error">
                                             <Typography component="span" noWrap>
                                                 Bez ponuda
                                             </Typography>
                                         </Chip>
                                     ) : (
-                                        <Chip color="success" className="w-fit">
+                                        <Chip color="success">
                                             <Typography component="span" noWrap>
                                                 📋 {invoiceCount} ponuda
                                             </Typography>
@@ -127,7 +127,6 @@ export async function TransactionsTable({ accountId }: { accountId?: string }) {
                                         )}
                                     >
                                         <Chip
-                                            className="w-fit"
                                             color={
                                                 isTest ? 'warning' : 'neutral'
                                             }

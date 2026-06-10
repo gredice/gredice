@@ -6,10 +6,11 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
+import { AiAnalysisRequestError } from '../../hooks/aiAnalysisError';
 import { useRaisedBedAiAnalysis } from '../../hooks/useRaisedBedAiAnalysis';
 import { useRaisedBedFieldAiAnalysis } from '../../hooks/useRaisedBedFieldAiAnalysis';
 import { ButtonGreen } from '../../shared-ui/ButtonGreen';
+import { RaisedBedAiOperationMarkdown } from './RaisedBedAiOperationMarkdown';
 import styles from './RaisedBedDiaryAiAction.module.css';
 
 type RaisedBedDiaryAiActionProps = {
@@ -18,6 +19,7 @@ type RaisedBedDiaryAiActionProps = {
     entryName: string;
     imageUrls: string[];
     positionIndex?: number;
+    referenceDate?: Date | string | null;
     historyEntries?: Array<{
         id: number;
         description: string | undefined;
@@ -34,6 +36,7 @@ export function RaisedBedDiaryAiAction({
     entryName,
     imageUrls,
     positionIndex,
+    referenceDate,
     historyEntries,
 }: RaisedBedDiaryAiActionProps) {
     const [open, setOpen] = useState(false);
@@ -43,6 +46,7 @@ export function RaisedBedDiaryAiAction({
     const [visibleMarkdown, setVisibleMarkdown] = useState('');
     const [phase, setPhase] = useState<AnalysisPhase>('idle');
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [errorStatus, setErrorStatus] = useState<number | null>(null);
     const [selectedHistoryEntryId, setSelectedHistoryEntryId] = useState<
         number | null
     >(null);
@@ -78,6 +82,7 @@ export function RaisedBedDiaryAiAction({
         requestIdRef.current += 1;
         setVisibleMarkdown('');
         setErrorMessage(null);
+        setErrorStatus(null);
         setPhase('idle');
         setSelectedHistoryEntryId(null);
         setResultSource(null);
@@ -97,6 +102,7 @@ export function RaisedBedDiaryAiAction({
         }
         setVisibleMarkdown('');
         setErrorMessage(null);
+        setErrorStatus(null);
         setPhase('thinking');
         setSelectedHistoryEntryId(null);
         setResultSource('analysis');
@@ -118,6 +124,11 @@ export function RaisedBedDiaryAiAction({
                 if (requestIdRef.current !== requestId) return;
                 setPhase('error');
                 setErrorMessage(error.message);
+                setErrorStatus(
+                    error instanceof AiAnalysisRequestError
+                        ? error.status
+                        : null,
+                );
                 setAnalysisCompletedAt(null);
             },
         };
@@ -129,6 +140,7 @@ export function RaisedBedDiaryAiAction({
                     raisedBedId,
                     positionIndex,
                     imageUrls,
+                    referenceDate,
                     onChunk,
                 },
                 callbacks,
@@ -139,6 +151,7 @@ export function RaisedBedDiaryAiAction({
                     gardenId,
                     raisedBedId,
                     imageUrls,
+                    referenceDate,
                     onChunk,
                 },
                 callbacks,
@@ -177,6 +190,7 @@ export function RaisedBedDiaryAiAction({
         setSelectedImageUrl(entry.imageUrls?.[0] ?? imageUrls[0] ?? '');
         setVisibleMarkdown(entry.description ?? '');
         setErrorMessage(null);
+        setErrorStatus(null);
         setPhase('done');
         setResultSource('history');
         setAnalysisCompletedAt(null);
@@ -200,7 +214,9 @@ export function RaisedBedDiaryAiAction({
                 : phase === 'done'
                   ? 'Analiza je spremna'
                   : phase === 'error'
-                    ? 'Analiza nije uspjela'
+                    ? errorStatus === 429
+                        ? 'Tjedni limit je iskorišten'
+                        : 'Analiza nije uspjela'
                     : 'Pitaj suncokret';
     const statusDescription =
         resultSource === 'history' && phase === 'done'
@@ -212,7 +228,9 @@ export function RaisedBedDiaryAiAction({
                 : phase === 'done'
                   ? 'Odgovor je spremljen i u dnevnik, a ovdje ga vidiš odmah.'
                   : phase === 'error'
-                    ? 'Pokušaj ponovno s istim fotografijama iz dnevnika.'
+                    ? errorStatus === 429
+                        ? 'Novi AI savjeti bit će dostupni nakon što dio tjednog prozora istekne.'
+                        : 'Provjeri poruku ispod i pokušaj ponovno s istim fotografijama.'
                     : 'Pokreni analizu svih fotografija iz dnevnika.';
     const selectedHistoryEntry = historyEntries?.find(
         (historyEntry) => historyEntry.id === selectedHistoryEntryId,
@@ -234,7 +252,8 @@ export function RaisedBedDiaryAiAction({
         },
     );
     const canAnalyzeEntry =
-        !latestCompleteHistoryEntry && (phase === 'idle' || phase === 'error');
+        !latestCompleteHistoryEntry &&
+        (phase === 'idle' || (phase === 'error' && errorStatus !== 429));
 
     return (
         <>
@@ -401,7 +420,11 @@ export function RaisedBedDiaryAiAction({
                             </Stack>
                         </Row>
                         {errorMessage ? (
-                            <Alert color="danger">
+                            <Alert
+                                color={
+                                    errorStatus === 429 ? 'warning' : 'danger'
+                                }
+                            >
                                 <Typography level="body2">
                                     {errorMessage}
                                 </Typography>
@@ -410,9 +433,11 @@ export function RaisedBedDiaryAiAction({
                             <div className="min-h-72 rounded-3xl border bg-card p-4 text-card-foreground shadow-xs">
                                 {visibleMarkdown ? (
                                     <div className="prose prose-sm max-w-none dark:prose-invert">
-                                        <ReactMarkdown>
+                                        <RaisedBedAiOperationMarkdown
+                                            gardenId={gardenId}
+                                        >
                                             {visibleMarkdown}
-                                        </ReactMarkdown>
+                                        </RaisedBedAiOperationMarkdown>
                                         {phase === 'typing' && (
                                             <span
                                                 className={`${styles.cursorBlink} ml-0.5 inline-block h-[1.1rem] w-2.5 rounded-full bg-amber-300 align-text-bottom`}

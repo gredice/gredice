@@ -11,6 +11,7 @@ import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import { useEffect } from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
+import type { OutletOfferData } from '../../hooks/useOutletOffers';
 import { usePlantSorts } from '../../hooks/usePlantSorts';
 import {
     AnimateFlyToItem,
@@ -18,6 +19,12 @@ import {
 } from '../../indicators/AnimateFlyTo';
 import { KnownPages } from '../../knownPages';
 import { PlantListItemSkeleton } from './PlantListItemSkeleton';
+import { PlantRelationshipSignalChips } from './PlantsList';
+import {
+    getPlantRelationshipCandidateForSort,
+    getPlantRelationshipSignal,
+    type NeighborPlantSummary,
+} from './plantRelationshipSignals';
 
 type PlantsSortListProps = {
     plantId: number;
@@ -25,21 +32,47 @@ type PlantsSortListProps = {
     onChange: (plant: PlantSortData) => void;
     search: string;
     flyToShoppingCart?: boolean;
+    neighborPlants?: NeighborPlantSummary[];
+    outletOffersBySortId?: Map<number, OutletOfferData[]>;
 };
+
+const currencyFormatter = new Intl.NumberFormat('hr-HR', {
+    style: 'currency',
+    currency: 'EUR',
+});
+
+function outletOfferBadgeLabel(outletOffers: OutletOfferData[]) {
+    if (outletOffers.length === 1) {
+        return `Outlet ${currencyFormatter.format(outletOffers[0].outletPrice)}`;
+    }
+
+    return `Outlet ${outletOffers.length} ponude`;
+}
 
 function PlantSortListItem({
     sort,
     selectedSortId,
     onChange,
     flyToShoppingCart,
+    neighborPlants,
+    outletOffers,
 }: {
     sort: PlantSortData;
     selectedSortId: number | null;
     onChange: (sort: PlantSortData) => void;
     flyToShoppingCart?: boolean;
+    neighborPlants: NeighborPlantSummary[];
+    outletOffers?: OutletOfferData[];
 }) {
     const animateFlyToShoppingCart = useAnimateFlyToShoppingCart();
     const { track } = useGameAnalytics();
+    const relationshipCandidate = getPlantRelationshipCandidateForSort(sort);
+    const relationshipSignal = relationshipCandidate
+        ? getPlantRelationshipSignal({
+              candidate: relationshipCandidate,
+              neighborPlants,
+          })
+        : null;
 
     useEffect(() => {
         if (flyToShoppingCart) {
@@ -66,6 +99,17 @@ function PlantSortListItem({
                         plant_name: sort.information.plant.information?.name,
                         sort_id: sort.id,
                         sort_name: sort.information.name,
+                        ...(relationshipSignal?.status &&
+                        relationshipSignal.status !== 'neutral'
+                            ? {
+                                  relationship_neighbor_plant_ids:
+                                      relationshipSignal.neighborPlantIds.join(
+                                          ',',
+                                      ),
+                                  relationship_signal:
+                                      relationshipSignal.status,
+                              }
+                            : {}),
                     });
                     onChange(sort);
                 }}
@@ -98,7 +142,22 @@ function PlantSortListItem({
                     </span>
                 )}
             </Button>
-            <Row justifyContent="end" className="px-4">
+            <Row
+                justifyContent="space-between"
+                className="flex-wrap gap-y-1 px-4"
+            >
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    {outletOffers?.length ? (
+                        <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700 dark:bg-green-900/50 dark:text-green-200">
+                            {outletOfferBadgeLabel(outletOffers)}
+                        </span>
+                    ) : null}
+                    {relationshipSignal ? (
+                        <PlantRelationshipSignalChips
+                            signal={relationshipSignal}
+                        />
+                    ) : null}
+                </div>
                 <Button
                     title="Više informacija"
                     href={KnownPages.GredicePlantSort(
@@ -129,6 +188,8 @@ export function PlantsSortList({
     onChange,
     search,
     flyToShoppingCart,
+    neighborPlants = [],
+    outletOffersBySortId,
 }: PlantsSortListProps) {
     const { data: plantSorts, isLoading, isError } = usePlantSorts(plantId);
     const normalizedSearch = search.trim().toLowerCase();
@@ -178,6 +239,8 @@ export function PlantsSortList({
                         sort={sort}
                         selectedSortId={selectedSortId}
                         onChange={onChange}
+                        neighborPlants={neighborPlants}
+                        outletOffers={outletOffersBySortId?.get(sort.id)}
                         flyToShoppingCart={
                             flyToShoppingCart && selectedSortId === sort.id
                         }

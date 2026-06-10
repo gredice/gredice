@@ -1,15 +1,24 @@
 import {
+    CommunityEditRequestError,
+    createCommunityEditRequest,
     type EntityStandardized,
     getCmsPageBySlug,
     getCmsPages,
+    getCommunityEditableFieldsForEntity,
     getEntitiesFormatted,
     getEntityFormatted,
+    getUser,
     parseCmsPageContent,
     searchDirectoryEntities,
 } from '@gredice/storage';
 import { Hono } from 'hono';
-import { validator as zValidator } from 'hono-openapi';
+import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
+import { authSecurity } from '../../../lib/docs/security';
+import {
+    type AuthVariables,
+    authValidator,
+} from '../../../lib/hono/authValidator';
 import {
     cacheControlPresets,
     setCacheControl,
@@ -35,7 +44,20 @@ function cmsPagePreviewSecret(requestUrl: string) {
     return isLocalPreviewHost(hostname) ? localCmsPagePreviewSecret : null;
 }
 
-const app = new Hono()
+const communityEditSubmittedValueSchema = z.unknown();
+
+function communityEditErrorResponse(error: CommunityEditRequestError) {
+    const status: 400 | 409 = error.code === 'conflict' ? 409 : 400;
+    return {
+        status,
+        body: {
+            error: error.code,
+            message: error.message,
+        },
+    };
+}
+
+const app = new Hono<{ Variables: AuthVariables }>()
     .get(
         '/search',
         zValidator(
@@ -107,11 +129,15 @@ const app = new Hono()
                 .map((page) => ({
                     slug: page.slug,
                     title: page.title,
+                    contentKind: page.contentKind,
+                    category: page.category,
+                    tags: page.tags,
                     state: page.state,
                     publishedAt: page.publishedAt,
                     metaTitle: page.metaTitle,
                     metaDescription: page.metaDescription,
                     metaImageUrl: page.metaImageUrl,
+                    seoImageUrl: page.seoImageUrl,
                     canonicalPath: page.canonicalPath,
                     noIndex: page.noIndex,
                     updatedAt: page.updatedAt,
@@ -171,6 +197,9 @@ const app = new Hono()
             return context.json({
                 slug: page.slug,
                 title: page.title,
+                contentKind: page.contentKind,
+                category: page.category,
+                tags: page.tags,
                 content,
                 renderMode,
                 renderMaxWidth,
@@ -179,6 +208,7 @@ const app = new Hono()
                 metaTitle: page.metaTitle,
                 metaDescription: page.metaDescription,
                 metaImageUrl: page.metaImageUrl,
+                seoImageUrl: page.seoImageUrl,
                 canonicalPath: page.canonicalPath,
                 noIndex: page.noIndex,
                 updatedAt: page.updatedAt,
@@ -228,6 +258,121 @@ const app = new Hono()
             }
             setCacheControl(context, cacheControlPresets.directories);
             return context.json(entity);
+        },
+    )
+    .get(
+        '/community-edits/entities/:entityType/:entityId/fields',
+        describeRoute({
+            description:
+                'List public-editable fields for an authenticated user editing a directory entity.',
+            security: authSecurity,
+        }),
+        authValidator(['user', 'admin']),
+        zValidator(
+            'param',
+            z.object({
+                entityType: z.string(),
+                entityId: z.coerce.number().int().positive(),
+            }),
+        ),
+        zValidator(
+            'query',
+            z.object({
+                sectionKey: z.string().optional(),
+            }),
+        ),
+        async (context) => {
+            const { entityType, entityId } = context.req.valid('param');
+            const { sectionKey } = context.req.valid('query');
+
+            try {
+                const fields = await getCommunityEditableFieldsForEntity({
+                    entityTypeName: entityType,
+                    entityId,
+                    sectionKey,
+                });
+
+                return context.json({
+                    entityTypeName: entityType,
+                    entityId,
+                    sectionKey: sectionKey ?? null,
+                    fields,
+                });
+            } catch (error) {
+                if (error instanceof CommunityEditRequestError) {
+                    const response = communityEditErrorResponse(error);
+                    return context.json(response.body, response.status);
+                }
+                throw error;
+            }
+        },
+    )
+    .post(
+        '/community-edits',
+        describeRoute({
+            description:
+                'Submit a pending community edit request for admin approval. Live directory content is not changed by this endpoint.',
+            security: authSecurity,
+        }),
+        authValidator(['user', 'admin']),
+        zValidator(
+            'json',
+            z.object({
+                entityTypeName: z.string(),
+                entityId: z.number().int().positive(),
+                publicPath: z.string().min(1).max(500),
+                sectionKey: z.string().nullable().optional(),
+                submitterNote: z.string().max(2000).nullable().optional(),
+                changes: z
+                    .array(
+                        z.object({
+                            fieldKey: z.string().min(1),
+                            proposedValue: communityEditSubmittedValueSchema,
+                            baseValueHash: z.string().nullable().optional(),
+                        }),
+                    )
+                    .min(1)
+                    .max(20),
+            }),
+        ),
+        async (context) => {
+            const authContext = context.get('authContext');
+            const user = await getUser(authContext.userId);
+            const body = context.req.valid('json');
+
+            try {
+                const request = await createCommunityEditRequest({
+                    entityTypeName: body.entityTypeName,
+                    entityId: body.entityId,
+                    publicPath: body.publicPath,
+                    sectionKey: body.sectionKey,
+                    submitter: {
+                        id: authContext.userId,
+                        name:
+                            user?.displayName ??
+                            user?.userName ??
+                            authContext.userId,
+                    },
+                    submitterNote: body.submitterNote,
+                    changes: body.changes,
+                });
+
+                return context.json(
+                    {
+                        status: 'pending_admin_approval',
+                        requestId: request.id,
+                        requestStatus: request.status,
+                        changeCount: request.changes.length,
+                    },
+                    { status: 201 },
+                );
+            } catch (error) {
+                if (error instanceof CommunityEditRequestError) {
+                    const response = communityEditErrorResponse(error);
+                    return context.json(response.body, response.status);
+                }
+                throw error;
+            }
         },
     );
 

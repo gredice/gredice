@@ -10,6 +10,22 @@ export type AccountSunflowersPayload = {
     reason: string;
 };
 
+export type AccountSunflowerDropSpawnPayload = {
+    amount: number;
+    expiresAt: string;
+    gardenId: number;
+    rewardDate: string;
+    sourceBlockId: string;
+    spawnId: string;
+};
+
+export type AccountSunflowerDropEarnPayload = AccountSunflowersPayload & {
+    gardenId: number;
+    rewardDate: string;
+    sourceBlockId: string;
+    spawnId: string;
+};
+
 export type AiRequestKind = 'raisedBedImageAnalysis';
 
 export type AccountAiRequestPayload = {
@@ -171,30 +187,34 @@ export type RaisedBedFieldPlantSchedulePayload = {
     sowingLocation?: RaisedBedFieldSowingLocation;
 };
 
+type RaisedBedFieldPlantUpdateEffectiveDate = {
+    effectiveDate?: string | null;
+};
+
 export type RaisedBedFieldPlantUpdatePayload =
-    | {
+    | ({
           status: string;
           assignedUserId?: undefined;
           assignedUserIds?: undefined;
           assignedBy?: undefined;
-      }
-    | {
+      } & RaisedBedFieldPlantUpdateEffectiveDate)
+    | ({
           status?: string;
           assignedUserId: string;
           assignedUserIds?: string[];
           assignedBy: string;
-      }
-    | {
+      } & RaisedBedFieldPlantUpdateEffectiveDate)
+    | ({
           status?: string;
           assignedUserId: null;
           assignedUserIds?: string[];
           assignedBy?: string | null;
-      }
-    | {
+      } & RaisedBedFieldPlantUpdateEffectiveDate)
+    | ({
           status?: string;
           assignedUserIds: string[];
           assignedBy?: string | null;
-      };
+      } & RaisedBedFieldPlantUpdateEffectiveDate);
 
 export type RaisedBedFieldPlantReplaceSortPayload = {
     plantSortId: string;
@@ -205,6 +225,7 @@ export type RaisedBedFieldAiAnalysisPayload = {
     imageUrls?: string[];
     model: string;
     analyzedAt: string;
+    referenceDate?: string;
     accountId?: string;
     aiRequestKind?: AiRequestKind;
     inputTokens?: number;

@@ -1,12 +1,12 @@
 'use client';
 
-import { Suspense, useMemo } from 'react';
+import { useMemo } from 'react';
+import { useGameSceneDetails } from '../../GameSceneDetailContext';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useWeatherNow } from '../../hooks/useWeatherNow';
 import { SpriteAtlasBillboard } from '../../sprites/SpriteAtlasBillboard';
 import type { Block } from '../../types/Block';
 import { useGameState } from '../../useGameState';
-import { GardenFlowerModel } from '../helpers/GardenFlowerModel';
 import type { BlockSurfaceDecorationPlacement } from './getBlockSurfaceDecorations';
 import { getBlockSurfaceDecorations } from './getBlockSurfaceDecorations';
 import {
@@ -97,17 +97,19 @@ export function PrecomputedBlockSurfaceDecorationSprites({
 
         if (placement.kind === 'flower') {
             return (
-                <Suspense
-                    key={`${blockId}:${surface}:flower:${placement.color}:${placement.scale.toFixed(3)}:${positionKey}`}
-                    fallback={null}
-                >
-                    <GardenFlowerModel
-                        petalColor={placement.color}
-                        position={placement.position}
-                        rotation={[0, placement.rotation, 0]}
-                        scale={placement.scale}
-                    />
-                </Suspense>
+                <SpriteAtlasBillboard
+                    key={`${blockId}:${surface}:${placement.spriteName}:${placement.color}:${placement.scale.toFixed(3)}:${positionKey}`}
+                    alphaTest={0.05}
+                    atlasBasePath={groundDecorationAtlasBasePath}
+                    height={placement.scale}
+                    opacity={0.95}
+                    position={placement.position}
+                    renderOrder={21}
+                    rotationZ={placement.rotation}
+                    spriteName={placement.spriteName}
+                    windDirection={windDirection}
+                    windSpeed={windSpeed}
+                />
             );
         }
 
@@ -131,6 +133,12 @@ export function PrecomputedBlockSurfaceDecorationSprites({
 export function BlockSurfaceDecorationSprites(
     props: BlockSurfaceDecorationSpritesProps,
 ) {
+    const { renderDetails } = useGameSceneDetails();
+
+    if (!renderDetails) {
+        return null;
+    }
+
     if ('placements' in props) {
         return <PrecomputedBlockSurfaceDecorationSprites {...props} />;
     }

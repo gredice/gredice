@@ -139,7 +139,8 @@ export async function deleteGardenBlock(
     // Retrieve block price
     const price = blockData.prices?.sunflowers ?? 0;
     const refundAmount = price > 0 ? price : DEFAULT_RECYCLE_REFUND;
-    if (price <= 0) {
+    const shouldRefund = !garden.isSandbox;
+    if (shouldRefund && price <= 0) {
         console.info('Block has no sunflower price. Using recycle refund.', {
             blockId,
             refundAmount,
@@ -159,11 +160,13 @@ export async function deleteGardenBlock(
         : Promise.resolve();
 
     // Prepare block refund operation
-    const refundBlockPromise = earnSunflowers(
-        garden.accountId,
-        refundAmount,
-        `recycle:${block.name}`,
-    );
+    const refundBlockPromise = shouldRefund
+        ? earnSunflowers(
+              garden.accountId,
+              refundAmount,
+              `recycle:${block.name}`,
+          )
+        : Promise.resolve();
 
     await Promise.all([
         storageDeleteGardenBlock(gardenId, blockId),

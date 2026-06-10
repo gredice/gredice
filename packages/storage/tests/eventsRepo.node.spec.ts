@@ -3,15 +3,23 @@ import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
     countAiRequestEventsSince,
+    createAutomationDefinition,
+    createAutomationRun,
     createEvent,
     getAiAnalysisEvents,
     getAiAnalysisTotals,
+    getEventAggregateIdsByAggregateIdPrefix,
     getEvents,
     getLatestEvents,
+    getLatestEventsByAggregateIdPrefix,
     knownEvents,
     knownEventTypes,
+    recordAutomationRunStep,
 } from '@gredice/storage';
 import { createTestDb } from './testDb';
+
+const aiPlantStatusReviewModuleKey =
+    'action.createPlantStatusRequestsFromImageAnalysis';
 
 function aiAnalysisData(
     overrides: Partial<
@@ -95,6 +103,81 @@ test('getLatestEvents returns newest events first and paginates', async () => {
     );
 });
 
+test('getLatestEventsByAggregateIdPrefix returns newest matching events and aggregate IDs', async () => {
+    createTestDb();
+    const raisedBedAggregateId = `raised-bed-${randomUUID()}`;
+    const aggregateIdPrefix = `${raisedBedAggregateId}|`;
+    const firstFieldAggregateId = `${aggregateIdPrefix}0`;
+    const secondFieldAggregateId = `${aggregateIdPrefix}2`;
+
+    await createEvent({
+        ...knownEvents.raisedBedFields.plantPlaceV1(firstFieldAggregateId, {
+            plantSortId: '101',
+            scheduledDate: '2026-01-01T00:00:00.000Z',
+        }),
+        createdAt: new Date('2026-01-01T12:00:00.000Z'),
+    });
+    await createEvent({
+        ...knownEvents.raisedBedFields.plantScheduleV1(secondFieldAggregateId, {
+            scheduledDate: '2026-01-02T00:00:00.000Z',
+        }),
+        createdAt: new Date('2026-01-03T12:00:00.000Z'),
+    });
+    await createEvent({
+        ...knownEvents.raisedBedFields.plantPlaceV1(
+            `${raisedBedAggregateId}-other|0`,
+            {
+                plantSortId: '202',
+                scheduledDate: '2026-01-04T00:00:00.000Z',
+            },
+        ),
+        createdAt: new Date('2026-01-04T12:00:00.000Z'),
+    });
+    await createEvent({
+        ...knownEvents.accounts.sunflowersEarnedV1(firstFieldAggregateId, {
+            amount: 1,
+            reason: 'unrelated type',
+        }),
+        createdAt: new Date('2026-01-05T12:00:00.000Z'),
+    });
+
+    const eventTypes = [
+        knownEventTypes.raisedBedFields.plantPlace,
+        knownEventTypes.raisedBedFields.plantSchedule,
+    ];
+
+    const firstPage = await getLatestEventsByAggregateIdPrefix(
+        eventTypes,
+        aggregateIdPrefix,
+        0,
+        1,
+    );
+    assert.deepStrictEqual(
+        firstPage.map((event) => event.aggregateId),
+        [secondFieldAggregateId],
+    );
+
+    const secondPage = await getLatestEventsByAggregateIdPrefix(
+        eventTypes,
+        aggregateIdPrefix,
+        1,
+        1,
+    );
+    assert.deepStrictEqual(
+        secondPage.map((event) => event.aggregateId),
+        [firstFieldAggregateId],
+    );
+
+    const aggregateIds = await getEventAggregateIdsByAggregateIdPrefix(
+        eventTypes,
+        aggregateIdPrefix,
+    );
+    assert.deepStrictEqual(aggregateIds, [
+        firstFieldAggregateId,
+        secondFieldAggregateId,
+    ]);
+});
+
 test('countAiRequestEventsSince counts account-kind events with legacy aggregate fallback', async () => {
     createTestDb();
     const accountId = `account-${randomUUID()}`;
@@ -168,9 +251,10 @@ test('countAiRequestEventsSince counts account-kind events with legacy aggregate
     assert.strictEqual(count, 2);
 });
 
-test('AI analysis analytics includes raised-bed and field events', async () => {
+test('AI analysis analytics includes raised-bed, field, and automation operations', async () => {
     createTestDb();
-    const raisedBedAggregateId = `raised-bed-${randomUUID()}`;
+    const raisedBedId = 8123;
+    const raisedBedAggregateId = raisedBedId.toString();
     const fieldAggregateId = `${raisedBedAggregateId}|0`;
     const from = new Date('2036-03-01T00:00:00.000Z');
     const to = new Date('2036-03-31T23:59:59.999Z');
@@ -199,6 +283,42 @@ test('AI analysis analytics includes raised-bed and field events', async () => {
         ),
         createdAt: new Date('2036-03-04T12:00:00.000Z'),
     });
+    const automationDefinition = await createAutomationDefinition({
+        key: `test-ai-analytics-${randomUUID()}`,
+        name: 'AI analytics plant status review',
+        status: 'enabled',
+    });
+    const automationRun = await createAutomationRun({
+        automationDefinition,
+        source: 'event',
+        sourceEventType: knownEventTypes.raisedBeds.aiAnalysis,
+        sourceAggregateId: raisedBedAggregateId,
+        dryRun: false,
+    });
+    assert.ok(automationRun);
+    await recordAutomationRunStep({
+        runId: automationRun.id,
+        nodeId: 'review-plant-statuses',
+        moduleKey: aiPlantStatusReviewModuleKey,
+        moduleKind: 'action',
+        status: 'succeeded',
+        output: {
+            source: 'raisedBedAiAnalysis',
+            raisedBedId,
+            imageCount: 2,
+            model: 'plant-status-model',
+            summary: 'Plants look ready for review.',
+            proposalCount: 2,
+            acceptedProposalCount: 1,
+            requestCount: 1,
+            inputTokens: 300,
+            outputTokens: 150,
+            totalTokens: 450,
+            analyzedAt: '2036-03-05T12:00:00.000Z',
+        },
+        startedAt: new Date('2036-03-05T11:59:00.000Z'),
+        completedAt: new Date('2036-03-05T12:00:00.000Z'),
+    });
     await createEvent({
         ...knownEvents.accounts.sunflowersEarnedV1(
             `unrelated-account-${randomUUID()}`,
@@ -215,23 +335,40 @@ test('AI analysis analytics includes raised-bed and field events', async () => {
     assert.deepStrictEqual(
         events.map((event) => event.type),
         [
+            aiPlantStatusReviewModuleKey,
             knownEventTypes.raisedBedFields.aiAnalysis,
             knownEventTypes.raisedBeds.aiAnalysis,
         ],
     );
     assert.deepStrictEqual(
+        events.map((event) => event.aiOperationType),
+        [
+            'raisedBedImagePlantStatusReview',
+            'raisedBedFieldImageAnalysis',
+            'raisedBedImageAnalysis',
+        ],
+    );
+    assert.deepStrictEqual(
         events.map((event) => event.aggregateId),
-        [fieldAggregateId, raisedBedAggregateId],
+        [raisedBedAggregateId, fieldAggregateId, raisedBedAggregateId],
     );
 
     const allTotals = await getAiAnalysisTotals({ from, to });
-    assert.strictEqual(allTotals.count, 2);
+    assert.strictEqual(allTotals.count, 3);
 
     const filteredTotals = await getAiAnalysisTotals({
         from: new Date('2036-03-04T00:00:00.000Z'),
         to,
     });
-    assert.strictEqual(filteredTotals.count, 1);
+    assert.strictEqual(filteredTotals.count, 2);
+
+    const plantStatusReviewEvents = await getAiAnalysisEvents({
+        from,
+        to,
+        operationTypes: ['raisedBedImagePlantStatusReview'],
+    });
+    assert.strictEqual(plantStatusReviewEvents.length, 1);
+    assert.strictEqual(plantStatusReviewEvents[0]?.data?.totalTokens, 450);
 });
 
 test('getLatestEvents can list multiple event types for an aggregate', async () => {

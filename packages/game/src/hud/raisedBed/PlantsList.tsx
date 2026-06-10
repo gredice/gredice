@@ -17,6 +17,12 @@ import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { usePlants } from '../../hooks/usePlants';
 import { KnownPages } from '../../knownPages';
 import { PlantListItemSkeleton } from './PlantListItemSkeleton';
+import {
+    getPlantRelationshipSignal,
+    getPlantRelationshipSignalSortScore,
+    type NeighborPlantSummary,
+    type PlantRelationshipSignal,
+} from './plantRelationshipSignals';
 
 type PlantSearchable = {
     information: {
@@ -45,10 +51,57 @@ function plantMatchesSearch(plant: PlantSearchable, normalizedSearch: string) {
     );
 }
 
+function formatNeighborPlantNames(names: string[]) {
+    const visibleNames = names.slice(0, 2);
+    const remainingCount = names.length - visibleNames.length;
+    return remainingCount > 0
+        ? `${visibleNames.join(', ')} +${remainingCount.toString()}`
+        : visibleNames.join(', ');
+}
+
+export function PlantRelationshipSignalChips({
+    signal,
+}: {
+    signal: PlantRelationshipSignal;
+}) {
+    if (signal.status === 'neutral') {
+        return null;
+    }
+
+    return (
+        <>
+            {signal.companionNeighborNames.length > 0 && (
+                <Chip
+                    color="success"
+                    size="sm"
+                    title={`Dobro uz ${signal.companionNeighborNames.join(', ')}`}
+                    variant="soft"
+                >
+                    Dobro uz{' '}
+                    {formatNeighborPlantNames(signal.companionNeighborNames)}
+                </Chip>
+            )}
+            {signal.antagonistNeighborNames.length > 0 && (
+                <Chip
+                    color="warning"
+                    size="sm"
+                    title={`Oprez uz ${signal.antagonistNeighborNames.join(', ')}`}
+                    variant="soft"
+                >
+                    Oprez uz{' '}
+                    {formatNeighborPlantNames(signal.antagonistNeighborNames)}
+                </Chip>
+            )}
+        </>
+    );
+}
+
 export function PlantsList({
+    neighborPlants = [],
     onChange,
     search,
 }: {
+    neighborPlants?: NeighborPlantSummary[];
     onChange: (plant: PlantData) => void;
     search: string;
 }) {
@@ -63,12 +116,41 @@ export function PlantsList({
               )
             : plants;
 
-    // Mark and sort recommended plants
-    const sortedPlants = filteredPlants?.sort((a, b) => {
-        const aRec = a.isRecommended ? 1 : 0;
-        const bRec = b.isRecommended ? 1 : 0;
-        return bRec - aRec;
-    });
+    const relationshipSignalsByPlantId = new Map(
+        filteredPlants?.map((plant) => [
+            plant.id,
+            getPlantRelationshipSignal({
+                candidate: plant,
+                neighborPlants,
+            }),
+        ]) ?? [],
+    );
+
+    // Mark and sort relationship-compatible plants before seasonal recommendations.
+    const sortedPlants = filteredPlants
+        ? [...filteredPlants].sort((a, b) => {
+              const aRelationshipScore = getPlantRelationshipSignalSortScore(
+                  relationshipSignalsByPlantId.get(a.id)?.status ?? 'neutral',
+              );
+              const bRelationshipScore = getPlantRelationshipSignalSortScore(
+                  relationshipSignalsByPlantId.get(b.id)?.status ?? 'neutral',
+              );
+              if (aRelationshipScore !== bRelationshipScore) {
+                  return bRelationshipScore - aRelationshipScore;
+              }
+
+              const aRec = a.isRecommended ? 1 : 0;
+              const bRec = b.isRecommended ? 1 : 0;
+              if (aRec !== bRec) {
+                  return bRec - aRec;
+              }
+
+              return a.information.name.localeCompare(
+                  b.information.name,
+                  'hr-HR',
+              );
+          })
+        : undefined;
 
     return (
         <>
@@ -90,6 +172,12 @@ export function PlantsList({
                         <PlantListItemSkeleton key={index} />
                     ))}
                 {sortedPlants?.map((plant) => {
+                    const relationshipSignal =
+                        relationshipSignalsByPlantId.get(plant.id) ??
+                        getPlantRelationshipSignal({
+                            candidate: plant,
+                            neighborPlants,
+                        });
                     const { totalPlants } = calculatePlantsPerField(
                         plant.attributes?.seedingDistance,
                     );
@@ -106,6 +194,17 @@ export function PlantsList({
                                         is_recommended: plant.isRecommended,
                                         plant_id: plant.id,
                                         plant_name: plant.information.name,
+                                        ...(relationshipSignal.status !==
+                                        'neutral'
+                                            ? {
+                                                  relationship_neighbor_plant_ids:
+                                                      relationshipSignal.neighborPlantIds.join(
+                                                          ',',
+                                                      ),
+                                                  relationship_signal:
+                                                      relationshipSignal.status,
+                                              }
+                                            : {}),
                                     });
                                     onChange(plant);
                                 }}
@@ -153,6 +252,9 @@ export function PlantsList({
                                 {plant.isRecommended && (
                                     <SeedTimeInformationBadge size="sm" />
                                 )}
+                                <PlantRelationshipSignalChips
+                                    signal={relationshipSignal}
+                                />
                                 <Button
                                     title="Više informacija"
                                     variant="link"

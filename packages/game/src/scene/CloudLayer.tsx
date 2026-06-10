@@ -1,7 +1,13 @@
 'use client';
 
-import { useFrame } from '@react-three/fiber';
-import { useEffect, useMemo, useRef } from 'react';
+import { useFrame, useThree } from '@react-three/fiber';
+import {
+    useCallback,
+    useEffect,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+} from 'react';
 import {
     CanvasTexture,
     ClampToEdgeWrapping,
@@ -14,11 +20,13 @@ import {
 } from 'three';
 import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
+import { updateGameProfileMetadata } from './gameProfileMetadata';
 import type { GameCloudShadowMode } from './gameQuality';
+import { useSceneTimeInvalidation } from './SceneTime';
+import { getVisualDaylightAmount, smoothstep } from './visualDayNight';
 
 const MAX_CLOUDS = 8;
 const CLOUD_ALPHA_TEST = 0.025;
-const CLOUD_SHADOW_ALPHA_TEST = 0.08;
 const CLOUD_MARGIN = 12;
 const CLOUD_WORLD_ALTITUDE = 10;
 const CLOUD_ALTITUDE_VARIATION = 4;
@@ -35,11 +43,9 @@ const CLOUD_MAX_COVERAGE_SCALE = 1.14;
 const CLOUD_BASE_DRIFT_SPEED = 0.35;
 const CLOUD_WIND_DRIFT_SPEED = 0.5;
 const CLOUD_RENDER_ORDER = 30;
-
-function smoothstep(edge0: number, edge1: number, value: number) {
-    const t = Math.min(1, Math.max(0, (value - edge0) / (edge1 - edge0)));
-    return t * t * (3 - 2 * t);
-}
+const CLOUD_SHADOW_CASTER_BASE_ALPHA_TEST = 0.2;
+const CLOUD_SHADOW_CASTER_HARD_ALPHA_TEST = 0.08;
+const CLOUD_SHADOW_CASTER_SOFT_ALPHA_TEST = 0.02;
 
 function seededRandom(seed: number) {
     const value = Math.sin(seed * 12.9898) * 43758.5453;
@@ -167,6 +173,15 @@ type CloudSlot = {
     visibility: number;
 };
 
+type CloudCameraFrame = {
+    despawnHalfX: number;
+    despawnHalfZ: number;
+    focusX: number;
+    focusZ: number;
+    spawnHalfX: number;
+    spawnHalfZ: number;
+};
+
 function createCloudSlot(index: number): CloudSlot {
     return {
         active: false,
@@ -222,9 +237,15 @@ export function CloudLayer({
     windSpeed,
 }: CloudLayerProps) {
     const cloudRefs = useRef<Array<Mesh | null>>([]);
+    const cloudShadowRefs = useRef<Array<Mesh | null>>([]);
     const materialRefs = useRef<Array<MeshBasicMaterial | null>>([]);
+    const shadowMaterialRefs = useRef<Array<MeshBasicMaterial | null>>([]);
     const cloudSlotsRef = useRef<Array<CloudSlot>>([]);
-    const orbitControls = useGameState((state) => state.orbitControls);
+    const camera = useThree((state) => state.camera);
+    const { width: viewportWidth, height: viewportHeight } = useThree(
+        (state) => state.size,
+    );
+    const gameCamera = useGameState((state) => state.gameCamera);
     const cloudAlphaTexture = useMemo(
         () =>
             typeof document === 'undefined' ? null : createCloudAlphaTexture(),
@@ -238,11 +259,16 @@ export function CloudLayer({
     }, [cloudAlphaTexture]);
 
     const bounds = useMemo(() => getCloudBounds(stacks), [stacks]);
+    const cameraFrameRef = useRef<CloudCameraFrame>({
+        despawnHalfX: 10 * CLOUD_DESPAWN_MULTIPLIER,
+        despawnHalfZ: 8 * CLOUD_DESPAWN_MULTIPLIER,
+        focusX: bounds.centerX,
+        focusZ: bounds.centerZ,
+        spawnHalfX: 10,
+        spawnHalfZ: 8,
+    });
     const effectiveCloudiness = Math.min(1, cloudy + foggy * 0.35);
-    const daylightVisibility = Math.min(
-        smoothstep(0.18, 0.28, timeOfDay),
-        1 - smoothstep(0.72, 0.82, timeOfDay),
-    );
+    const daylightVisibility = getVisualDaylightAmount(timeOfDay);
     const visibleCloudiness = daylightVisibility * effectiveCloudiness;
 
     const visibleCloudCount =
@@ -264,13 +290,30 @@ export function CloudLayer({
         CLOUD_MAX_COVERAGE_SCALE,
         smoothstep(0.08, 0.78, visibleCloudiness),
     );
-    const shadowCasterCount = Math.min(
-        visibleCloudCount,
-        Math.round(visibleCloudCount * Math.max(0, shadowStrength)),
-    );
+    const realShadowCasterCount = shadowStrength > 0 ? visibleCloudCount : 0;
     const visibleOpacity =
         daylightVisibility * (0.2 + effectiveCloudiness * 0.26 + foggy * 0.035);
     const windStrength = Math.min(1.4, Math.max(0, windSpeed / 12));
+    useSceneTimeInvalidation(visibleOpacity > 0.005);
+
+    useEffect(() => {
+        updateGameProfileMetadata({
+            cloudProjectedShadowCount: 0,
+            cloudRealShadowCasterCount: realShadowCasterCount,
+            cloudVisualCount: visibleCloudCount,
+        });
+    }, [realShadowCasterCount, visibleCloudCount]);
+
+    useEffect(
+        () => () => {
+            updateGameProfileMetadata({
+                cloudProjectedShadowCount: 0,
+                cloudRealShadowCasterCount: 0,
+                cloudVisualCount: 0,
+            });
+        },
+        [],
+    );
 
     const cloudDefinitions = useMemo<Array<CloudDefinition>>(
         () =>
@@ -304,29 +347,72 @@ export function CloudLayer({
         );
     }
 
-    useFrame(({ camera, clock }, delta) => {
+    const updateCloudCameraFrame = useCallback(
+        (target?: [x: number, y: number, z: number]) => {
+            const orthographic = camera as OrthographicCamera;
+            if (!orthographic.isOrthographicCamera) {
+                return;
+            }
+
+            const focusX = target?.[0] ?? bounds.centerX;
+            const focusZ = target?.[2] ?? bounds.centerZ;
+            const viewportWorldWidth =
+                (orthographic.right - orthographic.left) / orthographic.zoom ||
+                viewportWidth;
+            const viewportWorldHeight =
+                (orthographic.top - orthographic.bottom) / orthographic.zoom ||
+                viewportHeight;
+            const spawnHalfX = Math.max(
+                10,
+                viewportWorldWidth * CLOUD_SPAWN_HALF_WIDTH_FACTOR,
+            );
+            const spawnHalfZ = Math.max(
+                8,
+                viewportWorldHeight * CLOUD_SPAWN_HALF_HEIGHT_FACTOR,
+            );
+
+            cameraFrameRef.current = {
+                despawnHalfX: spawnHalfX * CLOUD_DESPAWN_MULTIPLIER,
+                despawnHalfZ: spawnHalfZ * CLOUD_DESPAWN_MULTIPLIER,
+                focusX,
+                focusZ,
+                spawnHalfX,
+                spawnHalfZ,
+            };
+
+            for (const mesh of cloudRefs.current) {
+                mesh?.quaternion.copy(camera.quaternion);
+            }
+        },
+        [bounds.centerX, bounds.centerZ, camera, viewportHeight, viewportWidth],
+    );
+
+    useLayoutEffect(() => {
+        if (!gameCamera) {
+            updateCloudCameraFrame();
+            return;
+        }
+
+        return gameCamera.subscribe((snapshot) =>
+            updateCloudCameraFrame(snapshot.target),
+        );
+    }, [gameCamera, updateCloudCameraFrame]);
+
+    useFrame(({ clock }, delta) => {
         const orthographic = camera as OrthographicCamera;
         if (!orthographic.isOrthographicCamera) {
             return;
         }
 
         const elapsed = clock.elapsedTime;
-        const focusX = orbitControls?.target.x ?? bounds.centerX;
-        const focusZ = orbitControls?.target.z ?? bounds.centerZ;
-        const viewportWidth =
-            (orthographic.right - orthographic.left) / orthographic.zoom;
-        const viewportHeight =
-            (orthographic.top - orthographic.bottom) / orthographic.zoom;
-        const spawnHalfX = Math.max(
-            10,
-            viewportWidth * CLOUD_SPAWN_HALF_WIDTH_FACTOR,
-        );
-        const spawnHalfZ = Math.max(
-            8,
-            viewportHeight * CLOUD_SPAWN_HALF_HEIGHT_FACTOR,
-        );
-        const despawnHalfX = spawnHalfX * CLOUD_DESPAWN_MULTIPLIER;
-        const despawnHalfZ = spawnHalfZ * CLOUD_DESPAWN_MULTIPLIER;
+        const {
+            despawnHalfX,
+            despawnHalfZ,
+            focusX,
+            focusZ,
+            spawnHalfX,
+            spawnHalfZ,
+        } = cameraFrameRef.current;
 
         const windDirectionRadians = (windDirection * Math.PI) / 180;
         const windX = Math.sin(windDirectionRadians);
@@ -336,6 +422,16 @@ export function CloudLayer({
         const driftSpeed =
             (CLOUD_BASE_DRIFT_SPEED + windStrength * CLOUD_WIND_DRIFT_SPEED) *
             0.5;
+        const targetShadowAlphaTest =
+            shadowMode === 'hard'
+                ? CLOUD_SHADOW_CASTER_HARD_ALPHA_TEST
+                : CLOUD_SHADOW_CASTER_SOFT_ALPHA_TEST;
+        const shadowCoverage = smoothstep(0.08, 0.75, shadowStrength);
+        const shadowAlphaTest = MathUtils.lerp(
+            CLOUD_SHADOW_CASTER_BASE_ALPHA_TEST,
+            targetShadowAlphaTest,
+            shadowCoverage,
+        );
         const travelRangeX = Math.max(
             28,
             bounds.spanX + CLOUD_TRAVEL_MARGIN * 2,
@@ -350,7 +446,9 @@ export function CloudLayer({
         const wrapMaxZ = bounds.centerZ + travelRangeZ;
         for (let index = 0; index < MAX_CLOUDS; index += 1) {
             const mesh = cloudRefs.current[index];
+            const shadowMesh = cloudShadowRefs.current[index];
             const material = materialRefs.current[index];
+            const shadowMaterial = shadowMaterialRefs.current[index];
             const cloud = cloudDefinitions[index];
             const slot = cloudSlotsRef.current[index];
             const shouldBeVisible = index < visibleCloudCount;
@@ -376,6 +474,9 @@ export function CloudLayer({
             if (!slot.active) {
                 if (mesh) {
                     mesh.visible = false;
+                }
+                if (shadowMesh) {
+                    shadowMesh.visible = false;
                 }
                 if (material) {
                     material.opacity = 0;
@@ -405,6 +506,9 @@ export function CloudLayer({
                 slot.cooldownUntil = elapsed + 0.3 + Math.random() * 0.6;
                 if (mesh) {
                     mesh.visible = false;
+                }
+                if (shadowMesh) {
+                    shadowMesh.visible = false;
                 }
                 if (material) {
                     material.opacity = 0;
@@ -453,7 +557,6 @@ export function CloudLayer({
             if (mesh) {
                 mesh.visible = true;
                 mesh.position.set(x, y, z);
-                mesh.quaternion.copy(camera.quaternion);
                 const scale =
                     (CLOUD_BASE_SCALE + slot.visibility * CLOUD_SCALE_RANGE) *
                     cloud.sizeScale *
@@ -463,6 +566,34 @@ export function CloudLayer({
             if (material) {
                 material.opacity =
                     visibleOpacity * cloud.opacityScale * slot.visibility;
+            }
+            const shouldRenderShadow =
+                index < realShadowCasterCount && slot.visibility > 0.001;
+            if (shadowMesh) {
+                if (!shouldRenderShadow) {
+                    shadowMesh.visible = false;
+                } else {
+                    const shadowScale =
+                        (CLOUD_BASE_SCALE +
+                            slot.visibility * CLOUD_SCALE_RANGE) *
+                        cloud.sizeScale *
+                        coverageScale;
+                    shadowMesh.visible = true;
+                    shadowMesh.position.set(x, y, z);
+                    shadowMesh.rotation.set(
+                        -Math.PI / 2,
+                        0,
+                        cloud.phase * 0.08,
+                    );
+                    shadowMesh.scale.set(
+                        shadowScale * 1.12,
+                        shadowScale * 1.05,
+                        1,
+                    );
+                }
+            }
+            if (shadowMaterial) {
+                shadowMaterial.alphaTest = shadowAlphaTest;
             }
         }
     });
@@ -474,43 +605,58 @@ export function CloudLayer({
     return (
         <>
             {cloudDefinitions.map((cloud, index) => (
-                <mesh
-                    key={cloud.id}
-                    castShadow={index < shadowCasterCount}
-                    frustumCulled={false}
-                    renderOrder={CLOUD_RENDER_ORDER}
-                    ref={(mesh) => {
-                        cloudRefs.current[index] = mesh;
-                    }}
-                >
-                    <planeGeometry args={[cloud.width, cloud.height]} />
-                    {shadowMode === 'hard' ? (
-                        <meshDepthMaterial
-                            attach="customDepthMaterial"
-                            alphaMap={cloudAlphaTexture}
-                            alphaTest={CLOUD_SHADOW_ALPHA_TEST}
-                        />
-                    ) : (
-                        <meshDepthMaterial
-                            attach="customDepthMaterial"
-                            alphaHash
-                        />
-                    )}
-                    <meshBasicMaterial
-                        alphaMap={cloudAlphaTexture}
-                        alphaTest={CLOUD_ALPHA_TEST}
-                        color={cloud.tint}
-                        depthWrite={false}
-                        fog={false}
-                        opacity={0}
-                        ref={(material) => {
-                            materialRefs.current[index] = material;
+                <group key={cloud.id} name={`Environment:CloudSlot:${index}`}>
+                    <mesh
+                        castShadow
+                        frustumCulled={false}
+                        name={`Environment:CloudShadowCaster:${index}`}
+                        receiveShadow={false}
+                        ref={(mesh) => {
+                            cloudShadowRefs.current[index] = mesh;
                         }}
-                        side={DoubleSide}
-                        toneMapped={false}
-                        transparent
-                    />
-                </mesh>
+                        visible={false}
+                    >
+                        <planeGeometry args={[cloud.width, cloud.height]} />
+                        <meshBasicMaterial
+                            alphaMap={cloudAlphaTexture}
+                            alphaTest={CLOUD_SHADOW_CASTER_HARD_ALPHA_TEST}
+                            colorWrite={false}
+                            depthWrite={false}
+                            fog={false}
+                            ref={(material) => {
+                                shadowMaterialRefs.current[index] = material;
+                            }}
+                            side={DoubleSide}
+                            toneMapped={false}
+                        />
+                    </mesh>
+                    <mesh
+                        castShadow={false}
+                        frustumCulled={false}
+                        name={`Environment:CloudBillboard:${index}`}
+                        renderOrder={CLOUD_RENDER_ORDER}
+                        ref={(mesh) => {
+                            cloudRefs.current[index] = mesh;
+                            mesh?.quaternion.copy(camera.quaternion);
+                        }}
+                    >
+                        <planeGeometry args={[cloud.width, cloud.height]} />
+                        <meshBasicMaterial
+                            alphaMap={cloudAlphaTexture}
+                            alphaTest={CLOUD_ALPHA_TEST}
+                            color={cloud.tint}
+                            depthWrite={false}
+                            fog={false}
+                            opacity={0}
+                            ref={(material) => {
+                                materialRefs.current[index] = material;
+                            }}
+                            side={DoubleSide}
+                            toneMapped={false}
+                            transparent
+                        />
+                    </mesh>
+                </group>
             ))}
         </>
     );

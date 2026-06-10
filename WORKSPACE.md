@@ -6,6 +6,7 @@ Use this guide for repo layout, setup, commands, package boundaries, and local d
 
 - `apps/api`: Next.js app exposing API routes, OpenAPI documentation, Stripe cron routes, internal cron routes, and API Playwright tests.
 - `apps/www`: public marketing and commerce site. It owns SEO-heavy public pages, sitemap generation, accessibility tests, and public route tests.
+- `apps/news`: public Novosti app served through `www.gredice.com/novosti` for CMS-backed blog posts and changelog updates.
 - `apps/garden`: customer garden experience and game-facing UI.
 - `apps/farm`: farm back-office application.
 - `apps/app`: internal operations/admin application.
@@ -62,6 +63,10 @@ pnpm lint
 pnpm lint --filter @gredice/storage
 pnpm lint --filter garden
 
+# Typecheck one workspace
+pnpm typecheck --filter garden
+pnpm typecheck --filter www
+
 # Run tests
 pnpm test
 pnpm test --filter garden
@@ -92,7 +97,17 @@ Use `pnpm --filter @gredice/directory-types regenerate:cms-types` only when `src
 
 ## Type checking
 
-Type checking is integrated into Next.js builds and package scripts. To validate app or package types, build the consuming app or run the targeted package test/build command that exercises the change.
+Use `pnpm typecheck --filter <workspace>` for a fast TypeScript compatibility check. Next.js apps run `next typegen` before `tsc`, so route, page, and layout types are generated without running a full production build.
+
+For ordinary `@gredice/game` package changes, this is the default consumer compatibility check:
+
+```bash
+pnpm typecheck --filter @gredice/game
+pnpm typecheck --filter garden
+pnpm typecheck --filter www
+```
+
+Run `pnpm build --filter garden` or `pnpm build --filter www` only when the change affects Next.js configuration, routing, static assets, bundling behavior, production-only code paths, or when a release/sign-off requires the full build output.
 
 ## Development servers
 
@@ -102,6 +117,7 @@ The app names, paths, local domains, ports, and Vercel project names live in
 The dev proxy writes its Caddyfile from the registry at startup.
 
 - `www`: <https://www.gredice.test>
+- `news`: <https://novosti.gredice.test>
 - `garden`: <https://vrt.gredice.test>
 - `farm`: <https://farma.gredice.test>
 - `app`: <https://app.gredice.test>
@@ -122,7 +138,7 @@ not `443`, use the printed port-qualified form such as
 The dev script verifies the hosts entries for the local `gredice.test` domains and attempts to add missing entries automatically. If it cannot modify the hosts file, add this entry manually and rerun the command:
 
 ```text
-127.0.0.1 www.gredice.test vrt.gredice.test farma.gredice.test app.gredice.test storybook.dev.gredice.test api.gredice.test status.gredice.test
+127.0.0.1 www.gredice.test novosti.gredice.test vrt.gredice.test farma.gredice.test app.gredice.test storybook.dev.gredice.test api.gredice.test status.gredice.test
 ```
 
 Docker must be running for the proxy. Use `SKIP_DEV_PROXY=1 pnpm dev` only when the local proxy is not needed.
@@ -158,7 +174,7 @@ pnpm vercel:link
 pnpm env:pull
 ```
 
-`pnpm env:pull` runs `vercel env pull .env` in `apps/www`, `apps/garden`, `apps/farm`, `apps/app`, `apps/storybook`, `apps/api`, and `apps/status`.
+`pnpm env:pull` runs `vercel env pull .env` in every app with a Vercel project in `scripts/app-registry.ts`, including `apps/www`, `apps/news`, `apps/garden`, `apps/farm`, `apps/app`, `apps/storybook`, `apps/api`, and `apps/status`.
 
 ### Turborepo remote cache
 

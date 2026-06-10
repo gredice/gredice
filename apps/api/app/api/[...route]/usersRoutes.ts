@@ -53,6 +53,8 @@ function getUpdatedProfileFields(input: {
             month: number;
             year?: number | null;
         } | null;
+        whatsNewLastSeenAt?: string | null;
+        whatsNewPopupDisabled?: boolean;
     };
 }) {
     const updatedFields: string[] = [];
@@ -202,6 +204,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         : null,
                 birthdayLastUpdatedAt: dbUser.birthdayLastUpdatedAt,
                 birthdayLastRewardAt,
+                whatsNewLastSeenAt: dbUser.whatsNewLastSeenAt,
+                whatsNewPopupDisabled: dbUser.whatsNewPopupDisabled,
                 createdAt: dbUser.createdAt,
             });
         },
@@ -272,6 +276,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     displayName: z.string().optional(),
                     avatarUrl: z.string().optional().nullable(),
                     birthday: z.union([birthdaySchema, z.null()]).optional(),
+                    whatsNewLastSeenAt: z
+                        .string()
+                        .datetime()
+                        .optional()
+                        .nullable(),
+                    whatsNewPopupDisabled: z.boolean().optional(),
                 })
                 .strict(),
         ),
@@ -307,6 +317,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
             if (userInfo.userName !== undefined) {
                 updatePayload.userName = userInfo.userName;
+            }
+            if (userInfo.whatsNewLastSeenAt !== undefined) {
+                updatePayload.whatsNewLastSeenAt = userInfo.whatsNewLastSeenAt
+                    ? new Date(userInfo.whatsNewLastSeenAt)
+                    : null;
+            }
+            if (userInfo.whatsNewPopupDisabled !== undefined) {
+                updatePayload.whatsNewPopupDisabled =
+                    userInfo.whatsNewPopupDisabled;
             }
 
             let rewardDate: Date | undefined;

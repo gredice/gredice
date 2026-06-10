@@ -39,12 +39,21 @@ test('moonlit night scales leave daylight unchanged', () => {
 });
 
 test('night amount blends through dusk', () => {
-    assert.equal(round(getNightAmount(0.75)), 0);
-    assert.equal(round(getNightAmount(0.8)), 1);
+    assert.equal(round(getNightAmount(0.8)), 0);
+    assert.equal(round(getNightAmount(0.88)), 1);
 
-    const twilight = getNightAmount(0.775);
+    const twilight = getNightAmount(0.85);
     assert.ok(twilight > 0);
     assert.ok(twilight < 1);
+});
+
+test('night amount fades before sunrise', () => {
+    assert.equal(round(getNightAmount(0.14)), 1);
+    assert.equal(round(getNightAmount(0.24)), 0);
+
+    const sunrise = getNightAmount(0.2);
+    assert.ok(sunrise > 0);
+    assert.ok(sunrise < 0.5);
 });
 
 test('moonlit night scales clamp moonlight input', () => {

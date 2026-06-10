@@ -12,6 +12,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
+import { CommunityEditButton } from '../../../components/community-edits/CommunityEditButton';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { StructuredDataScript } from '../../../components/shared/seo/StructuredDataScript';
 import { getOperationsData } from '../../../lib/plants/getOperationsData';
@@ -70,6 +71,9 @@ export default async function OperationPage(
     const harvestPlantRemovalDescription = isHarvestOperation
         ? getHarvestOperationRemovalDisclaimer(operation.actions?.removePlant)
         : null;
+    const operationPath = KnownPages.Operation(
+        operation.slug || operation.information.label,
+    );
 
     return (
         <div className="operation-page py-8">
@@ -87,13 +91,13 @@ export default async function OperationPage(
                         '@type': 'Brand',
                         name: 'Gredice',
                     },
-                    url: `https://www.gredice.com${KnownPages.Operation(operation.slug || operation.information.label)}`,
+                    url: `https://www.gredice.com${operationPath}`,
                     offers: {
                         '@type': 'Offer',
                         price: operation.prices.perOperation.toFixed(2),
                         priceCurrency: 'EUR',
                         availability: 'https://schema.org/InStock',
-                        url: `https://www.gredice.com${KnownPages.Operation(operation.slug || operation.information.label)}`,
+                        url: `https://www.gredice.com${operationPath}`,
                         hasMerchantReturnPolicy: merchantReturnPolicy,
                     },
                 }}
@@ -122,14 +126,22 @@ export default async function OperationPage(
                                     value={`${operation.prices.perOperation.toFixed(2)}€`}
                                 />
                             </div>
-                            <FeedbackModal
-                                topic={'www/operations/information'}
-                                data={{
-                                    operationId: operation.id,
-                                    operationAlias: operation.information.label,
-                                }}
-                                className="self-end group-hover:opacity-100 opacity-0 transition-opacity"
-                            />
+                            <Row spacing={1} className="self-end">
+                                <CommunityEditButton
+                                    entityTypeName="operation"
+                                    entityId={operation.id}
+                                    publicPath={operationPath}
+                                    sectionKey="overview"
+                                />
+                                <FeedbackModal
+                                    topic={'www/operations/information'}
+                                    data={{
+                                        operationId: operation.id,
+                                        operationAlias:
+                                            operation.information.label,
+                                    }}
+                                />
+                            </Row>
                             <Typography level="body2" secondary>
                                 Nisi zadovoljan uslugom? Dostupan je{' '}
                                 <Link
@@ -153,14 +165,22 @@ export default async function OperationPage(
                             <OperationAttributesCards
                                 attributes={operation.attributes}
                             />
-                            <FeedbackModal
-                                topic={'www/operations/attributes'}
-                                data={{
-                                    operationId: operation.id,
-                                    operationAlias: operation.information.label,
-                                }}
-                                className="self-end group-hover:opacity-100 opacity-0 transition-opacity"
-                            />
+                            <Row spacing={1} className="self-end">
+                                <CommunityEditButton
+                                    entityTypeName="operation"
+                                    entityId={operation.id}
+                                    publicPath={operationPath}
+                                    sectionKey="attributes"
+                                />
+                                <FeedbackModal
+                                    topic={'www/operations/attributes'}
+                                    data={{
+                                        operationId: operation.id,
+                                        operationAlias:
+                                            operation.information.label,
+                                    }}
+                                />
+                            </Row>
                         </Stack>
                     </Stack>
                 </PageHeader>
@@ -170,6 +190,14 @@ export default async function OperationPage(
                             'Nema opisa za ovu radnju.'}
                     </Markdown>
                 </div>
+                <Row className="justify-end">
+                    <CommunityEditButton
+                        entityTypeName="operation"
+                        entityId={operation.id}
+                        publicPath={operationPath}
+                        sectionKey="description"
+                    />
+                </Row>
                 <Typography level="h2" className="text-2xl">
                     Postupak
                 </Typography>
@@ -179,6 +207,14 @@ export default async function OperationPage(
                             'Nema postupka za ovu radnju.'}
                     </Markdown>
                 </div>
+                <Row className="justify-end">
+                    <CommunityEditButton
+                        entityTypeName="operation"
+                        entityId={operation.id}
+                        publicPath={operationPath}
+                        sectionKey="instructions"
+                    />
+                </Row>
                 <Typography level="h2" className="text-2xl">
                     Dostupno za
                 </Typography>

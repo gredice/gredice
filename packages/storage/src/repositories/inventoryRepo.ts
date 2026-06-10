@@ -9,12 +9,27 @@ type TransactionClient = Parameters<
 >[0];
 type DatabaseClient = TransactionClient | StorageClient;
 
+export const GARDEN_BOX_BLOCK_STACK_LIMIT = 6;
+export const GARDEN_BOX_BLOCK_STACK_SIZE = 10;
+
 type InventoryItemEventPayload = {
     entityTypeName: string;
     entityId: string;
     amount: number;
     source?: string | null;
 };
+
+type InventoryItemFields = Pick<
+    InventoryItemEventPayload,
+    'entityTypeName' | 'entityId' | 'amount'
+>;
+
+export class GardenBoxInventoryLimitError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'GardenBoxInventoryLimitError';
+    }
+}
 
 const INVENTORY_PREFIX = 'inventory:';
 
@@ -61,6 +76,59 @@ function inventoryItemKey(
     item: Pick<InventoryItem, 'entityTypeName' | 'entityId'>,
 ) {
     return `${item.entityTypeName}-${item.entityId}`;
+}
+
+function normalizeGardenBoxInventoryItems(items: InventoryItemFields[]) {
+    const totals = new Map<string, InventoryItemFields>();
+
+    for (const item of items) {
+        if (item.amount <= 0) {
+            continue;
+        }
+
+        const key = inventoryItemKey(item);
+        const existing = totals.get(key);
+        totals.set(key, {
+            entityTypeName: item.entityTypeName,
+            entityId: item.entityId,
+            amount: (existing?.amount ?? 0) + item.amount,
+        });
+    }
+
+    return Array.from(totals.values());
+}
+
+function validateGardenBoxInventoryItems(items: InventoryItemFields[]) {
+    const normalizedItems = normalizeGardenBoxInventoryItems(items);
+    const nonBlockItem = normalizedItems.find(
+        (item) => item.entityTypeName !== 'block',
+    );
+    if (nonBlockItem) {
+        throw new GardenBoxInventoryLimitError(
+            'Vrtna kutija može sadržavati samo blokove.',
+        );
+    }
+
+    if (normalizedItems.length > GARDEN_BOX_BLOCK_STACK_LIMIT) {
+        throw new GardenBoxInventoryLimitError(
+            `Vrtna kutija može sadržavati najviše ${GARDEN_BOX_BLOCK_STACK_LIMIT.toString()} različitih blokova.`,
+        );
+    }
+
+    const overfilledItem = normalizedItems.find(
+        (item) => item.amount > GARDEN_BOX_BLOCK_STACK_SIZE,
+    );
+    if (overfilledItem) {
+        throw new GardenBoxInventoryLimitError(
+            `U vrtnoj kutiji može biti najviše ${GARDEN_BOX_BLOCK_STACK_SIZE.toString()} blokova iste vrste.`,
+        );
+    }
+}
+
+async function lockInventoryAggregate(aggregateId: string, db: DatabaseClient) {
+    await db.execute(
+        sql`select pg_advisory_xact_lock(hashtext(${aggregateId}));`,
+    );
 }
 
 async function getInventoryForAggregateIds(
@@ -156,15 +224,34 @@ export async function addGardenBoxInventoryItem(
     gardenId: number,
     blockId: string,
     payload: InventoryItemEventPayload,
-    db: DatabaseClient = storage(),
+    db?: DatabaseClient,
 ) {
-    await createEvent(
-        knownEvents.inventory.addedV1(
-            getGardenBoxInventoryAggregateId({ accountId, gardenId, blockId }),
-            payload,
-        ),
+    if (!db) {
+        await storage().transaction((tx) =>
+            addGardenBoxInventoryItem(
+                accountId,
+                gardenId,
+                blockId,
+                payload,
+                tx,
+            ),
+        );
+        return;
+    }
+
+    const aggregateId = getGardenBoxInventoryAggregateId({
+        accountId,
+        gardenId,
+        blockId,
+    });
+    await lockInventoryAggregate(aggregateId, db);
+    const currentInventory = await getInventoryForAggregateIds(
+        [aggregateId],
         db,
     );
+    validateGardenBoxInventoryItems([...currentInventory, payload]);
+
+    await createEvent(knownEvents.inventory.addedV1(aggregateId, payload), db);
 }
 
 export async function consumeGardenBoxInventoryItem(
@@ -225,10 +312,10 @@ export async function setGardenBoxInventory(
         });
     }
 
+    validateGardenBoxInventoryItems(Array.from(requestedTotals.values()));
+
     await storage().transaction(async (tx) => {
-        await tx.execute(
-            sql`select pg_advisory_xact_lock(hashtext(${aggregateId}));`,
-        );
+        await lockInventoryAggregate(aggregateId, tx);
 
         const currentInventory = await getInventoryForAggregateIds(
             [aggregateId],

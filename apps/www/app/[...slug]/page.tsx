@@ -1,9 +1,13 @@
-import { clientPublic } from '@gredice/client';
 import { SectionsView } from '@gredice/ui/cms';
 import type { Metadata } from 'next';
-import { draftMode, headers } from 'next/headers';
+import { draftMode } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { sectionsComponentRegistry } from '../../components/shared/sectionsComponentRegistry';
+import {
+    type CmsRoutePage,
+    cmsPagePreviewSecret,
+    fetchCmsDirectoryPage,
+} from './cmsPageData';
 import {
     hasReservedFirstSegment,
     normalizeCmsRouteSlug,
@@ -11,29 +15,7 @@ import {
     parseCmsPageRenderMode,
     parseCmsSectionData,
 } from './cmsPageRouteUtils';
-
-const localCmsPagePreviewSecret = 'local-preview-secret';
-
-function isLocalPreviewHost(hostname: string) {
-    return (
-        hostname === 'localhost' ||
-        hostname === '127.0.0.1' ||
-        hostname.endsWith('.gredice.test')
-    );
-}
-
-async function cmsPagePreviewSecret() {
-    const configuredSecret = process.env.CMS_PAGES_PREVIEW_SECRET?.trim();
-    if (configuredSecret) {
-        return configuredSecret;
-    }
-
-    const requestHost = (await headers()).get('host') ?? '';
-    const hostname = requestHost
-        ? new URL(`http://${requestHost}`).hostname
-        : '';
-    return isLocalPreviewHost(hostname) ? localCmsPagePreviewSecret : null;
-}
+import { getSourceCmsPageBySlug } from './sourceCmsPages';
 
 export default async function CmsPublishedPageRoute({
     params,
@@ -49,26 +31,22 @@ export default async function CmsPublishedPageRoute({
 
     const { isEnabled } = await draftMode();
     const previewSecret = isEnabled ? await cmsPagePreviewSecret() : null;
+    const sourcePage = getSourceCmsPageBySlug(normalizedSlug);
 
-    const response = await clientPublic().api.directories.pages[
-        ':slug{.+}'
-    ].$get({
-        param: { slug: normalizedSlug },
-        query: isEnabled ? { draft: '1' } : {},
-        ...(isEnabled && previewSecret
-            ? {
-                  header: {
-                      'x-preview-secret': previewSecret,
-                  },
-              }
-            : {}),
+    const response = await fetchCmsDirectoryPage({
+        normalizedSlug,
+        previewSecret: isEnabled ? previewSecret : null,
+        suppressFetchError: Boolean(sourcePage),
     });
 
-    if (response.status !== 200) {
+    let page: CmsRoutePage;
+    if (response?.status === 200) {
+        page = await response.json();
+    } else if (sourcePage) {
+        page = sourcePage;
+    } else {
         notFound();
     }
-
-    const page = await response.json();
 
     return (
         <main>
@@ -93,19 +71,22 @@ export async function generateMetadata({
         return {};
     }
 
-    const response = await clientPublic().api.directories.pages[
-        ':slug{.+}'
-    ].$get({
-        param: { slug: normalizedSlug },
-        query: {},
+    const sourcePage = getSourceCmsPageBySlug(normalizedSlug);
+    const response = await fetchCmsDirectoryPage({
+        normalizedSlug,
+        suppressFetchError: Boolean(sourcePage),
     });
 
-    if (response.status !== 200) {
+    let page: CmsRoutePage;
+    if (response?.status === 200) {
+        page = await response.json();
+    } else if (sourcePage) {
+        page = sourcePage;
+    } else {
         return {};
     }
-
-    const page = await response.json();
     const canonicalPath = page.canonicalPath || `/${page.slug}`;
+    const openGraphImage = page.seoImageUrl || `/api/og/cms/${page.slug}`;
     return {
         title: page.metaTitle || page.title,
         description: page.metaDescription || undefined,
@@ -118,7 +99,7 @@ export async function generateMetadata({
         openGraph: {
             title: page.metaTitle || page.title,
             description: page.metaDescription || undefined,
-            images: page.metaImageUrl ? [page.metaImageUrl] : undefined,
+            images: [openGraphImage],
         },
     };
 }

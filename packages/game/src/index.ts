@@ -11,7 +11,8 @@ export {
     PLANT_STAGE_LABELS,
     PLANT_STAGES,
 } from './hud/raisedBed/featuredOperations';
-export type { GameQualityTier } from './scene/gameQuality';
+export { defaultLocalSandboxStorageKey } from './localSandboxGarden';
+export type { GameQualitySetting, GameQualityTier } from './scene/gameQuality';
 export { resolveSpriteAtlasAssetPaths } from './sprites/resolveSpriteAtlasAssetPaths';
 export { SpriteAtlasBillboard } from './sprites/SpriteAtlasBillboard';
 export type {
@@ -25,6 +26,12 @@ export { useSpriteAtlasManifest } from './sprites/useSpriteAtlasManifest';
 export { useSpriteAtlasTexture } from './sprites/useSpriteAtlasTexture';
 export type { EntityGridViewerProps } from './viewers/EntityGridViewer';
 export { EntityGridViewer } from './viewers/EntityGridViewer';
+export type { EntitySandboxViewerProps } from './viewers/EntitySandboxViewer';
+export {
+    EntitySandboxViewer,
+    entitySandboxStorageKey,
+    getEntitySandboxStorageKey,
+} from './viewers/EntitySandboxViewer';
 export type { EntityViewerProps } from './viewers/EntityViewer';
 export { EntityViewer } from './viewers/EntityViewer';
 export type { PlantPerformanceViewerProps } from './viewers/PlantPerformanceViewer';

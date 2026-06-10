@@ -146,19 +146,28 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
     }
 
     const aggregateIds = operations.map((op) => op.id.toString());
-    const aggregatesEvents = await getEvents(
-        [
-            knownEventTypes.operations.assign,
-            knownEventTypes.operations.schedule,
-            knownEventTypes.operations.complete,
-            knownEventTypes.operations.verify,
-            knownEventTypes.operations.fail,
-            knownEventTypes.operations.cancel,
-        ],
-        aggregateIds,
-        0,
-        10000,
-    );
+    const aggregateEventTypes = [
+        knownEventTypes.operations.assign,
+        knownEventTypes.operations.schedule,
+        knownEventTypes.operations.complete,
+        knownEventTypes.operations.verify,
+        knownEventTypes.operations.fail,
+        knownEventTypes.operations.cancel,
+    ];
+    const aggregatesEvents: Awaited<ReturnType<typeof getEvents>> = [];
+    const eventPageSize = 10000;
+    for (let offset = 0; ; offset += eventPageSize) {
+        const eventPage = await getEvents(
+            aggregateEventTypes,
+            aggregateIds,
+            offset,
+            eventPageSize,
+        );
+        aggregatesEvents.push(...eventPage);
+        if (eventPage.length < eventPageSize) {
+            break;
+        }
+    }
 
     const eventsByAggregateId = new Map<string, typeof aggregatesEvents>();
     for (const event of aggregatesEvents) {
@@ -238,6 +247,17 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
                     ? new Date(String(data.scheduledDate))
                     : undefined;
                 scheduledAt = event.createdAt;
+                completedAt = undefined;
+                completedBy = undefined;
+                verifiedAt = undefined;
+                verifiedBy = undefined;
+                error = undefined;
+                errorCode = undefined;
+                canceledBy = undefined;
+                canceledAt = undefined;
+                cancelReason = undefined;
+                imageUrls = undefined;
+                completionNotes = undefined;
             }
         }
 
@@ -687,6 +707,130 @@ async function getFarmUserAcceptedOperationsUncached(
     return operationsWithAggregates;
 }
 
+export async function getFarmAcceptedOperations(
+    farmId: number,
+    filter?: OperationsFilter,
+) {
+    const rows = await storage()
+        .select({ operation: operations })
+        .from(operations)
+        .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
+        .leftJoin(gardens, eq(gardens.id, operationGardenIdExpression()))
+        .where(
+            and(
+                eq(operationFarmIdExpression(), farmId),
+                eq(operations.isAccepted, true),
+                eq(operations.isDeleted, false),
+                operationLocationIntegrityWhere(),
+                filter?.from
+                    ? gte(operations.timestamp, filter.from)
+                    : undefined,
+                filter?.to ? lte(operations.timestamp, filter.to) : undefined,
+            ),
+        )
+        .orderBy(desc(operations.timestamp));
+
+    let operationsWithAggregates = await fillOperationAggregates(
+        rows.map((row) => row.operation),
+    );
+
+    if (filter?.completedFrom || filter?.completedTo) {
+        operationsWithAggregates = operationsWithAggregates.filter(
+            (operation) => {
+                if (!operation.completedAt) {
+                    return false;
+                }
+
+                if (
+                    filter.completedFrom &&
+                    operation.completedAt < filter.completedFrom
+                ) {
+                    return false;
+                }
+
+                if (
+                    filter.completedTo &&
+                    operation.completedAt > filter.completedTo
+                ) {
+                    return false;
+                }
+
+                return true;
+            },
+        );
+    }
+
+    if (filter?.status) {
+        const statusArray = Array.isArray(filter.status)
+            ? filter.status
+            : [filter.status];
+        operationsWithAggregates = operationsWithAggregates.filter(
+            (operation) =>
+                operation &&
+                statusArray.includes(operation.status as OperationStatus),
+        );
+    }
+
+    return operationsWithAggregates;
+}
+
+export async function getFarmAcceptedOperationsByScheduleRange({
+    farmId,
+    from,
+    to,
+}: {
+    farmId: number;
+    from: Date;
+    to: Date;
+}) {
+    const scheduledDateExpression = sql<string>`${events.data} ->> 'scheduledDate'`;
+    const scheduledRows = await storage()
+        .selectDistinct({ id: operations.id })
+        .from(operations)
+        .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
+        .leftJoin(gardens, eq(gardens.id, operationGardenIdExpression()))
+        .innerJoin(
+            events,
+            and(
+                sql`${events.aggregateId} = cast(${operations.id} as text)`,
+                eq(events.type, knownEventTypes.operations.schedule),
+            ),
+        )
+        .where(
+            and(
+                eq(operationFarmIdExpression(), farmId),
+                eq(operations.isAccepted, true),
+                eq(operations.isDeleted, false),
+                operationLocationIntegrityWhere(),
+                gte(scheduledDateExpression, from.toISOString()),
+                lte(scheduledDateExpression, to.toISOString()),
+            ),
+        );
+    const timestampRows = await storage()
+        .selectDistinct({ id: operations.id })
+        .from(operations)
+        .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
+        .leftJoin(gardens, eq(gardens.id, operationGardenIdExpression()))
+        .where(
+            and(
+                eq(operationFarmIdExpression(), farmId),
+                eq(operations.isAccepted, true),
+                eq(operations.isDeleted, false),
+                operationLocationIntegrityWhere(),
+                gte(operations.timestamp, from),
+                lte(operations.timestamp, to),
+            ),
+        );
+    const operationIds = Array.from(
+        new Set([
+            ...scheduledRows.map((row) => row.id),
+            ...timestampRows.map((row) => row.id),
+        ]),
+    );
+
+    return getOperationsByIds(operationIds);
+}
+
 export async function getFarmUserAcceptedOperationById(
     userId: string,
     id: number,
@@ -815,6 +959,14 @@ export async function acceptOperation(id: number) {
     await storage()
         .update(operations)
         .set({ isAccepted: true })
+        .where(eq(operations.id, id));
+    await bustScheduleCache();
+}
+
+export async function unacceptOperation(id: number) {
+    await storage()
+        .update(operations)
+        .set({ isAccepted: false })
         .where(eq(operations.id, id));
     await bustScheduleCache();
 }

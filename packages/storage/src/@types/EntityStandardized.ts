@@ -38,6 +38,14 @@ export type EntityStandardized = {
     image?: {
         cover?: { url?: string };
     };
+    relationships?: {
+        companions?: EntityRelationshipSummary[];
+        antagonists?: EntityRelationshipSummary[];
+    };
+    health?: {
+        diseases?: EntityHealthIssueSummary[];
+        pests?: EntityHealthIssueSummary[];
+    };
     prices?: {
         perPlant?: number;
         perOperation?: number;
@@ -48,5 +56,41 @@ export type EntityStandardized = {
         completionAttachImagesRequired?: boolean;
         completionAttachNotes?: boolean;
         completionAttachNotesRequired?: boolean;
+    };
+};
+
+export type EntityRelationshipSummary = {
+    id: number;
+    slug: string;
+    name: string;
+    latinName?: string;
+    image?: {
+        cover?: { url?: string };
+    };
+    relationship: 'companion' | 'antagonist';
+};
+
+export type EntityHealthOperationSummary = {
+    id: number;
+    slug: string;
+    name: string;
+    label?: string;
+};
+
+export type EntityHealthIssueSummary = {
+    id: number;
+    slug: string;
+    name: string;
+    kind: 'disease' | 'pest';
+    shortDescription?: string;
+    symptoms?: string;
+    conditions?: string;
+    image?: {
+        cover?: { url?: string };
+    };
+    operations?: {
+        prevention?: EntityHealthOperationSummary[];
+        reduction?: EntityHealthOperationSummary[];
+        alleviation?: EntityHealthOperationSummary[];
     };
 };

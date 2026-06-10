@@ -1,10 +1,38 @@
 import { expect, test } from '@playwright/experimental-ct-react';
-import { ItemsHudAlignmentStory } from './ItemsHudStory';
+import {
+    ItemsHudAlignmentStory,
+    ItemsHudControlsTooltipStory,
+    SandboxBlockTrashDropTargetStory,
+    SandboxItemsHudStory,
+} from './ItemsHudStory';
 
 const TABLET_VIEWPORT = { width: 820, height: 1180 };
 const SHORT_MOBILE_VIEWPORT = { width: 414, height: 420 };
 
-test('edit mode item picker stays centered on tablet layouts', async ({
+function getPlacementRequestPosition(body: unknown) {
+    if (typeof body !== 'object' || body === null || !('position' in body)) {
+        return null;
+    }
+
+    const { position } = body;
+    if (
+        typeof position !== 'object' ||
+        position === null ||
+        !('x' in position) ||
+        !('y' in position) ||
+        typeof position.x !== 'number' ||
+        typeof position.y !== 'number'
+    ) {
+        return null;
+    }
+
+    return {
+        x: position.x,
+        y: position.y,
+    };
+}
+
+test('item picker stays centered on tablet layouts', async ({
     mount,
     page,
 }) => {
@@ -26,6 +54,58 @@ test('edit mode item picker stays centered on tablet layouts', async ({
     );
 });
 
+test('controls instructions clear the item picker on tablet layouts', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<ItemsHudControlsTooltipStory />);
+
+    const picker = page.locator('[data-items-hud]');
+    const guide = page.locator('[data-controls-tooltip-hud="open"]');
+    await expect(picker).toBeVisible();
+    await expect(guide).toBeVisible();
+    await expect(page.getByText('Pokupi / spusti')).toBeVisible();
+
+    const pickerBox = await picker.boundingBox();
+    const guideBox = await guide.boundingBox();
+    expect(pickerBox).not.toBeNull();
+    expect(guideBox).not.toBeNull();
+
+    expect((guideBox?.y ?? 0) + (guideBox?.height ?? 0)).toBeLessThanOrEqual(
+        (pickerBox?.y ?? 0) - 8,
+    );
+});
+
+test('sandbox trash target appears centered above item picker while dragging', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<SandboxBlockTrashDropTargetStory />);
+
+    const picker = page.locator('[data-items-hud]');
+    const trashTarget = page.locator(
+        '[data-sandbox-block-trash-drop-target="true"]',
+    );
+    await expect(picker).toBeVisible();
+    await expect(trashTarget).toBeVisible();
+
+    const pickerBox = await picker.boundingBox();
+    const trashBox = await trashTarget.boundingBox();
+    expect(pickerBox).not.toBeNull();
+    expect(trashBox).not.toBeNull();
+
+    const trashCenter = (trashBox?.x ?? 0) + (trashBox?.width ?? 0) / 2;
+    expect(
+        Math.abs(trashCenter - TABLET_VIEWPORT.width / 2),
+    ).toBeLessThanOrEqual(1);
+    expect((trashBox?.y ?? 0) + (trashBox?.height ?? 0)).toBeLessThanOrEqual(
+        (pickerBox?.y ?? 0) - 8,
+    );
+    await expect(trashTarget).toHaveClass(/bg-red-600/u);
+});
+
 test('pots are listed under the decoration picker', async ({ mount, page }) => {
     await page.setViewportSize(TABLET_VIEWPORT);
     await mount(<ItemsHudAlignmentStory />);
@@ -33,6 +113,23 @@ test('pots are listed under the decoration picker', async ({ mount, page }) => {
     await expect(page.getByRole('button', { name: 'Posude' })).toHaveCount(0);
 
     await page.getByRole('button', { name: 'Dekoracija' }).click();
+
+    await expect(
+        page
+            .locator('[data-items-picker-group-label]')
+            .filter({ hasText: 'Posude' }),
+    ).toBeVisible();
+    await expect(
+        page
+            .locator('[data-items-picker-group-label]')
+            .filter({ hasText: 'Kamenje' }),
+    ).toBeVisible();
+    await expect(
+        page
+            .locator('[data-items-picker-group-label]')
+            .filter({ hasText: 'Malč' }),
+    ).toBeVisible();
+
     await page.getByRole('button', { name: 'Posude' }).click();
 
     await expect(
@@ -40,6 +137,66 @@ test('pots are listed under the decoration picker', async ({ mount, page }) => {
     ).toBeVisible();
     await expect(
         page.getByRole('button', { name: 'PotWideLippedCup' }),
+    ).toBeVisible();
+});
+
+test('tool picker lists functional garden boxes outside sandbox', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<ItemsHudAlignmentStory />);
+
+    await page.getByRole('button', { name: 'Alat' }).click();
+    await expect(page.getByRole('button', { name: 'GardenBox' })).toBeVisible();
+});
+
+test('sandbox tool picker hides nonfunctional garden boxes', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<SandboxItemsHudStory />);
+
+    await page.getByRole('button', { name: 'Alat' }).click();
+    await expect(page.getByRole('button', { name: 'GardenBox' })).toHaveCount(
+        0,
+    );
+    await expect(page.getByRole('button', { name: 'Bucket' })).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'WateringCan' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'ShovelSmall' }),
+    ).toBeVisible();
+});
+
+test('sandbox decoration picker includes special blocks', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<SandboxItemsHudStory />);
+
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+
+    await expect(page.getByRole('button', { name: 'Besplatno' })).toHaveCount(
+        0,
+    );
+    await expect(page.getByRole('button', { name: '🌻 0' })).not.toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Snowman' })).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'GiftBox RedWhite' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'PineAdvent' }),
+    ).toBeVisible();
+
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: 'Blokovi' }).click();
+
+    await expect(
+        page.getByRole('button', { name: 'Block Snow Falling' }),
     ).toBeVisible();
 });
 
@@ -74,6 +231,59 @@ test('item details place button keeps the soft color treatment', async ({
 
     const pricePill = placeButton.locator('div').filter({ hasText: '10' });
     await expect(pricePill).toHaveClass(/bg-primary\/15/u);
+});
+
+test('item placement reserves local positions while requests are pending', async ({
+    mount,
+    page,
+}) => {
+    const placeRequestPositions: Array<{ x: number; y: number }> = [];
+    const releaseResponses: Array<() => void> = [];
+
+    await page.route(
+        /\/api(?:\/gredice)?\/gardens\/1\/blocks$/u,
+        async (route) => {
+            const position = getPlacementRequestPosition(
+                route.request().postDataJSON(),
+            );
+            if (position) {
+                placeRequestPositions.push(position);
+            }
+            const blockId = `placed-block-${placeRequestPositions.length.toString()}`;
+
+            await new Promise<void>((resolve) => {
+                releaseResponses.push(resolve);
+            });
+
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    id: blockId,
+                    position: { x: 0, y: 0 },
+                }),
+            });
+        },
+    );
+
+    await mount(<ItemsHudAlignmentStory />);
+
+    await page.getByRole('button', { name: 'Blokovi' }).click();
+    await page
+        .getByRole('button', { name: 'Block Grass', exact: true })
+        .click();
+
+    const placeButton = page.getByRole('button', { name: /Postavi.*10/u });
+    await expect(placeButton).toBeEnabled();
+
+    await placeButton.dblclick();
+    await expect.poll(() => placeRequestPositions.length).toBe(2);
+    await expect(placeButton).toBeEnabled();
+    expect(placeRequestPositions[0]).not.toEqual(placeRequestPositions[1]);
+
+    for (const releaseResponse of releaseResponses) {
+        releaseResponse();
+    }
 });
 
 test('decoration picker scrolls when the viewport is too short for all items', async ({

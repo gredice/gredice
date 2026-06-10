@@ -1,0 +1,3 @@
+export const QUALITY_HARVEST_SAFETY_SLUG = 'kvaliteta-i-sigurnost-uroda';
+export const QUALITY_HARVEST_SAFETY_PATH = `/${QUALITY_HARVEST_SAFETY_SLUG}`;
+export const QUALITY_HARVEST_SAFETY_LAST_REVIEWED = '2026-06-03';

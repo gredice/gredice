@@ -1,10 +1,8 @@
 import { AuthProtectedSection, SignedOut } from '@gredice/ui/auth/server';
-import { Button } from '@gredice/ui/Button';
-import { ArrowLeft } from '@gredice/ui/icons';
-import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { notFound } from 'next/navigation';
 import LoginDialog from '../../../components/auth/LoginDialog';
+import { HomeButton } from '../../../components/HomeButton';
 import { auth } from '../../../lib/auth/auth';
 import { getFarmScheduleOperationsData } from '../../schedule/scheduleData';
 import { OperationDetails } from '../OperationDetails';
@@ -29,22 +27,20 @@ async function OperationDetailPageContent({
 
     return (
         <div className="max-w-5xl mx-auto w-full p-4 space-y-4">
-            <Stack spacing={2}>
-                <Button
-                    variant="outlined"
-                    className="w-fit"
+            <div className="flex min-w-0 items-center gap-2">
+                <HomeButton
                     href="/operations"
-                    startDecorator={<ArrowLeft className="size-4 shrink-0" />}
+                    title="Povratak na priručnik radnji"
+                />
+                <Typography
+                    level="h4"
+                    component="h1"
+                    semiBold
+                    className="min-w-0 truncate"
                 >
-                    Priručnik radnji
-                </Button>
-                <Typography level="h4" component="h1" semiBold>
                     {getOperationLabel(operation)}
                 </Typography>
-                <Typography className="text-muted-foreground">
-                    Detalji radnje i upute za izvedbu na farmi.
-                </Typography>
-            </Stack>
+            </div>
             <OperationDetails operation={operation} />
         </div>
     );

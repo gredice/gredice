@@ -39,6 +39,7 @@ export type SnowMaterialOptions = {
 
 export type SnowOverlayProps = SnowMaterialOptions & {
     geometry: BufferGeometry;
+    debugName?: string;
     minCoverage?: number;
     renderOrder?: number;
     overrideSnow?: number;
@@ -54,6 +55,25 @@ function resolveSnowOverlayActive(options: {
     return (
         snowCoverage * (options.coverageMultiplier ?? 1) >= options.minCoverage
     );
+}
+
+export function useSnowOverlayVisible({
+    coverageMultiplier,
+    minCoverage = 0.02,
+    overrideSnow,
+}: {
+    coverageMultiplier?: number;
+    minCoverage?: number;
+    overrideSnow?: number;
+}) {
+    const gameSnowCoverage = useGameState((state) => state.snowCoverage);
+
+    return resolveSnowOverlayActive({
+        coverageMultiplier,
+        gameSnowCoverage,
+        minCoverage,
+        overrideSnow,
+    });
 }
 
 function resolveColorKey(
@@ -166,10 +186,8 @@ export function SnowOverlay({
     overrideSnow,
     ...options
 }: SnowOverlayProps) {
-    const gameSnowCoverage = useGameState((state) => state.snowCoverage);
-    const isActive = resolveSnowOverlayActive({
+    const isActive = useSnowOverlayVisible({
         coverageMultiplier: options.coverageMultiplier,
-        gameSnowCoverage,
         minCoverage,
         overrideSnow,
     });
@@ -218,6 +236,7 @@ function SnowOverlayMesh({
     });
     return (
         <mesh
+            name={options.debugName ?? 'SnowOverlay'}
             geometry={overlayGeometry}
             material={material}
             renderOrder={renderOrder}

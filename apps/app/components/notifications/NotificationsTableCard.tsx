@@ -7,27 +7,18 @@ import {
     getNotificationsByUser,
 } from '@gredice/storage';
 import { Card, CardHeader, CardOverflow, CardTitle } from '@gredice/ui/Card';
-import { Chip } from '@gredice/ui/Chip';
-import { ImageViewer } from '@gredice/ui/ImageViewer';
-import { Delete } from '@gredice/ui/icons';
-import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Markdown } from '@gredice/ui/Markdown';
 import { Row } from '@gredice/ui/Row';
-import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
-import { Stack } from '@gredice/ui/Stack';
-import { Table } from '@gredice/ui/Table';
-import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
-import Link from 'next/link';
-import { KnownPages } from '../../src/KnownPages';
 import {
     scrollableTableCardClassName,
     scrollableTableCardOverflowClassName,
 } from '../admin/cards/tableCardLayout';
-import { NoDataPlaceholder } from '../shared/placeholders/NoDataPlaceholder';
-import { ServerActionIconButton } from '../shared/ServerActionIconButton';
-import { deleteNotification } from './(actions)/notificationActions';
+import { deleteNotifications } from './(actions)/notificationActions';
 import { NotificationCreateModal } from './NotificationCreateModal';
+import {
+    NotificationsTable,
+    type NotificationTableRow,
+} from './NotificationsTable';
 
 type NotificationTableCardProps = {
     accountId?: string;
@@ -103,194 +94,48 @@ export async function NotificationsTableCard({
             return true;
         },
     );
-    const emptyStateColumnCount = showAccountColumn ? 8 : 7;
+
+    const gardenNames = new Map(
+        gardens.map((garden) => [garden.id, garden.name]),
+    );
+    const raisedBedPhysicalIds = new Map(
+        raisedBeds.map((raisedBed) => [raisedBed.id, raisedBed.physicalId]),
+    );
+    const tableRows: NotificationTableRow[] = filteredNotifications.map(
+        (notification) => ({
+            id: notification.id,
+            accountId: notification.accountId,
+            accountLabel: notification.accountId
+                ? accountLabels[notification.accountId] ||
+                  notification.accountId
+                : null,
+            blockId: notification.blockId,
+            content: notification.content,
+            createdAt: notification.createdAt.toISOString(),
+            gardenId: notification.gardenId,
+            gardenName: notification.gardenId
+                ? (gardenNames.get(notification.gardenId) ?? null)
+                : null,
+            header: notification.header,
+            imageUrl: notification.imageUrl,
+            linkUrl: notification.linkUrl,
+            raisedBedId: notification.raisedBedId,
+            raisedBedPhysicalId: notification.raisedBedId
+                ? (raisedBedPhysicalIds.get(notification.raisedBedId) ?? null)
+                : null,
+            readAt: notification.readAt?.toISOString() ?? null,
+            timestamp: notification.timestamp.toISOString(),
+            userId: notification.userId,
+        }),
+    );
 
     const tableContent = (
-        <Table>
-            <Table.Header>
-                <Table.Row>
-                    <Table.Head>Sadržaj</Table.Head>
-                    <Table.Head>Link</Table.Head>
-                    <Table.Head>Mjesto</Table.Head>
-                    {showAccountColumn && <Table.Head>Račun</Table.Head>}
-                    <Table.Head>Korisnik</Table.Head>
-                    <Table.Head>Pročitano</Table.Head>
-                    <Table.Head>Datum</Table.Head>
-                    <Table.Head>Akcije</Table.Head>
-                </Table.Row>
-            </Table.Header>
-            <Table.Body>
-                {filteredNotifications.length === 0 && (
-                    <Table.Row>
-                        <Table.Cell colSpan={emptyStateColumnCount}>
-                            <NoDataPlaceholder>
-                                Nema obavjesti
-                            </NoDataPlaceholder>
-                        </Table.Cell>
-                    </Table.Row>
-                )}
-                {filteredNotifications.map((notification) => {
-                    const notificationRaisedBed = notification.raisedBedId
-                        ? raisedBeds.find(
-                              (rb) => rb.id === notification.raisedBedId,
-                          )
-                        : null;
-
-                    return (
-                        <Table.Row key={notification.id}>
-                            <Table.Cell className="max-w-xs whitespace-pre-wrap">
-                                <Row spacing={4}>
-                                    {notification.imageUrl && (
-                                        <div className="shrink-0 aspect-square">
-                                            <ImageViewer
-                                                src={notification.imageUrl}
-                                                alt={notification.header}
-                                                previewWidth={80}
-                                                previewHeight={80}
-                                            />
-                                        </div>
-                                    )}
-                                    <Stack>
-                                        <Typography level="body2" bold>
-                                            {notification.header}
-                                        </Typography>
-                                        <Markdown>
-                                            {notification.content}
-                                        </Markdown>
-                                    </Stack>
-                                </Row>
-                            </Table.Cell>
-                            <Table.Cell>
-                                {notification.linkUrl ? (
-                                    <a
-                                        href={notification.linkUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-primary underline"
-                                    >
-                                        Otvori
-                                    </a>
-                                ) : (
-                                    '-'
-                                )}
-                            </Table.Cell>
-                            <Table.Cell>
-                                <Stack>
-                                    {notification.gardenId && (
-                                        <Link
-                                            href={KnownPages.Garden(
-                                                notification.gardenId,
-                                            )}
-                                            className="text-primary underline"
-                                        >
-                                            {gardens.find(
-                                                (garden) =>
-                                                    garden.id ===
-                                                    notification.gardenId,
-                                            )?.name ?? 'N/A'}
-                                        </Link>
-                                    )}
-                                    {notification.raisedBedId && (
-                                        <RaisedBedLabel
-                                            physicalId={
-                                                notificationRaisedBed?.physicalId ??
-                                                null
-                                            }
-                                        />
-                                    )}
-                                    {notification.blockId && (
-                                        <span>
-                                            Blok: {notification.blockId}
-                                        </span>
-                                    )}
-                                </Stack>
-                            </Table.Cell>
-                            {showAccountColumn && (
-                                <Table.Cell>
-                                    {notification.accountId ? (
-                                        <Link
-                                            href={KnownPages.Account(
-                                                notification.accountId,
-                                            )}
-                                            className="text-primary underline"
-                                        >
-                                            {accountLabels[
-                                                notification.accountId
-                                            ] || notification.accountId}
-                                        </Link>
-                                    ) : (
-                                        '-'
-                                    )}
-                                </Table.Cell>
-                            )}
-                            <Table.Cell>
-                                {notification.userId ? (
-                                    <Link
-                                        href={KnownPages.User(
-                                            notification.userId,
-                                        )}
-                                        className="text-primary underline"
-                                    >
-                                        {notification.userId}
-                                    </Link>
-                                ) : (
-                                    '-'
-                                )}
-                            </Table.Cell>
-                            <Table.Cell>
-                                <Chip
-                                    color={
-                                        notification.readAt
-                                            ? 'success'
-                                            : 'neutral'
-                                    }
-                                    size="sm"
-                                    className="w-fit"
-                                >
-                                    {notification.readAt
-                                        ? 'Pročitano'
-                                        : 'Nepročitano'}
-                                </Chip>
-                            </Table.Cell>
-                            <Table.Cell>
-                                <Typography level="body3">
-                                    <LocalDateTime>
-                                        {notification.createdAt}
-                                    </LocalDateTime>
-                                </Typography>
-                                {Math.abs(
-                                    new Date(notification.createdAt).getTime() -
-                                        new Date(
-                                            notification.timestamp,
-                                        ).getTime(),
-                                ) > 1000 && (
-                                    <Typography level="body3">
-                                        <LocalDateTime>
-                                            {notification.timestamp}
-                                        </LocalDateTime>
-                                    </Typography>
-                                )}
-                            </Table.Cell>
-                            <Table.Cell>
-                                {accountId && (
-                                    <ServerActionIconButton
-                                        title="Obriši obavijest"
-                                        onClick={deleteNotification.bind(
-                                            null,
-                                            accountId,
-                                            null,
-                                            notification.id,
-                                        )}
-                                    >
-                                        <Delete className="size-5" />
-                                    </ServerActionIconButton>
-                                )}
-                            </Table.Cell>
-                        </Table.Row>
-                    );
-                })}
-            </Table.Body>
-        </Table>
+        <NotificationsTable
+            deleteContext={{ accountId, userId, gardenId, raisedBedId }}
+            deleteNotificationsAction={deleteNotifications}
+            notifications={tableRows}
+            showAccountColumn={showAccountColumn}
+        />
     );
 
     if (!showCard) {

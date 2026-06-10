@@ -1,0 +1,41 @@
+{
+    "name": "news",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "clean": "rimraf .next .turbo dist build out coverage .vercel",
+        "lint": "biome check --write",
+        "lint:migrate": "biome migrate --write",
+        "typecheck": "next typegen && tsc --noEmit --pretty false",
+        "dev": "node ../../scripts/run-app-command.mjs dev",
+        "build": "next build",
+        "start": "node ../../scripts/run-app-command.mjs start",
+        "test": "pnpm run typecheck"
+    },
+    "dependencies": {
+        "@posthog/next": "0.4.67",
+        "@vercel/analytics": "2.0.1",
+        "@vercel/toolbar": "0.2.6",
+        "next": "16.2.6",
+        "react": "19.2.6",
+        "react-dom": "19.2.6",
+        "server-only": "0.0.1"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "2.4.16",
+        "@gredice/client": "workspace:*",
+        "@gredice/storage": "workspace:*",
+        "@gredice/ui": "workspace:*",
+        "@tailwindcss/postcss": "4.3.0",
+        "@tailwindcss/typography": "0.5.19",
+        "@types/node": "24.12.4",
+        "@types/react": "19.2.15",
+        "@types/react-dom": "19.2.3",
+        "babel-plugin-react-compiler": "19.1.0-rc.3",
+        "postcss": "8.5.15",
+        "tailwindcss": "4.3.0",
+        "tailwindcss-animate": "1.0.7",
+        "typescript": "6.0.3"
+    }
+}

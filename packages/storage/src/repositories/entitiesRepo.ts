@@ -21,6 +21,20 @@ import {
     directoriesCached,
 } from '../cache/directoriesCached';
 import { getEntityCompleteness } from '../helpers/entityCompleteness';
+import {
+    buildPlantHealthReadModels,
+    isPlantHealthAffectedPlantAttributeDefinition,
+    isPlantHealthIssueEntityTypeName,
+    type PlantHealthReadModel,
+    parsePlantHealthReferenceTargetId,
+    plantHealthAffectedPlantIdsForEntity,
+    plantHealthOperationIntentForAttributeDefinition,
+    sanitizePlantHealthIssueFormattedEntity,
+} from '../helpers/plantHealth';
+import {
+    buildPlantRelationshipReadModels,
+    isPlantRelationshipAttributeDefinition,
+} from '../helpers/plantRelationships';
 
 const entityCacheTtl = 60 * 60; // 1 hour
 
@@ -318,6 +332,14 @@ async function expandEntityAttributes<T extends Record<string, unknown>>(
     const expandedEntity = { ...entity };
     // Prepare all attribute expansion promises
     const attributePromises = attributes.map(async (attribute) => {
+        if (
+            isPlantRelationshipAttributeDefinition(
+                attribute.attributeDefinition,
+            )
+        ) {
+            return;
+        }
+
         // Create category object if it doesn't exist
         if (
             expandedEntity[attribute.attributeDefinition.category] === undefined
@@ -443,6 +465,226 @@ async function resolveRef(
     );
 }
 
+function applyPlantRelationshipReadModel<T>(
+    entities: T[],
+    rawEntities: EntityWithAttributesAndType[],
+) {
+    const relationshipsByEntityId =
+        buildPlantRelationshipReadModels(rawEntities);
+    return entities.map((entity) => {
+        if (
+            !entity ||
+            typeof entity !== 'object' ||
+            !('id' in entity) ||
+            typeof entity.id !== 'number'
+        ) {
+            return entity;
+        }
+
+        const relationships = relationshipsByEntityId.get(entity.id);
+        if (!relationships) {
+            return entity;
+        }
+
+        return {
+            ...entity,
+            relationships,
+        };
+    }) as T[];
+}
+
+async function applyEntityRelationshipReadModels<T>(
+    entityTypeName: string,
+    formattedEntities: T[],
+    rawEntities: EntityWithAttributesAndType[],
+) {
+    if (entityTypeName === 'plant') {
+        return applyPlantRelationshipReadModel(formattedEntities, rawEntities);
+    }
+
+    if (entityTypeName !== 'plantSort') {
+        return formattedEntities;
+    }
+
+    const plantEntities = (await getEntitiesRaw(
+        'plant',
+        'published',
+    )) as EntityWithAttributesAndType[];
+    return applyPlantRelationshipReadModel(formattedEntities, [
+        ...rawEntities,
+        ...plantEntities,
+    ]);
+}
+
+function applyPlantHealthReadModel<T>(
+    entities: T[],
+    rawEntities: EntityWithAttributesAndType[],
+    healthByPlantId: Map<number, PlantHealthReadModel>,
+) {
+    return entities.map((entity) => {
+        if (
+            !entity ||
+            typeof entity !== 'object' ||
+            !('id' in entity) ||
+            typeof entity.id !== 'number'
+        ) {
+            return entity;
+        }
+
+        const rawEntity = rawEntities.find(
+            (candidate) => candidate.id === entity.id,
+        );
+        if (!rawEntity) {
+            return entity;
+        }
+
+        const health = healthByPlantId.get(rawEntity.id);
+        if (!health) {
+            return entity;
+        }
+
+        return {
+            ...entity,
+            health,
+        };
+    }) as T[];
+}
+
+async function buildPlantHealthReadModelForPublishedPlants(
+    plantEntities: EntityWithAttributesAndType[],
+) {
+    const [diseases, pests, operations] = await Promise.all([
+        getEntitiesRaw('plantDisease', 'published') as Promise<
+            EntityWithAttributesAndType[]
+        >,
+        getEntitiesRaw('plantPest', 'published') as Promise<
+            EntityWithAttributesAndType[]
+        >,
+        getEntitiesRaw('operation', 'published') as Promise<
+            EntityWithAttributesAndType[]
+        >,
+    ]);
+
+    return buildPlantHealthReadModels({
+        plants: plantEntities,
+        diseases,
+        pests,
+        operations,
+    });
+}
+
+function applyPlantHealthIssueFormatting<T>(entityTypeName: string, entity: T) {
+    if (!isPlantHealthIssueEntityTypeName(entityTypeName)) {
+        return entity;
+    }
+
+    return sanitizePlantHealthIssueFormattedEntity(entity);
+}
+
+async function assertPlantHealthIssueReferencesCanPublish(entity: {
+    entityTypeName: string;
+    attributes: {
+        attributeDefinitionId: number;
+        value: string | null;
+    }[];
+    entityType: {
+        attributeDefinitions: SelectAttributeDefinition[];
+    };
+}) {
+    if (!isPlantHealthIssueEntityTypeName(entity.entityTypeName)) {
+        return;
+    }
+
+    const definitionById = new Map(
+        entity.entityType.attributeDefinitions.map((definition) => [
+            definition.id,
+            definition,
+        ]),
+    );
+    const targetIdsByType = new Map<string, Set<number>>();
+    const duplicateKeys = new Set<string>();
+    const seenKeys = new Set<string>();
+    const invalidLabels: string[] = [];
+
+    for (const attribute of entity.attributes) {
+        const definition = definitionById.get(attribute.attributeDefinitionId);
+        if (!definition) {
+            continue;
+        }
+
+        let targetType: 'plant' | 'operation' | null = null;
+        if (isPlantHealthAffectedPlantAttributeDefinition(definition)) {
+            targetType = 'plant';
+        } else if (
+            plantHealthOperationIntentForAttributeDefinition(definition)
+        ) {
+            targetType = 'operation';
+        }
+        if (!targetType) {
+            continue;
+        }
+
+        const targetId = parsePlantHealthReferenceTargetId(attribute.value);
+        if (!targetId) {
+            invalidLabels.push(definition.label);
+            continue;
+        }
+
+        const duplicateKey = `${definition.id}:${targetId}`;
+        if (seenKeys.has(duplicateKey)) {
+            duplicateKeys.add(duplicateKey);
+        }
+        seenKeys.add(duplicateKey);
+
+        const targetIds = targetIdsByType.get(targetType) ?? new Set<number>();
+        targetIds.add(targetId);
+        targetIdsByType.set(targetType, targetIds);
+    }
+
+    const missingTargets: string[] = [];
+    for (const [targetType, targetIds] of targetIdsByType) {
+        const ids = Array.from(targetIds);
+        if (ids.length === 0) {
+            continue;
+        }
+
+        const publishedTargets = await storage().query.entities.findMany({
+            where: and(
+                inArray(entities.id, ids),
+                eq(entities.entityTypeName, targetType),
+                eq(entities.state, 'published'),
+                eq(entities.isDeleted, false),
+            ),
+        });
+        const publishedTargetIds = new Set(
+            publishedTargets.map((target) => target.id),
+        );
+        for (const targetId of ids) {
+            if (!publishedTargetIds.has(targetId)) {
+                missingTargets.push(`${targetType}#${targetId}`);
+            }
+        }
+    }
+
+    const errors = [
+        duplicateKeys.size > 0
+            ? 'Remove duplicate affected plant or operation references.'
+            : null,
+        invalidLabels.length > 0
+            ? `Fix invalid references in: ${Array.from(new Set(invalidLabels)).join(', ')}.`
+            : null,
+        missingTargets.length > 0
+            ? `Publish or remove missing references: ${missingTargets.join(', ')}.`
+            : null,
+    ].filter((message): message is string => Boolean(message));
+
+    if (errors.length > 0) {
+        throw new Error(
+            `Plant health issue is not ready for publishing. ${errors.join(' ')}`,
+        );
+    }
+}
+
 export async function getEntitiesFormatted<T>(entityTypeName: string) {
     return directoriesCached(
         cacheKeys.entityTypeName(entityTypeName),
@@ -452,9 +694,32 @@ export async function getEntitiesFormatted<T>(entityTypeName: string) {
                 entityTypeName,
                 'published',
             )) as EntityWithAttributesAndType[];
-            return (await Promise.all(
+            const formattedEntities = (await Promise.all(
                 entities.map((e) => expandEntity(e, cache)),
             )) as T[];
+            if (entityTypeName === 'plant') {
+                const withRelationships = applyPlantRelationshipReadModel(
+                    formattedEntities,
+                    entities,
+                );
+                const plantHealthReadModel =
+                    await buildPlantHealthReadModelForPublishedPlants(entities);
+                return applyPlantHealthReadModel(
+                    withRelationships,
+                    entities,
+                    plantHealthReadModel,
+                );
+            }
+            if (entityTypeName === 'plantSort') {
+                return await applyEntityRelationshipReadModels(
+                    entityTypeName,
+                    formattedEntities,
+                    entities,
+                );
+            }
+            return formattedEntities.map((entity) =>
+                applyPlantHealthIssueFormatting(entityTypeName, entity),
+            );
         },
         entityCacheTtl,
     );
@@ -468,7 +733,41 @@ export async function getEntityFormatted<T>(id: number) {
             const entity = (await getEntityRaw(id)) as
                 | EntityWithAttributesAndType
                 | undefined;
-            return (await expandEntity(entity, cache)) as T;
+            const formattedEntity = (await expandEntity(entity, cache)) as T;
+            if (entity?.entityTypeName !== 'plant') {
+                if (entity?.entityTypeName === 'plantSort') {
+                    const plantEntities = (await getEntitiesRaw(
+                        'plant',
+                        'published',
+                    )) as EntityWithAttributesAndType[];
+                    return applyPlantRelationshipReadModel(
+                        [formattedEntity],
+                        [entity, ...plantEntities],
+                    )[0];
+                }
+                return applyPlantHealthIssueFormatting(
+                    entity?.entityTypeName ?? '',
+                    formattedEntity,
+                );
+            }
+
+            const plantEntities = (await getEntitiesRaw(
+                'plant',
+                'published',
+            )) as EntityWithAttributesAndType[];
+            const withRelationships = applyPlantRelationshipReadModel(
+                [formattedEntity],
+                plantEntities,
+            );
+            const plantHealthReadModel =
+                await buildPlantHealthReadModelForPublishedPlants(
+                    plantEntities,
+                );
+            return applyPlantHealthReadModel(
+                withRelationships,
+                plantEntities,
+                plantHealthReadModel,
+            )[0];
         },
         entityCacheTtl,
     );
@@ -795,8 +1094,16 @@ export async function updateEntity(
             );
         }
 
+        await assertPlantHealthIssueReferencesCanPublish(entityForValidation);
+
         updateData.publishedAt = new Date();
     }
+
+    const previousPlantHealthTargetIds = isPlantHealthIssueEntityTypeName(
+        previousEntity.entityTypeName,
+    )
+        ? plantHealthAffectedPlantIdsForEntity(await getEntityRaw(entity.id))
+        : [];
 
     await Promise.all([
         previousEntity
@@ -847,6 +1154,16 @@ export async function updateEntity(
         entity.entityTypeName
             ? bustCached(cacheKeys.entityTypeName(entity.entityTypeName))
             : null,
+        isPlantHealthIssueEntityTypeName(
+            entity.entityTypeName ?? previousEntity.entityTypeName,
+        )
+            ? Promise.all([
+                  bustCached(cacheKeys.entityTypeName('plant')),
+                  ...previousPlantHealthTargetIds.map((plantId) =>
+                      bustCached(cacheKeys.entity(plantId)),
+                  ),
+              ])
+            : null,
         bustCachedByPrefixes(['dashboard:admin:']),
     ]);
 
@@ -861,6 +1178,12 @@ export async function deleteEntity(
     if (!entity) {
         throw new Error(`Entity with id ${id} not found`);
     }
+
+    const plantHealthTargetIds = isPlantHealthIssueEntityTypeName(
+        entity.entityTypeName,
+    )
+        ? plantHealthAffectedPlantIdsForEntity(entity)
+        : [];
 
     await Promise.all([
         storage().insert(entityRevisions).values({
@@ -879,6 +1202,14 @@ export async function deleteEntity(
         bustCached(cacheKeys.entity(id)),
         entity.entityTypeName
             ? bustCached(cacheKeys.entityTypeName(entity.entityTypeName))
+            : null,
+        isPlantHealthIssueEntityTypeName(entity.entityTypeName)
+            ? Promise.all([
+                  bustCached(cacheKeys.entityTypeName('plant')),
+                  ...plantHealthTargetIds.map((plantId) =>
+                      bustCached(cacheKeys.entity(plantId)),
+                  ),
+              ])
             : null,
         bustCachedByPrefixes(['dashboard:admin:']),
     ]);

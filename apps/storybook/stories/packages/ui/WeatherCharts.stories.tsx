@@ -2,7 +2,10 @@ import type {
     WeatherForecastDay,
     WeatherHistoryPoint,
 } from '@gredice/js/weather';
-import { WeatherCharts, type WeatherChartsRange } from '@gredice/ui/WeatherCharts';
+import {
+    WeatherCharts,
+    type WeatherChartsRange,
+} from '@gredice/ui/WeatherCharts';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { useState } from 'react';
 
@@ -15,7 +18,9 @@ const WIND_DIRS = ['N', 'NE', 'NNE', 'E', 'SE', 'S', 'SW', 'W', 'NW'] as const;
 /** Sinusoidal temperature: cold at night, warm mid-afternoon. */
 function hourTemp(hour: number, dayOffset = 0): number {
     const base = 18 + dayOffset * 0.5;
-    return Math.round((base + 7 * Math.sin(((hour - 6) * Math.PI) / 12)) * 10) / 10;
+    return (
+        Math.round((base + 7 * Math.sin(((hour - 6) * Math.PI) / 12)) * 10) / 10
+    );
 }
 
 function windDir(seed: number): string {
@@ -30,7 +35,10 @@ function makeHistory(days = 7): WeatherHistoryPoint[] {
         for (let h = 0; h < 24; h++) {
             const ts = now - d * 86_400_000 - (23 - h) * 3_600_000;
             if (ts > now) continue;
-            const rain = h === 14 || h === 15 ? Math.round((Math.abs((d * 7 + h) % 5) * 0.6) * 10) / 10 : 0;
+            const rain =
+                h === 14 || h === 15
+                    ? Math.round(Math.abs((d * 7 + h) % 5) * 0.6 * 10) / 10
+                    : 0;
             points.push({
                 recordedAt: new Date(ts).toISOString(),
                 temperature: hourTemp(h, days - d),
@@ -60,6 +68,8 @@ function makeForecast(days = 3): WeatherForecastDay[] {
         result.push({
             date: dateStr,
             symbol: d === 2 ? 3 : 1,
+            minTemp: hourTemp(5, d),
+            maxTemp: hourTemp(15, d),
             windDirection: windDir(d),
             windStrength: 4 + d,
             rain: d === 2 ? 2.5 : 0,
@@ -76,25 +86,26 @@ function makeForecast(days = 3): WeatherForecastDay[] {
     return result;
 }
 
-/** Default 7-days-history + 3-days-forecast range and bounds. */
+/** Default 3-days-history + 3-days-forecast range with 30 days available. */
 function defaultRangeAndBounds() {
     const now = new Date();
     const DAY = 86_400_000;
     return {
         range: {
-            from: new Date(now.getTime() - 7 * DAY),
+            from: new Date(now.getTime() - 3 * DAY),
             to: new Date(now.getTime() + 3 * DAY),
         },
         bounds: {
-            min: new Date(now.getTime() - 7 * DAY),
+            min: new Date(now.getTime() - 30 * DAY),
             max: new Date(now.getTime() + 3 * DAY),
         },
     };
 }
 
-const HISTORY = makeHistory(7);
+const HISTORY = makeHistory(30);
 const FORECAST = makeForecast(3);
-const { range: DEFAULT_RANGE, bounds: DEFAULT_BOUNDS } = defaultRangeAndBounds();
+const { range: DEFAULT_RANGE, bounds: DEFAULT_BOUNDS } =
+    defaultRangeAndBounds();
 
 // ---------------------------------------------------------------------------
 // Controlled wrapper for interactive stories
@@ -103,13 +114,7 @@ function ControlledWeatherCharts(
     props: Omit<React.ComponentProps<typeof WeatherCharts>, 'onRangeChange'>,
 ) {
     const [range, setRange] = useState<WeatherChartsRange>(props.range);
-    return (
-        <WeatherCharts
-            {...props}
-            range={range}
-            onRangeChange={setRange}
-        />
-    );
+    return <WeatherCharts {...props} range={range} onRangeChange={setRange} />;
 }
 
 // ---------------------------------------------------------------------------
@@ -127,10 +132,10 @@ const meta = {
                 component:
                     'Recharts-based weather visualization combining historical observations ' +
                     'and forecast data into a unified time series. Supports temperature, ' +
-                    'rain/precipitation, and wind-speed/direction views with a date-range ' +
-                    'picker and preset buttons. A shaded region marks the forecast window ' +
+                    'rain/precipitation, and wind-speed/direction views with an icon metric ' +
+                    'selector, date-range picker, and preset toggle groups. A shaded region marks the forecast window ' +
                     'and a dashed "now" reference line is drawn when it falls inside the ' +
-                    'visible range.',
+                    'visible range. Narrow mobile layouts aggregate chart points into 8-hour buckets.',
             },
         },
     },
@@ -152,15 +157,14 @@ type Story = StoryObj<typeof meta>;
 // ---------------------------------------------------------------------------
 
 export const Default: Story = {
-    name: 'Default (7 days history + 3 days forecast)',
+    name: 'Default (3 days history + 3 days forecast)',
     parameters: {
         docs: {
             description: {
                 story:
-                    'Full dataset: seven days of hourly history and three days of hourly ' +
+                    'Full dataset: 30 days of hourly history and three days of hourly ' +
                     'forecast. The shaded area to the right of the "Sad" reference line is ' +
-                    'the forecast window. Switch between Temperatura, Padaline, and Vjetar ' +
-                    'with the tab bar.',
+                    'the forecast window. Switch metric views with the icon tab bar.',
             },
         },
     },
@@ -226,6 +230,28 @@ export const Compact: Story = {
     },
 };
 
+export const MobileCompact: Story = {
+    name: 'Mobile compact (8-hour buckets)',
+    args: {
+        compact: true,
+        metric: 'rain',
+    },
+    render: (args) => (
+        <div className="max-w-[360px]">
+            <ControlledWeatherCharts {...args} />
+        </div>
+    ),
+    parameters: {
+        docs: {
+            description: {
+                story:
+                    'Constrained mobile HUD width. The chart groups visible points into ' +
+                    '8-hour buckets so precipitation bars and line points stay readable.',
+            },
+        },
+    },
+};
+
 export const Loading: Story = {
     name: 'Loading state',
     args: {
@@ -237,8 +263,8 @@ export const Loading: Story = {
         docs: {
             description: {
                 story:
-                    'While data is in flight the chart area is replaced by a "Učitavanje ' +
-                    'podataka…" placeholder at the chart\'s full height.',
+                    'While data is in flight the chart keeps its selected time axis and ' +
+                    'shows a "Učitavanje podataka…" overlay.',
             },
         },
     },
@@ -255,8 +281,8 @@ export const NoData: Story = {
         docs: {
             description: {
                 story:
-                    'When no data is available for the selected range the chart shows ' +
-                    '"Nema podataka za odabrani raspon." instead of an empty axis.',
+                    'When no data is available for the selected range the chart keeps the ' +
+                    'time axis visible and shows "Nema podataka za odabrani raspon.".',
             },
         },
     },
@@ -308,20 +334,20 @@ export const ForecastOnly: Story = {
     },
 };
 
-export const Last24Hours: Story = {
-    name: 'Last 24 hours preset',
+export const ThirtyDayHistory: Story = {
+    name: '30-day history preset',
     args: {
         range: (() => {
             const now = new Date();
             return {
-                from: new Date(now.getTime() - 86_400_000),
-                to: new Date(now.getTime()),
+                from: new Date(now.getTime() - 30 * 86_400_000),
+                to: new Date(now.getTime() + 3 * 86_400_000),
             };
         })(),
         bounds: (() => {
             const now = new Date();
             return {
-                min: new Date(now.getTime() - 7 * 86_400_000),
+                min: new Date(now.getTime() - 30 * 86_400_000),
                 max: new Date(now.getTime() + 3 * 86_400_000),
             };
         })(),
@@ -330,8 +356,38 @@ export const Last24Hours: Story = {
         docs: {
             description: {
                 story:
-                    'Simulates pressing the "24 h" preset button. The X-axis ticks switch ' +
-                    'to time-of-day format instead of day/month.',
+                    'Simulates pressing the "30d" history preset. The range still includes ' +
+                    'the default three-day forecast window.',
+            },
+        },
+    },
+};
+
+export const ExtendedForecast: Story = {
+    name: 'Extended forecast',
+    args: {
+        forecast: makeForecast(7),
+        range: (() => {
+            const now = new Date();
+            return {
+                from: new Date(now.getTime() - 3 * 86_400_000),
+                to: new Date(now.getTime() + 7 * 86_400_000),
+            };
+        })(),
+        bounds: (() => {
+            const now = new Date();
+            return {
+                min: new Date(now.getTime() - 30 * 86_400_000),
+                max: new Date(now.getTime() + 7 * 86_400_000),
+            };
+        })(),
+    },
+    parameters: {
+        docs: {
+            description: {
+                story:
+                    'Shows the extended forecast toggle state with a longer forecast region. ' +
+                    'Forecast line segments use a lighter dashed treatment.',
             },
         },
     },

@@ -6,7 +6,9 @@ import {
     gameHudBottomBarClassName,
     gameHudBottomControlsClassName,
 } from '../../../packages/game/src/GameHud';
+import { ControlsTooltipHud } from '../../../packages/game/src/hud/ControlsTooltipHud';
 import { ItemsHud } from '../../../packages/game/src/hud/ItemsHud';
+import { SandboxBlockTrashDropTarget } from '../../../packages/game/src/hud/SandboxBlockTrashDropTarget';
 import {
     createGameState,
     GameStateContext,
@@ -31,7 +33,7 @@ function createBlockData(name: string, index: number) {
             stackable: true,
             type: name === 'Raised_Bed' ? 'raisedBed' : 'decoration',
         },
-        prices: { sunflowers: 10 },
+        prices: { sunflowers: name === 'PaintRoller' ? 100 : 10 },
         functions: {
             recycler: false,
             raisedBed: name === 'Raised_Bed',
@@ -45,6 +47,7 @@ const blockNames = [
     'Raised_Bed',
     'Bucket',
     'WateringCan',
+    'PaintRoller',
     'Composter',
     'GardenBox',
     'PotLowBowl',
@@ -69,13 +72,16 @@ const blockNames = [
     'DesertStoneLarge',
     'BirdHouse',
     'FireflyJar',
+    'CatPillow',
     'Bush',
     'Tree',
     'Pine',
+    'PineAdvent',
     'DeadTreeTall',
     'DeadTreeStump',
     'ShovelSmall',
     'Tulip',
+    'Sunflower',
     'CactusBarrel',
     'CactusColumnCluster',
     'CactusPricklyPear',
@@ -83,10 +89,18 @@ const blockNames = [
     'MulchHey',
     'MulchCoconut',
     'MulchWood',
+    'GiftBox_RedWhite',
+    'GiftBox_GreenGold',
+    'GiftBox_BlueWhite',
+    'GiftBox_PurpleSilver',
+    'GiftBox_GoldRed',
+    'GiftBox_WhiteGreen',
+    'Snowman',
     'Block_Grass',
     'Block_Ground',
     'Block_Sand',
     'Block_Snow',
+    'Block_Snow_Falling',
     'Block_Water',
     'Block_Grass_Angle',
     'Block_Ground_Angle',
@@ -102,7 +116,15 @@ const blockNames = [
     'Block_Snow_Reverse_Corner',
 ];
 
-function createItemsHudQueryClient() {
+type ItemsHudStoryOptions = {
+    isSandbox?: boolean;
+    pickupBlock?: boolean;
+    trashTargetActive?: boolean;
+};
+
+function createItemsHudQueryClient({
+    isSandbox = false,
+}: ItemsHudStoryOptions) {
     const queryClient = new ReactQuery.QueryClient({
         defaultOptions: {
             queries: { retry: false, staleTime: Infinity },
@@ -111,10 +133,12 @@ function createItemsHudQueryClient() {
 
     queryClient.setQueryData(['blocks'], blockNames.map(createBlockData));
     queryClient.setQueryData(['currentUser'], { id: 'test-user' });
-    queryClient.setQueryData(['gardens'], [{ id: 1 }]);
+    queryClient.setQueryData(['gardens'], [{ id: 1, isSandbox }]);
     queryClient.setQueryData(['gardens', 'current', 'summer', 1], {
         id: 1,
         name: 'Test garden',
+        isSandbox,
+        backgroundPalette: 'current',
         stacks: [],
         location: { lat: 45.739, lon: 16.572 },
         raisedBeds: [],
@@ -123,8 +147,16 @@ function createItemsHudQueryClient() {
     return queryClient;
 }
 
-function ItemsHudTestProviders({ children }: PropsWithChildren) {
-    const queryClient = useMemo(() => createItemsHudQueryClient(), []);
+function ItemsHudTestProviders({
+    children,
+    isSandbox = false,
+    pickupBlock = false,
+    trashTargetActive = false,
+}: PropsWithChildren<ItemsHudStoryOptions>) {
+    const queryClient = useMemo(
+        () => createItemsHudQueryClient({ isSandbox }),
+        [isSandbox],
+    );
     const gameStore = useMemo(() => {
         const store = createGameState({
             appBaseUrl: 'http://localhost',
@@ -132,9 +164,18 @@ function ItemsHudTestProviders({ children }: PropsWithChildren) {
             isMock: false,
             winterMode: 'summer',
         });
-        store.getState().setMode('edit');
+        if (pickupBlock) {
+            store.setState({
+                pickupBlock: {
+                    id: 'pickup-block-1',
+                    name: 'Block_Grass',
+                    rotation: 0,
+                },
+                sandboxBlockTrashDropTargetActive: trashTargetActive,
+            });
+        }
         return store;
-    }, []);
+    }, [pickupBlock, trashTargetActive]);
 
     return (
         <NuqsTestingAdapter>
@@ -161,6 +202,71 @@ export function ItemsHudAlignmentStory() {
                     >
                         <div className="h-10 w-40 rounded-lg border bg-muted" />
                     </div>
+                    <ItemsHud />
+                </div>
+            </div>
+        </ItemsHudTestProviders>
+    );
+}
+
+export function ItemsHudControlsTooltipStory() {
+    return (
+        <ItemsHudTestProviders>
+            <div className="relative h-screen w-screen overflow-hidden">
+                <div
+                    data-testid="bottom-hud"
+                    className={gameHudBottomBarClassName}
+                >
+                    <div
+                        data-testid="bottom-controls"
+                        className={gameHudBottomControlsClassName}
+                    >
+                        <div className="h-10 w-40 rounded-lg border bg-muted" />
+                        <ControlsTooltipHud />
+                    </div>
+                    <ItemsHud />
+                </div>
+            </div>
+        </ItemsHudTestProviders>
+    );
+}
+
+export function SandboxItemsHudStory() {
+    return (
+        <ItemsHudTestProviders isSandbox>
+            <div className="relative h-screen w-screen overflow-hidden">
+                <div
+                    data-testid="bottom-hud"
+                    className={gameHudBottomBarClassName}
+                >
+                    <div
+                        data-testid="bottom-controls"
+                        className={gameHudBottomControlsClassName}
+                    >
+                        <div className="h-10 w-40 rounded-lg border bg-muted" />
+                    </div>
+                    <ItemsHud />
+                </div>
+            </div>
+        </ItemsHudTestProviders>
+    );
+}
+
+export function SandboxBlockTrashDropTargetStory() {
+    return (
+        <ItemsHudTestProviders isSandbox pickupBlock trashTargetActive>
+            <div className="relative h-screen w-screen overflow-hidden">
+                <div
+                    data-testid="bottom-hud"
+                    className={gameHudBottomBarClassName}
+                >
+                    <div
+                        data-testid="bottom-controls"
+                        className={gameHudBottomControlsClassName}
+                    >
+                        <div className="h-10 w-40 rounded-lg border bg-muted" />
+                    </div>
+                    <SandboxBlockTrashDropTarget />
                     <ItemsHud />
                 </div>
             </div>
