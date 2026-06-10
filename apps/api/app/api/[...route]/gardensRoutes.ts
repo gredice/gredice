@@ -27,8 +27,8 @@ import {
     GardenDiaryCancelError,
     GardenDiaryRescheduleError,
     getAccount,
-    getAccountGardens,
     getAppliedRaisedBedOperationsForGarden,
+    getAccountGardensMetadata,
     getEvents,
     getGarden,
     getGardenBlocks,
@@ -432,7 +432,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         authValidator(['user', 'admin']),
         async (context) => {
             const { accountId } = context.get('authContext');
-            const gardens = await getAccountGardens(accountId);
+            const gardens = await getAccountGardensMetadata(accountId);
             return context.json(
                 gardens.map((garden) => ({
                     id: garden.id,

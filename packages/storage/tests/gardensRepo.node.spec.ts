@@ -10,6 +10,7 @@ import {
     deleteGardenBlock,
     deleteGardenStack,
     getAccountGardens,
+    getAccountGardensMetadata,
     getGarden,
     getGardenBlock,
     getGardenBlocks,
@@ -84,6 +85,45 @@ test('getAccountGardens returns gardens for account', async () => {
     const gardens = await getAccountGardens(accountId);
     assert.ok(Array.isArray(gardens));
     assert.ok(gardens.some((g) => g.id === gardenId));
+});
+
+test('getAccountGardensMetadata returns account gardens without raised beds', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const otherAccountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({
+        name: 'Metadata Garden',
+        accountId,
+        farmId,
+    });
+    const deletedGardenId = await createTestGarden({
+        name: 'Deleted Metadata Garden',
+        accountId,
+        farmId,
+    });
+    await createTestGarden({ accountId: otherAccountId, farmId });
+    await deleteGarden(deletedGardenId);
+
+    const gardens = await getAccountGardensMetadata(accountId);
+    const garden = gardens.find((g) => g.id === gardenId);
+
+    assert.ok(garden);
+    assert.strictEqual(garden.name, 'Metadata Garden');
+    assert.strictEqual(garden.accountId, accountId);
+    assert.strictEqual(garden.isDeleted, false);
+    assert.strictEqual(typeof garden.isSandbox, 'boolean');
+    assert.strictEqual(typeof garden.backgroundPalette, 'string');
+    assert.ok(garden.createdAt instanceof Date);
+    assert.strictEqual(Object.hasOwn(garden, 'raisedBeds'), false);
+    assert.strictEqual(
+        gardens.some((g) => g.id === deletedGardenId),
+        false,
+    );
+    assert.strictEqual(
+        gardens.some((g) => g.accountId !== accountId),
+        false,
+    );
 });
 
 test('countRaisedBedsByAccount counts active raised beds for account quota', async () => {
