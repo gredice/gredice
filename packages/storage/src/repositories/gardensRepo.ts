@@ -1989,6 +1989,15 @@ export async function getGardens() {
     });
 }
 
+export async function getAccountGardensMetadata(accountId: string) {
+    return storage().query.gardens.findMany({
+        where: and(
+            eq(gardens.accountId, accountId),
+            eq(gardens.isDeleted, false),
+        ),
+    });
+}
+
 export async function getAccountGardens(
     accountId: string,
     filter?: {
