@@ -67,6 +67,7 @@ async function processNonStripeCartItems(
     accountId: string,
     deliveryInfo?: unknown,
     scheduledDeliveryEmailKeys?: Set<string>,
+    checkoutSessionId?: string | null,
 ): Promise<ShoppingCartItemWithShopData[]> {
     const inventoryNormalizedCart =
         await normalizeShoppingCartInventoryUsage(cartId);
@@ -151,6 +152,7 @@ async function processNonStripeCartItems(
                     amount_total: sunflowerAmount,
                     additionalData,
                     scheduledDeliveryEmailKeys,
+                    checkoutSessionId,
                 }),
             ]);
         }
@@ -233,6 +235,7 @@ async function processNonStripeCartItems(
                     amount_total: 0,
                     additionalData,
                     scheduledDeliveryEmailKeys,
+                    checkoutSessionId,
                 }),
             ]);
 
@@ -471,6 +474,7 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
                 accountId: resolvedAccountId,
                 amount_total: item.amount_total,
                 scheduledDeliveryEmailKeys,
+                checkoutSessionId: session.id,
             });
         } catch (error) {
             console.error(
@@ -528,6 +532,7 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
                 accountId,
                 deliveryInfo,
                 scheduledDeliveryEmailKeys,
+                session.id,
             );
         }
     }
@@ -688,6 +693,7 @@ export async function processItem(itemData: {
     currency: string | null;
     amount_total: number; // Amount in cents or sunflowers
     scheduledDeliveryEmailKeys?: Set<string>;
+    checkoutSessionId?: string | null;
 }) {
     console.debug(
         `Processing item with entityId ${itemData.entityId} and entityTypeName ${itemData.entityTypeName} for account ${itemData.accountId} in total amount ${itemData.amount_total}`,
@@ -869,7 +875,20 @@ export async function processItem(itemData: {
                             `Failed to create delivery request for operation ${operationId}:`,
                             error,
                         );
-                        // Don't fail the whole payment, just log the error
+                        // Payment already captured -- do not re-throw. Surface the failure so ops
+                        // can reconcile the paid-but-undelivered order.
+                        (await getPostHogClient()).capture({
+                            distinctId: itemData.accountId,
+                            event: 'delivery_request_creation_failed',
+                            properties: {
+                                operation_id: operationId,
+                                account_id: itemData.accountId,
+                                slot_id: deliveryInfo.slotId,
+                                mode: deliveryInfo.mode,
+                                checkout_session_id:
+                                    itemData.checkoutSessionId ?? null,
+                            },
+                        });
                     }
                 } else {
                     console.warn(
