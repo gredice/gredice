@@ -28,6 +28,10 @@ import {
     type RaisedBedOrientation,
 } from '../../utils/raisedBedOrientation';
 import { useGameGLTF } from '../../utils/useGameGLTF';
+import {
+    appliedMulchOperationsOldestFirst,
+    latestAppliedMulchOperation,
+} from './raisedBedMulchOperationOrder';
 
 const combinedOverlap = 0.1;
 const halfOverlap = combinedOverlap / 2;
@@ -717,7 +721,8 @@ export function RaisedBedMulchOverlays({
         const fullBedCartMulch =
             fullBedCartVisual &&
             mulchVisualByOperationId.get(Number(fullBedCartVisual.entityId));
-        const fullBedAppliedMulch = (raisedBed.appliedOperations ?? []).find(
+        const fullBedAppliedMulch = latestAppliedMulchOperation(
+            raisedBed.appliedOperations ?? [],
             (operation) => {
                 const visual = mulchVisualByOperationId.get(operation.entityId);
                 return Boolean(
@@ -766,7 +771,9 @@ export function RaisedBedMulchOverlays({
 
         const fieldMulchByPositionIndex = new Map<number, string>();
 
-        for (const operation of raisedBed.appliedOperations ?? []) {
+        for (const operation of appliedMulchOperationsOldestFirst(
+            raisedBed.appliedOperations ?? [],
+        )) {
             const visual = mulchVisualByOperationId.get(operation.entityId);
             if (!visual || !isFieldMulchApplication(visual.application)) {
                 continue;
