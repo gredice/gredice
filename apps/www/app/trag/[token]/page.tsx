@@ -895,6 +895,8 @@ function statusTimelineItemClassName(status: string | undefined) {
 
 function TimelineEvent({ item }: { item: PublicHarvestTraceTimelineItem }) {
     const isStatusItem = isPlantStatusTimelineItem(item);
+    const operationCount =
+        item.kind === 'operation' ? item.operationCount : undefined;
 
     return (
         <article
@@ -907,19 +909,35 @@ function TimelineEvent({ item }: { item: PublicHarvestTraceTimelineItem }) {
             )}
         >
             <TimelineVisual item={item} />
-            <Stack spacing={1} className="min-w-0">
-                <Typography semiBold className="break-words leading-snug">
-                    {item.title}
-                </Typography>
-                {item.description ? (
-                    <Typography level="body2" className="text-muted-foreground">
-                        {item.description}
+            <div className="flex min-w-0 flex-1 items-start justify-between gap-3">
+                <Stack spacing={1} className="min-w-0">
+                    <Typography semiBold className="break-words leading-snug">
+                        {item.title}
+                    </Typography>
+                    {item.description ? (
+                        <Typography
+                            level="body2"
+                            className="text-muted-foreground"
+                        >
+                            {item.description}
+                        </Typography>
+                    ) : null}
+                    {item.location ? (
+                        <TraceTimelineLocation location={item.location} />
+                    ) : null}
+                </Stack>
+                {operationCount && operationCount > 1 ? (
+                    <Typography
+                        component="span"
+                        level="body2"
+                        semiBold
+                        className="mt-0.5 inline-flex min-w-8 shrink-0 justify-center rounded-md bg-muted px-2 py-0.5 text-muted-foreground"
+                        aria-label={`${operationCount} radnji`}
+                    >
+                        x{operationCount}
                     </Typography>
                 ) : null}
-                {item.location ? (
-                    <TraceTimelineLocation location={item.location} />
-                ) : null}
-            </Stack>
+            </div>
         </article>
     );
 }
@@ -994,7 +1012,15 @@ function WeekImageGallery({
 }
 
 function timelineItemCount(week: TimelineWeekGroup) {
-    return week.days.reduce((total, day) => total + day.items.length, 0);
+    return week.days.reduce(
+        (total, day) =>
+            total +
+            day.items.reduce(
+                (dayTotal, item) => dayTotal + (item.operationCount ?? 1),
+                0,
+            ),
+        0,
+    );
 }
 
 function eventCountLabel(count: number) {
