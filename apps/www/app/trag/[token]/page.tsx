@@ -35,6 +35,7 @@ import {
     PlantMonthCalendar,
     type PlantMonthCalendarRow,
 } from '../../biljke/PlantMonthCalendar';
+import { HarvestTraceStatusEvent } from './HarvestTraceStatusEvent';
 
 export const dynamic = 'force-dynamic';
 
@@ -466,35 +467,35 @@ function StatisticsImageGallery({
 
 function statusRangeClassName(status: string) {
     if (status === 'sowed' || status === 'pendingVerification') {
-        return 'bg-amber-900';
+        return 'bg-amber-900 dark:bg-amber-400';
     }
 
     if (status === 'sprouted') {
-        return 'bg-emerald-500';
+        return 'bg-emerald-500 dark:bg-emerald-400';
     }
 
     if (status === 'firstFlowers') {
-        return 'bg-pink-400';
+        return 'bg-pink-400 dark:bg-pink-300';
     }
 
     if (status === 'firstFruitSet') {
-        return 'bg-red-500';
+        return 'bg-red-500 dark:bg-red-400';
     }
 
     if (status === 'ready') {
-        return 'bg-orange-400';
+        return 'bg-orange-400 dark:bg-orange-300';
     }
 
     if (status === 'harvested') {
-        return 'bg-lime-600';
+        return 'bg-lime-600 dark:bg-lime-400';
     }
 
     if (status === 'removed') {
-        return 'bg-stone-500';
+        return 'bg-stone-500 dark:bg-stone-300';
     }
 
     if (status === 'notSprouted' || status === 'died') {
-        return 'bg-red-700';
+        return 'bg-red-700 dark:bg-red-400';
     }
 
     return 'bg-muted-foreground';
@@ -769,20 +770,6 @@ function TraceStatistics({ trace }: { trace: PublicHarvestTrace }) {
 function TimelineVisual({ item }: { item: PublicHarvestTraceTimelineItem }) {
     const iconClassName = 'size-4 text-primary';
 
-    if (item.plantStatus) {
-        return (
-            <span
-                className={cx(
-                    'flex size-10 shrink-0 items-center justify-center rounded-lg text-xl leading-none',
-                    statusTimelineIconClassName(item.plantStatus),
-                )}
-                aria-hidden="true"
-            >
-                {plantFieldStatusEmoji(item.plantStatus)}
-            </span>
-        );
-    }
-
     if (item.imageUrl) {
         return (
             <span className="relative flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg">
@@ -817,95 +804,24 @@ function TimelineVisual({ item }: { item: PublicHarvestTraceTimelineItem }) {
     );
 }
 
-function statusTimelineIconClassName(status: string) {
-    if (status === 'sowed' || status === 'pendingVerification') {
-        return 'bg-amber-100';
-    }
-
-    if (status === 'sprouted') {
-        return 'bg-emerald-100';
-    }
-
-    if (status === 'firstFlowers') {
-        return 'bg-pink-100';
-    }
-
-    if (status === 'firstFruitSet') {
-        return 'bg-red-100';
-    }
-
-    if (status === 'ready') {
-        return 'bg-orange-100';
-    }
-
-    if (status === 'harvested') {
-        return 'bg-lime-100';
-    }
-
-    if (status === 'removed') {
-        return 'bg-stone-100';
-    }
-
-    if (status === 'notSprouted' || status === 'died') {
-        return 'bg-red-100';
-    }
-
-    return 'bg-muted';
-}
-
-function statusTimelineItemClassName(status: string | undefined) {
-    if (!status) {
-        return '';
-    }
-
-    if (status === 'sowed' || status === 'pendingVerification') {
-        return 'border-amber-200 bg-amber-50/80';
-    }
-
-    if (status === 'sprouted') {
-        return 'border-emerald-200 bg-emerald-50/80';
-    }
-
-    if (status === 'firstFlowers') {
-        return 'border-pink-200 bg-pink-50/80';
-    }
-
-    if (status === 'firstFruitSet') {
-        return 'border-red-200 bg-red-50/80';
-    }
-
-    if (status === 'ready') {
-        return 'border-orange-200 bg-orange-50/80';
-    }
-
-    if (status === 'harvested') {
-        return 'border-lime-200 bg-lime-50/80';
-    }
-
-    if (status === 'removed') {
-        return 'border-stone-200 bg-stone-50/80';
-    }
-
-    if (status === 'notSprouted' || status === 'died') {
-        return 'border-red-200 bg-red-50/80';
-    }
-
-    return 'border-border bg-muted/40';
-}
-
 function TimelineEvent({ item }: { item: PublicHarvestTraceTimelineItem }) {
     const isStatusItem = isPlantStatusTimelineItem(item);
 
+    if (isStatusItem && item.plantStatus) {
+        return (
+            <HarvestTraceStatusEvent
+                item={{
+                    description: item.description,
+                    location: item.location,
+                    plantStatus: item.plantStatus,
+                    title: item.title,
+                }}
+            />
+        );
+    }
+
     return (
-        <article
-            className={cx(
-                'flex min-w-0 gap-3 py-1',
-                isStatusItem
-                    ? '-mx-2 rounded-lg border px-2 py-2 shadow-xs'
-                    : '',
-                statusTimelineItemClassName(item.plantStatus),
-            )}
-        >
+        <article className="flex min-w-0 gap-3 py-1">
             <TimelineVisual item={item} />
             <Stack spacing={1} className="min-w-0">
                 <Typography semiBold className="break-words leading-snug">

@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
     acceptOperation,
     assignUserToFarm,
+    backfillHarvestTraceLinksForCompletedHarvests,
     createAttributeDefinition,
     createEntity,
     createEvent,
@@ -14,6 +15,7 @@ import {
     getFarmUserPrintableHarvestTraceLinkIds,
     getHarvestTraceLinkAdminDetail,
     getHarvestTraceLinksAdmin,
+    getHarvestTraceLinksForOperationIds,
     getPublicHarvestTraceByToken,
     harvestTraceLinks,
     knownEvents,
@@ -531,6 +533,69 @@ test('createOrGetHarvestTraceLink reuses the same public token for the same harv
     assert.equal(secondLink.id, fixture.link.id);
     assert.equal(secondLink.publicToken, fixture.link.publicToken);
     assert.match(secondLink.tracePath, /^\/trag\/[A-Za-z0-9_-]+$/);
+});
+
+test('getHarvestTraceLinksForOperationIds returns active trace summaries', async () => {
+    const fixture = await createHarvestTraceFixture();
+
+    const links = await getHarvestTraceLinksForOperationIds([
+        fixture.harvestOperationId,
+        fixture.harvestOperationId,
+        -1,
+    ]);
+
+    assert.equal(links.length, 1);
+    assert.deepEqual(links[0], {
+        id: fixture.link.id,
+        publicToken: fixture.link.publicToken,
+        publicPath: fixture.link.tracePath,
+        status: 'active',
+        harvestOperationId: fixture.harvestOperationId,
+        raisedBedFieldId: fixture.raisedBedFieldId,
+        plantPlaceEventId: fixture.plantPlaceEventId,
+    });
+
+    await updateHarvestTraceLinkStatus(fixture.link.id, 'revoked');
+    assert.deepEqual(
+        await getHarvestTraceLinksForOperationIds([fixture.harvestOperationId]),
+        [],
+    );
+});
+
+test('backfillHarvestTraceLinksForCompletedHarvests creates missing completed harvest links', async () => {
+    const fixture = await createHarvestTraceFixture();
+    const harvestEntityId = await createPublishedEntity(
+        'operation',
+        'Berba za backfill',
+        { operationCategoryName: 'harvest' },
+    );
+    const operationId = await createAcceptedOperation({
+        accountId: fixture.accountId,
+        farmId: fixture.farmId,
+        gardenId: fixture.gardenId,
+        raisedBedId: fixture.raisedBedId,
+        raisedBedFieldId: fixture.raisedBedFieldId,
+        entityId: harvestEntityId,
+        timestamp: new Date('2026-05-31T07:00:00.000Z'),
+        completedAt: new Date('2026-05-31T08:00:00.000Z'),
+    });
+
+    const dryRun = await backfillHarvestTraceLinksForCompletedHarvests({
+        dryRun: true,
+    });
+    assert.equal(dryRun.createdLinks, 0);
+    assert.equal(dryRun.wouldCreateLinks, 1);
+
+    const applied = await backfillHarvestTraceLinksForCompletedHarvests({
+        dryRun: false,
+    });
+    assert.equal(applied.createdLinks, 1);
+
+    const links = await getHarvestTraceLinksForOperationIds([operationId]);
+    assert.equal(links.length, 1);
+    assert.equal(links[0]?.harvestOperationId, operationId);
+    assert.equal(links[0]?.raisedBedFieldId, fixture.raisedBedFieldId);
+    assert.equal(links[0]?.plantPlaceEventId, fixture.plantPlaceEventId);
 });
 
 test('getPublicHarvestTraceByToken includes raised-bed operations and excludes other-field operations', async () => {

@@ -17,6 +17,10 @@ export const KnownPages = {
     GrediceContact: 'https://www.gredice.com/kontakt',
     GrediceWhatsNew: 'https://www.gredice.com/novosti/sto-je-novo',
     GrediceDeliverySlots: 'https://www.gredice.com/dostava/termini',
+    GrediceHarvestTrace: (publicPath: string) =>
+        publicPath.startsWith('http')
+            ? publicPath
+            : `https://www.gredice.com/${publicPath.replace(/^\/+/, '')}`,
     AdventRules2025:
         'https://www.gredice.com/legalno/natjecaji/adventski-kalendar-2025',
 
