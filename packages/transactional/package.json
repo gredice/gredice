@@ -7,6 +7,8 @@
     ],
     "scripts": {
         "clean": "rimraf .turbo dist build out coverage tsconfig.tsbuildinfo",
+        "test": "pnpm run test:node",
+        "test:node": "node --import tsx --test ./tests/**/*.node.spec.tsx",
         "lint": "biome check --write",
         "lint:migrate": "biome migrate --write",
         "dev": "email dev -p 4001"
@@ -19,6 +21,7 @@
         "@types/node": "24.12.4",
         "@types/react": "19.2.15",
         "tailwindcss": "4.3.0",
+        "tsx": "4.22.3",
         "typescript": "6.0.3"
     },
     "dependencies": {
