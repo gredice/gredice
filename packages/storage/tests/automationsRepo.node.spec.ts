@@ -18,6 +18,7 @@ import {
     ensureDefaultAutomationDefinitions,
     executeAutomationRun,
     FREE_WATERING_OPERATION_ID,
+    getAutomationDefinitionByKey,
     getAutomationEventCursor,
     getAutomationRunWithSteps,
     getEvents,
@@ -27,10 +28,13 @@ import {
     getRaisedBed,
     knownEvents,
     knownEventTypes,
+    listAutomationDefinitionRunSummaries,
     listAutomationDefinitions,
     listAutomationRuns,
     listEnabledAutomationDefinitionsForEventType,
     operationImagePlantStatusReviewAutomationGraph,
+    plantRemovalOperationStatusAutomationGraph,
+    plantRemovalOperationStatusAutomationKey,
     processDueAutomationRuns,
     RAISED_BED_WATERING_50L_OPERATION_ID,
     recordAutomationRunStep,
@@ -322,6 +326,88 @@ test('automation graph validation waits for all incoming dependencies', () => {
             'queue-seasonal-waterings',
         ],
     );
+});
+
+test('automation definition run summaries are independent per definition', async () => {
+    createTestDb();
+    const firstDefinition = await createAutomationDefinition({
+        key: 'test.summary-first-automation',
+        name: 'Summary first automation',
+        status: 'enabled',
+        graph: seasonalSowedWateringAutomationGraph(),
+    });
+    const secondDefinition = await createAutomationDefinition({
+        key: 'test.summary-second-automation',
+        name: 'Summary second automation',
+        status: 'enabled',
+        graph: seasonalSowedWateringAutomationGraph(),
+    });
+    const firstFailedRun = await createAutomationRun({
+        automationDefinition: firstDefinition,
+        source: 'test',
+        input: { order: 'first-failed' },
+    });
+    assert.ok(firstFailedRun);
+    await completeAutomationRun({
+        id: firstFailedRun.id,
+        status: 'failed',
+        errorMessage: 'Expected test failure.',
+    });
+
+    const firstLatestRun = await createAutomationRun({
+        automationDefinition: firstDefinition,
+        source: 'test',
+        input: { order: 'first-latest' },
+    });
+    assert.ok(firstLatestRun);
+    await completeAutomationRun({
+        id: firstLatestRun.id,
+        status: 'succeeded',
+        output: { ok: true },
+    });
+
+    const secondFailedRun = await createAutomationRun({
+        automationDefinition: secondDefinition,
+        source: 'test',
+        input: { order: 'second-failed' },
+    });
+    assert.ok(secondFailedRun);
+    await completeAutomationRun({
+        id: secondFailedRun.id,
+        status: 'failed',
+        errorMessage: 'Expected second test failure.',
+    });
+
+    const summaries = await listAutomationDefinitionRunSummaries([
+        firstDefinition.id,
+        secondDefinition.id,
+        -1,
+    ]);
+    const summariesByDefinitionId = new Map(
+        summaries.map((summary) => [summary.automationDefinitionId, summary]),
+    );
+
+    assert.strictEqual(
+        summariesByDefinitionId.get(firstDefinition.id)?.latestRun?.id,
+        firstLatestRun.id,
+    );
+    assert.strictEqual(
+        summariesByDefinitionId.get(firstDefinition.id)?.failedRunsCount,
+        1,
+    );
+    assert.strictEqual(
+        summariesByDefinitionId.get(secondDefinition.id)?.latestRun?.id,
+        secondFailedRun.id,
+    );
+    assert.strictEqual(
+        summariesByDefinitionId.get(secondDefinition.id)?.failedRunsCount,
+        1,
+    );
+    assert.deepStrictEqual(summariesByDefinitionId.get(-1), {
+        automationDefinitionId: -1,
+        latestRun: null,
+        failedRunsCount: 0,
+    });
 });
 
 test('automation run claiming respects definition concurrency', async () => {
@@ -912,6 +998,99 @@ test('plant-status automation skips replay when target status already exists', a
     const replayResult = await executeAutomationRun(startedReplay);
 
     assert.strictEqual(replayResult.status, 'skipped');
+    assert.strictEqual(
+        (
+            await getEvents(knownEventTypes.raisedBedFields.plantUpdate, [
+                fieldAggregateId,
+            ])
+        ).length,
+        1,
+    );
+});
+
+test('default plant-removal automation marks the operation target removed after verification', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createAutomationRaisedBedContext();
+    const fieldAggregateId = `${raisedBedId}|0`;
+    await upsertRaisedBedField({ raisedBedId, positionIndex: 0 });
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(fieldAggregateId, {
+            plantSortId: '101',
+            scheduledDate: '2026-04-01T08:00:00.000Z',
+        }),
+    );
+    const raisedBed = await getRaisedBed(raisedBedId);
+    const field = raisedBed?.fields[0];
+    assert.ok(field);
+
+    await ensureDefaultAutomationDefinitions();
+    const definition = await getAutomationDefinitionByKey(
+        plantRemovalOperationStatusAutomationKey,
+    );
+    assert.ok(definition);
+    assert.strictEqual(
+        definition.triggerEventType,
+        knownEventTypes.operations.verify,
+    );
+    assert.deepStrictEqual(
+        definition.graph,
+        plantRemovalOperationStatusAutomationGraph(),
+    );
+    assert.deepStrictEqual(definition.metadata, {
+        managedBy: 'gredice',
+        defaultAutomation: true,
+        operationEntityId: 346,
+        targetStatus: 'removed',
+    });
+
+    const operationId = await createOperation({
+        accountId,
+        entityId: 346,
+        entityTypeName: 'operation',
+        gardenId,
+        raisedBedId,
+        raisedBedFieldId: field.id,
+    });
+    await createEvent(
+        knownEvents.operations.verifiedV1(operationId.toString(), {
+            verifiedBy: 'automations-test',
+        }),
+    );
+    const event = await getLatestEvent(
+        knownEventTypes.operations.verify,
+        operationId.toString(),
+    );
+    const run = await createAutomationRun({
+        automationDefinition: definition,
+        source: 'event',
+        sourceEvent: event,
+        input: {
+            eventId: event.id,
+            eventType: event.type,
+            aggregateId: event.aggregateId,
+            data:
+                event.data && typeof event.data === 'object'
+                    ? (event.data as Record<string, unknown>)
+                    : {},
+        },
+    });
+    assert.ok(run);
+    const startedRun = await startAutomationRun(run.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedRun);
+
+    const result = await executeAutomationRun(startedRun);
+
+    assert.strictEqual(result.status, 'succeeded');
+    const updatedRaisedBed = await getRaisedBed(raisedBedId);
+    const updatedField = updatedRaisedBed?.fields.find(
+        (candidate) => candidate.id === field.id,
+    );
+    assert.strictEqual(updatedField?.plantStatus, 'removed');
+    assert.strictEqual(updatedField?.active, false);
+    assert.ok(updatedField?.plantRemovedDate);
     assert.strictEqual(
         (
             await getEvents(knownEventTypes.raisedBedFields.plantUpdate, [

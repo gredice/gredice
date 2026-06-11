@@ -11,20 +11,23 @@ import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Row } from '@gredice/ui/Row';
 import { SelectItems } from '@gredice/ui/SelectItems';
 import { Stack } from '@gredice/ui/Stack';
-import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import type { Route } from 'next';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { ReactNode } from 'react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { AutomationSlidePanel } from './AutomationSlidePanel';
+import {
+    AutomationRunStatusIndicator,
+    AutomationStepStatusIndicator,
+    isAutomationRunLive,
+} from './AutomationStatusIndicator';
 import { AutomationRunRetryControls } from './AutomationTestPanel';
 import {
     automationModuleKindLabel,
     automationRunStatusMeta,
-    automationStepStatusMeta,
 } from './presentation';
 
 export type AutomationRunStatusFilter =
@@ -62,24 +65,6 @@ export type AutomationRunsTableRun = {
         createdAt: string;
     }>;
 };
-
-function RunStatusChip({ status }: { status: AutomationRunStatus }) {
-    const meta = automationRunStatusMeta(status);
-    return (
-        <Chip color={meta.color} size="sm" variant="soft">
-            {meta.label}
-        </Chip>
-    );
-}
-
-function StepStatusChip({ status }: { status: AutomationStepStatus }) {
-    const meta = automationStepStatusMeta(status);
-    return (
-        <Chip color={meta.color} size="sm" variant="soft">
-            {meta.label}
-        </Chip>
-    );
-}
 
 function formatDuration(startedAt: string | null, completedAt: string | null) {
     if (!startedAt || !completedAt) {
@@ -127,6 +112,23 @@ function DetailItem({
     );
 }
 
+function ListDetailItem({
+    children,
+    label,
+}: {
+    children: ReactNode;
+    label: string;
+}) {
+    return (
+        <div className="min-w-0">
+            <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                {label}
+            </dt>
+            <dd className="mt-1 min-w-0 break-words">{children}</dd>
+        </div>
+    );
+}
+
 export function AutomationRunsTable({
     currentStatusFilter,
     runs,
@@ -143,6 +145,10 @@ export function AutomationRunsTable({
     const selectedRun = useMemo(
         () => runs.find(({ run }) => run.id === selectedRunId) ?? null,
         [runs, selectedRunId],
+    );
+    const hasLiveRuns = useMemo(
+        () => runs.some(({ run }) => isAutomationRunLive(run.status)),
+        [runs],
     );
     const filterItems = useMemo<
         Array<{ value: AutomationRunStatusFilter; label: string }>
@@ -173,6 +179,18 @@ export function AutomationRunsTable({
         );
     }
 
+    useEffect(() => {
+        if (!hasLiveRuns) {
+            return;
+        }
+
+        const intervalId = window.setInterval(() => {
+            router.refresh();
+        }, 7000);
+
+        return () => window.clearInterval(intervalId);
+    }, [hasLiveRuns, router]);
+
     return (
         <>
             <div className="min-w-0 overflow-hidden rounded-md border bg-background">
@@ -198,110 +216,93 @@ export function AutomationRunsTable({
                         onValueChange={updateStatusFilter}
                     />
                 </div>
-                <Table>
-                    <Table.Header>
-                        <Table.Row>
-                            <Table.Head>Status</Table.Head>
-                            <Table.Head>Događaj</Table.Head>
-                            <Table.Head>Trajanje</Table.Head>
-                            <Table.Head>Greška</Table.Head>
-                            <Table.Head>Vrijeme</Table.Head>
-                        </Table.Row>
-                    </Table.Header>
-                    <Table.Body>
-                        {runs.length === 0 ? (
-                            <Table.Row>
-                                <Table.Cell colSpan={5}>
-                                    <NoDataPlaceholder>
-                                        Automatizacija nema izvođenja za
-                                        odabrani filter.
-                                    </NoDataPlaceholder>
-                                </Table.Cell>
-                            </Table.Row>
-                        ) : null}
+                {runs.length === 0 ? (
+                    <div className="p-4">
+                        <NoDataPlaceholder>
+                            Automatizacija nema izvođenja za odabrani filter.
+                        </NoDataPlaceholder>
+                    </div>
+                ) : (
+                    <ul className="divide-y">
                         {runs.map(({ run, steps }) => (
-                            <Table.Row
-                                key={run.id}
-                                aria-selected={selectedRunId === run.id}
-                                className={cx(
-                                    'cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
-                                    selectedRunId === run.id && 'bg-muted/70',
-                                )}
-                                onClick={() => setSelectedRunId(run.id)}
-                                onKeyDown={(event) => {
-                                    if (
-                                        event.key === 'Enter' ||
-                                        event.key === ' '
-                                    ) {
-                                        event.preventDefault();
-                                        setSelectedRunId(run.id);
-                                    }
-                                }}
-                                role="button"
-                                tabIndex={0}
-                            >
-                                <Table.Cell>
-                                    <Stack spacing={1}>
-                                        <RunStatusChip status={run.status} />
-                                        {run.dryRun ? (
-                                            <Chip
-                                                size="sm"
-                                                color="info"
-                                                variant="soft"
-                                            >
-                                                Probno
-                                            </Chip>
-                                        ) : null}
-                                    </Stack>
-                                </Table.Cell>
-                                <Table.Cell>
-                                    <Stack spacing={1}>
-                                        <Typography level="body3">
-                                            {run.sourceEventType ?? '-'}
-                                        </Typography>
-                                        <Typography
-                                            level="body3"
-                                            className="text-muted-foreground"
-                                        >
-                                            {run.sourceAggregateId ?? '-'}
-                                        </Typography>
-                                    </Stack>
-                                </Table.Cell>
-                                <Table.Cell>
-                                    {formatDuration(
-                                        run.startedAt,
-                                        run.completedAt,
+                            <li key={run.id}>
+                                <button
+                                    type="button"
+                                    aria-pressed={selectedRunId === run.id}
+                                    className={cx(
+                                        'grid w-full gap-3 p-4 text-left transition-colors hover:bg-muted/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+                                        selectedRunId === run.id &&
+                                            'bg-muted/70',
                                     )}
-                                </Table.Cell>
-                                <Table.Cell>
+                                    onClick={() => setSelectedRunId(run.id)}
+                                >
+                                    <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                        <Stack spacing={1} className="min-w-0">
+                                            <Row
+                                                spacing={2}
+                                                className="flex-wrap items-center"
+                                            >
+                                                <AutomationRunStatusIndicator
+                                                    status={run.status}
+                                                />
+                                                {run.dryRun ? (
+                                                    <Chip
+                                                        size="sm"
+                                                        color="info"
+                                                        variant="soft"
+                                                    >
+                                                        Probno
+                                                    </Chip>
+                                                ) : null}
+                                            </Row>
+                                            <Typography
+                                                level="body3"
+                                                className="text-muted-foreground"
+                                            >
+                                                {steps.length} koraka
+                                            </Typography>
+                                        </Stack>
+                                        <Stack
+                                            spacing={1}
+                                            className="text-muted-foreground sm:items-end"
+                                        >
+                                            <LocalDateTime>
+                                                {run.createdAt}
+                                            </LocalDateTime>
+                                            <Typography level="body3">
+                                                {formatDuration(
+                                                    run.startedAt,
+                                                    run.completedAt,
+                                                )}
+                                            </Typography>
+                                        </Stack>
+                                    </div>
+
+                                    <dl className="grid gap-3 text-sm sm:grid-cols-3">
+                                        <ListDetailItem label="Tip eventa">
+                                            {run.sourceEventType ?? '-'}
+                                        </ListDetailItem>
+                                        <ListDetailItem label="Agregat">
+                                            {run.sourceAggregateId ?? '-'}
+                                        </ListDetailItem>
+                                        <ListDetailItem label="Pokušaj">
+                                            {run.attempt} / {run.maxAttempts}
+                                        </ListDetailItem>
+                                    </dl>
+
                                     {run.errorMessage ? (
                                         <Typography
                                             level="body3"
-                                            className="text-red-700 dark:text-red-300"
+                                            className="break-words rounded-md bg-red-50 p-2 text-red-700 dark:bg-red-950 dark:text-red-300"
                                         >
                                             {run.errorMessage}
                                         </Typography>
-                                    ) : (
-                                        '-'
-                                    )}
-                                </Table.Cell>
-                                <Table.Cell>
-                                    <Stack spacing={1}>
-                                        <LocalDateTime>
-                                            {run.createdAt}
-                                        </LocalDateTime>
-                                        <Typography
-                                            level="body3"
-                                            className="text-muted-foreground"
-                                        >
-                                            {steps.length} koraka
-                                        </Typography>
-                                    </Stack>
-                                </Table.Cell>
-                            </Table.Row>
+                                    ) : null}
+                                </button>
+                            </li>
                         ))}
-                    </Table.Body>
-                </Table>
+                    </ul>
+                )}
             </div>
 
             <AutomationSlidePanel
@@ -326,7 +327,7 @@ export function AutomationRunsTable({
                     <Stack spacing={5}>
                         <Stack spacing={3}>
                             <Row spacing={1} className="flex-wrap">
-                                <RunStatusChip
+                                <AutomationRunStatusIndicator
                                     status={selectedRun.run.status}
                                 />
                                 {selectedRun.run.dryRun ? (
@@ -423,7 +424,7 @@ export function AutomationRunsTable({
                                             <Typography level="body2" semiBold>
                                                 {step.nodeId}
                                             </Typography>
-                                            <StepStatusChip
+                                            <AutomationStepStatusIndicator
                                                 status={step.status}
                                             />
                                             <Chip size="sm" variant="soft">

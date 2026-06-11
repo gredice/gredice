@@ -11,6 +11,7 @@ import type { Block } from '../../types/Block';
 import type { Stack } from '../../types/Stack';
 import {
     type AnimalDebugEntry,
+    type AnimalPresenceEntry,
     type GameState,
     useGameState,
 } from '../../useGameState';
@@ -21,6 +22,11 @@ import {
     AnimalPathDebugIndicator,
     AnimalTargetDebugMarker,
 } from '../animals/AnimalDebugIndicators';
+import {
+    animalPresencePosition,
+    animalPresenceUpdateIntervalSeconds,
+    freshAnimalPresences,
+} from '../animals/animalPresence';
 import {
     type CatBehavior,
     type CatWeather,
@@ -94,6 +100,7 @@ const catDebugBehaviors = [
     'cover',
     'low-entity',
     'stalk-bird',
+    'interact-dog',
 ] satisfies CatBehavior[];
 
 const clearCatWeather = {
@@ -714,15 +721,82 @@ function createStalkBirdTarget({
     } satisfies CatTarget;
 }
 
+function getDogInteractionTargets({
+    dogPresenceEntries,
+    habitat,
+    now,
+    range,
+}: {
+    dogPresenceEntries: AnimalPresenceEntry[];
+    habitat: CatHabitat;
+    now: number;
+    range: number;
+}) {
+    return freshAnimalPresences({
+        entries: dogPresenceEntries,
+        now,
+        species: 'Dog',
+    }).filter(
+        (entry) =>
+            horizontalDistance(
+                animalPresencePosition(entry),
+                habitat.pillow.position,
+            ) <= range,
+    );
+}
+
+function createInteractDogTarget({
+    dogInteractionTargets,
+    habitat,
+    random,
+}: {
+    dogInteractionTargets: AnimalPresenceEntry[];
+    habitat: CatHabitat;
+    random: () => number;
+}) {
+    const targetDog = pickCandidate(dogInteractionTargets, random);
+    if (!targetDog) {
+        return null;
+    }
+
+    const dogPosition = animalPresencePosition(targetDog);
+    const approach = habitat.pillow.position.clone().sub(dogPosition);
+    if (approach.lengthSq() <= 0.001) {
+        const angle = random() * fullTurn;
+        approach.set(Math.cos(angle), 0, Math.sin(angle));
+    }
+    approach.y = 0;
+    approach.setLength(0.72 + random() * 0.22);
+
+    const position = dogPosition.clone().add(approach);
+    position.y = getCatWalkYAt(position, habitat.groundSurfaces);
+
+    return {
+        behavior: 'interact-dog',
+        facingYaw: Math.atan2(
+            dogPosition.x - position.x,
+            dogPosition.z - position.z,
+        ),
+        id: `interact-dog-${targetDog.id}`,
+        lookAtPosition: dogPosition,
+        position,
+        walkPosition: position.clone(),
+    } satisfies CatTarget;
+}
+
 function chooseNextTarget({
     birdGroundEntries,
+    dogPresenceEntries,
     habitat,
+    now,
     random,
     timeOfDay,
     weather,
 }: {
     birdGroundEntries: AnimalDebugEntry[];
+    dogPresenceEntries: AnimalPresenceEntry[];
     habitat: CatHabitat;
+    now: number;
     random: () => number;
     timeOfDay: number;
     weather: CatWeather | null | undefined;
@@ -744,12 +818,19 @@ function chooseNextTarget({
         habitat,
         range,
     });
+    const dogInteractionTargets = getDogInteractionTargets({
+        dogPresenceEntries,
+        habitat,
+        now,
+        range,
+    });
     const behavior = pickCatBehavior({
         availability: {
             cover: covers.length > 0,
             'low-entity': lowEntities.length > 0,
             roam: roamAnchors.length > 0,
             'stalk-bird': birdGroundTargets.length > 0,
+            'interact-dog': dogInteractionTargets.length > 0,
         },
         random,
         timeOfDay,
@@ -767,6 +848,16 @@ function chooseNextTarget({
         );
     }
 
+    if (behavior === 'interact-dog') {
+        return (
+            createInteractDogTarget({
+                dogInteractionTargets,
+                habitat,
+                random,
+            }) ?? habitat.pillow
+        );
+    }
+
     if (behavior === 'low-entity') {
         return pickCandidate(lowEntities, random) ?? habitat.pillow;
     }
@@ -781,21 +872,27 @@ function chooseNextTarget({
 function chooseManualNextTarget({
     birdGroundEntries,
     currentTarget,
+    dogPresenceEntries,
     habitat,
+    now,
     random,
     timeOfDay,
     weather,
 }: {
     birdGroundEntries: AnimalDebugEntry[];
     currentTarget: CatTarget;
+    dogPresenceEntries: AnimalPresenceEntry[];
     habitat: CatHabitat;
+    now: number;
     random: () => number;
     timeOfDay: number;
     weather: CatWeather | null | undefined;
 }) {
     const target = chooseNextTarget({
         birdGroundEntries,
+        dogPresenceEntries,
         habitat,
+        now,
         random,
         timeOfDay,
         weather,
@@ -828,6 +925,12 @@ function chooseManualNextTarget({
         habitat,
         range,
     });
+    const dogInteractionTargets = getDogInteractionTargets({
+        dogPresenceEntries,
+        habitat,
+        now,
+        range,
+    });
     const alternatives: CatTarget[] = [];
 
     if (currentTarget.behavior !== 'roam' && roamAnchors.length > 0) {
@@ -849,6 +952,17 @@ function chooseManualNextTarget({
         }
     }
 
+    if (currentTarget.behavior !== 'interact-dog') {
+        const interactTarget = createInteractDogTarget({
+            dogInteractionTargets,
+            habitat,
+            random,
+        });
+        if (interactTarget) {
+            alternatives.push(interactTarget);
+        }
+    }
+
     if (currentTarget.behavior !== 'low-entity') {
         alternatives.push(...lowEntities);
     }
@@ -863,14 +977,18 @@ function chooseManualNextTarget({
 function chooseDebugTarget({
     behavior,
     birdGroundEntries,
+    dogPresenceEntries,
     habitat,
+    now,
     random,
     timeOfDay,
     weather,
 }: {
     behavior: string;
     birdGroundEntries: AnimalDebugEntry[];
+    dogPresenceEntries: AnimalPresenceEntry[];
     habitat: CatHabitat;
+    now: number;
     random: () => number;
     timeOfDay: number;
     weather: CatWeather | null | undefined;
@@ -909,6 +1027,21 @@ function chooseDebugTarget({
                 birdGroundTargets: getGroundBirdTargets({
                     birdGroundEntries,
                     habitat,
+                    range,
+                }),
+                habitat,
+                random,
+            }) ?? habitat.pillow
+        );
+    }
+
+    if (behavior === 'interact-dog') {
+        return (
+            createInteractDogTarget({
+                dogInteractionTargets: getDogInteractionTargets({
+                    dogPresenceEntries,
+                    habitat,
+                    now,
                     range,
                 }),
                 habitat,
@@ -1049,6 +1182,10 @@ function getCatDebugActivity(runtime: CatRuntimeState) {
         return 'watching ground birds';
     }
 
+    if (runtime.target.behavior === 'interact-dog') {
+        return 'watching dog';
+    }
+
     if (runtime.target.behavior === 'low-entity') {
         return 'perched on block';
     }
@@ -1163,10 +1300,12 @@ function prepareCatMesh(object: Mesh) {
 
 function Cat({
     birdGroundEntries,
+    dogPresenceEntries,
     habitat,
     weather,
 }: {
     birdGroundEntries: AnimalDebugEntry[];
+    dogPresenceEntries: AnimalPresenceEntry[];
     habitat: CatHabitat;
     weather: CatWeather | null | undefined;
 }) {
@@ -1178,6 +1317,7 @@ function Cat({
     const randomRef = useRef(createRandom(habitat.seed));
     const runtimeRef = useRef<CatRuntimeState | null>(null);
     const lastAnimalDebugUpdateRef = useRef(0);
+    const lastAnimalPresenceUpdateRef = useRef(0);
     const lastDebugCommandSequenceRef = useRef(0);
     const pathDebugKeyRef = useRef('');
     const activeAnimationRef = useRef<CatAnimationName>('Cat_LyingIdle');
@@ -1201,6 +1341,12 @@ function Cat({
     );
     const removeAnimalDebugEntry = useGameState(
         (state) => state.removeAnimalDebugEntry,
+    );
+    const setAnimalPresenceEntry = useGameState(
+        (state) => state.setAnimalPresenceEntry,
+    );
+    const removeAnimalPresenceEntry = useGameState(
+        (state) => state.removeAnimalPresenceEntry,
     );
 
     const catModel = useMemo(() => {
@@ -1247,6 +1393,11 @@ function Cat({
 
         return () => removeAnimalDebugEntry(habitat.id);
     }, [enableDebugHudFlag, habitat.id, removeAnimalDebugEntry]);
+
+    useEffect(
+        () => () => removeAnimalPresenceEntry(habitat.id),
+        [habitat.id, removeAnimalPresenceEntry],
+    );
 
     useEffect(() => {
         if (!animalTargetsDebugVisible && targetDebugRef.current) {
@@ -1303,7 +1454,9 @@ function Cat({
         const target = chooseManualNextTarget({
             birdGroundEntries,
             currentTarget: runtime.target,
+            dogPresenceEntries,
             habitat,
+            now,
             random,
             timeOfDay,
             weather,
@@ -1388,7 +1541,9 @@ function Cat({
                 const target = chooseDebugTarget({
                     behavior: animalDebugCommand.behavior,
                     birdGroundEntries,
+                    dogPresenceEntries,
                     habitat,
+                    now,
                     random,
                     timeOfDay,
                     weather,
@@ -1498,7 +1653,9 @@ function Cat({
 
         const target = chooseNextTarget({
             birdGroundEntries,
+            dogPresenceEntries,
             habitat,
+            now,
             random,
             timeOfDay,
             weather,
@@ -1528,6 +1685,22 @@ function Cat({
         const runtime = runtimeRef.current;
         const group = groupRef.current;
         const now = clock.elapsedTime;
+
+        if (
+            runtime &&
+            group &&
+            now - lastAnimalPresenceUpdateRef.current >=
+                animalPresenceUpdateIntervalSeconds
+        ) {
+            lastAnimalPresenceUpdateRef.current = now;
+            setAnimalPresenceEntry({
+                id: habitat.id,
+                species: 'Cat',
+                behavior: runtime.target.behavior,
+                position: roundCatDebugPoint(group.position),
+                updatedAt: now,
+            });
+        }
 
         if (
             enableDebugHudFlag &&
@@ -1603,6 +1776,9 @@ export function Cats({
     const animalDebugEntries = useGameState(
         (state) => state.animalDebugEntries,
     );
+    const animalPresenceEntries = useGameState(
+        (state) => state.animalPresenceEntries,
+    );
     const birdGroundEntries = useMemo(
         () =>
             animalDebugEntries.filter(
@@ -1610,6 +1786,10 @@ export function Cats({
                     entry.species === 'Bird' && entry.behavior === 'ground',
             ),
         [animalDebugEntries],
+    );
+    const dogPresenceEntries = useMemo(
+        () => animalPresenceEntries.filter((entry) => entry.species === 'Dog'),
+        [animalPresenceEntries],
     );
     const { data: weatherNow } = useWeatherNow(!weatherDisabled && !weather);
     const catWeather = resolveCatWeather({
@@ -1633,6 +1813,7 @@ export function Cats({
                 <Cat
                     key={habitat.id}
                     birdGroundEntries={birdGroundEntries}
+                    dogPresenceEntries={dogPresenceEntries}
                     habitat={habitat}
                     weather={catWeather}
                 />

@@ -34,6 +34,7 @@ export const gameAssetModels = {
     BirdSmall: { url: '/assets/models/BirdSmall.glb?v=9f3f492cf895' },
     Bee: { url: '/assets/models/Bee.glb' },
     Cat: { url: '/assets/models/Cat.glb' },
+    Dog: { url: '/assets/models/Dog.glb' },
     Bucket: { url: '/assets/models/Bucket.glb' },
     WateringCan: { url: '/assets/models/WateringCan.glb?v=8b128e30b990' },
     LiquidPreparationBottlePestControl: {
@@ -69,6 +70,7 @@ export const gameAssetModels = {
     BirdHouse: { url: '/assets/models/BirdHouse.glb?v=20bc83690473' },
     FireflyJar: { url: '/assets/models/FireflyJar.glb' },
     CatPillow: { url: '/assets/models/CatPillow.glb' },
+    DogHouse: { url: '/assets/models/DogHouse.glb' },
     Fence: { url: '/assets/models/Fence.glb' },
     Greenhouse: { url: '/assets/models/Greenhouse.glb' },
     GroundEnvironment: { url: '/assets/models/GroundEnvironment.glb' },
@@ -99,6 +101,7 @@ export const gameAssetModels = {
     PotSquatRidged: { url: '/assets/models/PotSquatRidged.glb' },
     PotTallSlenderCone: { url: '/assets/models/PotTallSlenderCone.glb' },
     PotWideLippedCup: { url: '/assets/models/PotWideLippedCup.glb' },
+    HarvestBasket: { url: '/assets/models/HarvestBasket.glb' },
 } satisfies Record<string, { url: string }>;
 
 export type GameAssetName = keyof typeof gameAssetModels;
@@ -137,6 +140,7 @@ export const lazyGameAssetNames = [
     'BirdSmall',
     'Bee',
     'Cat',
+    'Dog',
     'Bucket',
     'WateringCan',
     'LiquidPreparationBottlePestControl',
@@ -154,6 +158,7 @@ export const lazyGameAssetNames = [
     'BirdHouse',
     'FireflyJar',
     'CatPillow',
+    'DogHouse',
     'Fence',
     'Greenhouse',
     'GroundEnvironment',
@@ -181,6 +186,7 @@ export const lazyGameAssetNames = [
     'PotSquatRidged',
     'PotTallSlenderCone',
     'PotWideLippedCup',
+    'HarvestBasket',
 ] satisfies GameAssetName[];
 
 export const allGameAssetNames = [
@@ -210,6 +216,7 @@ export const allGameAssetNames = [
     'BirdSmall',
     'Bee',
     'Cat',
+    'Dog',
     'Bucket',
     'WateringCan',
     'LiquidPreparationBottlePestControl',
@@ -227,6 +234,7 @@ export const allGameAssetNames = [
     'BirdHouse',
     'FireflyJar',
     'CatPillow',
+    'DogHouse',
     'Fence',
     'Greenhouse',
     'GroundEnvironment',
@@ -255,4 +263,5 @@ export const allGameAssetNames = [
     'PotSquatRidged',
     'PotTallSlenderCone',
     'PotWideLippedCup',
+    'HarvestBasket',
 ] satisfies GameAssetName[];

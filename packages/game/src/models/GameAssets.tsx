@@ -15,7 +15,11 @@ type ActionName =
     | 'Cat_LyingIdle'
     | 'Cat_StandUp'
     | 'Cat_Crouch'
-    | 'Cat_PreyWatch';
+    | 'Cat_PreyWatch'
+    | 'Dog_Idle'
+    | 'Dog_Walk'
+    | 'Dog_LyingIdle'
+    | 'Dog_PreyWatch';
 
 interface GLTFAction extends THREE.AnimationClip {
     name: ActionName;
@@ -101,6 +105,39 @@ export type GLTFResult = GLTF & {
         Cat_BodySpot_Top_Back: THREE.Mesh;
         Cat_BodySpot_Top_Front: THREE.Mesh;
         Cat_ChestPatch: THREE.Mesh;
+        Dog_BellyPatch: THREE.Mesh;
+        Dog_Body: THREE.Mesh;
+        Dog_ChestPatch: THREE.Mesh;
+        Dog_Collar: THREE.Mesh;
+        Dog_Ear_L: THREE.Mesh;
+        Dog_Ear_R: THREE.Mesh;
+        Dog_Eye_L: THREE.Mesh;
+        Dog_Eye_R: THREE.Mesh;
+        Dog_Head: THREE.Mesh;
+        Dog_Leg_FL: THREE.Mesh;
+        Dog_Leg_FR: THREE.Mesh;
+        Dog_Leg_RL: THREE.Mesh;
+        Dog_Leg_RR: THREE.Mesh;
+        Dog_Muzzle: THREE.Mesh;
+        Dog_Nose: THREE.Mesh;
+        Dog_Paw_FL: THREE.Mesh;
+        Dog_Paw_FR: THREE.Mesh;
+        Dog_Paw_RL: THREE.Mesh;
+        Dog_Paw_RR: THREE.Mesh;
+        Dog_Tag: THREE.Mesh;
+        Dog_Tail_Base: THREE.Mesh;
+        Dog_Tail_Tip: THREE.Mesh;
+        DogHouse_BackShadow: THREE.Mesh;
+        DogHouse_Door: THREE.Mesh;
+        DogHouse_DoorTop: THREE.Mesh;
+        DogHouse_NamePlate: THREE.Mesh;
+        DogHouse_RidgeCap: THREE.Mesh;
+        DogHouse_Roof_Left: THREE.Mesh;
+        DogHouse_Roof_Right: THREE.Mesh;
+        DogHouse_Threshold: THREE.Mesh;
+        DogHouse_Trim_Left: THREE.Mesh;
+        DogHouse_Trim_Right: THREE.Mesh;
+        DogHouse_Walls: THREE.Mesh;
         Block_Ground_1: THREE.Mesh;
         Block_Ground_2: THREE.Mesh;
         Block_Ground_Angle_1: THREE.Mesh;
@@ -256,6 +293,9 @@ export type GLTFResult = GLTF & {
         FireflyJar_Firefly_Wings: THREE.Mesh;
         CatPillow_Cushion: THREE.Mesh;
         CatPillow_Seam: THREE.Mesh;
+        DogHouse_Bowl: THREE.Mesh;
+        DogHouse_Bowl_Rim: THREE.Mesh;
+        DogHouse_Bowl_Water: THREE.Mesh;
         Fence_Corner: THREE.Mesh;
         Fence_Cross: THREE.Mesh;
         Fence_Middle: THREE.Mesh;
@@ -394,6 +434,21 @@ export type GLTFResult = GLTF & {
         PotVariant_Soil_09: THREE.Mesh;
         PotVariant_10_Wide_Lipped_Cup: THREE.Mesh;
         PotVariant_Soil_10: THREE.Mesh;
+        HarvestBasket_Weave: THREE.Mesh;
+        HarvestBasket_Rim: THREE.Mesh;
+        HarvestBasket_Inner: THREE.Mesh;
+        HarvestBasket_Handle: THREE.Mesh;
+        HarvestBasket_Pin: THREE.Mesh;
+        HarvestBasket_Tomato: THREE.Mesh;
+        HarvestBasket_TomatoCalyx: THREE.Mesh;
+        HarvestBasket_Carrot: THREE.Mesh;
+        HarvestBasket_CarrotGreens: THREE.Mesh;
+        HarvestBasket_Cabbage: THREE.Mesh;
+        HarvestBasket_Turnip: THREE.Mesh;
+        HarvestBasket_TurnipSprout: THREE.Mesh;
+        HarvestBasket_Zucchini: THREE.Mesh;
+        HarvestBasket_Pumpkin: THREE.Mesh;
+        HarvestBasket_PumpkinStem: THREE.Mesh;
     };
     materials: {
         BH_flat_dark_wood: THREE.MeshStandardMaterial;
@@ -406,6 +461,10 @@ export type GLTFResult = GLTF & {
         FJ_soft_firefly_wings: THREE.MeshStandardMaterial;
         FJ_soft_transparent_glass: THREE.MeshStandardMaterial;
         FJ_warm_firefly_glow: THREE.MeshStandardMaterial;
+        'Material.BasketInner': THREE.MeshStandardMaterial;
+        'Material.BasketPin': THREE.MeshStandardMaterial;
+        'Material.BasketRim': THREE.MeshStandardMaterial;
+        'Material.BasketWeave': THREE.MeshStandardMaterial;
         'Material.Bee.Black': THREE.MeshStandardMaterial;
         'Material.Bee.Cheek': THREE.MeshStandardMaterial;
         'Material.Bee.Gold': THREE.MeshStandardMaterial;
@@ -435,6 +494,17 @@ export type GLTFResult = GLTF & {
         'Material.DesertStone.Groove': THREE.MeshStandardMaterial;
         'Material.Dirt': THREE.MeshStandardMaterial;
         'Material.Dirt.001': THREE.MeshStandardMaterial;
+        'Material.Dog.CollarRed': THREE.MeshStandardMaterial;
+        'Material.Dog.CreamPatch': THREE.MeshStandardMaterial;
+        'Material.Dog.DarkDetails': THREE.MeshStandardMaterial;
+        'Material.Dog.SoftFur': THREE.MeshStandardMaterial;
+        'Material.Dog.TagGold': THREE.MeshStandardMaterial;
+        'Material.Dog.WarmFur': THREE.MeshStandardMaterial;
+        'Material.DogHouse.BowlBlue': THREE.MeshStandardMaterial;
+        'Material.DogHouse.CharcoalRoof': THREE.MeshStandardMaterial;
+        'Material.DogHouse.DarkRedWood': THREE.MeshStandardMaterial;
+        'Material.DogHouse.RedWood': THREE.MeshStandardMaterial;
+        'Material.DogHouse.WarmTrim': THREE.MeshStandardMaterial;
         'Material.GardenFlower.Center': THREE.MeshStandardMaterial;
         'Material.GardenFlower.Leaf': THREE.MeshStandardMaterial;
         'Material.GardenFlower.PetalGradient': THREE.MeshStandardMaterial;
@@ -503,6 +573,13 @@ export type GLTFResult = GLTF & {
         'Material.Stone': THREE.MeshStandardMaterial;
         'Material.Stone.001': THREE.MeshStandardMaterial;
         'Material.Stone.002': THREE.MeshStandardMaterial;
+        'Material.VeggieGreen': THREE.MeshStandardMaterial;
+        'Material.VeggieGreenDark': THREE.MeshStandardMaterial;
+        'Material.VeggieLeafy': THREE.MeshStandardMaterial;
+        'Material.VeggieOrange': THREE.MeshStandardMaterial;
+        'Material.VeggiePale': THREE.MeshStandardMaterial;
+        'Material.VeggieRed': THREE.MeshStandardMaterial;
+        'Material.VeggieYellow': THREE.MeshStandardMaterial;
         'Material.Water': THREE.MeshStandardMaterial;
         'Material.WateringCan.Body': THREE.MeshStandardMaterial;
         'Material.WateringCan.Dark': THREE.MeshStandardMaterial;

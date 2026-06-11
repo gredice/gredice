@@ -11,11 +11,16 @@ import { useHoveredBlockStore } from '../controls/useHoveredBlockStore';
 import type { GameAssetName } from '../data/models';
 import { useBlockData } from '../hooks/useBlockData';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
+import { useOperations } from '../hooks/useOperations';
+import { useSnapshotTime } from '../hooks/useSnapshotTime';
 import type { GLTFResult } from '../models/GameAssets';
 import { snowPresets } from '../snow/snowPresets';
 import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
-import { getConnectedRaisedBedBlockIds } from '../utils/raisedBedBlocks';
+import {
+    getConnectedRaisedBedBlockIds,
+    getRaisedBedBlockIds,
+} from '../utils/raisedBedBlocks';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { useWaterBlockMaterial } from './BlockWater';
 import { getCactusVariantConfig } from './Cactus';
@@ -35,6 +40,11 @@ import { HoverOutline } from './helpers/HoverOutline';
 import { resolveEntityNeighbors } from './helpers/useEntityNeighbors';
 import { RaisedBedFields } from './raisedBed/RaisedBedFields';
 import { RaisedBedGeneratedPlantFieldBatches } from './raisedBed/RaisedBedGeneratedPlantFieldBatches';
+import { RaisedBedHarvestBasketForBlock } from './raisedBed/RaisedBedHarvestBasket';
+import {
+    getRaisedBedSoilWetPatches,
+    resolveRaisedBedWateringVisualRewards,
+} from './raisedBed/raisedBedSoilWetPatches';
 import {
     resolveWaterFoamCorners,
     resolveWaterFoamEdges,
@@ -626,11 +636,102 @@ function RaisedBedInstances({
     ...commonSnowProps
 }: { stacks: Stack[] | undefined } & CommonWeatherProps) {
     const { nodes, materials } = useGameGLTF('RaisedBed');
+    const { data: currentGarden } = useCurrentGarden();
+    const { data: operations } = useOperations();
+    const currentTime = useSnapshotTime();
     const instances = useEntityBlockInstances({
         name: 'Raised_Bed',
         stacks,
         yOffset: 1,
     })?.map((instance) => resolveRaisedBedInstance(instance, stacks));
+    const raisedBedContextByBlockId = useMemo(() => {
+        const context = new Map<
+            string,
+            {
+                blockIndex: number;
+                blockOffset: number;
+                raisedBed: NonNullable<
+                    typeof currentGarden
+                >['raisedBeds'][number];
+            }
+        >();
+
+        if (!currentGarden) {
+            return context;
+        }
+
+        for (const raisedBed of currentGarden.raisedBeds) {
+            const blockIds = getRaisedBedBlockIds(currentGarden, raisedBed.id);
+
+            blockIds.forEach((blockId, blockIndex) => {
+                context.set(blockId, {
+                    blockIndex,
+                    blockOffset:
+                        Math.max(blockIds.length - 1 - blockIndex, 0) * 9,
+                    raisedBed,
+                });
+            });
+        }
+
+        return context;
+    }, [currentGarden]);
+    const wateringRewardsByRaisedBedId = useMemo(() => {
+        const rewards = new Map<
+            number,
+            ReturnType<typeof resolveRaisedBedWateringVisualRewards>
+        >();
+
+        if (!currentGarden) {
+            return rewards;
+        }
+
+        for (const raisedBed of currentGarden.raisedBeds) {
+            rewards.set(
+                raisedBed.id,
+                resolveRaisedBedWateringVisualRewards({
+                    operations,
+                    raisedBed,
+                }),
+            );
+        }
+
+        return rewards;
+    }, [currentGarden, operations]);
+    const soilWetPatches = useMemo(
+        () =>
+            instances?.flatMap((instance) => {
+                const context = raisedBedContextByBlockId.get(
+                    instance.block.id,
+                );
+
+                if (!context) {
+                    return [];
+                }
+
+                return getRaisedBedSoilWetPatches({
+                    blockIndex: context.blockIndex,
+                    blockOffset: context.blockOffset,
+                    blockPosition: instance.position,
+                    currentTime,
+                    raisedBed: context.raisedBed,
+                    visualRewards:
+                        wateringRewardsByRaisedBedId.get(
+                            context.raisedBed.id,
+                        ) ?? [],
+                });
+            }) ?? [],
+        [
+            currentTime,
+            instances,
+            raisedBedContextByBlockId,
+            wateringRewardsByRaisedBedId,
+        ],
+    );
+    const raisedBedSoilMaterial = useGroundPatchMaterial(
+        materials[dirtMaterialName],
+        'raisedBedSoil',
+        { wetPatches: soilWetPatches },
+    );
 
     if (!instances?.length) {
         return null;
@@ -646,12 +747,12 @@ function RaisedBedInstances({
                 const shape2 = `${shape}_2` as keyof GLTFResult['nodes'];
                 const shape1Material =
                     shape1 === 'Raised_Bed_O_1'
-                        ? planksMaterialName
-                        : dirtMaterialName;
+                        ? materials[planksMaterialName]
+                        : raisedBedSoilMaterial;
                 const shape2Material =
                     shape2 === 'Raised_Bed_O_2'
-                        ? dirtMaterialName
-                        : planksMaterialName;
+                        ? raisedBedSoilMaterial
+                        : materials[planksMaterialName];
 
                 return (
                     <Suspense key={shape} fallback={null}>
@@ -659,7 +760,7 @@ function RaisedBedInstances({
                             instanceKey={shape1}
                             instances={shapeInstances}
                             geometry={nodes[shape1].geometry}
-                            material={materials[shape1Material]}
+                            material={shape1Material}
                             renderRainWetOverlay
                             snow={{
                                 maxThickness: 0.16,
@@ -673,7 +774,7 @@ function RaisedBedInstances({
                             instanceKey={shape2}
                             instances={shapeInstances}
                             geometry={nodes[shape2].geometry}
-                            material={materials[shape2Material]}
+                            material={shape2Material}
                             renderRainWetOverlay
                             snow={{
                                 maxThickness: 0.16,
@@ -702,6 +803,12 @@ function RaisedBedInstances({
                         generatedPlantsHandledExternally
                     />
                 </group>
+            ))}
+            {instances.map((instance) => (
+                <RaisedBedHarvestBasketForBlock
+                    key={`Raised_Bed-harvest-basket-${instance.id}`}
+                    blockId={instance.block.id}
+                />
             ))}
             <RaisedBedHoverOutlines
                 instances={instances}
@@ -739,8 +846,15 @@ function RaisedBedHoverOutlines({
     stacks: Stack[] | undefined;
 }) {
     const hoveredBlock = useHoveredBlockStore((state) => state.hoveredBlock);
+    const hasActiveDragPreview = useGameState((state) =>
+        Boolean(state.activeDragPreview),
+    );
 
-    if (hoveredBlock?.name !== 'Raised_Bed' || !stacks) {
+    if (
+        hasActiveDragPreview ||
+        hoveredBlock?.name !== 'Raised_Bed' ||
+        !stacks
+    ) {
         return null;
     }
 
@@ -1147,6 +1261,9 @@ function GardenBoxHoverOutlines({
     openGardenBoxBlockId: string | null;
 }) {
     const hoveredBlock = useHoveredBlockStore((state) => state.hoveredBlock);
+    const hasActiveDragPreview = useGameState((state) =>
+        Boolean(state.activeDragPreview),
+    );
     const isLocalSandbox = useGameState(
         (state) => state.localSandboxStorageKey !== null,
     );
@@ -1160,7 +1277,9 @@ function GardenBoxHoverOutlines({
         const lidOpen =
             hoveredGardenBoxBlockId === instance.block.id ||
             openGardenBoxBlockId === instance.block.id;
-        const hovered = hoveredBlock === instance.block || lidOpen;
+        const hovered =
+            (!hasActiveDragPreview && hoveredBlock === instance.block) ||
+            lidOpen;
 
         if (!hovered) {
             return null;
@@ -1662,6 +1781,9 @@ function GiftBoxHoverOutlines({
     stacks: Stack[] | undefined;
 }) {
     const hoveredBlock = useHoveredBlockStore((state) => state.hoveredBlock);
+    const hasActiveDragPreview = useGameState((state) =>
+        Boolean(state.activeDragPreview),
+    );
     const instances = useEntityBlockInstances({
         name,
         stacks,
@@ -1669,7 +1791,7 @@ function GiftBoxHoverOutlines({
     });
 
     return instances?.map((instance) => {
-        if (hoveredBlock !== instance.block) {
+        if (hasActiveDragPreview || hoveredBlock !== instance.block) {
             return null;
         }
 

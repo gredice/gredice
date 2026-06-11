@@ -3,6 +3,7 @@ import { useHoveredBlockStore } from '../../controls/useHoveredBlockStore';
 import { SnowOverlay } from '../../snow/SnowOverlay';
 import { snowPresets } from '../../snow/snowPresets';
 import type { EntityInstanceProps } from '../../types/runtime/EntityInstanceProps';
+import { useGameState } from '../../useGameState';
 import { useStackHeight } from '../../utils/getStackHeight';
 import { useGameGLTF } from '../../utils/useGameGLTF';
 import { HoverOutline } from './HoverOutline';
@@ -29,9 +30,12 @@ export function GiftBox({
     const currentStackHeight = useStackHeight(stack, block);
     const hovered =
         useHoveredBlockStore((state) => state.hoveredBlock) === block;
+    const hasActiveDragPreview = useGameState((state) =>
+        Boolean(state.activeDragPreview),
+    );
 
     return (
-        <HoverOutline hovered={hovered}>
+        <HoverOutline hovered={!hasActiveDragPreview && hovered}>
             <animated.group
                 position={stack.position
                     .clone()

@@ -379,6 +379,13 @@
       "when": 1781135554731,
       "tag": "0053_dazzling_mephistopheles",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1781168229949,
+      "tag": "0054_open_scrambler",
+      "breakpoints": true
     }
   ]
 }

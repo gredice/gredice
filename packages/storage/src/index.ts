@@ -71,6 +71,7 @@ export * from './repositories/sunflowerDropsRepo';
 export * from './repositories/surveysRepo';
 export * from './repositories/timeSlotsRepo';
 export * from './repositories/transactionsRepo';
+export * from './repositories/tutorialChecklistRepo';
 export * from './repositories/userFavoritesRepo';
 export * from './repositories/usersRepo';
 export * from './repositories/weatherHistoryRepo';

@@ -78,11 +78,38 @@ test('does not include unavailable optional behaviors', () => {
         roam: false,
         'low-entity': false,
         'stalk-bird': false,
+        'interact-dog': false,
     });
 
     assert.deepEqual(
         weights.map((item) => item.behavior),
         ['pillow'],
+    );
+});
+
+test('includes dog interaction only when a dog is available', () => {
+    const unavailableWeights = getCatBehaviorWeights({
+        cover: false,
+        roam: false,
+        'low-entity': false,
+        'stalk-bird': false,
+        'interact-dog': false,
+    });
+    const availableWeights = getCatBehaviorWeights({
+        cover: false,
+        roam: false,
+        'low-entity': false,
+        'stalk-bird': false,
+        'interact-dog': true,
+    });
+
+    assert.equal(
+        unavailableWeights.some((item) => item.behavior === 'interact-dog'),
+        false,
+    );
+    assert.deepEqual(
+        availableWeights.map((item) => item.behavior),
+        ['pillow', 'interact-dog'],
     );
 });
 

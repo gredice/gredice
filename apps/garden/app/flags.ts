@@ -61,9 +61,9 @@ export const plantHistoryFlag = flag<boolean>({
     options: booleanOptions,
 });
 
-export const raisedBedOnboardingChecklistFlag = flag<boolean>({
-    key: 'raisedBedOnboardingChecklist',
-    description: 'Enable the first raised-bed onboarding checklist.',
+export const tutorialChecklistFlag = flag<boolean>({
+    key: 'tutorialChecklist',
+    description: 'Enable the tutorial checklist HUD and reward claims.',
     decide: () => false,
     options: booleanOptions,
 });

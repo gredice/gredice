@@ -1,6 +1,6 @@
 import { Edges } from '@react-three/drei';
 import type { ThreeEvent } from '@react-three/fiber';
-import type { PropsWithChildren } from 'react';
+import { type PropsWithChildren, useEffect } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import {
     createBlockInteractionTargetKey,
@@ -112,7 +112,10 @@ function InstancedEntitySelectionRegistration({
 }) {
     const { data: garden } = useCurrentGarden();
     const { track } = useGameAnalytics();
-    const hovered = useHoveredBlockStore();
+    const hoveredBlock = useHoveredBlockStore((state) => state.hoveredBlock);
+    const setHoveredBlock = useHoveredBlockStore(
+        (state) => state.setHoveredBlock,
+    );
     const isSandbox = useIsSandboxGarden();
     const hasActiveDragPreview = useGameState((state) =>
         Boolean(state.activeDragPreview),
@@ -130,9 +133,21 @@ function InstancedEntitySelectionRegistration({
         block.name === 'GardenBox' ||
         block.name.startsWith('GiftBox_') ||
         Boolean(raisedBed);
+    const selectionHoverEnabled = selectable && !hasActiveDragPreview;
+
+    useEffect(() => {
+        if (hasActiveDragPreview && hoveredBlock === block) {
+            setHoveredBlock(null);
+        }
+    }, [block, hasActiveDragPreview, hoveredBlock, setHoveredBlock]);
+
     const handleSelected = useDeferredSingleClick(() => {
+        if (hasActiveDragPreview) {
+            return;
+        }
+
         if (block.name === 'GardenBox') {
-            if (!isSandbox && !hasActiveDragPreview) {
+            if (!isSandbox) {
                 setOpenGardenBoxBlockId(block.id);
             }
             return;
@@ -144,7 +159,7 @@ function InstancedEntitySelectionRegistration({
                 raised_bed_name: raisedBed.name,
             });
             setRaisedBedCloseupParam(raisedBed.name);
-            hovered.setHoveredBlock(null);
+            setHoveredBlock(null);
             return;
         }
 
@@ -168,14 +183,20 @@ function InstancedEntitySelectionRegistration({
             },
             ...(selectable
                 ? {
-                      onPointerEnter: (event: ThreeEvent<PointerEvent>) => {
-                          event.stopPropagation();
-                          hovered.setHoveredBlock(block);
-                      },
+                      ...(selectionHoverEnabled
+                          ? {
+                                onPointerEnter: (
+                                    event: ThreeEvent<PointerEvent>,
+                                ) => {
+                                    event.stopPropagation();
+                                    setHoveredBlock(block);
+                                },
+                            }
+                          : {}),
                       onPointerLeave: (event: ThreeEvent<PointerEvent>) => {
-                          if (hovered.hoveredBlock === block) {
+                          if (hoveredBlock === block) {
                               event.stopPropagation();
-                              hovered.setHoveredBlock(null);
+                              setHoveredBlock(null);
                           }
                       },
                   }
