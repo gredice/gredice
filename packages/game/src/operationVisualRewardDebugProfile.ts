@@ -147,7 +147,7 @@ export const operationVisualRewardDebugScenarios = [
         before: {
             label: 'Before',
             raisedBedId: 115,
-            state: 'Ripe plants',
+            state: 'Requested harvest basket',
         },
         after: {
             label: 'After',

@@ -35,6 +35,7 @@ import { HoverOutline } from './helpers/HoverOutline';
 import { resolveEntityNeighbors } from './helpers/useEntityNeighbors';
 import { RaisedBedFields } from './raisedBed/RaisedBedFields';
 import { RaisedBedGeneratedPlantFieldBatches } from './raisedBed/RaisedBedGeneratedPlantFieldBatches';
+import { RaisedBedHarvestBasketForBlock } from './raisedBed/RaisedBedHarvestBasket';
 import {
     resolveWaterFoamCorners,
     resolveWaterFoamEdges,
@@ -702,6 +703,12 @@ function RaisedBedInstances({
                         generatedPlantsHandledExternally
                     />
                 </group>
+            ))}
+            {instances.map((instance) => (
+                <RaisedBedHarvestBasketForBlock
+                    key={`Raised_Bed-harvest-basket-${instance.id}`}
+                    blockId={instance.block.id}
+                />
             ))}
             <RaisedBedHoverOutlines
                 instances={instances}
