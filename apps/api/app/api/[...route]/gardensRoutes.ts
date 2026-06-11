@@ -66,7 +66,10 @@ import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import { getBlockData } from '../../../lib/blocks/blockDataService';
 import { authSecurity, publicSecurity } from '../../../lib/docs/security';
-import { isAppliedOperationCurrentForRaisedBedFields } from '../../../lib/garden/appliedRaisedBedOperations';
+import {
+    isAppliedOperationCurrentForRaisedBedFields,
+    serializeAppliedRaisedBedOperation,
+} from '../../../lib/garden/appliedRaisedBedOperations';
 import { resolveGardenBlockPlacement } from '../../../lib/garden/blockPlacementService';
 import { deleteGardenBlock } from '../../../lib/garden/gardenBlocksService';
 import { synchronizeGardenStacksAndRaisedBeds } from '../../../lib/garden/gardenStacksSyncService';
@@ -315,22 +318,6 @@ async function trackGardenCreated(input: {
 
 function isAppliedRaisedBedOperationStatus(status: string) {
     return status === 'completed' || status === 'pendingVerification';
-}
-
-function serializeAppliedRaisedBedOperation(
-    operation: Awaited<
-        ReturnType<typeof getAppliedRaisedBedOperationsForGarden>
-    >[number],
-) {
-    return {
-        id: operation.id,
-        entityId: operation.entityId,
-        raisedBedFieldId: operation.raisedBedFieldId,
-        status: operation.status,
-        createdAt: operation.createdAt.toISOString(),
-        completedAt: operation.completedAt?.toISOString() ?? null,
-        scheduledDate: operation.scheduledDate?.toISOString() ?? null,
-    };
 }
 
 function serializeGardenOperation(
