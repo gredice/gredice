@@ -15,7 +15,6 @@ type OperationVisualRewardKind =
     | 'agrotextile'
     | 'harvest'
     | 'mulch'
-    | 'photographyUpdate'
     | 'removeAgrotextile'
     | 'removeMulch'
     | 'supports'
@@ -32,7 +31,7 @@ const visualRewardAttribute = {
     category: 'attributes',
     dataType: 'text',
     description:
-        'Controls the exact in-game visual reward a completed operation creates. Supported values: watering, weeding, mulch, removeMulch, agrotextile, removeAgrotextile, supports, harvest, photographyUpdate.',
+        'Controls the exact in-game visual reward a completed operation creates. Supported values: watering, weeding, mulch, removeMulch, agrotextile, removeAgrotextile, supports, harvest.',
     display: false,
     entityTypeName,
     label: 'Vizualna nagrada',
@@ -48,8 +47,6 @@ const operationVisualRewardAssignments = [
     { operationName: 'harvestPlant', visualReward: 'harvest' },
     { operationName: 'harvestAll', visualReward: 'harvest' },
     { operationName: 'harvestMature', visualReward: 'harvest' },
-    { operationName: 'plantPhoto', visualReward: 'photographyUpdate' },
-    { operationName: 'raisedBedFullPhoto', visualReward: 'photographyUpdate' },
     { operationName: 'malchStrawPlant', visualReward: 'mulch' },
     { operationName: 'malchStrawRaisedBed', visualReward: 'mulch' },
     { operationName: 'setAgrotextileWhite', visualReward: 'agrotextile' },

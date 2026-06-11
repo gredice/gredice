@@ -13,7 +13,6 @@ export const operationVisualRewardDebugOperationIds = {
     agrotextile: 9405,
     harvest: 9408,
     mulch: 9403,
-    photographyUpdate: 9409,
     removeAgrotextile: 9406,
     removeMulch: 9404,
     supports: 9407,
@@ -153,22 +152,7 @@ export const operationVisualRewardDebugScenarios = [
         after: {
             label: 'After',
             raisedBedId: 116,
-            state: 'Harvest crate and reduced ripe visuals',
-        },
-    },
-    {
-        title: 'Photo update',
-        kind: 'photographyUpdate',
-        operationId: operationVisualRewardDebugOperationIds.photographyUpdate,
-        before: {
-            label: 'Before',
-            raisedBedId: 117,
-            state: 'Old state without proof marker',
-        },
-        after: {
-            label: 'After',
-            raisedBedId: 118,
-            state: 'New proof photo marker',
+            state: 'Harvest basket and reduced ripe visuals',
         },
     },
 ] satisfies OperationVisualRewardDebugScenario[];
@@ -222,8 +206,8 @@ function debugOperation({
         },
         image: { cover: { url: '' } },
         conditions: {
-            completionAttachImages: kind === 'photographyUpdate',
-            completionAttachImagesRequired: kind === 'photographyUpdate',
+            completionAttachImages: false,
+            completionAttachImagesRequired: false,
             completionAttachNotes: false,
             completionAttachNotesRequired: false,
         },
@@ -289,43 +273,10 @@ export const operationVisualRewardDebugOperationDefinitions = [
         label: 'Debug harvest reward',
         application: 'raisedBedFull',
     }),
-    debugOperation({
-        id: operationVisualRewardDebugOperationIds.photographyUpdate,
-        kind: 'photographyUpdate',
-        name: 'debugPhotographyUpdateReward',
-        label: 'Debug photo update reward',
-        application: 'raisedBedFull',
-    }),
 ] satisfies OperationVisualRewardDebugOperationData[];
 
-export const operationVisualRewardDebugOperationItems = [
-    {
-        id: 9601,
-        entityId: operationVisualRewardDebugOperationIds.photographyUpdate,
-        entityTypeName: 'operation',
-        raisedBedId: 118,
-        raisedBedFieldId: null,
-        status: 'completed',
-        createdAt: operationVisualRewardDebugOlderTimestamp,
-        scheduledDate: null,
-        scheduledAt: null,
-        completedAt: operationVisualRewardDebugNewerTimestamp,
-        verifiedAt: operationVisualRewardDebugNewerTimestamp,
-        canceledAt: null,
-        imageUrls: [
-            'https://cdn.gredice.com/debug/operation-reward-proof-1.jpg',
-            'https://cdn.gredice.com/debug/operation-reward-proof-2.jpg',
-        ],
-        completionNotes: 'Debug proof photos for operation reward marker.',
-        targetLabel: 'Raised bed 118',
-        statusHistory: [
-            {
-                status: 'completed',
-                changedAt: operationVisualRewardDebugNewerTimestamp,
-            },
-        ],
-    },
-] satisfies GardenOperationItem[];
+export const operationVisualRewardDebugOperationItems: GardenOperationItem[] =
+    [];
 
 export function isOperationVisualRewardDebugProfile(
     value: string | null | undefined,

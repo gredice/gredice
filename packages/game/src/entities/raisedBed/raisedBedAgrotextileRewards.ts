@@ -13,6 +13,11 @@ type ResolveRaisedBedAgrotextileCoverPositionsInput = {
     visualRewards: OperationVisualReward[];
 };
 
+type HasActiveRaisedBedAgrotextileCoverInput = {
+    raisedBedId: number;
+    visualRewards: OperationVisualReward[];
+};
+
 function isActiveAgrotextileReward(
     reward: OperationVisualReward,
     raisedBedId: number,
@@ -24,19 +29,24 @@ function isActiveAgrotextileReward(
     );
 }
 
+export function hasActiveRaisedBedAgrotextileCover({
+    raisedBedId,
+    visualRewards,
+}: HasActiveRaisedBedAgrotextileCoverInput) {
+    return visualRewards.some(
+        (reward) =>
+            isActiveAgrotextileReward(reward, raisedBedId) &&
+            reward.scope === 'raisedBed',
+    );
+}
+
 export function resolveRaisedBedAgrotextileCoverPositions({
     blockOffset,
     fields,
     raisedBedId,
     visualRewards,
 }: ResolveRaisedBedAgrotextileCoverPositionsInput) {
-    const hasRaisedBedCover = visualRewards.some(
-        (reward) =>
-            isActiveAgrotextileReward(reward, raisedBedId) &&
-            reward.scope === 'raisedBed',
-    );
-
-    if (hasRaisedBedCover) {
+    if (hasActiveRaisedBedAgrotextileCover({ raisedBedId, visualRewards })) {
         return Array.from({ length: 9 }, (_, positionIndex) => positionIndex);
     }
 

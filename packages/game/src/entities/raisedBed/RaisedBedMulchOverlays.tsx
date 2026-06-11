@@ -30,8 +30,11 @@ import {
 import { useGameGLTF } from '../../utils/useGameGLTF';
 import { appliedMulchOperationsOldestFirst } from './raisedBedMulchOperationOrder';
 import {
+    isBedMulchApplication,
+    isFieldMulchApplication,
     resolveActiveFieldMulchRewardsByFieldId,
     resolveActiveRaisedBedMulchReward,
+    resolveMulchVisualByOperationId,
 } from './raisedBedMulchVisualRewards';
 
 const combinedOverlap = 0.1;
@@ -68,41 +71,11 @@ type RaisedBedPlacement = {
     stackBlockIndex: number;
 };
 
-type MulchVisual = {
-    blockId: number;
-    blockName: string;
-    application: string;
-};
-
 type MulchAssetLookup = {
     MulchCoconut: GLTFResult;
     MulchHey: GLTFResult;
     MulchWood: GLTFResult;
 };
-
-function normalizeText(value: string | null | undefined) {
-    return (value ?? '')
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .toLowerCase();
-}
-
-function textIncludesAny(text: string, keywords: string[]) {
-    return keywords.some((keyword) => text.includes(keyword));
-}
-
-function getMulchKeywords(blockName: string) {
-    switch (blockName) {
-        case 'MulchHey':
-            return ['slama', 'sijeno', 'hay', 'straw', 'hey'];
-        case 'MulchCoconut':
-            return ['kokos', 'kokosova', 'kokosove', 'coconut'];
-        case 'MulchWood':
-            return ['drvo', 'drveta', 'drvena', 'wood', 'kora'];
-        default:
-            return [];
-    }
-}
 
 function timestampMs(value: Date | string | null | undefined) {
     if (!value) {
@@ -144,14 +117,6 @@ function isOperationAppliedToActivePlantCycle(
     }
 
     return operationTimestamp >= cycleStartTimestamp;
-}
-
-function isBedMulchApplication(application: string) {
-    return application === 'raisedBedFull' || application === 'raisedBed1m';
-}
-
-function isFieldMulchApplication(application: string) {
-    return application === 'plant';
 }
 
 function getBlockPlacement(garden: CurrentGardenData, blockId: string) {
@@ -509,63 +474,6 @@ function getFullBedScale(
         number,
         number,
     ];
-}
-
-function resolveMulchVisualByOperationId(
-    operations: ReturnType<typeof useOperations>['data'],
-    blocks: ReturnType<typeof useBlockData>['data'],
-) {
-    const visuals = new Map<number, MulchVisual>();
-    const mulchBlocks =
-        blocks?.filter((block) => block.information.name.startsWith('Mulch')) ??
-        [];
-
-    for (const operation of operations ?? []) {
-        const application = operation.attributes.application;
-        if (
-            !isBedMulchApplication(application) &&
-            !isFieldMulchApplication(application)
-        ) {
-            continue;
-        }
-
-        const operationText = normalizeText(
-            [
-                operation.information.name,
-                operation.information.label,
-                operation.information.shortDescription,
-                operation.information.description,
-                operation.image?.cover?.url,
-            ].join(' '),
-        );
-
-        let matchedBlock = mulchBlocks.find((block) =>
-            (operation.image?.cover?.url ?? '').includes(
-                block.information.name,
-            ),
-        );
-
-        if (!matchedBlock) {
-            matchedBlock = mulchBlocks.find((block) =>
-                textIncludesAny(
-                    operationText,
-                    getMulchKeywords(block.information.name),
-                ),
-            );
-        }
-
-        if (!matchedBlock) {
-            continue;
-        }
-
-        visuals.set(operation.id, {
-            blockId: matchedBlock.id,
-            blockName: matchedBlock.information.name,
-            application,
-        });
-    }
-
-    return visuals;
 }
 
 function MulchMesh({

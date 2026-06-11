@@ -707,8 +707,6 @@ function applyOperationRewardDebugState({
                 ];
             }
             break;
-        case 'photographyUpdate':
-            break;
     }
 }
 
