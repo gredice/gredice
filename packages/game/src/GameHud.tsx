@@ -17,6 +17,7 @@ import { ItemsHud } from './hud/ItemsHud';
 import { OutletHud } from './hud/OutletHud';
 import { PaymentSuccessfulMessage } from './hud/PaymentSuccessfulMessage';
 import { RaisedBedFieldHud } from './hud/RaisedBedFieldHud';
+import { RaisedBedOnboardingModal } from './hud/RaisedBedOnboardingModal';
 import { SandboxBlockTrashDropTarget } from './hud/SandboxBlockTrashDropTarget';
 import { SandboxEnvironmentHud } from './hud/SandboxEnvironmentHud';
 import { ShoppingCartHud } from './hud/ShoppingCartHud';
@@ -50,6 +51,13 @@ export function GameHud({
         confirmed: boolean;
         gardenId: number | null;
     }>({ confirmed: false, gardenId: null });
+    const [
+        raisedBedOnboardingConfirmation,
+        setRaisedBedOnboardingConfirmation,
+    ] = useState<{
+        confirmed: boolean;
+        gardenId: number | null;
+    }>({ confirmed: false, gardenId: null });
     const isCloseup = useGameState((state) => state.view) === 'closeup';
     const { data: currentGarden } = useCurrentGarden();
     // Sandbox ("play") gardens are decoration only: no economy or inventory.
@@ -63,13 +71,26 @@ export function GameHud({
         isCloseup && 'hidden md:block',
     );
     const currentGardenId = currentGarden?.id ?? null;
+    const raisedBedOnboardingChecklistEnabled = enableTutorialChecklist;
     const visitSummaryConfirmed =
         visitSummaryConfirmation.confirmed &&
         visitSummaryConfirmation.gardenId === currentGardenId;
+    const raisedBedOnboardingChecklistResolved =
+        !raisedBedOnboardingChecklistEnabled ||
+        (raisedBedOnboardingConfirmation.confirmed &&
+            raisedBedOnboardingConfirmation.gardenId === currentGardenId);
     const visitSummaryEnabled =
         welcomeConfirmed && !visitSummaryConfirmed && !isSandbox;
-    const openingFlowComplete =
+    const visitSummaryStageComplete =
         welcomeConfirmed && (isSandbox || visitSummaryConfirmed);
+    const raisedBedOnboardingEnabled =
+        raisedBedOnboardingChecklistEnabled &&
+        visitSummaryStageComplete &&
+        !raisedBedOnboardingChecklistResolved &&
+        !isSandbox;
+    const openingFlowComplete =
+        visitSummaryStageComplete &&
+        (isSandbox || raisedBedOnboardingChecklistResolved);
 
     return (
         <>
@@ -127,6 +148,15 @@ export function GameHud({
                         enabled={visitSummaryEnabled}
                         onClosed={() =>
                             setVisitSummaryConfirmation({
+                                confirmed: true,
+                                gardenId: currentGardenId,
+                            })
+                        }
+                    />
+                    <RaisedBedOnboardingModal
+                        enabled={raisedBedOnboardingEnabled}
+                        onResolved={() =>
+                            setRaisedBedOnboardingConfirmation({
                                 confirmed: true,
                                 gardenId: currentGardenId,
                             })
