@@ -62,6 +62,7 @@ const blockHitboxes = {
     DesertStoneLarge: { width: 0.82, height: 0.63, depth: 0.56 },
     DesertStoneMedium: { width: 0.66, height: 0.33, depth: 0.45 },
     DesertStoneSmall: { width: 0.43, height: 0.2, depth: 0.31 },
+    DogHouse: { width: 0.78, height: 0.72, depth: 0.86 },
     Fence: cell(0.58),
     FireflyJar: { width: 0.5, height: 0.65, depth: 0.5 },
     GardenBox: { width: 0.96, height: 0.78, depth: 0.8 },
