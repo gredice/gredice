@@ -6,29 +6,22 @@ import {
     ensureDefaultAutomationDefinitions,
     getAutomationModuleMetadata,
     listAutomationDefinitions,
-    listAutomationRuns,
 } from '@gredice/storage';
 import { Button } from '@gredice/ui/Button';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardOverflow,
-    CardTitle,
-} from '@gredice/ui/Card';
-import { Chip } from '@gredice/ui/Chip';
+import { Card, CardContent } from '@gredice/ui/Card';
 import { Add, Search } from '@gredice/ui/icons';
-import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
-import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
-import Link from 'next/link';
 import { AdminPageHeader } from '../../../components/admin/navigation';
-import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { auth } from '../../../lib/auth/auth';
 import { KnownPages } from '../../../src/KnownPages';
-import { AutomationJobsQueueTable } from './AutomationJobsQueueTable';
+import { AutomationOverviewPanels } from './AutomationOverviewPanels';
+import {
+    automationQueuePageSize,
+    listAutomationRunsPage,
+    serializeAutomationDefinition,
+} from './automationRunsData';
 import {
     automationActionSummary,
     automationRunStatusMeta,
@@ -64,24 +57,6 @@ function parseRunStatus(
     return automationRunStatusValues.find((item) => item === status);
 }
 
-function StatusChip({ status }: { status: AutomationDefinitionStatus }) {
-    const meta = automationStatusMeta(status);
-    return (
-        <Chip color={meta.color} size="sm" variant="soft">
-            {meta.label}
-        </Chip>
-    );
-}
-
-function RunStatusChip({ status }: { status: AutomationRunStatus }) {
-    const meta = automationRunStatusMeta(status);
-    return (
-        <Chip color={meta.color} size="sm" variant="soft">
-            {meta.label}
-        </Chip>
-    );
-}
-
 export default async function AutomationsPage({
     searchParams,
 }: {
@@ -104,29 +79,31 @@ export default async function AutomationsPage({
             triggerEventType,
             limit: 200,
         }),
-        listAutomationRuns({
+        listAutomationRunsPage({
+            failedOnly,
             status: failedOnly ? 'failed' : runStatus,
-            limit: 300,
+            limit: automationQueuePageSize,
         }),
     ]);
-    const queuedRunsCount = runs.filter(
+    const queuedRunsCount = runs.runs.filter(
         (run) => run.status === 'queued' || run.status === 'retrying',
     ).length;
-    const runningRunsCount = runs.filter(
+    const runningRunsCount = runs.runs.filter(
         (run) => run.status === 'running',
     ).length;
-    const runsByDefinitionId = new Map<number, typeof runs>();
-
-    for (const run of runs) {
-        const definitionRuns = runsByDefinitionId.get(
-            run.automationDefinitionId,
-        );
-        if (definitionRuns) {
-            definitionRuns.push(run);
-        } else {
-            runsByDefinitionId.set(run.automationDefinitionId, [run]);
-        }
-    }
+    const definitionItems = definitions.map((definition) =>
+        serializeAutomationDefinition({
+            actionSummary: automationActionSummary(
+                definition.graph,
+                modulesByKey,
+            ),
+            definition,
+            triggerSummary: automationTriggerSummary(
+                definition.graph,
+                modulesByKey,
+            ),
+        }),
+    );
 
     return (
         <Stack spacing={5}>
@@ -262,9 +239,13 @@ export default async function AutomationsPage({
                 <Card>
                     <CardContent>
                         <Typography level="body3" secondary>
-                            Poslovi
+                            Učitani poslovi
                         </Typography>
-                        <Typography level="h4">{runs.length}</Typography>
+                        <Typography level="h4">
+                            {runs.hasMore
+                                ? `${runs.runs.length}+`
+                                : runs.runs.length}
+                        </Typography>
                     </CardContent>
                 </Card>
                 <Card>
@@ -290,134 +271,21 @@ export default async function AutomationsPage({
                         </Typography>
                         <Typography level="h4">
                             {
-                                runs.filter((run) => run.status === 'failed')
-                                    .length
+                                runs.runs.filter(
+                                    (run) => run.status === 'failed',
+                                ).length
                             }
                         </Typography>
                     </CardContent>
                 </Card>
             </div>
 
-            <AutomationJobsQueueTable runs={runs} />
-
-            <Card>
-                <CardHeader>
-                    <CardTitle>Definicije</CardTitle>
-                </CardHeader>
-                <CardOverflow>
-                    <div className="overflow-auto">
-                        <Table>
-                            <Table.Header>
-                                <Table.Row>
-                                    <Table.Head>Naziv</Table.Head>
-                                    <Table.Head>Status</Table.Head>
-                                    <Table.Head>Okidač</Table.Head>
-                                    <Table.Head>Akcije</Table.Head>
-                                    <Table.Head>Zadnje izvođenje</Table.Head>
-                                    <Table.Head>Greške</Table.Head>
-                                    <Table.Head>Ažurirano</Table.Head>
-                                </Table.Row>
-                            </Table.Header>
-                            <Table.Body>
-                                {definitions.length === 0 ? (
-                                    <Table.Row>
-                                        <Table.Cell colSpan={7}>
-                                            <NoDataPlaceholder>
-                                                Nema automatizacija za odabrane
-                                                filtre.
-                                            </NoDataPlaceholder>
-                                        </Table.Cell>
-                                    </Table.Row>
-                                ) : null}
-                                {definitions.map((definition) => {
-                                    const definitionRuns =
-                                        runsByDefinitionId.get(definition.id) ??
-                                        [];
-                                    const latestRun = definitionRuns[0];
-                                    const failedCount = definitionRuns.filter(
-                                        (run) => run.status === 'failed',
-                                    ).length;
-
-                                    return (
-                                        <Table.Row key={definition.id}>
-                                            <Table.Cell>
-                                                <Stack spacing={1}>
-                                                    <Link
-                                                        href={KnownPages.Automation(
-                                                            definition.id,
-                                                        )}
-                                                        className="font-medium text-primary hover:underline"
-                                                    >
-                                                        {definition.name}
-                                                    </Link>
-                                                    <Typography
-                                                        level="body3"
-                                                        className="text-muted-foreground"
-                                                    >
-                                                        {definition.key}
-                                                    </Typography>
-                                                </Stack>
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                <StatusChip
-                                                    status={definition.status}
-                                                />
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                <Typography level="body3">
-                                                    {automationTriggerSummary(
-                                                        definition.graph,
-                                                        modulesByKey,
-                                                    )}
-                                                </Typography>
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                <Typography level="body3">
-                                                    {automationActionSummary(
-                                                        definition.graph,
-                                                        modulesByKey,
-                                                    )}
-                                                </Typography>
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                {latestRun ? (
-                                                    <Stack spacing={1}>
-                                                        <RunStatusChip
-                                                            status={
-                                                                latestRun.status
-                                                            }
-                                                        />
-                                                        <LocalDateTime>
-                                                            {
-                                                                latestRun.createdAt
-                                                            }
-                                                        </LocalDateTime>
-                                                    </Stack>
-                                                ) : (
-                                                    <Typography
-                                                        level="body3"
-                                                        className="text-muted-foreground"
-                                                    >
-                                                        Nema izvođenja
-                                                    </Typography>
-                                                )}
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                {failedCount}
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                <LocalDateTime>
-                                                    {definition.updatedAt}
-                                                </LocalDateTime>
-                                            </Table.Cell>
-                                        </Table.Row>
-                                    );
-                                })}
-                            </Table.Body>
-                        </Table>
-                    </div>
-                </CardOverflow>
-            </Card>
+            <AutomationOverviewPanels
+                definitions={definitionItems}
+                failedOnly={failedOnly}
+                initialRunsPage={runs}
+                runStatus={failedOnly ? 'failed' : runStatus}
+            />
         </Stack>
     );
 }
