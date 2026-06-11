@@ -9,17 +9,13 @@ import {
 import { useAllSorts } from '../../hooks/usePlantSorts';
 import { useRaisedBedOperationVisualRewards } from '../../hooks/useRaisedBedOperationVisualRewards';
 import { useShoppingCart } from '../../hooks/useShoppingCart';
-import { useSnapshotTime } from '../../hooks/useSnapshotTime';
 import { useGameState } from '../../useGameState';
 import {
     findRaisedBedByBlockId,
     getRaisedBedBlockIds,
 } from '../../utils/raisedBedBlocks';
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
-import {
-    getGridPositionFromIndex,
-    type RaisedBedOrientation,
-} from '../../utils/raisedBedOrientation';
+import type { RaisedBedOrientation } from '../../utils/raisedBedOrientation';
 import { resolveEntityNeighbors } from '../helpers/useEntityNeighbors';
 import {
     mockPlantPresetLabelsBySortId,
@@ -30,8 +26,8 @@ import {
     resolveRaisedBedAgrotextileCoverPositions,
 } from './raisedBedAgrotextileRewards';
 import { resolveRaisedBedHarvestPositions } from './raisedBedHarvestRewards';
+import { getRaisedBedFieldSurfacePosition } from './raisedBedSoilWetPatches';
 import { resolveRaisedBedSupportPositions } from './raisedBedSupportRewards';
-import { isWateringRewardVisible } from './raisedBedWateringRewards';
 import {
     resolveRaisedBedFieldWeedLevel,
     type VisibleRaisedBedWeedLevel,
@@ -41,10 +37,6 @@ const raisedBedHalfOverlap = 0.05;
 const fieldAgrotextileCoverSize = 0.25;
 const wholeBedAgrotextileCoverPadding = 0.02;
 const wholeBedAgrotextileHemThickness = 0.018;
-const soilOverlayFieldSize = 0.255;
-const soilOverlayPadding = 0.012;
-const soilOverlayY = -0.748;
-const raisedBedFieldCount = 9;
 // Keep weed bases inside the visible dirt inset, not out on the raised-bed rim.
 const weedFieldScatterRadius = 0.082;
 const weedBladeIds = [
@@ -74,28 +66,6 @@ type RaisedBedWholeAgrotextileCoverLayout = {
     position: [number, number, number];
     width: number;
 };
-
-type RaisedBedSoilOverlayLayout = RaisedBedWholeAgrotextileCoverLayout;
-
-const drySoilCrackSegments = [
-    { id: 'a', start: [-0.43, -0.34], end: [-0.31, -0.28] },
-    { id: 'b', start: [-0.34, -0.28], end: [-0.27, -0.18] },
-    { id: 'c', start: [-0.18, -0.39], end: [-0.08, -0.31] },
-    { id: 'd', start: [-0.1, -0.3], end: [0.02, -0.24] },
-    { id: 'e', start: [0.15, -0.38], end: [0.28, -0.3] },
-    { id: 'f', start: [0.24, -0.29], end: [0.36, -0.2] },
-    { id: 'g', start: [-0.46, -0.03], end: [-0.34, 0.04] },
-    { id: 'h', start: [-0.25, 0.12], end: [-0.12, 0.05] },
-    { id: 'i', start: [-0.04, 0.01], end: [0.1, 0.1] },
-    { id: 'j', start: [0.19, 0.05], end: [0.32, 0.13] },
-    { id: 'k', start: [-0.38, 0.31], end: [-0.24, 0.24] },
-    { id: 'l', start: [0.06, 0.31], end: [0.2, 0.23] },
-    { id: 'm', start: [-0.31, -0.28], end: [-0.27, -0.36] },
-    { id: 'n', start: [0.02, -0.24], end: [0.07, -0.33] },
-    { id: 'o', start: [-0.12, 0.05], end: [-0.16, -0.03] },
-    { id: 'p', start: [0.32, 0.13], end: [0.37, 0.03] },
-    { id: 'q', start: [0.2, 0.23], end: [0.28, 0.3] },
-] as const;
 
 function findRaisedBedBlockPlacement(
     garden: CurrentGardenData,
@@ -143,31 +113,6 @@ function getRaisedBedBlockSurfaceOrigin(
     }
 
     return { x, z };
-}
-
-function getRaisedBedFieldSurfacePosition({
-    blockIndex,
-    orientation,
-    positionIndex,
-    y,
-}: {
-    blockIndex: number;
-    orientation: RaisedBedOrientation;
-    positionIndex: number;
-    y: number;
-}) {
-    const offsetX =
-        orientation === 'vertical' ? 0.31 - blockIndex * 0.05 : 0.27;
-    const offsetZ =
-        orientation === 'vertical' ? 0.27 : 0.27 + blockIndex * 0.05;
-    const multiplierX = orientation === 'vertical' ? 0.285 : 0.27;
-    const multiplierZ = orientation === 'vertical' ? 0.27 : 0.285;
-    const { row, col } = getGridPositionFromIndex(positionIndex, orientation);
-    return [
-        col * multiplierX - offsetX,
-        y,
-        (2 - row) * multiplierZ - offsetZ,
-    ] satisfies [number, number, number];
 }
 
 function getRaisedBedWholeAgrotextileCoverLayout({
@@ -234,199 +179,6 @@ function getRaisedBedWholeAgrotextileCoverLayout({
         position: [(minX + maxX) / 2, -0.704, (minZ + maxZ) / 2],
         width: maxX - minX,
     };
-}
-
-function getRaisedBedSoilOverlayLayout({
-    blockId,
-    blockIds,
-    garden,
-    orientation,
-}: {
-    blockId: string;
-    blockIds: string[];
-    garden: CurrentGardenData;
-    orientation: RaisedBedOrientation;
-}): RaisedBedSoilOverlayLayout | null {
-    const ownerOrigin = getRaisedBedBlockSurfaceOrigin(garden, blockId);
-    if (!ownerOrigin) {
-        return null;
-    }
-
-    let minX = Number.POSITIVE_INFINITY;
-    let maxX = Number.NEGATIVE_INFINITY;
-    let minZ = Number.POSITIVE_INFINITY;
-    let maxZ = Number.NEGATIVE_INFINITY;
-    const fieldHalfSize = soilOverlayFieldSize / 2;
-
-    for (const [blockIndex, raisedBedBlockId] of blockIds.entries()) {
-        const origin = getRaisedBedBlockSurfaceOrigin(garden, raisedBedBlockId);
-        if (!origin) {
-            continue;
-        }
-
-        for (
-            let positionIndex = 0;
-            positionIndex < raisedBedFieldCount;
-            positionIndex += 1
-        ) {
-            const [fieldX, , fieldZ] = getRaisedBedFieldSurfacePosition({
-                blockIndex,
-                orientation,
-                positionIndex,
-                y: 0,
-            });
-            const centerX = origin.x - ownerOrigin.x + fieldX;
-            const centerZ = origin.z - ownerOrigin.z + fieldZ;
-
-            minX = Math.min(minX, centerX - fieldHalfSize);
-            maxX = Math.max(maxX, centerX + fieldHalfSize);
-            minZ = Math.min(minZ, centerZ - fieldHalfSize);
-            maxZ = Math.max(maxZ, centerZ + fieldHalfSize);
-        }
-    }
-
-    if (
-        !Number.isFinite(minX) ||
-        !Number.isFinite(maxX) ||
-        !Number.isFinite(minZ) ||
-        !Number.isFinite(maxZ)
-    ) {
-        return null;
-    }
-
-    minX -= soilOverlayPadding;
-    maxX += soilOverlayPadding;
-    minZ -= soilOverlayPadding;
-    maxZ += soilOverlayPadding;
-
-    return {
-        depth: maxZ - minZ,
-        position: [(minX + maxX) / 2, soilOverlayY, (minZ + maxZ) / 2],
-        width: maxX - minX,
-    };
-}
-
-function RaisedBedDrySoilOverlay({
-    layout,
-}: {
-    layout: RaisedBedSoilOverlayLayout;
-}) {
-    const crackThickness = Math.max(
-        0.01,
-        Math.min(layout.width, layout.depth) * 0.014,
-    );
-
-    return (
-        <group position={layout.position}>
-            <mesh rotation={[-Math.PI / 2, 0, 0]} renderOrder={1}>
-                <planeGeometry args={[layout.width, layout.depth]} />
-                <meshStandardMaterial
-                    color="#a1744f"
-                    depthWrite={false}
-                    opacity={0.56}
-                    polygonOffset
-                    polygonOffsetFactor={-2}
-                    roughness={1}
-                    transparent
-                />
-            </mesh>
-            {drySoilCrackSegments.map((segment) => {
-                const startX = segment.start[0] * layout.width;
-                const startZ = segment.start[1] * layout.depth;
-                const endX = segment.end[0] * layout.width;
-                const endZ = segment.end[1] * layout.depth;
-                const deltaX = endX - startX;
-                const deltaZ = endZ - startZ;
-                const length = Math.hypot(deltaX, deltaZ);
-                const angle = Math.atan2(deltaZ, deltaX);
-
-                return (
-                    <mesh
-                        key={`raised-bed-dry-soil-crack-${segment.id}`}
-                        position={[
-                            (startX + endX) / 2,
-                            0.003,
-                            (startZ + endZ) / 2,
-                        ]}
-                        renderOrder={2}
-                        rotation={[0, -angle, 0]}
-                    >
-                        <boxGeometry args={[length, 0.002, crackThickness]} />
-                        <meshStandardMaterial
-                            color="#2f1f18"
-                            depthWrite={false}
-                            opacity={0.74}
-                            polygonOffset
-                            polygonOffsetFactor={-3}
-                            roughness={1}
-                            transparent
-                        />
-                    </mesh>
-                );
-            })}
-        </group>
-    );
-}
-
-function RaisedBedMoistSoilOverlay({
-    layout,
-}: {
-    layout: RaisedBedSoilOverlayLayout;
-}) {
-    return (
-        <group position={layout.position}>
-            <mesh
-                position={[0, 0.006, 0]}
-                rotation={[-Math.PI / 2, 0, 0]}
-                renderOrder={3}
-            >
-                <planeGeometry args={[layout.width, layout.depth]} />
-                <meshStandardMaterial
-                    color="#28170f"
-                    depthWrite={false}
-                    opacity={0.74}
-                    polygonOffset
-                    polygonOffsetFactor={-6}
-                    roughness={1}
-                    transparent
-                />
-            </mesh>
-        </group>
-    );
-}
-
-function RaisedBedFieldMoistSoilOverlay({
-    blockIndex,
-    orientation,
-    positionIndex,
-}: {
-    blockIndex: number;
-    orientation: RaisedBedOrientation;
-    positionIndex: number;
-}) {
-    const position = getRaisedBedFieldSurfacePosition({
-        blockIndex,
-        orientation,
-        positionIndex,
-        y: soilOverlayY + 0.004,
-    });
-
-    return (
-        <group position={position}>
-            <mesh rotation={[-Math.PI / 2, 0, 0]} renderOrder={3}>
-                <planeGeometry args={[0.255, 0.255]} />
-                <meshStandardMaterial
-                    color="#28170f"
-                    depthWrite={false}
-                    opacity={0.7}
-                    polygonOffset
-                    polygonOffsetFactor={-6}
-                    roughness={1}
-                    transparent
-                />
-            </mesh>
-        </group>
-    );
 }
 
 function RaisedBedFieldVisitSummaryHighlight({
@@ -787,7 +539,6 @@ export function RaisedBedFields({
     const { data: cart } = useShoppingCart(renderDetails && !isLocalSandbox);
     const raisedBed = findRaisedBedByBlockId(currentGarden, blockId);
     const visualRewards = useRaisedBedOperationVisualRewards(raisedBed);
-    const currentTime = useSnapshotTime();
     const orientation = raisedBed?.orientation ?? 'vertical';
     const visitSummaryHighlight = useGameState(
         (state) => state.gardenVisitSummaryHighlight,
@@ -837,40 +588,6 @@ export function RaisedBedFields({
         return null;
     }
 
-    const hasRaisedBedWateringReward = visualRewards.some(
-        (reward) =>
-            reward.scope === 'raisedBed' &&
-            reward.raisedBedId === raisedBed?.id &&
-            isWateringRewardVisible(reward, currentTime),
-    );
-    const moistFieldPositionSet = new Set(
-        hasRaisedBedWateringReward
-            ? []
-            : visualRewards.flatMap((reward) => {
-                  if (
-                      reward.scope !== 'field' ||
-                      reward.raisedBedFieldId == null ||
-                      !isWateringRewardVisible(reward, currentTime)
-                  ) {
-                      return [];
-                  }
-
-                  const field = raisedBed?.fields.find(
-                      (candidate) =>
-                          candidate.active &&
-                          candidate.id === reward.raisedBedFieldId,
-                  );
-                  if (
-                      !field ||
-                      field.positionIndex < blockOffset ||
-                      field.positionIndex >= blockOffset + raisedBedFieldCount
-                  ) {
-                      return [];
-                  }
-
-                  return [field.positionIndex - blockOffset];
-              }),
-    );
     const weedFieldVisuals = raisedBed
         ? Array.from({ length: 9 }, (_, localPositionIndex) => {
               const positionIndex = blockOffset + localPositionIndex;
@@ -930,15 +647,6 @@ export function RaisedBedFields({
                   orientation,
               })
             : null;
-    const soilOverlayLayout =
-        currentGarden && blockIds.length > 0 && blockIndex === 0
-            ? getRaisedBedSoilOverlayLayout({
-                  blockId,
-                  blockIds,
-                  garden: currentGarden,
-                  orientation,
-              })
-            : null;
     const fieldAgrotextileCoverPositions = hasRaisedBedAgrotextileCover
         ? []
         : agrotextileCoverPositions;
@@ -984,12 +692,6 @@ export function RaisedBedFields({
 
     return (
         <>
-            {soilOverlayLayout && !hasRaisedBedWateringReward ? (
-                <RaisedBedDrySoilOverlay layout={soilOverlayLayout} />
-            ) : null}
-            {soilOverlayLayout && hasRaisedBedWateringReward ? (
-                <RaisedBedMoistSoilOverlay layout={soilOverlayLayout} />
-            ) : null}
             {highlightedLocalPositionIndex != null ? (
                 <RaisedBedFieldVisitSummaryHighlight
                     blockIndex={blockIndex}
@@ -997,14 +699,6 @@ export function RaisedBedFields({
                     positionIndex={highlightedLocalPositionIndex}
                 />
             ) : null}
-            {Array.from(moistFieldPositionSet).map((positionIndex) => (
-                <RaisedBedFieldMoistSoilOverlay
-                    key={`raised-bed-field-moist-soil-${blockId}-${positionIndex}`}
-                    blockIndex={blockIndex}
-                    orientation={orientation}
-                    positionIndex={positionIndex}
-                />
-            ))}
             {weedFieldVisuals.map((visual) =>
                 agrotextileCoverPositionSet.has(visual.positionIndex) ? null : (
                     <RaisedBedFieldWeeds

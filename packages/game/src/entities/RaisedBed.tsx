@@ -1,7 +1,10 @@
 import { animated } from '@react-spring/three';
+import { useMemo } from 'react';
 import { Vector3 } from 'three';
 import { useHoveredBlockStore } from '../controls/useHoveredBlockStore';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
+import { useRaisedBedOperationVisualRewards } from '../hooks/useRaisedBedOperationVisualRewards';
+import { useSnapshotTime } from '../hooks/useSnapshotTime';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
@@ -12,10 +15,12 @@ import {
     getRaisedBedBlockIds,
 } from '../utils/raisedBedBlocks';
 import { useGameGLTF } from '../utils/useGameGLTF';
+import { useGroundPatchMaterial } from './helpers/groundPatchMaterial';
 import { HoverOutline } from './helpers/HoverOutline';
 import { useEntityNeighbors } from './helpers/useEntityNeighbors';
 import { RaisedBedFields } from './raisedBed/RaisedBedFields';
 import { RaisedBedHarvestBasketForBlock } from './raisedBed/RaisedBedHarvestBasket';
+import { getRaisedBedSoilWetPatches } from './raisedBed/raisedBedSoilWetPatches';
 
 const combinedOverlap = 0.1;
 const halfOverlap = combinedOverlap / 2;
@@ -26,12 +31,16 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
     const hoveredBlock = useHoveredBlockStore((state) => state.hoveredBlock);
     const { data: garden } = useCurrentGarden();
     const raisedBed = findRaisedBedByBlockId(garden, block.id);
+    const visualRewards = useRaisedBedOperationVisualRewards(raisedBed);
+    const currentTime = useSnapshotTime();
     const visitSummaryHighlight = useGameState(
         (state) => state.gardenVisitSummaryHighlight,
     );
     const hoveredRaisedBed = hoveredBlock
         ? findRaisedBedByBlockId(garden, hoveredBlock.id)
         : null;
+    const raisedBedBlockIds =
+        garden && raisedBed ? getRaisedBedBlockIds(garden, raisedBed.id) : [];
     const hovered = Boolean(
         garden &&
             hoveredRaisedBed &&
@@ -118,6 +127,39 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
     const isVisitSummaryHighlighted =
         raisedBed?.id != null &&
         visitSummaryHighlight?.raisedBedId === raisedBed.id;
+    const blockIndex = Math.max(raisedBedBlockIds.indexOf(block.id), 0);
+    const blockOffset =
+        Math.max(raisedBedBlockIds.length - 1 - blockIndex, 0) * 9;
+    const soilWetPatches = useMemo(
+        () =>
+            getRaisedBedSoilWetPatches({
+                blockIndex,
+                blockOffset,
+                blockPosition: [
+                    raisedBedPosition.x,
+                    raisedBedPosition.y,
+                    raisedBedPosition.z,
+                ],
+                currentTime,
+                raisedBed,
+                visualRewards,
+            }),
+        [
+            blockIndex,
+            blockOffset,
+            currentTime,
+            raisedBed,
+            raisedBedPosition.x,
+            raisedBedPosition.y,
+            raisedBedPosition.z,
+            visualRewards,
+        ],
+    );
+    const raisedBedSoilMaterial = useGroundPatchMaterial(
+        materials['Material.Dirt'],
+        'raisedBedSoil',
+        { wetPatches: soilWetPatches },
+    );
 
     return (
         <>
@@ -137,11 +179,9 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
                         receiveShadow
                         geometry={nodes[shape1].geometry}
                         material={
-                            materials[
-                                shape1 === 'Raised_Bed_O_1'
-                                    ? 'Material.Planks'
-                                    : 'Material.Dirt'
-                            ]
+                            shape1 === 'Raised_Bed_O_1'
+                                ? materials['Material.Planks']
+                                : raisedBedSoilMaterial
                         }
                     />
                     <SnowOverlay
@@ -157,11 +197,9 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
                         receiveShadow
                         geometry={nodes[shape2].geometry}
                         material={
-                            materials[
-                                shape2 === 'Raised_Bed_O_2'
-                                    ? 'Material.Dirt'
-                                    : 'Material.Planks'
-                            ]
+                            shape2 === 'Raised_Bed_O_2'
+                                ? raisedBedSoilMaterial
+                                : materials['Material.Planks']
                         }
                     />
                     <SnowOverlay
