@@ -1,10 +1,19 @@
 'use client';
 
 import { isRaisedBedAbandoned } from '@gredice/js/raisedBeds';
+import { firstRaisedBedTutorialTasks } from '@gredice/js/raisedBedTutorial';
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { Chip } from '@gredice/ui/Chip';
-import { Check, Close, Leaf, ShoppingCart, Sprout } from '@gredice/ui/icons';
+import {
+    Check,
+    Close,
+    ExternalLink,
+    Info,
+    Leaf,
+    ShoppingCart,
+    Sprout,
+} from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -23,6 +32,7 @@ import {
     scheduleHideShoppingCartTransientHub,
     showShoppingCartTransientHub,
 } from '../hooks/useShoppingCartTransientHub';
+import { KnownPages } from '../knownPages';
 import { useGameState } from '../useGameState';
 import { useSetRaisedBedCloseupParam } from '../useRaisedBedCloseup';
 import { isRaisedBedFieldOccupied } from '../utils/raisedBedFields';
@@ -536,6 +546,19 @@ export function RaisedBedOnboardingModal({
                                     ? `Za gredicu ${targetRaisedBed.name}`
                                     : 'Za tvoju prvu gredicu'}
                             </Typography>
+                            <Button
+                                className="w-fit px-0"
+                                href={KnownPages.GrediceFirstRaisedBedGuide}
+                                rel="noreferrer"
+                                size="sm"
+                                target="_blank"
+                                variant="link"
+                                endDecorator={
+                                    <ExternalLink className="size-3.5" />
+                                }
+                            >
+                                Detaljan vodič
+                            </Button>
                         </Stack>
                         <div className="hidden min-w-44 md:block">
                             {selectedLayout ? (
@@ -684,6 +707,49 @@ export function RaisedBedOnboardingModal({
                                             </div>
                                         </>
                                     ) : null}
+                                    <Stack
+                                        spacing={2}
+                                        className="border-t pt-3"
+                                    >
+                                        <Row spacing={2}>
+                                            <Info className="size-4 text-primary" />
+                                            <Typography semiBold>
+                                                Tvoji zadaci
+                                            </Typography>
+                                        </Row>
+                                        <ol className="grid gap-2">
+                                            {firstRaisedBedTutorialTasks.map(
+                                                (task, index) => (
+                                                    <li
+                                                        className="grid grid-cols-[1.5rem_minmax(0,1fr)] gap-2"
+                                                        key={task.id}
+                                                    >
+                                                        <span className="grid size-6 place-items-center rounded-md bg-muted text-xs font-semibold text-muted-foreground">
+                                                            {(
+                                                                index + 1
+                                                            ).toString()}
+                                                        </span>
+                                                        <Stack spacing={0}>
+                                                            <Typography
+                                                                level="body3"
+                                                                semiBold
+                                                            >
+                                                                {task.title}
+                                                            </Typography>
+                                                            <Typography
+                                                                level="body3"
+                                                                secondary
+                                                            >
+                                                                {
+                                                                    task.shortDescription
+                                                                }
+                                                            </Typography>
+                                                        </Stack>
+                                                    </li>
+                                                ),
+                                            )}
+                                        </ol>
+                                    </Stack>
                                 </Stack>
                             </aside>
                         </div>
