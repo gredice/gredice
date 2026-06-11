@@ -7,7 +7,6 @@ import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useDeliveryRequests } from '../hooks/useDeliveryRequests';
 import { useAllSorts } from '../hooks/usePlantSorts';
 import { useRaisedBedOperationVisualRewards } from '../hooks/useRaisedBedOperationVisualRewards';
-import { useSnapshotTime } from '../hooks/useSnapshotTime';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
@@ -26,7 +25,6 @@ import {
     resolveRaisedBedHarvestBasketPlacement,
     resolveRaisedBedHarvestBasketState,
 } from './raisedBed/raisedBedHarvestRewards';
-import { isWateringRewardVisible } from './raisedBed/raisedBedWateringRewards';
 
 const combinedOverlap = 0.1;
 const halfOverlap = combinedOverlap / 2;
@@ -212,7 +210,6 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
     const { data: garden } = useCurrentGarden();
     const raisedBed = findRaisedBedByBlockId(garden, block.id);
     const visualRewards = useRaisedBedOperationVisualRewards(raisedBed);
-    const currentTime = useSnapshotTime();
     const isMock = useGameState((state) => state.isMock);
     const isLocalSandbox = useGameState(
         (state) => state.localSandboxStorageKey !== null,
@@ -317,13 +314,6 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
         shape1 = 'Raised_Bed_O_1';
         shape2 = 'Raised_Bed_O_2';
     }
-    const dirtShape = shape1 === 'Raised_Bed_O_1' ? shape2 : shape1;
-    const hasRaisedBedWateringReward = visualRewards.some(
-        (reward) =>
-            reward.scope === 'raisedBed' &&
-            reward.raisedBedId === raisedBed?.id &&
-            isWateringRewardVisible(reward, currentTime),
-    );
     const hiddenHarvestOperationIds = useMemo(
         () =>
             new Set(
@@ -428,22 +418,6 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
                         coverageMultiplier={0.9}
                     />
                     <RainWetOverlay geometry={nodes[shape2].geometry} />
-                    {hasRaisedBedWateringReward && (
-                        <mesh
-                            geometry={nodes[dirtShape].geometry}
-                            renderOrder={1}
-                        >
-                            <meshStandardMaterial
-                                color="#18201d"
-                                depthWrite={false}
-                                opacity={0.46}
-                                polygonOffset
-                                polygonOffsetFactor={-5}
-                                roughness={0.6}
-                                transparent
-                            />
-                        </mesh>
-                    )}
                 </animated.group>
             </HoverOutline>
             <group position={raisedBedPosition}>
