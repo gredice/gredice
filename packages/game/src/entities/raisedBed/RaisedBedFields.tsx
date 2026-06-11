@@ -42,7 +42,8 @@ const fieldAgrotextileCoverSize = 0.25;
 const wholeBedAgrotextileCoverPadding = 0.02;
 const wholeBedAgrotextileHemThickness = 0.018;
 const raisedBedFieldCount = 9;
-const weedFieldScatterRadius = 0.108;
+// Keep weed bases inside the visible dirt inset, not out on the raised-bed rim.
+const weedFieldScatterRadius = 0.082;
 const weedBladeIds = [
     'sprout-a',
     'sprout-b',
