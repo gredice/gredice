@@ -7,7 +7,7 @@ import { Modal } from '@gredice/ui/Modal';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useClaimDailyReward } from '../hooks/useClaimDailyReward';
 import { useDailyReward } from '../hooks/useDailyReward';
 import { useGameAudio } from '../hooks/useGameAudio';
@@ -47,13 +47,23 @@ const messageTypes = {
 };
 
 export function WelcomeMessage({ onClosed }: { onClosed?: () => void }) {
-    const { data: dailyReward } = useDailyReward();
+    const { data: dailyReward, isFetched } = useDailyReward();
     const claimDailyReward = useClaimDailyReward();
     const shouldShow = Boolean(dailyReward?.canClaim);
     const [open, setOpen] = useState(shouldShow);
     const [isClosing, setIsClosing] = useState(false);
     const previousShouldShow = useRef(shouldShow);
     const closeTimeoutRef = useRef<number | null>(null);
+    const reportedClosedRef = useRef(false);
+    const reportClosed = useCallback(() => {
+        if (reportedClosedRef.current) {
+            return;
+        }
+
+        reportedClosedRef.current = true;
+        onClosed?.();
+    }, [onClosed]);
+
     useEffect(() => {
         if (shouldShow && !previousShouldShow.current) {
             setOpen(true);
@@ -70,6 +80,13 @@ export function WelcomeMessage({ onClosed }: { onClosed?: () => void }) {
 
         previousShouldShow.current = shouldShow;
     }, [shouldShow]);
+    useEffect(() => {
+        if (!isFetched || shouldShow || open || isClosing) {
+            return;
+        }
+
+        reportClosed();
+    }, [isClosing, isFetched, open, reportClosed, shouldShow]);
     useEffect(() => {
         return () => {
             if (closeTimeoutRef.current !== null) {
@@ -102,7 +119,7 @@ export function WelcomeMessage({ onClosed }: { onClosed?: () => void }) {
             if (dailyReward?.canClaim) {
                 claimDailyReward.mutate();
             }
-            onClosed?.();
+            reportClosed();
         }, animationDuration + 50);
     };
 

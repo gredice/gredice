@@ -15,6 +15,7 @@ import { ItemsHud } from './hud/ItemsHud';
 import { OutletHud } from './hud/OutletHud';
 import { PaymentSuccessfulMessage } from './hud/PaymentSuccessfulMessage';
 import { RaisedBedFieldHud } from './hud/RaisedBedFieldHud';
+import { RaisedBedOnboardingModal } from './hud/RaisedBedOnboardingModal';
 import { SandboxBlockTrashDropTarget } from './hud/SandboxBlockTrashDropTarget';
 import { SandboxEnvironmentHud } from './hud/SandboxEnvironmentHud';
 import { ShoppingCartHud } from './hud/ShoppingCartHud';
@@ -43,6 +44,8 @@ export function GameHud({
     noWeather?: boolean;
 }) {
     const [welcomeConfirmed, setWelcomeConfirmed] = useState(false);
+    const [raisedBedOnboardingResolved, setRaisedBedOnboardingResolved] =
+        useState(false);
     const isCloseup = useGameState((state) => state.view) === 'closeup';
     const { data: currentGarden } = useCurrentGarden();
     // Sandbox ("play") gardens are decoration only: no economy or inventory.
@@ -104,7 +107,15 @@ export function GameHud({
                     <WelcomeMessage
                         onClosed={() => setWelcomeConfirmed(true)}
                     />
-                    <WhatsNewWidget enabled={welcomeConfirmed} />
+                    <RaisedBedOnboardingModal
+                        enabled={welcomeConfirmed}
+                        onResolved={() => setRaisedBedOnboardingResolved(true)}
+                    />
+                    <WhatsNewWidget
+                        enabled={
+                            welcomeConfirmed && raisedBedOnboardingResolved
+                        }
+                    />
                 </>
             )}
             {!isLocalSandbox && <PaymentSuccessfulMessage />}
