@@ -567,6 +567,29 @@ function completedDebugAppliedOperation({
     };
 }
 
+function plannedDebugAppliedOperation({
+    createdAt,
+    entityId,
+    id,
+    raisedBedId,
+}: {
+    createdAt: string;
+    entityId: number;
+    id: number;
+    raisedBedId: number;
+}): MockRaisedBed['appliedOperations'][number] {
+    return {
+        id,
+        entityId,
+        raisedBedId,
+        raisedBedFieldId: null,
+        status: 'planned',
+        createdAt,
+        completedAt: null,
+        scheduledDate: createdAt,
+    };
+}
+
 function heavyDebugWeedState(
     observedAt: string,
     eventId: number,
@@ -708,17 +731,23 @@ function applyOperationRewardDebugState({
             }
             break;
         case 'harvest':
-            if (isAfter) {
-                raisedBed.appliedOperations = [
-                    completedDebugAppliedOperation({
-                        id: 9510,
-                        entityId:
-                            operationVisualRewardDebugOperationIds.harvest,
-                        raisedBedId: raisedBed.id,
-                        completedAt: operationVisualRewardDebugTimestamp,
-                    }),
-                ];
-            }
+            raisedBed.appliedOperations = [
+                isAfter
+                    ? completedDebugAppliedOperation({
+                          id: 9510,
+                          entityId:
+                              operationVisualRewardDebugOperationIds.harvest,
+                          raisedBedId: raisedBed.id,
+                          completedAt: operationVisualRewardDebugTimestamp,
+                      })
+                    : plannedDebugAppliedOperation({
+                          id: 9510,
+                          entityId:
+                              operationVisualRewardDebugOperationIds.harvest,
+                          raisedBedId: raisedBed.id,
+                          createdAt: operationVisualRewardDebugTimestamp,
+                      }),
+            ];
             break;
     }
 }
