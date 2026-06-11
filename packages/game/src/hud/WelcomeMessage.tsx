@@ -47,12 +47,14 @@ const messageTypes = {
 };
 
 export function WelcomeMessage({ onClosed }: { onClosed?: () => void }) {
-    const { data: dailyReward } = useDailyReward();
+    const dailyRewardQuery = useDailyReward();
     const claimDailyReward = useClaimDailyReward();
+    const dailyReward = dailyRewardQuery.data;
     const shouldShow = Boolean(dailyReward?.canClaim);
     const [open, setOpen] = useState(shouldShow);
     const [isClosing, setIsClosing] = useState(false);
     const previousShouldShow = useRef(shouldShow);
+    const openingCompleteNotifiedRef = useRef(false);
     const closeTimeoutRef = useRef<number | null>(null);
     useEffect(() => {
         if (shouldShow && !previousShouldShow.current) {
@@ -102,9 +104,34 @@ export function WelcomeMessage({ onClosed }: { onClosed?: () => void }) {
             if (dailyReward?.canClaim) {
                 claimDailyReward.mutate();
             }
+            openingCompleteNotifiedRef.current = true;
             onClosed?.();
         }, animationDuration + 50);
     };
+
+    useEffect(() => {
+        if (shouldShow) {
+            openingCompleteNotifiedRef.current = false;
+            return;
+        }
+
+        if (
+            openingCompleteNotifiedRef.current ||
+            open ||
+            (!dailyRewardQuery.isFetched && !dailyRewardQuery.isError)
+        ) {
+            return;
+        }
+
+        openingCompleteNotifiedRef.current = true;
+        onClosed?.();
+    }, [
+        dailyRewardQuery.isError,
+        dailyRewardQuery.isFetched,
+        onClosed,
+        open,
+        shouldShow,
+    ]);
 
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const isDay = timeOfDay > 0.2 && timeOfDay < 0.8;
