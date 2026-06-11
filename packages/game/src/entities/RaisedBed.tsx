@@ -29,11 +29,15 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
     const visitSummaryHighlight = useGameState(
         (state) => state.gardenVisitSummaryHighlight,
     );
+    const hasActiveDragPreview = useGameState((state) =>
+        Boolean(state.activeDragPreview),
+    );
     const hoveredRaisedBed = hoveredBlock
         ? findRaisedBedByBlockId(garden, hoveredBlock.id)
         : null;
     const hovered = Boolean(
-        garden &&
+        !hasActiveDragPreview &&
+            garden &&
             hoveredRaisedBed &&
             getRaisedBedBlockIds(garden, hoveredRaisedBed.id).includes(
                 block.id,
