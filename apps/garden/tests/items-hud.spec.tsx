@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/experimental-ct-react';
 import {
     ItemsHudAlignmentStory,
     ItemsHudControlsTooltipStory,
+    LowSunflowerBalanceItemsHudStory,
     SandboxBlockTrashDropTargetStory,
     SandboxItemsHudStory,
 } from './ItemsHudStory';
@@ -216,6 +217,32 @@ test('item picker price buttons use the soft surface', async ({
     await expect(priceButton).toHaveClass(/bg-primary\/10/u);
 });
 
+test('item picker disables purchase buttons above the sunflower balance', async ({
+    mount,
+    page,
+}) => {
+    await mount(<ItemsHudAlignmentStory />);
+
+    await page.getByRole('button', { name: 'Alat' }).click();
+
+    const affordablePriceButton = page
+        .getByRole('button', { name: /10/u })
+        .first();
+    await expect(affordablePriceButton).toBeEnabled();
+
+    const expensivePriceButton = page.getByRole('button', { name: /100/u });
+    await expect(expensivePriceButton).toBeVisible();
+    await expect(expensivePriceButton).toBeDisabled();
+
+    await page.getByRole('button', { name: 'PaintRoller' }).click();
+
+    const detailsPlaceButton = page.getByRole('button', {
+        name: /Postavi.*100/u,
+    });
+    await expect(detailsPlaceButton).toBeDisabled();
+    await expect(page.getByText('Nedovoljno suncokreta.')).toBeVisible();
+});
+
 test('item details place button keeps the soft color treatment', async ({
     mount,
     page,
@@ -280,6 +307,58 @@ test('item placement reserves local positions while requests are pending', async
     await expect.poll(() => placeRequestPositions.length).toBe(2);
     await expect(placeButton).toBeEnabled();
     expect(placeRequestPositions[0]).not.toEqual(placeRequestPositions[1]);
+
+    for (const releaseResponse of releaseResponses) {
+        releaseResponse();
+    }
+});
+
+test('item placement subtracts pending sunflower spends before enabling more purchases', async ({
+    mount,
+    page,
+}) => {
+    const placeRequestPositions: Array<{ x: number; y: number }> = [];
+    const releaseResponses: Array<() => void> = [];
+
+    await page.route(
+        /\/api(?:\/gredice)?\/gardens\/1\/blocks$/u,
+        async (route) => {
+            const position = getPlacementRequestPosition(
+                route.request().postDataJSON(),
+            );
+            if (position) {
+                placeRequestPositions.push(position);
+            }
+            const blockId = `placed-block-${placeRequestPositions.length.toString()}`;
+
+            await new Promise<void>((resolve) => {
+                releaseResponses.push(resolve);
+            });
+
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    id: blockId,
+                    position: { x: 0, y: 0 },
+                }),
+            });
+        },
+    );
+
+    await mount(<LowSunflowerBalanceItemsHudStory />);
+
+    await page.getByRole('button', { name: 'Blokovi' }).click();
+    await page
+        .getByRole('button', { name: 'Block Grass', exact: true })
+        .click();
+
+    const placeButton = page.getByRole('button', { name: /Postavi.*10/u });
+    await expect(placeButton).toBeEnabled();
+
+    await placeButton.dblclick();
+    await expect.poll(() => placeRequestPositions.length).toBe(2);
+    await expect(placeButton).toBeDisabled();
 
     for (const releaseResponse of releaseResponses) {
         releaseResponse();
