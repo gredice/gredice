@@ -26,6 +26,7 @@
         "test:db:stop": "bash ./tests/stopTestDb.sh",
         "test:node": "bash ./tests/runNodeTests.sh",
         "notifications:backfill-rollout": "tsx --env-file=.env ./scripts/backfillNotificationRolloutDefaults.ts",
+        "tutorial-checklist:backfill": "tsx --conditions=react-server --env-file=.env ./scripts/backfillTutorialChecklistRewards.ts",
         "plant-relationships:backfill": "tsx --conditions=react-server --env-file=.env ./scripts/backfillPlantRelationships.ts",
         "plant-health:backfill": "tsx --conditions=react-server --env-file=.env ./scripts/backfillPlantHealthDirectory.ts",
         "harvest-traces:backfill": "tsx --conditions=react-server --env-file=.env ./scripts/backfillHarvestTraceLinks.ts"
