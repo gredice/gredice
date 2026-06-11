@@ -760,8 +760,8 @@ function RaisedBedFieldSupportVisual({
 
     return (
         <group position={position}>
-            <mesh castShadow position={[0, 0.24, 0]} renderOrder={3}>
-                <cylinderGeometry args={[0.012, 0.014, 0.48, 5]} />
+            <mesh castShadow position={[0, 0.39, 0]} renderOrder={8}>
+                <cylinderGeometry args={[0.018, 0.022, 0.78, 6]} />
                 <meshStandardMaterial color="#7a4f2b" roughness={0.9} />
             </mesh>
         </group>

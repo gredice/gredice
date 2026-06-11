@@ -238,8 +238,8 @@ const DEMO_RAISED_BED_FIELD_LAYOUT: MockRaisedBedFieldConfig[] = [
     },
 ];
 
-function mockDaysAgoIso(daysAgo: number) {
-    const date = new Date();
+function mockDaysAgoIso(daysAgo: number, referenceDate: string) {
+    const date = new Date(referenceDate);
     date.setDate(date.getDate() - daysAgo);
     return date.toISOString();
 }
@@ -254,12 +254,13 @@ function mockRaisedBedField(
     raisedBedId: number,
     id: number,
     field: MockRaisedBedFieldConfig,
+    referenceDate: string,
 ): MockRaisedBedField {
-    const plantSowDate = mockDaysAgoIso(field.sowDaysAgo);
-    const plantGrowthDate = mockDaysAgoIso(field.growthDaysAgo);
+    const plantSowDate = mockDaysAgoIso(field.sowDaysAgo, referenceDate);
+    const plantGrowthDate = mockDaysAgoIso(field.growthDaysAgo, referenceDate);
     const plantReadyDate =
         field.readyDaysAgo != null
-            ? mockDaysAgoIso(field.readyDaysAgo)
+            ? mockDaysAgoIso(field.readyDaysAgo, referenceDate)
             : undefined;
 
     return {
@@ -322,9 +323,15 @@ function mockRaisedBedField(
 function mockRaisedBedFields(
     raisedBedId: number,
     idOffset: number,
+    referenceDate: string,
 ): MockRaisedBed['fields'] {
     return DEMO_RAISED_BED_FIELD_LAYOUT.map((field, index) =>
-        mockRaisedBedField(raisedBedId, idOffset + index + 1, field),
+        mockRaisedBedField(
+            raisedBedId,
+            idOffset + index + 1,
+            field,
+            referenceDate,
+        ),
     );
 }
 
@@ -484,7 +491,7 @@ function createProfileRaisedBed(
         name: `Profile raised bed ${id}`,
         blockId,
         physicalId: `profile-raised-bed:${id}`,
-        fields: mockRaisedBedFields(id, fieldOffset),
+        fields: mockRaisedBedFields(id, fieldOffset, now),
         appliedOperations: [],
         weedState: null,
         status: 'new',
@@ -834,7 +841,7 @@ function denseMockGarden(
 function operationRewardDebugMockGarden(
     winterMode: WinterMode,
 ): useCurrentGardenResponse {
-    const now = new Date().toISOString();
+    const now = operationVisualRewardDebugTimestamp;
     const { stackByPosition, stacks } =
         createOperationRewardDebugStacks(winterMode);
     const raisedBeds: useCurrentGardenResponse['raisedBeds'] = [];
@@ -905,7 +912,7 @@ function mockGarden(
             name: 'Raised Bed 1',
             blockId: '3',
             physicalId: '42',
-            fields: mockRaisedBedFields(1, 0),
+            fields: mockRaisedBedFields(1, 0, now),
             appliedOperations: [],
             weedState: null,
             status: 'new',
@@ -920,7 +927,7 @@ function mockGarden(
             name: 'Raised Bed 2',
             physicalId: '42',
             blockId: '8',
-            fields: mockRaisedBedFields(2, 100),
+            fields: mockRaisedBedFields(2, 100, now),
             appliedOperations: [],
             weedState: null,
             status: 'new',
