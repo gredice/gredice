@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { Suspense, useMemo } from 'react';
 import { useBlockData } from '../../hooks/useBlockData';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useDeliveryRequests } from '../../hooks/useDeliveryRequests';
@@ -9,24 +9,73 @@ import {
     findRaisedBedByBlockId,
     getRaisedBedBlockIds,
 } from '../../utils/raisedBedBlocks';
+import { useGameGLTF } from '../../utils/useGameGLTF';
 import {
     type RaisedBedHarvestBasketFillLevel,
     resolveRaisedBedHarvestBasketPlacement,
     resolveRaisedBedHarvestBasketState,
 } from './raisedBedHarvestRewards';
 
-type HarvestProduceKind = 'green' | 'leafy' | 'orange' | 'pale' | 'red';
+type HarvestProduceKind =
+    | 'green'
+    | 'leafy'
+    | 'orange'
+    | 'pale'
+    | 'red'
+    | 'yellow';
 
+// Produce models have their origin at the resting bottom; slot y keeps them
+// seated on the basket's inner floor (z=0.19 in the model).
 const harvestBasketProduceSlots = [
-    { id: 'front-left', position: [-0.12, 0.175, -0.055] },
-    { id: 'center-left', position: [-0.045, 0.19, 0.02] },
-    { id: 'center-right', position: [0.04, 0.18, -0.04] },
-    { id: 'front-right', position: [0.12, 0.19, 0.04] },
-    { id: 'back-left', position: [-0.085, 0.22, 0.075] },
-    { id: 'back-right', position: [0.075, 0.225, 0.085] },
-    { id: 'front-center', position: [0, 0.235, -0.095] },
-    { id: 'outer-right', position: [0.145, 0.225, -0.08] },
+    { id: 'center-back', position: [-0.04, 0.19, 0.08], rotation: 0.4 },
+    { id: 'front-right', position: [0.15, 0.188, -0.065], rotation: 1.7 },
+    { id: 'front-left', position: [-0.17, 0.188, -0.07], rotation: -0.6 },
+    { id: 'back-right', position: [0.16, 0.192, 0.075], rotation: 2.6 },
+    { id: 'front-center', position: [-0.01, 0.186, -0.09], rotation: 0.9 },
+    { id: 'back-left', position: [-0.17, 0.192, 0.08], rotation: -1.9 },
+    { id: 'center-right', position: [0.07, 0.196, 0.01], rotation: 3.4 },
+    { id: 'center-left', position: [-0.1, 0.194, -0.005], rotation: -2.8 },
 ] as const;
+
+const harvestProduceParts = {
+    green: [
+        { material: 'Material.VeggieGreen', node: 'HarvestBasket_Zucchini' },
+    ],
+    leafy: [
+        { material: 'Material.VeggieLeafy', node: 'HarvestBasket_Cabbage' },
+    ],
+    orange: [
+        { material: 'Material.VeggieOrange', node: 'HarvestBasket_Carrot' },
+        {
+            material: 'Material.VeggieGreenDark',
+            node: 'HarvestBasket_CarrotGreens',
+        },
+    ],
+    pale: [
+        { material: 'Material.VeggiePale', node: 'HarvestBasket_Turnip' },
+        {
+            material: 'Material.VeggieGreenDark',
+            node: 'HarvestBasket_TurnipSprout',
+        },
+    ],
+    red: [
+        { material: 'Material.VeggieRed', node: 'HarvestBasket_Tomato' },
+        {
+            material: 'Material.VeggieGreenDark',
+            node: 'HarvestBasket_TomatoCalyx',
+        },
+    ],
+    yellow: [
+        { material: 'Material.VeggieYellow', node: 'HarvestBasket_Pumpkin' },
+        {
+            material: 'Material.VeggieGreenDark',
+            node: 'HarvestBasket_PumpkinStem',
+        },
+    ],
+} as const satisfies Record<
+    HarvestProduceKind,
+    readonly { material: string; node: string }[]
+>;
 
 function normalizeProduceLabel(value: string) {
     return value
@@ -48,7 +97,11 @@ function resolveHarvestProduceKind(
         return 'red';
     }
 
-    if (/mrkv|carrot|tikv|pumpkin|dinj|melon|cikla|beet/.test(text)) {
+    if (/tikv|pumpkin|dinj|melon|buc/.test(text)) {
+        return 'yellow';
+    }
+
+    if (/mrkv|carrot|cikla|beet/.test(text)) {
         return 'orange';
     }
 
@@ -74,53 +127,22 @@ function HarvestBasketProduce({
     index: number;
     kind: HarvestProduceKind;
 }) {
-    const position =
-        harvestBasketProduceSlots[index % harvestBasketProduceSlots.length]
-            ?.position ?? harvestBasketProduceSlots[0].position;
-
-    if (kind === 'leafy') {
-        return (
-            <group position={position} rotation={[0, index * 0.9, 0]}>
-                <mesh scale={[1.6, 0.45, 0.9]}>
-                    <sphereGeometry args={[0.04, 8, 6]} />
-                    <meshStandardMaterial color="#4f8d45" roughness={0.85} />
-                </mesh>
-                <mesh
-                    position={[0.018, 0.012, -0.012]}
-                    scale={[1.1, 0.35, 0.7]}
-                >
-                    <sphereGeometry args={[0.032, 8, 6]} />
-                    <meshStandardMaterial color="#6aa84f" roughness={0.85} />
-                </mesh>
-            </group>
-        );
-    }
-
-    if (kind === 'pale') {
-        return (
-            <group position={position}>
-                <mesh>
-                    <sphereGeometry args={[0.034, 8, 6]} />
-                    <meshStandardMaterial color="#efe0b8" roughness={0.82} />
-                </mesh>
-                <mesh position={[0, 0.04, 0]} rotation={[0.35, 0, 0]}>
-                    <coneGeometry args={[0.012, 0.075, 5]} />
-                    <meshStandardMaterial color="#6c8f42" roughness={0.9} />
-                </mesh>
-            </group>
-        );
-    }
-
-    const color =
-        kind === 'red' ? '#c74335' : kind === 'orange' ? '#d9822b' : '#5f8c44';
-    const scale =
-        kind === 'green' ? ([1.65, 0.72, 0.86] as const) : ([1, 1, 1] as const);
+    const { nodes, materials } = useGameGLTF('HarvestBasket');
+    const slot =
+        harvestBasketProduceSlots[index % harvestBasketProduceSlots.length] ??
+        harvestBasketProduceSlots[0];
 
     return (
-        <mesh position={position} rotation={[0, index * 0.7, 0]} scale={scale}>
-            <sphereGeometry args={[0.038, 8, 6]} />
-            <meshStandardMaterial color={color} roughness={0.82} />
-        </mesh>
+        <group position={slot.position} rotation={[0, slot.rotation, 0]}>
+            {harvestProduceParts[kind].map((part) => (
+                <mesh
+                    key={part.node}
+                    castShadow
+                    geometry={nodes[part.node].geometry}
+                    material={materials[part.material]}
+                />
+            ))}
+        </group>
     );
 }
 
@@ -135,45 +157,41 @@ function RaisedBedHarvestBasketVisual({
     produceKinds: HarvestProduceKind[];
     rotation: number;
 }) {
+    const { nodes, materials } = useGameGLTF('HarvestBasket');
     const produceCount =
         fillLevel === 'full' ? 8 : fillLevel === 'partial' ? 5 : 0;
     const visibleProduceKinds =
         produceKinds.length > 0 ? produceKinds : (['green'] as const);
 
     return (
-        <group
-            position={position}
-            rotation={[0, rotation, 0]}
-            scale={[1.25, 1.12, 1.25]}
-        >
-            <mesh castShadow receiveShadow position={[0, 0.055, 0]}>
-                <boxGeometry args={[0.52, 0.08, 0.36]} />
-                <meshStandardMaterial color="#7a4f2b" roughness={0.95} />
-            </mesh>
-            <mesh castShadow position={[0, 0.125, -0.19]}>
-                <boxGeometry args={[0.56, 0.13, 0.035]} />
-                <meshStandardMaterial color="#b47a43" roughness={0.95} />
-            </mesh>
-            <mesh castShadow position={[0, 0.125, 0.19]}>
-                <boxGeometry args={[0.56, 0.13, 0.035]} />
-                <meshStandardMaterial color="#b47a43" roughness={0.95} />
-            </mesh>
-            <mesh castShadow position={[-0.28, 0.125, 0]}>
-                <boxGeometry args={[0.035, 0.13, 0.36]} />
-                <meshStandardMaterial color="#a16939" roughness={0.95} />
-            </mesh>
-            <mesh castShadow position={[0.28, 0.125, 0]}>
-                <boxGeometry args={[0.035, 0.13, 0.36]} />
-                <meshStandardMaterial color="#a16939" roughness={0.95} />
-            </mesh>
-            <mesh castShadow position={[0, 0.205, -0.205]}>
-                <boxGeometry args={[0.48, 0.028, 0.035]} />
-                <meshStandardMaterial color="#d09a5b" roughness={0.9} />
-            </mesh>
-            <mesh castShadow position={[0, 0.205, 0.205]}>
-                <boxGeometry args={[0.48, 0.028, 0.035]} />
-                <meshStandardMaterial color="#d09a5b" roughness={0.9} />
-            </mesh>
+        <group position={position} rotation={[0, rotation, 0]}>
+            <mesh
+                castShadow
+                receiveShadow
+                geometry={nodes.HarvestBasket_Weave.geometry}
+                material={materials['Material.BasketWeave']}
+            />
+            <mesh
+                castShadow
+                receiveShadow
+                geometry={nodes.HarvestBasket_Rim.geometry}
+                material={materials['Material.BasketRim']}
+            />
+            <mesh
+                receiveShadow
+                geometry={nodes.HarvestBasket_Inner.geometry}
+                material={materials['Material.BasketInner']}
+            />
+            <mesh
+                castShadow
+                geometry={nodes.HarvestBasket_Handle.geometry}
+                material={materials['Material.BasketRim']}
+            />
+            <mesh
+                castShadow
+                geometry={nodes.HarvestBasket_Pin.geometry}
+                material={materials['Material.BasketPin']}
+            />
             {harvestBasketProduceSlots
                 .slice(0, produceCount)
                 .map((slot, index) => (
@@ -269,11 +287,13 @@ export function RaisedBedHarvestBasketForBlock({
     }
 
     return (
-        <RaisedBedHarvestBasketVisual
-            fillLevel={harvestBasketState.fillLevel}
-            position={harvestBasketPlacement.position}
-            produceKinds={harvestProduceKinds}
-            rotation={harvestBasketPlacement.rotation}
-        />
+        <Suspense fallback={null}>
+            <RaisedBedHarvestBasketVisual
+                fillLevel={harvestBasketState.fillLevel}
+                position={harvestBasketPlacement.position}
+                produceKinds={harvestProduceKinds}
+                rotation={harvestBasketPlacement.rotation}
+            />
+        </Suspense>
     );
 }
