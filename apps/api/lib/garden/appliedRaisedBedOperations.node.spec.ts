@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { isAppliedOperationCurrentForRaisedBedFields } from './appliedRaisedBedOperations';
+import {
+    isAppliedOperationCurrentForRaisedBedFields,
+    serializeAppliedRaisedBedOperation,
+} from './appliedRaisedBedOperations';
 
 describe('isAppliedOperationCurrentForRaisedBedFields', () => {
     it('keeps full raised-bed operations active across plant cycles', () => {
@@ -93,6 +96,33 @@ describe('isAppliedOperationCurrentForRaisedBedFields', () => {
                 ],
             ),
             false,
+        );
+    });
+});
+
+describe('serializeAppliedRaisedBedOperation', () => {
+    it('includes raised-bed identity for whole-bed visual rewards', () => {
+        assert.deepStrictEqual(
+            serializeAppliedRaisedBedOperation({
+                id: 2057,
+                entityId: 9406,
+                raisedBedId: 459,
+                raisedBedFieldId: null,
+                status: 'completed',
+                createdAt: new Date('2026-05-13T23:17:16.911Z'),
+                completedAt: new Date('2026-05-14T16:39:28.536Z'),
+                scheduledDate: new Date('2026-05-14T09:00:00.000Z'),
+            }),
+            {
+                id: 2057,
+                entityId: 9406,
+                raisedBedId: 459,
+                raisedBedFieldId: null,
+                status: 'completed',
+                createdAt: '2026-05-13T23:17:16.911Z',
+                completedAt: '2026-05-14T16:39:28.536Z',
+                scheduledDate: '2026-05-14T09:00:00.000Z',
+            },
         );
     });
 });
