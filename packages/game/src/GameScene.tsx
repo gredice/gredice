@@ -44,6 +44,7 @@ import { useWeatherNow } from './hooks/useWeatherNow';
 import { DebugHud } from './hud/DebugHud';
 import { GardenLoadingIndicator } from './indicators/GardenLoadingIndicator';
 import { PlacementGrid } from './indicators/PlacementGrid';
+import { isOperationVisualRewardDebugProfile } from './operationVisualRewardDebugProfile';
 import { ParticleSystemProvider } from './particles/ParticleSystem';
 import { Environment } from './scene/Environment';
 import {
@@ -192,6 +193,8 @@ export function GameScene({
     const isLocalSandbox = useGameState(
         (state) => state.localSandboxStorageKey !== null,
     );
+    const isMock = useGameState((state) => state.isMock);
+    const mockGardenProfile = useGameState((state) => state.mockGardenProfile);
     const gameQualitySetting = useGameState(
         (state) => state.gameQualitySetting,
     );
@@ -201,6 +204,12 @@ export function GameScene({
     const weatherDisabled = noWeather || weatherVisualizationDisabled;
     const deferredRenderDetails = useDeferredSceneDetails(deferDetails);
     const renderDetails = renderDetailsOverride ?? deferredRenderDetails;
+    const isOperationRewardDebug =
+        isMock && isOperationVisualRewardDebugProfile(mockGardenProfile);
+    const shouldRenderRaisedBedMulchOverlays =
+        !isLocalSandbox &&
+        renderDetails &&
+        (zoom !== 'far' || isOperationRewardDebug);
     const [sunflowerDropFlyOrigin, setSunflowerDropFlyOrigin] =
         useState<SunflowerDropFlyOrigin | null>(null);
     const autoQualityProfileMetrics = useAutoQualityProfileMetrics(
@@ -329,15 +338,13 @@ export function GameScene({
                                         );
                                     }),
                                 )}
-                                {!isLocalSandbox &&
-                                    renderDetails &&
-                                    zoom !== 'far' && (
-                                        <Suspense fallback={null}>
-                                            <RaisedBedMulchOverlays
-                                                quality={qualityProfile}
-                                            />
-                                        </Suspense>
-                                    )}
+                                {shouldRenderRaisedBedMulchOverlays && (
+                                    <Suspense fallback={null}>
+                                        <RaisedBedMulchOverlays
+                                            quality={qualityProfile}
+                                        />
+                                    </Suspense>
+                                )}
                                 <EntityInstances
                                     quality={qualityProfile}
                                     renderGroundDecorations={

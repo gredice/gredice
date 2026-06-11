@@ -1,9 +1,16 @@
 import type { OperationVisualReward } from '../../operationVisualRewards';
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
 
+type TimestampValue = Date | string | null | undefined;
+
 type RaisedBedSupportFieldInput = {
     active?: boolean | null;
     id: number | string;
+    plantCycles?: Array<{
+        active?: boolean | null;
+        startedAt?: TimestampValue;
+    }> | null;
+    plantSowDate?: TimestampValue;
     plantSortId?: number | null;
     positionIndex: number;
 };
@@ -26,18 +33,50 @@ function isActiveSupportsReward(
     );
 }
 
+function timestampMs(value: TimestampValue) {
+    if (!value) {
+        return null;
+    }
+
+    const timestamp =
+        value instanceof Date ? value.getTime() : Date.parse(value);
+
+    return Number.isFinite(timestamp) ? timestamp : null;
+}
+
+function activePlantCycleStartMs(field: RaisedBedSupportFieldInput) {
+    const activePlantCycle = field.plantCycles?.find(
+        (plantCycle) => plantCycle.active,
+    );
+
+    return timestampMs(activePlantCycle?.startedAt);
+}
+
+function isSupportRewardCurrentForField(
+    reward: OperationVisualReward,
+    field: RaisedBedSupportFieldInput,
+) {
+    const cycleStartMs =
+        activePlantCycleStartMs(field) ?? timestampMs(field.plantSowDate);
+    if (cycleStartMs == null || reward.timestampMs <= 0) {
+        return true;
+    }
+
+    return reward.timestampMs >= cycleStartMs;
+}
+
 export function resolveRaisedBedSupportPositions({
     blockOffset,
     fields,
     raisedBedId,
     visualRewards,
 }: ResolveRaisedBedSupportPositionsInput) {
-    const hasRaisedBedSupports = visualRewards.some(
+    const raisedBedSupportRewards = visualRewards.filter(
         (reward) =>
             isActiveSupportsReward(reward, raisedBedId) &&
             reward.scope === 'raisedBed',
     );
-    const supportedFieldIds = new Set(
+    const supportRewardsByFieldId = new Map(
         visualRewards
             .filter(
                 (reward) =>
@@ -45,17 +84,28 @@ export function resolveRaisedBedSupportPositions({
                     reward.scope === 'field' &&
                     reward.raisedBedFieldId != null,
             )
-            .map((reward) => reward.raisedBedFieldId),
+            .map((reward) => [reward.raisedBedFieldId, reward]),
     );
 
     return Array.from(
         new Set(
             fields
                 .filter((field) => {
+                    const fieldSupportReward =
+                        typeof field.id === 'number'
+                            ? supportRewardsByFieldId.get(field.id)
+                            : null;
                     const isSupported =
-                        hasRaisedBedSupports ||
-                        (typeof field.id === 'number' &&
-                            supportedFieldIds.has(field.id));
+                        raisedBedSupportRewards.some((reward) =>
+                            isSupportRewardCurrentForField(reward, field),
+                        ) ||
+                        Boolean(
+                            fieldSupportReward &&
+                                isSupportRewardCurrentForField(
+                                    fieldSupportReward,
+                                    field,
+                                ),
+                        );
 
                     return (
                         isSupported &&

@@ -123,6 +123,32 @@ function applied(
     };
 }
 
+function operationItem(
+    id: number,
+    input: {
+        completedAt?: string | null;
+        entityId: number;
+        raisedBedFieldId?: number | null;
+        raisedBedId?: number | null;
+        status?: string;
+    },
+): OperationHistoryVisualInput {
+    return {
+        id,
+        canceledAt: null,
+        completedAt: input.completedAt ?? null,
+        completionNotes: null,
+        createdAt: input.completedAt ?? '2026-06-01T08:00:00.000Z',
+        entityId: input.entityId,
+        imageUrls: [],
+        raisedBedFieldId: input.raisedBedFieldId,
+        raisedBedId: input.raisedBedId,
+        scheduledDate: '2026-06-02T08:00:00.000Z',
+        status: input.status ?? 'planned',
+        verifiedAt: null,
+    };
+}
+
 describe('operation visual reward kind mapping', () => {
     it('maps watering to a watering reward without special droplet kind', () => {
         assert.strictEqual(
@@ -142,7 +168,7 @@ describe('operation visual reward kind mapping', () => {
         );
     });
 
-    it('maps known plant and update actions', () => {
+    it('maps known plant actions', () => {
         assert.strictEqual(
             resolveOperationVisualRewardKind(operations[5]),
             'weeding',
@@ -155,9 +181,12 @@ describe('operation visual reward kind mapping', () => {
             resolveOperationVisualRewardKind(operations[7]),
             'harvest',
         );
+    });
+
+    it('ignores photo operations as visual rewards', () => {
         assert.strictEqual(
             resolveOperationVisualRewardKind(operations[8]),
-            'photographyUpdate',
+            null,
         );
     });
 
@@ -371,46 +400,74 @@ describe('resolveOperationVisualRewards', () => {
         assert.deepStrictEqual(rewards, []);
     });
 
-    it('uses operation history images for photography updates', () => {
-        const operationItems: OperationHistoryVisualInput[] = [
-            {
-                ...applied(501, {
-                    completedAt: '2026-06-01T08:00:00.000Z',
-                    entityId: 9,
-                    raisedBedId: 10,
-                    status: 'confirmed',
-                }),
-                imageUrls: [
-                    'https://cdn.gredice.com/photo-1.jpg',
-                    'https://cdn.gredice.com/photo-1.jpg',
-                    'https://cdn.gredice.com/photo-2.jpg',
-                ],
-                verifiedAt: null,
-            },
-        ];
-
+    it('keeps requested harvest items as empty harvest rewards', () => {
         const rewards = resolveOperationVisualRewards({
-            operationItems,
+            operationItems: [
+                operationItem(501, {
+                    entityId: 8,
+                    raisedBedFieldId: 500,
+                    raisedBedId: 10,
+                    status: 'planned',
+                }),
+            ],
             operations,
         });
 
         assert.equal(rewards.length, 1);
         assert.deepStrictEqual(
             {
-                family: rewards[0]?.family,
-                imageUrls: rewards[0]?.imageUrls,
+                completedAt: rewards[0]?.completedAt,
                 kind: rewards[0]?.kind,
-                polarity: rewards[0]?.polarity,
+                operationId: rewards[0]?.operationId,
+                status: rewards[0]?.status,
             },
             {
-                family: 'photography',
-                imageUrls: [
-                    'https://cdn.gredice.com/photo-1.jpg',
-                    'https://cdn.gredice.com/photo-2.jpg',
-                ],
-                kind: 'photographyUpdate',
-                polarity: 'update',
+                completedAt: null,
+                kind: 'harvest',
+                operationId: 501,
+                status: 'planned',
             },
         );
+    });
+
+    it('keeps completed harvest history as produce-ready rewards', () => {
+        const rewards = resolveOperationVisualRewards({
+            operationItems: [
+                operationItem(502, {
+                    completedAt: '2026-06-02T08:00:00.000Z',
+                    entityId: 8,
+                    raisedBedFieldId: 500,
+                    raisedBedId: 10,
+                    status: 'completed',
+                }),
+            ],
+            operations,
+        });
+
+        assert.equal(rewards[0]?.completedAt, '2026-06-02T08:00:00.000Z');
+        assert.equal(rewards[0]?.kind, 'harvest');
+    });
+
+    it('does not create visual rewards from operation history photos', () => {
+        const rewards = resolveOperationVisualRewards({
+            operationItems: [
+                {
+                    ...applied(501, {
+                        completedAt: '2026-06-01T08:00:00.000Z',
+                        entityId: 9,
+                        raisedBedId: 10,
+                        status: 'confirmed',
+                    }),
+                    imageUrls: [
+                        'https://cdn.gredice.com/photo-1.jpg',
+                        'https://cdn.gredice.com/photo-2.jpg',
+                    ],
+                    verifiedAt: null,
+                },
+            ],
+            operations,
+        });
+
+        assert.deepStrictEqual(rewards, []);
     });
 });

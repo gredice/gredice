@@ -101,6 +101,58 @@ test('raised-bed support reward marks planted fields in the current block', () =
     );
 });
 
+test('raised-bed support reward is removed from replacement plants', () => {
+    const visualRewards = resolveOperationVisualRewards({
+        appliedOperations: [
+            applied(151, {
+                completedAt: '2026-06-01T08:00:00.000Z',
+                entityId: 1,
+                raisedBedId: 10,
+            }),
+        ],
+        operations,
+    });
+
+    assert.deepStrictEqual(
+        resolveRaisedBedSupportPositions({
+            blockOffset: 9,
+            fields: [
+                {
+                    active: true,
+                    id: 50,
+                    plantCycles: [
+                        {
+                            active: true,
+                            startedAt: '2026-05-01T08:00:00.000Z',
+                        },
+                    ],
+                    plantSortId: 337,
+                    positionIndex: 9,
+                },
+                {
+                    active: true,
+                    id: 51,
+                    plantCycles: [
+                        {
+                            active: false,
+                            startedAt: '2026-05-01T08:00:00.000Z',
+                        },
+                        {
+                            active: true,
+                            startedAt: '2026-06-02T08:00:00.000Z',
+                        },
+                    ],
+                    plantSortId: 337,
+                    positionIndex: 10,
+                },
+            ],
+            raisedBedId: 10,
+            visualRewards,
+        }),
+        [0],
+    );
+});
+
 test('field support reward marks only the matching planted field', () => {
     const visualRewards = resolveOperationVisualRewards({
         appliedOperations: [
@@ -120,6 +172,84 @@ test('field support reward marks only the matching planted field', () => {
             fields: [
                 { active: true, id: 50, plantSortId: 337, positionIndex: 9 },
                 { active: true, id: 51, plantSortId: 337, positionIndex: 10 },
+            ],
+            raisedBedId: 10,
+            visualRewards,
+        }),
+        [1],
+    );
+});
+
+test('field support reward is removed when the field changes plant', () => {
+    const visualRewards = resolveOperationVisualRewards({
+        appliedOperations: [
+            applied(251, {
+                completedAt: '2026-06-01T08:00:00.000Z',
+                entityId: 2,
+                raisedBedFieldId: 51,
+                raisedBedId: 10,
+            }),
+        ],
+        operations,
+    });
+
+    assert.deepStrictEqual(
+        resolveRaisedBedSupportPositions({
+            blockOffset: 9,
+            fields: [
+                {
+                    active: true,
+                    id: 51,
+                    plantCycles: [
+                        {
+                            active: false,
+                            startedAt: '2026-05-01T08:00:00.000Z',
+                        },
+                        {
+                            active: true,
+                            startedAt: '2026-06-02T08:00:00.000Z',
+                        },
+                    ],
+                    plantSortId: 337,
+                    positionIndex: 10,
+                },
+            ],
+            raisedBedId: 10,
+            visualRewards,
+        }),
+        [],
+    );
+});
+
+test('field support reward stays visible during the active plant cycle', () => {
+    const visualRewards = resolveOperationVisualRewards({
+        appliedOperations: [
+            applied(261, {
+                completedAt: '2026-06-02T09:00:00.000Z',
+                entityId: 2,
+                raisedBedFieldId: 51,
+                raisedBedId: 10,
+            }),
+        ],
+        operations,
+    });
+
+    assert.deepStrictEqual(
+        resolveRaisedBedSupportPositions({
+            blockOffset: 9,
+            fields: [
+                {
+                    active: true,
+                    id: 51,
+                    plantCycles: [
+                        {
+                            active: true,
+                            startedAt: '2026-06-02T08:00:00.000Z',
+                        },
+                    ],
+                    plantSortId: 337,
+                    positionIndex: 10,
+                },
             ],
             raisedBedId: 10,
             visualRewards,

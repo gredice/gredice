@@ -3,9 +3,10 @@ import { useQuery } from '@tanstack/react-query';
 
 export const deliveryRequestsQueryKey = ['delivery', 'requests'];
 
-export function useDeliveryRequests() {
+export function useDeliveryRequests(options: { enabled?: boolean } = {}) {
     return useQuery({
         queryKey: deliveryRequestsQueryKey,
+        enabled: options.enabled ?? true,
         queryFn: async () => {
             const response =
                 await clientAuthenticated().api.delivery.requests.$get();
