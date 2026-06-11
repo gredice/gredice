@@ -34,7 +34,7 @@ import {
     useMarkGardenVisitSummarySeen,
 } from '../hooks/useGardenVisitSummary';
 import { useGameState } from '../useGameState';
-import { getRaisedBedBlockIds } from '../utils/raisedBedBlocks';
+import { useSetRaisedBedCloseupParam } from '../useRaisedBedCloseup';
 
 type GardenVisitSummaryModalProps = {
     enabled: boolean;
@@ -139,15 +139,17 @@ function inspectTargetForItem(
     const sameRaisedBed = targets.every(
         (target) => target.raisedBedId === firstTarget.raisedBedId,
     );
+    if (!sameRaisedBed) {
+        return null;
+    }
+
     const preciseTarget = targets.length === 1 ? firstTarget : null;
     const positionIndex = preciseTarget?.positionIndex ?? null;
     const fieldId = preciseTarget?.fieldId ?? null;
     const label =
         positionIndex != null
             ? `Polje ${(positionIndex + 1).toString()}`
-            : sameRaisedBed
-              ? (firstTarget.raisedBedName ?? 'Gredica')
-              : `${targets.length.toString()} gredice`;
+            : (firstTarget.raisedBedName ?? 'Gredica');
 
     return {
         fieldId,
@@ -165,10 +167,10 @@ export function GardenVisitSummaryModal({
     const summary = useGardenVisitSummary({ enabled });
     const markSeen = useMarkGardenVisitSummarySeen();
     const { data: currentGarden } = useCurrentGarden();
-    const setView = useGameState((state) => state.setView);
     const setGardenVisitSummaryHighlight = useGameState(
         (state) => state.setGardenVisitSummaryHighlight,
     );
+    const { mutate: setRaisedBedCloseupParam } = useSetRaisedBedCloseupParam();
     const [dismissedFactsHash, setDismissedFactsHash] = useState<string | null>(
         null,
     );
@@ -282,15 +284,13 @@ export function GardenVisitSummaryModal({
             return;
         }
 
-        const blockIds = getRaisedBedBlockIds(
-            currentGarden,
-            target.raisedBedId,
-        );
-        const block = currentGarden.stacks
-            .flatMap((stack) => stack.blocks)
-            .find((candidate) => candidate.id === blockIds[0]);
-
-        if (!block) {
+        const raisedBedName =
+            target.raisedBedName ??
+            currentGarden.raisedBeds.find(
+                (raisedBed) => raisedBed.id === target.raisedBedId,
+            )?.name ??
+            null;
+        if (!raisedBedName) {
             return;
         }
 
@@ -304,7 +304,7 @@ export function GardenVisitSummaryModal({
                 raisedBedId: target.raisedBedId,
                 raisedBedName: target.raisedBedName,
             });
-            setView({ view: 'closeup', block });
+            setRaisedBedCloseupParam(raisedBedName, target.positionIndex);
         });
     };
 
