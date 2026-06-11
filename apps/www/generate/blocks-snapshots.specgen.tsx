@@ -64,6 +64,15 @@ type SnapshotView = 'normal' | 'far' | 'closeup';
 const CLOSEUP_ENTITIES = new Set<string>([
     // Flowers and other small props look better when zoomed in
     'FireflyJar',
+    'LiquidPreparationBottlePestControl',
+    'LiquidPreparationBottleAphidControl',
+    'LiquidPreparationBottleSlugControl',
+    'LiquidPreparationBottleTomatoEggplantResistance',
+    'LiquidPreparationBottleFertilizer',
+    'LiquidPreparationBottleDiseaseControl',
+    'LiquidPreparationBottleWeevilControl',
+    'LiquidPreparationBottleVoleControl',
+    'LiquidPreparationBottleBeetleControl',
     'Tulip',
 ]);
 const gameAssetBaseUrl =

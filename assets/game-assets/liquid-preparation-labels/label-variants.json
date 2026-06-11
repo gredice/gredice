@@ -1,0 +1,124 @@
+[
+  {
+    "assetName": "LiquidPreparationBottlePestControl",
+    "slug": "pest-control",
+    "title": [
+      "ZAŠTITA",
+      "OD ŠTETNIKA"
+    ],
+    "caption": "biljni pripravak",
+    "primary": "#e7b83e",
+    "secondary": "#f6dc69",
+    "dark": "#805321",
+    "accent": "#d95c28",
+    "symbol": "pest"
+  },
+  {
+    "assetName": "LiquidPreparationBottleAphidControl",
+    "slug": "aphid-control",
+    "title": [
+      "LISNE",
+      "UŠI"
+    ],
+    "caption": "zaštita biljaka",
+    "primary": "#7caf43",
+    "secondary": "#d6ec69",
+    "dark": "#365d28",
+    "accent": "#cbe952",
+    "symbol": "aphid"
+  },
+  {
+    "assetName": "LiquidPreparationBottleSlugControl",
+    "slug": "slug-control",
+    "title": [
+      "PUŽEVI"
+    ],
+    "caption": "zaštita biljaka",
+    "primary": "#5da7ca",
+    "secondary": "#c7edf4",
+    "dark": "#2b6275",
+    "accent": "#f3c65d",
+    "symbol": "slug"
+  },
+  {
+    "assetName": "LiquidPreparationBottleTomatoEggplantResistance",
+    "slug": "tomato-eggplant-resistance",
+    "title": [
+      "OTPORNOST",
+      "RAJČICA I",
+      "PATLIDŽANA"
+    ],
+    "caption": "jačanje biljaka",
+    "primary": "#d6784b",
+    "secondary": "#ffd887",
+    "dark": "#7f3f28",
+    "accent": "#f05d3c",
+    "symbol": "tomato-eggplant"
+  },
+  {
+    "assetName": "LiquidPreparationBottleFertilizer",
+    "slug": "fertilizer",
+    "title": [
+      "GNOJIVO"
+    ],
+    "caption": "hranivo za rast",
+    "primary": "#a98b3e",
+    "secondary": "#e8d47a",
+    "dark": "#5e4a28",
+    "accent": "#f2c74d",
+    "symbol": "fertilizer"
+  },
+  {
+    "assetName": "LiquidPreparationBottleDiseaseControl",
+    "slug": "disease-control",
+    "title": [
+      "ZAŠTITA",
+      "OD BOLESTI"
+    ],
+    "caption": "biljni pripravak",
+    "primary": "#bdd84f",
+    "secondary": "#effb79",
+    "dark": "#5f712f",
+    "accent": "#e95f31",
+    "symbol": "disease"
+  },
+  {
+    "assetName": "LiquidPreparationBottleWeevilControl",
+    "slug": "weevil-control",
+    "title": [
+      "ŽIŽNJACI"
+    ],
+    "caption": "zaštita biljaka",
+    "primary": "#54b59e",
+    "secondary": "#c8f1d9",
+    "dark": "#2f675c",
+    "accent": "#7d642c",
+    "symbol": "weevil"
+  },
+  {
+    "assetName": "LiquidPreparationBottleVoleControl",
+    "slug": "vole-control",
+    "title": [
+      "VOLUHARICE"
+    ],
+    "caption": "zaštita vrta",
+    "primary": "#9a6b37",
+    "secondary": "#f0c778",
+    "dark": "#5a3d22",
+    "accent": "#3f2f24",
+    "symbol": "vole"
+  },
+  {
+    "assetName": "LiquidPreparationBottleBeetleControl",
+    "slug": "beetle-control",
+    "title": [
+      "TVRDOKRILCI"
+    ],
+    "caption": "zaštita biljaka",
+    "primary": "#8fbf45",
+    "secondary": "#e4f46c",
+    "dark": "#42672b",
+    "accent": "#6a5530",
+    "symbol": "beetle"
+  }
+]
