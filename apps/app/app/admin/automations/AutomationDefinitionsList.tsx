@@ -4,60 +4,19 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
-import { useMemo } from 'react';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { KnownPages } from '../../../src/KnownPages';
 import {
     AutomationDefinitionStatusIndicator,
     AutomationRunStatusIndicator,
 } from './AutomationStatusIndicator';
-import type {
-    AutomationDefinitionListItem,
-    AutomationRunListItem,
-} from './types';
-
-function latestRunsByDefinition(runs: AutomationRunListItem[]) {
-    const latestRuns = new Map<number, AutomationRunListItem>();
-
-    for (const run of runs) {
-        if (!latestRuns.has(run.automationDefinitionId)) {
-            latestRuns.set(run.automationDefinitionId, run);
-        }
-    }
-
-    return latestRuns;
-}
-
-function loadedFailedRunsByDefinition(runs: AutomationRunListItem[]) {
-    const failedRuns = new Map<number, number>();
-
-    for (const run of runs) {
-        if (run.status !== 'failed') {
-            continue;
-        }
-
-        failedRuns.set(
-            run.automationDefinitionId,
-            (failedRuns.get(run.automationDefinitionId) ?? 0) + 1,
-        );
-    }
-
-    return failedRuns;
-}
+import type { AutomationDefinitionListItem } from './types';
 
 export function AutomationDefinitionsList({
     definitions,
-    runs,
 }: {
     definitions: AutomationDefinitionListItem[];
-    runs: AutomationRunListItem[];
 }) {
-    const latestRuns = useMemo(() => latestRunsByDefinition(runs), [runs]);
-    const failedRuns = useMemo(
-        () => loadedFailedRunsByDefinition(runs),
-        [runs],
-    );
-
     return (
         <Card className="h-full">
             <CardHeader>
@@ -76,9 +35,8 @@ export function AutomationDefinitionsList({
                 ) : (
                     <ul className="divide-y">
                         {definitions.map((definition) => {
-                            const latestRun = latestRuns.get(definition.id);
-                            const failedCount =
-                                failedRuns.get(definition.id) ?? 0;
+                            const latestRun = definition.latestRun;
+                            const failedCount = definition.failedRunsCount;
 
                             return (
                                 <li key={definition.id} className="p-4">

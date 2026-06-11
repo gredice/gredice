@@ -41,5 +41,7 @@ export type AutomationDefinitionListItem = {
     status: AutomationDefinitionStatus;
     triggerSummary: string;
     actionSummary: string;
+    latestRun: AutomationRunListItem | null;
+    failedRunsCount: number;
     updatedAt: string;
 };

@@ -5,6 +5,7 @@ import {
     automationRunStatusValues,
     ensureDefaultAutomationDefinitions,
     getAutomationModuleMetadata,
+    listAutomationDefinitionRunSummaries,
     listAutomationDefinitions,
 } from '@gredice/storage';
 import { Button } from '@gredice/ui/Button';
@@ -85,6 +86,15 @@ export default async function AutomationsPage({
             limit: automationQueuePageSize,
         }),
     ]);
+    const runSummaries = await listAutomationDefinitionRunSummaries(
+        definitions.map((definition) => definition.id),
+    );
+    const runSummariesByDefinitionId = new Map(
+        runSummaries.map((summary) => [
+            summary.automationDefinitionId,
+            summary,
+        ]),
+    );
     const queuedRunsCount = runs.runs.filter(
         (run) => run.status === 'queued' || run.status === 'retrying',
     ).length;
@@ -98,6 +108,7 @@ export default async function AutomationsPage({
                 modulesByKey,
             ),
             definition,
+            runSummary: runSummariesByDefinitionId.get(definition.id),
             triggerSummary: automationTriggerSummary(
                 definition.graph,
                 modulesByKey,

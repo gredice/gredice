@@ -1,6 +1,7 @@
 import 'server-only';
 
 import {
+    type AutomationDefinitionRunSummary,
     type AutomationRunStatus,
     listAutomationRuns,
     type SelectAutomationDefinition,
@@ -49,10 +50,12 @@ export function serializeAutomationRun(
 export function serializeAutomationDefinition({
     actionSummary,
     definition,
+    runSummary,
     triggerSummary,
 }: {
     actionSummary: string;
     definition: SelectAutomationDefinition;
+    runSummary?: AutomationDefinitionRunSummary;
     triggerSummary: string;
 }): AutomationDefinitionListItem {
     return {
@@ -62,6 +65,10 @@ export function serializeAutomationDefinition({
         status: definition.status,
         triggerSummary,
         actionSummary,
+        latestRun: runSummary?.latestRun
+            ? serializeAutomationRun(runSummary.latestRun)
+            : null,
+        failedRunsCount: runSummary?.failedRunsCount ?? 0,
         updatedAt: definition.updatedAt.toISOString(),
     };
 }

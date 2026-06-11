@@ -87,7 +87,7 @@ export function AutomationOverviewPanels({
         [runsQuery.data.pages],
     );
     const definitionsPanel = (
-        <AutomationDefinitionsList definitions={definitions} runs={runs} />
+        <AutomationDefinitionsList definitions={definitions} />
     );
     const queuePanel = (
         <AutomationJobsQueueList
