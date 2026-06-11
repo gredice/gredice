@@ -10,7 +10,9 @@ status changes that create pending admin approval requests. Verifying the
 seedling transplanting operation also switches the targeted plant from
 greenhouse sowing to direct sowing and queues 50L watering operations for the
 next two days when that raised bed does not already have at least 50L of
-watering scheduled on those days.
+watering scheduled on those days. Verifying the `Uklanjanje biljke` operation
+marks the targeted raised-bed field plant status as `removed`, which closes the
+plant cycle and frees the field for future planting.
 
 ## Ownership
 
@@ -97,7 +99,8 @@ MVP modules:
   operations for every active farm from a JSON list in the automation
   definition.
 - `action.updateRaisedBedFieldPlantStatus`: writes a
-  `raisedBedField.plantUpdate` event for an operation target.
+  `raisedBedField.plantUpdate` event for an operation target, including the
+  default plant-removal workflow that sets `targetStatus = "removed"`.
 - `action.updateRaisedBedFieldSowingLocation`: writes a
   `raisedBedField.plantSchedule` event for an operation target, preserving the
   scheduled date while changing `sowingLocation`.

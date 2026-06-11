@@ -15,8 +15,11 @@ export const seedlingTransplantDirectSowingLocationAutomationKey =
     'default.seedling-transplant-direct-sowing-location';
 export const seedlingTransplantWateringAutomationKey =
     'default.seedling-transplant-watering';
+export const plantRemovalOperationStatusAutomationKey =
+    'default.plant-removal-operation-status';
 
 const seedlingTransplantingOperationId = 593;
+const plantRemovalOperationId = 346;
 
 export function seasonalSowedWateringAutomationGraph(): AutomationGraph {
     return {
@@ -207,6 +210,54 @@ export function seedlingTransplantWateringAutomationGraph(): AutomationGraph {
     };
 }
 
+export function plantRemovalOperationStatusAutomationGraph(): AutomationGraph {
+    return {
+        nodes: [
+            {
+                id: 'trigger',
+                kind: 'trigger',
+                moduleKey: automationModuleKeys.triggerDomainEvent,
+                position: { x: 0, y: 160 },
+                config: {
+                    eventType: knownEventTypes.operations.verify,
+                },
+            },
+            {
+                id: 'operation-is-plant-removal',
+                kind: 'condition',
+                moduleKey: automationModuleKeys.conditionOperationMatches,
+                position: { x: 280, y: 160 },
+                config: {
+                    status: 'completed',
+                    entityId: plantRemovalOperationId,
+                },
+            },
+            {
+                id: 'set-plant-status-removed',
+                kind: 'action',
+                moduleKey:
+                    automationModuleKeys.actionUpdateRaisedBedFieldPlantStatus,
+                position: { x: 620, y: 160 },
+                config: {
+                    targetStatus: 'removed',
+                },
+            },
+        ],
+        edges: [
+            {
+                id: 'trigger-to-operation-match',
+                source: 'trigger',
+                target: 'operation-is-plant-removal',
+            },
+            {
+                id: 'operation-match-to-set-removed',
+                source: 'operation-is-plant-removal',
+                target: 'set-plant-status-removed',
+            },
+        ],
+    };
+}
+
 export async function ensureDefaultAutomationDefinitions() {
     await initializeAutomationEventCursorToLatest();
 
@@ -267,10 +318,26 @@ export async function ensureDefaultAutomationDefinitions() {
         },
     });
 
+    const plantRemovalOperationStatus = await upsertAutomationDefinitionByKey({
+        key: plantRemovalOperationStatusAutomationKey,
+        name: 'Označi biljku uklonjenom nakon potvrde uklanjanja',
+        description:
+            'Kada je radnja uklanjanja biljke potvrđena, postavi status ciljane biljke na uklonjeno.',
+        status: 'enabled',
+        graph: plantRemovalOperationStatusAutomationGraph(),
+        metadata: {
+            managedBy: 'gredice',
+            defaultAutomation: true,
+            operationEntityId: plantRemovalOperationId,
+            targetStatus: 'removed',
+        },
+    });
+
     return {
         seasonalSowedWatering,
         operationImagePlantStatusReview,
         seedlingTransplantDirectSowingLocation,
         seedlingTransplantWatering,
+        plantRemovalOperationStatus,
     };
 }
