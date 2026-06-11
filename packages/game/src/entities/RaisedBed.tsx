@@ -217,6 +217,9 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
     const isLocalSandbox = useGameState(
         (state) => state.localSandboxStorageKey !== null,
     );
+    const visitSummaryHighlight = useGameState(
+        (state) => state.gardenVisitSummaryHighlight,
+    );
     const hasHarvestRewards = visualRewards.some(
         (reward) =>
             reward.family === 'harvest' && reward.raisedBedId === raisedBed?.id,
@@ -368,10 +371,19 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
             }) ?? [],
         [harvestBasketState?.producePlantSortIds, sortDataById],
     );
+    const isVisitSummaryHighlighted =
+        raisedBed?.id != null &&
+        visitSummaryHighlight?.raisedBedId === raisedBed.id;
 
     return (
         <>
-            <HoverOutline hovered={hovered}>
+            <HoverOutline
+                color={isVisitSummaryHighlighted ? '#f6c445' : 'white'}
+                hovered={hovered || isVisitSummaryHighlighted}
+                opacity={isVisitSummaryHighlighted ? 0.95 : 1}
+                priority={isVisitSummaryHighlighted ? 10 : 0}
+                thickness={isVisitSummaryHighlighted ? 8 : 5}
+            >
                 <animated.group
                     position={raisedBedPosition}
                     rotation={[0, shapeRotation * (Math.PI / 2), 0]}

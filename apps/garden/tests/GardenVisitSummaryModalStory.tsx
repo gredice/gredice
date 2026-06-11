@@ -55,14 +55,21 @@ const displayItems = formatGardenVisitSummaryFacts([
 
 export function VisitSummaryModalFixture() {
     const [open, setOpen] = useState(true);
+    const [inspectedItemId, setInspectedItemId] = useState<string | null>(null);
 
     return (
         <div className="relative h-[560px] w-[720px] bg-background">
             <GardenVisitSummaryModalContent
                 displayItems={displayItems}
                 onClose={() => setOpen(false)}
+                onInspect={(item) => setInspectedItemId(item.id)}
                 open={open}
             />
+            {inspectedItemId ? (
+                <output aria-live="polite" className="sr-only">
+                    {inspectedItemId}
+                </output>
+            ) : null}
         </div>
     );
 }

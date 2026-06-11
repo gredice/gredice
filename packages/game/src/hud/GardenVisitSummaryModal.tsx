@@ -7,6 +7,7 @@ import {
     Droplet,
     Fence,
     Leaf,
+    Navigate,
     Sprout,
     Timer,
 } from '@gredice/ui/icons';
@@ -25,11 +26,15 @@ import {
 import type {
     GardenVisitSummaryDisplayItem,
     GardenVisitSummaryFact,
+    GardenVisitSummaryTarget,
 } from '../hooks/gardenVisitSummary';
+import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import {
     useGardenVisitSummary,
     useMarkGardenVisitSummarySeen,
 } from '../hooks/useGardenVisitSummary';
+import { useGameState } from '../useGameState';
+import { getRaisedBedBlockIds } from '../utils/raisedBedBlocks';
 
 type GardenVisitSummaryModalProps = {
     enabled: boolean;
@@ -40,6 +45,7 @@ type GardenVisitSummaryModalContentProps = {
     displayItems: GardenVisitSummaryDisplayItem[];
     isClosing?: boolean;
     onClose: () => void;
+    onInspect?: (item: GardenVisitSummaryDisplayItem) => void;
     open: boolean;
 };
 
@@ -47,6 +53,14 @@ type SummaryIcon = ComponentType<{
     'aria-hidden'?: boolean;
     className?: string;
 }>;
+
+type InspectableSummaryTarget = {
+    fieldId?: number | null;
+    label: string;
+    positionIndex?: number | null;
+    raisedBedId: number;
+    raisedBedName?: string | null;
+};
 
 const summaryTypeMeta = {
     plantGrowth: {
@@ -107,12 +121,54 @@ function targetLabel(targets: NonNullable<GardenVisitSummaryFact['target']>[]) {
     return target.raisedBedName || 'Gredica';
 }
 
+function hasRaisedBedId(
+    target: GardenVisitSummaryTarget,
+): target is GardenVisitSummaryTarget & { raisedBedId: number } {
+    return target.raisedBedId != null;
+}
+
+function inspectTargetForItem(
+    item: GardenVisitSummaryDisplayItem,
+): InspectableSummaryTarget | null {
+    const targets = item.targets.filter(hasRaisedBedId);
+    const firstTarget = targets[0];
+    if (!firstTarget) {
+        return null;
+    }
+
+    const sameRaisedBed = targets.every(
+        (target) => target.raisedBedId === firstTarget.raisedBedId,
+    );
+    const preciseTarget = targets.length === 1 ? firstTarget : null;
+    const positionIndex = preciseTarget?.positionIndex ?? null;
+    const fieldId = preciseTarget?.fieldId ?? null;
+    const label =
+        positionIndex != null
+            ? `Polje ${(positionIndex + 1).toString()}`
+            : sameRaisedBed
+              ? (firstTarget.raisedBedName ?? 'Gredica')
+              : `${targets.length.toString()} gredice`;
+
+    return {
+        fieldId,
+        label,
+        positionIndex,
+        raisedBedId: firstTarget.raisedBedId,
+        raisedBedName: firstTarget.raisedBedName ?? null,
+    };
+}
+
 export function GardenVisitSummaryModal({
     enabled,
     onClosed,
 }: GardenVisitSummaryModalProps) {
     const summary = useGardenVisitSummary({ enabled });
     const markSeen = useMarkGardenVisitSummarySeen();
+    const { data: currentGarden } = useCurrentGarden();
+    const setView = useGameState((state) => state.setView);
+    const setGardenVisitSummaryHighlight = useGameState(
+        (state) => state.setGardenVisitSummaryHighlight,
+    );
     const [dismissedFactsHash, setDismissedFactsHash] = useState<string | null>(
         null,
     );
@@ -194,26 +250,66 @@ export function GardenVisitSummaryModal({
         summary.isPending,
     ]);
 
-    const handleClose = () => {
-        if (markSeen.isPending) {
+    const closeSummary = useCallback(
+        (afterClose?: () => void) => {
+            if (markSeen.isPending) {
+                return;
+            }
+
+            markSeen.mutate(
+                { factsHash: currentFactsHash },
+                {
+                    onError: (error) => {
+                        console.error(
+                            'Failed to mark garden visit summary seen',
+                            error,
+                        );
+                    },
+                    onSuccess: () => {
+                        setDismissedFactsHash(currentFactsHash);
+                        afterClose?.();
+                        completeFlow();
+                    },
+                },
+            );
+        },
+        [completeFlow, currentFactsHash, markSeen],
+    );
+
+    const handleInspect = (item: GardenVisitSummaryDisplayItem) => {
+        const target = inspectTargetForItem(item);
+        if (!target || !currentGarden) {
             return;
         }
 
-        markSeen.mutate(
-            { factsHash: currentFactsHash },
-            {
-                onError: (error) => {
-                    console.error(
-                        'Failed to mark garden visit summary seen',
-                        error,
-                    );
-                },
-                onSuccess: () => {
-                    setDismissedFactsHash(currentFactsHash);
-                    completeFlow();
-                },
-            },
+        const blockIds = getRaisedBedBlockIds(
+            currentGarden,
+            target.raisedBedId,
         );
+        const block = currentGarden.stacks
+            .flatMap((stack) => stack.blocks)
+            .find((candidate) => candidate.id === blockIds[0]);
+
+        if (!block) {
+            return;
+        }
+
+        closeSummary(() => {
+            setGardenVisitSummaryHighlight({
+                fieldId: target.fieldId,
+                gardenId: currentGarden.id,
+                label: target.label,
+                message: item.message,
+                positionIndex: target.positionIndex,
+                raisedBedId: target.raisedBedId,
+                raisedBedName: target.raisedBedName,
+            });
+            setView({ view: 'closeup', block });
+        });
+    };
+
+    const handleClose = () => {
+        closeSummary();
     };
 
     return (
@@ -221,6 +317,7 @@ export function GardenVisitSummaryModal({
             displayItems={summary.displayItems}
             isClosing={markSeen.isPending}
             onClose={handleClose}
+            onInspect={handleInspect}
             open={open}
         />
     );
@@ -230,6 +327,7 @@ export function GardenVisitSummaryModalContent({
     displayItems,
     isClosing = false,
     onClose,
+    onInspect,
     open,
 }: GardenVisitSummaryModalContentProps) {
     return (
@@ -263,6 +361,8 @@ export function GardenVisitSummaryModalContent({
                             const meta = summaryTypeMeta[item.type];
                             const Icon = meta.icon;
                             const label = targetLabel(item.targets);
+                            const inspectTarget =
+                                onInspect && inspectTargetForItem(item);
 
                             return (
                                 <Row
@@ -292,7 +392,11 @@ export function GardenVisitSummaryModalContent({
                                         >
                                             {item.message}
                                         </Typography>
-                                        <Row className="flex-wrap" spacing={1}>
+                                        <Row
+                                            alignItems="center"
+                                            className="flex-wrap"
+                                            spacing={1}
+                                        >
                                             <Chip
                                                 color={meta.color}
                                                 size="sm"
@@ -308,6 +412,26 @@ export function GardenVisitSummaryModalContent({
                                                 >
                                                     {label}
                                                 </Chip>
+                                            ) : null}
+                                            {inspectTarget ? (
+                                                <Button
+                                                    aria-label={`Prikaži u vrtu: ${item.message}`}
+                                                    color="primary"
+                                                    disabled={isClosing}
+                                                    onClick={() =>
+                                                        onInspect(item)
+                                                    }
+                                                    size="xs"
+                                                    startDecorator={
+                                                        <Navigate
+                                                            aria-hidden
+                                                            className="size-3"
+                                                        />
+                                                    }
+                                                    variant="plain"
+                                                >
+                                                    Prikaži u vrtu
+                                                </Button>
                                             ) : null}
                                         </Row>
                                     </Stack>

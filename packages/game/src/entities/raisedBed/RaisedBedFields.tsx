@@ -1,3 +1,4 @@
+import { animated, useSpring } from '@react-spring/three';
 import { useGameFlags } from '../../GameFlagsContext';
 import { useGameSceneDetails } from '../../GameSceneDetailContext';
 import { resolveInGamePlantPreset } from '../../generators/plant/lib/inGamePlantPresets';
@@ -257,6 +258,63 @@ function RaisedBedFieldMoistSoilOverlay({
                 />
             </mesh>
         </group>
+    );
+}
+
+function RaisedBedFieldVisitSummaryHighlight({
+    blockIndex,
+    orientation,
+    positionIndex,
+}: {
+    blockIndex: number;
+    orientation: RaisedBedOrientation;
+    positionIndex: number;
+}) {
+    const pulse = useSpring({
+        from: { opacity: 0.85, scale: 0.82 },
+        to: [
+            { opacity: 0.3, scale: 1.18 },
+            { opacity: 0.85, scale: 0.82 },
+        ],
+        loop: true,
+        duration: 1200,
+    });
+    const position = getRaisedBedFieldSurfacePosition({
+        blockIndex,
+        orientation,
+        positionIndex,
+        y: -0.682,
+    });
+
+    return (
+        <animated.group position={position} scale={pulse.scale}>
+            <mesh rotation={[-Math.PI / 2, 0, 0]} renderOrder={24}>
+                <ringGeometry args={[0.155, 0.205, 48]} />
+                <animated.meshBasicMaterial
+                    color="#f6c445"
+                    depthWrite={false}
+                    opacity={pulse.opacity}
+                    polygonOffset
+                    polygonOffsetFactor={-8}
+                    transparent
+                />
+            </mesh>
+            <mesh
+                position={[0, 0.006, 0]}
+                rotation={[-Math.PI / 2, 0, 0]}
+                renderOrder={23}
+            >
+                <circleGeometry args={[0.18, 48]} />
+                <meshBasicMaterial
+                    color="#f6c445"
+                    depthWrite={false}
+                    opacity={0.12}
+                    polygonOffset
+                    polygonOffsetFactor={-7}
+                    transparent
+                />
+            </mesh>
+        </animated.group>
     );
 }
 
@@ -563,6 +621,9 @@ export function RaisedBedFields({
     const visualRewards = useRaisedBedOperationVisualRewards(raisedBed);
     const currentTime = useSnapshotTime();
     const orientation = raisedBed?.orientation ?? 'vertical';
+    const visitSummaryHighlight = useGameState(
+        (state) => state.gardenVisitSummaryHighlight,
+    );
 
     const blockIds =
         raisedBed && currentGarden
@@ -732,8 +793,32 @@ export function RaisedBedFields({
         (positionIndex) => !agrotextileCoverPositionSet.has(positionIndex),
     );
     const harvestPositionSet = new Set(visibleHarvestPositions);
+    const highlightedPositionIndex =
+        raisedBed && visitSummaryHighlight?.raisedBedId === raisedBed.id
+            ? (raisedBed.fields.find(
+                  (field) =>
+                      typeof field.id === 'number' &&
+                      field.id === visitSummaryHighlight.fieldId,
+              )?.positionIndex ??
+              visitSummaryHighlight.positionIndex ??
+              null)
+            : null;
+    const highlightedLocalPositionIndex =
+        highlightedPositionIndex != null &&
+        highlightedPositionIndex >= blockOffset &&
+        highlightedPositionIndex < blockOffset + 9
+            ? highlightedPositionIndex - blockOffset
+            : null;
+
     return (
         <>
+            {highlightedLocalPositionIndex != null ? (
+                <RaisedBedFieldVisitSummaryHighlight
+                    blockIndex={blockIndex}
+                    orientation={orientation}
+                    positionIndex={highlightedLocalPositionIndex}
+                />
+            ) : null}
             {Array.from(moistFieldPositionSet).map((positionIndex) => (
                 <RaisedBedFieldMoistSoilOverlay
                     key={`raised-bed-field-moist-soil-${blockId}-${positionIndex}`}

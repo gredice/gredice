@@ -10,6 +10,7 @@ import { AudioHud } from './hud/AudioHud';
 import { CameraHud } from './hud/CameraHud';
 import { ControlsTooltipHud } from './hud/ControlsTooltipHud';
 import { DebugHud } from './hud/DebugHud';
+import { GardenVisitSummaryHighlightHud } from './hud/GardenVisitSummaryHighlightHud';
 import { GardenVisitSummaryModal } from './hud/GardenVisitSummaryModal';
 import { InventoryHud } from './hud/InventoryHud';
 import { ItemsHud } from './hud/ItemsHud';
@@ -126,6 +127,7 @@ export function GameHud({
                             })
                         }
                     />
+                    <GardenVisitSummaryHighlightHud />
                     <WhatsNewWidget enabled={openingFlowComplete} />
                 </>
             )}
