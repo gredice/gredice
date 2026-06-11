@@ -1,8 +1,9 @@
 'use client';
 
 import { OrbitControls } from '@react-three/drei';
+import { useThree } from '@react-three/fiber';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { type HTMLAttributes, useRef } from 'react';
+import { type HTMLAttributes, useEffect, useRef } from 'react';
 import { MOUSE, Vector3 } from 'three';
 import { v4 as uuidv4 } from 'uuid';
 import { EntityFactory } from '../entities/EntityFactory';
@@ -48,7 +49,24 @@ export type EntityViewerProps = HTMLAttributes<HTMLDivElement> & {
      * quality profile. Used by snapshot generation to render at a higher dpr.
      */
     quality?: GameQualityProfile;
+    /**
+     * Optional camera position for generated previews that need a specific
+     * viewing angle instead of the default game snapshot angle.
+     */
+    cameraPosition?: [number, number, number];
+    cameraTarget?: [number, number, number];
 };
+
+function CameraLookAt({ target }: { target: [number, number, number] }) {
+    const camera = useThree((state) => state.camera);
+
+    useEffect(() => {
+        camera.lookAt(target[0], target[1], target[2]);
+        camera.updateProjectionMatrix();
+    }, [camera, target]);
+
+    return null;
+}
 
 export function EntityViewer({
     appBaseUrl,
@@ -63,6 +81,8 @@ export function EntityViewer({
     showBackground,
     rotation = 0,
     quality,
+    cameraPosition,
+    cameraTarget,
     ...rest
 }: EntityViewerProps) {
     const storeRef = useRef<GameStateStore>(null);
@@ -103,6 +123,7 @@ export function EntityViewer({
             ) : (
                 <Environment noBackground={!showBackground} noSound noWeather />
             )}
+            {cameraTarget && <CameraLookAt target={cameraTarget} />}
             <EntityFactory
                 name={entityName}
                 stack={stack}
@@ -140,7 +161,7 @@ export function EntityViewer({
                     <GameSceneDetailContext.Provider value={{ renderDetails }}>
                         <Scene
                             debugStats={debugHud}
-                            position={100}
+                            position={cameraPosition ?? 100}
                             zoom={zoom ?? 90}
                             quality={quality}
                             className={className}
