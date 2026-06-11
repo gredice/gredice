@@ -1,5 +1,8 @@
 import { formatPrice } from '@gredice/js/currency';
-import { getAllPayoutRequests } from '@gredice/storage';
+import {
+    getAllPayoutRequests,
+    type PayoutRequestWithDetails,
+} from '@gredice/storage';
 import {
     Card,
     CardContent,
@@ -20,6 +23,56 @@ import { MarkAsPaidForm } from './MarkAsPaidForm';
 import { PayoutStatusChip } from './PayoutStatusChip';
 
 export const dynamic = 'force-dynamic';
+
+function parseMoney(value: string) {
+    const amount = Number.parseFloat(value);
+    return Number.isFinite(amount) ? amount : 0;
+}
+
+function formatSignedPrice(value: string) {
+    const amount = parseMoney(value);
+    return amount > 0 ? `+${formatPrice(amount)}` : formatPrice(amount);
+}
+
+function PayoutAmountDetails({ payout }: { payout: PayoutRequestWithDetails }) {
+    if (payout.adjustments.length === 0) {
+        return (
+            <Typography level="body2" semiBold className="tabular-nums">
+                {formatPrice(parseMoney(payout.requestedAmount))}
+            </Typography>
+        );
+    }
+
+    return (
+        <Stack spacing={1} className="min-w-52">
+            <Typography level="body2" semiBold className="tabular-nums">
+                {formatPrice(parseMoney(payout.requestedAmount))}
+            </Typography>
+            <Typography level="body3" className="text-muted-foreground">
+                Zatraženo{' '}
+                {formatPrice(parseMoney(payout.originalRequestedAmount))}
+                {' · '}Korekcije {formatSignedPrice(payout.adjustmentTotal)}
+            </Typography>
+            <Stack spacing={0.5}>
+                {payout.adjustments.map((adjustment) => (
+                    <Row
+                        key={adjustment.id}
+                        justifyContent="space-between"
+                        spacing={2}
+                        className="text-muted-foreground"
+                    >
+                        <Typography level="body3" className="min-w-0 truncate">
+                            {adjustment.label}
+                        </Typography>
+                        <Typography level="body3" className="tabular-nums">
+                            {formatSignedPrice(adjustment.amount)}
+                        </Typography>
+                    </Row>
+                ))}
+            </Stack>
+        </Stack>
+    );
+}
 
 async function getPayoutsForPage() {
     try {
@@ -125,17 +178,9 @@ export default async function AdminFarmerPayoutsPage() {
                                                     {payout.farmName}
                                                 </Table.Cell>
                                                 <Table.Cell>
-                                                    <Typography
-                                                        level="body2"
-                                                        semiBold
-                                                        className="tabular-nums"
-                                                    >
-                                                        {formatPrice(
-                                                            parseFloat(
-                                                                payout.requestedAmount,
-                                                            ),
-                                                        )}
-                                                    </Typography>
+                                                    <PayoutAmountDetails
+                                                        payout={payout}
+                                                    />
                                                 </Table.Cell>
                                                 <Table.Cell>
                                                     <Typography
@@ -154,6 +199,9 @@ export default async function AdminFarmerPayoutsPage() {
                                                 <Table.Cell>
                                                     <ApprovePayoutForm
                                                         id={payout.id}
+                                                        requestedAmount={
+                                                            payout.requestedAmount
+                                                        }
                                                     />
                                                 </Table.Cell>
                                                 <Table.Cell>
@@ -211,17 +259,9 @@ export default async function AdminFarmerPayoutsPage() {
                                                 {payout.farmName}
                                             </Table.Cell>
                                             <Table.Cell>
-                                                <Typography
-                                                    level="body2"
-                                                    semiBold
-                                                    className="tabular-nums"
-                                                >
-                                                    {formatPrice(
-                                                        parseFloat(
-                                                            payout.requestedAmount,
-                                                        ),
-                                                    )}
-                                                </Typography>
+                                                <PayoutAmountDetails
+                                                    payout={payout}
+                                                />
                                             </Table.Cell>
                                             <Table.Cell>
                                                 <Typography
@@ -293,13 +333,9 @@ export default async function AdminFarmerPayoutsPage() {
                                                     {payout.farmName}
                                                 </Table.Cell>
                                                 <Table.Cell>
-                                                    <span className="tabular-nums">
-                                                        {formatPrice(
-                                                            parseFloat(
-                                                                payout.requestedAmount,
-                                                            ),
-                                                        )}
-                                                    </span>
+                                                    <PayoutAmountDetails
+                                                        payout={payout}
+                                                    />
                                                 </Table.Cell>
                                                 <Table.Cell>
                                                     <PayoutStatusChip

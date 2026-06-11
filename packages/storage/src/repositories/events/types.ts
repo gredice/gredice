@@ -437,6 +437,14 @@ export type PayoutRequestedPayload = {
 export type PayoutApprovedPayload = {
     approvedByUserId: string;
     adminNote?: string;
+    originalAmount?: number;
+    adjustmentTotal?: number;
+    approvedAmount?: number;
+    currency?: string;
+    adjustments?: {
+        label: string;
+        amount: number;
+    }[];
 };
 
 export type PayoutRejectedPayload = {

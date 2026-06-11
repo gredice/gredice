@@ -450,6 +450,8 @@ export function Nav({
                         adminPages.ShoppingCarts.href,
                         adminPages.Invoices.href,
                         adminPages.Transactions.href,
+                        adminPages.FarmerPayouts.href,
+                        adminPages.FarmerPrices.href,
                         adminPages.Sunflowers.href,
                         adminPages.Receipts.href,
                         adminPages.Outlet.href,
@@ -475,6 +477,22 @@ export function Nav({
                     <NavItem
                         href={adminPages.Transactions.href}
                         label={adminPages.Transactions.label}
+                        icon={<Euro className="size-5" />}
+                        onClick={onItemClick}
+                        compact={compact}
+                        nested
+                    />
+                    <NavItem
+                        href={adminPages.FarmerPayouts.href}
+                        label={adminPages.FarmerPayouts.label}
+                        icon={<Euro className="size-5" />}
+                        onClick={onItemClick}
+                        compact={compact}
+                        nested
+                    />
+                    <NavItem
+                        href={adminPages.FarmerPrices.href}
+                        label={adminPages.FarmerPrices.label}
                         icon={<Euro className="size-5" />}
                         onClick={onItemClick}
                         compact={compact}
@@ -516,8 +534,6 @@ export function Nav({
                         adminPages.Greenhouse.href,
                         adminPages.HarvestTraces.href,
                         adminPages.Operations.href,
-                        adminPages.FarmerPayouts.href,
-                        adminPages.FarmerPrices.href,
                     ])}
                     compact={compact}
                 >
@@ -578,22 +594,6 @@ export function Nav({
                         href={adminPages.HarvestTraces.href}
                         label={adminPages.HarvestTraces.label}
                         icon={<Link className="size-5" />}
-                        onClick={onItemClick}
-                        compact={compact}
-                        nested
-                    />
-                    <NavItem
-                        href={adminPages.FarmerPayouts.href}
-                        label={adminPages.FarmerPayouts.label}
-                        icon={<Euro className="size-5" />}
-                        onClick={onItemClick}
-                        compact={compact}
-                        nested
-                    />
-                    <NavItem
-                        href={adminPages.FarmerPrices.href}
-                        label={adminPages.FarmerPrices.label}
-                        icon={<Euro className="size-5" />}
                         onClick={onItemClick}
                         compact={compact}
                         nested
