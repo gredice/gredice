@@ -405,15 +405,8 @@ export function RaisedBedOnboardingModal({
     ]);
 
     useEffect(() => {
-        if (
-            selectedLayoutId &&
-            layouts.some((layout) => layout.id === selectedLayoutId)
-        ) {
-            return;
-        }
-
         setSelectedLayoutId(layouts[0]?.id ?? null);
-    }, [layouts, selectedLayoutId]);
+    }, [layouts]);
 
     async function applyLayout() {
         if (!currentGarden || !targetRaisedBed || !selectedLayout) {

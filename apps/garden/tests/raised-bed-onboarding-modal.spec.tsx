@@ -122,3 +122,34 @@ test('raised-bed onboarding applies twelve suggested cart plants', async ({
         ).size,
     ).toBe(12);
 });
+
+test('raised-bed onboarding applies the current preference default layout', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(DESKTOP_VIEWPORT);
+    const posts = await mockShoppingCart(page);
+
+    await mount(<OnboardingStory />);
+
+    const dialog = page.getByRole('dialog', { name: 'Brzi plan gredice' });
+    await expect(dialog).toBeVisible();
+    await page.getByRole('button', { name: /Umaci i roštilj/ }).click();
+    await page.getByRole('button', { name: 'Prikaži rasporede' }).click();
+    await expect(page.getByText('Odaberi raspored')).toBeVisible();
+    await page.getByRole('button', { name: 'Dodaj plan u košaru' }).click();
+
+    await expect.poll(() => posts.length).toBe(12);
+
+    const entityIds = posts
+        .map((post) =>
+            typeof post === 'object' && post !== null
+                ? Reflect.get(post, 'entityId')
+                : null,
+        )
+        .filter((entityId): entityId is string => typeof entityId === 'string');
+
+    expect(entityIds).toContain('216');
+    expect(entityIds).toContain('230');
+    expect(entityIds).not.toContain('357');
+});
