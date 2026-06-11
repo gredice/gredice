@@ -3,7 +3,9 @@ import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
     acceptOperation,
+    createAttributeDefinition,
     createDeliveryRequest,
+    createEntity,
     createEvent,
     createFarm,
     createOperation,
@@ -20,6 +22,9 @@ import {
     raisedBeds,
     storage,
     TimeSlotStatuses,
+    updateEntity,
+    upsertAttributeValue,
+    upsertEntityType,
     upsertRaisedBedField,
 } from '@gredice/storage';
 import { eq } from 'drizzle-orm';
@@ -81,9 +86,65 @@ async function insertDeliveryReadyEmailProcessedEvent({
         });
 }
 
+type DeliveryFixtureEntityTypeName = 'operation' | 'plantSort';
+
+async function createPublishedDeliveryEntity(
+    entityTypeName: DeliveryFixtureEntityTypeName,
+    label: string,
+) {
+    await upsertEntityType({
+        name: entityTypeName,
+        label: entityTypeName === 'operation' ? 'Operations' : 'Plant sorts',
+    });
+
+    const nameDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'name',
+        label: 'Name',
+        entityTypeName,
+        dataType: 'text',
+    });
+    const labelDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'label',
+        label: 'Label',
+        entityTypeName,
+        dataType: 'text',
+    });
+    const entityId = await createEntity(entityTypeName);
+
+    await upsertAttributeValue({
+        attributeDefinitionId: nameDefinitionId,
+        entityTypeName,
+        entityId,
+        value: label,
+    });
+    await upsertAttributeValue({
+        attributeDefinitionId: labelDefinitionId,
+        entityTypeName,
+        entityId,
+        value: label,
+    });
+    await updateEntity({ id: entityId, state: 'published' });
+
+    return entityId;
+}
+
 async function createDeliveryRequestWithTraceFixture() {
     createTestDb();
 
+    const harvestOperationEntityId = await createPublishedDeliveryEntity(
+        'operation',
+        'Harvest fruit',
+    );
+    const originalPlantSortId = await createPublishedDeliveryEntity(
+        'plantSort',
+        'Original tomato',
+    );
+    const latestPlantSortId = await createPublishedDeliveryEntity(
+        'plantSort',
+        'Latest cucumber',
+    );
     const accountId = await createTestAccount();
     const farmId = await createFarm({
         name: `Delivery trace farm ${randomUUID()}`,
@@ -111,7 +172,7 @@ async function createDeliveryRequestWithTraceFixture() {
     assert.ok(field);
 
     const operationId = await createOperation({
-        entityId: 1,
+        entityId: harvestOperationEntityId,
         entityTypeName: 'operation',
         accountId,
         farmId,
@@ -134,7 +195,7 @@ async function createDeliveryRequestWithTraceFixture() {
             ...knownEvents.raisedBedFields.plantPlaceV1(
                 `${raisedBedId}|${field.positionIndex}`,
                 {
-                    plantSortId: '1',
+                    plantSortId: originalPlantSortId.toString(),
                     scheduledDate: null,
                     sowingLocation: 'direct',
                 },
@@ -152,9 +213,23 @@ async function createDeliveryRequestWithTraceFixture() {
         fieldPositionIndex: field.positionIndex,
         fieldLabel: '1',
         plantPlaceEventId: plantPlaceEvent.id,
-        plantSortId: null,
+        plantSortId: originalPlantSortId,
         harvestOperationId: operationId,
     });
+
+    await storage()
+        .insert(events)
+        .values({
+            ...knownEvents.raisedBedFields.plantPlaceV1(
+                `${raisedBedId}|${field.positionIndex}`,
+                {
+                    plantSortId: latestPlantSortId.toString(),
+                    scheduledDate: null,
+                    sowingLocation: 'direct',
+                },
+            ),
+            createdAt: new Date('2026-06-15T08:00:00.000Z'),
+        });
 
     const locationId = await createPickupLocation({
         name: 'Gredice HQ',
@@ -179,7 +254,13 @@ async function createDeliveryRequestWithTraceFixture() {
         accountId,
     });
 
-    return { accountId, operationId, traceLink };
+    return {
+        accountId,
+        latestPlantSortId,
+        operationId,
+        originalPlantSortId,
+        traceLink,
+    };
 }
 
 test('getPendingDeliveryReadyEmailRequestIds returns ordered retryable ready events', async () => {
@@ -269,7 +350,7 @@ test('getPendingDeliveryReadyEmailRequestIds returns ordered retryable ready eve
     );
 });
 
-test('getDeliveryRequestsWithEvents includes harvest trace links for plant rows', async () => {
+test('getDeliveryRequestsWithEvents uses the traced harvest plant sort for plant rows', async () => {
     const fixture = await createDeliveryRequestWithTraceFixture();
 
     const requests = await getDeliveryRequestsWithEvents(fixture.accountId);
@@ -283,4 +364,7 @@ test('getDeliveryRequestsWithEvents includes harvest trace links for plant rows'
         publicToken: fixture.traceLink.publicToken,
         publicPath: fixture.traceLink.tracePath,
     });
+    assert.equal(request.plantSort?.id, fixture.originalPlantSortId);
+    assert.notEqual(request.plantSort?.id, fixture.latestPlantSortId);
+    assert.equal(request.plantSort?.information.name, 'Original tomato');
 });

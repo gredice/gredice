@@ -51,6 +51,15 @@ import { getPickupLocation } from './pickupLocationsRepo';
 import { closeTimeSlot, getTimeSlot } from './timeSlotsRepo';
 
 type DbEvent = Awaited<ReturnType<typeof getEvents>>[number];
+type DeliveryTraceLink = Awaited<
+    ReturnType<typeof getHarvestTraceLinksForOperationIds>
+>[number];
+type RaisedBedFieldWithEvents = Awaited<
+    ReturnType<typeof getRaisedBedFieldsWithEvents>
+>[number];
+type DeliveryRaisedBedField = Partial<
+    Pick<RaisedBedFieldWithEvents, 'plantCycles' | 'plantSortId'>
+>;
 
 // TODO: Should use types from union of payloads for delivery events
 interface DeliveryEventData {
@@ -134,6 +143,60 @@ export interface PendingDeliveryReadyEmailRequest {
     requestId: string;
     readyEventId: number;
     processedRecipients: string[];
+}
+
+function getDeliveryPlantSortId({
+    traceLink,
+    raisedBedField,
+}: {
+    traceLink?: DeliveryTraceLink;
+    raisedBedField?: DeliveryRaisedBedField | null;
+}): number | undefined {
+    if (typeof traceLink?.plantSortId === 'number') {
+        return traceLink.plantSortId;
+    }
+
+    if (typeof traceLink?.plantPlaceEventId === 'number') {
+        const tracedCycle = raisedBedField?.plantCycles?.find(
+            (cycle) => cycle.plantPlaceEventId === traceLink.plantPlaceEventId,
+        );
+        if (typeof tracedCycle?.plantSortId === 'number') {
+            return tracedCycle.plantSortId;
+        }
+    }
+
+    return typeof raisedBedField?.plantSortId === 'number'
+        ? raisedBedField.plantSortId
+        : undefined;
+}
+
+function getDeliveryTraceLink({
+    operationId,
+    raisedBedFieldId,
+    traceLinksByOperationId,
+    traceLinkCountsByOperationId,
+    traceLinksByOperationAndFieldId,
+}: {
+    operationId: number;
+    raisedBedFieldId?: number | null;
+    traceLinksByOperationId: Map<number, DeliveryTraceLink>;
+    traceLinkCountsByOperationId: Map<number, number>;
+    traceLinksByOperationAndFieldId: Map<string, DeliveryTraceLink>;
+}): DeliveryTraceLink | undefined {
+    if (typeof raisedBedFieldId === 'number') {
+        return (
+            traceLinksByOperationAndFieldId.get(
+                `${operationId}:${raisedBedFieldId}`,
+            ) ??
+            (traceLinkCountsByOperationId.get(operationId) === 1
+                ? traceLinksByOperationId.get(operationId)
+                : undefined)
+        );
+    }
+
+    return traceLinkCountsByOperationId.get(operationId) === 1
+        ? traceLinksByOperationId.get(operationId)
+        : undefined;
 }
 
 function reconstructDeliveryRequestState(
@@ -451,8 +514,7 @@ async function reconstructDeliveryRequestFromEvents(
         getOperationById(request.operationId),
     ]);
 
-    // Fetch operation entity, raised bed, and plantSort fields in parallel
-    const [operationEntity, raisedBed, fields] = await Promise.all([
+    const [operationEntity, raisedBed, fields, traceLinks] = await Promise.all([
         operation?.entityId
             ? getEntityFormatted<OperationData>(operation.entityId).catch(
                   (error) => {
@@ -478,31 +540,58 @@ async function reconstructDeliveryRequestFromEvents(
                   },
               )
             : [],
+        getHarvestTraceLinksForOperationIds([request.operationId]).catch(
+            (error) => {
+                console.error('Failed to fetch harvest trace links:', error);
+                return [];
+            },
+        ),
     ]);
 
-    // Get plantSort info if we have fields
-    let plantSort: PlantSortData | null = null;
-    if (fields.length > 0 && operation?.raisedBedFieldId) {
-        const field = fields.find((f) => f.id === operation.raisedBedFieldId);
-        if (field?.plantSortId) {
-            try {
-                const plantSortEntity = await getEntityFormatted<PlantSortData>(
-                    field.plantSortId,
-                );
-                if (plantSortEntity) {
-                    plantSort = plantSortEntity;
-                }
-            } catch (error) {
-                console.error('Failed to fetch plantSort info:', error);
-            }
-        }
-    }
-
-    // Get the field for position index info
     const raisedBedField =
         fields.length > 0 && operation?.raisedBedFieldId
             ? fields.find((f) => f.id === operation.raisedBedFieldId)
             : null;
+    const traceLinksByOperationId = new Map(
+        traceLinks.map((link) => [link.harvestOperationId, link]),
+    );
+    const traceLinkCountsByOperationId = new Map<number, number>();
+    for (const link of traceLinks) {
+        traceLinkCountsByOperationId.set(
+            link.harvestOperationId,
+            (traceLinkCountsByOperationId.get(link.harvestOperationId) ?? 0) +
+                1,
+        );
+    }
+    const traceLinksByOperationAndFieldId = new Map(
+        traceLinks.map((link) => [
+            `${link.harvestOperationId}:${link.raisedBedFieldId}`,
+            link,
+        ]),
+    );
+    const traceLink = getDeliveryTraceLink({
+        operationId: request.operationId,
+        raisedBedFieldId: operation?.raisedBedFieldId,
+        traceLinksByOperationId,
+        traceLinkCountsByOperationId,
+        traceLinksByOperationAndFieldId,
+    });
+    const plantSortId = getDeliveryPlantSortId({
+        traceLink,
+        raisedBedField,
+    });
+    let plantSort: PlantSortData | null = null;
+    if (typeof plantSortId === 'number') {
+        try {
+            const plantSortEntity =
+                await getEntityFormatted<PlantSortData>(plantSortId);
+            if (plantSortEntity) {
+                plantSort = plantSortEntity;
+            }
+        } catch (error) {
+            console.error('Failed to fetch plantSort info:', error);
+        }
+    }
 
     return {
         id: request.id,
@@ -521,6 +610,13 @@ async function reconstructDeliveryRequestFromEvents(
         requestNotes,
         deliveryNotes,
         surveySent,
+        trace: traceLink
+            ? {
+                  id: traceLink.id,
+                  publicToken: traceLink.publicToken,
+                  publicPath: traceLink.publicPath,
+              }
+            : null,
         createdAt: request.createdAt,
         updatedAt: request.updatedAt,
         accountId,
@@ -723,9 +819,26 @@ export async function getDeliveryRequestsWithEvents(
     const plantSortIds = Array.from(
         new Set(
             filteredRows
-                .map((row) => row.request.operation?.raisedBedFieldId)
-                .filter((id): id is number => id !== null && id !== undefined)
-                .map((id) => fieldsById.get(id)?.plantSortId)
+                .map((row) => {
+                    const rawOperation = row.request.operation;
+                    const raisedBedFieldId = rawOperation?.raisedBedFieldId;
+                    const raisedBedField =
+                        typeof raisedBedFieldId === 'number'
+                            ? fieldsById.get(raisedBedFieldId)
+                            : undefined;
+                    const traceLink = getDeliveryTraceLink({
+                        operationId: row.request.operationId,
+                        raisedBedFieldId,
+                        traceLinksByOperationId,
+                        traceLinkCountsByOperationId,
+                        traceLinksByOperationAndFieldId,
+                    });
+
+                    return getDeliveryPlantSortId({
+                        traceLink,
+                        raisedBedField,
+                    });
+                })
                 .filter(
                     (plantSortId): plantSortId is number =>
                         plantSortId !== undefined,
@@ -760,25 +873,21 @@ export async function getDeliveryRequestsWithEvents(
                 typeof raisedBedFieldId === 'number'
                     ? (raisedBedFieldWithEvents ?? rawOperation?.raisedBedField)
                     : rawOperation?.raisedBedField;
+            const traceLink = getDeliveryTraceLink({
+                operationId: request.operationId,
+                raisedBedFieldId,
+                traceLinksByOperationId,
+                traceLinkCountsByOperationId,
+                traceLinksByOperationAndFieldId,
+            });
+            const plantSortId = getDeliveryPlantSortId({
+                traceLink,
+                raisedBedField: raisedBedFieldWithEvents,
+            });
             const plantSort =
-                typeof raisedBedFieldWithEvents?.plantSortId === 'number'
-                    ? (plantSortsById.get(
-                          raisedBedFieldWithEvents.plantSortId,
-                      ) ?? null)
+                typeof plantSortId === 'number'
+                    ? (plantSortsById.get(plantSortId) ?? null)
                     : null;
-            const traceLink =
-                typeof raisedBedFieldId === 'number'
-                    ? (traceLinksByOperationAndFieldId.get(
-                          `${request.operationId}:${raisedBedFieldId}`,
-                      ) ??
-                      (traceLinkCountsByOperationId.get(request.operationId) ===
-                      1
-                          ? traceLinksByOperationId.get(request.operationId)
-                          : undefined))
-                    : traceLinkCountsByOperationId.get(request.operationId) ===
-                        1
-                      ? traceLinksByOperationId.get(request.operationId)
-                      : undefined;
 
             return {
                 id: request.id,

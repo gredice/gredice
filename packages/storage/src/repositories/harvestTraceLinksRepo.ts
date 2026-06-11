@@ -150,6 +150,7 @@ export type HarvestTraceLinkDeliverySummary = {
     harvestOperationId: number;
     raisedBedFieldId: number;
     plantPlaceEventId: number;
+    plantSortId: number | null;
 };
 
 export type HarvestTraceBackfillResult = {
@@ -1293,6 +1294,7 @@ export async function getHarvestTraceLinksForOperationIds(
                       harvestOperationId: link.harvestOperationId,
                       raisedBedFieldId: link.raisedBedFieldId,
                       plantPlaceEventId: link.plantPlaceEventId,
+                      plantSortId: link.plantSortId,
                   },
               ]
             : [],
