@@ -14,6 +14,13 @@ test('garden visit summary modal renders facts and closes cleanly', async ({
     await expect(page.getByText('Rajčice su vidljivo narasle.')).toBeVisible();
     await expect(page.getByText('Polje 4')).toHaveCount(2);
 
+    await page
+        .getByRole('button', {
+            name: 'Prikaži u vrtu: Pojavio se korov na 4 polja.',
+        })
+        .click();
+    await expect(page.locator('output')).toHaveText('weed:fields');
+
     await page.getByRole('button', { name: 'Kreni u obilazak' }).click();
 
     await expect(

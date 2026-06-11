@@ -78,6 +78,18 @@ export type BlockPlacementDropAnimation = {
     sequence: number;
 };
 
+export type GardenVisitSummaryHighlight = {
+    createdAt: number;
+    fieldId?: number | null;
+    gardenId?: number | null;
+    label: string;
+    message: string;
+    positionIndex?: number | null;
+    raisedBedId: number;
+    raisedBedName?: string | null;
+    sequence: number;
+};
+
 export type AnimalDebugEntry = {
     debugBehaviors?: string[];
     id: string;
@@ -203,6 +215,11 @@ export type GameState = {
     queueBlockPlacementDropAnimation: (blockId: string) => void;
     markBlockPlacementDropParticlesSpawned: (blockId: string) => boolean;
     completeBlockPlacementDropAnimation: (blockId: string) => void;
+    gardenVisitSummaryHighlight: GardenVisitSummaryHighlight | null;
+    setGardenVisitSummaryHighlight: (
+        highlight: Omit<GardenVisitSummaryHighlight, 'createdAt' | 'sequence'>,
+    ) => void;
+    clearGardenVisitSummaryHighlight: () => void;
     animalDebugEntries: AnimalDebugEntry[];
     setAnimalDebugEntry: (entry: AnimalDebugEntry) => void;
     removeAnimalDebugEntry: (id: string) => void;
@@ -485,6 +502,18 @@ export function createGameState({
 
                 return { blockPlacementDropAnimations };
             }),
+        gardenVisitSummaryHighlight: null,
+        setGardenVisitSummaryHighlight: (highlight) =>
+            set((state) => ({
+                gardenVisitSummaryHighlight: {
+                    ...highlight,
+                    createdAt: Date.now(),
+                    sequence:
+                        (state.gardenVisitSummaryHighlight?.sequence ?? 0) + 1,
+                },
+            })),
+        clearGardenVisitSummaryHighlight: () =>
+            set({ gardenVisitSummaryHighlight: null }),
         animalDebugEntries: [],
         setAnimalDebugEntry: (entry) =>
             set((state) => {
