@@ -2,6 +2,7 @@ import 'server-only';
 import type { OperationData } from '@gredice/directory-types';
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import {
+    farmerPayoutRequestAdjustments,
     farmerPayoutRequests,
     farmUsers,
     gardens,
@@ -11,6 +12,7 @@ import {
     type PayoutStatus,
     raisedBeds,
     type SelectFarmerPayoutRequest,
+    type SelectFarmerPayoutRequestAdjustment,
     type SelectOperationPrice,
 } from '../schema';
 import { storage } from '../storage';
@@ -239,6 +241,77 @@ export type FarmerBalance = {
     currency: string;
     earningsByType: FarmerEarning[];
 };
+
+export type PayoutAdjustmentInput = {
+    label: string;
+    amount: number;
+};
+
+type NormalizedPayoutAdjustment = {
+    label: string;
+    amount: string;
+    amountCents: number;
+    currency: string;
+    createdByUserId: string;
+};
+
+const MAX_PAYOUT_ADJUSTMENT_LABEL_LENGTH = 160;
+
+function moneyToCents(value: number | string) {
+    const amount = typeof value === 'string' ? Number.parseFloat(value) : value;
+
+    if (!Number.isFinite(amount)) {
+        throw new Error('Nevažeći iznos isplate.');
+    }
+
+    return Math.round(amount * 100);
+}
+
+function centsToMoney(cents: number) {
+    return (cents / 100).toFixed(2);
+}
+
+function getAdjustmentTotalCents(
+    adjustments: Pick<SelectFarmerPayoutRequestAdjustment, 'amount'>[],
+) {
+    return adjustments.reduce(
+        (total, adjustment) => total + moneyToCents(adjustment.amount),
+        0,
+    );
+}
+
+function normalizePayoutAdjustments(
+    adjustments: readonly PayoutAdjustmentInput[] | undefined,
+    currency: string,
+    createdByUserId: string,
+): NormalizedPayoutAdjustment[] {
+    return (adjustments ?? []).map((adjustment) => {
+        const label = adjustment.label.trim();
+        const amountCents = moneyToCents(adjustment.amount);
+
+        if (!label) {
+            throw new Error('Korekcija isplate mora imati opis.');
+        }
+
+        if (label.length > MAX_PAYOUT_ADJUSTMENT_LABEL_LENGTH) {
+            throw new Error(
+                `Opis korekcije može imati najviše ${MAX_PAYOUT_ADJUSTMENT_LABEL_LENGTH} znakova.`,
+            );
+        }
+
+        if (amountCents === 0) {
+            throw new Error('Korekcija isplate mora biti različita od nule.');
+        }
+
+        return {
+            label,
+            amount: centsToMoney(amountCents),
+            amountCents,
+            currency,
+            createdByUserId,
+        };
+    });
+}
 
 export async function getFarmerBalance(
     _userId: string,
@@ -480,6 +553,9 @@ export type PayoutRequestWithDetails = SelectFarmerPayoutRequest & {
     displayName: string | null;
     avatarUrl: string | null;
     farmName: string;
+    adjustments: SelectFarmerPayoutRequestAdjustment[];
+    adjustmentTotal: string;
+    originalRequestedAmount: string;
 };
 
 export async function getAllPayoutRequests(filter?: {
@@ -511,16 +587,27 @@ export async function getAllPayoutRequests(filter?: {
                     name: true,
                 },
             },
+            adjustments: {
+                orderBy: (table, { asc }) => [asc(table.id)],
+            },
         },
     });
 
-    return rows.map((row) => ({
-        ...row,
-        userName: row.user?.userName ?? '',
-        displayName: row.user?.displayName ?? null,
-        avatarUrl: row.user?.avatarUrl ?? null,
-        farmName: row.farm?.name ?? '',
-    }));
+    return rows.map((row) => {
+        const adjustmentTotalCents = getAdjustmentTotalCents(row.adjustments);
+        const originalRequestedAmountCents =
+            moneyToCents(row.requestedAmount) - adjustmentTotalCents;
+
+        return {
+            ...row,
+            userName: row.user?.userName ?? '',
+            displayName: row.user?.displayName ?? null,
+            avatarUrl: row.user?.avatarUrl ?? null,
+            farmName: row.farm?.name ?? '',
+            adjustmentTotal: centsToMoney(adjustmentTotalCents),
+            originalRequestedAmount: centsToMoney(originalRequestedAmountCents),
+        };
+    });
 }
 
 export async function getPendingPayoutRequestsCount(): Promise<number> {
@@ -535,6 +622,7 @@ export async function approvePayoutRequest(
     id: number,
     approvedByUserId: string,
     adminNote?: string,
+    adjustments?: PayoutAdjustmentInput[],
 ): Promise<SelectFarmerPayoutRequest> {
     const existing = await getPayoutRequest(id);
     if (!existing) throw new Error('Zahtjev za isplatu nije pronađen.');
@@ -544,22 +632,74 @@ export async function approvePayoutRequest(
         );
     }
 
-    const [row] = await storage()
-        .update(farmerPayoutRequests)
-        .set({
-            status: 'approved',
-            approvedByUserId,
-            approvedAt: new Date(),
-            adminNote: adminNote ?? null,
-            updatedAt: new Date(),
-        })
-        .where(eq(farmerPayoutRequests.id, id))
-        .returning();
+    const normalizedAdjustments = normalizePayoutAdjustments(
+        adjustments,
+        existing.currency,
+        approvedByUserId,
+    );
+    const originalAmountCents = moneyToCents(existing.requestedAmount);
+    const adjustmentTotalCents = normalizedAdjustments.reduce(
+        (total, adjustment) => total + adjustment.amountCents,
+        0,
+    );
+    const approvedAmountCents = originalAmountCents + adjustmentTotalCents;
+
+    if (approvedAmountCents <= 0) {
+        throw new Error('Konačni iznos isplate mora biti veći od nule.');
+    }
+
+    const approvedAmount = centsToMoney(approvedAmountCents);
+
+    const row = await storage().transaction(async (tx) => {
+        const [updatedRow] = await tx
+            .update(farmerPayoutRequests)
+            .set({
+                requestedAmount: approvedAmount,
+                status: 'approved',
+                approvedByUserId,
+                approvedAt: new Date(),
+                adminNote: adminNote ?? null,
+                updatedAt: new Date(),
+            })
+            .where(
+                and(
+                    eq(farmerPayoutRequests.id, id),
+                    eq(farmerPayoutRequests.status, 'pending'),
+                ),
+            )
+            .returning();
+
+        if (!updatedRow) {
+            throw new Error('Zahtjev za isplatu više nije moguće odobriti.');
+        }
+
+        if (normalizedAdjustments.length > 0) {
+            await tx.insert(farmerPayoutRequestAdjustments).values(
+                normalizedAdjustments.map((adjustment) => ({
+                    payoutRequestId: id,
+                    label: adjustment.label,
+                    amount: adjustment.amount,
+                    currency: adjustment.currency,
+                    createdByUserId: adjustment.createdByUserId,
+                })),
+            );
+        }
+
+        return updatedRow;
+    });
 
     await createEvent(
         knownEvents.payouts.approvedV1(id.toString(), {
             approvedByUserId,
             adminNote,
+            originalAmount: originalAmountCents / 100,
+            adjustmentTotal: adjustmentTotalCents / 100,
+            approvedAmount: approvedAmountCents / 100,
+            currency: existing.currency,
+            adjustments: normalizedAdjustments.map((adjustment) => ({
+                label: adjustment.label,
+                amount: adjustment.amountCents / 100,
+            })),
         }),
     );
 
@@ -567,7 +707,7 @@ export async function approvePayoutRequest(
     await notifyFarmerPayoutStatus(
         existing.userId,
         'approved',
-        parseFloat(existing.requestedAmount),
+        approvedAmountCents / 100,
         existing.currency,
     );
 

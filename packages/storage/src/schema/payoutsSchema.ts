@@ -105,9 +105,35 @@ export const farmerPayoutRequests = pgTable(
     ],
 );
 
+export const farmerPayoutRequestAdjustments = pgTable(
+    'farmer_payout_request_adjustments',
+    {
+        id: serial('id').primaryKey(),
+        payoutRequestId: integer('payout_request_id')
+            .notNull()
+            .references(() => farmerPayoutRequests.id),
+        label: text('label').notNull(),
+        amount: decimal('amount', {
+            precision: 10,
+            scale: 2,
+        }).notNull(),
+        currency: text('currency').notNull().default('eur'),
+        createdByUserId: text('created_by_user_id').references(() => users.id),
+        createdAt: timestamp('created_at').notNull().defaultNow(),
+        updatedAt: timestamp('updated_at')
+            .notNull()
+            .$onUpdate(() => new Date()),
+    },
+    (table) => [
+        index('farmer_payout_adjustments_request_id_idx').on(
+            table.payoutRequestId,
+        ),
+    ],
+);
+
 export const farmerPayoutRequestsRelations = relations(
     farmerPayoutRequests,
-    ({ one }) => ({
+    ({ many, one }) => ({
         farm: one(farms, {
             fields: [farmerPayoutRequests.farmId],
             references: [farms.id],
@@ -126,6 +152,21 @@ export const farmerPayoutRequestsRelations = relations(
             fields: [farmerPayoutRequests.receiptId],
             references: [receipts.id],
         }),
+        adjustments: many(farmerPayoutRequestAdjustments),
+    }),
+);
+
+export const farmerPayoutRequestAdjustmentsRelations = relations(
+    farmerPayoutRequestAdjustments,
+    ({ one }) => ({
+        payoutRequest: one(farmerPayoutRequests, {
+            fields: [farmerPayoutRequestAdjustments.payoutRequestId],
+            references: [farmerPayoutRequests.id],
+        }),
+        createdByUser: one(users, {
+            fields: [farmerPayoutRequestAdjustments.createdByUserId],
+            references: [users.id],
+        }),
     }),
 );
 
@@ -137,3 +178,10 @@ export type InsertFarmerPayoutRequest = Omit<
 >;
 export type SelectFarmerPayoutRequest =
     typeof farmerPayoutRequests.$inferSelect;
+
+export type InsertFarmerPayoutRequestAdjustment = Omit<
+    typeof farmerPayoutRequestAdjustments.$inferInsert,
+    'id' | 'createdAt' | 'updatedAt'
+>;
+export type SelectFarmerPayoutRequestAdjustment =
+    typeof farmerPayoutRequestAdjustments.$inferSelect;

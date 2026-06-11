@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
     acceptOperation,
+    approvePayoutRequest,
     assignUserToFarm,
     createAccount,
     createAttributeDefinition,
@@ -11,6 +12,7 @@ import {
     createFarm,
     createOperation,
     farmerPayoutRequests,
+    getAllPayoutRequests,
     getFarmerBalance,
     knownEvents,
     storage,
@@ -500,4 +502,82 @@ test('getFarmerBalance counts payable work after the last paid farm payout', asy
     assert.equal(balance.totalPaid, 0.5);
     assert.equal(balance.totalPending, 0.2);
     assert.equal(balance.availableBalance, 0.3);
+});
+
+test('approvePayoutRequest stores adjustment items and updates final amount', async () => {
+    createTestDb();
+
+    const userId = randomUUID();
+    const adminUserId = randomUUID();
+    await storage()
+        .insert(users)
+        .values([
+            {
+                id: userId,
+                userName: `payout-adjustment-${userId}@example.com`,
+                displayName: 'Payout Adjustment Farmer',
+                role: 'farmer',
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            },
+            {
+                id: adminUserId,
+                userName: `payout-adjustment-admin-${adminUserId}@example.com`,
+                displayName: 'Payout Adjustment Admin',
+                role: 'admin',
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            },
+        ]);
+
+    const farmId = await createFarm({
+        name: `Adjustment Payout Farm ${randomUUID()}`,
+        longitude: 0,
+        latitude: 0,
+    });
+    await assignUserToFarm(farmId, userId);
+
+    const [request] = await storage()
+        .insert(farmerPayoutRequests)
+        .values({
+            farmId,
+            userId,
+            requestedAmount: '10.00',
+            currency: 'eur',
+            status: 'pending',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        })
+        .returning();
+    assert.ok(request);
+
+    const approved = await approvePayoutRequest(
+        request.id,
+        adminUserId,
+        'Korekcija prije isplate.',
+        [
+            { label: 'Dodatak za hitnu berbu', amount: 2.5 },
+            { label: 'Korekcija duplikata', amount: -1 },
+        ],
+    );
+
+    assert.equal(approved.status, 'approved');
+    assert.equal(approved.requestedAmount, '11.50');
+    assert.equal(approved.adminNote, 'Korekcija prije isplate.');
+
+    const [payout] = await getAllPayoutRequests({
+        status: 'approved',
+        farmId,
+    });
+
+    assert.ok(payout);
+    assert.equal(payout.originalRequestedAmount, '10.00');
+    assert.equal(payout.adjustmentTotal, '1.50');
+    assert.equal(payout.requestedAmount, '11.50');
+    assert.equal(payout.adjustments.length, 2);
+    assert.equal(payout.adjustments[0]?.label, 'Dodatak za hitnu berbu');
+    assert.equal(Number(payout.adjustments[0]?.amount), 2.5);
+    assert.equal(payout.adjustments[1]?.label, 'Korekcija duplikata');
+    assert.equal(Number(payout.adjustments[1]?.amount), -1);
+    assert.equal(payout.adjustments[0]?.createdByUserId, adminUserId);
 });
