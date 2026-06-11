@@ -8,6 +8,7 @@ import type {
 import {
     resolveActiveFieldMulchRewardsByFieldId,
     resolveActiveRaisedBedMulchReward,
+    resolveMulchVisualByOperationId,
 } from './raisedBedMulchVisualRewards';
 
 function operation(
@@ -61,13 +62,34 @@ const operations = [
     }),
 ];
 
+const mulchBlocks = [
+    {
+        id: 20,
+        information: {
+            name: 'MulchWood',
+        },
+    },
+    {
+        id: 21,
+        information: {
+            name: 'MulchHey',
+        },
+    },
+    {
+        id: 22,
+        information: {
+            name: 'MulchCoconut',
+        },
+    },
+];
+
 function applied(
     id: number,
     input: {
         completedAt: string;
         entityId: number;
         raisedBedFieldId?: number | null;
-        raisedBedId: number;
+        raisedBedId?: number | null;
     },
 ): AppliedOperationVisualInput {
     return {
@@ -123,6 +145,22 @@ test('older remove-mulch reward does not clear newer whole-bed mulch', () => {
     assert.equal(reward?.entityId, 1);
 });
 
+test('nested whole-bed mulch operation inherits the current raised bed', () => {
+    const reward = resolveActiveRaisedBedMulchReward({
+        raisedBedId: 10,
+        operations,
+        appliedOperations: [
+            applied(251, {
+                completedAt: '2026-06-02T08:00:00.000Z',
+                entityId: 1,
+            }),
+        ],
+    });
+
+    assert.equal(reward?.raisedBedId, 10);
+    assert.equal(reward?.entityId, 1);
+});
+
 test('field remove-mulch reward clears only the matching field', () => {
     const rewardsByFieldId = resolveActiveFieldMulchRewardsByFieldId({
         raisedBedId: 10,
@@ -151,4 +189,34 @@ test('field remove-mulch reward clears only the matching field', () => {
 
     assert.equal(rewardsByFieldId.has(50), false);
     assert.equal(rewardsByFieldId.get(51)?.entityId, 3);
+});
+
+test('generic mulch operation resolves to straw mulch visual', () => {
+    const visuals = resolveMulchVisualByOperationId(
+        [
+            operation(20, {
+                label: 'Debug mulch reward',
+                name: 'debugMulchReward',
+                visualReward: 'mulch',
+            }),
+        ],
+        mulchBlocks,
+    );
+
+    assert.equal(visuals.get(20)?.blockName, 'MulchHey');
+});
+
+test('remove-mulch operation does not resolve to a visible mulch visual', () => {
+    const visuals = resolveMulchVisualByOperationId(
+        [
+            operation(21, {
+                label: 'Uklanjanje malča slamom',
+                name: 'removeMalchStrawRaisedBed',
+                visualReward: 'removeMulch',
+            }),
+        ],
+        mulchBlocks,
+    );
+
+    assert.equal(visuals.has(21), false);
 });

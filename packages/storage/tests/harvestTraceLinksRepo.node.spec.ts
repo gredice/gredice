@@ -558,6 +558,7 @@ test('getHarvestTraceLinksForOperationIds returns active trace summaries', async
         harvestOperationId: fixture.harvestOperationId,
         raisedBedFieldId: fixture.raisedBedFieldId,
         plantPlaceEventId: fixture.plantPlaceEventId,
+        plantSortId: fixture.plantSortId,
     });
 
     await updateHarvestTraceLinkStatus(fixture.link.id, 'revoked');
@@ -601,6 +602,7 @@ test('backfillHarvestTraceLinksForCompletedHarvests creates missing completed ha
     assert.equal(links[0]?.harvestOperationId, operationId);
     assert.equal(links[0]?.raisedBedFieldId, fixture.raisedBedFieldId);
     assert.equal(links[0]?.plantPlaceEventId, fixture.plantPlaceEventId);
+    assert.equal(links[0]?.plantSortId, fixture.plantSortId);
 });
 
 test('getPublicHarvestTraceByToken includes raised-bed operations and excludes other-field operations', async () => {

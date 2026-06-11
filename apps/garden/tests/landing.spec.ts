@@ -99,6 +99,8 @@ async function mockGardenApi(page: Page, signedIn: boolean) {
             body = [];
         } else if (pathname.endsWith('/api/data/weather')) {
             body = [];
+        } else if (pathname.endsWith('/api/news/changelog')) {
+            body = { items: [] };
         } else if (
             pathname.endsWith('/api/accounts/current/sunflowers/daily')
         ) {
@@ -106,6 +108,10 @@ async function mockGardenApi(page: Page, signedIn: boolean) {
                 current: { amount: 0, day: 1 },
                 next: { amount: 1, day: 2 },
             };
+        } else if (
+            pathname.includes('/api/accounts/current/sunflowers/drops/gardens/')
+        ) {
+            body = null;
         } else if (pathname.endsWith('/api/occasions/advent/calendar-2025')) {
             body = adventCalendar;
         } else if (pathname.endsWith('/api/accounts/current/sunflowers')) {

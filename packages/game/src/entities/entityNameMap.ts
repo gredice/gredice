@@ -39,6 +39,7 @@ import { GiftBoxGreenGold } from './GiftBoxGreenGold';
 import { GiftBoxPurpleSilver } from './GiftBoxPurpleSilver';
 import { GiftBoxRedWhite } from './GiftBoxRedWhite';
 import { GiftBoxWhiteGreen } from './GiftBoxWhiteGreen';
+import { LiquidPreparationBottle } from './LiquidPreparationBottle';
 import { PaintRoller } from './PaintRoller';
 import { Pine } from './Pine';
 import { PineAdvent } from './PineAdvent';
@@ -92,6 +93,15 @@ export const entityNameMap: Record<
     Stool: Stool,
     Bucket: Bucket,
     WateringCan: WateringCan,
+    LiquidPreparationBottlePestControl: LiquidPreparationBottle,
+    LiquidPreparationBottleAphidControl: LiquidPreparationBottle,
+    LiquidPreparationBottleSlugControl: LiquidPreparationBottle,
+    LiquidPreparationBottleTomatoEggplantResistance: LiquidPreparationBottle,
+    LiquidPreparationBottleFertilizer: LiquidPreparationBottle,
+    LiquidPreparationBottleDiseaseControl: LiquidPreparationBottle,
+    LiquidPreparationBottleWeevilControl: LiquidPreparationBottle,
+    LiquidPreparationBottleVoleControl: LiquidPreparationBottle,
+    LiquidPreparationBottleBeetleControl: LiquidPreparationBottle,
     PaintRoller: PaintRoller,
     WaterWell: WaterWell,
     BirdHouse: BirdHouse,

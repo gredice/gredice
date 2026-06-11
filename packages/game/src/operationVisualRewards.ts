@@ -2,7 +2,6 @@ export type OperationVisualRewardKind =
     | 'agrotextile'
     | 'harvest'
     | 'mulch'
-    | 'photographyUpdate'
     | 'removeAgrotextile'
     | 'removeMulch'
     | 'supports'
@@ -13,12 +12,11 @@ export type OperationVisualRewardFamily =
     | 'agrotextile'
     | 'harvest'
     | 'mulch'
-    | 'photography'
     | 'supports'
     | 'watering'
     | 'weeds';
 
-export type OperationVisualRewardPolarity = 'apply' | 'remove' | 'update';
+export type OperationVisualRewardPolarity = 'apply' | 'remove';
 
 export type OperationVisualRewardScope = 'field' | 'garden' | 'raisedBed';
 
@@ -96,6 +94,13 @@ const activeAppliedStatuses = new Set([
     'confirmed',
     'pendingVerification',
 ]);
+const harvestRequestStatuses = new Set([
+    'assigned',
+    'completed',
+    'confirmed',
+    'pendingVerification',
+    'planned',
+]);
 
 export function parseOperationVisualRewardKind(
     value: string | null | undefined,
@@ -104,7 +109,6 @@ export function parseOperationVisualRewardKind(
         case 'agrotextile':
         case 'harvest':
         case 'mulch':
-        case 'photographyUpdate':
         case 'removeAgrotextile':
         case 'removeMulch':
         case 'supports':
@@ -138,8 +142,6 @@ export function getOperationVisualRewardFamily(
         case 'mulch':
         case 'removeMulch':
             return 'mulch';
-        case 'photographyUpdate':
-            return 'photography';
         case 'supports':
             return 'supports';
         case 'watering':
@@ -153,8 +155,6 @@ export function getOperationVisualRewardPolarity(
     kind: OperationVisualRewardKind,
 ): OperationVisualRewardPolarity {
     switch (kind) {
-        case 'photographyUpdate':
-            return 'update';
         case 'removeAgrotextile':
         case 'removeMulch':
         case 'weeding':
@@ -294,6 +294,17 @@ export function isAppliedOperationVisualStatus(status: string) {
     return activeAppliedStatuses.has(status);
 }
 
+function isOperationVisualRewardStatus(
+    status: string,
+    kind: OperationVisualRewardKind,
+) {
+    if (kind === 'harvest') {
+        return harvestRequestStatuses.has(status);
+    }
+
+    return isAppliedOperationVisualStatus(status);
+}
+
 export function resolveOperationVisualRewards({
     appliedOperations = [],
     operationItems = [],
@@ -305,15 +316,14 @@ export function resolveOperationVisualRewards({
     const rewards: OperationVisualReward[] = [];
 
     for (const appliedOperation of appliedOperations) {
-        if (!isAppliedOperationVisualStatus(appliedOperation.status)) {
-            continue;
-        }
-
         const kind = resolveOperationVisualRewardKind(
             operationsById.get(appliedOperation.entityId),
         );
 
-        if (!kind || kind === 'photographyUpdate') {
+        if (
+            !kind ||
+            !isOperationVisualRewardStatus(appliedOperation.status, kind)
+        ) {
             continue;
         }
 
@@ -321,15 +331,14 @@ export function resolveOperationVisualRewards({
     }
 
     for (const operationItem of operationItems) {
-        if (!isAppliedOperationVisualStatus(operationItem.status)) {
-            continue;
-        }
-
         const kind = resolveOperationVisualRewardKind(
             operationsById.get(operationItem.entityId),
         );
 
-        if (kind !== 'photographyUpdate' || !operationItem.imageUrls?.length) {
+        if (
+            kind !== 'harvest' ||
+            !isOperationVisualRewardStatus(operationItem.status, kind)
+        ) {
             continue;
         }
 

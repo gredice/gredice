@@ -79,6 +79,24 @@ test('markGardenVisitSummarySeen advances opened and summary markers together', 
     assert.strictEqual(seen.lastSummaryFactsHash, 'growth:12');
 });
 
+test('markGardenVisitSummarySeen creates an empty-summary baseline marker', async () => {
+    const fixture = await createVisitFixture();
+    const seenAt = new Date('2026-06-02T10:00:00.000Z');
+
+    const seen = await markGardenVisitSummarySeen({
+        ...fixture,
+        seenAt,
+        factsHash: null,
+    });
+
+    assert.strictEqual(seen.userId, fixture.userId);
+    assert.strictEqual(seen.accountId, fixture.accountId);
+    assert.strictEqual(seen.gardenId, fixture.gardenId);
+    assert.deepStrictEqual(seen.lastOpenedAt, seenAt);
+    assert.deepStrictEqual(seen.lastSummarySeenAt, seenAt);
+    assert.strictEqual(seen.lastSummaryFactsHash, null);
+});
+
 test('garden visit markers are isolated by user within a shared account garden', async () => {
     const fixture = await createVisitFixture();
     const secondUserId = await createUserWithPassword(

@@ -345,6 +345,132 @@
             ]
         },
         {
+            "name": "LiquidPreparationBottlePestControl",
+            "source": "LiquidPreparationBottlePestControl.blend",
+            "output": "LiquidPreparationBottlePestControl.glb",
+            "preload": "lazy",
+            "objects": [
+                "LiquidPreparationBottlePestControl_Base_Rim",
+                "LiquidPreparationBottlePestControl_Body",
+                "LiquidPreparationBottlePestControl_Shoulder",
+                "LiquidPreparationBottlePestControl_Neck",
+                "LiquidPreparationBottlePestControl_Cap",
+                "LiquidPreparationBottlePestControl_Label"
+            ]
+        },
+        {
+            "name": "LiquidPreparationBottleAphidControl",
+            "source": "LiquidPreparationBottleAphidControl.blend",
+            "output": "LiquidPreparationBottleAphidControl.glb",
+            "preload": "lazy",
+            "objects": [
+                "LiquidPreparationBottleAphidControl_Base_Rim",
+                "LiquidPreparationBottleAphidControl_Body",
+                "LiquidPreparationBottleAphidControl_Shoulder",
+                "LiquidPreparationBottleAphidControl_Neck",
+                "LiquidPreparationBottleAphidControl_Cap",
+                "LiquidPreparationBottleAphidControl_Label"
+            ]
+        },
+        {
+            "name": "LiquidPreparationBottleSlugControl",
+            "source": "LiquidPreparationBottleSlugControl.blend",
+            "output": "LiquidPreparationBottleSlugControl.glb",
+            "preload": "lazy",
+            "objects": [
+                "LiquidPreparationBottleSlugControl_Base_Rim",
+                "LiquidPreparationBottleSlugControl_Body",
+                "LiquidPreparationBottleSlugControl_Shoulder",
+                "LiquidPreparationBottleSlugControl_Neck",
+                "LiquidPreparationBottleSlugControl_Cap",
+                "LiquidPreparationBottleSlugControl_Label"
+            ]
+        },
+        {
+            "name": "LiquidPreparationBottleTomatoEggplantResistance",
+            "source": "LiquidPreparationBottleTomatoEggplantResistance.blend",
+            "output": "LiquidPreparationBottleTomatoEggplantResistance.glb",
+            "preload": "lazy",
+            "objects": [
+                "LiquidPreparationBottleTomatoEggplantResistance_Base_Rim",
+                "LiquidPreparationBottleTomatoEggplantResistance_Body",
+                "LiquidPreparationBottleTomatoEggplantResistance_Shoulder",
+                "LiquidPreparationBottleTomatoEggplantResistance_Neck",
+                "LiquidPreparationBottleTomatoEggplantResistance_Cap",
+                "LiquidPreparationBottleTomatoEggplantResistance_Label"
+            ]
+        },
+        {
+            "name": "LiquidPreparationBottleFertilizer",
+            "source": "LiquidPreparationBottleFertilizer.blend",
+            "output": "LiquidPreparationBottleFertilizer.glb",
+            "preload": "lazy",
+            "objects": [
+                "LiquidPreparationBottleFertilizer_Base_Rim",
+                "LiquidPreparationBottleFertilizer_Body",
+                "LiquidPreparationBottleFertilizer_Shoulder",
+                "LiquidPreparationBottleFertilizer_Neck",
+                "LiquidPreparationBottleFertilizer_Cap",
+                "LiquidPreparationBottleFertilizer_Label"
+            ]
+        },
+        {
+            "name": "LiquidPreparationBottleDiseaseControl",
+            "source": "LiquidPreparationBottleDiseaseControl.blend",
+            "output": "LiquidPreparationBottleDiseaseControl.glb",
+            "preload": "lazy",
+            "objects": [
+                "LiquidPreparationBottleDiseaseControl_Base_Rim",
+                "LiquidPreparationBottleDiseaseControl_Body",
+                "LiquidPreparationBottleDiseaseControl_Shoulder",
+                "LiquidPreparationBottleDiseaseControl_Neck",
+                "LiquidPreparationBottleDiseaseControl_Cap",
+                "LiquidPreparationBottleDiseaseControl_Label"
+            ]
+        },
+        {
+            "name": "LiquidPreparationBottleWeevilControl",
+            "source": "LiquidPreparationBottleWeevilControl.blend",
+            "output": "LiquidPreparationBottleWeevilControl.glb",
+            "preload": "lazy",
+            "objects": [
+                "LiquidPreparationBottleWeevilControl_Base_Rim",
+                "LiquidPreparationBottleWeevilControl_Body",
+                "LiquidPreparationBottleWeevilControl_Shoulder",
+                "LiquidPreparationBottleWeevilControl_Neck",
+                "LiquidPreparationBottleWeevilControl_Cap",
+                "LiquidPreparationBottleWeevilControl_Label"
+            ]
+        },
+        {
+            "name": "LiquidPreparationBottleVoleControl",
+            "source": "LiquidPreparationBottleVoleControl.blend",
+            "output": "LiquidPreparationBottleVoleControl.glb",
+            "preload": "lazy",
+            "objects": [
+                "LiquidPreparationBottleVoleControl_Base_Rim",
+                "LiquidPreparationBottleVoleControl_Body",
+                "LiquidPreparationBottleVoleControl_Shoulder",
+                "LiquidPreparationBottleVoleControl_Neck",
+                "LiquidPreparationBottleVoleControl_Cap",
+                "LiquidPreparationBottleVoleControl_Label"
+            ]
+        },
+        {
+            "name": "LiquidPreparationBottleBeetleControl",
+            "source": "LiquidPreparationBottleBeetleControl.blend",
+            "output": "LiquidPreparationBottleBeetleControl.glb",
+            "preload": "lazy",
+            "objects": [
+                "LiquidPreparationBottleBeetleControl_Base_Rim",
+                "LiquidPreparationBottleBeetleControl_Body",
+                "LiquidPreparationBottleBeetleControl_Shoulder",
+                "LiquidPreparationBottleBeetleControl_Neck",
+                "LiquidPreparationBottleBeetleControl_Cap",
+                "LiquidPreparationBottleBeetleControl_Label"
+            ]
+        },
+        {
             "name": "PaintRoller",
             "source": "PaintRoller.blend",
             "output": "PaintRoller.glb",

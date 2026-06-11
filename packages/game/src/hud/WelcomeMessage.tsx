@@ -7,7 +7,7 @@ import { Modal } from '@gredice/ui/Modal';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useClaimDailyReward } from '../hooks/useClaimDailyReward';
 import { useDailyReward } from '../hooks/useDailyReward';
 import { useGameAudio } from '../hooks/useGameAudio';
@@ -47,23 +47,15 @@ const messageTypes = {
 };
 
 export function WelcomeMessage({ onClosed }: { onClosed?: () => void }) {
-    const { data: dailyReward, isFetched } = useDailyReward();
+    const dailyRewardQuery = useDailyReward();
     const claimDailyReward = useClaimDailyReward();
+    const dailyReward = dailyRewardQuery.data;
     const shouldShow = Boolean(dailyReward?.canClaim);
     const [open, setOpen] = useState(shouldShow);
     const [isClosing, setIsClosing] = useState(false);
     const previousShouldShow = useRef(shouldShow);
+    const openingCompleteNotifiedRef = useRef(false);
     const closeTimeoutRef = useRef<number | null>(null);
-    const reportedClosedRef = useRef(false);
-    const reportClosed = useCallback(() => {
-        if (reportedClosedRef.current) {
-            return;
-        }
-
-        reportedClosedRef.current = true;
-        onClosed?.();
-    }, [onClosed]);
-
     useEffect(() => {
         if (shouldShow && !previousShouldShow.current) {
             setOpen(true);
@@ -80,13 +72,6 @@ export function WelcomeMessage({ onClosed }: { onClosed?: () => void }) {
 
         previousShouldShow.current = shouldShow;
     }, [shouldShow]);
-    useEffect(() => {
-        if (!isFetched || shouldShow || open || isClosing) {
-            return;
-        }
-
-        reportClosed();
-    }, [isClosing, isFetched, open, reportClosed, shouldShow]);
     useEffect(() => {
         return () => {
             if (closeTimeoutRef.current !== null) {
@@ -119,9 +104,34 @@ export function WelcomeMessage({ onClosed }: { onClosed?: () => void }) {
             if (dailyReward?.canClaim) {
                 claimDailyReward.mutate();
             }
-            reportClosed();
+            openingCompleteNotifiedRef.current = true;
+            onClosed?.();
         }, animationDuration + 50);
     };
+
+    useEffect(() => {
+        if (shouldShow) {
+            openingCompleteNotifiedRef.current = false;
+            return;
+        }
+
+        if (
+            openingCompleteNotifiedRef.current ||
+            open ||
+            (!dailyRewardQuery.isFetched && !dailyRewardQuery.isError)
+        ) {
+            return;
+        }
+
+        openingCompleteNotifiedRef.current = true;
+        onClosed?.();
+    }, [
+        dailyRewardQuery.isError,
+        dailyRewardQuery.isFetched,
+        onClosed,
+        open,
+        shouldShow,
+    ]);
 
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const isDay = timeOfDay > 0.2 && timeOfDay < 0.8;

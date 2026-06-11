@@ -546,16 +546,19 @@ function completedDebugAppliedOperation({
     completedAt,
     entityId,
     id,
+    raisedBedId,
     raisedBedFieldId,
 }: {
     completedAt: string;
     entityId: number;
     id: number;
+    raisedBedId: number;
     raisedBedFieldId?: number | null;
 }): MockRaisedBed['appliedOperations'][number] {
     return {
         id,
         entityId,
+        raisedBedId,
         raisedBedFieldId: raisedBedFieldId ?? null,
         status: 'completed',
         createdAt: completedAt,
@@ -598,6 +601,7 @@ function applyOperationRewardDebugState({
                         id: 9501,
                         entityId:
                             operationVisualRewardDebugOperationIds.watering,
+                        raisedBedId: raisedBed.id,
                         completedAt: operationVisualRewardDebugTimestamp,
                     }),
                 ];
@@ -614,6 +618,7 @@ function applyOperationRewardDebugState({
                         id: 9502,
                         entityId:
                             operationVisualRewardDebugOperationIds.weeding,
+                        raisedBedId: raisedBed.id,
                         completedAt: operationVisualRewardDebugNewerTimestamp,
                     }),
                 ];
@@ -625,6 +630,7 @@ function applyOperationRewardDebugState({
                     completedDebugAppliedOperation({
                         id: 9503,
                         entityId: operationVisualRewardDebugOperationIds.mulch,
+                        raisedBedId: raisedBed.id,
                         completedAt: operationVisualRewardDebugTimestamp,
                     }),
                 ];
@@ -635,6 +641,7 @@ function applyOperationRewardDebugState({
                 completedDebugAppliedOperation({
                     id: 9504,
                     entityId: operationVisualRewardDebugOperationIds.mulch,
+                    raisedBedId: raisedBed.id,
                     completedAt: operationVisualRewardDebugOlderTimestamp,
                 }),
                 ...(isAfter
@@ -643,6 +650,7 @@ function applyOperationRewardDebugState({
                               id: 9505,
                               entityId:
                                   operationVisualRewardDebugOperationIds.removeMulch,
+                              raisedBedId: raisedBed.id,
                               completedAt:
                                   operationVisualRewardDebugNewerTimestamp,
                           }),
@@ -657,6 +665,7 @@ function applyOperationRewardDebugState({
                         id: 9506,
                         entityId:
                             operationVisualRewardDebugOperationIds.agrotextile,
+                        raisedBedId: raisedBed.id,
                         completedAt: operationVisualRewardDebugTimestamp,
                     }),
                 ];
@@ -668,6 +677,7 @@ function applyOperationRewardDebugState({
                     id: 9507,
                     entityId:
                         operationVisualRewardDebugOperationIds.agrotextile,
+                    raisedBedId: raisedBed.id,
                     completedAt: operationVisualRewardDebugOlderTimestamp,
                 }),
                 ...(isAfter
@@ -676,6 +686,7 @@ function applyOperationRewardDebugState({
                               id: 9508,
                               entityId:
                                   operationVisualRewardDebugOperationIds.removeAgrotextile,
+                              raisedBedId: raisedBed.id,
                               completedAt:
                                   operationVisualRewardDebugNewerTimestamp,
                           }),
@@ -690,6 +701,7 @@ function applyOperationRewardDebugState({
                         id: 9509,
                         entityId:
                             operationVisualRewardDebugOperationIds.supports,
+                        raisedBedId: raisedBed.id,
                         completedAt: operationVisualRewardDebugTimestamp,
                     }),
                 ];
@@ -702,12 +714,11 @@ function applyOperationRewardDebugState({
                         id: 9510,
                         entityId:
                             operationVisualRewardDebugOperationIds.harvest,
+                        raisedBedId: raisedBed.id,
                         completedAt: operationVisualRewardDebugTimestamp,
                     }),
                 ];
             }
-            break;
-        case 'photographyUpdate':
             break;
     }
 }

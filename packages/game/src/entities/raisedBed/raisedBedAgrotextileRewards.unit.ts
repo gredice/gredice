@@ -6,7 +6,10 @@ import type {
     OperationVisualRewardKind,
 } from '../../operationVisualRewards';
 import { resolveOperationVisualRewards } from '../../operationVisualRewards';
-import { resolveRaisedBedAgrotextileCoverPositions } from './raisedBedAgrotextileRewards';
+import {
+    hasActiveRaisedBedAgrotextileCover,
+    resolveRaisedBedAgrotextileCoverPositions,
+} from './raisedBedAgrotextileRewards';
 
 function operation(
     id: number,
@@ -86,6 +89,13 @@ test('whole-bed agrotextile cover marks every local field position', () => {
             visualRewards,
         }),
         [0, 1, 2, 3, 4, 5, 6, 7, 8],
+    );
+    assert.equal(
+        hasActiveRaisedBedAgrotextileCover({
+            raisedBedId: 10,
+            visualRewards,
+        }),
+        true,
     );
 });
 
@@ -172,6 +182,13 @@ test('newer remove-agrotextile reward clears whole-bed cover visuals', () => {
             visualRewards,
         }),
         [],
+    );
+    assert.equal(
+        hasActiveRaisedBedAgrotextileCover({
+            raisedBedId: 10,
+            visualRewards,
+        }),
+        false,
     );
 });
 

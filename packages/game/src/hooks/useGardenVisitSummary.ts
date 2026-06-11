@@ -2,7 +2,7 @@ import {
     clientAuthenticated,
     type GardenVisitSummaryResponse,
 } from '@gredice/client';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { useGameState } from '../useGameState';
 import {
@@ -22,6 +22,10 @@ export {
     formatGardenVisitSummaryFacts,
     gardenVisitSummaryQueryKey,
 } from './gardenVisitSummary';
+
+type MarkGardenVisitSummarySeenVariables = {
+    factsHash?: string | null;
+};
 
 async function getGardenVisitSummary(
     gardenId: number,
@@ -58,7 +62,8 @@ export function useGardenVisitSummary({
     enabled?: boolean;
     maxItems?: number;
 } = {}) {
-    const { data: currentGarden } = useCurrentGarden();
+    const currentGardenQuery = useCurrentGarden();
+    const currentGarden = currentGardenQuery.data;
     const isMock = useGameState((state) => state.isMock);
     const localSandboxStorageKey = useGameState(
         (state) => state.localSandboxStorageKey,
@@ -94,6 +99,50 @@ export function useGardenVisitSummary({
         displayItems,
         facts: query.data?.facts ?? [],
         factsHash: query.data?.factsHash ?? null,
+        canLoadSummary,
+        gardenReady: currentGardenQuery.isFetched || currentGardenQuery.isError,
         hasDisplayItems: displayItems.length > 0,
     };
+}
+
+export function useMarkGardenVisitSummarySeen() {
+    const queryClient = useQueryClient();
+    const { data: currentGarden } = useCurrentGarden();
+    const gardenId = currentGarden?.id;
+
+    return useMutation({
+        mutationFn: async ({
+            factsHash,
+        }: MarkGardenVisitSummarySeenVariables = {}) => {
+            if (gardenId == null) {
+                throw new Error(
+                    'Garden ID is required to mark visit summary seen',
+                );
+            }
+
+            const response = await clientAuthenticated().api.gardens[
+                ':gardenId'
+            ]['visit-summary'].seen.$post({
+                param: {
+                    gardenId: gardenId.toString(),
+                },
+                json: {
+                    factsHash: factsHash ?? null,
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error(
+                    `Failed to mark garden visit summary seen: ${response.status.toString()} ${response.statusText}`,
+                );
+            }
+
+            return response.json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: gardenVisitSummaryQueryKey(gardenId),
+            });
+        },
+    });
 }
