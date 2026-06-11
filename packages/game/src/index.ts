@@ -5,6 +5,17 @@ export {
 export type { GameSceneProps } from './GameScene';
 export { GameSceneDynamic as GameScene } from './GameSceneDynamic';
 export { PlantEditor } from './generators/plant/editor/PlantEditor';
+export type {
+    GardenVisitSummaryDisplayItem,
+    GardenVisitSummaryFact,
+    GardenVisitSummarySource,
+    GardenVisitSummaryTarget,
+} from './hooks/useGardenVisitSummary';
+export {
+    formatGardenVisitSummaryFacts,
+    gardenVisitSummaryQueryKey,
+    useGardenVisitSummary,
+} from './hooks/useGardenVisitSummary';
 export { useThemeManager } from './hooks/useThemeManager';
 export type { PlantStageName } from './hud/raisedBed/featuredOperations';
 export {
