@@ -19,7 +19,6 @@ import { SunflowerHeadModel } from './Sunflower';
 import {
     findSunflowerDropPlacement,
     getSunflowerDropPosition,
-    getSunflowerDropSpawnDelayMs,
     type SunflowerDropPlacement,
 } from './sunflowerDropRewardCore';
 
@@ -229,32 +228,6 @@ function SunflowerDropAtPlacement({
     );
 }
 
-function useSunflowerDropSpawnReady({
-    enabled,
-    gardenId,
-}: {
-    enabled: boolean;
-    gardenId: number | null | undefined;
-}) {
-    const [ready, setReady] = useState(false);
-
-    useEffect(() => {
-        setReady(false);
-
-        if (!enabled || gardenId == null || typeof window === 'undefined') {
-            return;
-        }
-
-        const timeoutId = window.setTimeout(() => {
-            setReady(true);
-        }, getSunflowerDropSpawnDelayMs());
-
-        return () => window.clearTimeout(timeoutId);
-    }, [enabled, gardenId]);
-
-    return ready;
-}
-
 export function SunflowerDropReward({
     enabled,
     garden,
@@ -265,12 +238,10 @@ export function SunflowerDropReward({
     onClaimed?: (origin: SunflowerDropFlyOrigin) => void;
 }) {
     const [claimedSpawnId, setClaimedSpawnId] = useState<string | null>(null);
-    const spawnReady = useSunflowerDropSpawnReady({
-        enabled: enabled && Boolean(garden) && !garden?.isSandbox,
-        gardenId: garden?.id,
-    });
-    const sunflowerDrop = useSunflowerDrop(garden?.id, spawnReady);
-    const spawn = spawnReady ? (sunflowerDrop.data?.spawn ?? null) : null;
+    const sunflowerDropEnabled =
+        enabled && Boolean(garden) && !garden?.isSandbox;
+    const sunflowerDrop = useSunflowerDrop(garden?.id, sunflowerDropEnabled);
+    const spawn = sunflowerDrop.data?.spawn ?? null;
 
     useEffect(() => {
         if (claimedSpawnId && spawn?.spawnId !== claimedSpawnId) {

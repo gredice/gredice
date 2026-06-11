@@ -52,6 +52,7 @@ import {
 } from '../../../lib/auth/sessionConfig';
 import { authSecurity } from '../../../lib/docs/security';
 import { sendAccountInvitation } from '../../../lib/email/transactional';
+import { isSunflowerDropWeatherEligible } from '../../../lib/garden/sunflowerDropWeather';
 import {
     type AuthVariables,
     authValidator,
@@ -238,13 +239,10 @@ async function getSunflowerDropWeather(now: Date) {
 
     const weather = populateWeatherFromSymbol(closestEntry.symbol);
     return {
-        sunny:
-            closestEntry.rain <= 0.05 &&
-            weather.cloudy <= 0.2 &&
-            weather.rainy <= 0 &&
-            weather.snowy <= 0 &&
-            weather.foggy <= 0 &&
-            weather.thundery <= 0,
+        sunny: isSunflowerDropWeatherEligible({
+            ...weather,
+            rain: closestEntry.rain,
+        }),
         symbol: closestEntry.symbol,
     };
 }

@@ -2,8 +2,6 @@ import { Vector3 } from 'three';
 import type { Block } from '../types/Block';
 import type { Stack } from '../types/Stack';
 
-export const SUNFLOWER_DROP_MIN_SPAWN_DELAY_MS = 60 * 1000;
-export const SUNFLOWER_DROP_MAX_SPAWN_DELAY_MS = 5 * 60 * 1000;
 export const SUNFLOWER_DROP_MIN_GROUND_DISTANCE = 0.55;
 export const SUNFLOWER_DROP_MAX_GROUND_DISTANCE = 0.77;
 export const SUNFLOWER_DROP_GROUND_Y_OFFSET = 0.085;
@@ -27,23 +25,6 @@ function hashString(value: string) {
         hash = (hash * 31 + value.charCodeAt(index)) % 100_000;
     }
     return hash / 100_000;
-}
-
-function clampUnit(value: number) {
-    if (!Number.isFinite(value)) {
-        return 0;
-    }
-    return Math.min(Math.max(value, 0), 1);
-}
-
-export function getSunflowerDropSpawnDelayMs(random = Math.random) {
-    const unitValue = clampUnit(random());
-    return Math.round(
-        SUNFLOWER_DROP_MIN_SPAWN_DELAY_MS +
-            unitValue *
-                (SUNFLOWER_DROP_MAX_SPAWN_DELAY_MS -
-                    SUNFLOWER_DROP_MIN_SPAWN_DELAY_MS),
-    );
 }
 
 export function findSunflowerDropPlacement(

@@ -43,7 +43,7 @@ export function useSunflowerDrop(
         enabled: enabled && gardenId != null,
         refetchOnWindowFocus: false,
         retry: false,
-        staleTime: Infinity,
+        staleTime: 0,
     });
 }
 
@@ -69,6 +69,9 @@ export function useClaimSunflowerDrop() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: currentAccountKeys });
+            queryClient.invalidateQueries({
+                queryKey: ['accounts', 'current', 'sunflowers', 'drops'],
+            });
         },
     });
 }
