@@ -92,6 +92,27 @@ function clickHudButton(title: string) {
     return Boolean(button);
 }
 
+function openExternalTaskTarget(task: TutorialChecklistTask) {
+    switch (task.actionTarget) {
+        case 'contact':
+            window.open(
+                KnownPages.GrediceContact,
+                '_blank',
+                'noopener,noreferrer',
+            );
+            return true;
+        case 'plantDatabase':
+            window.open(
+                KnownPages.GredicePlants,
+                '_blank',
+                'noopener,noreferrer',
+            );
+            return true;
+        default:
+            return false;
+    }
+}
+
 function useOpenTaskTarget(onChecklistOpenChange: (open: boolean) => void) {
     const [, setBackpackOpen] = useBackpackOpenParam();
     const [, setCartOpen] = useShoppingCartOpenParam();
@@ -100,6 +121,10 @@ function useOpenTaskTarget(onChecklistOpenChange: (open: boolean) => void) {
     return async (task: TutorialChecklistTask) => {
         const target = task.actionTarget;
         if (!target) {
+            return;
+        }
+
+        if (openExternalTaskTarget(task)) {
             return;
         }
 
@@ -123,13 +148,6 @@ function useOpenTaskTarget(onChecklistOpenChange: (open: boolean) => void) {
             case 'cart':
                 await setCartOpen(true);
                 break;
-            case 'contact':
-                window.open(
-                    KnownPages.GrediceContact,
-                    '_blank',
-                    'noopener,noreferrer',
-                );
-                break;
             case 'delivery':
                 await setOverviewTab('dostava');
                 break;
@@ -147,13 +165,6 @@ function useOpenTaskTarget(onChecklistOpenChange: (open: boolean) => void) {
                 break;
             case 'operations':
                 clickHudButton('Status radnji');
-                break;
-            case 'plantDatabase':
-                window.open(
-                    KnownPages.GredicePlants,
-                    '_blank',
-                    'noopener,noreferrer',
-                );
                 break;
             case 'profile':
                 await setOverviewTab('generalno');
@@ -251,8 +262,14 @@ function TutorialChecklistContent({
             claimable: task.claimable,
         });
 
+        const openedExternalTarget =
+            task.claimable && openExternalTaskTarget(task);
+
         if (task.claimable) {
             await claimTask.mutateAsync(task.key);
+        }
+        if (openedExternalTarget) {
+            return;
         }
         await openTarget(task);
     }
