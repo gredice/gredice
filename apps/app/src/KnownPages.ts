@@ -107,6 +107,8 @@ export const KnownPages = {
     InventoryCreate: '/admin/inventory/create',
     InventoryConfig: (inventoryId: number) =>
         `/admin/inventory/${inventoryId}` as Route,
+    InventoryPrintout: (inventoryId: number) =>
+        `/admin/inventory/${inventoryId}/printout` as Route,
     InventoryConfigEdit: (inventoryId: number) =>
         `/admin/inventory/${inventoryId}/edit` as Route,
     InventoryItemCreate: (inventoryId: number) =>

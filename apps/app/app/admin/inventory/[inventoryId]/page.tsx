@@ -6,7 +6,7 @@ import {
 } from '@gredice/storage';
 import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
 import { Card, CardOverflow } from '@gredice/ui/Card';
-import { Add, Edit } from '@gredice/ui/icons';
+import { Add, Edit, Printer } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import Link from 'next/link';
@@ -134,6 +134,15 @@ export default async function InventoryConfigPage({
                     }
                     actions={
                         <Row spacing={2}>
+                            <Link href={KnownPages.InventoryPrintout(id)}>
+                                <Row
+                                    spacing={2}
+                                    className="text-sm font-medium px-3 py-2 rounded-md border hover:bg-accent transition-colors"
+                                >
+                                    <Printer className="size-4" />
+                                    <span>Preuzmi PDF</span>
+                                </Row>
+                            </Link>
                             <Link href={KnownPages.InventoryItemCreate(id)}>
                                 <Row
                                     spacing={2}
