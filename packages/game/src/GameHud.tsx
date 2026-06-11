@@ -19,6 +19,7 @@ import { SandboxBlockTrashDropTarget } from './hud/SandboxBlockTrashDropTarget';
 import { SandboxEnvironmentHud } from './hud/SandboxEnvironmentHud';
 import { ShoppingCartHud } from './hud/ShoppingCartHud';
 import { SunflowersHud } from './hud/SunflowersHud';
+import { TutorialChecklistHud } from './hud/TutorialChecklistHud';
 import { WeatherHud } from './hud/WeatherHud';
 import { WelcomeMessage } from './hud/WelcomeMessage';
 import { WhatsNewWidget } from './hud/WhatsNewWidget';
@@ -50,6 +51,7 @@ export function GameHud({
     const isLocalSandbox = useGameState(
         (state) => state.localSandboxStorageKey !== null,
     );
+    const enableTutorialChecklist = Boolean(flags?.enableTutorialChecklistFlag);
     const closeupHiddenHudClassName = cx(
         'empty:hidden',
         isCloseup && 'hidden md:block',
@@ -59,6 +61,9 @@ export function GameHud({
         <>
             <div className="absolute top-2 left-2 flex flex-col items-start gap-2">
                 {!isLocalSandbox && <AccountHud />}
+                {!isLocalSandbox && !isSandbox && enableTutorialChecklist && (
+                    <TutorialChecklistHud />
+                )}
                 {!isSandbox && <ShoppingCartHud />}
                 {!isSandbox && (
                     <div className={closeupHiddenHudClassName}>
