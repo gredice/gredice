@@ -6,6 +6,7 @@ import { type ThreeEvent, useThree } from '@react-three/fiber';
 import {
     type PropsWithChildren,
     Suspense,
+    useContext,
     useEffect,
     useLayoutEffect,
     useMemo,
@@ -33,7 +34,11 @@ import {
 } from '../particles/ParticleSystem';
 import { isPointOverSandboxBlockTrashDropTarget } from '../sandboxBlockTrashDropTarget';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
-import { type ActiveDragPreview, useGameState } from '../useGameState';
+import {
+    type ActiveDragPreview,
+    GameStateContext,
+    useGameState,
+} from '../useGameState';
 import {
     getBlockDataByName,
     getStackHeight,
@@ -157,6 +162,7 @@ export function PickableGroup({
     const { spawn } = useParticles();
     const { data: garden } = useCurrentGarden();
     const { data: blocksData } = useBlockData();
+    const gameStateStore = useContext(GameStateContext);
     const camera = useThree((state) => state.camera);
     const gl = useThree((state) => state.gl);
     const { domElement } = gl;
@@ -597,6 +603,26 @@ export function PickableGroup({
     function createActivePreviewResetQueue() {
         let resetQueued = false;
 
+        const clearAfterSceneCommit = () => {
+            const previewToClear =
+                gameStateStore?.getState().activeDragPreview ?? null;
+
+            // Keep the drag preview through one paint so React Query's optimistic stack update can commit first.
+            window.requestAnimationFrame(() => {
+                window.requestAnimationFrame(() => {
+                    if (
+                        previewToClear &&
+                        gameStateStore?.getState().activeDragPreview !==
+                            previewToClear
+                    ) {
+                        return;
+                    }
+
+                    setActiveDragPreview(null);
+                });
+            });
+        };
+
         return {
             queue: () => {
                 if (resetQueued) {
@@ -604,9 +630,7 @@ export function PickableGroup({
                 }
 
                 resetQueued = true;
-                window.requestAnimationFrame(() => {
-                    setActiveDragPreview(null);
-                });
+                clearAfterSceneCommit();
             },
             resetIfUnqueued: () => {
                 if (!resetQueued) {
