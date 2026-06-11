@@ -101,12 +101,14 @@ test('keeps doghouse returns rarer than cat pillow returns', () => {
         roam: true,
         'low-entity': true,
         'chase-bird': true,
+        'interact-cat': false,
     });
     const catWeights = getCatBehaviorWeights({
         cover: true,
         roam: true,
         'low-entity': true,
         'stalk-bird': true,
+        'interact-dog': false,
     });
     const dogWeightByBehavior = new Map(
         dogWeights.map((item) => [item.behavior, item.dayWeight]),
@@ -122,6 +124,32 @@ test('keeps doghouse returns rarer than cat pillow returns', () => {
     assert.ok(
         (dogWeightByBehavior.get('roam') ?? 0) >
             (catWeightByBehavior.get('roam') ?? 0),
+    );
+});
+
+test('includes cat interaction only when a cat is available', () => {
+    const unavailableWeights = getDogBehaviorWeights({
+        cover: false,
+        roam: false,
+        'low-entity': false,
+        'chase-bird': false,
+        'interact-cat': false,
+    });
+    const availableWeights = getDogBehaviorWeights({
+        cover: false,
+        roam: false,
+        'low-entity': false,
+        'chase-bird': false,
+        'interact-cat': true,
+    });
+
+    assert.equal(
+        unavailableWeights.some((item) => item.behavior === 'interact-cat'),
+        false,
+    );
+    assert.deepEqual(
+        availableWeights.map((item) => item.behavior),
+        ['doghouse', 'interact-cat'],
     );
 });
 

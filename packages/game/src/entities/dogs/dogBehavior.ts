@@ -3,7 +3,8 @@ export type DogBehavior =
     | 'roam'
     | 'cover'
     | 'low-entity'
-    | 'chase-bird';
+    | 'chase-bird'
+    | 'interact-cat';
 
 export type DogWeather = {
     cloudy?: number | null;
@@ -33,6 +34,7 @@ const behaviorWeights = [
     { behavior: 'cover', dayWeight: 0.1 },
     { behavior: 'low-entity', dayWeight: 0.1 },
     { behavior: 'chase-bird', dayWeight: 0.15 },
+    { behavior: 'interact-cat', dayWeight: 0.12 },
 ] satisfies WeightedBehavior[];
 
 export function isDogNight(timeOfDay: number) {
@@ -179,6 +181,10 @@ export function getDogDwellSeconds({
 
     if (behavior === 'chase-bird') {
         return 2.5 + amount * 4;
+    }
+
+    if (behavior === 'interact-cat') {
+        return 2.5 + amount * 4.5;
     }
 
     if (behavior === 'low-entity') {

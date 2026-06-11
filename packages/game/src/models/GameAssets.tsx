@@ -128,8 +128,6 @@ export type GLTFResult = GLTF & {
         Dog_Tail_Base: THREE.Mesh;
         Dog_Tail_Tip: THREE.Mesh;
         DogHouse_BackShadow: THREE.Mesh;
-        DogHouse_Bowl: THREE.Mesh;
-        DogHouse_Bowl_Rim: THREE.Mesh;
         DogHouse_Door: THREE.Mesh;
         DogHouse_DoorTop: THREE.Mesh;
         DogHouse_NamePlate: THREE.Mesh;
@@ -241,6 +239,9 @@ export type GLTFResult = GLTF & {
         FireflyJar_Firefly_Wings: THREE.Mesh;
         CatPillow_Cushion: THREE.Mesh;
         CatPillow_Seam: THREE.Mesh;
+        DogHouse_Bowl: THREE.Mesh;
+        DogHouse_Bowl_Rim: THREE.Mesh;
+        DogHouse_Bowl_Water: THREE.Mesh;
         Fence_Corner: THREE.Mesh;
         Fence_Cross: THREE.Mesh;
         Fence_Middle: THREE.Mesh;
@@ -429,7 +430,6 @@ export type GLTFResult = GLTF & {
         'Material.DogHouse.BowlBlue': THREE.MeshStandardMaterial;
         'Material.DogHouse.CharcoalRoof': THREE.MeshStandardMaterial;
         'Material.DogHouse.DarkRedWood': THREE.MeshStandardMaterial;
-        'Material.DogHouse.DoorShadow': THREE.MeshStandardMaterial;
         'Material.DogHouse.RedWood': THREE.MeshStandardMaterial;
         'Material.DogHouse.WarmTrim': THREE.MeshStandardMaterial;
         'Material.GardenFlower.Center': THREE.MeshStandardMaterial;

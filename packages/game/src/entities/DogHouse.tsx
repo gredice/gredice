@@ -8,6 +8,7 @@ import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
+import { WaterSurfaceMaterial } from './helpers/WaterSurfaceMaterial';
 
 type DogHouseNodeName = Extract<
     keyof GLTFResult['nodes'],
@@ -18,28 +19,28 @@ type DogHouseNode = GLTFResult['nodes'][DogHouseNodeName];
 const dogHouseScale = 0.72;
 
 const wallMaterial = {
-    color: '#94301f',
+    color: '#7a4f2b',
     metalness: 0,
     roughness: 0.9,
     side: DoubleSide,
 };
 
 const darkWallMaterial = {
-    color: '#5c1913',
+    color: '#3f2618',
     metalness: 0,
     roughness: 0.92,
     side: DoubleSide,
 };
 
 const roofMaterial = {
-    color: '#242521',
+    color: '#5f3a22',
     metalness: 0,
     roughness: 0.82,
     side: DoubleSide,
 };
 
 const trimMaterial = {
-    color: '#e8b66c',
+    color: '#b8793d',
     metalness: 0,
     roughness: 0.78,
     side: DoubleSide,
@@ -183,6 +184,13 @@ export function DogHouse({ stack, block, rotation }: EntityInstanceProps) {
             </DogHousePart>
             <DogHousePart node={nodes.DogHouse_Bowl_Rim}>
                 <meshStandardMaterial {...trimMaterial} />
+            </DogHousePart>
+            <DogHousePart
+                node={nodes.DogHouse_Bowl_Water}
+                castShadow={false}
+                receiveShadow={false}
+            >
+                <WaterSurfaceMaterial />
             </DogHousePart>
         </animated.group>
     );

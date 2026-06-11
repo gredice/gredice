@@ -11,6 +11,7 @@ import type { Block } from '../../types/Block';
 import type { Stack } from '../../types/Stack';
 import {
     type AnimalDebugEntry,
+    type AnimalPresenceEntry,
     type GameState,
     useGameState,
 } from '../../useGameState';
@@ -21,6 +22,11 @@ import {
     AnimalPathDebugIndicator,
     AnimalTargetDebugMarker,
 } from '../animals/AnimalDebugIndicators';
+import {
+    animalPresencePosition,
+    animalPresenceUpdateIntervalSeconds,
+    freshAnimalPresences,
+} from '../animals/animalPresence';
 import {
     type DogBehavior,
     type DogWeather,
@@ -82,6 +88,27 @@ type SettledDogState = {
 
 type DogRuntimeState = MovingDogState | SettledDogState;
 
+type DogRigNode = {
+    object: Object3D | null;
+    basePositionY: number;
+    basePositionZ: number;
+    baseRotationX: number;
+    baseRotationZ: number;
+};
+
+type DogRigParts = {
+    frontLeftLeg: DogRigNode;
+    frontLeftPaw: DogRigNode;
+    frontRightLeg: DogRigNode;
+    frontRightPaw: DogRigNode;
+    rearLeftLeg: DogRigNode;
+    rearLeftPaw: DogRigNode;
+    rearRightLeg: DogRigNode;
+    rearRightPaw: DogRigNode;
+    walkPhase: number;
+    walkPoseAmount: number;
+};
+
 type DogAnimationName =
     | 'Dog_Idle'
     | 'Dog_Walk'
@@ -94,6 +121,7 @@ const dogDebugBehaviors = [
     'cover',
     'low-entity',
     'chase-bird',
+    'interact-cat',
 ] satisfies DogBehavior[];
 
 const clearDogWeather = {
@@ -110,15 +138,20 @@ const dogGroundLift = 0.02;
 const dogHouseDoorOffset = 0.46;
 const dogGroundSurfaceHalfSize = 0.5;
 const dogGroundSurfaceEpsilon = 0.001;
-const dogWalkSpeedBlocksPerSecond = 1.05;
-const dogWalkCycleDistance = 0.72;
+const dogWalkSpeedBlocksPerSecond = 0.9;
+const dogWalkCycleDistance = 0.82;
 const dogWalkAnimationFallbackDuration = 32 / 24;
 const dogWalkAnimationMinTimeScale = 0.5;
-const dogWalkAnimationMaxTimeScale = 1.9;
-const dogWalkBodyBobHeight = 0.04;
+const dogWalkAnimationMaxTimeScale = 1.65;
+const dogWalkBodyBobHeight = 0.016;
 const dogWalkTurnDamping = 9;
 const dogIdleTurnDamping = 10;
-const dogWalkLookAheadProgress = 0.08;
+const dogWalkLookAheadProgress = 0.06;
+const dogWalkRollAmount = 0.02;
+const dogWalkLegPoseDamping = 12;
+const dogWalkLegSwing = 0.3;
+const dogWalkFootLift = 0.045;
+const dogVisualYawOffset = Math.PI;
 const fullTurn = Math.PI * 2;
 const dogDarkFurColor = '#3c2115';
 const dogSoftDarkFurColor = '#7b4d2c';
@@ -719,15 +752,82 @@ function createChaseBirdTarget({
     } satisfies DogTarget;
 }
 
+function getCatInteractionTargets({
+    catPresenceEntries,
+    habitat,
+    now,
+    range,
+}: {
+    catPresenceEntries: AnimalPresenceEntry[];
+    habitat: DogHabitat;
+    now: number;
+    range: number;
+}) {
+    return freshAnimalPresences({
+        entries: catPresenceEntries,
+        now,
+        species: 'Cat',
+    }).filter(
+        (entry) =>
+            horizontalDistance(
+                animalPresencePosition(entry),
+                habitat.dogHouse.position,
+            ) <= range,
+    );
+}
+
+function createInteractCatTarget({
+    catInteractionTargets,
+    habitat,
+    random,
+}: {
+    catInteractionTargets: AnimalPresenceEntry[];
+    habitat: DogHabitat;
+    random: () => number;
+}) {
+    const targetCat = pickCandidate(catInteractionTargets, random);
+    if (!targetCat) {
+        return null;
+    }
+
+    const catPosition = animalPresencePosition(targetCat);
+    const approach = habitat.dogHouse.position.clone().sub(catPosition);
+    if (approach.lengthSq() <= 0.001) {
+        const angle = random() * fullTurn;
+        approach.set(Math.cos(angle), 0, Math.sin(angle));
+    }
+    approach.y = 0;
+    approach.setLength(0.42 + random() * 0.16);
+
+    const position = catPosition.clone().add(approach);
+    position.y = getDogWalkYAt(position, habitat.groundSurfaces);
+
+    return {
+        behavior: 'interact-cat',
+        facingYaw: Math.atan2(
+            catPosition.x - position.x,
+            catPosition.z - position.z,
+        ),
+        id: `interact-cat-${targetCat.id}`,
+        lookAtPosition: catPosition,
+        position,
+        walkPosition: position.clone(),
+    } satisfies DogTarget;
+}
+
 function chooseNextTarget({
     birdGroundEntries,
+    catPresenceEntries,
     habitat,
+    now,
     random,
     timeOfDay,
     weather,
 }: {
     birdGroundEntries: AnimalDebugEntry[];
+    catPresenceEntries: AnimalPresenceEntry[];
     habitat: DogHabitat;
+    now: number;
     random: () => number;
     timeOfDay: number;
     weather: DogWeather | null | undefined;
@@ -749,12 +849,19 @@ function chooseNextTarget({
         habitat,
         range,
     });
+    const catInteractionTargets = getCatInteractionTargets({
+        catPresenceEntries,
+        habitat,
+        now,
+        range,
+    });
     const behavior = pickDogBehavior({
         availability: {
             cover: covers.length > 0,
             'low-entity': lowEntities.length > 0,
             roam: roamAnchors.length > 0,
             'chase-bird': birdGroundTargets.length > 0,
+            'interact-cat': catInteractionTargets.length > 0,
         },
         random,
         timeOfDay,
@@ -772,6 +879,16 @@ function chooseNextTarget({
         );
     }
 
+    if (behavior === 'interact-cat') {
+        return (
+            createInteractCatTarget({
+                catInteractionTargets,
+                habitat,
+                random,
+            }) ?? habitat.dogHouse
+        );
+    }
+
     if (behavior === 'low-entity') {
         return pickCandidate(lowEntities, random) ?? habitat.dogHouse;
     }
@@ -785,22 +902,28 @@ function chooseNextTarget({
 
 function chooseManualNextTarget({
     birdGroundEntries,
+    catPresenceEntries,
     currentTarget,
     habitat,
+    now,
     random,
     timeOfDay,
     weather,
 }: {
     birdGroundEntries: AnimalDebugEntry[];
+    catPresenceEntries: AnimalPresenceEntry[];
     currentTarget: DogTarget;
     habitat: DogHabitat;
+    now: number;
     random: () => number;
     timeOfDay: number;
     weather: DogWeather | null | undefined;
 }) {
     const target = chooseNextTarget({
         birdGroundEntries,
+        catPresenceEntries,
         habitat,
+        now,
         random,
         timeOfDay,
         weather,
@@ -833,6 +956,12 @@ function chooseManualNextTarget({
         habitat,
         range,
     });
+    const catInteractionTargets = getCatInteractionTargets({
+        catPresenceEntries,
+        habitat,
+        now,
+        range,
+    });
     const alternatives: DogTarget[] = [];
 
     if (currentTarget.behavior !== 'roam' && roamAnchors.length > 0) {
@@ -854,6 +983,17 @@ function chooseManualNextTarget({
         }
     }
 
+    if (currentTarget.behavior !== 'interact-cat') {
+        const interactTarget = createInteractCatTarget({
+            catInteractionTargets,
+            habitat,
+            random,
+        });
+        if (interactTarget) {
+            alternatives.push(interactTarget);
+        }
+    }
+
     if (currentTarget.behavior !== 'low-entity') {
         alternatives.push(...lowEntities);
     }
@@ -868,14 +1008,18 @@ function chooseManualNextTarget({
 function chooseDebugTarget({
     behavior,
     birdGroundEntries,
+    catPresenceEntries,
     habitat,
+    now,
     random,
     timeOfDay,
     weather,
 }: {
     behavior: string;
     birdGroundEntries: AnimalDebugEntry[];
+    catPresenceEntries: AnimalPresenceEntry[];
     habitat: DogHabitat;
+    now: number;
     random: () => number;
     timeOfDay: number;
     weather: DogWeather | null | undefined;
@@ -914,6 +1058,21 @@ function chooseDebugTarget({
                 birdGroundTargets: getGroundBirdTargets({
                     birdGroundEntries,
                     habitat,
+                    range,
+                }),
+                habitat,
+                random,
+            }) ?? habitat.dogHouse
+        );
+    }
+
+    if (behavior === 'interact-cat') {
+        return (
+            createInteractCatTarget({
+                catInteractionTargets: getCatInteractionTargets({
+                    catPresenceEntries,
+                    habitat,
+                    now,
                     range,
                 }),
                 habitat,
@@ -983,7 +1142,7 @@ function movingPositionAt(runtime: MovingDogState, progress: number) {
 
     position.y = getDogWalkYAt(position, runtime.groundSurfaces);
     position.y += Math.max(0, Math.sin(walkPhase * 2)) * dogWalkBodyBobHeight;
-    position.y += Math.max(0, Math.sin(walkPhase)) * dogWalkBodyBobHeight * 0.5;
+    position.y += Math.max(0, Math.sin(walkPhase)) * dogWalkBodyBobHeight * 0.2;
 
     return position;
 }
@@ -1053,6 +1212,10 @@ function getDogDebugActivity(runtime: DogRuntimeState) {
 
     if (runtime.target.behavior === 'chase-bird') {
         return 'chasing ground birds';
+    }
+
+    if (runtime.target.behavior === 'interact-cat') {
+        return 'greeting cat';
     }
 
     if (runtime.target.behavior === 'low-entity') {
@@ -1167,12 +1330,120 @@ function prepareDogMesh(object: Mesh) {
         : cloneDogMaterial(object.material);
 }
 
+function getDogRigNode(root: Object3D, name: string): DogRigNode {
+    const object = root.getObjectByName(name) ?? null;
+
+    return {
+        object,
+        basePositionY: object?.position.y ?? 0,
+        basePositionZ: object?.position.z ?? 0,
+        baseRotationX: object?.rotation.x ?? 0,
+        baseRotationZ: object?.rotation.z ?? 0,
+    };
+}
+
+function createDogRig(root: Object3D): DogRigParts {
+    return {
+        frontLeftLeg: getDogRigNode(root, 'Dog_Leg_FL'),
+        frontLeftPaw: getDogRigNode(root, 'Dog_Paw_FL'),
+        frontRightLeg: getDogRigNode(root, 'Dog_Leg_FR'),
+        frontRightPaw: getDogRigNode(root, 'Dog_Paw_FR'),
+        rearLeftLeg: getDogRigNode(root, 'Dog_Leg_RL'),
+        rearLeftPaw: getDogRigNode(root, 'Dog_Paw_RL'),
+        rearRightLeg: getDogRigNode(root, 'Dog_Leg_RR'),
+        rearRightPaw: getDogRigNode(root, 'Dog_Paw_RR'),
+        walkPhase: 0,
+        walkPoseAmount: 0,
+    };
+}
+
+function poseDogLeg({
+    leg,
+    paw,
+    lift,
+    swing,
+}: {
+    leg: DogRigNode;
+    lift: number;
+    paw: DogRigNode;
+    swing: number;
+}) {
+    if (leg.object) {
+        leg.object.rotation.x = leg.baseRotationX + swing;
+        leg.object.rotation.z = leg.baseRotationZ + swing * 0.08;
+    }
+
+    if (paw.object) {
+        paw.object.position.y = paw.basePositionY + lift * dogWalkFootLift;
+        paw.object.position.z = paw.basePositionZ - swing * 0.055;
+        paw.object.rotation.x = paw.baseRotationX - swing * 0.42 + lift * 0.16;
+    }
+}
+
+function updateDogWalkPose({
+    delta,
+    moving,
+    rig,
+    walkDistance,
+}: {
+    delta: number;
+    moving: boolean;
+    rig: DogRigParts;
+    walkDistance: number;
+}) {
+    rig.walkPoseAmount = MathUtils.damp(
+        rig.walkPoseAmount,
+        moving ? 1 : 0,
+        dogWalkLegPoseDamping,
+        delta,
+    );
+
+    if (moving) {
+        rig.walkPhase = (walkDistance / dogWalkCycleDistance) * fullTurn;
+    }
+
+    const amount = rig.walkPoseAmount;
+    const phase = rig.walkPhase;
+    const diagonalStep = Math.sin(phase);
+    const diagonalSwing = diagonalStep * dogWalkLegSwing * amount;
+    const oppositeSwing = -diagonalSwing;
+    const diagonalLift = Math.max(0, diagonalStep) * amount;
+    const oppositeLift = Math.max(0, -diagonalStep) * amount;
+
+    poseDogLeg({
+        leg: rig.frontLeftLeg,
+        lift: diagonalLift,
+        paw: rig.frontLeftPaw,
+        swing: diagonalSwing,
+    });
+    poseDogLeg({
+        leg: rig.rearRightLeg,
+        lift: diagonalLift,
+        paw: rig.rearRightPaw,
+        swing: diagonalSwing,
+    });
+    poseDogLeg({
+        leg: rig.frontRightLeg,
+        lift: oppositeLift,
+        paw: rig.frontRightPaw,
+        swing: oppositeSwing,
+    });
+    poseDogLeg({
+        leg: rig.rearLeftLeg,
+        lift: oppositeLift,
+        paw: rig.rearLeftPaw,
+        swing: oppositeSwing,
+    });
+}
+
 function Dog({
     birdGroundEntries,
+    catPresenceEntries,
     habitat,
     weather,
 }: {
     birdGroundEntries: AnimalDebugEntry[];
+    catPresenceEntries: AnimalPresenceEntry[];
     habitat: DogHabitat;
     weather: DogWeather | null | undefined;
 }) {
@@ -1184,6 +1455,7 @@ function Dog({
     const randomRef = useRef(createRandom(habitat.seed));
     const runtimeRef = useRef<DogRuntimeState | null>(null);
     const lastAnimalDebugUpdateRef = useRef(0);
+    const lastAnimalPresenceUpdateRef = useRef(0);
     const lastDebugCommandSequenceRef = useRef(0);
     const pathDebugKeyRef = useRef('');
     const activeAnimationRef = useRef<DogAnimationName>('Dog_LyingIdle');
@@ -1208,6 +1480,12 @@ function Dog({
     const removeAnimalDebugEntry = useGameState(
         (state) => state.removeAnimalDebugEntry,
     );
+    const setAnimalPresenceEntry = useGameState(
+        (state) => state.setAnimalPresenceEntry,
+    );
+    const removeAnimalPresenceEntry = useGameState(
+        (state) => state.removeAnimalPresenceEntry,
+    );
 
     const dogModel = useMemo(() => {
         const clone = gltf.scene.clone(true);
@@ -1216,9 +1494,12 @@ function Dog({
                 prepareDogMesh(object);
             }
         });
-        return clone;
+        return {
+            rig: createDogRig(clone),
+            scene: clone,
+        };
     }, [gltf.scene]);
-    const { actions } = useAnimations(gltf.animations, dogModel);
+    const { actions } = useAnimations(gltf.animations, dogModel.scene);
 
     useEffect(() => {
         const action = actions[activeAnimation];
@@ -1253,6 +1534,11 @@ function Dog({
 
         return () => removeAnimalDebugEntry(habitat.id);
     }, [enableDebugHudFlag, habitat.id, removeAnimalDebugEntry]);
+
+    useEffect(
+        () => () => removeAnimalPresenceEntry(habitat.id),
+        [habitat.id, removeAnimalPresenceEntry],
+    );
 
     useEffect(() => {
         if (!animalTargetsDebugVisible && targetDebugRef.current) {
@@ -1308,8 +1594,10 @@ function Dog({
         const now = clock.getElapsedTime();
         const target = chooseManualNextTarget({
             birdGroundEntries,
+            catPresenceEntries,
             currentTarget: runtime.target,
             habitat,
+            now,
             random,
             timeOfDay,
             weather,
@@ -1394,7 +1682,9 @@ function Dog({
                 const target = chooseDebugTarget({
                     behavior: animalDebugCommand.behavior,
                     birdGroundEntries,
+                    catPresenceEntries,
                     habitat,
+                    now,
                     random,
                     timeOfDay,
                     weather,
@@ -1436,9 +1726,16 @@ function Dog({
                 0,
                 1,
             );
+            const walkDistance = runtime.pathDistance * progress;
             const nextPosition = movingPositionAt(runtime, progress);
 
             group.position.copy(nextPosition);
+            updateDogWalkPose({
+                delta,
+                moving: true,
+                rig: dogModel.rig,
+                walkDistance,
+            });
             facePosition(
                 group,
                 movingPositionAt(
@@ -1449,7 +1746,8 @@ function Dog({
                 dogWalkTurnDamping,
             );
             group.rotation.x = 0;
-            group.rotation.z = Math.sin(now * 11 + habitat.seed) * 0.045;
+            group.rotation.z =
+                Math.sin(now * 10.5 + habitat.seed) * dogWalkRollAmount;
 
             if (progress < 1) {
                 return;
@@ -1468,6 +1766,12 @@ function Dog({
 
         setAnimation(getDogAnimationName(runtime));
         syncWalkAnimationSpeed(runtime);
+        updateDogWalkPose({
+            delta,
+            moving: false,
+            rig: dogModel.rig,
+            walkDistance: 0,
+        });
         group.position.copy(runtime.target.position);
         if (
             runtime.target.behavior === 'doghouse' ||
@@ -1498,7 +1802,9 @@ function Dog({
 
         const target = chooseNextTarget({
             birdGroundEntries,
+            catPresenceEntries,
             habitat,
+            now,
             random,
             timeOfDay,
             weather,
@@ -1530,6 +1836,22 @@ function Dog({
         const now = clock.elapsedTime;
 
         if (
+            runtime &&
+            group &&
+            now - lastAnimalPresenceUpdateRef.current >=
+                animalPresenceUpdateIntervalSeconds
+        ) {
+            lastAnimalPresenceUpdateRef.current = now;
+            setAnimalPresenceEntry({
+                id: habitat.id,
+                species: 'Dog',
+                behavior: runtime.target.behavior,
+                position: roundDogDebugPoint(group.position),
+                updatedAt: now,
+            });
+        }
+
+        if (
             enableDebugHudFlag &&
             runtime &&
             group &&
@@ -1551,7 +1873,9 @@ function Dog({
                 onPointerDown={handlePointerDown}
                 onClick={handleClick}
             >
-                <primitive object={dogModel} />
+                <group rotation={[0, dogVisualYawOffset, 0]}>
+                    <primitive object={dogModel.scene} />
+                </group>
             </group>
             <AnimalTargetDebugMarker ref={targetDebugRef} color="#f59e0b" />
             <AnimalPathDebugIndicator
@@ -1603,6 +1927,9 @@ export function Dogs({
     const animalDebugEntries = useGameState(
         (state) => state.animalDebugEntries,
     );
+    const animalPresenceEntries = useGameState(
+        (state) => state.animalPresenceEntries,
+    );
     const birdGroundEntries = useMemo(
         () =>
             animalDebugEntries.filter(
@@ -1610,6 +1937,10 @@ export function Dogs({
                     entry.species === 'Bird' && entry.behavior === 'ground',
             ),
         [animalDebugEntries],
+    );
+    const catPresenceEntries = useMemo(
+        () => animalPresenceEntries.filter((entry) => entry.species === 'Cat'),
+        [animalPresenceEntries],
     );
     const { data: weatherNow } = useWeatherNow(!weatherDisabled && !weather);
     const dogWeather = resolveDogWeather({
@@ -1633,6 +1964,7 @@ export function Dogs({
                 <Dog
                     key={habitat.id}
                     birdGroundEntries={birdGroundEntries}
+                    catPresenceEntries={catPresenceEntries}
                     habitat={habitat}
                     weather={dogWeather}
                 />

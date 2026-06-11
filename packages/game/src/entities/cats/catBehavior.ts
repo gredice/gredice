@@ -3,7 +3,8 @@ export type CatBehavior =
     | 'roam'
     | 'cover'
     | 'low-entity'
-    | 'stalk-bird';
+    | 'stalk-bird'
+    | 'interact-dog';
 
 export type CatWeather = {
     cloudy?: number | null;
@@ -32,6 +33,7 @@ const behaviorWeights = [
     { behavior: 'cover', dayWeight: 0.12 },
     { behavior: 'low-entity', dayWeight: 0.14 },
     { behavior: 'stalk-bird', dayWeight: 0.21 },
+    { behavior: 'interact-dog', dayWeight: 0.1 },
 ] satisfies WeightedBehavior[];
 
 export function isCatNight(timeOfDay: number) {
@@ -164,6 +166,10 @@ export function getCatDwellSeconds({
 
     if (behavior === 'stalk-bird') {
         return 4 + amount * 8;
+    }
+
+    if (behavior === 'interact-dog') {
+        return 3 + amount * 5;
     }
 
     if (behavior === 'low-entity') {
