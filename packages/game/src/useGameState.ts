@@ -131,6 +131,18 @@ export type AnimalDebugCommand = {
     targetId?: string | null;
 };
 
+export type AnimalPresenceEntry = {
+    id: string;
+    species: string;
+    behavior: string;
+    position: {
+        x: number;
+        y: number;
+        z: number;
+    };
+    updatedAt: number;
+};
+
 export type AnimalDisturbance = {
     sequence: number;
     createdAt: number;
@@ -223,6 +235,9 @@ export type GameState = {
     animalDebugEntries: AnimalDebugEntry[];
     setAnimalDebugEntry: (entry: AnimalDebugEntry) => void;
     removeAnimalDebugEntry: (id: string) => void;
+    animalPresenceEntries: AnimalPresenceEntry[];
+    setAnimalPresenceEntry: (entry: AnimalPresenceEntry) => void;
+    removeAnimalPresenceEntry: (id: string) => void;
     animalDebugCommand: AnimalDebugCommand | null;
     triggerAnimalDebugBehavior: (
         command: Omit<AnimalDebugCommand, 'createdAt' | 'sequence'>,
@@ -538,6 +553,33 @@ export function createGameState({
         removeAnimalDebugEntry: (id) =>
             set((state) => ({
                 animalDebugEntries: state.animalDebugEntries.filter(
+                    (entry) => entry.id !== id,
+                ),
+            })),
+        animalPresenceEntries: [],
+        setAnimalPresenceEntry: (entry) =>
+            set((state) => {
+                const existingIndex = state.animalPresenceEntries.findIndex(
+                    (candidate) => candidate.id === entry.id,
+                );
+                if (existingIndex === -1) {
+                    return {
+                        animalPresenceEntries: [
+                            ...state.animalPresenceEntries,
+                            entry,
+                        ].sort((left, right) =>
+                            left.id.localeCompare(right.id),
+                        ),
+                    };
+                }
+
+                const animalPresenceEntries = [...state.animalPresenceEntries];
+                animalPresenceEntries[existingIndex] = entry;
+                return { animalPresenceEntries };
+            }),
+        removeAnimalPresenceEntry: (id) =>
+            set((state) => ({
+                animalPresenceEntries: state.animalPresenceEntries.filter(
                     (entry) => entry.id !== id,
                 ),
             })),

@@ -321,6 +321,37 @@
             ]
         },
         {
+            "name": "Dog",
+            "source": "Dog.blend",
+            "output": "Dog.glb",
+            "preload": "lazy",
+            "objects": [
+                "Dog_Root",
+                "Dog_Body",
+                "Dog_BellyPatch",
+                "Dog_ChestPatch",
+                "Dog_Head",
+                "Dog_Muzzle",
+                "Dog_Nose",
+                "Dog_Eye_L",
+                "Dog_Eye_R",
+                "Dog_Ear_L",
+                "Dog_Ear_R",
+                "Dog_Leg_FL",
+                "Dog_Paw_FL",
+                "Dog_Leg_FR",
+                "Dog_Paw_FR",
+                "Dog_Leg_RL",
+                "Dog_Paw_RL",
+                "Dog_Leg_RR",
+                "Dog_Paw_RR",
+                "Dog_Tail_Base",
+                "Dog_Tail_Tip",
+                "Dog_Collar",
+                "Dog_Tag"
+            ]
+        },
+        {
             "name": "Bucket",
             "source": "Bucket.blend",
             "output": "Bucket.glb",
@@ -547,6 +578,29 @@
             "objects": [
                 "CatPillow_Cushion",
                 "CatPillow_Seam"
+            ]
+        },
+        {
+            "name": "DogHouse",
+            "source": "DogHouse.blend",
+            "output": "DogHouse.glb",
+            "preload": "lazy",
+            "objects": [
+                "DogHouse_Root",
+                "DogHouse_Walls",
+                "DogHouse_BackShadow",
+                "DogHouse_Door",
+                "DogHouse_DoorTop",
+                "DogHouse_Threshold",
+                "DogHouse_Trim_Left",
+                "DogHouse_Trim_Right",
+                "DogHouse_Roof_Left",
+                "DogHouse_Roof_Right",
+                "DogHouse_RidgeCap",
+                "DogHouse_NamePlate",
+                "DogHouse_Bowl",
+                "DogHouse_Bowl_Rim",
+                "DogHouse_Bowl_Water"
             ]
         },
         {

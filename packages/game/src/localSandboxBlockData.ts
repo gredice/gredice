@@ -42,6 +42,7 @@ export const localSandboxBlockNames = [
     'BirdHouse',
     'FireflyJar',
     'CatPillow',
+    'DogHouse',
     'Bush',
     'Tree',
     'Pine',

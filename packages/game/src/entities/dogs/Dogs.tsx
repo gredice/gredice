@@ -28,109 +28,135 @@ import {
     freshAnimalPresences,
 } from '../animals/animalPresence';
 import {
-    type CatBehavior,
-    type CatWeather,
-    getCatActivityRange,
-    getCatDwellSeconds,
-    isCatNight,
-    pickCatBehavior,
-    shouldCatSeekCover,
-} from './catBehavior';
+    type DogBehavior,
+    type DogWeather,
+    getDogActivityRange,
+    getDogDwellSeconds,
+    isDogNight,
+    pickDogBehavior,
+    shouldDogSeekCover,
+} from './dogBehavior';
 import {
-    type CatPathCell,
-    type CatPathResult,
-    type CatPathSurface,
-    findCatPath,
-} from './catPathfinding';
+    type DogPathCell,
+    type DogPathResult,
+    type DogPathSurface,
+    findDogPath,
+} from './dogPathfinding';
 
-type CatWeatherOverride = Partial<NonNullable<GameState['weather']>>;
+type DogWeatherOverride = Partial<NonNullable<GameState['weather']>>;
 
-type CatTarget = {
+type DogTarget = {
     id: string;
-    behavior: CatBehavior;
+    behavior: DogBehavior;
     facingYaw?: number;
     lookAtPosition?: Vector3;
     position: Vector3;
     walkPosition?: Vector3;
 };
 
-type CatGroundSurface = CatPathSurface;
+type DogGroundSurface = DogPathSurface;
 
-type CatHabitat = {
+type DogHabitat = {
     id: string;
-    blockedCells: CatPathCell[];
-    covers: CatTarget[];
-    groundSurfaces: CatGroundSurface[];
-    lowEntities: CatTarget[];
-    pillow: CatTarget;
-    roamAnchors: CatTarget[];
+    blockedCells: DogPathCell[];
+    covers: DogTarget[];
+    groundSurfaces: DogGroundSurface[];
+    lowEntities: DogTarget[];
+    dogHouse: DogTarget;
+    roamAnchors: DogTarget[];
     seed: number;
 };
 
-type MovingCatState = {
+type MovingDogState = {
     phase: 'moving';
     duration: number;
     from: Vector3;
-    groundSurfaces: CatGroundSurface[];
+    groundSurfaces: DogGroundSurface[];
     path: Vector3[];
     pathDistance: number;
-    pathfinding: CatPathResult;
+    pathfinding: DogPathResult;
     startedAt: number;
-    target: CatTarget;
+    target: DogTarget;
     to: Vector3;
 };
 
-type SettledCatState = {
+type SettledDogState = {
     phase: 'settled';
     dwellUntil: number;
-    target: CatTarget;
+    target: DogTarget;
 };
 
-type CatRuntimeState = MovingCatState | SettledCatState;
+type DogRuntimeState = MovingDogState | SettledDogState;
 
-type CatAnimationName =
-    | 'Cat_Idle'
-    | 'Cat_Walk'
-    | 'Cat_LyingIdle'
-    | 'Cat_PreyWatch';
+type DogRigNode = {
+    object: Object3D | null;
+    basePositionY: number;
+    basePositionZ: number;
+    baseRotationX: number;
+    baseRotationZ: number;
+};
 
-const catDebugBehaviors = [
-    'pillow',
+type DogRigParts = {
+    frontLeftLeg: DogRigNode;
+    frontLeftPaw: DogRigNode;
+    frontRightLeg: DogRigNode;
+    frontRightPaw: DogRigNode;
+    rearLeftLeg: DogRigNode;
+    rearLeftPaw: DogRigNode;
+    rearRightLeg: DogRigNode;
+    rearRightPaw: DogRigNode;
+    walkPhase: number;
+    walkPoseAmount: number;
+};
+
+type DogAnimationName =
+    | 'Dog_Idle'
+    | 'Dog_Walk'
+    | 'Dog_LyingIdle'
+    | 'Dog_PreyWatch';
+
+const dogDebugBehaviors = [
+    'doghouse',
     'roam',
     'cover',
     'low-entity',
-    'stalk-bird',
-    'interact-dog',
-] satisfies CatBehavior[];
+    'chase-bird',
+    'interact-cat',
+] satisfies DogBehavior[];
 
-const clearCatWeather = {
+const clearDogWeather = {
     cloudy: 0,
     foggy: 0,
     rainy: 0,
     snowy: 0,
     thundery: 0,
     windSpeed: 0,
-} satisfies CatWeather;
+} satisfies DogWeather;
 
-const catScale = 0.42;
-const catGroundLift = 0.02;
-const catPillowSurfaceYOffset = 0.24;
-const catGroundSurfaceHalfSize = 0.5;
-const catGroundSurfaceEpsilon = 0.001;
-const catWalkSpeedBlocksPerSecond = 0.75;
-const catWalkCycleDistance = 0.9;
-const catWalkAnimationFallbackDuration = 4 / 3;
-const catWalkAnimationMinTimeScale = 0.25;
-const catWalkAnimationMaxTimeScale = 1.45;
-const catWalkBodyBobHeight = 0.012;
-const catWalkTurnDamping = 7.5;
-const catIdleTurnDamping = 8.5;
-const catWalkLookAheadProgress = 0.05;
+const dogScale = 0.46;
+const dogGroundLift = 0.02;
+const dogHouseDoorOffset = 0.46;
+const dogGroundSurfaceHalfSize = 0.5;
+const dogGroundSurfaceEpsilon = 0.001;
+const dogWalkSpeedBlocksPerSecond = 0.9;
+const dogWalkCycleDistance = 0.82;
+const dogWalkAnimationFallbackDuration = 32 / 24;
+const dogWalkAnimationMinTimeScale = 0.5;
+const dogWalkAnimationMaxTimeScale = 1.65;
+const dogWalkBodyBobHeight = 0.016;
+const dogWalkTurnDamping = 9;
+const dogIdleTurnDamping = 10;
+const dogWalkLookAheadProgress = 0.06;
+const dogWalkRollAmount = 0.02;
+const dogWalkLegPoseDamping = 12;
+const dogWalkLegSwing = 0.3;
+const dogWalkFootLift = 0.045;
+const dogVisualYawOffset = Math.PI;
 const fullTurn = Math.PI * 2;
-const catDarkFurColor = '#2f3437';
-const catSoftDarkFurColor = '#3b4144';
+const dogDarkFurColor = '#3c2115';
+const dogSoftDarkFurColor = '#7b4d2c';
 
-const catPillowBlockNames = new Set(['CatPillow', 'Cat_Pillow']);
+const dogHouseBlockNames = new Set(['DogHouse']);
 const groundBlockNames = new Set([
     'Block_Ground',
     'Block_Ground_Angle',
@@ -190,22 +216,22 @@ function horizontalDistance(left: Vector3, right: Vector3) {
     return Math.hypot(left.x - right.x, left.z - right.z);
 }
 
-function getCatGroundYFromHeight(height: number) {
-    return height > 0 ? height + catGroundLift : 0;
+function getDogGroundYFromHeight(height: number) {
+    return height > 0 ? height + dogGroundLift : 0;
 }
 
-function getCatWalkYAt(
+function getDogWalkYAt(
     position: Pick<Vector3, 'x' | 'z'>,
-    groundSurfaces: CatGroundSurface[],
+    groundSurfaces: DogGroundSurface[],
 ) {
     let surfaceY: number | null = null;
 
     for (const surface of groundSurfaces) {
         const insideSurface =
             Math.abs(position.x - surface.x) <=
-                catGroundSurfaceHalfSize + catGroundSurfaceEpsilon &&
+                dogGroundSurfaceHalfSize + dogGroundSurfaceEpsilon &&
             Math.abs(position.z - surface.z) <=
-                catGroundSurfaceHalfSize + catGroundSurfaceEpsilon;
+                dogGroundSurfaceHalfSize + dogGroundSurfaceEpsilon;
 
         if (insideSurface && (surfaceY === null || surface.y > surfaceY)) {
             surfaceY = surface.y;
@@ -215,13 +241,13 @@ function getCatWalkYAt(
     return surfaceY ?? 0;
 }
 
-function getTargetWalkPosition(target: CatTarget) {
+function getTargetWalkPosition(target: DogTarget) {
     return (target.walkPosition ?? target.position).clone();
 }
 
 function candidatesInRange<T extends { position: Vector3 }>(
     candidates: T[],
-    home: CatTarget,
+    home: DogTarget,
     range: number,
 ) {
     return candidates.filter(
@@ -242,8 +268,8 @@ function blockRotationToYaw(rotation: number) {
     return rotation * (Math.PI / 2) + Math.PI;
 }
 
-function isCatPillowBlockName(name: string) {
-    return catPillowBlockNames.has(name);
+function isDogHouseBlockName(name: string) {
+    return dogHouseBlockNames.has(name);
 }
 
 function isGroundBlockName(name: string) {
@@ -297,14 +323,14 @@ function getGroundSurfaceY(
         height += getBlockHeight(blockData, block.name) ?? 0;
     }
 
-    return hasGroundBlock ? getCatGroundYFromHeight(height) : null;
+    return hasGroundBlock ? getDogGroundYFromHeight(height) : null;
 }
 
-function createCatGroundSurfaces(
+function createDogGroundSurfaces(
     stacks: Stack[] | undefined,
     blockData: BlockData[] | null | undefined,
 ) {
-    const surfaces: CatGroundSurface[] = [];
+    const surfaces: DogGroundSurface[] = [];
 
     for (const stack of stacks ?? []) {
         const y = getGroundSurfaceY(blockData, stack);
@@ -322,8 +348,8 @@ function createCatGroundSurfaces(
     return surfaces;
 }
 
-function createCatBlockedCells(stacks: Stack[] | undefined) {
-    const blockedCells: CatPathCell[] = [];
+function createDogBlockedCells(stacks: Stack[] | undefined) {
+    const blockedCells: DogPathCell[] = [];
 
     for (const stack of stacks ?? []) {
         const topBlock = stack.blocks.at(-1);
@@ -340,7 +366,7 @@ function createCatBlockedCells(stacks: Stack[] | undefined) {
     return blockedCells;
 }
 
-function targetForPillowBlock({
+function targetForDogHouseBlock({
     block,
     blockData,
     stack,
@@ -350,26 +376,29 @@ function targetForPillowBlock({
     stack: Stack;
 }) {
     const stackHeight = getStackHeight(blockData, stack, block);
-    const pillowSurfaceHeight = Math.min(
-        getBlockHeight(blockData, block.name) ?? catPillowSurfaceYOffset,
-        catPillowSurfaceYOffset,
+    const dogHouseYaw = blockRotationToYaw(block.rotation);
+    const doorPosition = new Vector3(
+        Math.sin(dogHouseYaw) * dogHouseDoorOffset,
+        0,
+        Math.cos(dogHouseYaw) * dogHouseDoorOffset,
+    );
+    const walkPosition = new Vector3(
+        stack.position.x + doorPosition.x,
+        getDogGroundYFromHeight(stackHeight),
+        stack.position.z + doorPosition.z,
     );
 
     return {
-        behavior: 'pillow',
-        facingYaw: blockRotationToYaw(block.rotation),
-        id: `pillow-${block.id}`,
+        behavior: 'doghouse',
+        facingYaw: dogHouseYaw,
+        id: `doghouse-${block.id}`,
         position: new Vector3(
-            stack.position.x,
-            stackHeight + pillowSurfaceHeight + catGroundLift,
-            stack.position.z,
+            walkPosition.x,
+            walkPosition.y + dogGroundLift,
+            walkPosition.z,
         ),
-        walkPosition: new Vector3(
-            stack.position.x,
-            getCatGroundYFromHeight(stackHeight),
-            stack.position.z,
-        ),
-    } satisfies CatTarget;
+        walkPosition,
+    } satisfies DogTarget;
 }
 
 function targetForGroundStack(
@@ -378,7 +407,7 @@ function targetForGroundStack(
 ) {
     const position = new Vector3(
         stack.position.x,
-        getCatGroundYFromHeight(getStackHeight(blockData, stack)),
+        getDogGroundYFromHeight(getStackHeight(blockData, stack)),
         stack.position.z,
     );
 
@@ -387,7 +416,7 @@ function targetForGroundStack(
         id: `roam-${stack.position.x}-${stack.position.z}`,
         position,
         walkPosition: position.clone(),
-    } satisfies CatTarget;
+    } satisfies DogTarget;
 }
 
 function targetForCoverBlock({
@@ -404,7 +433,7 @@ function targetForCoverBlock({
     const radius = 0.26 + ((seed >>> 5) % 9) * 0.012;
     const x = stack.position.x + Math.cos(angle) * radius;
     const z = stack.position.z + Math.sin(angle) * radius;
-    const y = getCatGroundYFromHeight(getStackHeight(blockData, stack, block));
+    const y = getDogGroundYFromHeight(getStackHeight(blockData, stack, block));
     const position = new Vector3(x, y, z);
 
     return {
@@ -413,7 +442,7 @@ function targetForCoverBlock({
         id: `cover-${block.id}`,
         position,
         walkPosition: position.clone(),
-    } satisfies CatTarget;
+    } satisfies DogTarget;
 }
 
 function targetForLowEntityBlock({
@@ -435,32 +464,34 @@ function targetForLowEntityBlock({
         id: `low-entity-${block.id}`,
         position: new Vector3(
             stack.position.x,
-            stackHeight + yOffset + catGroundLift,
+            stackHeight + yOffset + dogGroundLift,
             stack.position.z,
         ),
         walkPosition: new Vector3(
             stack.position.x,
-            getCatGroundYFromHeight(stackHeight),
+            getDogGroundYFromHeight(stackHeight),
             stack.position.z,
         ),
-    } satisfies CatTarget;
+    } satisfies DogTarget;
 }
 
-function createCatHabitats(
+function createDogHabitats(
     stacks: Stack[] | undefined,
     blockData: BlockData[] | null | undefined,
 ) {
-    const blockedCells = createCatBlockedCells(stacks);
-    const groundSurfaces = createCatGroundSurfaces(stacks, blockData);
-    const pillows: CatTarget[] = [];
-    const covers: CatTarget[] = [];
-    const lowEntities: CatTarget[] = [];
-    const roamAnchors: CatTarget[] = [];
+    const blockedCells = createDogBlockedCells(stacks);
+    const groundSurfaces = createDogGroundSurfaces(stacks, blockData);
+    const dogHouses: DogTarget[] = [];
+    const covers: DogTarget[] = [];
+    const lowEntities: DogTarget[] = [];
+    const roamAnchors: DogTarget[] = [];
 
     for (const stack of stacks ?? []) {
         for (const block of stack.blocks) {
-            if (isCatPillowBlockName(block.name)) {
-                pillows.push(targetForPillowBlock({ block, blockData, stack }));
+            if (isDogHouseBlockName(block.name)) {
+                dogHouses.push(
+                    targetForDogHouseBlock({ block, blockData, stack }),
+                );
             }
         }
 
@@ -482,7 +513,7 @@ function createCatHabitats(
         }
 
         if (
-            !isCatPillowBlockName(topBlock.name) &&
+            !isDogHouseBlockName(topBlock.name) &&
             !isGroundBlockName(topBlock.name)
         ) {
             const yOffset = getLowEntityYOffset(blockData, topBlock.name);
@@ -499,23 +530,23 @@ function createCatHabitats(
         }
     }
 
-    return pillows.map((pillow) => ({
-        id: `cat-${pillow.id}`,
+    return dogHouses.map((dogHouse) => ({
+        id: `dog-${dogHouse.id}`,
         blockedCells,
         covers,
         groundSurfaces,
         lowEntities,
-        pillow,
+        dogHouse,
         roamAnchors,
-        seed: hashString(pillow.id),
+        seed: hashString(dogHouse.id),
     }));
 }
 
 function movementDuration(distance: number) {
-    return MathUtils.clamp(distance / catWalkSpeedBlocksPerSecond, 0.9, 8.5);
+    return MathUtils.clamp(distance / dogWalkSpeedBlocksPerSecond, 0.55, 7);
 }
 
-function movingCatHorizontalSpeed(runtime: MovingCatState) {
+function movingDogHorizontalSpeed(runtime: MovingDogState) {
     if (runtime.duration <= 0) {
         return 0;
     }
@@ -536,11 +567,11 @@ function pathHorizontalDistance(path: Vector3[]) {
     return distance;
 }
 
-function vectorFromPathPoint(point: CatPathSurface) {
+function vectorFromPathPoint(point: DogPathSurface) {
     return new Vector3(point.x, point.y, point.z);
 }
 
-function vectorPathFromResult(pathfinding: CatPathResult) {
+function vectorPathFromResult(pathfinding: DogPathResult) {
     return pathfinding.points.map(vectorFromPathPoint);
 }
 
@@ -577,8 +608,8 @@ function pathPositionAtDistance(path: Vector3[], distance: number) {
     return path[path.length - 1]?.clone() ?? new Vector3();
 }
 
-function catWalkAnimationTimeScale(
-    runtime: CatRuntimeState | null,
+function dogWalkAnimationTimeScale(
+    runtime: DogRuntimeState | null,
     action: AnimationAction | null | undefined,
 ) {
     if (runtime?.phase !== 'moving') {
@@ -586,13 +617,13 @@ function catWalkAnimationTimeScale(
     }
 
     const clipDuration =
-        action?.getClip().duration ?? catWalkAnimationFallbackDuration;
-    const speed = movingCatHorizontalSpeed(runtime);
+        action?.getClip().duration ?? dogWalkAnimationFallbackDuration;
+    const speed = movingDogHorizontalSpeed(runtime);
 
     return MathUtils.clamp(
-        (speed * clipDuration) / catWalkCycleDistance,
-        catWalkAnimationMinTimeScale,
-        catWalkAnimationMaxTimeScale,
+        (speed * clipDuration) / dogWalkCycleDistance,
+        dogWalkAnimationMinTimeScale,
+        dogWalkAnimationMaxTimeScale,
     );
 }
 
@@ -600,7 +631,7 @@ function faceYaw(
     group: Group,
     targetYaw: number,
     delta: number,
-    turnDamping = catIdleTurnDamping,
+    turnDamping = dogIdleTurnDamping,
 ) {
     const difference =
         MathUtils.euclideanModulo(
@@ -615,7 +646,7 @@ function facePosition(
     group: Group,
     target: Vector3,
     delta: number,
-    turnDamping = catIdleTurnDamping,
+    turnDamping = dogIdleTurnDamping,
 ) {
     const directionX = target.x - group.position.x;
     const directionZ = target.z - group.position.z;
@@ -631,18 +662,18 @@ function createRoamTarget({
     random,
     range,
 }: {
-    habitat: CatHabitat;
+    habitat: DogHabitat;
     random: () => number;
     range: number;
 }) {
     const anchors = candidatesInRange(
         habitat.roamAnchors,
-        habitat.pillow,
+        habitat.dogHouse,
         range,
     );
-    const anchor = pickCandidate(anchors, random) ?? habitat.pillow;
+    const anchor = pickCandidate(anchors, random) ?? habitat.dogHouse;
     const anchorWalkPosition = getTargetWalkPosition(anchor);
-    const radius = anchor === habitat.pillow ? 0.28 : 0.16 + random() * 0.18;
+    const radius = anchor === habitat.dogHouse ? 0.42 : 0.24 + random() * 0.28;
     const angle = random() * fullTurn;
     const position = new Vector3(
         anchorWalkPosition.x + Math.cos(angle) * radius,
@@ -656,7 +687,7 @@ function createRoamTarget({
         id: `roam-${anchor.id}-${Math.round(angle * 1000)}`,
         position,
         walkPosition: position.clone(),
-    } satisfies CatTarget;
+    } satisfies DogTarget;
 }
 
 function getGroundBirdTargets({
@@ -665,7 +696,7 @@ function getGroundBirdTargets({
     range,
 }: {
     birdGroundEntries: AnimalDebugEntry[];
-    habitat: CatHabitat;
+    habitat: DogHabitat;
     range: number;
 }) {
     return birdGroundEntries.filter((entry) => {
@@ -674,17 +705,17 @@ function getGroundBirdTargets({
             entry.position.y,
             entry.position.z,
         );
-        return horizontalDistance(position, habitat.pillow.position) <= range;
+        return horizontalDistance(position, habitat.dogHouse.position) <= range;
     });
 }
 
-function createStalkBirdTarget({
+function createChaseBirdTarget({
     birdGroundTargets,
     habitat,
     random,
 }: {
     birdGroundTargets: AnimalDebugEntry[];
-    habitat: CatHabitat;
+    habitat: DogHabitat;
     random: () => number;
 }) {
     const targetBird = pickCandidate(birdGroundTargets, random);
@@ -697,96 +728,96 @@ function createStalkBirdTarget({
         targetBird.position.y,
         targetBird.position.z,
     );
-    const approach = habitat.pillow.position.clone().sub(birdPosition);
+    const approach = habitat.dogHouse.position.clone().sub(birdPosition);
     if (approach.lengthSq() <= 0.001) {
         const angle = random() * fullTurn;
         approach.set(Math.cos(angle), 0, Math.sin(angle));
     }
     approach.y = 0;
-    approach.setLength(0.5 + random() * 0.18);
+    approach.setLength(0.34 + random() * 0.16);
 
     const position = birdPosition.clone().add(approach);
-    position.y = getCatWalkYAt(position, habitat.groundSurfaces);
+    position.y = getDogWalkYAt(position, habitat.groundSurfaces);
 
     return {
-        behavior: 'stalk-bird',
+        behavior: 'chase-bird',
         facingYaw: Math.atan2(
             birdPosition.x - position.x,
             birdPosition.z - position.z,
         ),
-        id: `stalk-bird-${targetBird.id}`,
+        id: `chase-bird-${targetBird.id}`,
         lookAtPosition: birdPosition,
         position,
         walkPosition: position.clone(),
-    } satisfies CatTarget;
+    } satisfies DogTarget;
 }
 
-function getDogInteractionTargets({
-    dogPresenceEntries,
+function getCatInteractionTargets({
+    catPresenceEntries,
     habitat,
     now,
     range,
 }: {
-    dogPresenceEntries: AnimalPresenceEntry[];
-    habitat: CatHabitat;
+    catPresenceEntries: AnimalPresenceEntry[];
+    habitat: DogHabitat;
     now: number;
     range: number;
 }) {
     return freshAnimalPresences({
-        entries: dogPresenceEntries,
+        entries: catPresenceEntries,
         now,
-        species: 'Dog',
+        species: 'Cat',
     }).filter(
         (entry) =>
             horizontalDistance(
                 animalPresencePosition(entry),
-                habitat.pillow.position,
+                habitat.dogHouse.position,
             ) <= range,
     );
 }
 
-function createInteractDogTarget({
-    dogInteractionTargets,
+function createInteractCatTarget({
+    catInteractionTargets,
     habitat,
     random,
 }: {
-    dogInteractionTargets: AnimalPresenceEntry[];
-    habitat: CatHabitat;
+    catInteractionTargets: AnimalPresenceEntry[];
+    habitat: DogHabitat;
     random: () => number;
 }) {
-    const targetDog = pickCandidate(dogInteractionTargets, random);
-    if (!targetDog) {
+    const targetCat = pickCandidate(catInteractionTargets, random);
+    if (!targetCat) {
         return null;
     }
 
-    const dogPosition = animalPresencePosition(targetDog);
-    const approach = habitat.pillow.position.clone().sub(dogPosition);
+    const catPosition = animalPresencePosition(targetCat);
+    const approach = habitat.dogHouse.position.clone().sub(catPosition);
     if (approach.lengthSq() <= 0.001) {
         const angle = random() * fullTurn;
         approach.set(Math.cos(angle), 0, Math.sin(angle));
     }
     approach.y = 0;
-    approach.setLength(0.72 + random() * 0.22);
+    approach.setLength(0.42 + random() * 0.16);
 
-    const position = dogPosition.clone().add(approach);
-    position.y = getCatWalkYAt(position, habitat.groundSurfaces);
+    const position = catPosition.clone().add(approach);
+    position.y = getDogWalkYAt(position, habitat.groundSurfaces);
 
     return {
-        behavior: 'interact-dog',
+        behavior: 'interact-cat',
         facingYaw: Math.atan2(
-            dogPosition.x - position.x,
-            dogPosition.z - position.z,
+            catPosition.x - position.x,
+            catPosition.z - position.z,
         ),
-        id: `interact-dog-${targetDog.id}`,
-        lookAtPosition: dogPosition,
+        id: `interact-cat-${targetCat.id}`,
+        lookAtPosition: catPosition,
         position,
         walkPosition: position.clone(),
-    } satisfies CatTarget;
+    } satisfies DogTarget;
 }
 
 function chooseNextTarget({
     birdGroundEntries,
-    dogPresenceEntries,
+    catPresenceEntries,
     habitat,
     now,
     random,
@@ -794,23 +825,23 @@ function chooseNextTarget({
     weather,
 }: {
     birdGroundEntries: AnimalDebugEntry[];
-    dogPresenceEntries: AnimalPresenceEntry[];
-    habitat: CatHabitat;
+    catPresenceEntries: AnimalPresenceEntry[];
+    habitat: DogHabitat;
     now: number;
     random: () => number;
     timeOfDay: number;
-    weather: CatWeather | null | undefined;
+    weather: DogWeather | null | undefined;
 }) {
-    const range = getCatActivityRange(timeOfDay, weather);
-    const covers = candidatesInRange(habitat.covers, habitat.pillow, range);
+    const range = getDogActivityRange(timeOfDay, weather);
+    const covers = candidatesInRange(habitat.covers, habitat.dogHouse, range);
     const lowEntities = candidatesInRange(
         habitat.lowEntities,
-        habitat.pillow,
+        habitat.dogHouse,
         range,
     );
     const roamAnchors = candidatesInRange(
         habitat.roamAnchors,
-        habitat.pillow,
+        habitat.dogHouse,
         range,
     );
     const birdGroundTargets = getGroundBirdTargets({
@@ -818,19 +849,19 @@ function chooseNextTarget({
         habitat,
         range,
     });
-    const dogInteractionTargets = getDogInteractionTargets({
-        dogPresenceEntries,
+    const catInteractionTargets = getCatInteractionTargets({
+        catPresenceEntries,
         habitat,
         now,
         range,
     });
-    const behavior = pickCatBehavior({
+    const behavior = pickDogBehavior({
         availability: {
             cover: covers.length > 0,
             'low-entity': lowEntities.length > 0,
             roam: roamAnchors.length > 0,
-            'stalk-bird': birdGroundTargets.length > 0,
-            'interact-dog': dogInteractionTargets.length > 0,
+            'chase-bird': birdGroundTargets.length > 0,
+            'interact-cat': catInteractionTargets.length > 0,
         },
         random,
         timeOfDay,
@@ -838,41 +869,41 @@ function chooseNextTarget({
     });
 
     if (behavior === 'cover') {
-        return pickCandidate(covers, random) ?? habitat.pillow;
+        return pickCandidate(covers, random) ?? habitat.dogHouse;
     }
 
-    if (behavior === 'stalk-bird') {
+    if (behavior === 'chase-bird') {
         return (
-            createStalkBirdTarget({ birdGroundTargets, habitat, random }) ??
-            habitat.pillow
+            createChaseBirdTarget({ birdGroundTargets, habitat, random }) ??
+            habitat.dogHouse
         );
     }
 
-    if (behavior === 'interact-dog') {
+    if (behavior === 'interact-cat') {
         return (
-            createInteractDogTarget({
-                dogInteractionTargets,
+            createInteractCatTarget({
+                catInteractionTargets,
                 habitat,
                 random,
-            }) ?? habitat.pillow
+            }) ?? habitat.dogHouse
         );
     }
 
     if (behavior === 'low-entity') {
-        return pickCandidate(lowEntities, random) ?? habitat.pillow;
+        return pickCandidate(lowEntities, random) ?? habitat.dogHouse;
     }
 
     if (behavior === 'roam') {
         return createRoamTarget({ habitat, random, range });
     }
 
-    return habitat.pillow;
+    return habitat.dogHouse;
 }
 
 function chooseManualNextTarget({
     birdGroundEntries,
+    catPresenceEntries,
     currentTarget,
-    dogPresenceEntries,
     habitat,
     now,
     random,
@@ -880,44 +911,44 @@ function chooseManualNextTarget({
     weather,
 }: {
     birdGroundEntries: AnimalDebugEntry[];
-    currentTarget: CatTarget;
-    dogPresenceEntries: AnimalPresenceEntry[];
-    habitat: CatHabitat;
+    catPresenceEntries: AnimalPresenceEntry[];
+    currentTarget: DogTarget;
+    habitat: DogHabitat;
     now: number;
     random: () => number;
     timeOfDay: number;
-    weather: CatWeather | null | undefined;
+    weather: DogWeather | null | undefined;
 }) {
     const target = chooseNextTarget({
         birdGroundEntries,
-        dogPresenceEntries,
+        catPresenceEntries,
         habitat,
         now,
         random,
         timeOfDay,
         weather,
     });
-    const canManuallyReturnToPillow =
-        isCatNight(timeOfDay) || shouldCatSeekCover(timeOfDay, weather);
+    const canManuallyReturnToDogHouse =
+        isDogNight(timeOfDay) || shouldDogSeekCover(timeOfDay, weather);
 
     if (
         (target.id !== currentTarget.id ||
             target.behavior !== currentTarget.behavior) &&
-        (target.behavior !== 'pillow' || canManuallyReturnToPillow)
+        (target.behavior !== 'doghouse' || canManuallyReturnToDogHouse)
     ) {
         return target;
     }
 
-    const range = getCatActivityRange(timeOfDay, weather);
-    const covers = candidatesInRange(habitat.covers, habitat.pillow, range);
+    const range = getDogActivityRange(timeOfDay, weather);
+    const covers = candidatesInRange(habitat.covers, habitat.dogHouse, range);
     const lowEntities = candidatesInRange(
         habitat.lowEntities,
-        habitat.pillow,
+        habitat.dogHouse,
         range,
     );
     const roamAnchors = candidatesInRange(
         habitat.roamAnchors,
-        habitat.pillow,
+        habitat.dogHouse,
         range,
     );
     const birdGroundTargets = getGroundBirdTargets({
@@ -925,13 +956,13 @@ function chooseManualNextTarget({
         habitat,
         range,
     });
-    const dogInteractionTargets = getDogInteractionTargets({
-        dogPresenceEntries,
+    const catInteractionTargets = getCatInteractionTargets({
+        catPresenceEntries,
         habitat,
         now,
         range,
     });
-    const alternatives: CatTarget[] = [];
+    const alternatives: DogTarget[] = [];
 
     if (currentTarget.behavior !== 'roam' && roamAnchors.length > 0) {
         alternatives.push(createRoamTarget({ habitat, random, range }));
@@ -941,20 +972,20 @@ function chooseManualNextTarget({
         alternatives.push(...covers);
     }
 
-    if (currentTarget.behavior !== 'stalk-bird') {
-        const stalkTarget = createStalkBirdTarget({
+    if (currentTarget.behavior !== 'chase-bird') {
+        const chaseTarget = createChaseBirdTarget({
             birdGroundTargets,
             habitat,
             random,
         });
-        if (stalkTarget) {
-            alternatives.push(stalkTarget);
+        if (chaseTarget) {
+            alternatives.push(chaseTarget);
         }
     }
 
-    if (currentTarget.behavior !== 'interact-dog') {
-        const interactTarget = createInteractDogTarget({
-            dogInteractionTargets,
+    if (currentTarget.behavior !== 'interact-cat') {
+        const interactTarget = createInteractCatTarget({
+            catInteractionTargets,
             habitat,
             random,
         });
@@ -967,8 +998,8 @@ function chooseManualNextTarget({
         alternatives.push(...lowEntities);
     }
 
-    if (currentTarget.behavior !== 'pillow' && canManuallyReturnToPillow) {
-        alternatives.push(habitat.pillow);
+    if (currentTarget.behavior !== 'doghouse' && canManuallyReturnToDogHouse) {
+        alternatives.push(habitat.dogHouse);
     }
 
     return pickCandidate(alternatives, random) ?? target;
@@ -977,7 +1008,7 @@ function chooseManualNextTarget({
 function chooseDebugTarget({
     behavior,
     birdGroundEntries,
-    dogPresenceEntries,
+    catPresenceEntries,
     habitat,
     now,
     random,
@@ -986,17 +1017,17 @@ function chooseDebugTarget({
 }: {
     behavior: string;
     birdGroundEntries: AnimalDebugEntry[];
-    dogPresenceEntries: AnimalPresenceEntry[];
-    habitat: CatHabitat;
+    catPresenceEntries: AnimalPresenceEntry[];
+    habitat: DogHabitat;
     now: number;
     random: () => number;
     timeOfDay: number;
-    weather: CatWeather | null | undefined;
+    weather: DogWeather | null | undefined;
 }) {
-    const range = getCatActivityRange(timeOfDay, weather);
+    const range = getDogActivityRange(timeOfDay, weather);
 
-    if (behavior === 'pillow') {
-        return habitat.pillow;
+    if (behavior === 'doghouse') {
+        return habitat.dogHouse;
     }
 
     if (behavior === 'roam') {
@@ -1006,24 +1037,24 @@ function chooseDebugTarget({
     if (behavior === 'cover') {
         return (
             pickCandidate(
-                candidatesInRange(habitat.covers, habitat.pillow, range),
+                candidatesInRange(habitat.covers, habitat.dogHouse, range),
                 random,
-            ) ?? habitat.pillow
+            ) ?? habitat.dogHouse
         );
     }
 
     if (behavior === 'low-entity') {
         return (
             pickCandidate(
-                candidatesInRange(habitat.lowEntities, habitat.pillow, range),
+                candidatesInRange(habitat.lowEntities, habitat.dogHouse, range),
                 random,
-            ) ?? habitat.pillow
+            ) ?? habitat.dogHouse
         );
     }
 
-    if (behavior === 'stalk-bird') {
+    if (behavior === 'chase-bird') {
         return (
-            createStalkBirdTarget({
+            createChaseBirdTarget({
                 birdGroundTargets: getGroundBirdTargets({
                     birdGroundEntries,
                     habitat,
@@ -1031,22 +1062,22 @@ function chooseDebugTarget({
                 }),
                 habitat,
                 random,
-            }) ?? habitat.pillow
+            }) ?? habitat.dogHouse
         );
     }
 
-    if (behavior === 'interact-dog') {
+    if (behavior === 'interact-cat') {
         return (
-            createInteractDogTarget({
-                dogInteractionTargets: getDogInteractionTargets({
-                    dogPresenceEntries,
+            createInteractCatTarget({
+                catInteractionTargets: getCatInteractionTargets({
+                    catPresenceEntries,
                     habitat,
                     now,
                     range,
                 }),
                 habitat,
                 random,
-            }) ?? habitat.pillow
+            }) ?? habitat.dogHouse
         );
     }
 
@@ -1061,12 +1092,12 @@ function makeMovingState({
     now,
     target,
 }: {
-    blockedCells?: CatPathCell[];
+    blockedCells?: DogPathCell[];
     from: Vector3;
-    fromTarget?: CatTarget;
-    groundSurfaces?: CatGroundSurface[];
+    fromTarget?: DogTarget;
+    groundSurfaces?: DogGroundSurface[];
     now: number;
-    target: CatTarget;
+    target: DogTarget;
 }) {
     const walkFrom = fromTarget
         ? getTargetWalkPosition(fromTarget)
@@ -1074,11 +1105,11 @@ function makeMovingState({
     const walkTo = getTargetWalkPosition(target);
     const resolvedGroundSurfaces = groundSurfaces ?? [];
     if (groundSurfaces) {
-        walkFrom.y = getCatWalkYAt(walkFrom, groundSurfaces);
-        walkTo.y = getCatWalkYAt(walkTo, groundSurfaces);
+        walkFrom.y = getDogWalkYAt(walkFrom, groundSurfaces);
+        walkTo.y = getDogWalkYAt(walkTo, groundSurfaces);
     }
 
-    const pathfinding = findCatPath({
+    const pathfinding = findDogPath({
         blockedCells: blockedCells ?? [],
         from: walkFrom,
         surfaces: resolvedGroundSurfaces,
@@ -1101,16 +1132,17 @@ function makeMovingState({
         startedAt: now,
         target,
         to: walkTo,
-    } satisfies MovingCatState;
+    } satisfies MovingDogState;
 }
 
-function movingPositionAt(runtime: MovingCatState, progress: number) {
+function movingPositionAt(runtime: MovingDogState, progress: number) {
     const walkDistance = runtime.pathDistance * progress;
     const position = pathPositionAtDistance(runtime.path, walkDistance);
-    const walkPhase = (walkDistance / catWalkCycleDistance) * fullTurn;
+    const walkPhase = (walkDistance / dogWalkCycleDistance) * fullTurn;
 
-    position.y = getCatWalkYAt(position, runtime.groundSurfaces);
-    position.y += Math.max(0, Math.sin(walkPhase * 2)) * catWalkBodyBobHeight;
+    position.y = getDogWalkYAt(position, runtime.groundSurfaces);
+    position.y += Math.max(0, Math.sin(walkPhase * 2)) * dogWalkBodyBobHeight;
+    position.y += Math.max(0, Math.sin(walkPhase)) * dogWalkBodyBobHeight * 0.2;
 
     return position;
 }
@@ -1124,100 +1156,100 @@ function makeSettledState({
 }: {
     now: number;
     random: () => number;
-    target: CatTarget;
+    target: DogTarget;
     timeOfDay: number;
-    weather: CatWeather | null | undefined;
+    weather: DogWeather | null | undefined;
 }) {
     return {
         phase: 'settled',
         dwellUntil:
             now +
-            getCatDwellSeconds({
+            getDogDwellSeconds({
                 behavior: target.behavior,
                 random,
                 timeOfDay,
                 weather,
             }),
         target,
-    } satisfies SettledCatState;
+    } satisfies SettledDogState;
 }
 
-function getCatAnimationName(runtime: CatRuntimeState): CatAnimationName {
+function getDogAnimationName(runtime: DogRuntimeState): DogAnimationName {
     if (runtime.phase === 'moving') {
-        return 'Cat_Walk';
+        return 'Dog_Walk';
     }
 
     if (
-        runtime.target.behavior === 'pillow' ||
+        runtime.target.behavior === 'doghouse' ||
         runtime.target.behavior === 'cover'
     ) {
-        return 'Cat_LyingIdle';
+        return 'Dog_LyingIdle';
     }
 
-    if (runtime.target.behavior === 'stalk-bird') {
-        return 'Cat_PreyWatch';
+    if (runtime.target.behavior === 'chase-bird') {
+        return 'Dog_PreyWatch';
     }
 
-    return 'Cat_Idle';
+    return 'Dog_Idle';
 }
 
 function isMesh(object: Object3D): object is Mesh {
     return object instanceof Mesh;
 }
 
-function getCatDebugActivity(runtime: CatRuntimeState) {
+function getDogDebugActivity(runtime: DogRuntimeState) {
     if (runtime.phase === 'moving') {
         return `walking to ${runtime.target.behavior}`;
     }
 
-    if (runtime.target.behavior === 'pillow') {
-        return 'napping on pillow';
+    if (runtime.target.behavior === 'doghouse') {
+        return 'resting by doghouse';
     }
 
     if (runtime.target.behavior === 'cover') {
         return 'resting under cover';
     }
 
-    if (runtime.target.behavior === 'stalk-bird') {
-        return 'watching ground birds';
+    if (runtime.target.behavior === 'chase-bird') {
+        return 'chasing ground birds';
     }
 
-    if (runtime.target.behavior === 'interact-dog') {
-        return 'watching dog';
+    if (runtime.target.behavior === 'interact-cat') {
+        return 'greeting cat';
     }
 
     if (runtime.target.behavior === 'low-entity') {
-        return 'perched on block';
+        return 'sniffing around block';
     }
 
     return 'roaming';
 }
 
-function roundCatDebugCoordinate(value: number) {
+function roundDogDebugCoordinate(value: number) {
     return Math.round(value * 100) / 100;
 }
 
-function roundCatDebugPoint(point: Vector3) {
+function roundDogDebugPoint(point: Vector3) {
     return {
-        x: roundCatDebugCoordinate(point.x),
-        y: roundCatDebugCoordinate(point.y),
-        z: roundCatDebugCoordinate(point.z),
+        x: roundDogDebugCoordinate(point.x),
+        y: roundDogDebugCoordinate(point.y),
+        z: roundDogDebugCoordinate(point.z),
     };
 }
 
-function catDebugPathPoint(point: Vector3) {
+function dogDebugPathPoint(point: Vector3) {
     return [
-        roundCatDebugCoordinate(point.x),
-        roundCatDebugCoordinate(point.y),
-        roundCatDebugCoordinate(point.z),
+        roundDogDebugCoordinate(point.x),
+        roundDogDebugCoordinate(point.y),
+        roundDogDebugCoordinate(point.z),
     ] satisfies AnimalDebugPathPoint;
 }
 
-function catDebugPathKey(path: Vector3[]) {
-    return path.map((point) => catDebugPathPoint(point).join(':')).join('|');
+function dogDebugPathKey(path: Vector3[]) {
+    return path.map((point) => dogDebugPathPoint(point).join(':')).join('|');
 }
 
-function nextPathWaypoint(runtime: MovingCatState, position: Vector3) {
+function nextPathWaypoint(runtime: MovingDogState, position: Vector3) {
     return (
         runtime.path.find(
             (point) => horizontalDistance(point, position) > 0.12,
@@ -1225,32 +1257,32 @@ function nextPathWaypoint(runtime: MovingCatState, position: Vector3) {
     );
 }
 
-function createCatDebugEntry({
+function createDogDebugEntry({
     group,
     habitat,
     now,
     runtime,
 }: {
     group: Group;
-    habitat: CatHabitat;
+    habitat: DogHabitat;
     now: number;
-    runtime: CatRuntimeState;
+    runtime: DogRuntimeState;
 }): AnimalDebugEntry {
     return {
         id: habitat.id,
-        species: 'Cat',
-        label: habitat.pillow.id.replace(/^pillow-/, ''),
+        species: 'Dog',
+        label: habitat.dogHouse.id.replace(/^doghouse-/, ''),
         phase: runtime.phase,
         behavior: runtime.target.behavior,
-        activity: getCatDebugActivity(runtime),
+        activity: getDogDebugActivity(runtime),
         targetId: runtime.target.id,
-        debugBehaviors: catDebugBehaviors,
+        debugBehaviors: dogDebugBehaviors,
         pathfinding:
             runtime.phase === 'moving'
                 ? {
                       blockedCellCount: runtime.pathfinding.blockedCellCount,
-                      distance: roundCatDebugCoordinate(runtime.pathDistance),
-                      nextWaypoint: roundCatDebugPoint(
+                      distance: roundDogDebugCoordinate(runtime.pathDistance),
+                      nextWaypoint: roundDogDebugPoint(
                           nextPathWaypoint(runtime, group.position),
                       ),
                       status: runtime.pathfinding.status,
@@ -1259,26 +1291,26 @@ function createCatDebugEntry({
                       waypointCount: runtime.path.length,
                   }
                 : undefined,
-        position: roundCatDebugPoint(group.position),
+        position: roundDogDebugPoint(group.position),
         updatedAt: now,
     };
 }
 
-function getCatMaterialTint(materialName: string) {
-    if (materialName.includes('Material.Cat.BlackFurSoft')) {
-        return catSoftDarkFurColor;
+function getDogMaterialTint(materialName: string) {
+    if (materialName.includes('Material.Dog.BlackFurSoft')) {
+        return dogSoftDarkFurColor;
     }
 
-    if (materialName.includes('Material.Cat.BlackFur')) {
-        return catDarkFurColor;
+    if (materialName.includes('Material.Dog.BlackFur')) {
+        return dogDarkFurColor;
     }
 
     return null;
 }
 
-function cloneCatMaterial(material: Material) {
+function cloneDogMaterial(material: Material) {
     const clone = material.clone();
-    const tint = getCatMaterialTint(material.name);
+    const tint = getDogMaterialTint(material.name);
 
     if (tint && clone instanceof MeshStandardMaterial) {
         clone.color.set(tint);
@@ -1289,40 +1321,146 @@ function cloneCatMaterial(material: Material) {
     return clone;
 }
 
-function prepareCatMesh(object: Mesh) {
+function prepareDogMesh(object: Mesh) {
     object.castShadow = true;
     object.frustumCulled = false;
     object.receiveShadow = true;
     object.material = Array.isArray(object.material)
-        ? object.material.map(cloneCatMaterial)
-        : cloneCatMaterial(object.material);
+        ? object.material.map(cloneDogMaterial)
+        : cloneDogMaterial(object.material);
 }
 
-function Cat({
+function getDogRigNode(root: Object3D, name: string): DogRigNode {
+    const object = root.getObjectByName(name) ?? null;
+
+    return {
+        object,
+        basePositionY: object?.position.y ?? 0,
+        basePositionZ: object?.position.z ?? 0,
+        baseRotationX: object?.rotation.x ?? 0,
+        baseRotationZ: object?.rotation.z ?? 0,
+    };
+}
+
+function createDogRig(root: Object3D): DogRigParts {
+    return {
+        frontLeftLeg: getDogRigNode(root, 'Dog_Leg_FL'),
+        frontLeftPaw: getDogRigNode(root, 'Dog_Paw_FL'),
+        frontRightLeg: getDogRigNode(root, 'Dog_Leg_FR'),
+        frontRightPaw: getDogRigNode(root, 'Dog_Paw_FR'),
+        rearLeftLeg: getDogRigNode(root, 'Dog_Leg_RL'),
+        rearLeftPaw: getDogRigNode(root, 'Dog_Paw_RL'),
+        rearRightLeg: getDogRigNode(root, 'Dog_Leg_RR'),
+        rearRightPaw: getDogRigNode(root, 'Dog_Paw_RR'),
+        walkPhase: 0,
+        walkPoseAmount: 0,
+    };
+}
+
+function poseDogLeg({
+    leg,
+    paw,
+    lift,
+    swing,
+}: {
+    leg: DogRigNode;
+    lift: number;
+    paw: DogRigNode;
+    swing: number;
+}) {
+    if (leg.object) {
+        leg.object.rotation.x = leg.baseRotationX + swing;
+        leg.object.rotation.z = leg.baseRotationZ + swing * 0.08;
+    }
+
+    if (paw.object) {
+        paw.object.position.y = paw.basePositionY + lift * dogWalkFootLift;
+        paw.object.position.z = paw.basePositionZ - swing * 0.055;
+        paw.object.rotation.x = paw.baseRotationX - swing * 0.42 + lift * 0.16;
+    }
+}
+
+function updateDogWalkPose({
+    delta,
+    moving,
+    rig,
+    walkDistance,
+}: {
+    delta: number;
+    moving: boolean;
+    rig: DogRigParts;
+    walkDistance: number;
+}) {
+    rig.walkPoseAmount = MathUtils.damp(
+        rig.walkPoseAmount,
+        moving ? 1 : 0,
+        dogWalkLegPoseDamping,
+        delta,
+    );
+
+    if (moving) {
+        rig.walkPhase = (walkDistance / dogWalkCycleDistance) * fullTurn;
+    }
+
+    const amount = rig.walkPoseAmount;
+    const phase = rig.walkPhase;
+    const diagonalStep = Math.sin(phase);
+    const diagonalSwing = diagonalStep * dogWalkLegSwing * amount;
+    const oppositeSwing = -diagonalSwing;
+    const diagonalLift = Math.max(0, diagonalStep) * amount;
+    const oppositeLift = Math.max(0, -diagonalStep) * amount;
+
+    poseDogLeg({
+        leg: rig.frontLeftLeg,
+        lift: diagonalLift,
+        paw: rig.frontLeftPaw,
+        swing: diagonalSwing,
+    });
+    poseDogLeg({
+        leg: rig.rearRightLeg,
+        lift: diagonalLift,
+        paw: rig.rearRightPaw,
+        swing: diagonalSwing,
+    });
+    poseDogLeg({
+        leg: rig.frontRightLeg,
+        lift: oppositeLift,
+        paw: rig.frontRightPaw,
+        swing: oppositeSwing,
+    });
+    poseDogLeg({
+        leg: rig.rearLeftLeg,
+        lift: oppositeLift,
+        paw: rig.rearLeftPaw,
+        swing: oppositeSwing,
+    });
+}
+
+function Dog({
     birdGroundEntries,
-    dogPresenceEntries,
+    catPresenceEntries,
     habitat,
     weather,
 }: {
     birdGroundEntries: AnimalDebugEntry[];
-    dogPresenceEntries: AnimalPresenceEntry[];
-    habitat: CatHabitat;
-    weather: CatWeather | null | undefined;
+    catPresenceEntries: AnimalPresenceEntry[];
+    habitat: DogHabitat;
+    weather: DogWeather | null | undefined;
 }) {
-    const gltf = useGameGLTF('Cat');
+    const gltf = useGameGLTF('Dog');
     const { enableDebugHudFlag = false } = useGameFlags();
     const clock = useThree((state) => state.clock);
     const groupRef = useRef<Group>(null);
     const targetDebugRef = useRef<Group>(null);
     const randomRef = useRef(createRandom(habitat.seed));
-    const runtimeRef = useRef<CatRuntimeState | null>(null);
+    const runtimeRef = useRef<DogRuntimeState | null>(null);
     const lastAnimalDebugUpdateRef = useRef(0);
     const lastAnimalPresenceUpdateRef = useRef(0);
     const lastDebugCommandSequenceRef = useRef(0);
     const pathDebugKeyRef = useRef('');
-    const activeAnimationRef = useRef<CatAnimationName>('Cat_LyingIdle');
+    const activeAnimationRef = useRef<DogAnimationName>('Dog_LyingIdle');
     const [activeAnimation, setActiveAnimation] =
-        useState<CatAnimationName>('Cat_LyingIdle');
+        useState<DogAnimationName>('Dog_LyingIdle');
     const [pathDebugPoints, setPathDebugPoints] = useState<
         AnimalDebugPathPoint[]
     >([]);
@@ -1349,16 +1487,19 @@ function Cat({
         (state) => state.removeAnimalPresenceEntry,
     );
 
-    const catModel = useMemo(() => {
+    const dogModel = useMemo(() => {
         const clone = gltf.scene.clone(true);
         clone.traverse((object) => {
             if (isMesh(object)) {
-                prepareCatMesh(object);
+                prepareDogMesh(object);
             }
         });
-        return clone;
+        return {
+            rig: createDogRig(clone),
+            scene: clone,
+        };
     }, [gltf.scene]);
-    const { actions } = useAnimations(gltf.animations, catModel);
+    const { actions } = useAnimations(gltf.animations, dogModel.scene);
 
     useEffect(() => {
         const action = actions[activeAnimation];
@@ -1367,8 +1508,8 @@ function Cat({
         }
 
         action.timeScale =
-            activeAnimation === 'Cat_Walk'
-                ? catWalkAnimationTimeScale(runtimeRef.current, action)
+            activeAnimation === 'Dog_Walk'
+                ? dogWalkAnimationTimeScale(runtimeRef.current, action)
                 : 1;
         action.reset().fadeIn(0.18).play();
         return () => {
@@ -1379,12 +1520,12 @@ function Cat({
     useEffect(() => {
         runtimeRef.current = null;
         if (groupRef.current) {
-            groupRef.current.position.copy(habitat.pillow.position);
-            if (habitat.pillow.facingYaw !== undefined) {
-                groupRef.current.rotation.y = habitat.pillow.facingYaw;
+            groupRef.current.position.copy(habitat.dogHouse.position);
+            if (habitat.dogHouse.facingYaw !== undefined) {
+                groupRef.current.rotation.y = habitat.dogHouse.facingYaw;
             }
         }
-    }, [habitat.pillow.facingYaw, habitat.pillow.position]);
+    }, [habitat.dogHouse.facingYaw, habitat.dogHouse.position]);
 
     useEffect(() => {
         if (!enableDebugHudFlag) {
@@ -1412,7 +1553,7 @@ function Cat({
         }
     }, [animalPathfindingDebugVisible]);
 
-    const syncDebugIndicators = (runtime: CatRuntimeState | null) => {
+    const syncDebugIndicators = (runtime: DogRuntimeState | null) => {
         const targetDebug = targetDebugRef.current;
         if (targetDebug) {
             targetDebug.visible = animalTargetsDebugVisible && runtime !== null;
@@ -1423,14 +1564,14 @@ function Cat({
 
         const nextPathDebugKey =
             animalPathfindingDebugVisible && runtime?.phase === 'moving'
-                ? catDebugPathKey(runtime.path)
+                ? dogDebugPathKey(runtime.path)
                 : '';
 
         if (nextPathDebugKey !== pathDebugKeyRef.current) {
             pathDebugKeyRef.current = nextPathDebugKey;
             setPathDebugPoints(
                 animalPathfindingDebugVisible && runtime?.phase === 'moving'
-                    ? runtime.path.map(catDebugPathPoint)
+                    ? runtime.path.map(dogDebugPathPoint)
                     : [],
             );
         }
@@ -1453,8 +1594,8 @@ function Cat({
         const now = clock.getElapsedTime();
         const target = chooseManualNextTarget({
             birdGroundEntries,
+            catPresenceEntries,
             currentTarget: runtime.target,
-            dogPresenceEntries,
             habitat,
             now,
             random,
@@ -1494,17 +1635,17 @@ function Cat({
         const random = randomRef.current;
         let runtime = runtimeRef.current;
 
-        const setAnimation = (nextAnimation: CatAnimationName) => {
+        const setAnimation = (nextAnimation: DogAnimationName) => {
             if (activeAnimationRef.current === nextAnimation) {
                 return;
             }
             activeAnimationRef.current = nextAnimation;
             setActiveAnimation(nextAnimation);
         };
-        const syncWalkAnimationSpeed = (nextRuntime: CatRuntimeState) => {
-            const walkAction = actions.Cat_Walk;
+        const syncWalkAnimationSpeed = (nextRuntime: DogRuntimeState) => {
+            const walkAction = actions.Dog_Walk;
             if (walkAction) {
-                walkAction.timeScale = catWalkAnimationTimeScale(
+                walkAction.timeScale = dogWalkAnimationTimeScale(
                     nextRuntime,
                     walkAction,
                 );
@@ -1515,14 +1656,14 @@ function Cat({
             runtime = makeSettledState({
                 now,
                 random,
-                target: habitat.pillow,
+                target: habitat.dogHouse,
                 timeOfDay,
                 weather,
             });
             runtimeRef.current = runtime;
-            group.position.copy(habitat.pillow.position);
-            if (habitat.pillow.facingYaw !== undefined) {
-                group.rotation.y = habitat.pillow.facingYaw;
+            group.position.copy(habitat.dogHouse.position);
+            if (habitat.dogHouse.facingYaw !== undefined) {
+                group.rotation.y = habitat.dogHouse.facingYaw;
             }
         }
 
@@ -1530,7 +1671,7 @@ function Cat({
             animalDebugCommand &&
             animalDebugCommand.sequence !==
                 lastDebugCommandSequenceRef.current &&
-            animalDebugCommand.species === 'Cat'
+            animalDebugCommand.species === 'Dog'
         ) {
             lastDebugCommandSequenceRef.current = animalDebugCommand.sequence;
 
@@ -1541,7 +1682,7 @@ function Cat({
                 const target = chooseDebugTarget({
                     behavior: animalDebugCommand.behavior,
                     birdGroundEntries,
-                    dogPresenceEntries,
+                    catPresenceEntries,
                     habitat,
                     now,
                     random,
@@ -1578,27 +1719,35 @@ function Cat({
         syncDebugIndicators(runtime);
 
         if (runtime.phase === 'moving') {
-            setAnimation(getCatAnimationName(runtime));
+            setAnimation(getDogAnimationName(runtime));
             syncWalkAnimationSpeed(runtime);
             const progress = MathUtils.clamp(
                 (now - runtime.startedAt) / runtime.duration,
                 0,
                 1,
             );
+            const walkDistance = runtime.pathDistance * progress;
             const nextPosition = movingPositionAt(runtime, progress);
 
             group.position.copy(nextPosition);
+            updateDogWalkPose({
+                delta,
+                moving: true,
+                rig: dogModel.rig,
+                walkDistance,
+            });
             facePosition(
                 group,
                 movingPositionAt(
                     runtime,
-                    MathUtils.clamp(progress + catWalkLookAheadProgress, 0, 1),
+                    MathUtils.clamp(progress + dogWalkLookAheadProgress, 0, 1),
                 ),
                 delta,
-                catWalkTurnDamping,
+                dogWalkTurnDamping,
             );
             group.rotation.x = 0;
-            group.rotation.z = Math.sin(now * 8 + habitat.seed) * 0.018;
+            group.rotation.z =
+                Math.sin(now * 10.5 + habitat.seed) * dogWalkRollAmount;
 
             if (progress < 1) {
                 return;
@@ -1615,19 +1764,25 @@ function Cat({
             return;
         }
 
-        setAnimation(getCatAnimationName(runtime));
+        setAnimation(getDogAnimationName(runtime));
         syncWalkAnimationSpeed(runtime);
+        updateDogWalkPose({
+            delta,
+            moving: false,
+            rig: dogModel.rig,
+            walkDistance: 0,
+        });
         group.position.copy(runtime.target.position);
         if (
-            runtime.target.behavior === 'pillow' ||
+            runtime.target.behavior === 'doghouse' ||
             runtime.target.behavior === 'cover'
         ) {
-            group.position.y += Math.sin(now * 1.6 + habitat.seed) * 0.006;
+            group.position.y += Math.sin(now * 2.2 + habitat.seed) * 0.009;
         }
         group.rotation.x = 0;
         group.rotation.z =
-            runtime.target.behavior === 'stalk-bird'
-                ? Math.sin(now * 2.2 + habitat.seed) * 0.012
+            runtime.target.behavior === 'chase-bird'
+                ? Math.sin(now * 4.2 + habitat.seed) * 0.032
                 : 0;
 
         if (runtime.target.lookAtPosition) {
@@ -1636,24 +1791,18 @@ function Cat({
             faceYaw(group, runtime.target.facingYaw, delta);
         }
 
-        const shouldMoveToPillow =
-            isCatNight(timeOfDay) && runtime.target.behavior !== 'pillow';
         const shouldMoveToCover =
-            shouldCatSeekCover(timeOfDay, weather) &&
+            shouldDogSeekCover(timeOfDay, weather) &&
             runtime.target.behavior !== 'cover' &&
-            runtime.target.behavior !== 'pillow';
+            runtime.target.behavior !== 'doghouse';
 
-        if (
-            !shouldMoveToPillow &&
-            !shouldMoveToCover &&
-            now < runtime.dwellUntil
-        ) {
+        if (!shouldMoveToCover && now < runtime.dwellUntil) {
             return;
         }
 
         const target = chooseNextTarget({
             birdGroundEntries,
-            dogPresenceEntries,
+            catPresenceEntries,
             habitat,
             now,
             random,
@@ -1695,9 +1844,9 @@ function Cat({
             lastAnimalPresenceUpdateRef.current = now;
             setAnimalPresenceEntry({
                 id: habitat.id,
-                species: 'Cat',
+                species: 'Dog',
                 behavior: runtime.target.behavior,
-                position: roundCatDebugPoint(group.position),
+                position: roundDogDebugPoint(group.position),
                 updatedAt: now,
             });
         }
@@ -1710,7 +1859,7 @@ function Cat({
         ) {
             lastAnimalDebugUpdateRef.current = now;
             setAnimalDebugEntry(
-                createCatDebugEntry({ group, habitat, now, runtime }),
+                createDogDebugEntry({ group, habitat, now, runtime }),
             );
         }
     });
@@ -1720,15 +1869,17 @@ function Cat({
             {/* biome-ignore lint/a11y/noStaticElementInteractions: Three.js element is interactive */}
             <group
                 ref={groupRef}
-                scale={catScale}
+                scale={dogScale}
                 onPointerDown={handlePointerDown}
                 onClick={handleClick}
             >
-                <primitive object={catModel} />
+                <group rotation={[0, dogVisualYawOffset, 0]}>
+                    <primitive object={dogModel.scene} />
+                </group>
             </group>
-            <AnimalTargetDebugMarker ref={targetDebugRef} color="#38bdf8" />
+            <AnimalTargetDebugMarker ref={targetDebugRef} color="#f59e0b" />
             <AnimalPathDebugIndicator
-                color="#38bdf8"
+                color="#f59e0b"
                 points={pathDebugPoints}
                 visible={animalPathfindingDebugVisible}
             />
@@ -1736,7 +1887,7 @@ function Cat({
     );
 }
 
-function resolveCatWeather({
+function resolveDogWeather({
     gameWeather,
     weatherDisabled,
     weatherNow,
@@ -1744,31 +1895,31 @@ function resolveCatWeather({
 }: {
     gameWeather: GameState['weather'];
     weatherDisabled: boolean;
-    weatherNow: CatWeather | null | undefined;
-    weatherOverride: CatWeatherOverride | undefined;
+    weatherNow: DogWeather | null | undefined;
+    weatherOverride: DogWeatherOverride | undefined;
 }) {
     if (weatherDisabled) {
-        return clearCatWeather;
+        return clearDogWeather;
     }
 
     if (weatherOverride) {
-        return { ...clearCatWeather, ...weatherOverride };
+        return { ...clearDogWeather, ...weatherOverride };
     }
 
     if (!weatherNow && !gameWeather) {
         return undefined;
     }
 
-    return { ...clearCatWeather, ...weatherNow, ...gameWeather };
+    return { ...clearDogWeather, ...weatherNow, ...gameWeather };
 }
 
-export function Cats({
+export function Dogs({
     stacks,
     weather,
     weatherDisabled = false,
 }: {
     stacks: Stack[] | undefined;
-    weather?: CatWeatherOverride;
+    weather?: DogWeatherOverride;
     weatherDisabled?: boolean;
 }) {
     const { data: blockData } = useBlockData();
@@ -1787,19 +1938,19 @@ export function Cats({
             ),
         [animalDebugEntries],
     );
-    const dogPresenceEntries = useMemo(
-        () => animalPresenceEntries.filter((entry) => entry.species === 'Dog'),
+    const catPresenceEntries = useMemo(
+        () => animalPresenceEntries.filter((entry) => entry.species === 'Cat'),
         [animalPresenceEntries],
     );
     const { data: weatherNow } = useWeatherNow(!weatherDisabled && !weather);
-    const catWeather = resolveCatWeather({
+    const dogWeather = resolveDogWeather({
         gameWeather,
         weatherDisabled,
         weatherNow,
         weatherOverride: weather,
     });
     const habitats = useMemo(
-        () => createCatHabitats(stacks, blockData),
+        () => createDogHabitats(stacks, blockData),
         [blockData, stacks],
     );
 
@@ -1810,12 +1961,12 @@ export function Cats({
     return (
         <>
             {habitats.map((habitat) => (
-                <Cat
+                <Dog
                     key={habitat.id}
                     birdGroundEntries={birdGroundEntries}
-                    dogPresenceEntries={dogPresenceEntries}
+                    catPresenceEntries={catPresenceEntries}
                     habitat={habitat}
-                    weather={catWeather}
+                    weather={dogWeather}
                 />
             ))}
         </>

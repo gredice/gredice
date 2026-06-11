@@ -23,3 +23,13 @@ test('local sandbox exposes special seasonal blocks', () => {
     assert.equal(blockNames.has('PineAdvent'), true);
     assert.equal(blockNames.has('Block_Snow_Falling'), true);
 });
+
+test('local sandbox exposes animal home blocks used by the item HUD', () => {
+    const blockData = getLocalSandboxBlockData();
+    const blockNames = new Set(
+        blockData.map((block) => block.information.name),
+    );
+
+    assert.equal(blockNames.has('CatPillow'), true);
+    assert.equal(blockNames.has('DogHouse'), true);
+});

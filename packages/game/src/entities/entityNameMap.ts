@@ -30,6 +30,7 @@ import { CatPillow } from './CatPillow';
 import { Composter } from './Composter';
 import { DeadTree } from './DeadTree';
 import { DesertStone } from './DesertStone';
+import { DogHouse } from './DogHouse';
 import { Fence } from './Fence';
 import { FireflyJar } from './FireflyJar';
 import { GardenBox } from './GardenBox';
@@ -107,6 +108,7 @@ export const entityNameMap: Record<
     BirdHouse: BirdHouse,
     CatPillow: CatPillow,
     Cat_Pillow: CatPillow,
+    DogHouse: DogHouse,
     FireflyJar: FireflyJar,
     GiftBox_RedWhite: GiftBoxRedWhite,
     GiftBox_GreenGold: GiftBoxGreenGold,

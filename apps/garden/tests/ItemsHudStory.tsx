@@ -73,6 +73,7 @@ const blockNames = [
     'BirdHouse',
     'FireflyJar',
     'CatPillow',
+    'DogHouse',
     'Bush',
     'Tree',
     'Pine',

@@ -101,6 +101,27 @@ function createCatPathfindingStacks() {
     return serializeStacks(stacks);
 }
 
+function createDogPathfindingStacks() {
+    const stacks = createGroundStacks({
+        minX: -6,
+        maxX: 6,
+        minZ: -4,
+        maxZ: 4,
+    });
+
+    placeBlock(stacks, -5, 0, 'DogHouse');
+    placeBlock(stacks, 4, 0, 'Tree');
+    placeBlock(stacks, 3, -2, 'Stool');
+    placeBlock(stacks, 2, 2, 'Bucket');
+    placeBlock(stacks, -4, 3, 'StoneMedium');
+
+    for (let z = -4; z <= 2; z += 1) {
+        placeBlock(stacks, 0, z, z % 2 === 0 ? 'GardenBox' : 'Composter');
+    }
+
+    return serializeStacks(stacks);
+}
+
 function createBirdStacks() {
     const stacks = createGroundStacks({
         minX: -4,
@@ -145,6 +166,7 @@ function createAllAnimalStacks() {
     });
 
     placeBlock(stacks, -5, 0, 'CatPillow');
+    placeBlock(stacks, -5, 2, 'DogHouse');
     placeBlock(stacks, 2, 0, 'Tree');
     placeBlock(stacks, 3, -2, 'Stool');
     placeBlock(stacks, 3, 2, 'Bucket');
@@ -208,6 +230,20 @@ export function AnimalDebugActions({ storageKey }: { storageKey: string }) {
                 variant="soft"
             >
                 Cat path
+            </Button>
+            <Button
+                className="pointer-events-auto rounded-full shadow-lg"
+                color="neutral"
+                onClick={() =>
+                    persistAnimalDebugStacks(
+                        storageKey,
+                        createDogPathfindingStacks(),
+                    )
+                }
+                size="sm"
+                variant="soft"
+            >
+                Dog path
             </Button>
             <Button
                 className="pointer-events-auto rounded-full shadow-lg"
