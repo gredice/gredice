@@ -99,6 +99,7 @@ export const gameAssetModels = {
     PotSquatRidged: { url: '/assets/models/PotSquatRidged.glb' },
     PotTallSlenderCone: { url: '/assets/models/PotTallSlenderCone.glb' },
     PotWideLippedCup: { url: '/assets/models/PotWideLippedCup.glb' },
+    HarvestBasket: { url: '/assets/models/HarvestBasket.glb' },
 } satisfies Record<string, { url: string }>;
 
 export type GameAssetName = keyof typeof gameAssetModels;
@@ -181,6 +182,7 @@ export const lazyGameAssetNames = [
     'PotSquatRidged',
     'PotTallSlenderCone',
     'PotWideLippedCup',
+    'HarvestBasket',
 ] satisfies GameAssetName[];
 
 export const allGameAssetNames = [
@@ -255,4 +257,5 @@ export const allGameAssetNames = [
     'PotSquatRidged',
     'PotTallSlenderCone',
     'PotWideLippedCup',
+    'HarvestBasket',
 ] satisfies GameAssetName[];

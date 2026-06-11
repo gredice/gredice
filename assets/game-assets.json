@@ -874,6 +874,29 @@
                 "PotVariant_10_Wide_Lipped_Cup",
                 "PotVariant_Soil_10"
             ]
+        },
+        {
+            "name": "HarvestBasket",
+            "source": "HarvestBasket.blend",
+            "output": "HarvestBasket.glb",
+            "preload": "lazy",
+            "objects": [
+                "HarvestBasket_Weave",
+                "HarvestBasket_Rim",
+                "HarvestBasket_Inner",
+                "HarvestBasket_Handle",
+                "HarvestBasket_Pin",
+                "HarvestBasket_Tomato",
+                "HarvestBasket_TomatoCalyx",
+                "HarvestBasket_Carrot",
+                "HarvestBasket_CarrotGreens",
+                "HarvestBasket_Cabbage",
+                "HarvestBasket_Turnip",
+                "HarvestBasket_TurnipSprout",
+                "HarvestBasket_Zucchini",
+                "HarvestBasket_Pumpkin",
+                "HarvestBasket_PumpkinStem"
+            ]
         }
     ]
 }

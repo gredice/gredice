@@ -394,6 +394,21 @@ export type GLTFResult = GLTF & {
         PotVariant_Soil_09: THREE.Mesh;
         PotVariant_10_Wide_Lipped_Cup: THREE.Mesh;
         PotVariant_Soil_10: THREE.Mesh;
+        HarvestBasket_Weave: THREE.Mesh;
+        HarvestBasket_Rim: THREE.Mesh;
+        HarvestBasket_Inner: THREE.Mesh;
+        HarvestBasket_Handle: THREE.Mesh;
+        HarvestBasket_Pin: THREE.Mesh;
+        HarvestBasket_Tomato: THREE.Mesh;
+        HarvestBasket_TomatoCalyx: THREE.Mesh;
+        HarvestBasket_Carrot: THREE.Mesh;
+        HarvestBasket_CarrotGreens: THREE.Mesh;
+        HarvestBasket_Cabbage: THREE.Mesh;
+        HarvestBasket_Turnip: THREE.Mesh;
+        HarvestBasket_TurnipSprout: THREE.Mesh;
+        HarvestBasket_Zucchini: THREE.Mesh;
+        HarvestBasket_Pumpkin: THREE.Mesh;
+        HarvestBasket_PumpkinStem: THREE.Mesh;
     };
     materials: {
         BH_flat_dark_wood: THREE.MeshStandardMaterial;
@@ -406,6 +421,10 @@ export type GLTFResult = GLTF & {
         FJ_soft_firefly_wings: THREE.MeshStandardMaterial;
         FJ_soft_transparent_glass: THREE.MeshStandardMaterial;
         FJ_warm_firefly_glow: THREE.MeshStandardMaterial;
+        'Material.BasketInner': THREE.MeshStandardMaterial;
+        'Material.BasketPin': THREE.MeshStandardMaterial;
+        'Material.BasketRim': THREE.MeshStandardMaterial;
+        'Material.BasketWeave': THREE.MeshStandardMaterial;
         'Material.Bee.Black': THREE.MeshStandardMaterial;
         'Material.Bee.Cheek': THREE.MeshStandardMaterial;
         'Material.Bee.Gold': THREE.MeshStandardMaterial;
@@ -503,6 +522,13 @@ export type GLTFResult = GLTF & {
         'Material.Stone': THREE.MeshStandardMaterial;
         'Material.Stone.001': THREE.MeshStandardMaterial;
         'Material.Stone.002': THREE.MeshStandardMaterial;
+        'Material.VeggieGreen': THREE.MeshStandardMaterial;
+        'Material.VeggieGreenDark': THREE.MeshStandardMaterial;
+        'Material.VeggieLeafy': THREE.MeshStandardMaterial;
+        'Material.VeggieOrange': THREE.MeshStandardMaterial;
+        'Material.VeggiePale': THREE.MeshStandardMaterial;
+        'Material.VeggieRed': THREE.MeshStandardMaterial;
+        'Material.VeggieYellow': THREE.MeshStandardMaterial;
         'Material.Water': THREE.MeshStandardMaterial;
         'Material.WateringCan.Body': THREE.MeshStandardMaterial;
         'Material.WateringCan.Dark': THREE.MeshStandardMaterial;
