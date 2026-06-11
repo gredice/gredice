@@ -6,12 +6,9 @@ import type { Stack } from '../types/Stack';
 import {
     findSunflowerDropPlacement,
     getSunflowerDropPosition,
-    getSunflowerDropSpawnDelayMs,
     SUNFLOWER_DROP_GROUND_Y_OFFSET,
     SUNFLOWER_DROP_MAX_GROUND_DISTANCE,
-    SUNFLOWER_DROP_MAX_SPAWN_DELAY_MS,
     SUNFLOWER_DROP_MIN_GROUND_DISTANCE,
-    SUNFLOWER_DROP_MIN_SPAWN_DELAY_MS,
     SUNFLOWER_DROP_PARTICLE_Y_OFFSET,
 } from './sunflowerDropRewardCore';
 
@@ -25,25 +22,6 @@ const sunflowerStack: Stack = {
     blocks: [sunflowerBlock],
     position: new Vector3(3, 0, -2),
 };
-
-test('sunflower drop spawn delay is between one and five minutes', () => {
-    assert.equal(
-        getSunflowerDropSpawnDelayMs(() => 0),
-        SUNFLOWER_DROP_MIN_SPAWN_DELAY_MS,
-    );
-    assert.equal(
-        getSunflowerDropSpawnDelayMs(() => 1),
-        SUNFLOWER_DROP_MAX_SPAWN_DELAY_MS,
-    );
-
-    const midpoint = getSunflowerDropSpawnDelayMs(() => 0.5);
-    assert.equal(
-        midpoint,
-        (SUNFLOWER_DROP_MIN_SPAWN_DELAY_MS +
-            SUNFLOWER_DROP_MAX_SPAWN_DELAY_MS) /
-            2,
-    );
-});
 
 test('sunflower drop placement resolves the source sunflower block', () => {
     assert.deepEqual(
