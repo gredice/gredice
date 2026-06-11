@@ -1,54 +1,19 @@
-import type {
-    AutomationRunSource,
-    AutomationRunStatus,
-    SelectAutomationRun,
-} from '@gredice/storage';
+import { Button } from '@gredice/ui/Button';
 import { Card, CardHeader, CardOverflow, CardTitle } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
+import { LoaderSpinner } from '@gredice/ui/icons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
-import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { KnownPages } from '../../../src/KnownPages';
-import { automationRunStatusMeta } from './presentation';
+import { AutomationRunStatusIndicator } from './AutomationStatusIndicator';
+import type { AutomationRunListItem } from './types';
 
-type AutomationJobQueueRun = Pick<
-    SelectAutomationRun,
-    | 'id'
-    | 'automationDefinitionId'
-    | 'automationDefinitionKey'
-    | 'automationDefinitionName'
-    | 'source'
-    | 'sourceEventType'
-    | 'sourceAggregateId'
-    | 'parentRunId'
-    | 'status'
-    | 'dryRun'
-    | 'attempt'
-    | 'maxAttempts'
-    | 'nextRunAt'
-    | 'lockedAt'
-    | 'lockedBy'
-    | 'errorMessage'
-    | 'startedAt'
-    | 'completedAt'
-    | 'createdAt'
-    | 'updatedAt'
->;
-
-function renderRunStatusChip(status: AutomationRunStatus) {
-    const meta = automationRunStatusMeta(status);
-    return (
-        <Chip color={meta.color} size="sm" variant="soft">
-            {meta.label}
-        </Chip>
-    );
-}
-
-function sourceLabel(source: AutomationRunSource) {
+function sourceLabel(source: AutomationRunListItem['source']) {
     switch (source) {
         case 'event':
             return 'Event';
@@ -63,7 +28,7 @@ function sourceLabel(source: AutomationRunSource) {
     }
 }
 
-function renderDateTimeValue(value: Date | null) {
+function DateTimeValue({ value }: { value: string | null }) {
     if (!value) {
         return <span>-</span>;
     }
@@ -71,25 +36,19 @@ function renderDateTimeValue(value: Date | null) {
     return <LocalDateTime>{value}</LocalDateTime>;
 }
 
-function renderQueueTiming(run: AutomationJobQueueRun) {
+function QueueTiming({ run }: { run: AutomationRunListItem }) {
     if (run.status === 'queued' || run.status === 'retrying') {
         return (
-            <Stack spacing={1}>
-                <Typography level="body3" className="text-muted-foreground">
-                    Sljedeće
-                </Typography>
+            <DetailItem label="Sljedeće">
                 <LocalDateTime>{run.nextRunAt}</LocalDateTime>
-            </Stack>
+            </DetailItem>
         );
     }
 
     if (run.status === 'running') {
         return (
-            <Stack spacing={1}>
-                <Typography level="body3" className="text-muted-foreground">
-                    Zaključano
-                </Typography>
-                {renderDateTimeValue(run.lockedAt)}
+            <DetailItem label="Zaključano">
+                <DateTimeValue value={run.lockedAt} />
                 {run.lockedBy ? (
                     <Typography
                         level="body3"
@@ -98,69 +57,90 @@ function renderQueueTiming(run: AutomationJobQueueRun) {
                         {run.lockedBy}
                     </Typography>
                 ) : null}
-            </Stack>
+            </DetailItem>
         );
     }
 
     if (run.completedAt) {
         return (
-            <Stack spacing={1}>
-                <Typography level="body3" className="text-muted-foreground">
-                    Završeno
-                </Typography>
+            <DetailItem label="Završeno">
                 <LocalDateTime>{run.completedAt}</LocalDateTime>
-            </Stack>
+            </DetailItem>
         );
     }
 
+    return <DetailItem label="Obrada">-</DetailItem>;
+}
+
+function DetailItem({
+    children,
+    label,
+}: {
+    children: ReactNode;
+    label: string;
+}) {
     return (
-        <Typography level="body3" className="text-muted-foreground">
-            -
-        </Typography>
+        <div className="min-w-0">
+            <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                {label}
+            </dt>
+            <dd className="mt-1 min-w-0 break-words text-sm">{children}</dd>
+        </div>
     );
 }
 
-export function AutomationJobsQueueTable({
+export function AutomationJobsQueueList({
+    hasMore,
+    isFetching,
+    isFetchingNextPage,
+    loadMore,
     runs,
 }: {
-    runs: AutomationJobQueueRun[];
+    hasMore: boolean;
+    isFetching: boolean;
+    isFetchingNextPage: boolean;
+    loadMore: () => void;
+    runs: AutomationRunListItem[];
 }) {
     return (
-        <Card>
+        <Card className="h-full">
             <CardHeader>
-                <CardTitle>Red poslova</CardTitle>
-                <Typography level="body3" className="text-muted-foreground">
-                    Automatizacijski poslovi s trenutnim statusom, pokušajima i
-                    podacima za obradu.
-                </Typography>
+                <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <Stack spacing={1} className="min-w-0">
+                        <CardTitle>Red poslova</CardTitle>
+                        <Typography
+                            level="body3"
+                            className="text-muted-foreground"
+                        >
+                            Automatizacijski poslovi s trenutnim statusom,
+                            pokušajima i podacima za obradu.
+                        </Typography>
+                    </Stack>
+                    {isFetching && !isFetchingNextPage ? (
+                        <Row
+                            spacing={1}
+                            className="shrink-0 items-center text-muted-foreground"
+                        >
+                            <LoaderSpinner className="size-4 animate-spin" />
+                            <Typography level="body3">Osvježavanje</Typography>
+                        </Row>
+                    ) : null}
+                </div>
             </CardHeader>
             <CardOverflow>
-                <div className="overflow-auto">
-                    <Table>
-                        <Table.Header>
-                            <Table.Row>
-                                <Table.Head>Posao</Table.Head>
-                                <Table.Head>Status</Table.Head>
-                                <Table.Head>Izvor</Table.Head>
-                                <Table.Head>Pokušaji</Table.Head>
-                                <Table.Head>Obrada</Table.Head>
-                                <Table.Head>Vrijeme</Table.Head>
-                            </Table.Row>
-                        </Table.Header>
-                        <Table.Body>
-                            {runs.length === 0 ? (
-                                <Table.Row>
-                                    <Table.Cell colSpan={6}>
-                                        <NoDataPlaceholder>
-                                            Nema poslova za odabrane filtere.
-                                        </NoDataPlaceholder>
-                                    </Table.Cell>
-                                </Table.Row>
-                            ) : null}
-                            {runs.map((run) => (
-                                <Table.Row key={run.id}>
-                                    <Table.Cell>
-                                        <Stack spacing={1}>
+                {runs.length === 0 ? (
+                    <div className="p-4">
+                        <NoDataPlaceholder>
+                            Nema poslova za odabrane filtere.
+                        </NoDataPlaceholder>
+                    </div>
+                ) : (
+                    <ul className="divide-y">
+                        {runs.map((run) => (
+                            <li key={run.id} className="p-4">
+                                <Stack spacing={3}>
+                                    <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                        <Stack spacing={1} className="min-w-0">
                                             <Link
                                                 href={KnownPages.Automation(
                                                     run.automationDefinitionId,
@@ -185,100 +165,92 @@ export function AutomationJobsQueueTable({
                                                 </Typography>
                                             ) : null}
                                         </Stack>
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        <Stack spacing={1}>
-                                            <Row
-                                                spacing={1}
-                                                className="flex-wrap"
-                                            >
-                                                {renderRunStatusChip(
-                                                    run.status,
-                                                )}
-                                                {run.dryRun ? (
-                                                    <Chip
-                                                        size="sm"
-                                                        color="info"
-                                                        variant="soft"
-                                                    >
-                                                        Probno
-                                                    </Chip>
-                                                ) : null}
-                                            </Row>
-                                            {run.errorMessage ? (
-                                                <Typography
-                                                    level="body3"
-                                                    className="max-w-80 break-words text-red-700 dark:text-red-300"
+                                        <Stack
+                                            spacing={1}
+                                            className="items-start sm:items-end"
+                                        >
+                                            <AutomationRunStatusIndicator
+                                                status={run.status}
+                                            />
+                                            {run.dryRun ? (
+                                                <Chip
+                                                    size="sm"
+                                                    color="info"
+                                                    variant="soft"
                                                 >
-                                                    {run.errorMessage}
-                                                </Typography>
+                                                    Probno
+                                                </Chip>
                                             ) : null}
                                         </Stack>
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        <Stack spacing={1}>
-                                            <Chip size="sm" variant="soft">
-                                                {sourceLabel(run.source)}
-                                            </Chip>
-                                            <Typography level="body3">
-                                                {run.sourceEventType ?? '-'}
-                                            </Typography>
-                                            <Typography
-                                                level="body3"
-                                                className="break-all text-muted-foreground"
-                                            >
-                                                {run.sourceAggregateId ?? '-'}
-                                            </Typography>
-                                        </Stack>
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        <Typography level="body3">
-                                            {run.attempt} / {run.maxAttempts}
+                                    </div>
+
+                                    {run.errorMessage ? (
+                                        <Typography
+                                            level="body3"
+                                            className="break-words rounded-md bg-red-50 p-2 text-red-700 dark:bg-red-950 dark:text-red-300"
+                                        >
+                                            {run.errorMessage}
                                         </Typography>
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        {renderQueueTiming(run)}
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        <Stack spacing={1}>
-                                            <Typography
-                                                level="body3"
-                                                className="text-muted-foreground"
-                                            >
-                                                Kreirano
-                                            </Typography>
+                                    ) : null}
+
+                                    <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                                        <DetailItem label="Izvor">
+                                            <Stack spacing={1}>
+                                                <Chip size="sm" variant="soft">
+                                                    {sourceLabel(run.source)}
+                                                </Chip>
+                                                <span>
+                                                    {run.sourceEventType ?? '-'}
+                                                </span>
+                                                <Typography
+                                                    level="body3"
+                                                    className="break-all text-muted-foreground"
+                                                >
+                                                    {run.sourceAggregateId ??
+                                                        '-'}
+                                                </Typography>
+                                            </Stack>
+                                        </DetailItem>
+                                        <DetailItem label="Pokušaji">
+                                            {run.attempt} / {run.maxAttempts}
+                                        </DetailItem>
+                                        <QueueTiming run={run} />
+                                        <DetailItem label="Kreirano">
                                             <LocalDateTime>
                                                 {run.createdAt}
                                             </LocalDateTime>
-                                            <Typography
-                                                level="body3"
-                                                className="text-muted-foreground"
-                                            >
-                                                Ažurirano
-                                            </Typography>
+                                        </DetailItem>
+                                        <DetailItem label="Ažurirano">
                                             <LocalDateTime>
                                                 {run.updatedAt}
                                             </LocalDateTime>
-                                            {run.startedAt ? (
-                                                <>
-                                                    <Typography
-                                                        level="body3"
-                                                        className="text-muted-foreground"
-                                                    >
-                                                        Početak
-                                                    </Typography>
-                                                    <LocalDateTime>
-                                                        {run.startedAt}
-                                                    </LocalDateTime>
-                                                </>
-                                            ) : null}
-                                        </Stack>
-                                    </Table.Cell>
-                                </Table.Row>
-                            ))}
-                        </Table.Body>
-                    </Table>
-                </div>
+                                        </DetailItem>
+                                        <DetailItem label="Početak">
+                                            <DateTimeValue
+                                                value={run.startedAt}
+                                            />
+                                        </DetailItem>
+                                    </dl>
+                                </Stack>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+
+                {hasMore ? (
+                    <div className="border-t p-4">
+                        <Button
+                            type="button"
+                            variant="outlined"
+                            color="neutral"
+                            fullWidth
+                            loading={isFetchingNextPage}
+                            onClick={loadMore}
+                        >
+                            Učitaj još
+                        </Button>
+                    </div>
+                ) : null}
             </CardOverflow>
         </Card>
     );

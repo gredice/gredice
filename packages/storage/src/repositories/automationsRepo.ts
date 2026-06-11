@@ -452,6 +452,70 @@ export async function listAutomationRuns(filters?: {
         .limit(filters?.limit ?? defaultRunLimit);
 }
 
+export type AutomationDefinitionRunSummary = {
+    automationDefinitionId: number;
+    latestRun: SelectAutomationRun | null;
+    failedRunsCount: number;
+};
+
+export async function listAutomationDefinitionRunSummaries(
+    automationDefinitionIds: number[],
+): Promise<AutomationDefinitionRunSummary[]> {
+    const definitionIds = [...new Set(automationDefinitionIds)].filter((id) =>
+        Number.isInteger(id),
+    );
+
+    if (definitionIds.length === 0) {
+        return [];
+    }
+
+    const [latestRuns, failedCountRows] = await Promise.all([
+        storage()
+            .selectDistinctOn([automationRuns.automationDefinitionId])
+            .from(automationRuns)
+            .where(
+                inArray(automationRuns.automationDefinitionId, definitionIds),
+            )
+            .orderBy(
+                automationRuns.automationDefinitionId,
+                desc(automationRuns.createdAt),
+                desc(automationRuns.id),
+            ),
+        storage()
+            .select({
+                automationDefinitionId: automationRuns.automationDefinitionId,
+                failedRunsCount: sql<number>`count(*)::int`,
+            })
+            .from(automationRuns)
+            .where(
+                and(
+                    inArray(
+                        automationRuns.automationDefinitionId,
+                        definitionIds,
+                    ),
+                    eq(automationRuns.status, 'failed'),
+                ),
+            )
+            .groupBy(automationRuns.automationDefinitionId),
+    ]);
+    const latestRunsByDefinitionId = new Map(
+        latestRuns.map((run) => [run.automationDefinitionId, run]),
+    );
+    const failedRunsByDefinitionId = new Map(
+        failedCountRows.map((row) => [
+            row.automationDefinitionId,
+            Number(row.failedRunsCount),
+        ]),
+    );
+
+    return definitionIds.map((automationDefinitionId) => ({
+        automationDefinitionId,
+        latestRun: latestRunsByDefinitionId.get(automationDefinitionId) ?? null,
+        failedRunsCount:
+            failedRunsByDefinitionId.get(automationDefinitionId) ?? 0,
+    }));
+}
+
 export async function getAutomationRunById(
     id: number,
 ): Promise<SelectAutomationRun | null> {

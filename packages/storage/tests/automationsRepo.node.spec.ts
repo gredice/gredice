@@ -28,6 +28,7 @@ import {
     getRaisedBed,
     knownEvents,
     knownEventTypes,
+    listAutomationDefinitionRunSummaries,
     listAutomationDefinitions,
     listAutomationRuns,
     listEnabledAutomationDefinitionsForEventType,
@@ -325,6 +326,88 @@ test('automation graph validation waits for all incoming dependencies', () => {
             'queue-seasonal-waterings',
         ],
     );
+});
+
+test('automation definition run summaries are independent per definition', async () => {
+    createTestDb();
+    const firstDefinition = await createAutomationDefinition({
+        key: 'test.summary-first-automation',
+        name: 'Summary first automation',
+        status: 'enabled',
+        graph: seasonalSowedWateringAutomationGraph(),
+    });
+    const secondDefinition = await createAutomationDefinition({
+        key: 'test.summary-second-automation',
+        name: 'Summary second automation',
+        status: 'enabled',
+        graph: seasonalSowedWateringAutomationGraph(),
+    });
+    const firstFailedRun = await createAutomationRun({
+        automationDefinition: firstDefinition,
+        source: 'test',
+        input: { order: 'first-failed' },
+    });
+    assert.ok(firstFailedRun);
+    await completeAutomationRun({
+        id: firstFailedRun.id,
+        status: 'failed',
+        errorMessage: 'Expected test failure.',
+    });
+
+    const firstLatestRun = await createAutomationRun({
+        automationDefinition: firstDefinition,
+        source: 'test',
+        input: { order: 'first-latest' },
+    });
+    assert.ok(firstLatestRun);
+    await completeAutomationRun({
+        id: firstLatestRun.id,
+        status: 'succeeded',
+        output: { ok: true },
+    });
+
+    const secondFailedRun = await createAutomationRun({
+        automationDefinition: secondDefinition,
+        source: 'test',
+        input: { order: 'second-failed' },
+    });
+    assert.ok(secondFailedRun);
+    await completeAutomationRun({
+        id: secondFailedRun.id,
+        status: 'failed',
+        errorMessage: 'Expected second test failure.',
+    });
+
+    const summaries = await listAutomationDefinitionRunSummaries([
+        firstDefinition.id,
+        secondDefinition.id,
+        -1,
+    ]);
+    const summariesByDefinitionId = new Map(
+        summaries.map((summary) => [summary.automationDefinitionId, summary]),
+    );
+
+    assert.strictEqual(
+        summariesByDefinitionId.get(firstDefinition.id)?.latestRun?.id,
+        firstLatestRun.id,
+    );
+    assert.strictEqual(
+        summariesByDefinitionId.get(firstDefinition.id)?.failedRunsCount,
+        1,
+    );
+    assert.strictEqual(
+        summariesByDefinitionId.get(secondDefinition.id)?.latestRun?.id,
+        secondFailedRun.id,
+    );
+    assert.strictEqual(
+        summariesByDefinitionId.get(secondDefinition.id)?.failedRunsCount,
+        1,
+    );
+    assert.deepStrictEqual(summariesByDefinitionId.get(-1), {
+        automationDefinitionId: -1,
+        latestRun: null,
+        failedRunsCount: 0,
+    });
 });
 
 test('automation run claiming respects definition concurrency', async () => {
