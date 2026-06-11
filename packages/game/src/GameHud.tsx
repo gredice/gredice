@@ -10,6 +10,7 @@ import { AudioHud } from './hud/AudioHud';
 import { CameraHud } from './hud/CameraHud';
 import { ControlsTooltipHud } from './hud/ControlsTooltipHud';
 import { DebugHud } from './hud/DebugHud';
+import { GardenVisitSummaryModal } from './hud/GardenVisitSummaryModal';
 import { InventoryHud } from './hud/InventoryHud';
 import { ItemsHud } from './hud/ItemsHud';
 import { OutletHud } from './hud/OutletHud';
@@ -43,6 +44,10 @@ export function GameHud({
     noWeather?: boolean;
 }) {
     const [welcomeConfirmed, setWelcomeConfirmed] = useState(false);
+    const [visitSummaryConfirmation, setVisitSummaryConfirmation] = useState<{
+        confirmed: boolean;
+        gardenId: number | null;
+    }>({ confirmed: false, gardenId: null });
     const isCloseup = useGameState((state) => state.view) === 'closeup';
     const { data: currentGarden } = useCurrentGarden();
     // Sandbox ("play") gardens are decoration only: no economy or inventory.
@@ -54,6 +59,14 @@ export function GameHud({
         'empty:hidden',
         isCloseup && 'hidden md:block',
     );
+    const currentGardenId = currentGarden?.id ?? null;
+    const visitSummaryConfirmed =
+        visitSummaryConfirmation.confirmed &&
+        visitSummaryConfirmation.gardenId === currentGardenId;
+    const visitSummaryEnabled =
+        welcomeConfirmed && !visitSummaryConfirmed && !isSandbox;
+    const openingFlowComplete =
+        welcomeConfirmed && (isSandbox || visitSummaryConfirmed);
 
     return (
         <>
@@ -104,7 +117,16 @@ export function GameHud({
                     <WelcomeMessage
                         onClosed={() => setWelcomeConfirmed(true)}
                     />
-                    <WhatsNewWidget enabled={welcomeConfirmed} />
+                    <GardenVisitSummaryModal
+                        enabled={visitSummaryEnabled}
+                        onClosed={() =>
+                            setVisitSummaryConfirmation({
+                                confirmed: true,
+                                gardenId: currentGardenId,
+                            })
+                        }
+                    />
+                    <WhatsNewWidget enabled={openingFlowComplete} />
                 </>
             )}
             {!isLocalSandbox && <PaymentSuccessfulMessage />}
