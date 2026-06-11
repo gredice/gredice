@@ -15,7 +15,13 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
-import { type ComponentType, useCallback, useEffect, useState } from 'react';
+import {
+    type ComponentType,
+    useCallback,
+    useEffect,
+    useRef,
+    useState,
+} from 'react';
 import type {
     GardenVisitSummaryDisplayItem,
     GardenVisitSummaryFact,
@@ -110,6 +116,7 @@ export function GardenVisitSummaryModal({
     const [dismissedFactsHash, setDismissedFactsHash] = useState<string | null>(
         null,
     );
+    const emptySummarySeenRequestKeyRef = useRef<string | null>(null);
     const currentFactsHash = summary.factsHash ?? null;
     const hasCurrentDismissal =
         currentFactsHash !== null && dismissedFactsHash === currentFactsHash;
@@ -126,6 +133,7 @@ export function GardenVisitSummaryModal({
     useEffect(() => {
         if (!enabled) {
             setDismissedFactsHash(null);
+            emptySummarySeenRequestKeyRef.current = null;
             return;
         }
 
@@ -142,12 +150,42 @@ export function GardenVisitSummaryModal({
             return;
         }
 
-        if (summary.isError || !summary.hasDisplayItems) {
+        if (summary.isError) {
             completeFlow();
+            return;
+        }
+
+        if (!summary.hasDisplayItems) {
+            const requestKey = currentFactsHash ?? 'empty-summary';
+            if (
+                markSeen.isPending ||
+                emptySummarySeenRequestKeyRef.current === requestKey
+            ) {
+                return;
+            }
+
+            emptySummarySeenRequestKeyRef.current = requestKey;
+            markSeen.mutate(
+                { factsHash: currentFactsHash },
+                {
+                    onError: (error) => {
+                        console.error(
+                            'Failed to mark empty garden visit summary seen',
+                            error,
+                        );
+                        completeFlow();
+                    },
+                    onSuccess: () => {
+                        completeFlow();
+                    },
+                },
+            );
         }
     }, [
         completeFlow,
+        currentFactsHash,
         enabled,
+        markSeen,
         summary.canLoadSummary,
         summary.gardenReady,
         summary.hasDisplayItems,
@@ -157,7 +195,10 @@ export function GardenVisitSummaryModal({
     ]);
 
     const handleClose = () => {
-        setDismissedFactsHash(currentFactsHash);
+        if (markSeen.isPending) {
+            return;
+        }
+
         markSeen.mutate(
             { factsHash: currentFactsHash },
             {
@@ -167,7 +208,8 @@ export function GardenVisitSummaryModal({
                         error,
                     );
                 },
-                onSettled: () => {
+                onSuccess: () => {
+                    setDismissedFactsHash(currentFactsHash);
                     completeFlow();
                 },
             },
