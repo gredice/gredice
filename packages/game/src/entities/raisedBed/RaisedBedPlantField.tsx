@@ -173,7 +173,7 @@ export function RaisedBedPlantField({
         visualPlantGeneration,
     ]);
 
-    const seedColor = plantSowDate ? 'black' : '#6495ED';
+    const seedColor = plantSowDate ? '#4b3223' : '#6495ED';
     const seedOpacityToMax = useSpring({
         from: { opacity: 1 },
         to: [{ opacity: 0.5 }, { opacity: 1 }],
@@ -181,6 +181,7 @@ export function RaisedBedPlantField({
         loop: true,
         cancel: Boolean(plantSowDate),
     });
+    const seedOpacity = plantSowDate ? 0.72 : seedOpacityToMax.opacity;
 
     // TODO: Move to seed block/part
     const { nodes } = useGameGLTF('Seed');
@@ -223,8 +224,9 @@ export function RaisedBedPlantField({
                             >
                                 <animated.meshStandardMaterial
                                     color={seedColor}
+                                    opacity={seedOpacity}
+                                    roughness={0.95}
                                     transparent
-                                    {...seedOpacityToMax}
                                 />
                             </mesh>
                         );
