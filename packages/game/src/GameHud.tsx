@@ -69,20 +69,28 @@ export function GameHud({
         isCloseup && 'hidden md:block',
     );
     const currentGardenId = currentGarden?.id ?? null;
+    const raisedBedOnboardingChecklistEnabled = Boolean(
+        flags?.enableRaisedBedOnboardingChecklistFlag,
+    );
     const visitSummaryConfirmed =
         visitSummaryConfirmation.confirmed &&
         visitSummaryConfirmation.gardenId === currentGardenId;
-    const raisedBedOnboardingResolved =
-        raisedBedOnboardingConfirmation.confirmed &&
-        raisedBedOnboardingConfirmation.gardenId === currentGardenId;
+    const raisedBedOnboardingChecklistResolved =
+        !raisedBedOnboardingChecklistEnabled ||
+        (raisedBedOnboardingConfirmation.confirmed &&
+            raisedBedOnboardingConfirmation.gardenId === currentGardenId);
     const visitSummaryEnabled =
         welcomeConfirmed && !visitSummaryConfirmed && !isSandbox;
     const visitSummaryStageComplete =
         welcomeConfirmed && (isSandbox || visitSummaryConfirmed);
     const raisedBedOnboardingEnabled =
-        visitSummaryStageComplete && !raisedBedOnboardingResolved && !isSandbox;
+        raisedBedOnboardingChecklistEnabled &&
+        visitSummaryStageComplete &&
+        !raisedBedOnboardingChecklistResolved &&
+        !isSandbox;
     const openingFlowComplete =
-        visitSummaryStageComplete && (isSandbox || raisedBedOnboardingResolved);
+        visitSummaryStageComplete &&
+        (isSandbox || raisedBedOnboardingChecklistResolved);
 
     return (
         <>

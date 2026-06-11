@@ -60,3 +60,10 @@ export const plantHistoryFlag = flag<boolean>({
     decide: () => true,
     options: booleanOptions,
 });
+
+export const raisedBedOnboardingChecklistFlag = flag<boolean>({
+    key: 'raisedBedOnboardingChecklist',
+    description: 'Enable the first raised-bed onboarding checklist.',
+    decide: () => false,
+    options: booleanOptions,
+});
