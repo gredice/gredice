@@ -846,8 +846,15 @@ function RaisedBedHoverOutlines({
     stacks: Stack[] | undefined;
 }) {
     const hoveredBlock = useHoveredBlockStore((state) => state.hoveredBlock);
+    const hasActiveDragPreview = useGameState((state) =>
+        Boolean(state.activeDragPreview),
+    );
 
-    if (hoveredBlock?.name !== 'Raised_Bed' || !stacks) {
+    if (
+        hasActiveDragPreview ||
+        hoveredBlock?.name !== 'Raised_Bed' ||
+        !stacks
+    ) {
         return null;
     }
 
@@ -1254,6 +1261,9 @@ function GardenBoxHoverOutlines({
     openGardenBoxBlockId: string | null;
 }) {
     const hoveredBlock = useHoveredBlockStore((state) => state.hoveredBlock);
+    const hasActiveDragPreview = useGameState((state) =>
+        Boolean(state.activeDragPreview),
+    );
     const isLocalSandbox = useGameState(
         (state) => state.localSandboxStorageKey !== null,
     );
@@ -1267,7 +1277,9 @@ function GardenBoxHoverOutlines({
         const lidOpen =
             hoveredGardenBoxBlockId === instance.block.id ||
             openGardenBoxBlockId === instance.block.id;
-        const hovered = hoveredBlock === instance.block || lidOpen;
+        const hovered =
+            (!hasActiveDragPreview && hoveredBlock === instance.block) ||
+            lidOpen;
 
         if (!hovered) {
             return null;
@@ -1769,6 +1781,9 @@ function GiftBoxHoverOutlines({
     stacks: Stack[] | undefined;
 }) {
     const hoveredBlock = useHoveredBlockStore((state) => state.hoveredBlock);
+    const hasActiveDragPreview = useGameState((state) =>
+        Boolean(state.activeDragPreview),
+    );
     const instances = useEntityBlockInstances({
         name,
         stacks,
@@ -1776,7 +1791,7 @@ function GiftBoxHoverOutlines({
     });
 
     return instances?.map((instance) => {
-        if (hoveredBlock !== instance.block) {
+        if (hasActiveDragPreview || hoveredBlock !== instance.block) {
             return null;
         }
 

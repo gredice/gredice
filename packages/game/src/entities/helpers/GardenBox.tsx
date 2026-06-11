@@ -39,6 +39,8 @@ export function GardenBox({ stack, block, rotation }: EntityInstanceProps) {
         !isLocalSandbox &&
         (hoveredGardenBoxBlockId === block.id ||
             openGardenBoxBlockId === block.id);
+    const showHoverOutline =
+        !isLocalSandbox && ((!hasActiveDragPreview && hovered) || isLidOpen);
     const { rotation: lidRotation } = useSpring({
         config: {
             mass: 0.18,
@@ -55,11 +57,7 @@ export function GardenBox({ stack, block, rotation }: EntityInstanceProps) {
     });
 
     return (
-        <HoverOutline
-            hovered={!isLocalSandbox && (hovered || isLidOpen)}
-            thickness={7}
-            color="#f8fafc"
-        >
+        <HoverOutline hovered={showHoverOutline} thickness={7} color="#f8fafc">
             <animated.group
                 onClick={handleClick}
                 position={stack.position.clone().setY(currentStackHeight)}
