@@ -663,6 +663,23 @@
             "objects": ["Shovel Small"]
         },
         {
+            "name": "GardenScissors",
+            "source": "GardenScissors.blend",
+            "output": "GardenScissors.glb",
+            "preload": "lazy",
+            "objects": [
+                "GardenScissors_Blade_L",
+                "GardenScissors_Blade_R",
+                "GardenScissors_Tang_L",
+                "GardenScissors_Tang_R",
+                "GardenScissors_Handle_L",
+                "GardenScissors_Handle_R",
+                "GardenScissors_Pivot",
+                "GardenScissors_Pivot_Cap",
+                "GardenScissors_Pivot_Slot"
+            ]
+        },
+        {
             "name": "Snowman",
             "source": "Snowman.blend",
             "output": "Snowman.glb",

@@ -320,6 +320,15 @@ export type GLTFResult = GLTF & {
         Shade_Solo: THREE.Mesh;
         Shade_W: THREE.Mesh;
         Shovel_Small: THREE.Mesh;
+        GardenScissors_Blade_L: THREE.Mesh;
+        GardenScissors_Blade_R: THREE.Mesh;
+        GardenScissors_Tang_L: THREE.Mesh;
+        GardenScissors_Tang_R: THREE.Mesh;
+        GardenScissors_Handle_L: THREE.Mesh;
+        GardenScissors_Handle_R: THREE.Mesh;
+        GardenScissors_Pivot: THREE.Mesh;
+        GardenScissors_Pivot_Cap: THREE.Mesh;
+        GardenScissors_Pivot_Slot: THREE.Mesh;
         Snowman: THREE.Mesh;
         Stone_Medium: THREE.Mesh;
         Stone_Large: THREE.Mesh;
@@ -509,6 +518,11 @@ export type GLTFResult = GLTF & {
         'Material.GardenFlower.Leaf': THREE.MeshStandardMaterial;
         'Material.GardenFlower.PetalGradient': THREE.MeshStandardMaterial;
         'Material.GardenFlower.Stem': THREE.MeshStandardMaterial;
+        'Material.GardenScissors.DarkMetal': THREE.MeshStandardMaterial;
+        'Material.GardenScissors.HandleGreen': THREE.MeshStandardMaterial;
+        'Material.GardenScissors.PivotBrass': THREE.MeshStandardMaterial;
+        'Material.GardenScissors.Steel': THREE.MeshStandardMaterial;
+        'Material.GardenScissors.SteelEdge': THREE.MeshStandardMaterial;
         'Material.Grass': THREE.MeshStandardMaterial;
         'Material.Grass.001': THREE.MeshStandardMaterial;
         'Material.GrassPart': THREE.MeshStandardMaterial;
