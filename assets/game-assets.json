@@ -597,6 +597,24 @@
             ]
         },
         {
+            "name": "CameraPhone",
+            "source": "CameraPhone.blend",
+            "output": "CameraPhone.glb",
+            "preload": "lazy",
+            "objects": [
+                "CameraPhone_Body",
+                "CameraPhone_Edge_Highlight",
+                "CameraPhone_Screen",
+                "CameraPhone_Button",
+                "CameraPhone_Photo_Frame",
+                "CameraPhone_Photo_Sky",
+                "CameraPhone_Photo_Soil",
+                "CameraPhone_Photo_Stem",
+                "CameraPhone_Photo_Leaf_L",
+                "CameraPhone_Photo_Leaf_R"
+            ]
+        },
+        {
             "name": "WaterWell",
             "source": "WaterWell.blend",
             "output": "WaterWell.glb",
