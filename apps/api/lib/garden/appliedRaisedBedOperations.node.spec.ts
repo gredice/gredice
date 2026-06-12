@@ -49,6 +49,68 @@ describe('isAppliedOperationCurrentForRaisedBedFields', () => {
         );
     });
 
+    it('drops field operations before the active plant sowing date', () => {
+        assert.equal(
+            isAppliedOperationCurrentForRaisedBedFields(
+                {
+                    raisedBedFieldId: 10,
+                    createdAt: new Date('2026-06-01T08:00:00.000Z'),
+                    completedAt: new Date('2026-06-01T09:00:00.000Z'),
+                },
+                [
+                    {
+                        id: 10,
+                        active: true,
+                        plantSowDate: new Date('2026-06-02T08:00:00.000Z'),
+                        plantCycles: [
+                            {
+                                active: true,
+                                plantSowDate: new Date(
+                                    '2026-06-02T08:00:00.000Z',
+                                ),
+                                startedAt: new Date(
+                                    '2026-05-01T08:00:00.000Z',
+                                ),
+                            },
+                        ],
+                    },
+                ],
+            ),
+            false,
+        );
+    });
+
+    it('keeps field operations after the active plant sowing date', () => {
+        assert.equal(
+            isAppliedOperationCurrentForRaisedBedFields(
+                {
+                    raisedBedFieldId: 10,
+                    createdAt: new Date('2026-06-02T08:10:00.000Z'),
+                    completedAt: new Date('2026-06-02T09:00:00.000Z'),
+                },
+                [
+                    {
+                        id: 10,
+                        active: true,
+                        plantSowDate: new Date('2026-06-02T08:00:00.000Z'),
+                        plantCycles: [
+                            {
+                                active: true,
+                                plantSowDate: new Date(
+                                    '2026-06-02T08:00:00.000Z',
+                                ),
+                                startedAt: new Date(
+                                    '2026-05-01T08:00:00.000Z',
+                                ),
+                            },
+                        ],
+                    },
+                ],
+            ),
+            true,
+        );
+    });
+
     it('keeps field operations applied during the active plant cycle', () => {
         assert.equal(
             isAppliedOperationCurrentForRaisedBedFields(

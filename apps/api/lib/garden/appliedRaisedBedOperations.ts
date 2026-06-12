@@ -18,8 +18,10 @@ export type SerializableAppliedRaisedBedOperation =
 export type AppliedRaisedBedField = {
     id: number;
     active?: boolean | null;
+    plantSowDate?: TimestampValue;
     plantCycles?: Array<{
         active?: boolean | null;
+        plantSowDate?: TimestampValue;
         startedAt?: TimestampValue;
     }> | null;
 };
@@ -55,12 +57,17 @@ function requiredTimestampIso(value: TimestampValue, fieldName: string) {
     return isoValue;
 }
 
-function activePlantCycleStartMs(field: AppliedRaisedBedField) {
+function activePlantRewardBoundaryMs(field: AppliedRaisedBedField) {
     const activePlantCycle = field.plantCycles?.find(
         (plantCycle) => plantCycle.active,
     );
+    const timestamps = [
+        timestampMs(activePlantCycle?.startedAt),
+        timestampMs(activePlantCycle?.plantSowDate),
+        timestampMs(field.plantSowDate),
+    ].filter((value): value is number => value != null);
 
-    return timestampMs(activePlantCycle?.startedAt);
+    return timestamps.length > 0 ? Math.max(...timestamps) : null;
 }
 
 export function isAppliedOperationCurrentForRaisedBedFields(
@@ -79,8 +86,8 @@ export function isAppliedOperationCurrentForRaisedBedFields(
         return false;
     }
 
-    const cycleStartMs = activePlantCycleStartMs(field);
-    if (cycleStartMs == null) {
+    const rewardBoundaryMs = activePlantRewardBoundaryMs(field);
+    if (rewardBoundaryMs == null) {
         return true;
     }
 
@@ -91,7 +98,7 @@ export function isAppliedOperationCurrentForRaisedBedFields(
         return true;
     }
 
-    return appliedAtMs >= cycleStartMs;
+    return appliedAtMs >= rewardBoundaryMs;
 }
 
 export function serializeAppliedRaisedBedOperation(

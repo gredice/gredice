@@ -153,6 +153,82 @@ test('raised-bed support reward is removed from replacement plants', () => {
     );
 });
 
+test('raised-bed support reward is removed when sowing happens after placement', () => {
+    const visualRewards = resolveOperationVisualRewards({
+        appliedOperations: [
+            applied(181, {
+                completedAt: '2026-06-01T08:00:00.000Z',
+                entityId: 1,
+                raisedBedId: 10,
+            }),
+        ],
+        operations,
+    });
+
+    assert.deepStrictEqual(
+        resolveRaisedBedSupportPositions({
+            blockOffset: 9,
+            fields: [
+                {
+                    active: true,
+                    id: 50,
+                    plantCycles: [
+                        {
+                            active: true,
+                            plantSowDate: '2026-06-02T08:00:00.000Z',
+                            startedAt: '2026-05-01T08:00:00.000Z',
+                        },
+                    ],
+                    plantSowDate: '2026-06-02T08:00:00.000Z',
+                    plantSortId: 337,
+                    positionIndex: 9,
+                },
+            ],
+            raisedBedId: 10,
+            visualRewards,
+        }),
+        [],
+    );
+});
+
+test('raised-bed support reward stays visible after actual sowing date', () => {
+    const visualRewards = resolveOperationVisualRewards({
+        appliedOperations: [
+            applied(182, {
+                completedAt: '2026-06-03T08:00:00.000Z',
+                entityId: 1,
+                raisedBedId: 10,
+            }),
+        ],
+        operations,
+    });
+
+    assert.deepStrictEqual(
+        resolveRaisedBedSupportPositions({
+            blockOffset: 9,
+            fields: [
+                {
+                    active: true,
+                    id: 50,
+                    plantCycles: [
+                        {
+                            active: true,
+                            plantSowDate: '2026-06-02T08:00:00.000Z',
+                            startedAt: '2026-05-01T08:00:00.000Z',
+                        },
+                    ],
+                    plantSowDate: '2026-06-02T08:00:00.000Z',
+                    plantSortId: 337,
+                    positionIndex: 9,
+                },
+            ],
+            raisedBedId: 10,
+            visualRewards,
+        }),
+        [0],
+    );
+});
+
 test('field support reward marks only the matching planted field', () => {
     const visualRewards = resolveOperationVisualRewards({
         appliedOperations: [
@@ -210,6 +286,45 @@ test('field support reward is removed when the field changes plant', () => {
                             startedAt: '2026-06-02T08:00:00.000Z',
                         },
                     ],
+                    plantSortId: 337,
+                    positionIndex: 10,
+                },
+            ],
+            raisedBedId: 10,
+            visualRewards,
+        }),
+        [],
+    );
+});
+
+test('field support reward is removed when sowing happens after placement', () => {
+    const visualRewards = resolveOperationVisualRewards({
+        appliedOperations: [
+            applied(252, {
+                completedAt: '2026-06-01T08:00:00.000Z',
+                entityId: 2,
+                raisedBedFieldId: 51,
+                raisedBedId: 10,
+            }),
+        ],
+        operations,
+    });
+
+    assert.deepStrictEqual(
+        resolveRaisedBedSupportPositions({
+            blockOffset: 9,
+            fields: [
+                {
+                    active: true,
+                    id: 51,
+                    plantCycles: [
+                        {
+                            active: true,
+                            plantSowDate: '2026-06-02T08:00:00.000Z',
+                            startedAt: '2026-05-01T08:00:00.000Z',
+                        },
+                    ],
+                    plantSowDate: '2026-06-02T08:00:00.000Z',
                     plantSortId: 337,
                     positionIndex: 10,
                 },
