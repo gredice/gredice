@@ -7,7 +7,7 @@ import {
     GoogleLoginButton,
     useLastLoginProvider,
 } from '@gredice/ui/auth';
-import { Divider } from '@gredice/ui/Divider';
+import { Button } from '@gredice/ui/Button';
 import { Modal } from '@gredice/ui/Modal';
 import { Stack } from '@gredice/ui/Stack';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
@@ -18,11 +18,15 @@ import { useCallback, useState } from 'react';
 import { EmailPasswordForm } from './EmailPasswordForm';
 import LoginBanner from './LoginBanner';
 
+type AuthTab = 'login' | 'register';
+
 export default function LoginModal() {
     const posthog = usePostHog();
     const router = useRouter();
     const queryClient = useQueryClient();
     const [error, setError] = useState<string>();
+    const [activeTab, setActiveTab] = useState<AuthTab>('login');
+    const [emailExpanded, setEmailExpanded] = useState(false);
     const fetchLastLogin = useCallback(
         () => clientPublic().api.auth['last-login'].$get(),
         [],
@@ -145,6 +149,17 @@ export default function LoginModal() {
         window.location.href = authUrl.toString();
     };
 
+    const handleTabChange = (value: string) => {
+        if (value === 'login' || value === 'register') {
+            setActiveTab(value);
+            setEmailExpanded(false);
+            setError(undefined);
+        }
+    };
+
+    const emailButtonLabel =
+        activeTab === 'login' ? 'Prijava emailom' : 'Registracija emailom';
+
     return (
         <>
             <LoginBanner />
@@ -154,7 +169,11 @@ export default function LoginModal() {
                 className="bg-card z-[60] border-tertiary border-b-4 rounded-lg shadow-2xl"
                 dismissible={false}
             >
-                <Tabs defaultValue="login" className="w-full">
+                <Tabs
+                    value={activeTab}
+                    onValueChange={handleTabChange}
+                    className="w-full"
+                >
                     <div className="flex justify-center w-full">
                         <TabsList className="grid grid-cols-2">
                             <TabsTrigger value="login">Prijava</TabsTrigger>
@@ -163,54 +182,73 @@ export default function LoginModal() {
                             </TabsTrigger>
                         </TabsList>
                     </div>
-                    <Stack spacing={4}>
-                        <Stack spacing={2}>
-                            <FacebookLoginButton
-                                onClick={() => handleOAuthLogin('facebook')}
-                                lastUsed={lastLoginProvider === 'facebook'}
-                            />
-                            <GoogleLoginButton
-                                onClick={() => handleOAuthLogin('google')}
-                                lastUsed={lastLoginProvider === 'google'}
-                            />
-                        </Stack>
-                        <div className="relative">
-                            <div className="absolute inset-0 flex items-center">
-                                <Divider />
-                            </div>
-                            <div className="relative flex justify-center">
-                                <span className="bg-background px-2 text-xs rounded-xs">
-                                    ili nastavi emailom
-                                </span>
-                            </div>
-                        </div>
-                        <TabsContent value="login">
-                            <div className="px-1">
-                                <Stack spacing={4}>
-                                    <EmailPasswordForm
-                                        onSubmit={handleLogin}
-                                        submitText="Prijava"
+                    <Stack spacing={4} className="mt-4">
+                        {!emailExpanded && (
+                            <>
+                                <Stack spacing={2}>
+                                    <GoogleLoginButton
+                                        onClick={() =>
+                                            handleOAuthLogin('google')
+                                        }
+                                        lastUsed={
+                                            lastLoginProvider === 'google'
+                                        }
                                     />
-                                    {error && (
-                                        <Alert color="danger">{error}</Alert>
-                                    )}
-                                </Stack>
-                            </div>
-                        </TabsContent>
-                        <TabsContent value="register">
-                            <div className="px-1">
-                                <Stack spacing={4}>
-                                    <EmailPasswordForm
-                                        onSubmit={handleRegister}
-                                        submitText="Registriraj se"
-                                        registration
+                                    <FacebookLoginButton
+                                        onClick={() =>
+                                            handleOAuthLogin('facebook')
+                                        }
+                                        lastUsed={
+                                            lastLoginProvider === 'facebook'
+                                        }
                                     />
-                                    {error && (
-                                        <Alert color="danger">{error}</Alert>
-                                    )}
                                 </Stack>
-                            </div>
-                        </TabsContent>
+                                <Button
+                                    type="button"
+                                    variant="outlined"
+                                    color="neutral"
+                                    fullWidth
+                                    onClick={() => setEmailExpanded(true)}
+                                >
+                                    {emailButtonLabel}
+                                </Button>
+                            </>
+                        )}
+                        {emailExpanded && (
+                            <>
+                                <TabsContent value="login" className="mt-0">
+                                    <div className="px-1">
+                                        <Stack spacing={4}>
+                                            <EmailPasswordForm
+                                                onSubmit={handleLogin}
+                                                submitText="Prijava"
+                                            />
+                                            {error && (
+                                                <Alert color="danger">
+                                                    {error}
+                                                </Alert>
+                                            )}
+                                        </Stack>
+                                    </div>
+                                </TabsContent>
+                                <TabsContent value="register" className="mt-0">
+                                    <div className="px-1">
+                                        <Stack spacing={4}>
+                                            <EmailPasswordForm
+                                                onSubmit={handleRegister}
+                                                submitText="Registriraj se"
+                                                registration
+                                            />
+                                            {error && (
+                                                <Alert color="danger">
+                                                    {error}
+                                                </Alert>
+                                            )}
+                                        </Stack>
+                                    </div>
+                                </TabsContent>
+                            </>
+                        )}
                     </Stack>
                 </Tabs>
             </Modal>
