@@ -327,6 +327,48 @@ export const cuttingOperationCoverRecipes = [
         ],
         showBackground: false,
     },
+    {
+        operationId: 'maintenance-pruning',
+        operationLabel: 'Održavajuća rezidba',
+        outputFileName: 'maintenance-pruning.webp',
+        camera: {
+            position: [2.5, 2.1, 4.8],
+            target: [0.43, 0.3, 0.45],
+            zoom: 142,
+        },
+        plants: [
+            {
+                id: 'plant',
+                plantType: 'lettuce',
+                generation: 8,
+                seed: 'operation-cover-maintenance-pruning',
+                position: [0.38, 0.05, 0.45],
+                scale: 0.94,
+                showFlowers: false,
+                showProduce: false,
+            },
+            {
+                id: 'crossed-inner-shoot',
+                plantType: 'basil',
+                generation: 6,
+                seed: 'operation-cover-maintenance-crossed-shoot',
+                position: [0.53, 0.15, 0.41],
+                rotation: [0, 1.25, 0.2],
+                scale: 0.56,
+                showFlowers: false,
+                showProduce: false,
+            },
+        ],
+        assets: [
+            {
+                assetName: 'GardenScissors',
+                position: [0.54, 0.32, 0.42],
+                rotation: [0.06, -0.7, -0.88],
+                scale: 0.21,
+            },
+        ],
+        showBackground: false,
+    },
 ] satisfies readonly OperationCoverRecipe[];
 
 export const operationCoverRecipes = [
