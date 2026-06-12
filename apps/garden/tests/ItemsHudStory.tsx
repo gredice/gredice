@@ -6,6 +6,7 @@ import {
     gameHudBottomBarClassName,
     gameHudBottomControlsClassName,
 } from '../../../packages/game/src/GameHud';
+import { currentAccountKeys } from '../../../packages/game/src/hooks/useCurrentAccount';
 import { ControlsTooltipHud } from '../../../packages/game/src/hud/ControlsTooltipHud';
 import { ItemsHud } from '../../../packages/game/src/hud/ItemsHud';
 import { SandboxBlockTrashDropTarget } from '../../../packages/game/src/hud/SandboxBlockTrashDropTarget';
@@ -118,12 +119,14 @@ const blockNames = [
 ];
 
 type ItemsHudStoryOptions = {
+    accountSunflowers?: number;
     isSandbox?: boolean;
     pickupBlock?: boolean;
     trashTargetActive?: boolean;
 };
 
 function createItemsHudQueryClient({
+    accountSunflowers = 50,
     isSandbox = false,
 }: ItemsHudStoryOptions) {
     const queryClient = new ReactQuery.QueryClient({
@@ -134,6 +137,13 @@ function createItemsHudQueryClient({
 
     queryClient.setQueryData(['blocks'], blockNames.map(createBlockData));
     queryClient.setQueryData(['currentUser'], { id: 'test-user' });
+    queryClient.setQueryData(currentAccountKeys, {
+        id: 'test-account',
+        sunflowers: {
+            amount: accountSunflowers,
+            history: [],
+        },
+    });
     queryClient.setQueryData(['gardens'], [{ id: 1, isSandbox }]);
     queryClient.setQueryData(['gardens', 'current', 'summer', 1], {
         id: 1,
@@ -150,13 +160,14 @@ function createItemsHudQueryClient({
 
 function ItemsHudTestProviders({
     children,
+    accountSunflowers,
     isSandbox = false,
     pickupBlock = false,
     trashTargetActive = false,
 }: PropsWithChildren<ItemsHudStoryOptions>) {
     const queryClient = useMemo(
-        () => createItemsHudQueryClient({ isSandbox }),
-        [isSandbox],
+        () => createItemsHudQueryClient({ accountSunflowers, isSandbox }),
+        [accountSunflowers, isSandbox],
     );
     const gameStore = useMemo(() => {
         const store = createGameState({
@@ -192,6 +203,27 @@ function ItemsHudTestProviders({
 export function ItemsHudAlignmentStory() {
     return (
         <ItemsHudTestProviders>
+            <div className="relative h-screen w-screen overflow-hidden">
+                <div
+                    data-testid="bottom-hud"
+                    className={gameHudBottomBarClassName}
+                >
+                    <div
+                        data-testid="bottom-controls"
+                        className={gameHudBottomControlsClassName}
+                    >
+                        <div className="h-10 w-40 rounded-lg border bg-muted" />
+                    </div>
+                    <ItemsHud />
+                </div>
+            </div>
+        </ItemsHudTestProviders>
+    );
+}
+
+export function LowSunflowerBalanceItemsHudStory() {
+    return (
+        <ItemsHudTestProviders accountSunflowers={20}>
             <div className="relative h-screen w-screen overflow-hidden">
                 <div
                     data-testid="bottom-hud"

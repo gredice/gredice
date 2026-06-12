@@ -15,6 +15,7 @@ import Image from 'next/image';
 import { useMemo, useState } from 'react';
 import { useBlockData } from '../hooks/useBlockData';
 import { useBlockPlace } from '../hooks/useBlockPlace';
+import { useCurrentAccount } from '../hooks/useCurrentAccount';
 import { useIsSandboxGarden } from '../hooks/useCurrentGarden';
 import { KnownPages } from '../knownPages';
 import { useGameState } from '../useGameState';
@@ -286,17 +287,25 @@ function PlaceEntityButton({
     const { data: blockData } = useBlockData();
     const placeBlock = useBlockPlace();
     const timeOfDay = useGameState((state) => state.timeOfDay);
+    const { data: account, isLoading: isAccountLoading } = useCurrentAccount();
     // Sandbox ("play") gardens build for free — every block is placeable
     // regardless of price or night-only availability.
     const isSandbox = useIsSandboxGarden();
 
     const block = blockData?.find((block) => block.information.name === name);
     if (!block) return null;
-    const hasSunflowerPrice = Boolean(block.prices.sunflowers);
+    const sunflowerPrice = block.prices.sunflowers ?? 0;
+    const hasSunflowerPrice = sunflowerPrice > 0;
     const isAvailableNow =
         isSandbox ||
         !isNightOnlyBlockPurchase(block) ||
         isNightTimeOfDay(timeOfDay);
+    const accountSunflowers = account?.sunflowers.amount;
+    const hasEnoughSunflowers =
+        isSandbox ||
+        !hasSunflowerPrice ||
+        (typeof accountSunflowers === 'number' &&
+            accountSunflowers >= sunflowerPrice);
     const isPlaceable = isSandbox || hasSunflowerPrice;
 
     function placeEntity() {
@@ -316,6 +325,12 @@ function PlaceEntityButton({
         placeBlock.error instanceof Error ? placeBlock.error.message : null;
     const availabilityMessage =
         !isAvailableNow && hasSunflowerPrice ? 'Dostupno samo noću.' : null;
+    const insufficientSunflowersMessage =
+        !hasEnoughSunflowers &&
+        !isAccountLoading &&
+        typeof accountSunflowers === 'number'
+            ? 'Nedovoljno suncokreta.'
+            : null;
 
     return (
         <Stack spacing={1}>
@@ -327,19 +342,21 @@ function PlaceEntityButton({
                 onClick={placeEntity}
                 size={simple ? 'sm' : 'md'}
                 variant="soft"
-                disabled={!isPlaceable || !isAvailableNow}
+                disabled={
+                    !isPlaceable || !isAvailableNow || !hasEnoughSunflowers
+                }
                 endDecorator={
                     <Row
                         className={cx(
                             !simple &&
                                 'rounded-full p-1 gap border border-primary/15 bg-primary/15 text-primary w-fit pr-2',
-                            !isSandbox && !block.prices.sunflowers && 'pl-2',
+                            !isSandbox && !sunflowerPrice && 'pl-2',
                         )}
                     >
                         {isSandbox
                             ? '🌻 0'
                             : hasSunflowerPrice && isAvailableNow
-                              ? `🌻 ${block.prices.sunflowers}`
+                              ? `🌻 ${sunflowerPrice}`
                               : availabilityMessage
                                 ? 'Noću'
                                 : 'Nedostupno'}
@@ -351,6 +368,11 @@ function PlaceEntityButton({
             {availabilityMessage && !simple && (
                 <Typography level="body3" className="text-muted-foreground">
                     {availabilityMessage}
+                </Typography>
+            )}
+            {insufficientSunflowersMessage && !simple && (
+                <Typography level="body3" className="text-muted-foreground">
+                    {insufficientSunflowersMessage}
                 </Typography>
             )}
             {errorMessage && (

@@ -11,11 +11,18 @@ import {
     replaceOptimisticBlockId,
 } from './optimisticBlockPlacement';
 import { useBlockData } from './useBlockData';
-import { currentAccountKeys } from './useCurrentAccount';
+import {
+    currentAccountKeys,
+    type useCurrentAccount,
+} from './useCurrentAccount';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
 
 const mutationKey = ['gardens', 'current', 'blockPlace'];
 const optimisticBlockIdPrefix = 'optimistic-block';
+
+type CurrentAccountData = NonNullable<
+    ReturnType<typeof useCurrentAccount>['data']
+>;
 
 type CurrentGardenData = NonNullable<
     ReturnType<typeof useCurrentGarden>['data']
@@ -55,6 +62,31 @@ function createOptimisticBlockId(blockName: string) {
     const timestamp = Date.now().toString(36);
     const randomSuffix = Math.random().toString(36).slice(2);
     return `${optimisticBlockIdPrefix}:${blockName}:${timestamp}:${randomSuffix}`;
+}
+
+function updateCurrentAccountSunflowers(
+    currentAccount: CurrentAccountData | null | undefined,
+    amountDelta: number,
+) {
+    if (!currentAccount) {
+        return currentAccount;
+    }
+
+    const nextAmount = Math.max(
+        0,
+        currentAccount.sunflowers.amount + amountDelta,
+    );
+    if (nextAmount === currentAccount.sunflowers.amount) {
+        return currentAccount;
+    }
+
+    return {
+        ...currentAccount,
+        sunflowers: {
+            ...currentAccount.sunflowers,
+            amount: nextAmount,
+        },
+    };
 }
 
 async function runQueuedPlacement<T>(
@@ -150,6 +182,9 @@ export function useBlockPlace() {
                     await queryClient.cancelQueries({
                         queryKey: gardenQueryKey,
                     });
+                    await queryClient.cancelQueries({
+                        queryKey: currentAccountKeys,
+                    });
                     const currentGarden =
                         queryClient.getQueryData<CurrentGardenData>(
                             gardenQueryKey,
@@ -205,10 +240,19 @@ export function useBlockPlace() {
                             kind: 'sunflowers',
                             amount,
                         });
+                        queryClient.setQueryData<CurrentAccountData | null>(
+                            currentAccountKeys,
+                            (currentAccount) =>
+                                updateCurrentAccountSunflowers(
+                                    currentAccount,
+                                    -amount,
+                                ),
+                        );
                     }
 
                     return {
                         optimisticBlockId,
+                        sunflowerAmount: amount,
                     };
                 },
             );
@@ -244,16 +288,26 @@ export function useBlockPlace() {
                             : currentGarden,
                 );
             }
+            if (context?.sunflowerAmount) {
+                queryClient.setQueryData<CurrentAccountData | null>(
+                    currentAccountKeys,
+                    (currentAccount) =>
+                        updateCurrentAccountSunflowers(
+                            currentAccount,
+                            context.sunflowerAmount,
+                        ),
+                );
+            }
         },
         onSettled: async () => {
             if (localSandboxStorageKey) {
                 return;
             }
 
-            await queryClient.invalidateQueries({
-                queryKey: currentAccountKeys,
-            });
             if (queryClient.isMutating({ mutationKey }) === 1) {
+                await queryClient.invalidateQueries({
+                    queryKey: currentAccountKeys,
+                });
                 await queryClient.invalidateQueries({
                     queryKey: gardenQueryKey,
                 });
