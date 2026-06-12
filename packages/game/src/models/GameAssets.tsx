@@ -309,11 +309,11 @@ export type GLTFResult = GLTF & {
         FarmSupplyKit_Crate_Right: THREE.Mesh;
         FarmSupplyKit_Crate_Rim_Front: THREE.Mesh;
         FarmSupplyKit_Crate_Rim_Back: THREE.Mesh;
+        FarmSupplyKit_Crate_Handle_Left: THREE.Mesh;
+        FarmSupplyKit_Crate_Handle_Right: THREE.Mesh;
         FarmSupplyKit_Sack_Left: THREE.Mesh;
-        FarmSupplyKit_Sack_Left_Fold: THREE.Mesh;
         FarmSupplyKit_Sack_Left_Label: THREE.Mesh;
         FarmSupplyKit_Sack_Right: THREE.Mesh;
-        FarmSupplyKit_Sack_Right_Fold: THREE.Mesh;
         FarmSupplyKit_Sack_Right_Label: THREE.Mesh;
         FarmSupplyKit_Scoop_Bowl: THREE.Mesh;
         FarmSupplyKit_Scoop_Handle: THREE.Mesh;
@@ -569,10 +569,10 @@ export type GLTFResult = GLTF & {
         'Material.DogHouse.RedWood': THREE.MeshStandardMaterial;
         'Material.DogHouse.WarmTrim': THREE.MeshStandardMaterial;
         'Material.FarmSupplyKit.GranuleGold': THREE.MeshStandardMaterial;
+        'Material.FarmSupplyKit.HandleShadow': THREE.MeshStandardMaterial;
         'Material.FarmSupplyKit.LabelCream': THREE.MeshStandardMaterial;
         'Material.FarmSupplyKit.LabelGreen': THREE.MeshStandardMaterial;
         'Material.FarmSupplyKit.Sack': THREE.MeshStandardMaterial;
-        'Material.FarmSupplyKit.SackFold': THREE.MeshStandardMaterial;
         'Material.FarmSupplyKit.ScoopHandle': THREE.MeshStandardMaterial;
         'Material.FarmSupplyKit.ScoopMetal': THREE.MeshStandardMaterial;
         'Material.FarmSupplyKit.Wood': THREE.MeshStandardMaterial;
