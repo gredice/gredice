@@ -8,6 +8,7 @@ import {
     useLastLoginProvider,
 } from '@gredice/ui/auth';
 import { Button } from '@gredice/ui/Button';
+import { Mail } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
 import { Stack } from '@gredice/ui/Stack';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
@@ -184,35 +185,28 @@ export default function LoginModal() {
                     </div>
                     <Stack spacing={4} className="mt-4">
                         {!emailExpanded && (
-                            <>
-                                <Stack spacing={2}>
-                                    <GoogleLoginButton
-                                        onClick={() =>
-                                            handleOAuthLogin('google')
-                                        }
-                                        lastUsed={
-                                            lastLoginProvider === 'google'
-                                        }
-                                    />
-                                    <FacebookLoginButton
-                                        onClick={() =>
-                                            handleOAuthLogin('facebook')
-                                        }
-                                        lastUsed={
-                                            lastLoginProvider === 'facebook'
-                                        }
-                                    />
-                                </Stack>
+                            <Stack spacing={2}>
+                                <GoogleLoginButton
+                                    onClick={() => handleOAuthLogin('google')}
+                                    lastUsed={lastLoginProvider === 'google'}
+                                />
+                                <FacebookLoginButton
+                                    onClick={() => handleOAuthLogin('facebook')}
+                                    lastUsed={lastLoginProvider === 'facebook'}
+                                />
                                 <Button
                                     type="button"
                                     variant="outlined"
                                     color="neutral"
                                     fullWidth
+                                    startDecorator={
+                                        <Mail className="h-4 w-4 shrink-0" />
+                                    }
                                     onClick={() => setEmailExpanded(true)}
                                 >
                                     {emailButtonLabel}
                                 </Button>
-                            </>
+                            </Stack>
                         )}
                         {emailExpanded && (
                             <>
