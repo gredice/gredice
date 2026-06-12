@@ -28,10 +28,6 @@ export const automationModuleKeys = {
         'action.queueSeasonalSowingOfferOperations',
     actionUpdateRaisedBedFieldPlantAttributes:
         'action.updateRaisedBedFieldPlantAttributes',
-    actionUpdateRaisedBedFieldPlantStatus:
-        'action.updateRaisedBedFieldPlantStatus',
-    actionUpdateRaisedBedFieldSowingLocation:
-        'action.updateRaisedBedFieldSowingLocation',
     conditionEventDataEquals: 'condition.eventDataEquals',
     conditionOperationMatches: 'condition.operationMatches',
     conditionPlantStatusEquals: 'condition.plantStatusEquals',
@@ -180,26 +176,6 @@ const automationModulePresentations: Record<
                     greenhouse: 'Staklenik',
                 },
                 placeholder: 'direct',
-            },
-        },
-    },
-    [automationModuleKeys.actionUpdateRaisedBedFieldPlantStatus]: {
-        title: 'Ažuriraj status biljke',
-        description: 'Upisuje novi status biljke za ciljano polje gredice.',
-        fields: {
-            targetStatus: { label: 'Ciljani status' },
-        },
-    },
-    [automationModuleKeys.actionUpdateRaisedBedFieldSowingLocation]: {
-        title: 'Ažuriraj lokaciju sijanja',
-        description: 'Upisuje novu lokaciju sijanja za ciljano polje gredice.',
-        fields: {
-            targetSowingLocation: {
-                label: 'Ciljana lokacija',
-                options: {
-                    direct: 'Direktno',
-                    greenhouse: 'Staklenik',
-                },
             },
         },
     },

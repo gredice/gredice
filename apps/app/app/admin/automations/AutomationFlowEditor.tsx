@@ -186,8 +186,6 @@ const automationModuleIcons = new Map<string, IconComponent>([
     [automationModuleKeys.actionCreateOperation, Hammer],
     [automationModuleKeys.actionCreateFarmInventoryOperations, Store],
     [automationModuleKeys.actionUpdateRaisedBedFieldPlantAttributes, Sprout],
-    [automationModuleKeys.actionUpdateRaisedBedFieldPlantStatus, Sprout],
-    [automationModuleKeys.actionUpdateRaisedBedFieldSowingLocation, Sprout],
     [automationModuleKeys.actionCreatePlantStatusRequestsFromImageAnalysis, AI],
     [automationModuleKeys.actionLog, Text],
 ]);

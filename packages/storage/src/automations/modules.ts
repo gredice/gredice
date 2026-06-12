@@ -49,10 +49,6 @@ const createFarmInventoryOperationsActionKey =
     'action.createFarmInventoryOperations';
 const updateRaisedBedFieldPlantAttributesActionKey =
     'action.updateRaisedBedFieldPlantAttributes';
-const updateRaisedBedFieldPlantStatusActionKey =
-    'action.updateRaisedBedFieldPlantStatus';
-const updateRaisedBedFieldSowingLocationActionKey =
-    'action.updateRaisedBedFieldSowingLocation';
 const createPlantStatusRequestsFromImageAnalysisActionKey =
     'action.createPlantStatusRequestsFromImageAnalysis';
 const logActionKey = 'action.log';
@@ -74,10 +70,6 @@ export const automationModuleKeys = {
     actionCreateFarmInventoryOperations: createFarmInventoryOperationsActionKey,
     actionUpdateRaisedBedFieldPlantAttributes:
         updateRaisedBedFieldPlantAttributesActionKey,
-    actionUpdateRaisedBedFieldPlantStatus:
-        updateRaisedBedFieldPlantStatusActionKey,
-    actionUpdateRaisedBedFieldSowingLocation:
-        updateRaisedBedFieldSowingLocationActionKey,
     actionCreatePlantStatusRequestsFromImageAnalysis:
         createPlantStatusRequestsFromImageAnalysisActionKey,
     actionLog: logActionKey,
@@ -1399,68 +1391,6 @@ const updateRaisedBedFieldPlantAttributesActionModule: AutomationModule = {
         updateRaisedBedFieldPlantAttributes({ context, node }),
 };
 
-const updateRaisedBedFieldPlantStatusActionModule: AutomationModule = {
-    key: updateRaisedBedFieldPlantStatusActionKey,
-    kind: 'action',
-    title: 'Update plant status',
-    description:
-        'Writes a raised-bed field plant status update for the operation target.',
-    category: 'Raised-bed fields',
-    configFields: [
-        {
-            key: 'targetStatus',
-            label: 'Target status',
-            type: 'string',
-            required: true,
-            placeholder: 'sprouted',
-        },
-    ],
-    dryRunSupported: true,
-    mutatesData: true,
-    retryable: true,
-    validateConfig: (config) => requiredString(config, 'targetStatus'),
-    execute: async (context, node) =>
-        updateRaisedBedFieldPlantAttributes({
-            context,
-            node,
-            noChangeReason: 'Plant already has the target status.',
-        }),
-};
-
-const updateRaisedBedFieldSowingLocationActionModule: AutomationModule = {
-    key: updateRaisedBedFieldSowingLocationActionKey,
-    kind: 'action',
-    title: 'Update sowing location',
-    description:
-        'Writes a raised-bed field sowing location update for the operation target.',
-    category: 'Raised-bed fields',
-    configFields: [
-        {
-            key: 'targetSowingLocation',
-            label: 'Target sowing location',
-            type: 'select',
-            required: true,
-            options: [
-                { value: 'direct', label: 'Direct' },
-                { value: 'greenhouse', label: 'Greenhouse' },
-            ],
-        },
-    ],
-    dryRunSupported: true,
-    mutatesData: true,
-    retryable: true,
-    validateConfig: (config) =>
-        parseSowingLocation(config.targetSowingLocation)
-            ? []
-            : ['targetSowingLocation must be direct or greenhouse.'],
-    execute: async (context, node) =>
-        updateRaisedBedFieldPlantAttributes({
-            context,
-            node,
-            noChangeReason: 'Plant already has the target sowing location.',
-        }),
-};
-
 const createPlantStatusRequestsFromImageAnalysisActionModule: AutomationModule =
     {
         key: createPlantStatusRequestsFromImageAnalysisActionKey,
@@ -1588,8 +1518,6 @@ export const automationModules = [
     createOperationActionModule,
     createFarmInventoryOperationsActionModule,
     updateRaisedBedFieldPlantAttributesActionModule,
-    updateRaisedBedFieldPlantStatusActionModule,
-    updateRaisedBedFieldSowingLocationActionModule,
     createPlantStatusRequestsFromImageAnalysisActionModule,
     logActionModule,
 ] as const satisfies readonly AutomationModule[];

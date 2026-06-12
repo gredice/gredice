@@ -874,7 +874,7 @@ test('default sowed automation queues seasonal watering operations through execu
     );
 });
 
-test('plant-status automation skips replay when target status already exists', async () => {
+test('plant-attributes automation skips replay when target status already exists', async () => {
     createTestDb();
     const { accountId, gardenId, raisedBedId } =
         await createAutomationRaisedBedContext();
@@ -920,7 +920,8 @@ test('plant-status automation skips replay when target status already exists', a
             },
             {
                 id: 'update-plant-status',
-                moduleKey: 'action.updateRaisedBedFieldPlantStatus',
+                moduleKey:
+                    automationModuleKeys.actionUpdateRaisedBedFieldPlantAttributes,
                 kind: 'action' as const,
                 position: { x: 280, y: 0 },
                 config: {
