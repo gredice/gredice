@@ -68,6 +68,16 @@ export type OperationCoverPlant = {
     showProduce?: boolean;
 };
 
+export type OperationCoverAgrotextileCover = {
+    id?: string;
+    position?: OperationCoverVector3;
+    rotation?: OperationCoverVector3;
+    scale?: number | OperationCoverVector3;
+    width?: number;
+    depth?: number;
+    opacity?: number;
+};
+
 export type OperationCoverRecipe = {
     operationId: string;
     operationLabel: string;
@@ -76,6 +86,7 @@ export type OperationCoverRecipe = {
     assets?: readonly OperationCoverAsset[];
     entities?: readonly OperationCoverEntity[];
     plants?: readonly OperationCoverPlant[];
+    agrotextileCovers?: readonly OperationCoverAgrotextileCover[];
     showBackground?: boolean;
 };
 
@@ -188,6 +199,23 @@ function getPlantKey(recipe: OperationCoverRecipe, plant: OperationCoverPlant) {
     ].join(':');
 }
 
+function getAgrotextileCoverKey(
+    recipe: OperationCoverRecipe,
+    cover: OperationCoverAgrotextileCover,
+) {
+    return [
+        recipe.operationId,
+        'agrotextile-cover',
+        cover.id,
+        cover.position?.join(','),
+        cover.rotation?.join(','),
+        Array.isArray(cover.scale) ? cover.scale.join(',') : cover.scale,
+        cover.width,
+        cover.depth,
+        cover.opacity,
+    ].join(':');
+}
+
 function OperationCoverEntityModel({
     entity,
 }: {
@@ -291,6 +319,64 @@ function OperationCoverPlantModel({ plant }: { plant: OperationCoverPlant }) {
     );
 }
 
+function OperationCoverAgrotextileCoverModel({
+    cover,
+}: {
+    cover: OperationCoverAgrotextileCover;
+}) {
+    const scale = normalizeOperationCoverScale(cover.scale);
+    const width = cover.width ?? 0.7;
+    const depth = cover.depth ?? 0.46;
+    const halfWidth = width / 2;
+    const halfDepth = depth / 2;
+    const hemThickness = 0.018;
+
+    return (
+        <group
+            position={toVector3(cover.position, [0, 0, 0])}
+            rotation={toVector3(cover.rotation, [0, 0, 0])}
+            scale={scale}
+        >
+            <mesh
+                position={[0, 0.004, 0]}
+                rotation={[-Math.PI / 2, 0, 0]}
+                renderOrder={4}
+            >
+                <planeGeometry args={[width, depth]} />
+                <meshStandardMaterial
+                    color="#dcd7c6"
+                    depthWrite={false}
+                    opacity={cover.opacity ?? 0.76}
+                    polygonOffset
+                    polygonOffsetFactor={-4}
+                    roughness={1}
+                    transparent
+                />
+            </mesh>
+            <mesh position={[0, 0.012, -halfDepth]} renderOrder={5}>
+                <boxGeometry args={[width + hemThickness, 0.008, hemThickness]} />
+                <meshStandardMaterial color="#eee9d8" roughness={1} />
+            </mesh>
+            <mesh position={[0, 0.012, halfDepth]} renderOrder={5}>
+                <boxGeometry args={[width + hemThickness, 0.008, hemThickness]} />
+                <meshStandardMaterial color="#eee9d8" roughness={1} />
+            </mesh>
+            <mesh position={[-halfWidth, 0.012, 0]} renderOrder={5}>
+                <boxGeometry
+                    args={[hemThickness, 0.008, depth + hemThickness]}
+                />
+                <meshStandardMaterial color="#eee9d8" roughness={1} />
+            </mesh>
+            <mesh position={[halfWidth, 0.012, 0]} renderOrder={5}>
+                <boxGeometry
+                    args={[hemThickness, 0.008, depth + hemThickness]}
+                />
+                <meshStandardMaterial color="#eee9d8" roughness={1} />
+            </mesh>
+        </group>
+    );
+}
+
 export type OperationCoverSnapshotViewerProps =
     HTMLAttributes<HTMLDivElement> & {
         appBaseUrl?: string;
@@ -369,6 +455,15 @@ export function OperationCoverSnapshotViewer({
                                     <OperationCoverPlantModel
                                         key={getPlantKey(recipe, plant)}
                                         plant={plant}
+                                    />
+                                ))}
+                                {recipe.agrotextileCovers?.map((cover) => (
+                                    <OperationCoverAgrotextileCoverModel
+                                        key={getAgrotextileCoverKey(
+                                            recipe,
+                                            cover,
+                                        )}
+                                        cover={cover}
                                     />
                                 ))}
                                 {!noControl && (
