@@ -156,6 +156,13 @@ const farmSupplyKitSackAndGranuleNodes = [
     'FarmSupplyKit_Granule_05',
 ] as const;
 
+const farmSupplyKitSackNodes = [
+    'FarmSupplyKit_Sack_Left',
+    'FarmSupplyKit_Sack_Left_Fold',
+    'FarmSupplyKit_Sack_Right',
+    'FarmSupplyKit_Sack_Right_Fold',
+] as const;
+
 const farmSupplyKitGranuleNodes = [
     'FarmSupplyKit_Granule_01',
     'FarmSupplyKit_Granule_02',
@@ -1023,6 +1030,49 @@ export const inventoryOperationCoverRecipes = [
                 position: [0.44, 0.19, 0.44],
                 rotation: [0.16, 0.72, 0.22],
                 scale: [0.68, 0.68, 0.68],
+            },
+            {
+                assetName: 'FieldworkClipboard',
+                position: [0.68, 0.22, 0.34],
+                rotation: [0.18, -0.55, -0.22],
+                scale: 0.16,
+            },
+        ],
+        showBackground: false,
+    },
+    {
+        operationId: 'inventoryPaperDeliveryBags',
+        operationLabel: 'Inventura papirnatih vrećica za dostavu',
+        outputFileName: 'inventoryPaperDeliveryBags.webp',
+        camera: {
+            position: [2.7, 2.1, 4.8],
+            target: [0.45, 0.27, 0.45],
+            zoom: 138,
+        },
+        assets: [
+            {
+                id: 'paper-bag-back',
+                assetName: 'FarmSupplyKit',
+                visibleNodeNames: farmSupplyKitSackNodes,
+                position: [0.26, 0.08, 0.5],
+                rotation: [0.06, 0.62, 0.02],
+                scale: 0.22,
+            },
+            {
+                id: 'paper-bag-center',
+                assetName: 'FarmSupplyKit',
+                visibleNodeNames: farmSupplyKitSackNodes,
+                position: [0.38, 0.1, 0.48],
+                rotation: [0.07, 0.42, -0.02],
+                scale: 0.25,
+            },
+            {
+                id: 'paper-bag-front',
+                assetName: 'FarmSupplyKit',
+                visibleNodeNames: farmSupplyKitSackNodes,
+                position: [0.48, 0.08, 0.56],
+                rotation: [0.08, 0.72, 0.04],
+                scale: 0.21,
             },
             {
                 assetName: 'FieldworkClipboard',
