@@ -19,9 +19,11 @@ import { Link } from '@gredice/ui/Link';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import Image from 'next/image';
 import { type FC, useState } from 'react';
 import { useWeatherForecast } from '../../../hooks/useWeatherForecast';
+import { TimeOfDayDetails } from '../TimeOfDayDetails';
 import { RainIcon } from './icons/RainIcon';
 import { WeatherHistoryPanel } from './WeatherHistoryModal';
 import { weatherIcons } from './WeatherIcons';
@@ -129,14 +131,16 @@ export function WeatherForecastDetails() {
 
     return (
         <Stack
-            className={
+            className={cx(
+                'max-h-[min(calc(100vh-6rem),44rem)] min-h-0 overflow-hidden',
                 view === 'graph'
                     ? 'w-[min(calc(100vw-1rem),44rem)]'
-                    : 'w-[min(calc(100vw-1rem),28rem)]'
-            }
+                    : 'w-[min(calc(100vw-1rem),28rem)]',
+            )}
+            data-weather-forecast-details="true"
         >
             <Row
-                className="bg-background px-4 py-2"
+                className="shrink-0 bg-background px-4 py-2"
                 justifyContent="space-between"
             >
                 <Typography level="body2" bold>
@@ -177,13 +181,22 @@ export function WeatherForecastDetails() {
                 </Row>
             </Row>
             <Divider />
-            {view === 'graph' ? (
-                <WeatherHistoryPanel className="p-3" />
-            ) : (
-                <WeatherForecastDays limit={forecastLimit} />
-            )}
+            <TimeOfDayDetails
+                compact
+                className="shrink-0 border-b bg-muted/20"
+            />
+            <div
+                className="min-h-0 overflow-y-auto overscroll-contain"
+                data-weather-forecast-scroll="true"
+            >
+                {view === 'graph' ? (
+                    <WeatherHistoryPanel className="p-3" />
+                ) : (
+                    <WeatherForecastDays limit={forecastLimit} />
+                )}
+            </div>
             <Divider />
-            <Row className="px-4 py-2" justifyContent="space-between">
+            <Row className="shrink-0 px-4 py-2" justifyContent="space-between">
                 <Link
                     href={
                         'https://meteo.hr/proizvodi.php?section=podaci&param=xml_korisnici'

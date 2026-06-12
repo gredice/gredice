@@ -1,18 +1,22 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import type { Page } from '@playwright/test';
-import { WeatherHudTimePopoverStory } from './WeatherHudStory';
+import { WeatherHudStory } from './WeatherHudStory';
 
 const DESKTOP_VIEWPORT = { width: 770, height: 610 };
 const MOBILE_VIEWPORT = { width: 320, height: 568 };
 
-async function expectTimePopoverWithinViewport(
+async function expectWeatherTimeVisualizationWithinViewport(
     page: Page,
     viewport: { width: number; height: number },
 ) {
-    await page.getByTitle('Doba dana').click();
+    await expect(page.getByTitle('Doba dana')).toHaveCount(0);
+    await page.getByTitle('Trenutno vrijeme').click();
 
-    const popover = page.locator('[data-time-display="true"]');
+    const popover = page.locator('[data-weather-now-details="true"]');
     await expect(popover).toBeVisible();
+    await expect(
+        page.locator('[data-time-of-day-details="true"]'),
+    ).toBeVisible();
 
     const popoverBox = await popover.boundingBox();
     expect(popoverBox).not.toBeNull();
@@ -38,33 +42,67 @@ async function expectTimePopoverWithinViewport(
     );
 }
 
-test('time popover has enough room on desktop', async ({ mount, page }) => {
+test('weather popover includes time of day on desktop', async ({
+    mount,
+    page,
+}) => {
     await page.setViewportSize(DESKTOP_VIEWPORT);
-    await mount(<WeatherHudTimePopoverStory />);
+    await mount(<WeatherHudStory />);
 
-    await expectTimePopoverWithinViewport(page, DESKTOP_VIEWPORT);
+    await expectWeatherTimeVisualizationWithinViewport(page, DESKTOP_VIEWPORT);
 
     const popoverBox = await page
-        .locator('[data-time-display="true"]')
+        .locator('[data-weather-now-details="true"]')
         .boundingBox();
     expect(popoverBox?.width ?? 0).toBeGreaterThan(360);
 });
 
-test('time popover fits on narrow mobile viewports', async ({
+test('weather popover time of day fits on narrow mobile viewports', async ({
     mount,
     page,
 }) => {
     await page.setViewportSize(MOBILE_VIEWPORT);
-    await mount(<WeatherHudTimePopoverStory />);
+    await mount(<WeatherHudStory />);
 
-    await expectTimePopoverWithinViewport(page, MOBILE_VIEWPORT);
+    await expectWeatherTimeVisualizationWithinViewport(page, MOBILE_VIEWPORT);
 
     const popoverBox = await page
-        .locator('[data-time-display="true"]')
+        .locator('[data-weather-now-details="true"]')
         .boundingBox();
     expect(popoverBox?.width ?? 0).toBeLessThanOrEqual(
         MOBILE_VIEWPORT.width - 16 + 1,
     );
+});
+
+test('forecast popover scrolls within desktop viewport with time of day', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(DESKTOP_VIEWPORT);
+    await mount(<WeatherHudStory />);
+
+    await page.getByTitle('Prognoza vremena').click();
+    await page.getByRole('button', { name: 'Sve' }).click();
+
+    const details = page.locator('[data-weather-forecast-details="true"]');
+    await expect(details).toBeVisible();
+    await expect(
+        details.locator('[data-time-of-day-details="true"]'),
+    ).toBeVisible();
+
+    const detailsBox = await details.boundingBox();
+    expect(detailsBox).not.toBeNull();
+    expect(detailsBox?.height ?? 0).toBeLessThanOrEqual(
+        DESKTOP_VIEWPORT.height - 48,
+    );
+
+    const scrollStats = await page
+        .locator('[data-weather-forecast-scroll="true"]')
+        .evaluate((element) => ({
+            clientHeight: element.clientHeight,
+            scrollHeight: element.scrollHeight,
+        }));
+    expect(scrollStats.scrollHeight).toBeGreaterThan(scrollStats.clientHeight);
 });
 
 test('weather warnings are grouped and scroll within the mobile popover', async ({
@@ -72,7 +110,7 @@ test('weather warnings are grouped and scroll within the mobile popover', async 
     page,
 }) => {
     await page.setViewportSize(MOBILE_VIEWPORT);
-    await mount(<WeatherHudTimePopoverStory withAlerts />);
+    await mount(<WeatherHudStory withAlerts />);
 
     await page.getByTitle('Trenutno vrijeme').click();
 

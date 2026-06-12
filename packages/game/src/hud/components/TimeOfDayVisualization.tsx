@@ -63,6 +63,7 @@ export type TimeOfDayVisualizationProps = Omit<
     HTMLAttributes<HTMLDivElement>,
     'onChange'
 > & {
+    compact?: boolean;
     interactive?: boolean;
     onChange?: (timeOfDay: number) => void;
     timeOfDay: number;
@@ -70,6 +71,7 @@ export type TimeOfDayVisualizationProps = Omit<
 
 export function TimeOfDayVisualization({
     className,
+    compact = false,
     interactive = false,
     onChange,
     timeOfDay,
@@ -152,7 +154,8 @@ export function TimeOfDayVisualization({
 
     const isInteractive = interactive && typeof onChange === 'function';
     const containerClassName = cx(
-        'h-28 w-full select-none overflow-visible rounded-md bg-gradient-to-b from-sky-100 via-sky-50 to-slate-200 outline-hidden ring-offset-background dark:from-slate-800 dark:via-slate-900 dark:to-slate-950',
+        compact ? 'h-20' : 'h-28',
+        'w-full select-none overflow-visible rounded-md bg-gradient-to-b from-sky-100 via-sky-50 to-slate-200 outline-hidden ring-offset-background dark:from-slate-800 dark:via-slate-900 dark:to-slate-950',
         isInteractive &&
             'touch-none cursor-ew-resize focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
         className,

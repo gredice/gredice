@@ -85,6 +85,14 @@ export const Night: Story = {
     },
 };
 
+export const Compact: Story = {
+    name: 'Compact',
+    args: {
+        compact: true,
+        timeOfDay: 0.35,
+    },
+};
+
 export const DebugInteractive: Story = {
     name: 'Debug interactive',
     render: () => <InteractiveTimeOfDayVisualization />,
