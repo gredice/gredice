@@ -17,6 +17,7 @@ import {
 } from '../../cache/scheduleCache';
 import { automationRunSteps, automationRuns, events } from '../../schema';
 import { storage } from '../../storage';
+import { enqueueAutomationRunsForEvent } from '../automationsRepo';
 import { knownEventTypes } from './knownEventTypes';
 import type { AiRequestKind, Event, UserBirthdayRewardPayload } from './types';
 
@@ -411,14 +412,24 @@ export async function createEvent(
     { type, version, aggregateId, data, createdAt }: Event,
     db: DatabaseClient = storage(),
 ) {
-    await db.insert(events).values({
-        type,
-        version,
-        aggregateId,
-        data,
-        ...(createdAt && { createdAt }),
-    });
+    const [event] = await db
+        .insert(events)
+        .values({
+            type,
+            version,
+            aggregateId,
+            data,
+            ...(createdAt && { createdAt }),
+        })
+        .returning();
+    if (!event) {
+        throw new Error('Failed to create event.');
+    }
+
+    await enqueueAutomationRunsForEvent(event, { db });
     await bustReadModelCachesForEvent({ type, version, aggregateId, data });
+
+    return event;
 }
 
 async function getDomainAiAnalysisEvents(

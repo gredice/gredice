@@ -1,7 +1,5 @@
 import { Card, CardHeader, CardOverflow, CardTitle } from '@gredice/ui/Card';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Row } from '@gredice/ui/Row';
-import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
@@ -39,59 +37,31 @@ export function AutomationDefinitionsList({
                             const failedCount = definition.failedRunsCount;
 
                             return (
-                                <li key={definition.id} className="p-4">
-                                    <Stack spacing={3}>
-                                        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                                            <Stack
-                                                spacing={1}
-                                                className="min-w-0"
+                                <li key={definition.id} className="px-4 py-3">
+                                    <div className="grid min-w-0 gap-1.5">
+                                        <div className="flex min-w-0 items-start justify-between gap-3">
+                                            <Link
+                                                href={KnownPages.Automation(
+                                                    definition.id,
+                                                )}
+                                                className="min-w-0 truncate font-medium text-primary hover:underline"
                                             >
-                                                <Link
-                                                    href={KnownPages.Automation(
-                                                        definition.id,
-                                                    )}
-                                                    className="truncate font-medium text-primary hover:underline"
-                                                >
-                                                    {definition.name}
-                                                </Link>
-                                                <Typography
-                                                    level="body3"
-                                                    className="break-all text-muted-foreground"
-                                                >
-                                                    {definition.key}
-                                                </Typography>
-                                            </Stack>
+                                                {definition.name}
+                                            </Link>
                                             <AutomationDefinitionStatusIndicator
+                                                className="shrink-0"
                                                 status={definition.status}
                                             />
                                         </div>
 
-                                        <dl className="grid gap-2 text-sm">
-                                            <div className="grid gap-1">
-                                                <dt className="text-muted-foreground">
-                                                    Okidač
-                                                </dt>
-                                                <dd>
-                                                    {definition.triggerSummary}
-                                                </dd>
-                                            </div>
-                                            <div className="grid gap-1">
-                                                <dt className="text-muted-foreground">
-                                                    Akcije
-                                                </dt>
-                                                <dd>
-                                                    {definition.actionSummary}
-                                                </dd>
-                                            </div>
-                                        </dl>
-
-                                        <Row
-                                            spacing={3}
-                                            className="flex-wrap items-center text-sm"
-                                        >
+                                        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                                            <span className="min-w-0 max-w-full truncate">
+                                                {definition.key}
+                                            </span>
                                             {latestRun ? (
-                                                <>
+                                                <span className="inline-flex items-center gap-1.5">
                                                     <AutomationRunStatusIndicator
+                                                        className="text-xs"
                                                         status={
                                                             latestRun.status
                                                         }
@@ -99,34 +69,17 @@ export function AutomationDefinitionsList({
                                                     <LocalDateTime>
                                                         {latestRun.createdAt}
                                                     </LocalDateTime>
-                                                </>
+                                                </span>
                                             ) : (
-                                                <Typography
-                                                    level="body3"
-                                                    className="text-muted-foreground"
-                                                >
-                                                    Nema izvođenja
-                                                </Typography>
+                                                <span>Nema izvođenja</span>
                                             )}
                                             {failedCount > 0 ? (
-                                                <Typography
-                                                    level="body3"
-                                                    className="text-red-700 dark:text-red-300"
-                                                >
+                                                <span className="font-medium text-red-700 dark:text-red-300">
                                                     Greške: {failedCount}
-                                                </Typography>
+                                                </span>
                                             ) : null}
-                                            <Typography
-                                                level="body3"
-                                                className="text-muted-foreground"
-                                            >
-                                                Ažurirano{' '}
-                                                <LocalDateTime>
-                                                    {definition.updatedAt}
-                                                </LocalDateTime>
-                                            </Typography>
-                                        </Row>
-                                    </Stack>
+                                        </div>
+                                    </div>
                                 </li>
                             );
                         })}
