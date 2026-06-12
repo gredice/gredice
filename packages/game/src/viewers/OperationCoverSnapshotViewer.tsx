@@ -78,6 +78,15 @@ export type OperationCoverAgrotextileCover = {
     opacity?: number;
 };
 
+export type OperationCoverSupportStake = {
+    id?: string;
+    position?: OperationCoverVector3;
+    rotation?: OperationCoverVector3;
+    scale?: number | OperationCoverVector3;
+    height?: number;
+    radius?: number;
+};
+
 export type OperationCoverRecipe = {
     operationId: string;
     operationLabel: string;
@@ -87,6 +96,7 @@ export type OperationCoverRecipe = {
     entities?: readonly OperationCoverEntity[];
     plants?: readonly OperationCoverPlant[];
     agrotextileCovers?: readonly OperationCoverAgrotextileCover[];
+    supportStakes?: readonly OperationCoverSupportStake[];
     showBackground?: boolean;
 };
 
@@ -213,6 +223,22 @@ function getAgrotextileCoverKey(
         cover.width,
         cover.depth,
         cover.opacity,
+    ].join(':');
+}
+
+function getSupportStakeKey(
+    recipe: OperationCoverRecipe,
+    stake: OperationCoverSupportStake,
+) {
+    return [
+        recipe.operationId,
+        'support-stake',
+        stake.id,
+        stake.position?.join(','),
+        stake.rotation?.join(','),
+        Array.isArray(stake.scale) ? stake.scale.join(',') : stake.scale,
+        stake.height,
+        stake.radius,
     ].join(':');
 }
 
@@ -354,11 +380,15 @@ function OperationCoverAgrotextileCoverModel({
                 />
             </mesh>
             <mesh position={[0, 0.012, -halfDepth]} renderOrder={5}>
-                <boxGeometry args={[width + hemThickness, 0.008, hemThickness]} />
+                <boxGeometry
+                    args={[width + hemThickness, 0.008, hemThickness]}
+                />
                 <meshStandardMaterial color="#eee9d8" roughness={1} />
             </mesh>
             <mesh position={[0, 0.012, halfDepth]} renderOrder={5}>
-                <boxGeometry args={[width + hemThickness, 0.008, hemThickness]} />
+                <boxGeometry
+                    args={[width + hemThickness, 0.008, hemThickness]}
+                />
                 <meshStandardMaterial color="#eee9d8" roughness={1} />
             </mesh>
             <mesh position={[-halfWidth, 0.012, 0]} renderOrder={5}>
@@ -372,6 +402,33 @@ function OperationCoverAgrotextileCoverModel({
                     args={[hemThickness, 0.008, depth + hemThickness]}
                 />
                 <meshStandardMaterial color="#eee9d8" roughness={1} />
+            </mesh>
+        </group>
+    );
+}
+
+function OperationCoverSupportStakeModel({
+    stake,
+}: {
+    stake: OperationCoverSupportStake;
+}) {
+    const scale = normalizeOperationCoverScale(stake.scale);
+    const height = stake.height ?? 0.78;
+    const radius = stake.radius ?? 0.018;
+
+    return (
+        <group
+            position={toVector3(stake.position, [0, 0, 0])}
+            rotation={toVector3(stake.rotation, [0, 0, 0])}
+            scale={scale}
+        >
+            <mesh position={[0, height / 2, 0]} castShadow receiveShadow>
+                <cylinderGeometry args={[radius, radius * 1.12, height, 10]} />
+                <meshStandardMaterial color="#7a4f2b" roughness={0.92} />
+            </mesh>
+            <mesh position={[0, height + radius * 0.78, 0]} castShadow>
+                <coneGeometry args={[radius * 1.16, radius * 1.55, 10]} />
+                <meshStandardMaterial color="#6b4424" roughness={0.94} />
             </mesh>
         </group>
     );
@@ -464,6 +521,12 @@ export function OperationCoverSnapshotViewer({
                                             cover,
                                         )}
                                         cover={cover}
+                                    />
+                                ))}
+                                {recipe.supportStakes?.map((stake) => (
+                                    <OperationCoverSupportStakeModel
+                                        key={getSupportStakeKey(recipe, stake)}
+                                        stake={stake}
                                     />
                                 ))}
                                 {!noControl && (
