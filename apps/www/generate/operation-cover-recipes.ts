@@ -30,6 +30,13 @@ const waterSprayDropletNodes = [
     'WaterSprayKit_Droplet_04',
 ] as const;
 
+const waterSprayNozzleNodes = [
+    'WaterSprayKit_Hose_A',
+    'WaterSprayKit_Hose_B',
+    'WaterSprayKit_Wand',
+    'WaterSprayKit_Nozzle',
+] as const;
+
 export const liquidPreparationOperationCoverRecipes =
     liquidPreparationBottleAssets.map((assetName) => ({
         operationId: assetName,
@@ -128,6 +135,58 @@ export const waterOperationCoverRecipes = [
                 position: [0.43, 0.2, 0.48],
                 rotation: [0.15, 0.2, -0.3],
                 scale: 0.24,
+            },
+        ],
+        showBackground: false,
+    },
+    {
+        operationId: 'watteringSystemSprinkler2',
+        operationLabel: 'Sustav navodnjavanja - 2 prskalice',
+        outputFileName: 'watteringSystemSprinkler2.webp',
+        camera: {
+            position: [2.8, 2.2, 5],
+            target: [0.45, 0.25, 0.45],
+            zoom: 104,
+        },
+        assets: [
+            {
+                assetName: 'RaisedBed',
+                visibleNodeNames: raisedBedCompactNodes,
+                position: [0.45, -0.06, 0.45],
+                rotation: [0, 0.72, 0],
+                scale: 0.4,
+            },
+            {
+                id: 'sprinkler-left',
+                assetName: 'WaterSprayKit',
+                visibleNodeNames: waterSprayNozzleNodes,
+                position: [0.22, 0.04, 0.34],
+                rotation: [0.18, 0.75, -0.45],
+                scale: 0.43,
+            },
+            {
+                id: 'sprinkler-right',
+                assetName: 'WaterSprayKit',
+                visibleNodeNames: waterSprayNozzleNodes,
+                position: [0.68, 0.04, 0.38],
+                rotation: [0.18, -0.8, 0.45],
+                scale: 0.43,
+            },
+            {
+                id: 'spray-left',
+                assetName: 'WaterSprayKit',
+                visibleNodeNames: waterSprayDropletNodes,
+                position: [0.34, 0.24, 0.38],
+                rotation: [0.1, 0.2, -0.4],
+                scale: 0.26,
+            },
+            {
+                id: 'spray-right',
+                assetName: 'WaterSprayKit',
+                visibleNodeNames: waterSprayDropletNodes,
+                position: [0.56, 0.25, 0.42],
+                rotation: [0.1, -0.2, 0.4],
+                scale: 0.26,
             },
         ],
         showBackground: false,
