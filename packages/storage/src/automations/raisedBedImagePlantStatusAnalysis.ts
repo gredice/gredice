@@ -5,7 +5,7 @@ import {
     plantFieldStatusLabel,
 } from '@gredice/js/plants';
 import { validateHostedImageUrl } from '@gredice/js/urls';
-import { generateText, Output } from 'ai';
+import { generateText, NoObjectGeneratedError, Output } from 'ai';
 import { z } from 'zod';
 import type { EntityStandardized } from '../@types/EntityStandardized';
 import { createPlantStatusApprovalRequest } from '../repositories/approvalRequestsRepo';
@@ -26,6 +26,7 @@ import type { AutomationSourceEvent } from './types';
 const AI_MODEL = process.env.AI_GATEWAY_MODEL ?? 'openai/gpt-5.5';
 const RAISED_BED_COLUMNS = 3;
 const REVIEW_REQUESTER = 'automation:raised-bed-image-status-review';
+const MAX_AI_DEBUG_TEXT_LENGTH = 8_000;
 const GREENHOUSE_SEEDLING_STATUSES = new Set([
     'pendingVerification',
     'sowed',
@@ -60,8 +61,7 @@ const plantStatusReviewOutputSchema = z.object({
                 evidence: z.string(),
             }),
         )
-        .max(18)
-        .default([]),
+        .max(18),
 });
 
 type RaisedBedForReview = NonNullable<Awaited<ReturnType<typeof getRaisedBed>>>;
@@ -109,6 +109,39 @@ type AcceptedWeedReviewProposal = WeedReviewProposal & {
 
 function optionalNumber(value: unknown) {
     return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function truncateDebugText(value: string | undefined) {
+    if (typeof value !== 'string') {
+        return {
+            text: null,
+            length: null,
+            truncated: false,
+        };
+    }
+
+    return {
+        text:
+            value.length > MAX_AI_DEBUG_TEXT_LENGTH
+                ? value.slice(0, MAX_AI_DEBUG_TEXT_LENGTH)
+                : value,
+        length: value.length,
+        truncated: value.length > MAX_AI_DEBUG_TEXT_LENGTH,
+    };
+}
+
+function errorCauseDetails(cause: unknown) {
+    if (cause instanceof Error) {
+        return {
+            name: cause.name,
+            message: cause.message,
+        };
+    }
+
+    return {
+        name: null,
+        message: typeof cause === 'string' ? cause : null,
+    };
 }
 
 function dateFromValue(value: unknown) {
@@ -782,6 +815,51 @@ export function hasRaisedBedImagePlantStatusReviewAiConfig() {
     );
 }
 
+function buildNoObjectGeneratedDebugOutput({
+    error,
+    input,
+    focusPositionIndex,
+}: {
+    error: NoObjectGeneratedError;
+    input: ReviewInput & { ok: true };
+    focusPositionIndex: number | undefined;
+}) {
+    const rawResponse = truncateDebugText(error.text);
+    const cause = errorCauseDetails(error.cause);
+
+    return {
+        source: input.source,
+        raisedBedId: input.raisedBedId,
+        operationId: input.operationId ?? null,
+        raisedBedFieldId: input.raisedBedFieldId ?? null,
+        focusPositionIndex: focusPositionIndex ?? null,
+        imageDate: input.referenceDate.toISOString(),
+        imageCount: input.imageUrls.length,
+        skippedInvalidImageCount: input.skippedInvalidImageCount,
+        model: AI_MODEL,
+        aiResponseDebug: {
+            type: 'NoObjectGeneratedError',
+            message: error.message,
+            causeName: cause.name,
+            causeMessage: cause.message,
+            finishReason: error.finishReason ?? null,
+            responseId: error.response?.id ?? null,
+            responseModel: error.response?.modelId ?? null,
+            responseTimestamp:
+                error.response?.timestamp instanceof Date
+                    ? error.response.timestamp.toISOString()
+                    : null,
+            rawResponseText: rawResponse.text,
+            rawResponseLength: rawResponse.length,
+            rawResponseTruncated: rawResponse.truncated,
+        },
+        inputTokens: optionalNumber(error.usage?.inputTokens),
+        outputTokens: optionalNumber(error.usage?.outputTokens),
+        totalTokens: optionalNumber(error.usage?.totalTokens),
+        analyzedAt: new Date().toISOString(),
+    } satisfies AutomationJsonObject;
+}
+
 export async function runRaisedBedImagePlantStatusReview({
     event,
     minConfidence,
@@ -813,16 +891,72 @@ export async function runRaisedBedImagePlantStatusReview({
         input,
         promptContext: context.promptContext,
     });
-    const result = await generateText({
-        model: AI_MODEL,
-        output: Output.object({
-            name: 'RaisedBedImagePlantStatusReview',
-            description:
-                'High-certainty plant status change proposals from raised-bed images.',
-            schema: plantStatusReviewOutputSchema,
-        }),
-        messages,
-    });
+    const aiResult = await (async () => {
+        try {
+            return {
+                ok: true as const,
+                result: await generateText({
+                    model: AI_MODEL,
+                    output: Output.object({
+                        name: 'RaisedBedImagePlantStatusReview',
+                        description:
+                            'High-certainty plant status change proposals from raised-bed images.',
+                        schema: plantStatusReviewOutputSchema,
+                    }),
+                    messages,
+                }),
+            };
+        } catch (error) {
+            if (NoObjectGeneratedError.isInstance(error)) {
+                const output = buildNoObjectGeneratedDebugOutput({
+                    error,
+                    input,
+                    focusPositionIndex: context.focusPositionIndex,
+                });
+                const rawResponse = truncateDebugText(error.text);
+                const cause = errorCauseDetails(error.cause);
+
+                console.warn(
+                    'Raised-bed image plant-status review AI response could not be parsed.',
+                    {
+                        source: input.source,
+                        raisedBedId: input.raisedBedId,
+                        operationId: input.operationId ?? null,
+                        imageDate: input.referenceDate.toISOString(),
+                        model: AI_MODEL,
+                        message: error.message,
+                        causeName: cause.name,
+                        causeMessage: cause.message,
+                        finishReason: error.finishReason ?? null,
+                        responseId: error.response?.id ?? null,
+                        rawResponseLength: rawResponse.length,
+                        rawResponseTruncated: rawResponse.truncated,
+                        rawResponsePreview:
+                            typeof rawResponse.text === 'string'
+                                ? rawResponse.text.slice(0, 1_000)
+                                : null,
+                    },
+                );
+
+                return {
+                    ok: false as const,
+                    reason: error.message,
+                    retryable: true,
+                    errorCode:
+                        'raised_bed_image_plant_status_review_no_object_generated',
+                    output,
+                };
+            }
+
+            throw error;
+        }
+    })();
+
+    if (!aiResult.ok) {
+        return aiResult;
+    }
+
+    const result = aiResult.result;
     const output = result.output;
     const { accepted, skipped } = filterAcceptedProposals({
         output,
