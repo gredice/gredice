@@ -75,6 +75,8 @@ export function GameHud({
     );
     const currentGardenId = currentGarden?.id ?? null;
     const raisedBedOnboardingChecklistEnabled = enableTutorialChecklist;
+    const raisedBedOnboardingAvailable =
+        raisedBedOnboardingChecklistEnabled && !isSandbox;
     const visitSummaryConfirmed =
         visitSummaryConfirmation.confirmed &&
         visitSummaryConfirmation.gardenId === currentGardenId;
@@ -107,6 +109,19 @@ export function GameHud({
                 {!isLocalSandbox && <AccountHud />}
                 {!isLocalSandbox && !isSandbox && enableTutorialChecklist && (
                     <TutorialChecklistHud />
+                )}
+                {!isLocalSandbox && raisedBedOnboardingAvailable && (
+                    <RaisedBedOnboardingModal
+                        autoOpen={raisedBedOnboardingEnabled}
+                        enabled
+                        onResolved={() =>
+                            setRaisedBedOnboardingConfirmation({
+                                confirmed: true,
+                                gardenId: currentGardenId,
+                            })
+                        }
+                        showTrigger={openingFlowComplete}
+                    />
                 )}
                 {!isSandbox && <ShoppingCartHud />}
                 {!isSandbox && (
@@ -163,15 +178,6 @@ export function GameHud({
                         enabled={visitSummaryEnabled}
                         onClosed={() =>
                             setVisitSummaryConfirmation({
-                                confirmed: true,
-                                gardenId: currentGardenId,
-                            })
-                        }
-                    />
-                    <RaisedBedOnboardingModal
-                        enabled={raisedBedOnboardingEnabled}
-                        onResolved={() =>
-                            setRaisedBedOnboardingConfirmation({
                                 confirmed: true,
                                 gardenId: currentGardenId,
                             })

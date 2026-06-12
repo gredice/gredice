@@ -1,6 +1,9 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import type { Page } from '@playwright/test';
-import { RaisedBedOnboardingModalStory as OnboardingStory } from './RaisedBedOnboardingModalStory';
+import {
+    RaisedBedOnboardingModalReopenStory as OnboardingReopenStory,
+    RaisedBedOnboardingModalStory as OnboardingStory,
+} from './RaisedBedOnboardingModalStory';
 
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
 const DESKTOP_VIEWPORT = { width: 1280, height: 800 };
@@ -51,11 +54,54 @@ test('raised-bed onboarding uses a near full-screen desktop modal', async ({
     const dialog = page.getByRole('dialog', { name: 'Brzi plan gredice' });
     await expect(dialog).toBeVisible();
     await expect(dialog).toContainText('Brzi plan sadnje');
-    await expect(dialog).toContainText('12 polja + 6 praznih');
+    await expect(dialog).toContainText('Prva gredica');
+    await expect(dialog).not.toContainText('Tvoji zadaci');
 
     const dialogBox = await dialog.boundingBox();
     expect(dialogBox?.width).toBeGreaterThan(1000);
     expect(dialogBox?.height).toBeGreaterThan(700);
+});
+
+test('raised-bed onboarding reopens from the first-bed HUD trigger', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(DESKTOP_VIEWPORT);
+    await mockShoppingCart(page);
+
+    await mount(<OnboardingReopenStory />);
+
+    await expect(
+        page.getByRole('dialog', { name: 'Brzi plan gredice' }),
+    ).toBeHidden();
+    await page.getByRole('button', { name: 'Prva gredica' }).click();
+    await expect(
+        page.getByRole('dialog', { name: 'Brzi plan gredice' }),
+    ).toBeVisible();
+});
+
+test('raised-bed onboarding previews vertical sort-image layouts', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(DESKTOP_VIEWPORT);
+    await mockShoppingCart(page);
+
+    await mount(<OnboardingStory />);
+
+    await page.getByRole('button', { name: 'Prikaži prijedloge' }).click();
+    await expect(page.getByText('Odaberi raspored')).toBeVisible();
+    await expect(
+        page.locator('img[alt="Rajčica saint pierre"]').first(),
+    ).toBeVisible();
+
+    const previewBox = await page
+        .locator('div[title^="Rajčica saint pierre"]')
+        .first()
+        .locator('xpath=ancestor::div[contains(@class, "grid-cols-3")][1]')
+        .boundingBox();
+    expect(previewBox).not.toBeNull();
+    expect(previewBox?.height ?? 0).toBeGreaterThan(previewBox?.width ?? 0);
 });
 
 test('raised-bed onboarding fills the mobile viewport', async ({
@@ -93,8 +139,10 @@ test('raised-bed onboarding applies twelve suggested cart plants', async ({
 
     const dialog = page.getByRole('dialog', { name: 'Brzi plan gredice' });
     await expect(dialog).toBeVisible();
-    await page.getByRole('button', { name: 'Prikaži rasporede' }).click();
+    await page.getByRole('button', { name: 'Prikaži prijedloge' }).click();
     await expect(page.getByText('Odaberi raspored')).toBeVisible();
+    await page.getByRole('button', { name: 'Dalje' }).click();
+    await expect(page.getByText('Tvoji zadaci')).toBeVisible();
     await page.getByRole('button', { name: 'Dodaj plan u košaru' }).click();
 
     await expect.poll(() => posts.length).toBe(12);
@@ -135,8 +183,9 @@ test('raised-bed onboarding applies the current preference default layout', asyn
     const dialog = page.getByRole('dialog', { name: 'Brzi plan gredice' });
     await expect(dialog).toBeVisible();
     await page.getByRole('button', { name: /Umaci i roštilj/ }).click();
-    await page.getByRole('button', { name: 'Prikaži rasporede' }).click();
+    await page.getByRole('button', { name: 'Prikaži prijedloge' }).click();
     await expect(page.getByText('Odaberi raspored')).toBeVisible();
+    await page.getByRole('button', { name: 'Dalje' }).click();
     await page.getByRole('button', { name: 'Dodaj plan u košaru' }).click();
 
     await expect.poll(() => posts.length).toBe(12);
