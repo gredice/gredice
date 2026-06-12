@@ -558,7 +558,7 @@ export function ItemsHud() {
             data-items-hud
             open
             position="bottom"
-            className="static mx-auto w-fit max-w-[calc(100vw-1rem)] overflow-x-auto md:px-1 pointer-events-auto"
+            className="pointer-events-auto static mx-auto mb-1 w-fit max-w-[calc(100vw-1rem)] overflow-x-auto rounded-xl border-0 bg-background/95 shadow-xl shadow-foreground/10 backdrop-blur-sm motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-4 motion-safe:duration-300 motion-safe:ease-out md:px-1"
             animateHeight
         >
             <Row
