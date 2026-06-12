@@ -112,6 +112,27 @@ const harvestBasketFullNodes = [
     'HarvestBasket_PumpkinStem',
 ] as const;
 
+const farmSupplyKitCrateAndSackNodes = [
+    'FarmSupplyKit_Crate_Base',
+    'FarmSupplyKit_Crate_Front',
+    'FarmSupplyKit_Crate_Back',
+    'FarmSupplyKit_Crate_Left',
+    'FarmSupplyKit_Crate_Right',
+    'FarmSupplyKit_Crate_Rim_Front',
+    'FarmSupplyKit_Crate_Rim_Back',
+    'FarmSupplyKit_Sack_Left',
+    'FarmSupplyKit_Sack_Left_Fold',
+    'FarmSupplyKit_Sack_Left_Label',
+    'FarmSupplyKit_Sack_Right',
+    'FarmSupplyKit_Sack_Right_Fold',
+    'FarmSupplyKit_Sack_Right_Label',
+    'FarmSupplyKit_Granule_01',
+    'FarmSupplyKit_Granule_02',
+    'FarmSupplyKit_Granule_03',
+    'FarmSupplyKit_Granule_04',
+    'FarmSupplyKit_Granule_05',
+] as const;
+
 export const liquidPreparationOperationCoverRecipes =
     liquidPreparationBottleAssets.map((assetName) => ({
         operationId: assetName,
@@ -765,6 +786,32 @@ export const inventoryOperationCoverRecipes = [
                 position: [0.68, 0.22, 0.34],
                 rotation: [0.18, -0.55, -0.22],
                 scale: 0.16,
+            },
+        ],
+        showBackground: false,
+    },
+    {
+        operationId: 'readSeedStorageHumidityTemperature',
+        operationLabel: 'Očitanje vlage i temperature spremišta sjemena',
+        outputFileName: 'readSeedStorageHumidityTemperature.webp',
+        camera: {
+            position: [2.7, 2.1, 4.8],
+            target: [0.44, 0.3, 0.45],
+            zoom: 136,
+        },
+        assets: [
+            {
+                assetName: 'FarmSupplyKit',
+                visibleNodeNames: farmSupplyKitCrateAndSackNodes,
+                position: [0.35, 0.07, 0.5],
+                rotation: [0.08, 0.52, 0.03],
+                scale: 0.22,
+            },
+            {
+                assetName: 'SensorStakeMeter',
+                position: [0.56, 0.14, 0.39],
+                rotation: [0.06, -0.5, -0.2],
+                scale: 0.32,
             },
         ],
         showBackground: false,
