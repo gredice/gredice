@@ -376,6 +376,32 @@
             ]
         },
         {
+            "name": "WaterSprayKit",
+            "source": "WaterSprayKit.blend",
+            "output": "WaterSprayKit.glb",
+            "preload": "lazy",
+            "objects": [
+                "WaterSprayKit_Tank",
+                "WaterSprayKit_Base_Ring",
+                "WaterSprayKit_Top_Collar",
+                "WaterSprayKit_Cap",
+                "WaterSprayKit_Pump_Stem",
+                "WaterSprayKit_Pump_Handle",
+                "WaterSprayKit_Back_Handle_L",
+                "WaterSprayKit_Back_Handle_R",
+                "WaterSprayKit_Back_Handle_Grip",
+                "WaterSprayKit_Hose_A",
+                "WaterSprayKit_Hose_B",
+                "WaterSprayKit_Wand",
+                "WaterSprayKit_Nozzle",
+                "WaterSprayKit_Droplet_01",
+                "WaterSprayKit_Droplet_02",
+                "WaterSprayKit_Droplet_03",
+                "WaterSprayKit_Droplet_04",
+                "WaterSprayKit_Front_Label"
+            ]
+        },
+        {
             "name": "LiquidPreparationBottlePestControl",
             "source": "LiquidPreparationBottlePestControl.blend",
             "output": "LiquidPreparationBottlePestControl.glb",
