@@ -627,6 +627,25 @@
             ]
         },
         {
+            "name": "PlantTieLoop",
+            "source": "PlantTieLoop.blend",
+            "output": "PlantTieLoop.glb",
+            "preload": "lazy",
+            "objects": [
+                "PlantTieLoop_MainLoop",
+                "PlantTieLoop_Knot",
+                "PlantTieLoop_Tail_Left",
+                "PlantTieLoop_Tail_Right",
+                "PlantTieLoop_Clip_Back",
+                "PlantTieLoop_Clip_Front",
+                "PlantTieLoop_Band_Short",
+                "PlantTieLoop_Band_Long",
+                "PlantTieLoop_Twine_Spool",
+                "PlantTieLoop_Twine_Core",
+                "PlantTieLoop_Twine_End"
+            ]
+        },
+        {
             "name": "WaterWell",
             "source": "WaterWell.blend",
             "output": "WaterWell.glb",
