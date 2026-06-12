@@ -615,6 +615,28 @@
             ]
         },
         {
+            "name": "SensorStakeMeter",
+            "source": "SensorStakeMeter.blend",
+            "output": "SensorStakeMeter.glb",
+            "preload": "lazy",
+            "objects": [
+                "SensorStakeMeter_Stake",
+                "SensorStakeMeter_Probe_Left",
+                "SensorStakeMeter_Probe_Right",
+                "SensorStakeMeter_Display_Back",
+                "SensorStakeMeter_Display_Face",
+                "SensorStakeMeter_Display_Screen",
+                "SensorStakeMeter_Gauge_Arc",
+                "SensorStakeMeter_Gauge_Tick_L",
+                "SensorStakeMeter_Gauge_Tick_M",
+                "SensorStakeMeter_Gauge_Tick_R",
+                "SensorStakeMeter_Thermometer_Bar",
+                "SensorStakeMeter_Thermometer_Bulb",
+                "SensorStakeMeter_Droplet",
+                "SensorStakeMeter_Cable"
+            ]
+        },
+        {
             "name": "WaterWell",
             "source": "WaterWell.blend",
             "output": "WaterWell.glb",
