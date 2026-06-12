@@ -1,6 +1,6 @@
 import { Edges } from '@react-three/drei';
 import type { ThreeEvent } from '@react-three/fiber';
-import { type PropsWithChildren, useEffect } from 'react';
+import { type ComponentType, type PropsWithChildren, useEffect } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import {
     createBlockInteractionTargetKey,
@@ -33,6 +33,10 @@ export type EntityFactoryProps = {
 
 const instancedRenderModeDebugColor = '#22c55e';
 const componentRenderModeDebugColor = '#f59e0b';
+const entityComponents: Record<
+    string,
+    ComponentType<EntityInstanceProps>
+> = entityNameMap;
 
 function EntityRenderModeDebugOverlay({
     stack,
@@ -215,7 +219,7 @@ export function EntityFactory({
     noRenderInView,
     ...rest
 }: EntityFactoryProps & EntityInstanceProps) {
-    const EntityComponent = entityNameMap[name];
+    const EntityComponent = entityComponents[name];
     const view = useGameState((state) => state.view);
     const isInstancedInView = noRenderInView?.includes(name) ?? false;
     const blockIndex = stack.blocks.indexOf(block);

@@ -64,10 +64,7 @@ import { Tulip } from './Tulip';
 import { WateringCan } from './WateringCan';
 import { WaterWell } from './WaterWell';
 
-export const entityNameMap: Record<
-    string,
-    React.ComponentType<EntityInstanceProps>
-> = {
+export const entityNameMap = {
     Block_Ground: BlockGround,
     Block_Grass: BlockGrass,
     Block_Sand: BlockSand,
@@ -153,4 +150,6 @@ export const entityNameMap: Record<
     MulchWood: MulchWood,
     Stick: Stick,
     Seed: Seed,
-};
+} satisfies Record<string, React.ComponentType<EntityInstanceProps>>;
+
+export type EntityName = keyof typeof entityNameMap;
