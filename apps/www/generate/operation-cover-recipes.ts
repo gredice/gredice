@@ -1262,6 +1262,67 @@ export const photographyOperationCoverRecipes = [
         ],
         showBackground: false,
     },
+    {
+        operationId: 'raisedBedFullPhoto',
+        operationLabel: 'Fotografiranje gredice',
+        outputFileName: 'raisedBedFullPhoto.webp',
+        camera: {
+            position: [2.8, 2.2, 5],
+            target: [0.45, 0.25, 0.45],
+            zoom: 116,
+        },
+        assets: [
+            {
+                assetName: 'RaisedBed',
+                visibleNodeNames: raisedBedCompactNodes,
+                position: [0.38, -0.06, 0.47],
+                rotation: [0, 0.72, 0],
+                scale: 0.4,
+            },
+            {
+                id: 'camera-phone',
+                assetName: 'CameraPhone',
+                position: [0.67, 0.18, 0.36],
+                rotation: [0.18, -0.68, -0.34],
+                scale: 0.25,
+            },
+        ],
+        plants: [
+            {
+                id: 'bed-photo-left',
+                plantType: 'lettuce',
+                generation: 5,
+                seed: 'operation-cover-raised-bed-photo-left',
+                position: [0.3, 0.08, 0.5],
+                rotation: [0, -0.3, 0],
+                scale: 0.38,
+                showFlowers: false,
+                showProduce: false,
+            },
+            {
+                id: 'bed-photo-center',
+                plantType: 'basil',
+                generation: 7,
+                seed: 'operation-cover-raised-bed-photo-center',
+                position: [0.42, 0.09, 0.43],
+                scale: 0.42,
+                showFlowers: false,
+                showProduce: false,
+            },
+            {
+                id: 'bed-photo-right',
+                plantType: 'tomato',
+                generation: 5,
+                seed: 'operation-cover-raised-bed-photo-right',
+                position: [0.52, 0.08, 0.51],
+                rotation: [0, 0.35, 0],
+                scale: 0.42,
+                showFlowers: false,
+                showProduce: false,
+            },
+        ],
+        showBackground: false,
+    },
 ] satisfies readonly OperationCoverRecipe[];
 
 export const cuttingOperationCoverRecipes = [
