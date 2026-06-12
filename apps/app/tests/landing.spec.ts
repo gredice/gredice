@@ -15,6 +15,16 @@ test('shows login on admin page when signed out', async ({ page, request }) => {
 
     await page.goto('/admin');
     await expect(
+        page.getByRole('button', { name: 'Google prijava' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Facebook prijava' }),
+    ).toBeVisible();
+
+    await page.getByRole('button', { name: 'Email prijava' }).click();
+
+    await expect(
         page.getByRole('button', { name: 'Prijavi se' }),
     ).toBeVisible();
+    await expect(page.getByLabel('Email')).toBeVisible();
 });
