@@ -6,9 +6,16 @@ import { SunflowersList } from '../../../packages/game/src/shared-ui/sunflowers/
 function createSunflowersHudQueryClient({
     accountSunflowers,
     cartSunflowers,
+    history = [],
 }: {
     accountSunflowers: number;
     cartSunflowers: number;
+    history?: Array<{
+        amount: number;
+        createdAt: string;
+        id: number;
+        reason: string;
+    }>;
 }) {
     const queryClient = new ReactQuery.QueryClient({
         defaultOptions: {
@@ -22,7 +29,7 @@ function createSunflowersHudQueryClient({
         name: 'Test Account',
         sunflowers: {
             amount: accountSunflowers,
-            history: [],
+            history,
         },
     });
     queryClient.setQueryData(['accounts', 'current', 'sunflowers', 'daily'], {
@@ -45,18 +52,26 @@ function createSunflowersHudQueryClient({
 function SunflowersHudTestProviders({
     accountSunflowers,
     cartSunflowers,
+    history,
     children,
 }: PropsWithChildren<{
     accountSunflowers: number;
     cartSunflowers: number;
+    history?: Array<{
+        amount: number;
+        createdAt: string;
+        id: number;
+        reason: string;
+    }>;
 }>) {
     const queryClient = useMemo(
         () =>
             createSunflowersHudQueryClient({
                 accountSunflowers,
                 cartSunflowers,
+                history,
             }),
-        [accountSunflowers, cartSunflowers],
+        [accountSunflowers, cartSunflowers, history],
     );
 
     return (
@@ -88,15 +103,23 @@ export function SunflowersHudStory({
 export function SunflowersPendingDetailsStory({
     accountSunflowers = 9034,
     cartSunflowers = 10470,
+    history,
 }: {
     accountSunflowers?: number;
     cartSunflowers?: number;
+    history?: Array<{
+        amount: number;
+        createdAt: string;
+        id: number;
+        reason: string;
+    }>;
 }) {
     return (
         <div className="w-80 p-4">
             <SunflowersHudTestProviders
                 accountSunflowers={accountSunflowers}
                 cartSunflowers={cartSunflowers}
+                history={history}
             >
                 <SunflowersList limit={5} pendingSunflowers={cartSunflowers} />
             </SunflowersHudTestProviders>

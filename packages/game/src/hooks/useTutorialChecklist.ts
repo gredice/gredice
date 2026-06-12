@@ -58,3 +58,26 @@ export function useClaimTutorialChecklistTask() {
         },
     });
 }
+
+export function useMarkTutorialChecklistTaskReady() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (taskKey: string) => {
+            const response = await clientAuthenticated().api.accounts.current[
+                'tutorial-checklist'
+            ][':taskKey'].ready.$post({
+                param: { taskKey },
+            });
+            if (!response.ok) {
+                const reason = await response.text();
+                throw new Error(reason || 'Failed to update checklist task');
+            }
+            return response.json();
+        },
+        onSuccess: (state) => {
+            queryClient.setQueryData(tutorialChecklistKeys, state);
+            queryClient.invalidateQueries({ queryKey: tutorialChecklistKeys });
+        },
+    });
+}

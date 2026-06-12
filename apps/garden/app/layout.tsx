@@ -3,10 +3,16 @@ import { Analytics } from '@vercel/analytics/react';
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { VercelToolbar } from '@vercel/toolbar/next';
+import { Montserrat } from 'next/font/google';
 import Head from 'next/head';
 import type { ReactNode } from 'react';
 import { ImpersonationBanner } from '../components/ImpersonationBanner';
 import { ClientAppProvider } from '../components/providers/ClientAppProvider';
+
+const montserrat = Montserrat({
+    subsets: ['latin'],
+    variable: '--font-montserrat',
+});
 
 export function generateMetadata(): Metadata {
     return {
@@ -54,7 +60,7 @@ export default function RootLayout({
                 <meta name="theme-color" content="#2e6f40" />
                 <meta name="apple-mobile-web-app-title" content="Gredice" />
             </Head>
-            <body className="antialiased bg-muted">
+            <body className={`${montserrat.variable} antialiased bg-muted`}>
                 {postHogApiKey ? (
                     <PostHogProvider
                         apiKey={postHogApiKey}

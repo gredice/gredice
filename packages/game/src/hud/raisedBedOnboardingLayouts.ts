@@ -1,3 +1,5 @@
+import { getRaisedBedNeighborPositionIndices } from './raisedBed/plantRelationshipSignals';
+
 export type RaisedBedOnboardingCropKey =
     | 'broccoli'
     | 'carrot'
@@ -22,15 +24,28 @@ type RaisedBedOnboardingImage = {
     } | null;
 } | null;
 
+type RaisedBedOnboardingPlantRelationshipReference = {
+    id: number;
+    name: string;
+};
+
+type RaisedBedOnboardingPlantRelationships = {
+    companions?: RaisedBedOnboardingPlantRelationshipReference[] | null;
+    antagonists?: RaisedBedOnboardingPlantRelationshipReference[] | null;
+} | null;
+
 export type RaisedBedOnboardingPlantSortCandidate = {
     id: number;
     image?: RaisedBedOnboardingImage;
     images?: RaisedBedOnboardingImage;
+    relationships?: RaisedBedOnboardingPlantRelationships;
     information: {
         name?: string | null;
         plant: {
+            id?: number | null;
             image?: RaisedBedOnboardingImage;
             images?: RaisedBedOnboardingImage;
+            relationships?: RaisedBedOnboardingPlantRelationships;
             information?: {
                 name?: string | null;
             } | null;
@@ -193,14 +208,10 @@ function position(row: number, col: number) {
     return col * 3 + row;
 }
 
-const commonEmptyPositions = [
-    position(0, 2),
-    position(2, 2),
-    position(1, 4),
-    position(0, 5),
-    position(1, 5),
-    position(2, 5),
-];
+const allRaisedBedPositionIndices = Array.from(
+    { length: 18 },
+    (_, index) => index,
+);
 
 const layoutDefinitions: LayoutDefinition[] = [
     {
@@ -251,7 +262,7 @@ const layoutDefinitions: LayoutDefinition[] = [
             { crop: 'tomato', positionIndex: position(0, 3) },
             { crop: 'pepper', positionIndex: position(1, 3) },
             { crop: 'carrot', positionIndex: position(2, 3) },
-            { crop: 'cucumber', positionIndex: position(0, 4) },
+            { crop: 'cucumber', positionIndex: position(1, 4) },
             { crop: 'onion', positionIndex: position(2, 4) },
         ],
     },
@@ -273,12 +284,12 @@ const layoutDefinitions: LayoutDefinition[] = [
             { crop: 'cucumber', positionIndex: position(0, 1) },
             { crop: 'tomato', positionIndex: position(1, 1) },
             { crop: 'carrot', positionIndex: position(2, 1) },
-            { crop: 'pepper', positionIndex: position(1, 2) },
+            { crop: 'carrot', positionIndex: position(0, 2) },
             { crop: 'cucumber', positionIndex: position(0, 3) },
             { crop: 'lettuce', positionIndex: position(1, 3) },
-            { crop: 'carrot', positionIndex: position(2, 3) },
             { crop: 'tomato', positionIndex: position(0, 4) },
-            { crop: 'cucumber', positionIndex: position(2, 4) },
+            { crop: 'cucumber', positionIndex: position(1, 4) },
+            { crop: 'pepper', positionIndex: position(1, 5) },
         ],
     },
     {
@@ -299,12 +310,12 @@ const layoutDefinitions: LayoutDefinition[] = [
             { crop: 'carrot', positionIndex: position(0, 1) },
             { crop: 'spinach', positionIndex: position(1, 1) },
             { crop: 'onion', positionIndex: position(2, 1) },
-            { crop: 'lettuce', positionIndex: position(1, 2) },
-            { crop: 'broccoli', positionIndex: position(0, 3) },
-            { crop: 'spinach', positionIndex: position(1, 3) },
+            { crop: 'lettuce', positionIndex: position(0, 2) },
+            { crop: 'broccoli', positionIndex: position(2, 2) },
+            { crop: 'spinach', positionIndex: position(0, 3) },
             { crop: 'carrot', positionIndex: position(2, 3) },
-            { crop: 'lettuce', positionIndex: position(0, 4) },
-            { crop: 'onion', positionIndex: position(2, 4) },
+            { crop: 'lettuce', positionIndex: position(1, 4) },
+            { crop: 'onion', positionIndex: position(1, 5) },
         ],
     },
 ];
@@ -371,6 +382,150 @@ function layoutHasAvailableCrops(
     return layout.placements.every((placement) => crops[placement.crop]);
 }
 
+function hasRelationshipReferences(
+    relationships: RaisedBedOnboardingPlantRelationships | undefined,
+) {
+    return (
+        (relationships?.companions?.length ?? 0) > 0 ||
+        (relationships?.antagonists?.length ?? 0) > 0
+    );
+}
+
+function cropPlantId(crop: RaisedBedOnboardingCrop) {
+    return crop.sort.information.plant.id ?? null;
+}
+
+function cropRelationships(crop: RaisedBedOnboardingCrop) {
+    return hasRelationshipReferences(crop.sort.relationships)
+        ? crop.sort.relationships
+        : crop.sort.information.plant.relationships;
+}
+
+function hasAntagonistRelationship(
+    crop: RaisedBedOnboardingCrop,
+    neighborCrop: RaisedBedOnboardingCrop,
+) {
+    const cropId = cropPlantId(crop);
+    const neighborCropId = cropPlantId(neighborCrop);
+    if (cropId === null || neighborCropId === null) {
+        return false;
+    }
+
+    const cropAntagonistIds = new Set(
+        cropRelationships(crop)?.antagonists?.map(
+            (relationship) => relationship.id,
+        ) ?? [],
+    );
+    const neighborCropAntagonistIds = new Set(
+        cropRelationships(neighborCrop)?.antagonists?.map(
+            (relationship) => relationship.id,
+        ) ?? [],
+    );
+
+    return (
+        cropAntagonistIds.has(neighborCropId) ||
+        neighborCropAntagonistIds.has(cropId)
+    );
+}
+
+function hasCompanionRelationship(
+    crop: RaisedBedOnboardingCrop,
+    neighborCrop: RaisedBedOnboardingCrop,
+) {
+    const cropId = cropPlantId(crop);
+    const neighborCropId = cropPlantId(neighborCrop);
+    if (cropId === null || neighborCropId === null) {
+        return false;
+    }
+
+    const cropCompanionIds = new Set(
+        cropRelationships(crop)?.companions?.map(
+            (relationship) => relationship.id,
+        ) ?? [],
+    );
+    const neighborCropCompanionIds = new Set(
+        cropRelationships(neighborCrop)?.companions?.map(
+            (relationship) => relationship.id,
+        ) ?? [],
+    );
+
+    return (
+        cropCompanionIds.has(neighborCropId) ||
+        neighborCropCompanionIds.has(cropId)
+    );
+}
+
+function layoutHasAntagonistNeighbors(
+    placements: RaisedBedOnboardingResolvedPlacement[],
+) {
+    const placementsByPosition = new Map(
+        placements.map((placement) => [placement.positionIndex, placement]),
+    );
+
+    for (const placement of placements) {
+        for (const neighborPositionIndex of getRaisedBedNeighborPositionIndices(
+            {
+                positionIndex: placement.positionIndex,
+            },
+        )) {
+            if (placement.positionIndex > neighborPositionIndex) {
+                continue;
+            }
+
+            const neighborPlacement = placementsByPosition.get(
+                neighborPositionIndex,
+            );
+            if (
+                neighborPlacement &&
+                hasAntagonistRelationship(
+                    placement.cropDetails,
+                    neighborPlacement.cropDetails,
+                )
+            ) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+function layoutCompanionNeighborCount(
+    placements: RaisedBedOnboardingResolvedPlacement[],
+) {
+    const placementsByPosition = new Map(
+        placements.map((placement) => [placement.positionIndex, placement]),
+    );
+    let count = 0;
+
+    for (const placement of placements) {
+        for (const neighborPositionIndex of getRaisedBedNeighborPositionIndices(
+            {
+                positionIndex: placement.positionIndex,
+            },
+        )) {
+            if (placement.positionIndex > neighborPositionIndex) {
+                continue;
+            }
+
+            const neighborPlacement = placementsByPosition.get(
+                neighborPositionIndex,
+            );
+            if (
+                neighborPlacement &&
+                hasCompanionRelationship(
+                    placement.cropDetails,
+                    neighborPlacement.cropDetails,
+                )
+            ) {
+                count += 1;
+            }
+        }
+    }
+
+    return count;
+}
+
 export function getRaisedBedOnboardingLayouts({
     care,
     crops,
@@ -380,13 +535,13 @@ export function getRaisedBedOnboardingLayouts({
     crops: Partial<Record<RaisedBedOnboardingCropKey, RaisedBedOnboardingCrop>>;
     goal: RaisedBedOnboardingGoal;
 }) {
-    return layoutDefinitions
+    const layouts = layoutDefinitions
         .filter((layout) => layoutHasAvailableCrops(layout, crops))
         .map((layout) => {
             const occupiedPositions = new Set(
                 layout.placements.map((placement) => placement.positionIndex),
             );
-            const emptyPositionIndices = commonEmptyPositions.filter(
+            const emptyPositionIndices = allRaisedBedPositionIndices.filter(
                 (positionIndex) => !occupiedPositions.has(positionIndex),
             );
             const placements = layout.placements.flatMap((placement) => {
@@ -410,15 +565,34 @@ export function getRaisedBedOnboardingLayouts({
                 highlights: layout.highlights,
                 placements,
                 emptyPositionIndices,
+                companionNeighborCount:
+                    layoutCompanionNeighborCount(placements),
                 score: layoutScore(layout, goal, care),
             };
-        })
+        });
+    const compatibleLayouts = layouts.filter(
+        (layout) => !layoutHasAntagonistNeighbors(layout.placements),
+    );
+
+    return compatibleLayouts
         .sort((left, right) => {
             if (right.score !== left.score) {
                 return right.score - left.score;
             }
 
+            if (right.companionNeighborCount !== left.companionNeighborCount) {
+                return (
+                    right.companionNeighborCount - left.companionNeighborCount
+                );
+            }
+
             return left.title.localeCompare(right.title, 'hr-HR');
         })
-        .map(({ score: _score, ...layout }) => layout);
+        .map(
+            ({
+                companionNeighborCount: _companionNeighborCount,
+                score: _score,
+                ...layout
+            }) => layout,
+        );
 }

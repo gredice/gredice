@@ -28,6 +28,7 @@ import {
     grediceCached,
     grediceCacheKeys,
     knownEventTypes,
+    markTutorialChecklistTaskReady,
     REFERRAL_REWARD_AMOUNT,
     ReferralCodeAlreadyExistsError,
     ReferralCodeAlreadyUsedError,
@@ -352,6 +353,52 @@ const app = new Hono<{ Variables: AuthVariables }>()
             return context.json(
                 await getTutorialChecklistState({ accountId, userId }),
             );
+        },
+    )
+    .post(
+        '/current/tutorial-checklist/:taskKey/ready',
+        describeRoute({
+            description: 'Mark a manual tutorial checklist task as ready',
+            security: authSecurity,
+        }),
+        zValidator(
+            'param',
+            z.object({
+                taskKey: z.string().min(1),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            if (!(await isTutorialChecklistEnabled(context.req.raw))) {
+                return context.json({ error: 'Not found' }, 404);
+            }
+
+            const { accountId, userId } = context.get('authContext');
+            const { taskKey } = context.req.valid('param');
+
+            try {
+                return context.json(
+                    await markTutorialChecklistTaskReady({
+                        accountId,
+                        taskKey,
+                        userId,
+                    }),
+                );
+            } catch (error) {
+                if (error instanceof TutorialChecklistTaskNotFoundError) {
+                    return context.json({ error: 'Task not found' }, 404);
+                }
+                if (error instanceof TutorialChecklistTaskNotClaimableError) {
+                    return context.json(
+                        {
+                            error: 'Task cannot be marked ready',
+                            reason: error.reason,
+                        },
+                        409,
+                    );
+                }
+                throw error;
+            }
         },
     )
     .post(

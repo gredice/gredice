@@ -2,16 +2,22 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
-    backfillTutorialChecklistRewards,
     claimTutorialChecklistTask,
     createUserWithPassword,
+    getOrCreateShoppingCart,
     getSunflowers,
     getTutorialChecklistState,
     getUser,
+    markTutorialChecklistTaskReady,
     TutorialChecklistTaskNotClaimableError,
-    updateUser,
+    upsertOrRemoveCartItem,
 } from '@gredice/storage';
-import { ensureFarmId } from './helpers/testHelpers';
+import {
+    createTestBlock,
+    createTestGarden,
+    createTestRaisedBed,
+    ensureFarmId,
+} from './helpers/testHelpers';
 import { createTestDb } from './testDb';
 
 async function createChecklistTestUser() {
@@ -42,11 +48,63 @@ test('tutorial checklist returns day groups and open tasks', async () => {
             .flatMap((group) => group.tasks)
             .some((task) => task.key === 'order-watering'),
     );
+    const allTasks = state.groups.flatMap((group) => group.tasks);
+    const onboardingTask = allTasks.find(
+        (task) => task.key === 'complete-first-raised-bed-onboarding',
+    );
+    assert.ok(onboardingTask);
+    assert.strictEqual(onboardingTask.status, 'available');
+    assert.strictEqual(onboardingTask.claimable, false);
+    assert.strictEqual(onboardingTask.actionTarget, 'raisedBedOnboarding');
+    const openCartTask = allTasks.find((task) => task.key === 'open-cart');
+    assert.ok(openCartTask);
+    assert.strictEqual(openCartTask.status, 'available');
+    assert.strictEqual(openCartTask.claimable, false);
+    assert.ok(
+        state.groups
+            .find((group) => group.id === 'open')
+            ?.tasks.some((task) => task.key === 'enter-referral-code'),
+    );
+    assert.strictEqual(state.totals.claimableCount, 0);
 });
 
-test('tutorial checklist manual claim grants reward once', async () => {
+test('tutorial checklist manual task becomes claimable before reward claim', async () => {
     createTestDb();
     const { accountId, userId } = await createChecklistTestUser();
+
+    const initialState = await getTutorialChecklistState({ accountId, userId });
+    const initialTask = initialState.groups
+        .flatMap((group) => group.tasks)
+        .find((candidate) => candidate.key === 'open-operations');
+    assert.ok(initialTask);
+    assert.strictEqual(initialTask.status, 'available');
+    assert.strictEqual(initialTask.claimable, false);
+    assert.strictEqual(initialTask.completed, false);
+
+    await assert.rejects(
+        () =>
+            claimTutorialChecklistTask({
+                accountId,
+                userId,
+                taskKey: 'open-operations',
+            }),
+        TutorialChecklistTaskNotClaimableError,
+    );
+    assert.strictEqual(await getSunflowers(accountId), 1000);
+
+    const readyState = await markTutorialChecklistTaskReady({
+        accountId,
+        userId,
+        taskKey: 'open-operations',
+    });
+    const readyTask = readyState.groups
+        .flatMap((group) => group.tasks)
+        .find((candidate) => candidate.key === 'open-operations');
+    assert.ok(readyTask);
+    assert.strictEqual(readyTask.status, 'ready');
+    assert.strictEqual(readyTask.claimable, true);
+    assert.strictEqual(readyTask.completed, false);
+    assert.strictEqual(await getSunflowers(accountId), 1000);
 
     await claimTutorialChecklistTask({
         accountId,
@@ -62,6 +120,7 @@ test('tutorial checklist manual claim grants reward once', async () => {
     assert.ok(task);
     assert.strictEqual(task.status, 'claimed');
     assert.strictEqual(task.claimable, false);
+    assert.strictEqual(task.completed, true);
 
     await assert.rejects(
         () =>
@@ -90,37 +149,48 @@ test('tutorial checklist rejects derived task before signal exists', async () =>
     );
 });
 
-test('tutorial checklist backfill grants already completed derived rewards once', async () => {
+test('tutorial checklist treats raised-bed plant cart placements as planting progress', async () => {
     createTestDb();
     const { accountId, userId } = await createChecklistTestUser();
-    await updateUser({
-        id: userId,
-        displayName: 'Checklist Tester',
-    });
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const blockId = await createTestBlock(gardenId, 'checklist-bed');
+    const raisedBedId = await createTestRaisedBed(gardenId, accountId, blockId);
+    const cart = await getOrCreateShoppingCart(accountId);
+    assert.ok(cart);
 
-    const dryRun = await backfillTutorialChecklistRewards({
-        accountIds: [accountId],
-    });
-    assert.strictEqual(dryRun.dryRun, true);
-    assert.strictEqual(dryRun.scannedAccounts, 1);
-    assert.strictEqual(dryRun.wouldCreateClaims, 1);
-    assert.strictEqual(dryRun.wouldGrantSunflowers, 100);
-    assert.strictEqual(await getSunflowers(accountId), 1000);
+    for (const positionIndex of Array.from(
+        { length: 9 },
+        (_, index) => index,
+    )) {
+        await upsertOrRemoveCartItem(
+            null,
+            cart.id,
+            (1000 + positionIndex).toString(),
+            'plantSort',
+            1,
+            gardenId,
+            raisedBedId,
+            positionIndex,
+        );
+    }
 
-    const applied = await backfillTutorialChecklistRewards({
-        accountIds: [accountId],
-        dryRun: false,
-    });
-    assert.strictEqual(applied.createdClaims, 1);
-    assert.strictEqual(applied.grantedSunflowers, 100);
-    assert.strictEqual(await getSunflowers(accountId), 1100);
+    const state = await getTutorialChecklistState({ accountId, userId });
+    const dayOne = state.groups.find((group) => group.id === 'day-1');
+    assert.ok(dayOne);
+    const plantFirstTask = dayOne.tasks.find(
+        (task) => task.key === 'plant-first',
+    );
+    const plantNineTask = dayOne.tasks.find(
+        (task) => task.key === 'plant-nine-in-bed',
+    );
 
-    const secondApplied = await backfillTutorialChecklistRewards({
-        accountIds: [accountId],
-        dryRun: false,
-    });
-    assert.strictEqual(secondApplied.createdClaims, 0);
-    assert.strictEqual(secondApplied.grantedSunflowers, 0);
-    assert.strictEqual(secondApplied.existingClaims, 1);
-    assert.strictEqual(await getSunflowers(accountId), 1100);
+    assert.ok(plantFirstTask);
+    assert.ok(plantNineTask);
+    assert.strictEqual(plantFirstTask.status, 'ready');
+    assert.strictEqual(plantFirstTask.claimable, true);
+    assert.strictEqual(plantFirstTask.completed, false);
+    assert.strictEqual(plantNineTask.status, 'ready');
+    assert.strictEqual(plantNineTask.claimable, true);
+    assert.strictEqual(plantNineTask.completed, false);
 });

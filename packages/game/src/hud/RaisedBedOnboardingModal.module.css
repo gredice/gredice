@@ -1,0 +1,256 @@
+.wizardStepPanel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    width: 100%;
+    animation: wizard-step-forward 260ms cubic-bezier(0.16, 1, 0.3, 1);
+    transform-origin: center center;
+}
+
+.wizardStepPanel[data-step-direction="backward"] {
+    animation-name: wizard-step-backward;
+}
+
+.layoutStack {
+    --layout-carousel-side-gutter: 4.5rem;
+
+    box-sizing: border-box;
+    position: relative;
+    width: 100%;
+    padding: 0 var(--layout-carousel-side-gutter) 2rem;
+}
+
+.layoutStackBack {
+    position: absolute;
+    pointer-events: none;
+    border: 1px solid rgb(134 94 60 / 0.2);
+    border-radius: 0.5rem;
+    background: rgb(255 255 255 / 0.72);
+    box-shadow: 0 10px 24px rgb(82 54 31 / 0.1);
+    transform-origin: center top;
+}
+
+:global(.dark) .layoutStackBack {
+    border-color: rgb(34 197 94 / 0.16);
+    background: rgb(15 23 20 / 0.78);
+    box-shadow: 0 14px 28px rgb(0 0 0 / 0.34);
+}
+
+.layoutStackBackOne {
+    z-index: 1;
+    inset: 18px calc(var(--layout-carousel-side-gutter) + 22px) 12px;
+    transform: translateY(18px) scale(0.965);
+}
+
+.layoutStackBackTwo {
+    z-index: 0;
+    inset: 32px calc(var(--layout-carousel-side-gutter) + 48px) 2px;
+    opacity: 0.7;
+    transform: translateY(34px) scale(0.925);
+}
+
+.layoutSuggestionStage {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    touch-action: pan-y;
+}
+
+.layoutSuggestionCard {
+    position: relative;
+    z-index: 2;
+    transform-origin: center center;
+    will-change: opacity, transform;
+}
+
+.layoutSuggestionCard[data-card-motion="exit"] {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    pointer-events: none;
+    animation: suggestion-card-exit-next 360ms cubic-bezier(0.7, 0, 0.84, 0)
+        both;
+}
+
+.layoutSuggestionCard[data-card-motion="exit"][data-carousel-direction="previous"] {
+    animation-name: suggestion-card-exit-previous;
+}
+
+.layoutCardNavigation.layoutCardNavigation {
+    display: none;
+    flex-shrink: 0;
+}
+
+.layoutCardNavigationButton.layoutCardNavigationButton {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 9999px;
+    border-color: rgb(82 54 31 / 0.2);
+    background: rgb(255 255 255 / 0.96);
+    color: rgb(69 52 37);
+    box-shadow: 0 6px 14px rgb(82 54 31 / 0.1);
+    transition:
+        background-color 160ms ease,
+        border-color 160ms ease,
+        box-shadow 160ms ease,
+        color 160ms ease,
+        transform 160ms ease;
+}
+
+.layoutCardNavigationButton.layoutCardNavigationButton:hover {
+    border-color: rgb(82 54 31 / 0.34);
+    background: rgb(250 247 241 / 0.98);
+    color: rgb(42 31 22);
+    box-shadow: 0 10px 20px rgb(82 54 31 / 0.14);
+    transform: scale(1.04);
+}
+
+.layoutCardNavigationButton.layoutCardNavigationButton:focus,
+.layoutCardNavigationButton.layoutCardNavigationButton:focus-visible {
+    outline: 2px solid rgb(82 54 31 / 0.64);
+    outline-offset: 3px;
+    box-shadow:
+        0 0 0 4px rgb(82 54 31 / 0.1),
+        0 10px 20px rgb(82 54 31 / 0.14);
+}
+
+.layoutCardNavigationButton.layoutCardNavigationButton:active {
+    border-color: rgb(82 54 31 / 0.42);
+    background: rgb(239 233 224 / 0.98);
+    box-shadow: 0 4px 10px rgb(82 54 31 / 0.12);
+    transform: scale(0.96);
+}
+
+@keyframes wizard-step-forward {
+    from {
+        opacity: 0;
+        transform: translateX(26px) scale(0.985);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}
+
+@keyframes wizard-step-backward {
+    from {
+        opacity: 0;
+        transform: translateX(-26px) scale(0.985);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}
+
+@keyframes suggestion-card-exit-next {
+    from {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-34px) scale(1.015);
+    }
+}
+
+@keyframes suggestion-card-exit-previous {
+    from {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(34px) scale(0.965);
+    }
+}
+
+.layoutCarouselButton {
+    --layout-carousel-button-x: 0;
+
+    position: absolute;
+    top: calc(50% - 1rem);
+    z-index: 3;
+    width: 3.25rem;
+    height: 3.25rem;
+    border-radius: 9999px;
+    border-color: rgb(82 54 31 / 0.2);
+    background: rgb(255 255 255 / 0.96);
+    color: rgb(69 52 37);
+    box-shadow: 0 8px 18px rgb(82 54 31 / 0.12);
+    transform: translate(var(--layout-carousel-button-x), -50%);
+    transition:
+        background-color 160ms ease,
+        border-color 160ms ease,
+        box-shadow 160ms ease,
+        color 160ms ease,
+        transform 160ms ease;
+}
+
+.layoutCarouselButton.layoutCarouselButton:hover {
+    border-color: rgb(82 54 31 / 0.34);
+    background: rgb(250 247 241 / 0.98);
+    color: rgb(42 31 22);
+    box-shadow: 0 12px 24px rgb(82 54 31 / 0.16);
+    transform: translate(var(--layout-carousel-button-x), -50%) scale(1.04);
+}
+
+.layoutCarouselButton.layoutCarouselButton:focus,
+.layoutCarouselButton.layoutCarouselButton:focus-visible {
+    outline: 2px solid rgb(82 54 31 / 0.64);
+    outline-offset: 4px;
+    box-shadow:
+        0 0 0 4px rgb(82 54 31 / 0.1),
+        0 12px 24px rgb(82 54 31 / 0.16);
+}
+
+.layoutCarouselButton.layoutCarouselButton:active {
+    border-color: rgb(82 54 31 / 0.42);
+    background: rgb(239 233 224 / 0.98);
+    box-shadow: 0 5px 12px rgb(82 54 31 / 0.12);
+    transform: translate(var(--layout-carousel-button-x), -50%) scale(0.96);
+}
+
+.layoutCarouselButtonPrevious {
+    --layout-carousel-button-x: -150%;
+
+    left: var(--layout-carousel-side-gutter);
+}
+
+.layoutCarouselButtonNext {
+    --layout-carousel-button-x: 150%;
+
+    right: var(--layout-carousel-side-gutter);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .wizardStepPanel,
+    .layoutSuggestionCard[data-card-motion] {
+        animation: none;
+    }
+}
+
+@media (max-width: 640px) {
+    .layoutStack {
+        --layout-carousel-side-gutter: 0rem;
+
+        padding: 0 0 2rem;
+    }
+
+    .layoutStackBackOne {
+        inset: 18px 18px 12px;
+    }
+
+    .layoutStackBackTwo {
+        inset: 32px 36px 2px;
+    }
+
+    .layoutCarouselButton {
+        display: none;
+    }
+
+    .layoutCardNavigation.layoutCardNavigation {
+        display: flex;
+    }
+}

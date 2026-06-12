@@ -27,4 +27,27 @@ test.describe('Sunflowers HUD', () => {
         await expect(page.getByText('U košari')).toBeVisible();
         await expect(page.getByText(/[\u2212-]10\.470/u)).toBeVisible();
     });
+
+    test('shows tutorial reward history as a known activity', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <SunflowersPendingDetailsStory
+                cartSunflowers={0}
+                history={[
+                    {
+                        amount: 25,
+                        createdAt: '2026-06-12T08:00:00.000Z',
+                        id: 1,
+                        reason: 'tutorial:open-cart',
+                    },
+                ]}
+            />,
+        );
+
+        await expect(page.getByText('Zadaci za novi vrt')).toBeVisible();
+        await expect(page.getByText('+25')).toBeVisible();
+        await expect(page.getByText('Nepoznato')).toHaveCount(0);
+    });
 });
