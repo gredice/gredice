@@ -1601,6 +1601,56 @@ export const soilOperationCoverRecipes = [
         ],
         showBackground: false,
     },
+    {
+        operationId: 'freshSoil20L',
+        operationLabel: 'Dodatna zemlja 20L',
+        outputFileName: 'freshSoil20L.webp',
+        camera: {
+            position: [2.8, 2.2, 5],
+            target: [0.45, 0.24, 0.45],
+            zoom: 122,
+        },
+        assets: [
+            {
+                assetName: 'RaisedBed',
+                visibleNodeNames: raisedBedCompactNodes,
+                position: [0.45, -0.06, 0.46],
+                rotation: [0, 0.72, 0],
+                scale: 0.4,
+            },
+            {
+                id: 'soil-bag-left',
+                assetName: 'FarmSupplyKit',
+                visibleNodeNames: farmSupplyKitSackAndGranuleNodes,
+                position: [0.25, 0.07, 0.58],
+                rotation: [0.08, 0.58, 0.03],
+                scale: 0.15,
+            },
+            {
+                id: 'soil-bag-back',
+                assetName: 'FarmSupplyKit',
+                visibleNodeNames: farmSupplyKitSackAndGranuleNodes,
+                position: [0.34, 0.08, 0.48],
+                rotation: [0.08, 0.42, -0.03],
+                scale: 0.15,
+            },
+            {
+                id: 'fresh-soil-mound-front',
+                assetName: 'MulchWood',
+                position: [0.48, 0.08, 0.52],
+                rotation: [0.14, -0.3, 0.1],
+                scale: [0.21, 0.08, 0.16],
+            },
+            {
+                id: 'fresh-soil-mound-back',
+                assetName: 'MulchWood',
+                position: [0.58, 0.08, 0.42],
+                rotation: [0.14, 0.35, -0.08],
+                scale: [0.18, 0.07, 0.14],
+            },
+        ],
+        showBackground: false,
+    },
 ] satisfies readonly OperationCoverRecipe[];
 
 export const cuttingOperationCoverRecipes = [
