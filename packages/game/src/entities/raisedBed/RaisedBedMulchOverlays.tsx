@@ -8,7 +8,6 @@ import {
 import { useBlockData } from '../../hooks/useBlockData';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useOperations } from '../../hooks/useOperations';
-import { useShoppingCart } from '../../hooks/useShoppingCart';
 import type { GLTFResult } from '../../models/GameAssets';
 import { updateGameProfileMetadata } from '../../scene/gameProfileMetadata';
 import {
@@ -30,7 +29,6 @@ import {
 import { useGameGLTF } from '../../utils/useGameGLTF';
 import { appliedMulchOperationsOldestFirst } from './raisedBedMulchOperationOrder';
 import {
-    isBedMulchApplication,
     isFieldMulchApplication,
     resolveActiveFieldMulchRewardsByFieldId,
     resolveActiveRaisedBedMulchReward,
@@ -88,12 +86,17 @@ function timestampMs(value: Date | string | null | undefined) {
     return Number.isFinite(timestamp) ? timestamp : null;
 }
 
-function activePlantCycleStartMs(field: RaisedBedFieldData) {
+function activePlantRewardBoundaryMs(field: RaisedBedFieldData) {
     const activePlantCycle = field.plantCycles?.find(
         (plantCycle) => plantCycle.active,
     );
+    const timestamps = [
+        timestampMs(activePlantCycle?.startedAt),
+        timestampMs(activePlantCycle?.plantSowDate),
+        timestampMs(field.plantSowDate),
+    ].filter((value): value is number => value != null);
 
-    return timestampMs(activePlantCycle?.startedAt);
+    return timestamps.length > 0 ? Math.max(...timestamps) : null;
 }
 
 function isOperationAppliedToActivePlantCycle(
@@ -110,8 +113,7 @@ function isOperationAppliedToActivePlantCycle(
         return true;
     }
 
-    const cycleStartTimestamp =
-        activePlantCycleStartMs(field) ?? timestampMs(field.plantSowDate);
+    const cycleStartTimestamp = activePlantRewardBoundaryMs(field);
     if (cycleStartTimestamp == null) {
         return true;
     }
@@ -528,7 +530,6 @@ export function RaisedBedMulchOverlays({
     quality?: GameQualityProfile;
 }) {
     const { data: currentGarden } = useCurrentGarden();
-    const { data: cart } = useShoppingCart();
     const { data: operations } = useOperations();
     const { data: blockData } = useBlockData();
     const { nodes: raisedBedNodes } = useGameGLTF('RaisedBed');
@@ -619,28 +620,12 @@ export function RaisedBedMulchOverlays({
             raisedBedId: raisedBed.id,
         });
 
-        const fullBedCartVisual = cart?.items.find((item) => {
-            if (
-                item.gardenId !== currentGarden.id ||
-                item.raisedBedId !== raisedBed.id ||
-                item.entityTypeName !== 'operation'
-            ) {
-                return false;
-            }
-
-            const visual = mulchVisualByOperationId.get(Number(item.entityId));
-            return Boolean(visual && isBedMulchApplication(visual.application));
-        });
-
-        const fullBedCartMulch =
-            fullBedCartVisual &&
-            mulchVisualByOperationId.get(Number(fullBedCartVisual.entityId));
         const fullBedAppliedMulch =
             activeRaisedBedMulchReward &&
             mulchVisualByOperationId.get(activeRaisedBedMulchReward.entityId);
 
-        if (fullBedCartMulch || fullBedAppliedMulch) {
-            const visual = fullBedCartMulch || fullBedAppliedMulch;
+        if (fullBedAppliedMulch) {
+            const visual = fullBedAppliedMulch;
             if (visual) {
                 const mulchAsset = getMulchAsset(mulchAssets, visual.blockName);
                 if (mulchAsset) {
@@ -703,24 +688,6 @@ export function RaisedBedMulchOverlays({
                 field.positionIndex,
                 visual.blockName,
             );
-        }
-
-        for (const item of cart?.items ?? []) {
-            if (
-                item.gardenId !== currentGarden.id ||
-                item.raisedBedId !== raisedBed.id ||
-                item.entityTypeName !== 'operation' ||
-                typeof item.positionIndex !== 'number'
-            ) {
-                continue;
-            }
-
-            const visual = mulchVisualByOperationId.get(Number(item.entityId));
-            if (!visual || !isFieldMulchApplication(visual.application)) {
-                continue;
-            }
-
-            fieldMulchByPositionIndex.set(item.positionIndex, visual.blockName);
         }
 
         const orientation = raisedBed.orientation ?? 'vertical';
