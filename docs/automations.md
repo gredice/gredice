@@ -12,7 +12,9 @@ greenhouse sowing to direct sowing and queues 50L watering operations for the
 next two days when that raised bed does not already have at least 50L of
 watering scheduled on those days. Verifying the `Uklanjanje biljke` operation
 marks the targeted raised-bed field plant status as `removed`, which closes the
-plant cycle and frees the field for future planting.
+plant cycle and frees the field for future planting. Plant field changes are
+available as configurable action modules so new operation-driven plant-state
+automations can be created from the admin graph editor without adding code.
 
 ## Ownership
 
@@ -98,12 +100,16 @@ MVP modules:
 - `action.createFarmInventoryOperations`: creates accepted, scheduled farm-level
   operations for every active farm from a JSON list in the automation
   definition.
+- `action.updateRaisedBedFieldPlantAttributes`: writes plant status and/or
+  sowing location events for the operation target field. Use this for new
+  no-code plant-state automations.
 - `action.updateRaisedBedFieldPlantStatus`: writes a
-  `raisedBedField.plantUpdate` event for an operation target, including the
-  default plant-removal workflow that sets `targetStatus = "removed"`.
+  `raisedBedField.plantUpdate` event for an operation target. Existing
+  automations with this module key remain supported.
 - `action.updateRaisedBedFieldSowingLocation`: writes a
   `raisedBedField.plantSchedule` event for an operation target, preserving the
-  scheduled date while changing `sowingLocation`.
+  scheduled date while changing `sowingLocation`. Existing automations with
+  this module key remain supported.
 - `action.createPlantStatusRequestsFromImageAnalysis`: reviews hosted
   raised-bed images from operation completion or raised-bed AI analysis events,
   then creates pending plant-status approval requests when the visual evidence
@@ -114,6 +120,12 @@ When adding a module, define metadata, config validation, dry-run behavior, and
 the executor function in the registry. Prefer idempotent repository functions for
 actions that mutate operations, plant state, notifications, or customer-visible
 records.
+
+Graphs can branch after a shared condition. For example, an `operation.verify`
+trigger can flow into one `condition.operationMatches` node and then fan out to
+separate plant-attribute, watering, notification, or operation-creation actions.
+The executor records those sibling actions as separate steps; actions should
+remain idempotent because replays and retries can run the same graph again.
 
 ## Graph Validation
 
