@@ -117,13 +117,6 @@ MVP modules:
 - `action.updateRaisedBedFieldPlantAttributes`: writes plant status and/or
   sowing location events for the operation target field. Use this for new
   no-code plant-state automations.
-- `action.updateRaisedBedFieldPlantStatus`: writes a
-  `raisedBedField.plantUpdate` event for an operation target. Existing
-  automations with this module key remain supported.
-- `action.updateRaisedBedFieldSowingLocation`: writes a
-  `raisedBedField.plantSchedule` event for an operation target, preserving the
-  scheduled date while changing `sowingLocation`. Existing automations with
-  this module key remain supported.
 - `action.createPlantStatusRequestsFromImageAnalysis`: reviews hosted
   raised-bed images from operation completion or raised-bed AI analysis events,
   then creates pending plant-status approval requests when the visual evidence
