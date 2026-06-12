@@ -112,6 +112,15 @@ const harvestBasketFullNodes = [
     'HarvestBasket_PumpkinStem',
 ] as const;
 
+const greenhouseStoredNodes = [
+    'Tunnel_Half',
+    'Greenhouse_Tunnel_Stick',
+    'Greenhouse_Tunnel_Stick_Middle',
+    'Greenhouse_Tunnel_Stick_Top',
+    'Greenhouse_X_Stick_A',
+    'Greenhouse_X_Stick_B',
+] as const;
+
 const farmSupplyKitCrateAndSackNodes = [
     'FarmSupplyKit_Crate_Base',
     'FarmSupplyKit_Crate_Front',
@@ -1798,6 +1807,43 @@ export const soilOperationCoverRecipes = [
     },
 ] satisfies readonly OperationCoverRecipe[];
 
+export const storageOperationCoverRecipes = [
+    {
+        operationId: 'storeGreenhouse',
+        operationLabel: 'Skladištenje plastenika',
+        outputFileName: 'storeGreenhouse.webp',
+        camera: {
+            position: [2.7, 2.1, 4.8],
+            target: [0.46, 0.24, 0.45],
+            zoom: 134,
+        },
+        assets: [
+            {
+                id: 'storage-box',
+                assetName: 'GardenBox',
+                position: [0.46, 0.06, 0.52],
+                rotation: [0.08, -0.55, 0.03],
+                scale: 0.2,
+            },
+            {
+                id: 'stored-greenhouse',
+                assetName: 'Greenhouse',
+                visibleNodeNames: greenhouseStoredNodes,
+                position: [0.32, 0.13, 0.5],
+                rotation: [0.42, 0.68, -0.7],
+                scale: 0.28,
+            },
+            {
+                assetName: 'FieldworkClipboard',
+                position: [0.68, 0.22, 0.34],
+                rotation: [0.18, -0.55, -0.22],
+                scale: 0.16,
+            },
+        ],
+        showBackground: false,
+    },
+] satisfies readonly OperationCoverRecipe[];
+
 export const cuttingOperationCoverRecipes = [
     {
         operationId: 'formative-pruning',
@@ -2607,6 +2653,7 @@ export const operationCoverRecipes = [
     ...protectionOperationCoverRecipes,
     ...sensorOperationCoverRecipes,
     ...soilOperationCoverRecipes,
+    ...storageOperationCoverRecipes,
     ...cuttingOperationCoverRecipes,
     ...bedMaintenanceOperationCoverRecipes,
 ] satisfies readonly OperationCoverRecipe[];
