@@ -742,6 +742,66 @@ export const cuttingOperationCoverRecipes = [
         ],
         showBackground: false,
     },
+    {
+        operationId: 'plantRemoval',
+        operationLabel: 'Uklanjanje biljke',
+        outputFileName: 'plantRemoval.webp',
+        camera: {
+            position: [2.5, 2.1, 4.8],
+            target: [0.43, 0.27, 0.45],
+            zoom: 144,
+        },
+        plants: [
+            {
+                id: 'tilted-plant',
+                plantType: 'basil',
+                generation: 7,
+                seed: 'operation-cover-plant-removal',
+                position: [0.36, 0.11, 0.43],
+                rotation: [0.38, 0.2, -0.58],
+                scale: 0.68,
+                showFlowers: false,
+                showProduce: false,
+            },
+        ],
+        assets: [
+            {
+                id: 'empty-hole',
+                assetName: 'MulchWood',
+                position: [0.56, 0.02, 0.55],
+                rotation: [0.18, 0.5, -0.08],
+                scale: 0.18,
+            },
+            {
+                id: 'root-left',
+                assetName: 'Stick',
+                position: [0.43, 0.05, 0.47],
+                rotation: [0.75, 0.15, -0.6],
+                scale: [0.035, 0.15, 0.035],
+            },
+            {
+                id: 'root-right',
+                assetName: 'Stick',
+                position: [0.48, 0.05, 0.43],
+                rotation: [0.75, -0.45, 0.42],
+                scale: [0.035, 0.14, 0.035],
+            },
+            {
+                id: 'root-front',
+                assetName: 'Stick',
+                position: [0.46, 0.03, 0.51],
+                rotation: [0.95, 0.28, 0.05],
+                scale: [0.035, 0.13, 0.035],
+            },
+            {
+                assetName: 'GardenScissors',
+                position: [0.58, 0.25, 0.4],
+                rotation: [0.05, -0.68, -0.9],
+                scale: 0.17,
+            },
+        ],
+        showBackground: false,
+    },
 ] satisfies readonly OperationCoverRecipe[];
 
 export const operationCoverRecipes = [
