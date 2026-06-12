@@ -1,9 +1,7 @@
 import 'server-only';
 
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import {
-    accounts as accountsTable,
-    accountUsers as accountUsersTable,
     tutorialChecklistTaskClaims,
     userNotificationSettings,
 } from '../schema';
@@ -16,7 +14,7 @@ import {
 } from './accountsRepo';
 import { getAccountAchievements } from './achievementsRepo';
 import { getDeliveryAddresses } from './deliveryAddressesRepo';
-import { getEvents, knownEventTypes } from './eventsRepo';
+import { createEvent, getEvents, knownEventTypes } from './eventsRepo';
 import { getAccountGardens } from './gardensRepo';
 import { getOperations } from './operationsRepo';
 import { getAccountReferralState } from './referralsRepo';
@@ -52,6 +50,7 @@ export type TutorialChecklistActionTarget =
     | 'operations'
     | 'plantDatabase'
     | 'profile'
+    | 'raisedBedOnboarding'
     | 'referrals'
     | 'sunflowers'
     | 'weather';
@@ -126,30 +125,6 @@ export type TutorialChecklistState = {
 type TutorialChecklistTaskClaim =
     typeof tutorialChecklistTaskClaims.$inferSelect;
 
-type TutorialChecklistBackfillTaskResult = {
-    taskKey: string;
-    title: string;
-    rewardSunflowers: number;
-    existingClaims: number;
-    createdClaims: number;
-    wouldCreateClaims: number;
-    grantedSunflowers: number;
-    wouldGrantSunflowers: number;
-};
-
-export type TutorialChecklistBackfillResult = {
-    dryRun: boolean;
-    scannedAccounts: number;
-    eligibleAccounts: number;
-    skippedAccountsWithoutUser: number;
-    existingClaims: number;
-    createdClaims: number;
-    wouldCreateClaims: number;
-    grantedSunflowers: number;
-    wouldGrantSunflowers: number;
-    tasks: TutorialChecklistBackfillTaskResult[];
-};
-
 const WATERING_OPERATION_ENTITY_IDS = new Set([
     FREE_WATERING_OPERATION_ID,
     RAISED_BED_WATERING_50L_OPERATION_ID,
@@ -169,7 +144,7 @@ const groupDefinitions = [
     {
         id: 'day-3',
         title: 'Dan 3',
-        description: 'Uredi postavke i upoznaj naprednije dijelove igre.',
+        description: 'Uredi postavke i upoznaj naprednije dijelove aplikacije.',
     },
     {
         id: 'open',
@@ -183,6 +158,15 @@ const groupDefinitions = [
 }>;
 
 const taskDefinitions = [
+    {
+        key: 'complete-first-raised-bed-onboarding',
+        groupId: 'day-1',
+        title: 'Dovrši plan prve gredice',
+        description: 'Odaberi prijedlog i dodaj plan sadnje u košaru.',
+        rewardSunflowers: 100,
+        completion: 'manual',
+        actionTarget: 'raisedBedOnboarding',
+    },
     {
         key: 'plant-first',
         groupId: 'day-1',
@@ -385,7 +369,7 @@ const taskDefinitions = [
         key: 'open-achievements',
         groupId: 'day-3',
         title: 'Otvori postignuća',
-        description: 'Provjeri koje te nagrade čekaju kroz igru.',
+        description: 'Provjeri koje te nagrade čekaju kroz aplikaciju.',
         rewardSunflowers: 20,
         completion: 'manual',
         actionTarget: 'achievements',
@@ -450,7 +434,7 @@ const taskDefinitions = [
     },
     {
         key: 'enter-referral-code',
-        groupId: 'day-3',
+        groupId: 'open',
         title: 'Upiši kod preporuke',
         description: 'Iskoristi kod preporuke ako te netko pozvao.',
         rewardSunflowers: 100,
@@ -520,7 +504,7 @@ const taskDefinitions = [
         key: 'water-ten-achievement',
         groupId: 'open',
         title: 'Osvoji postignuće za 10 zalijevanja',
-        description: 'Naruči ili dovrši 10 zalijevanja kroz igru.',
+        description: 'Naruči ili dovrši 10 zalijevanja kroz aplikaciju.',
         rewardSunflowers: 0,
         rewardLabel: 'Postignuće',
         completion: 'derived',
@@ -542,7 +526,8 @@ const taskDefinitions = [
         key: 'successful-referral',
         groupId: 'open',
         title: 'Dovrši uspješnu preporuku',
-        description: 'Pozovi prijatelja koji aktivira svoj vrt.',
+        description:
+            'Pozovi prijatelja koji posadi svoje prvo povrće u gredici.',
         rewardSunflowers: 0,
         rewardLabel: '10.000 🌻 kroz preporuke',
         completion: 'derived',
@@ -558,13 +543,6 @@ const taskDefinitionsByKey = new Map(
 export const tutorialChecklistTaskKeys = taskDefinitions.map(
     (task) => task.key,
 );
-
-const backfillableTaskDefinitions = taskDefinitions.filter(
-    (task) => task.completion === 'derived' && task.rewardSunflowers > 0,
-);
-
-export const tutorialChecklistBackfillTaskKeys =
-    backfillableTaskDefinitions.map((task) => task.key);
 
 export class TutorialChecklistTaskNotFoundError extends Error {
     constructor(taskKey: string) {
@@ -613,47 +591,76 @@ function hasPlant(field: { plantSortId?: number; active?: boolean }) {
     return typeof field.plantSortId === 'number' && field.active !== false;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function getManualReadyTaskKey(value: unknown) {
+    if (!isRecord(value) || typeof value.taskKey !== 'string') {
+        return undefined;
+    }
+
+    const definition = taskDefinitionsByKey.get(value.taskKey);
+    if (definition?.completion !== 'manual') {
+        return undefined;
+    }
+
+    return value.taskKey;
+}
+
+async function getManualReadyTaskKeys(accountId: string) {
+    const readyEvents = await getEvents(
+        knownEventTypes.tutorialChecklist.taskReady,
+        [accountId],
+    );
+
+    return new Set(
+        readyEvents
+            .map((event) => getManualReadyTaskKey(event.data))
+            .filter((taskKey): taskKey is string => Boolean(taskKey)),
+    );
+}
+
+function isPlantCartPlacement(item: {
+    amount: number;
+    entityTypeName: string;
+    raisedBedId: number | null;
+    positionIndex: number | null;
+}): item is {
+    amount: number;
+    entityTypeName: string;
+    raisedBedId: number;
+    positionIndex: number;
+} {
+    return (
+        item.entityTypeName === 'plantSort' &&
+        item.amount > 0 &&
+        typeof item.raisedBedId === 'number' &&
+        typeof item.positionIndex === 'number'
+    );
+}
+
+function markRaisedBedPlantPosition({
+    plantedPositionsByRaisedBed,
+    positionIndex,
+    raisedBedId,
+}: {
+    plantedPositionsByRaisedBed: Map<number, Set<number>>;
+    positionIndex: number;
+    raisedBedId: number;
+}) {
+    const plantedPositions =
+        plantedPositionsByRaisedBed.get(raisedBedId) ?? new Set<number>();
+    plantedPositions.add(positionIndex);
+    plantedPositionsByRaisedBed.set(raisedBedId, plantedPositions);
+}
+
 function isFutureDate(date: Date | undefined) {
     return date instanceof Date && date.getTime() > Date.now();
 }
 
 function hasAchievement(achievementKeys: Set<string>, key: string) {
     return achievementKeys.has(key);
-}
-
-function emptyBackfillResult(dryRun: boolean): TutorialChecklistBackfillResult {
-    return {
-        dryRun,
-        scannedAccounts: 0,
-        eligibleAccounts: 0,
-        skippedAccountsWithoutUser: 0,
-        existingClaims: 0,
-        createdClaims: 0,
-        wouldCreateClaims: 0,
-        grantedSunflowers: 0,
-        wouldGrantSunflowers: 0,
-        tasks: backfillableTaskDefinitions.map((task) => ({
-            taskKey: task.key,
-            title: task.title,
-            rewardSunflowers: task.rewardSunflowers,
-            existingClaims: 0,
-            createdClaims: 0,
-            wouldCreateClaims: 0,
-            grantedSunflowers: 0,
-            wouldGrantSunflowers: 0,
-        })),
-    };
-}
-
-function findBackfillTaskResult(
-    result: TutorialChecklistBackfillResult,
-    taskKey: string,
-) {
-    const taskResult = result.tasks.find((task) => task.taskKey === taskKey);
-    if (!taskResult) {
-        throw new Error(`Unknown tutorial checklist backfill task: ${taskKey}`);
-    }
-    return taskResult;
 }
 
 async function getTutorialChecklistSignals({
@@ -694,7 +701,7 @@ async function getTutorialChecklistSignals({
     ]);
 
     const signals = emptySignals();
-    const plantedFieldsByRaisedBed = new Map<number, number>();
+    const plantedPositionsByRaisedBed = new Map<number, Set<number>>();
 
     for (const garden of gardens) {
         if (!garden.isSandbox) {
@@ -702,13 +709,16 @@ async function getTutorialChecklistSignals({
                 gardens.filter((candidate) => !candidate.isSandbox).length >= 2;
         }
         for (const raisedBed of garden.raisedBeds) {
-            const plantedFields = raisedBed.fields.filter(hasPlant).length;
-            if (plantedFields > 0) {
-                signals.plantedField = true;
-            }
-            plantedFieldsByRaisedBed.set(raisedBed.id, plantedFields);
-            if (plantedFields >= 9) {
-                signals.raisedBedNinePlants = true;
+            for (const field of raisedBed.fields) {
+                if (!hasPlant(field)) {
+                    continue;
+                }
+
+                markRaisedBedPlantPosition({
+                    plantedPositionsByRaisedBed,
+                    positionIndex: field.positionIndex,
+                    raisedBedId: raisedBed.id,
+                });
             }
         }
     }
@@ -725,6 +735,29 @@ async function getTutorialChecklistSignals({
     }
 
     signals.cartItemAdded = carts.some((cart) => cart.items.length > 0);
+    for (const cart of carts) {
+        for (const item of cart.items) {
+            if (!isPlantCartPlacement(item)) {
+                continue;
+            }
+
+            markRaisedBedPlantPosition({
+                plantedPositionsByRaisedBed,
+                positionIndex: item.positionIndex,
+                raisedBedId: item.raisedBedId,
+            });
+        }
+    }
+
+    for (const plantedPositions of plantedPositionsByRaisedBed.values()) {
+        if (plantedPositions.size > 0) {
+            signals.plantedField = true;
+        }
+        if (plantedPositions.size >= 9) {
+            signals.raisedBedNinePlants = true;
+        }
+    }
+
     signals.paidOrder = carts.some(
         (cart) =>
             cart.status === 'paid' ||
@@ -770,8 +803,8 @@ async function getTutorialChecklistSignals({
         achievements.map((achievement) => achievement.achievementKey),
     );
     const plantedFieldCount = Array.from(
-        plantedFieldsByRaisedBed.values(),
-    ).reduce((total, count) => total + count, 0);
+        plantedPositionsByRaisedBed.values(),
+    ).reduce((total, positions) => total + positions.size, 0);
     signals.plantingAchievement10 =
         plantedFieldCount >= 10 ||
         hasAchievement(achievementKeys, 'planting_10');
@@ -803,42 +836,43 @@ async function getTutorialChecklistSignals({
 function buildTask({
     claim,
     definition,
+    manualReadyTaskKeys,
     signals,
 }: {
     claim?: TutorialChecklistTaskClaim;
     definition: TutorialChecklistTaskDefinition;
+    manualReadyTaskKeys: ReadonlySet<string>;
     signals: TutorialChecklistSignals;
 }): TutorialChecklistTask {
     const claimed = Boolean(claim);
     const derivedComplete = definition.signal
         ? signals[definition.signal]
         : false;
+    const manualReady =
+        definition.completion === 'manual' &&
+        manualReadyTaskKeys.has(definition.key);
     const requiredSignalSatisfied = definition.requiresSignal
         ? signals[definition.requiresSignal]
         : true;
     const blocked = !requiredSignalSatisfied;
-    const alreadyComplete = claimed || derivedComplete;
     const claimable =
         !claimed &&
         !blocked &&
-        (definition.completion === 'manual' ||
-            (definition.rewardSunflowers > 0 && derivedComplete));
+        definition.rewardSunflowers > 0 &&
+        (derivedComplete || manualReady);
     const completed =
-        alreadyComplete ||
-        (definition.rewardSunflowers === 0 && derivedComplete);
+        claimed || (definition.rewardSunflowers === 0 && derivedComplete);
     const status: TutorialChecklistTaskStatus = claimed
         ? 'claimed'
         : blocked
           ? 'blocked'
           : definition.rewardSunflowers === 0 && derivedComplete
             ? 'completed'
-            : claimable && derivedComplete
+            : claimable
               ? 'ready'
-              : claimable
-                ? 'available'
-                : completed
-                  ? 'completed'
-                  : 'available';
+              : completed
+                ? 'completed'
+                : 'available';
 
     return {
         ...definition,
@@ -852,9 +886,11 @@ function buildTask({
 
 function buildState({
     claims,
+    manualReadyTaskKeys,
     signals,
 }: {
     claims: TutorialChecklistTaskClaim[];
+    manualReadyTaskKeys: ReadonlySet<string>;
     signals: TutorialChecklistSignals;
 }): TutorialChecklistState {
     const claimsByTaskKey = new Map(
@@ -866,6 +902,7 @@ function buildState({
             .map((definition) =>
                 buildTask({
                     definition,
+                    manualReadyTaskKeys,
                     signals,
                     claim: claimsByTaskKey.get(definition.key),
                 }),
@@ -904,15 +941,75 @@ export async function getTutorialChecklistState({
     accountId: string;
     userId: string;
 }): Promise<TutorialChecklistState> {
-    const [claims, signals] = await Promise.all([
+    const [claims, manualReadyTaskKeys, signals] = await Promise.all([
         storage().query.tutorialChecklistTaskClaims.findMany({
             where: eq(tutorialChecklistTaskClaims.accountId, accountId),
             orderBy: tutorialChecklistTaskClaims.claimedAt,
         }),
+        getManualReadyTaskKeys(accountId),
         getTutorialChecklistSignals({ accountId, userId }),
     ]);
 
-    return buildState({ claims, signals });
+    return buildState({ claims, manualReadyTaskKeys, signals });
+}
+
+export async function markTutorialChecklistTaskReady({
+    accountId,
+    taskKey,
+    userId,
+}: {
+    accountId: string;
+    taskKey: string;
+    userId: string;
+}) {
+    const definition = taskDefinitionsByKey.get(taskKey);
+    if (!definition) {
+        throw new TutorialChecklistTaskNotFoundError(taskKey);
+    }
+
+    if (definition.completion !== 'manual') {
+        throw new TutorialChecklistTaskNotClaimableError(taskKey, 'not_manual');
+    }
+
+    const [manualReadyTaskKeys, signals, existingClaim] = await Promise.all([
+        getManualReadyTaskKeys(accountId),
+        getTutorialChecklistSignals({ accountId, userId }),
+        storage().query.tutorialChecklistTaskClaims.findFirst({
+            where: and(
+                eq(tutorialChecklistTaskClaims.accountId, accountId),
+                eq(tutorialChecklistTaskClaims.taskKey, taskKey),
+            ),
+        }),
+    ]);
+    const task = buildTask({
+        definition,
+        manualReadyTaskKeys,
+        signals,
+        claim: existingClaim,
+    });
+
+    if (task.completed || task.claimable) {
+        return getTutorialChecklistState({ accountId, userId });
+    }
+
+    if (task.status === 'blocked') {
+        throw new TutorialChecklistTaskNotClaimableError(
+            taskKey,
+            task.blockedReason ?? 'blocked',
+        );
+    }
+
+    await createEvent({
+        type: knownEventTypes.tutorialChecklist.taskReady,
+        version: 1,
+        aggregateId: accountId,
+        data: {
+            taskKey,
+            userId,
+        },
+    });
+
+    return getTutorialChecklistState({ accountId, userId });
 }
 
 export async function claimTutorialChecklistTask({
@@ -929,16 +1026,19 @@ export async function claimTutorialChecklistTask({
         throw new TutorialChecklistTaskNotFoundError(taskKey);
     }
 
-    const signals = await getTutorialChecklistSignals({ accountId, userId });
-    const existingClaim =
-        await storage().query.tutorialChecklistTaskClaims.findFirst({
+    const [manualReadyTaskKeys, signals, existingClaim] = await Promise.all([
+        getManualReadyTaskKeys(accountId),
+        getTutorialChecklistSignals({ accountId, userId }),
+        storage().query.tutorialChecklistTaskClaims.findFirst({
             where: and(
                 eq(tutorialChecklistTaskClaims.accountId, accountId),
                 eq(tutorialChecklistTaskClaims.taskKey, taskKey),
             ),
-        });
+        }),
+    ]);
     const task = buildTask({
         definition,
+        manualReadyTaskKeys,
         signals,
         claim: existingClaim,
     });
@@ -1003,110 +1103,4 @@ async function insertTutorialChecklistClaim({
     });
 
     return created;
-}
-
-export async function backfillTutorialChecklistRewards({
-    accountIds,
-    dryRun = true,
-    limit,
-    offset = 0,
-}: {
-    accountIds?: string[];
-    dryRun?: boolean;
-    limit?: number;
-    offset?: number;
-} = {}): Promise<TutorialChecklistBackfillResult> {
-    const safeLimit =
-        typeof limit === 'number'
-            ? Math.min(Math.max(Math.trunc(limit), 1), 5000)
-            : undefined;
-    const safeOffset = Math.max(Math.trunc(offset), 0);
-    const uniqueAccountIds = accountIds
-        ? Array.from(new Set(accountIds.filter(Boolean)))
-        : undefined;
-    const accountRows = await storage().query.accounts.findMany({
-        where:
-            uniqueAccountIds && uniqueAccountIds.length > 0
-                ? inArray(accountsTable.id, uniqueAccountIds)
-                : undefined,
-        with: {
-            accountUsers: {
-                with: {
-                    user: true,
-                },
-                orderBy: asc(accountUsersTable.createdAt),
-            },
-        },
-        orderBy: [asc(accountsTable.createdAt), asc(accountsTable.id)],
-        limit: safeLimit,
-        offset: safeOffset,
-    });
-    const result = emptyBackfillResult(dryRun);
-    result.scannedAccounts = accountRows.length;
-
-    for (const account of accountRows) {
-        const userId = account.accountUsers[0]?.user.id;
-        if (!userId) {
-            result.skippedAccountsWithoutUser++;
-            continue;
-        }
-
-        const [claims, signals] = await Promise.all([
-            storage().query.tutorialChecklistTaskClaims.findMany({
-                where: eq(tutorialChecklistTaskClaims.accountId, account.id),
-            }),
-            getTutorialChecklistSignals({ accountId: account.id, userId }),
-        ]);
-        const claimsByTaskKey = new Map(
-            claims.map((claim) => [claim.taskKey, claim]),
-        );
-        const completedTasks = backfillableTaskDefinitions.map((definition) =>
-            buildTask({
-                definition,
-                signals,
-                claim: claimsByTaskKey.get(definition.key),
-            }),
-        );
-        const alreadyClaimedTasks = completedTasks.filter(
-            (task) => task.status === 'claimed',
-        );
-        for (const task of alreadyClaimedTasks) {
-            result.existingClaims++;
-            findBackfillTaskResult(result, task.key).existingClaims++;
-        }
-
-        const tasksToBackfill = completedTasks.filter((task) => task.claimable);
-        if (tasksToBackfill.length === 0) {
-            continue;
-        }
-
-        result.eligibleAccounts++;
-        for (const task of tasksToBackfill) {
-            const taskResult = findBackfillTaskResult(result, task.key);
-            if (dryRun) {
-                result.wouldCreateClaims++;
-                result.wouldGrantSunflowers += task.rewardSunflowers;
-                taskResult.wouldCreateClaims++;
-                taskResult.wouldGrantSunflowers += task.rewardSunflowers;
-                continue;
-            }
-
-            const created = await insertTutorialChecklistClaim({
-                accountId: account.id,
-                rewardSunflowers: task.rewardSunflowers,
-                taskKey: task.key,
-            });
-            if (created) {
-                result.createdClaims++;
-                result.grantedSunflowers += task.rewardSunflowers;
-                taskResult.createdClaims++;
-                taskResult.grantedSunflowers += task.rewardSunflowers;
-            } else {
-                result.existingClaims++;
-                taskResult.existingClaims++;
-            }
-        }
-    }
-
-    return result;
 }

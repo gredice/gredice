@@ -185,8 +185,8 @@ export function ReferralsTab() {
                     <Typography level="body2">
                         Podijeli svoj kod i zaradi{' '}
                         <strong>{data?.rewardAmount ?? 10000} 🌻</strong> kada
-                        novi račun ispuni uvjet aktivne gredice. Kod se može
-                        iskoristiti jednom po računu, a isti kod može
+                        pozvani račun posadi svoje prvo povrće u gredici. Kod se
+                        može iskoristiti jednom po računu, a isti kod može
                         iskoristiti više različitih računa.{' '}
                         <Button
                             className="inline-flex text-blue-950 dark:text-blue-100"
@@ -518,14 +518,14 @@ export function ReferralsTab() {
                                             >
                                                 {u.rewarded
                                                     ? 'Nagrada dodijeljena'
-                                                    : 'Čeka aktivnu gredicu'}
+                                                    : 'Čeka prvu sadnju'}
                                             </Typography>
                                         </div>
                                         <span
                                             aria-label={
                                                 u.rewarded
                                                     ? 'Nagrada dodijeljena'
-                                                    : 'Čeka aktivnu gredicu'
+                                                    : 'Čeka prvu sadnju'
                                             }
                                             className="text-base"
                                             role="img"

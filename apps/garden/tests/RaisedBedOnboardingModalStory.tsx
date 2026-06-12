@@ -214,3 +214,7 @@ export function RaisedBedOnboardingModalStory() {
 export function RaisedBedOnboardingModalReopenStory() {
     return <RaisedBedOnboardingModalFrame autoOpen={false} showTrigger />;
 }
+
+export function RaisedBedOnboardingModalEventStory() {
+    return <RaisedBedOnboardingModalFrame autoOpen={false} />;
+}

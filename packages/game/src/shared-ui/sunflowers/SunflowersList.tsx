@@ -1,6 +1,10 @@
 import { getAchievementDefinition } from '@gredice/js/achievements';
 import { BlockImage } from '@gredice/ui/BlockImage';
-import { Empty, ShoppingCart as ShoppingCartIcon } from '@gredice/ui/icons';
+import {
+    Empty,
+    ListTodo,
+    ShoppingCart as ShoppingCartIcon,
+} from '@gredice/ui/icons';
 import { List } from '@gredice/ui/List';
 import { ListItem } from '@gredice/ui/ListItem';
 import { Row } from '@gredice/ui/Row';
@@ -77,6 +81,16 @@ function sunflowerReasonToDescription(reason: string) {
         return {
             icon: <span className="text-4xl text-center size-10">📅</span>,
             label: 'Dnevna aktivnost',
+        };
+    }
+    if (reason.startsWith('tutorial')) {
+        return {
+            icon: (
+                <span className="grid size-10 place-items-center rounded-full bg-green-50 text-green-700">
+                    <ListTodo className="size-5" aria-hidden />
+                </span>
+            ),
+            label: 'Zadaci za novi vrt',
         };
     }
     if (reason === 'sunflowerDrop') {

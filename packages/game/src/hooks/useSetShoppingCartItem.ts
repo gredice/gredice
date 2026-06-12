@@ -10,6 +10,7 @@ import {
     useShoppingCart,
     useShoppingCartQueryKey,
 } from './useShoppingCart';
+import { tutorialChecklistKeys } from './useTutorialChecklist';
 
 type SetShoppingCartItemInput = {
     id?: number;
@@ -208,6 +209,9 @@ export function useSetShoppingCartItem() {
         onSettled: () => {
             queryClient.invalidateQueries({
                 queryKey: useShoppingCartQueryKey,
+            });
+            queryClient.invalidateQueries({
+                queryKey: tutorialChecklistKeys,
             });
         },
         scope: {

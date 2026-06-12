@@ -1,0 +1,59 @@
+.claimableTask {
+    --tutorial-task-glow-angle: 0turn;
+
+    position: relative;
+    isolation: isolate;
+}
+
+.claimableTask::before {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    content: "";
+    border-radius: inherit;
+    padding: 2px;
+    -webkit-mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+    animation: tutorial-task-glow 2.6s linear infinite;
+    background: conic-gradient(
+        from var(--tutorial-task-glow-angle),
+        rgb(34 197 94 / 0) 0deg,
+        rgb(34 197 94 / 0) 210deg,
+        rgb(34 197 94 / 0.14) 238deg,
+        rgb(74 222 128 / 0.42) 266deg,
+        rgb(187 247 208 / 1) 296deg,
+        rgb(34 197 94 / 0.68) 326deg,
+        rgb(22 163 74 / 0.24) 348deg,
+        rgb(34 197 94 / 0) 360deg
+    );
+}
+
+.claimableTask > * {
+    position: relative;
+    z-index: 2;
+}
+
+@keyframes tutorial-task-glow {
+    to {
+        --tutorial-task-glow-angle: 1turn;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .claimableTask::before {
+        animation: none;
+    }
+}
+
+@property --tutorial-task-glow-angle {
+    syntax: "<angle>";
+    inherits: false;
+    initial-value: 0turn;
+}

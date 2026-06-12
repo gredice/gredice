@@ -92,4 +92,7 @@ export const knownEventTypes = {
         rejected: 'payout.rejected',
         paid: 'payout.paid',
     },
+    tutorialChecklist: {
+        taskReady: 'tutorialChecklist.task.ready',
+    },
 } as const;
