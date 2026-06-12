@@ -20,6 +20,7 @@
         "test-ui": "pnpm run test:prepare && playwright test --project=chromium --ui",
         "generate-playwright": "node ./generate/populate-test-cases.js && playwright test --config playwright-generate.config.ts",
         "generate-playwright:blocks": "node ./generate/populate-test-cases.js && playwright test --config playwright-generate.config.ts generate/blocks-snapshots.specgen.tsx",
+        "generate-playwright:operation-covers": "playwright test --config playwright-generate.config.ts generate/operation-cover-snapshots.specgen.tsx",
         "generate-playwright:plants": "playwright test --config playwright-generate.config.ts generate/plants-snapshots.specgen.tsx",
         "generate-playwright:ui": "node ./generate/populate-test-cases.js && playwright test --config playwright-generate.config.ts --ui",
         "test:local": "pnpm run test:prepare && pnpm run test:run",
