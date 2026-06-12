@@ -357,7 +357,6 @@ export type GLTFResult = GLTF & {
         PestBugKit_Beetle_Head: THREE.Mesh;
         PestBugKit_Beetle_Legs: THREE.Mesh;
         PestBugKit_Slug_Body: THREE.Mesh;
-        PestBugKit_Slug_Belly: THREE.Mesh;
         PestBugKit_Slug_EyeStalk_L: THREE.Mesh;
         PestBugKit_Slug_Eye_L: THREE.Mesh;
         PestBugKit_Slug_EyeStalk_R: THREE.Mesh;
@@ -712,7 +711,6 @@ export type GLTFResult = GLTF & {
         'Material.PestBugKit.DarkLegs': THREE.MeshStandardMaterial;
         'Material.PestBugKit.LeafGreen': THREE.MeshStandardMaterial;
         'Material.PestBugKit.LeafStem': THREE.MeshStandardMaterial;
-        'Material.PestBugKit.SlugBelly': THREE.MeshStandardMaterial;
         'Material.PestBugKit.SlugOlive': THREE.MeshStandardMaterial;
         'Material.Planks': THREE.MeshStandardMaterial;
         'Material.PlantTieLoop.ClipMint': THREE.MeshStandardMaterial;
