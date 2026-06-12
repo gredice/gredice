@@ -661,6 +661,31 @@ export const inventoryOperationCoverRecipes = [
         ],
         showBackground: false,
     },
+    {
+        operationId: 'inventoryFertilizers',
+        operationLabel: 'Inventura sredstava za gnojidbu',
+        outputFileName: 'inventoryFertilizers.webp',
+        camera: {
+            position: [2.7, 2.1, 4.8],
+            target: [0.46, 0.28, 0.45],
+            zoom: 138,
+        },
+        assets: [
+            {
+                assetName: 'LiquidPreparationBottleFertilizer',
+                position: [0.34, 0.08, 0.48],
+                rotation: [0.08, 0.55, 0.04],
+                scale: 0.24,
+            },
+            {
+                assetName: 'FieldworkClipboard',
+                position: [0.68, 0.22, 0.34],
+                rotation: [0.18, -0.55, -0.22],
+                scale: 0.16,
+            },
+        ],
+        showBackground: false,
+    },
 ] satisfies readonly OperationCoverRecipe[];
 
 export const cuttingOperationCoverRecipes = [
