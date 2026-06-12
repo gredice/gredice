@@ -113,10 +113,11 @@ export function UserBirthdayCard() {
             <CardContent noHeader>
                 <form onSubmit={handleBirthdayUpdate}>
                     <Stack spacing={4}>
-                        <div className="grid grid-cols-[1fr_1fr_2fr] gap-2">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(5.5rem,1fr)_minmax(5.5rem,1fr)_minmax(10rem,2fr)]">
                             <Input
                                 name="birthdayDay"
                                 label="Dan"
+                                fullWidth
                                 type="number"
                                 min={1}
                                 max={31}
@@ -129,6 +130,7 @@ export function UserBirthdayCard() {
                             <Input
                                 name="birthdayMonth"
                                 label="Mjesec"
+                                fullWidth
                                 type="number"
                                 min={1}
                                 max={12}
@@ -141,6 +143,7 @@ export function UserBirthdayCard() {
                             <Input
                                 name="birthdayYear"
                                 label="Godina (nije obavezna)"
+                                fullWidth
                                 type="number"
                                 min={MIN_BIRTH_YEAR}
                                 max={currentYear}
