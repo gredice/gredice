@@ -170,10 +170,53 @@ function raisedBedAiAnalysisImagePlantStatusReviewAutomationGraph(): AutomationG
     };
 }
 
+function monthlyLogAutomationGraph(): AutomationGraph {
+    return {
+        nodes: [
+            {
+                id: 'trigger',
+                kind: 'trigger',
+                moduleKey: automationModuleKeys.triggerScheduleMonthly,
+                position: { x: 0, y: 0 },
+                config: {
+                    dayOfMonth: 1,
+                    timeZone: 'Europe/Zagreb',
+                },
+            },
+            {
+                id: 'log',
+                kind: 'action',
+                moduleKey: automationModuleKeys.actionLog,
+                position: { x: 280, y: 0 },
+                config: {
+                    message: 'Quick automation test reached the log action.',
+                },
+            },
+        ],
+        edges: [
+            {
+                id: 'trigger-to-log',
+                source: 'trigger',
+                target: 'log',
+            },
+        ],
+    };
+}
+
 function addUtcDays(date: Date, days: number) {
     const nextDate = new Date(date);
     nextDate.setUTCDate(nextDate.getUTCDate() + days);
     return nextDate;
+}
+
+function monthlyScheduleRunInput(index: number) {
+    return {
+        scheduleType: 'monthly',
+        triggerModuleKey: automationModuleKeys.triggerScheduleMonthly,
+        occurrenceKey: `test.monthly-log:${index}`,
+        period: '2026-06',
+        occurrenceDate: '2026-06-01T08:00:00.000Z',
+    };
 }
 
 test('automation definitions persist graph trigger metadata and event-run idempotency', async () => {
@@ -545,6 +588,83 @@ test('automation run claiming scans past saturated definition backlog', async ()
 
     assert.strictEqual(claimedRuns.length, 1);
     assert.strictEqual(claimedRuns[0]?.id, otherRun.id);
+});
+
+test('automation processor drains quick single-concurrency runs across batches', async () => {
+    createTestDb();
+    const definition = await createAutomationDefinition({
+        key: 'test.quick-batch-automation',
+        name: 'Quick batch automation',
+        status: 'enabled',
+        maxConcurrentRuns: 1,
+        graph: monthlyLogAutomationGraph(),
+    });
+
+    for (let index = 0; index < 3; index += 1) {
+        const run = await createAutomationRun({
+            automationDefinition: definition,
+            source: 'test',
+            input: monthlyScheduleRunInput(index),
+        });
+        assert.ok(run);
+    }
+
+    const result = await processDueAutomationRuns({
+        limit: 1,
+        maxBatches: 5,
+        maxDurationMs: 10_000,
+        minRemainingMs: 1_000,
+        lockedBy: 'automations-test',
+    });
+
+    assert.strictEqual(result.claimedRuns, 3);
+    assert.strictEqual(result.processedBatches, 3);
+    assert.strictEqual(result.succeeded, 3);
+    assert.strictEqual(result.processingStopReason, 'queue_empty');
+});
+
+test('automation processor waits for next cron cycle when measured batches are slow', async () => {
+    createTestDb();
+    const definition = await createAutomationDefinition({
+        key: 'test.slow-measured-batch-automation',
+        name: 'Slow measured batch automation',
+        status: 'enabled',
+        maxConcurrentRuns: 1,
+        graph: monthlyLogAutomationGraph(),
+    });
+
+    for (let index = 0; index < 3; index += 1) {
+        const run = await createAutomationRun({
+            automationDefinition: definition,
+            source: 'test',
+            input: monthlyScheduleRunInput(index),
+        });
+        assert.ok(run);
+    }
+
+    const observedTimes = [0, 0, 6_000];
+    let timeIndex = 0;
+    const result = await processDueAutomationRuns({
+        limit: 1,
+        maxBatches: 5,
+        maxDurationMs: 10_000,
+        minRemainingMs: 2_000,
+        lockedBy: 'automations-test',
+        getTimeMs: () =>
+            observedTimes[Math.min(timeIndex++, observedTimes.length - 1)] ?? 0,
+    });
+
+    assert.strictEqual(result.claimedRuns, 1);
+    assert.strictEqual(result.processedBatches, 1);
+    assert.strictEqual(result.succeeded, 1);
+    assert.strictEqual(result.processingDurationMs, 6_000);
+    assert.strictEqual(result.processingStopReason, 'time_budget');
+
+    const remainingRuns = await listAutomationRuns({
+        automationDefinitionId: definition.id,
+        status: 'queued',
+    });
+    assert.strictEqual(remainingRuns.length, 2);
 });
 
 test('monthly schedule automation enqueues once per configured period', async () => {
