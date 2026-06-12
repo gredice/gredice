@@ -119,8 +119,9 @@ MVP modules:
   no-code plant-state automations.
 - `action.createPlantStatusRequestsFromImageAnalysis`: reviews hosted
   raised-bed images from operation completion or raised-bed AI analysis events,
-  then creates pending plant-status approval requests when the visual evidence
-  passes the configured confidence threshold.
+  then creates pending plant-status approval requests and field-level weed-state
+  observations when the visual evidence passes the configured confidence
+  threshold.
 - `action.log`: records a no-op step for diagnostics.
 
 When adding a module, define metadata, config validation, dry-run behavior, and
