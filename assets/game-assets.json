@@ -646,6 +646,33 @@
             ]
         },
         {
+            "name": "PestBugKit",
+            "source": "PestBugKit.blend",
+            "output": "PestBugKit.glb",
+            "preload": "lazy",
+            "objects": [
+                "PestBugKit_Aphid_Body",
+                "PestBugKit_Aphid_Head",
+                "PestBugKit_Aphid_Legs",
+                "PestBugKit_Beetle_Body",
+                "PestBugKit_Beetle_Shell",
+                "PestBugKit_Beetle_Shell_Stripe",
+                "PestBugKit_Beetle_Head",
+                "PestBugKit_Beetle_Legs",
+                "PestBugKit_Slug_Body",
+                "PestBugKit_Slug_Belly",
+                "PestBugKit_Slug_EyeStalk_L",
+                "PestBugKit_Slug_Eye_L",
+                "PestBugKit_Slug_EyeStalk_R",
+                "PestBugKit_Slug_Eye_R",
+                "PestBugKit_Leaf_Damage_Leaf",
+                "PestBugKit_Leaf_Damage_Bite_01",
+                "PestBugKit_Leaf_Damage_Bite_02",
+                "PestBugKit_Leaf_Damage_Bite_03",
+                "PestBugKit_Leaf_Damage_Stem"
+            ]
+        },
+        {
             "name": "WaterWell",
             "source": "WaterWell.blend",
             "output": "WaterWell.glb",
