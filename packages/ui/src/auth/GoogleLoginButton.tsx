@@ -1,6 +1,5 @@
 import { Button, type ButtonProps } from '../Button';
 import { Chip } from '../Chip';
-import { cx } from '../utils';
 
 export function GoogleLoginButton({
     className,
@@ -12,10 +11,7 @@ export function GoogleLoginButton({
             type="button"
             color="neutral"
             variant="outlined"
-            className={cx(
-                'bg-white text-black hover:bg-white/90 dark:text-black dark:hover:bg-white/80',
-                className,
-            )}
+            className={className}
             fullWidth
             endDecorator={
                 lastUsed && (
