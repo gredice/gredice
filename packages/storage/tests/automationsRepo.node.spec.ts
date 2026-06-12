@@ -44,6 +44,7 @@ import {
     seasonalSowedWateringAutomationGraph,
     seedlingTransplantDirectSowingLocationAutomationGraph,
     seedlingTransplantWateringAutomationGraph,
+    setRaisedBedFieldWeedState,
     startAutomationRun,
     storage,
     updateAutomationDefinition,
@@ -1662,6 +1663,13 @@ test('image plant-status review automation uses AI analysis reference date in dr
         }),
     );
     const imageDate = '2026-05-10T08:00:00.000Z';
+    await setRaisedBedFieldWeedState({
+        level: 'heavy',
+        observedAt: new Date(imageDate),
+        positionIndex: 1,
+        raisedBedId,
+        source: 'ai',
+    });
     await createEvent({
         ...knownEvents.raisedBeds.aiAnalysisV1(raisedBedId.toString(), {
             markdown: 'AI review',
@@ -1727,6 +1735,12 @@ test('image plant-status review automation uses AI analysis reference date in dr
     );
     assert.strictEqual(Reflect.get(actionStep.output, 'imageDate'), imageDate);
     assert.strictEqual(Reflect.get(actionStep.output, 'imageCount'), 1);
+    assert.strictEqual(Reflect.get(actionStep.output, 'plantedFieldCount'), 1);
+    assert.strictEqual(Reflect.get(actionStep.output, 'trackedFieldCount'), 2);
+    assert.strictEqual(
+        Reflect.get(actionStep.output, 'fieldWeedStateCount'),
+        1,
+    );
 });
 
 test('image plant-status review automation skips non-dry runs when AI Gateway credentials are blank', async (t) => {

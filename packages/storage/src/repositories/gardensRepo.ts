@@ -1763,10 +1763,12 @@ export async function getRaisedBed(raisedBedId: number) {
 
 function buildWeedStatePayload({
     level,
+    notes,
     observedAt,
     source,
 }: {
     level: RaisedBedWeedStateLevel;
+    notes?: string | null;
     observedAt?: Date;
     source: RaisedBedWeedStateSource;
 }): RaisedBedWeedStateSetPayload {
@@ -1774,16 +1776,19 @@ function buildWeedStatePayload({
         level,
         source,
         observedAt: (observedAt ?? new Date()).toISOString(),
+        ...(notes ? { notes } : {}),
     };
 }
 
 export async function setRaisedBedWeedState({
     level,
+    notes,
     observedAt,
     raisedBedId,
     source = 'admin',
 }: {
     level: RaisedBedWeedStateLevel;
+    notes?: string | null;
     observedAt?: Date;
     raisedBedId: number;
     source?: RaisedBedWeedStateSource;
@@ -1798,22 +1803,24 @@ export async function setRaisedBedWeedState({
         throw new Error(`Raised bed with ID ${raisedBedId} not found.`);
     }
 
-    await createEvent(
+    return createEvent(
         knownEvents.raisedBeds.weedStateSetV1(
             raisedBedId.toString(),
-            buildWeedStatePayload({ level, observedAt, source }),
+            buildWeedStatePayload({ level, notes, observedAt, source }),
         ),
     );
 }
 
 export async function setRaisedBedFieldWeedState({
     level,
+    notes,
     observedAt,
     positionIndex,
     raisedBedId,
     source = 'admin',
 }: {
     level: RaisedBedWeedStateLevel;
+    notes?: string | null;
     observedAt?: Date;
     positionIndex: number;
     raisedBedId: number;
@@ -1834,10 +1841,10 @@ export async function setRaisedBedFieldWeedState({
     }
 
     await upsertRaisedBedField({ raisedBedId, positionIndex });
-    await createEvent(
+    return createEvent(
         knownEvents.raisedBedFields.weedStateSetV1(
             `${raisedBedId.toString()}|${positionIndex.toString()}`,
-            buildWeedStatePayload({ level, observedAt, source }),
+            buildWeedStatePayload({ level, notes, observedAt, source }),
         ),
     );
 }

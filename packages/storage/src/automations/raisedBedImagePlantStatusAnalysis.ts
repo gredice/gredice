@@ -10,8 +10,14 @@ import { z } from 'zod';
 import type { EntityStandardized } from '../@types/EntityStandardized';
 import { createPlantStatusApprovalRequest } from '../repositories/approvalRequestsRepo';
 import { getEntitiesFormatted } from '../repositories/entitiesRepo';
-import { knownEventTypes } from '../repositories/events';
-import { getRaisedBed } from '../repositories/gardensRepo';
+import {
+    knownEventTypes,
+    type RaisedBedWeedStateLevel,
+} from '../repositories/events';
+import {
+    getRaisedBed,
+    setRaisedBedFieldWeedState,
+} from '../repositories/gardensRepo';
 import { getOperationById } from '../repositories/operationsRepo';
 import type { AutomationJsonObject } from '../schema';
 import { buildPreviousPlantNames } from './raisedBedImagePlantContext';
@@ -45,6 +51,17 @@ const plantStatusReviewOutputSchema = z.object({
             }),
         )
         .max(18),
+    weedProposals: z
+        .array(
+            z.object({
+                positionLabel: z.number().int().min(1).max(18),
+                requestedWeedLevel: z.enum(['none', 'light', 'heavy']),
+                confidence: z.number().min(0).max(1),
+                evidence: z.string(),
+            }),
+        )
+        .max(18)
+        .default([]),
 });
 
 type RaisedBedForReview = NonNullable<Awaited<ReturnType<typeof getRaisedBed>>>;
@@ -75,11 +92,18 @@ type ReviewInput =
       };
 
 type ReviewProposal = PlantStatusReviewOutput['proposals'][number];
+type WeedReviewProposal = PlantStatusReviewOutput['weedProposals'][number];
 
 type AcceptedReviewProposal = ReviewProposal & {
     positionIndex: number;
     currentStatus: string;
     plantSortId: number;
+    raisedBedFieldId: number;
+};
+
+type AcceptedWeedReviewProposal = WeedReviewProposal & {
+    positionIndex: number;
+    currentWeedLevel: RaisedBedWeedStateLevel | null;
     raisedBedFieldId: number;
 };
 
@@ -329,6 +353,18 @@ function plantSeedingDistance(sort: EntityStandardized | undefined) {
     );
 }
 
+function weedStateContext(weedState: RaisedBedForReview['weedState']) {
+    return weedState
+        ? {
+              level: weedState.level,
+              source: weedState.source,
+              observedAt: weedState.observedAt.toISOString(),
+              updatedAt: weedState.updatedAt.toISOString(),
+              notes: weedState.notes ?? null,
+          }
+        : null;
+}
+
 async function buildReviewContext(input: ReviewInput & { ok: true }) {
     const raisedBed = await getRaisedBed(input.raisedBedId);
     if (!raisedBed) {
@@ -358,11 +394,16 @@ async function buildReviewContext(input: ReviewInput & { ok: true }) {
     const rows = Math.max(1, Math.ceil(totalFields / RAISED_BED_COLUMNS));
 
     const fields = raisedBed.fields
-        .filter((field) => field.active && field.plantSortId)
+        .filter((field) => field.active)
         .map((field) => {
-            const plantSort = plantSortsById.get(Number(field.plantSortId));
+            const plantSort =
+                typeof field.plantSortId === 'number'
+                    ? plantSortsById.get(field.plantSortId)
+                    : undefined;
             const seedingDistance = plantSeedingDistance(plantSort);
-            const plantsPerField = calculatePlantsPerField(seedingDistance);
+            const plantsPerField = field.plantSortId
+                ? calculatePlantsPerField(seedingDistance)
+                : null;
             const currentStatus = field.plantStatus ?? null;
             const previousPlantNames = buildPreviousPlantNames(
                 field,
@@ -374,10 +415,9 @@ async function buildReviewContext(input: ReviewInput & { ok: true }) {
                 positionIndex: field.positionIndex,
                 positionLabel: field.positionIndex + 1,
                 plantSortId: field.plantSortId ?? null,
-                plantName: plantSortName(
-                    plantSort,
-                    `Sorta #${field.plantSortId}`,
-                ),
+                plantName: field.plantSortId
+                    ? plantSortName(plantSort, `Sorta #${field.plantSortId}`)
+                    : null,
                 currentStatus,
                 currentStatusLabel: currentStatus
                     ? plantFieldStatusLabel(currentStatus).shortLabel
@@ -388,9 +428,11 @@ async function buildReviewContext(input: ReviewInput & { ok: true }) {
                 currentLocation: isCurrentlyGreenhouseSeedling(field)
                     ? 'greenhouse'
                     : 'raisedBed',
-                expectedPlantCount: plantsPerField.totalPlants,
-                expectedPlantsPerRow: plantsPerField.plantsPerRow,
+                expectedPlantCount: plantsPerField?.totalPlants ?? null,
+                expectedPlantsPerRow: plantsPerField?.plantsPerRow ?? null,
                 seedingDistanceCm: seedingDistance,
+                currentFieldWeedState: weedStateContext(field.weedState),
+                currentFieldWeedLevel: field.weedState?.level ?? null,
                 daysFromSowing: daysSince(
                     field.plantSowDate,
                     input.referenceDate.getTime(),
@@ -438,6 +480,7 @@ async function buildReviewContext(input: ReviewInput & { ok: true }) {
                 totalFields,
                 accountId: raisedBed.accountId,
                 gardenId: raisedBed.gardenId,
+                currentWeedState: weedStateContext(raisedBed.weedState),
             },
             focusField:
                 typeof focusPositionIndex === 'number'
@@ -465,8 +508,11 @@ function buildReviewMessages({
                 'Ti si stručni agronom koji pregledava fotografije Gredice i predlaže ISKLJUČIVO sigurne promjene stanja biljaka.',
                 'Vrati strukturirani rezultat prema shemi. Ne vraćaj markdown.',
                 'Predloži promjenu samo kada je vizualni dokaz jasan i gotovo siguran; ne pogađaj na temelju kalendara, očekivanih dana rasta ili mutne/zaklonjene fotografije.',
-                'Za svako polje smiješ predložiti samo status iz `allowedTargetStatuses`; ako nema odgovarajućeg statusa, preskoči polje.',
+                'Za svako polje smiješ predložiti plant-status samo iz `allowedTargetStatuses`; ako nema odgovarajućeg statusa, preskoči plant-status prijedlog za to polje.',
                 'Ako je trenutno stanje `sowed` ili `pendingVerification`, a na slici se jasno vide klice za direktno sijanu biljku, predloži `sprouted`.',
+                'U `weedProposals` predloži field-level status korova (`none`, `light` ili `heavy`) samo kada se korovi ili očišćeno polje jasno vide za pojedino polje.',
+                'Ne predlaži `none` za korove samo zato što korovi nisu vidljivi; predloži `none` samo kada slika jasno pokazuje da je polje čisto, osobito ako postoji trenutačni field ili raised-bed weed state.',
+                '`raisedBed.currentWeedState` je stanje na razini cijele gredice. `field.currentFieldWeedState` i `field.currentFieldWeedLevel` su stanje za pojedino polje; field-level prijedlozi smiju precizirati ili očistiti stanje iz gredice.',
                 'Ako je fotografija close-up i polje nije sigurno prepoznatljivo, koristi `focusField` kada postoji. Ako je fotografija cijele gredice, možeš predložiti više polja.',
                 'Polja s `currentLocation: "greenhouse"` ignoriraj osim ako fotografija jasno pokazuje da se ista biljka nalazi u pripadajućem polju gredice.',
                 'Koristi `expectedPlantCount` kao kontekst za to koliko pojedinačnih biljaka ili klica se očekuje u polju.',
@@ -487,7 +533,8 @@ function buildReviewMessages({
                     type: 'text' as const,
                     text: [
                         'Analiziraj fotografije i kontekst. Vrati samo prijedloge promjena stanja biljaka koje su vizualno sigurne.',
-                        'Ako nema sigurnih promjena, vrati prazan `proposals` niz.',
+                        'Vrati i prijedloge statusa korova za pojedinačna polja kada su vizualno sigurni.',
+                        'Ako nema sigurnih promjena, vrati prazne `proposals` i `weedProposals` nizove.',
                         '',
                         'Kontekst (JSON):',
                         JSON.stringify(promptContext, null, 2),
@@ -509,6 +556,18 @@ function proposalSkip(
     return {
         positionLabel: proposal.positionLabel,
         requestedStatus: proposal.requestedStatus,
+        confidence: proposal.confidence,
+        reason,
+    };
+}
+
+function weedProposalSkip(
+    proposal: WeedReviewProposal,
+    reason: string,
+): AutomationJsonObject {
+    return {
+        positionLabel: proposal.positionLabel,
+        requestedWeedLevel: proposal.requestedWeedLevel,
         confidence: proposal.confidence,
         reason,
     };
@@ -590,6 +649,78 @@ function filterAcceptedProposals({
     return { accepted, skipped };
 }
 
+function filterAcceptedWeedProposals({
+    output,
+    raisedBed,
+    minConfidence,
+}: {
+    output: PlantStatusReviewOutput;
+    raisedBed: RaisedBedForReview;
+    minConfidence: number;
+}) {
+    const fieldsByPositionIndex = new Map(
+        raisedBed.fields.map((field) => [field.positionIndex, field]),
+    );
+    const raisedBedHasVisibleWeeds =
+        raisedBed.weedState?.level === 'light' ||
+        raisedBed.weedState?.level === 'heavy';
+    const accepted: AcceptedWeedReviewProposal[] = [];
+    const skipped: AutomationJsonObject[] = [];
+
+    for (const proposal of output.weedProposals) {
+        const positionIndex = proposal.positionLabel - 1;
+        const field = fieldsByPositionIndex.get(positionIndex);
+        if (!field?.active) {
+            skipped.push(weedProposalSkip(proposal, 'Field is not active.'));
+            continue;
+        }
+
+        const currentWeedLevel = field.weedState?.level ?? null;
+        if (proposal.requestedWeedLevel === currentWeedLevel) {
+            skipped.push(
+                weedProposalSkip(
+                    proposal,
+                    'Field already has requested weed level.',
+                ),
+            );
+            continue;
+        }
+
+        if (
+            proposal.requestedWeedLevel === 'none' &&
+            currentWeedLevel === null &&
+            !raisedBedHasVisibleWeeds
+        ) {
+            skipped.push(
+                weedProposalSkip(
+                    proposal,
+                    'Field has no stored weed state to clear.',
+                ),
+            );
+            continue;
+        }
+
+        if (proposal.confidence < minConfidence) {
+            skipped.push(
+                weedProposalSkip(
+                    proposal,
+                    'Proposal confidence is below threshold.',
+                ),
+            );
+            continue;
+        }
+
+        accepted.push({
+            ...proposal,
+            positionIndex,
+            currentWeedLevel,
+            raisedBedFieldId: field.id,
+        });
+    }
+
+    return { accepted, skipped };
+}
+
 function buildApprovalNote({
     event,
     proposal,
@@ -616,6 +747,28 @@ function buildApprovalNote({
         proposal.observedPlantCount !== null
             ? `Uočeni broj biljaka/klica: ${proposal.observedPlantCount}.`
             : null,
+        `Dokaz: ${proposal.evidence}`,
+    ]
+        .filter((line): line is string => typeof line === 'string')
+        .join('\n');
+}
+
+function buildWeedStateNotes({
+    event,
+    proposal,
+    source,
+}: {
+    event: AutomationSourceEvent;
+    proposal: AcceptedWeedReviewProposal;
+    source: ReviewSource;
+}) {
+    return [
+        'AI analiza fotografija gredice predlaže status korova za polje.',
+        `Izvor: ${source}.`,
+        event.id ? `Event ID: ${event.id}.` : null,
+        `Polje: ${proposal.positionLabel}.`,
+        `Promjena: ${proposal.currentWeedLevel ?? 'none'} -> ${proposal.requestedWeedLevel}.`,
+        `Pouzdanost: ${Math.round(proposal.confidence * 100)}%.`,
         `Dokaz: ${proposal.evidence}`,
     ]
         .filter((line): line is string => typeof line === 'string')
@@ -676,6 +829,12 @@ export async function runRaisedBedImagePlantStatusReview({
         raisedBed: context.raisedBed,
         minConfidence,
     });
+    const { accepted: acceptedWeeds, skipped: skippedWeeds } =
+        filterAcceptedWeedProposals({
+            output,
+            raisedBed: context.raisedBed,
+            minConfidence,
+        });
 
     const requestIds: string[] = [];
     const requestErrors: AutomationJsonObject[] = [];
@@ -711,6 +870,35 @@ export async function runRaisedBedImagePlantStatusReview({
         }
     }
 
+    const weedStateEventIds: number[] = [];
+    const weedStateErrors: AutomationJsonObject[] = [];
+    for (const proposal of acceptedWeeds) {
+        try {
+            const weedStateEvent = await setRaisedBedFieldWeedState({
+                level: proposal.requestedWeedLevel,
+                notes: buildWeedStateNotes({
+                    event,
+                    proposal,
+                    source: input.source,
+                }),
+                observedAt: input.referenceDate,
+                positionIndex: proposal.positionIndex,
+                raisedBedId: input.raisedBedId,
+                source: 'ai',
+            });
+            weedStateEventIds.push(weedStateEvent.id);
+        } catch (error) {
+            weedStateErrors.push({
+                positionLabel: proposal.positionLabel,
+                requestedWeedLevel: proposal.requestedWeedLevel,
+                reason:
+                    error instanceof Error
+                        ? error.message
+                        : 'Failed to create weed-state event.',
+            });
+        }
+    }
+
     return {
         ok: true as const,
         output: {
@@ -729,6 +917,12 @@ export async function runRaisedBedImagePlantStatusReview({
             requestCount: requestIds.length,
             skippedProposals: skipped,
             requestErrors,
+            weedProposalCount: output.weedProposals.length,
+            acceptedWeedProposalCount: acceptedWeeds.length,
+            weedStateEventIds,
+            weedStateEventCount: weedStateEventIds.length,
+            skippedWeedProposals: skippedWeeds,
+            weedStateErrors,
             inputTokens: optionalNumber(result.usage.inputTokens),
             outputTokens: optionalNumber(result.usage.outputTokens),
             totalTokens: optionalNumber(result.usage.totalTokens),
@@ -769,8 +963,32 @@ export async function previewRaisedBedImagePlantStatusReview(
             imageCount: input.imageUrls.length,
             skippedInvalidImageCount: input.skippedInvalidImageCount,
             plantedFieldCount: Array.isArray(context.promptContext.fields)
+                ? context.promptContext.fields.filter(
+                      (field) =>
+                          field &&
+                          typeof field === 'object' &&
+                          'plantSortId' in field &&
+                          field.plantSortId !== null,
+                  ).length
+                : 0,
+            trackedFieldCount: Array.isArray(context.promptContext.fields)
                 ? context.promptContext.fields.length
                 : 0,
+            fieldWeedStateCount: Array.isArray(context.promptContext.fields)
+                ? context.promptContext.fields.filter(
+                      (field) =>
+                          field &&
+                          typeof field === 'object' &&
+                          'currentFieldWeedState' in field &&
+                          field.currentFieldWeedState !== null,
+                  ).length
+                : 0,
+            raisedBedWeedState:
+                context.promptContext.raisedBed &&
+                typeof context.promptContext.raisedBed === 'object' &&
+                'currentWeedState' in context.promptContext.raisedBed
+                    ? context.promptContext.raisedBed.currentWeedState
+                    : null,
         } satisfies AutomationJsonObject,
     };
 }

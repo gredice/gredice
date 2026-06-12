@@ -1465,9 +1465,9 @@ const createPlantStatusRequestsFromImageAnalysisActionModule: AutomationModule =
     {
         key: createPlantStatusRequestsFromImageAnalysisActionKey,
         kind: 'action',
-        title: 'Review raised-bed images for plant status',
+        title: 'Review raised-bed images for plant and weed status',
         description:
-            'Analyzes raised-bed images and creates pending plant-status approval requests for high-confidence visual changes.',
+            'Analyzes raised-bed images, creates pending plant-status approval requests, and records high-confidence field weed-state observations.',
         category: 'Raised-bed fields',
         configFields: [
             {
@@ -1491,7 +1491,7 @@ const createPlantStatusRequestsFromImageAnalysisActionModule: AutomationModule =
         inputDescription:
             'An operation completion event with hosted images, or a raised-bed image analysis event.',
         outputDescription:
-            'Created approval request ids, skipped proposals, token usage, and review summary.',
+            'Created approval request ids, field weed-state event ids, skipped proposals, token usage, and review summary.',
         dryRunSupported: true,
         mutatesData: true,
         retryable: true,
