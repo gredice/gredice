@@ -369,6 +369,59 @@ export const cuttingOperationCoverRecipes = [
         ],
         showBackground: false,
     },
+    {
+        operationId: 'pinching',
+        operationLabel: 'Pinciranje',
+        outputFileName: 'pinching.webp',
+        camera: {
+            position: [2.5, 2.1, 4.8],
+            target: [0.43, 0.32, 0.45],
+            zoom: 154,
+        },
+        plants: [
+            {
+                id: 'plant',
+                plantType: 'basil',
+                generation: 8,
+                seed: 'operation-cover-pinching',
+                position: [0.42, 0.04, 0.45],
+                scale: 1.08,
+                showFlowers: false,
+                showProduce: false,
+            },
+            {
+                id: 'left-side-shoot',
+                plantType: 'basil',
+                generation: 4,
+                seed: 'operation-cover-pinching-left-shoot',
+                position: [0.31, 0.13, 0.47],
+                rotation: [0, -0.75, -0.1],
+                scale: 0.34,
+                showFlowers: false,
+                showProduce: false,
+            },
+            {
+                id: 'right-side-shoot',
+                plantType: 'basil',
+                generation: 4,
+                seed: 'operation-cover-pinching-right-shoot',
+                position: [0.54, 0.13, 0.42],
+                rotation: [0, 0.8, 0.1],
+                scale: 0.34,
+                showFlowers: false,
+                showProduce: false,
+            },
+        ],
+        assets: [
+            {
+                assetName: 'GardenScissors',
+                position: [0.5, 0.35, 0.42],
+                rotation: [0.06, -0.72, -0.88],
+                scale: 0.2,
+            },
+        ],
+        showBackground: false,
+    },
 ] satisfies readonly OperationCoverRecipe[];
 
 export const operationCoverRecipes = [
