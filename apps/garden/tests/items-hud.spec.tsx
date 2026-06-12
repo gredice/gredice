@@ -106,7 +106,10 @@ test('sandbox trash target appears centered above item picker while dragging', a
     await expect(trashTarget).toHaveClass(/bg-red-600/u);
 });
 
-test('pots are listed under the decoration picker', async ({ mount, page }) => {
+test('pots are listed under the decoration picker without mulch blocks', async ({
+    mount,
+    page,
+}) => {
     await page.setViewportSize(TABLET_VIEWPORT);
     await mount(<ItemsHudAlignmentStory />);
 
@@ -128,7 +131,7 @@ test('pots are listed under the decoration picker', async ({ mount, page }) => {
         page
             .locator('[data-items-picker-group-label]')
             .filter({ hasText: 'Malč' }),
-    ).toBeVisible();
+    ).toHaveCount(0);
 
     await page.getByRole('button', { name: 'Posude' }).click();
 

@@ -86,17 +86,12 @@ function timestampMs(value: Date | string | null | undefined) {
     return Number.isFinite(timestamp) ? timestamp : null;
 }
 
-function activePlantRewardBoundaryMs(field: RaisedBedFieldData) {
+function activePlantCycleStartMs(field: RaisedBedFieldData) {
     const activePlantCycle = field.plantCycles?.find(
         (plantCycle) => plantCycle.active,
     );
-    const timestamps = [
-        timestampMs(activePlantCycle?.startedAt),
-        timestampMs(activePlantCycle?.plantSowDate),
-        timestampMs(field.plantSowDate),
-    ].filter((value): value is number => value != null);
 
-    return timestamps.length > 0 ? Math.max(...timestamps) : null;
+    return timestampMs(activePlantCycle?.startedAt);
 }
 
 function isOperationAppliedToActivePlantCycle(
@@ -113,7 +108,8 @@ function isOperationAppliedToActivePlantCycle(
         return true;
     }
 
-    const cycleStartTimestamp = activePlantRewardBoundaryMs(field);
+    const cycleStartTimestamp =
+        activePlantCycleStartMs(field) ?? timestampMs(field.plantSowDate);
     if (cycleStartTimestamp == null) {
         return true;
     }
