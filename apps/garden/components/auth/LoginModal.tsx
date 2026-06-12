@@ -158,8 +158,7 @@ export default function LoginModal() {
         }
     };
 
-    const emailButtonLabel =
-        activeTab === 'login' ? 'Prijava emailom' : 'Registracija emailom';
+    const authActionLabel = activeTab === 'login' ? 'prijava' : 'registracija';
 
     return (
         <>
@@ -189,11 +188,15 @@ export default function LoginModal() {
                                 <GoogleLoginButton
                                     onClick={() => handleOAuthLogin('google')}
                                     lastUsed={lastLoginProvider === 'google'}
-                                />
+                                >
+                                    Google {authActionLabel}
+                                </GoogleLoginButton>
                                 <FacebookLoginButton
                                     onClick={() => handleOAuthLogin('facebook')}
                                     lastUsed={lastLoginProvider === 'facebook'}
-                                />
+                                >
+                                    Facebook {authActionLabel}
+                                </FacebookLoginButton>
                                 <Button
                                     type="button"
                                     variant="outlined"
@@ -204,7 +207,7 @@ export default function LoginModal() {
                                     }
                                     onClick={() => setEmailExpanded(true)}
                                 >
-                                    {emailButtonLabel}
+                                    Email {authActionLabel}
                                 </Button>
                             </Stack>
                         )}
