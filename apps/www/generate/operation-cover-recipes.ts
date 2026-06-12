@@ -164,6 +164,11 @@ const farmSupplyKitGranuleNodes = [
     'FarmSupplyKit_Granule_05',
 ] as const;
 
+const farmSupplyKitLabelNodes = [
+    'FarmSupplyKit_Sack_Left_Label',
+    'FarmSupplyKit_Sack_Right_Label',
+] as const;
+
 export const liquidPreparationOperationCoverRecipes =
     liquidPreparationBottleAssets.map((assetName) => ({
         operationId: assetName,
@@ -975,6 +980,49 @@ export const inventoryOperationCoverRecipes = [
                 position: [0.36, -0.16, 0.6],
                 rotation: [0.08, 0.52, 0.03],
                 scale: 0.56,
+            },
+            {
+                assetName: 'FieldworkClipboard',
+                position: [0.68, 0.22, 0.34],
+                rotation: [0.18, -0.55, -0.22],
+                scale: 0.16,
+            },
+        ],
+        showBackground: false,
+    },
+    {
+        operationId: 'inventoryPrinterLabels',
+        operationLabel: 'Inventura naljepnica za printer',
+        outputFileName: 'inventoryPrinterLabels.webp',
+        camera: {
+            position: [2.7, 2.1, 4.8],
+            target: [0.45, 0.27, 0.45],
+            zoom: 142,
+        },
+        assets: [
+            {
+                id: 'label-sheet-bottom',
+                assetName: 'FarmSupplyKit',
+                visibleNodeNames: farmSupplyKitLabelNodes,
+                position: [0.3, 0.11, 0.52],
+                rotation: [0.16, 0.72, -0.2],
+                scale: [0.75, 0.75, 0.75],
+            },
+            {
+                id: 'label-sheet-middle',
+                assetName: 'FarmSupplyKit',
+                visibleNodeNames: farmSupplyKitLabelNodes,
+                position: [0.37, 0.15, 0.48],
+                rotation: [0.16, 0.72, 0.02],
+                scale: [0.72, 0.72, 0.72],
+            },
+            {
+                id: 'label-sheet-top',
+                assetName: 'FarmSupplyKit',
+                visibleNodeNames: farmSupplyKitLabelNodes,
+                position: [0.44, 0.19, 0.44],
+                rotation: [0.16, 0.72, 0.22],
+                scale: [0.68, 0.68, 0.68],
             },
             {
                 assetName: 'FieldworkClipboard',
