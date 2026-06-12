@@ -686,6 +686,46 @@ export const inventoryOperationCoverRecipes = [
         ],
         showBackground: false,
     },
+    {
+        operationId: 'inventoryPlantProtectionProducts',
+        operationLabel: 'Inventura sredstava za zaštitu biljaka',
+        outputFileName: 'inventoryPlantProtectionProducts.webp',
+        camera: {
+            position: [2.7, 2.1, 4.8],
+            target: [0.46, 0.28, 0.45],
+            zoom: 136,
+        },
+        assets: [
+            {
+                id: 'pest-control-bottle',
+                assetName: 'LiquidPreparationBottlePestControl',
+                position: [0.28, 0.08, 0.5],
+                rotation: [0.08, 0.7, 0.04],
+                scale: 0.2,
+            },
+            {
+                id: 'aphid-control-bottle',
+                assetName: 'LiquidPreparationBottleAphidControl',
+                position: [0.42, 0.08, 0.44],
+                rotation: [0.08, 0.35, 0.04],
+                scale: 0.2,
+            },
+            {
+                id: 'disease-control-bottle',
+                assetName: 'LiquidPreparationBottleDiseaseControl',
+                position: [0.37, 0.08, 0.57],
+                rotation: [0.08, 0.5, 0.04],
+                scale: 0.19,
+            },
+            {
+                assetName: 'FieldworkClipboard',
+                position: [0.68, 0.22, 0.34],
+                rotation: [0.18, -0.55, -0.22],
+                scale: 0.16,
+            },
+        ],
+        showBackground: false,
+    },
 ] satisfies readonly OperationCoverRecipe[];
 
 export const cuttingOperationCoverRecipes = [
