@@ -141,6 +141,16 @@ const groupedWeatherAlerts = [
     }),
 ];
 
+const forecastDays = Array.from({ length: 7 }, (_, index) => ({
+    date: new Date(Date.UTC(2026, 5, index + 1)).toISOString(),
+    maxTemp: 24 + index,
+    minTemp: 13 + index,
+    rain: index % 2 === 0 ? index + 1 : 0,
+    symbol: index % 3 === 0 ? 3 : 1,
+    windDirection: index % 2 === 0 ? 'NE' : 'SW',
+    windStrength: (index % 3) + 1,
+}));
+
 function createWeatherHudQueryClient({
     alerts = [],
 }: {
@@ -178,7 +188,7 @@ function createWeatherHudQueryClient({
     };
     queryClient.setQueryData(['weather', 'now', 1], weatherNow);
     queryClient.setQueryData(['weather', 'now', null], weatherNow);
-    queryClient.setQueryData(['weather', 'forecast'], []);
+    queryClient.setQueryData(['weather', 'forecast'], forecastDays);
 
     return queryClient;
 }

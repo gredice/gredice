@@ -74,6 +74,37 @@ test('weather popover time of day fits on narrow mobile viewports', async ({
     );
 });
 
+test('forecast popover scrolls within desktop viewport with time of day', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(DESKTOP_VIEWPORT);
+    await mount(<WeatherHudStory />);
+
+    await page.getByTitle('Prognoza vremena').click();
+    await page.getByRole('button', { name: 'Sve' }).click();
+
+    const details = page.locator('[data-weather-forecast-details="true"]');
+    await expect(details).toBeVisible();
+    await expect(
+        details.locator('[data-time-of-day-details="true"]'),
+    ).toBeVisible();
+
+    const detailsBox = await details.boundingBox();
+    expect(detailsBox).not.toBeNull();
+    expect(detailsBox?.height ?? 0).toBeLessThanOrEqual(
+        DESKTOP_VIEWPORT.height - 48,
+    );
+
+    const scrollStats = await page
+        .locator('[data-weather-forecast-scroll="true"]')
+        .evaluate((element) => ({
+            clientHeight: element.clientHeight,
+            scrollHeight: element.scrollHeight,
+        }));
+    expect(scrollStats.scrollHeight).toBeGreaterThan(scrollStats.clientHeight);
+});
+
 test('weather warnings are grouped and scroll within the mobile popover', async ({
     mount,
     page,
