@@ -185,7 +185,9 @@ const automationModuleIcons = new Map<string, IconComponent>([
     [automationModuleKeys.actionQueueSeasonalSowingOfferOperations, Droplets],
     [automationModuleKeys.actionCreateOperation, Hammer],
     [automationModuleKeys.actionCreateFarmInventoryOperations, Store],
+    [automationModuleKeys.actionUpdateRaisedBedFieldPlantAttributes, Sprout],
     [automationModuleKeys.actionUpdateRaisedBedFieldPlantStatus, Sprout],
+    [automationModuleKeys.actionUpdateRaisedBedFieldSowingLocation, Sprout],
     [automationModuleKeys.actionCreatePlantStatusRequestsFromImageAnalysis, AI],
     [automationModuleKeys.actionLog, Text],
 ]);
@@ -347,7 +349,12 @@ function updateNodeSelection(nodes: FlowNode[], selectedNodeId: string | null) {
 function defaultConfig(module: AutomationModuleMetadata): AutomationJsonObject {
     return Object.fromEntries(
         module.configFields
-            .filter((field) => field.type === 'select' && field.options?.[0])
+            .filter(
+                (field) =>
+                    field.type === 'select' &&
+                    field.required &&
+                    field.options?.[0],
+            )
             .map((field) => [field.key, field.options?.[0]?.value]),
     );
 }

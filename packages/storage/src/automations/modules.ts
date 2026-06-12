@@ -32,6 +32,7 @@ import {
     AutomationModuleExecutionError,
     type AutomationModuleMetadata,
     type AutomationModuleResult,
+    type AutomationSourceEvent,
 } from './types';
 
 const domainEventTriggerKey = 'trigger.domainEvent';
@@ -46,6 +47,8 @@ const queuePostTransplantWateringOperationsActionKey =
 const createOperationActionKey = 'action.createOperation';
 const createFarmInventoryOperationsActionKey =
     'action.createFarmInventoryOperations';
+const updateRaisedBedFieldPlantAttributesActionKey =
+    'action.updateRaisedBedFieldPlantAttributes';
 const updateRaisedBedFieldPlantStatusActionKey =
     'action.updateRaisedBedFieldPlantStatus';
 const updateRaisedBedFieldSowingLocationActionKey =
@@ -69,6 +72,8 @@ export const automationModuleKeys = {
         queuePostTransplantWateringOperationsActionKey,
     actionCreateOperation: createOperationActionKey,
     actionCreateFarmInventoryOperations: createFarmInventoryOperationsActionKey,
+    actionUpdateRaisedBedFieldPlantAttributes:
+        updateRaisedBedFieldPlantAttributesActionKey,
     actionUpdateRaisedBedFieldPlantStatus:
         updateRaisedBedFieldPlantStatusActionKey,
     actionUpdateRaisedBedFieldSowingLocation:
@@ -400,6 +405,86 @@ function parseSowingLocation(
     value: unknown,
 ): RaisedBedFieldSowingLocation | null {
     return value === 'direct' || value === 'greenhouse' ? value : null;
+}
+
+function getTargetSowingLocation(config: AutomationJsonObject) {
+    const value = getString(config, 'targetSowingLocation');
+    return value ? parseSowingLocation(value) : null;
+}
+
+function hasTargetSowingLocation(config: AutomationJsonObject) {
+    return Boolean(getString(config, 'targetSowingLocation'));
+}
+
+function validateRaisedBedFieldPlantAttributesConfig(
+    config: AutomationJsonObject,
+) {
+    const errors: string[] = [];
+    const targetStatus = getString(config, 'targetStatus');
+    const targetSowingLocation = getTargetSowingLocation(config);
+
+    if (!targetStatus && !targetSowingLocation) {
+        errors.push(
+            'At least one of targetStatus or targetSowingLocation is required.',
+        );
+    }
+
+    if (hasTargetSowingLocation(config) && !targetSowingLocation) {
+        errors.push('targetSowingLocation must be direct or greenhouse.');
+    }
+
+    return errors;
+}
+
+async function resolveOperationRaisedBedFieldTarget(
+    event: AutomationSourceEvent | undefined,
+) {
+    if (!event) {
+        return {
+            ok: false as const,
+            result: skip('No source event is available.'),
+        };
+    }
+
+    const operationId = Number(event.aggregateId);
+    if (!Number.isInteger(operationId) || operationId <= 0) {
+        return {
+            ok: false as const,
+            result: skip('Source event aggregate is not an operation id.'),
+        };
+    }
+
+    const operation = await getOperationById(operationId);
+    if (!operation?.raisedBedId || !operation.raisedBedFieldId) {
+        return {
+            ok: false as const,
+            result: skip('Operation has no raised-bed field target.', {
+                operationId,
+            }),
+        };
+    }
+
+    const raisedBed = await getRaisedBed(operation.raisedBedId);
+    const field = raisedBed?.fields.find(
+        (candidate) => candidate.id === operation.raisedBedFieldId,
+    );
+    if (!raisedBed || !field) {
+        return {
+            ok: false as const,
+            result: skip('Operation target field was not found.', {
+                operationId,
+                raisedBedId: operation.raisedBedId,
+                raisedBedFieldId: operation.raisedBedFieldId,
+            }),
+        };
+    }
+
+    return {
+        ok: true as const,
+        operationId,
+        raisedBed,
+        field,
+    };
 }
 
 function configFieldsForEventType() {
@@ -1194,6 +1279,126 @@ const createFarmInventoryOperationsActionModule: AutomationModule = {
     },
 };
 
+async function updateRaisedBedFieldPlantAttributes({
+    context,
+    node,
+    noChangeReason = 'Plant already has the target attributes.',
+}: {
+    context: Parameters<AutomationModule['execute']>[0];
+    node: AutomationGraphNode;
+    noChangeReason?: string;
+}) {
+    const targetStatus = getString(node.config, 'targetStatus');
+    const targetSowingLocation = getTargetSowingLocation(node.config);
+
+    if (!targetStatus && !targetSowingLocation) {
+        throw new AutomationModuleExecutionError(
+            'Plant attribute action is missing targetStatus or targetSowingLocation.',
+            'invalid_config',
+        );
+    }
+
+    const target = await resolveOperationRaisedBedFieldTarget(context.event);
+    if (!target.ok) {
+        return target.result;
+    }
+
+    const statusChanged =
+        Boolean(targetStatus) && target.field.plantStatus !== targetStatus;
+    const sowingLocationChanged =
+        Boolean(targetSowingLocation) &&
+        target.field.sowingLocation !== targetSowingLocation;
+
+    if (!statusChanged && !sowingLocationChanged) {
+        return skip(noChangeReason, {
+            operationId: target.operationId,
+            targetStatus: targetStatus ?? null,
+            targetSowingLocation: targetSowingLocation ?? null,
+        });
+    }
+
+    const output = {
+        operationId: target.operationId,
+        raisedBedId: target.raisedBed.id,
+        positionIndex: target.field.positionIndex,
+        previousStatus: target.field.plantStatus ?? null,
+        targetStatus: targetStatus ?? null,
+        previousSowingLocation: target.field.sowingLocation,
+        targetSowingLocation: targetSowingLocation ?? null,
+        updatedAttributes: [
+            ...(statusChanged ? ['plantStatus'] : []),
+            ...(sowingLocationChanged ? ['sowingLocation'] : []),
+        ],
+    };
+
+    if (context.dryRun) {
+        return success({
+            dryRun: true,
+            ...output,
+        });
+    }
+
+    const aggregateId = `${target.raisedBed.id}|${target.field.positionIndex}`;
+    if (sowingLocationChanged && targetSowingLocation) {
+        await createEvent(
+            knownEvents.raisedBedFields.plantScheduleV1(aggregateId, {
+                scheduledDate:
+                    target.field.plantScheduledDate?.toISOString() ?? null,
+                sowingLocation: targetSowingLocation,
+            }),
+        );
+    }
+
+    if (statusChanged && targetStatus) {
+        await createEvent(
+            knownEvents.raisedBedFields.plantUpdateV1(
+                aggregateId,
+                buildRaisedBedFieldPlantUpdatePayload(
+                    targetStatus,
+                    target.field.assignedUserIds,
+                ),
+            ),
+        );
+    }
+
+    return success(output);
+}
+
+const updateRaisedBedFieldPlantAttributesActionModule: AutomationModule = {
+    key: updateRaisedBedFieldPlantAttributesActionKey,
+    kind: 'action',
+    title: 'Update plant attributes',
+    description:
+        'Updates plant status and/or sowing location for the operation target field.',
+    category: 'Raised-bed fields',
+    configFields: [
+        {
+            key: 'targetStatus',
+            label: 'Target status',
+            type: 'string',
+            placeholder: 'sprouted',
+        },
+        {
+            key: 'targetSowingLocation',
+            label: 'Target sowing location',
+            type: 'select',
+            placeholder: 'direct',
+            description: 'Optional. Accepted values: direct, greenhouse.',
+            options: [
+                { value: '', label: 'Do not change' },
+                { value: 'direct', label: 'Direct' },
+                { value: 'greenhouse', label: 'Greenhouse' },
+            ],
+        },
+    ],
+    dryRunSupported: true,
+    mutatesData: true,
+    retryable: true,
+    validateConfig: validateRaisedBedFieldPlantAttributesConfig,
+    execute: async (context, node) =>
+        updateRaisedBedFieldPlantAttributes({ context, node }),
+};
+
 const updateRaisedBedFieldPlantStatusActionModule: AutomationModule = {
     key: updateRaisedBedFieldPlantStatusActionKey,
     kind: 'action',
@@ -1214,76 +1419,12 @@ const updateRaisedBedFieldPlantStatusActionModule: AutomationModule = {
     mutatesData: true,
     retryable: true,
     validateConfig: (config) => requiredString(config, 'targetStatus'),
-    execute: async (context, node) => {
-        if (!context.event) {
-            return skip('No source event is available.');
-        }
-
-        const targetStatus = getString(node.config, 'targetStatus');
-        if (!targetStatus) {
-            throw new AutomationModuleExecutionError(
-                'Plant status action is missing targetStatus.',
-                'invalid_config',
-            );
-        }
-
-        const operationId = Number(context.event.aggregateId);
-        if (!Number.isInteger(operationId) || operationId <= 0) {
-            return skip('Source event aggregate is not an operation id.');
-        }
-
-        const operation = await getOperationById(operationId);
-        if (!operation?.raisedBedId || !operation.raisedBedFieldId) {
-            return skip('Operation has no raised-bed field target.', {
-                operationId,
-            });
-        }
-
-        const raisedBed = await getRaisedBed(operation.raisedBedId);
-        const field = raisedBed?.fields.find(
-            (candidate) => candidate.id === operation.raisedBedFieldId,
-        );
-        if (!raisedBed || !field) {
-            return skip('Operation target field was not found.', {
-                operationId,
-                raisedBedId: operation.raisedBedId,
-                raisedBedFieldId: operation.raisedBedFieldId,
-            });
-        }
-
-        if (field.plantStatus === targetStatus) {
-            return skip('Plant already has the target status.', {
-                targetStatus,
-            });
-        }
-
-        if (context.dryRun) {
-            return success({
-                dryRun: true,
-                raisedBedId: raisedBed.id,
-                positionIndex: field.positionIndex,
-                previousStatus: field.plantStatus ?? null,
-                targetStatus,
-            });
-        }
-
-        await createEvent(
-            knownEvents.raisedBedFields.plantUpdateV1(
-                `${raisedBed.id}|${field.positionIndex}`,
-                buildRaisedBedFieldPlantUpdatePayload(
-                    targetStatus,
-                    field.assignedUserIds,
-                ),
-            ),
-        );
-
-        return success({
-            raisedBedId: raisedBed.id,
-            positionIndex: field.positionIndex,
-            previousStatus: field.plantStatus ?? null,
-            targetStatus,
-        });
-    },
+    execute: async (context, node) =>
+        updateRaisedBedFieldPlantAttributes({
+            context,
+            node,
+            noChangeReason: 'Plant already has the target status.',
+        }),
 };
 
 const updateRaisedBedFieldSowingLocationActionModule: AutomationModule = {
@@ -1312,79 +1453,12 @@ const updateRaisedBedFieldSowingLocationActionModule: AutomationModule = {
         parseSowingLocation(config.targetSowingLocation)
             ? []
             : ['targetSowingLocation must be direct or greenhouse.'],
-    execute: async (context, node) => {
-        if (!context.event) {
-            return skip('No source event is available.');
-        }
-
-        const targetSowingLocation = parseSowingLocation(
-            node.config.targetSowingLocation,
-        );
-        if (!targetSowingLocation) {
-            throw new AutomationModuleExecutionError(
-                'Sowing location action is missing targetSowingLocation.',
-                'invalid_config',
-            );
-        }
-
-        const operationId = Number(context.event.aggregateId);
-        if (!Number.isInteger(operationId) || operationId <= 0) {
-            return skip('Source event aggregate is not an operation id.');
-        }
-
-        const operation = await getOperationById(operationId);
-        if (!operation?.raisedBedId || !operation.raisedBedFieldId) {
-            return skip('Operation has no raised-bed field target.', {
-                operationId,
-            });
-        }
-
-        const raisedBed = await getRaisedBed(operation.raisedBedId);
-        const field = raisedBed?.fields.find(
-            (candidate) => candidate.id === operation.raisedBedFieldId,
-        );
-        if (!raisedBed || !field) {
-            return skip('Operation target field was not found.', {
-                operationId,
-                raisedBedId: operation.raisedBedId,
-                raisedBedFieldId: operation.raisedBedFieldId,
-            });
-        }
-
-        if (field.sowingLocation === targetSowingLocation) {
-            return skip('Plant already has the target sowing location.', {
-                targetSowingLocation,
-            });
-        }
-
-        if (context.dryRun) {
-            return success({
-                dryRun: true,
-                raisedBedId: raisedBed.id,
-                positionIndex: field.positionIndex,
-                previousSowingLocation: field.sowingLocation,
-                targetSowingLocation,
-            });
-        }
-
-        await createEvent(
-            knownEvents.raisedBedFields.plantScheduleV1(
-                `${raisedBed.id}|${field.positionIndex}`,
-                {
-                    scheduledDate:
-                        field.plantScheduledDate?.toISOString() ?? null,
-                    sowingLocation: targetSowingLocation,
-                },
-            ),
-        );
-
-        return success({
-            raisedBedId: raisedBed.id,
-            positionIndex: field.positionIndex,
-            previousSowingLocation: field.sowingLocation,
-            targetSowingLocation,
-        });
-    },
+    execute: async (context, node) =>
+        updateRaisedBedFieldPlantAttributes({
+            context,
+            node,
+            noChangeReason: 'Plant already has the target sowing location.',
+        }),
 };
 
 const createPlantStatusRequestsFromImageAnalysisActionModule: AutomationModule =
@@ -1513,6 +1587,7 @@ export const automationModules = [
     queuePostTransplantWateringOperationsActionModule,
     createOperationActionModule,
     createFarmInventoryOperationsActionModule,
+    updateRaisedBedFieldPlantAttributesActionModule,
     updateRaisedBedFieldPlantStatusActionModule,
     updateRaisedBedFieldSowingLocationActionModule,
     createPlantStatusRequestsFromImageAnalysisActionModule,

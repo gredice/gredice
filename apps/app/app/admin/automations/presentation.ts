@@ -26,6 +26,8 @@ export const automationModuleKeys = {
         'action.queuePostTransplantWateringOperations',
     actionQueueSeasonalSowingOfferOperations:
         'action.queueSeasonalSowingOfferOperations',
+    actionUpdateRaisedBedFieldPlantAttributes:
+        'action.updateRaisedBedFieldPlantAttributes',
     actionUpdateRaisedBedFieldPlantStatus:
         'action.updateRaisedBedFieldPlantStatus',
     actionUpdateRaisedBedFieldSowingLocation:
@@ -155,6 +157,29 @@ const automationModulePresentations: Record<
                 label: 'Radnje',
                 description:
                     'JSON niz: [{"entityId": 123, "entityTypeName": "operation", "scheduledInDays": 0}]',
+            },
+        },
+    },
+    [automationModuleKeys.actionUpdateRaisedBedFieldPlantAttributes]: {
+        title: 'Ažuriraj biljku u gredici',
+        description:
+            'Upisuje status biljke i/ili lokaciju sijanja za ciljano polje gredice.',
+        inputDescription: 'Event radnje s ciljanom gredicom i poljem gredice.',
+        outputDescription: 'Ažurirani atributi biljke ili razlog preskakanja.',
+        fields: {
+            targetStatus: {
+                label: 'Ciljani status',
+                placeholder: 'sprouted',
+            },
+            targetSowingLocation: {
+                label: 'Ciljana lokacija sijanja',
+                description: 'Neobavezno. Vrijednosti: direct, greenhouse.',
+                options: {
+                    '': 'Bez promjene',
+                    direct: 'Direktno',
+                    greenhouse: 'Staklenik',
+                },
+                placeholder: 'direct',
             },
         },
     },

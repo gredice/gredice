@@ -185,6 +185,7 @@ const requiredFieldLabels: Record<string, string> = {
     operations: 'Radnje',
     path: 'Putanja podataka',
     status: 'Status',
+    targetSowingLocation: 'Ciljana lokacija sijanja',
     targetStatus: 'Ciljani status',
     timeZone: 'Vremenska zona',
 };
@@ -219,6 +220,15 @@ function localizeAutomationValidationError(error: string) {
     }
     if (error === 'minConfidence must be a number from 0 to 1.') {
         return 'Minimalna pouzdanost mora biti broj od 0 do 1.';
+    }
+    if (
+        error ===
+        'At least one of targetStatus or targetSowingLocation is required.'
+    ) {
+        return 'Unesite ciljani status ili ciljanu lokaciju sijanja.';
+    }
+    if (error === 'targetSowingLocation must be direct or greenhouse.') {
+        return 'Ciljana lokacija sijanja mora biti direct ili greenhouse.';
     }
 
     const requiredMatch = /^(.+) is required\.$/.exec(error);

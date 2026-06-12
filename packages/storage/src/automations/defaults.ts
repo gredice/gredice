@@ -142,7 +142,7 @@ export function seedlingTransplantDirectSowingLocationAutomationGraph(): Automat
                 id: 'set-location-direct',
                 kind: 'action',
                 moduleKey:
-                    automationModuleKeys.actionUpdateRaisedBedFieldSowingLocation,
+                    automationModuleKeys.actionUpdateRaisedBedFieldPlantAttributes,
                 position: { x: 620, y: 160 },
                 config: {
                     targetSowingLocation: 'direct',
@@ -236,7 +236,7 @@ export function plantRemovalOperationStatusAutomationGraph(): AutomationGraph {
                 id: 'set-plant-status-removed',
                 kind: 'action',
                 moduleKey:
-                    automationModuleKeys.actionUpdateRaisedBedFieldPlantStatus,
+                    automationModuleKeys.actionUpdateRaisedBedFieldPlantAttributes,
                 position: { x: 620, y: 160 },
                 config: {
                     targetStatus: 'removed',
