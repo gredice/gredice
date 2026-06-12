@@ -333,6 +333,10 @@ export type GLTFResult = GLTF & {
         CameraPhone_Photo_Stem: THREE.Mesh;
         CameraPhone_Photo_Leaf_L: THREE.Mesh;
         CameraPhone_Photo_Leaf_R: THREE.Mesh;
+        SensorStakeMeter_Stake: THREE.Mesh;
+        SensorStakeMeter_Display_Back: THREE.Mesh;
+        SensorStakeMeter_Display_Face: THREE.Mesh;
+        SensorStakeMeter_Display_Screen: THREE.Mesh;
         WaterWell_Stone_Mid: THREE.Mesh;
         WaterWell_Stone_Light: THREE.Mesh;
         WaterWell_Stone_Dark: THREE.Mesh;
@@ -673,6 +677,9 @@ export type GLTFResult = GLTF & {
         'Material.Planks': THREE.MeshStandardMaterial;
         'Material.Sand': THREE.MeshStandardMaterial;
         'Material.Sand.001': THREE.MeshStandardMaterial;
+        'Material.SensorStakeMeter.Charcoal': THREE.MeshStandardMaterial;
+        'Material.SensorStakeMeter.FaceCream': THREE.MeshStandardMaterial;
+        'Material.SensorStakeMeter.ScreenBlue': THREE.MeshStandardMaterial;
         'Material.Stone': THREE.MeshStandardMaterial;
         'Material.Stone.001': THREE.MeshStandardMaterial;
         'Material.Stone.002': THREE.MeshStandardMaterial;

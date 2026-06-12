@@ -615,6 +615,18 @@
             ]
         },
         {
+            "name": "SensorStakeMeter",
+            "source": "SensorStakeMeter.blend",
+            "output": "SensorStakeMeter.glb",
+            "preload": "lazy",
+            "objects": [
+                "SensorStakeMeter_Stake",
+                "SensorStakeMeter_Display_Back",
+                "SensorStakeMeter_Display_Face",
+                "SensorStakeMeter_Display_Screen"
+            ]
+        },
+        {
             "name": "WaterWell",
             "source": "WaterWell.blend",
             "output": "WaterWell.glb",
