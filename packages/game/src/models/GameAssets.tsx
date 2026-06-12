@@ -286,9 +286,6 @@ export type GLTFResult = GLTF & {
         FieldworkClipboard_Board: THREE.Mesh;
         FieldworkClipboard_Paper: THREE.Mesh;
         FieldworkClipboard_Clip: THREE.Mesh;
-        FieldworkClipboard_Clip_Jaw: THREE.Mesh;
-        FieldworkClipboard_Clip_Rivet_L: THREE.Mesh;
-        FieldworkClipboard_Clip_Rivet_R: THREE.Mesh;
         FieldworkClipboard_Checkbox_01: THREE.Mesh;
         FieldworkClipboard_Line_01: THREE.Mesh;
         FieldworkClipboard_Check_01_A: THREE.Mesh;
@@ -305,9 +302,6 @@ export type GLTFResult = GLTF & {
         FieldworkClipboard_Pencil_Wood: THREE.Mesh;
         FieldworkClipboard_Pencil_Graphite: THREE.Mesh;
         FieldworkClipboard_Pencil_Eraser: THREE.Mesh;
-        FieldworkClipboard_Magnifier_Rim: THREE.Mesh;
-        FieldworkClipboard_Magnifier_Glass: THREE.Mesh;
-        FieldworkClipboard_Magnifier_Handle: THREE.Mesh;
         WaterWell_Stone_Mid: THREE.Mesh;
         WaterWell_Stone_Light: THREE.Mesh;
         WaterWell_Stone_Dark: THREE.Mesh;
@@ -556,7 +550,6 @@ export type GLTFResult = GLTF & {
         'Material.FieldworkClipboard.Board': THREE.MeshStandardMaterial;
         'Material.FieldworkClipboard.CheckGreen': THREE.MeshStandardMaterial;
         'Material.FieldworkClipboard.Eraser': THREE.MeshStandardMaterial;
-        'Material.FieldworkClipboard.Glass': THREE.MeshStandardMaterial;
         'Material.FieldworkClipboard.Graphite': THREE.MeshStandardMaterial;
         'Material.FieldworkClipboard.Ink': THREE.MeshStandardMaterial;
         'Material.FieldworkClipboard.Metal': THREE.MeshStandardMaterial;

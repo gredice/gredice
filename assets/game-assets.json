@@ -549,9 +549,6 @@
                 "FieldworkClipboard_Board",
                 "FieldworkClipboard_Paper",
                 "FieldworkClipboard_Clip",
-                "FieldworkClipboard_Clip_Jaw",
-                "FieldworkClipboard_Clip_Rivet_L",
-                "FieldworkClipboard_Clip_Rivet_R",
                 "FieldworkClipboard_Checkbox_01",
                 "FieldworkClipboard_Line_01",
                 "FieldworkClipboard_Check_01_A",
@@ -567,10 +564,7 @@
                 "FieldworkClipboard_Pencil_Body",
                 "FieldworkClipboard_Pencil_Wood",
                 "FieldworkClipboard_Pencil_Graphite",
-                "FieldworkClipboard_Pencil_Eraser",
-                "FieldworkClipboard_Magnifier_Rim",
-                "FieldworkClipboard_Magnifier_Glass",
-                "FieldworkClipboard_Magnifier_Handle"
+                "FieldworkClipboard_Pencil_Eraser"
             ]
         },
         {
