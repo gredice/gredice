@@ -15,7 +15,29 @@ import { automationModuleKeys, getMonthlyScheduleOccurrence } from './modules';
 
 const defaultEventBatchLimit = 500;
 const defaultRunBatchLimit = 25;
+const defaultRunMaxBatches = 10;
+const defaultRunMaxDurationMs = 45_000;
+const defaultRunMinRemainingMs = 5_000;
 const defaultStaleRunMinutes = 15;
+
+export type AutomationProcessingStopReason =
+    | 'queue_empty'
+    | 'time_budget'
+    | 'batch_limit';
+
+type AutomationProcessingResult = {
+    claimedRuns: number;
+    succeeded: number;
+    skipped: number;
+    failed: number;
+    retrying: number;
+    recoveredStaleRuns: number;
+    failedStaleRuns: number;
+    processedBatches: number;
+    processingDurationMs: number;
+    processingTimeBudgetMs: number;
+    processingStopReason: AutomationProcessingStopReason;
+};
 
 export type AutomationRunnerResult = {
     scannedEvents: number;
@@ -30,6 +52,10 @@ export type AutomationRunnerResult = {
     retrying: number;
     recoveredStaleRuns: number;
     failedStaleRuns: number;
+    processedBatches: number;
+    processingDurationMs: number;
+    processingTimeBudgetMs: number;
+    processingStopReason: AutomationProcessingStopReason;
 };
 
 export async function enqueueAutomationRunsFromSchedules({
@@ -124,40 +150,100 @@ export async function enqueueAutomationRunsFromDomainEvents({
 
 export async function processDueAutomationRuns({
     limit = defaultRunBatchLimit,
+    maxBatches = defaultRunMaxBatches,
+    maxDurationMs = defaultRunMaxDurationMs,
+    minRemainingMs = defaultRunMinRemainingMs,
     lockedBy = 'automation-runner',
+    getTimeMs = Date.now,
 }: {
     limit?: number;
+    maxBatches?: number;
+    maxDurationMs?: number;
+    minRemainingMs?: number;
     lockedBy?: string;
+    getTimeMs?: () => number;
 } = {}) {
+    const startedAtMs = getTimeMs();
+    const safeLimit = Math.max(0, Math.floor(limit));
+    const safeMaxBatches = Math.max(0, Math.floor(maxBatches));
+    const safeMaxDurationMs = Math.max(0, maxDurationMs);
+    const safeMinRemainingMs = Math.max(0, minRemainingMs);
     const staleBefore = new Date(
         Date.now() - defaultStaleRunMinutes * 60 * 1000,
     );
     const staleResult = await recoverStaleAutomationRuns({ staleBefore });
-    const runs = await claimDueAutomationRuns({ limit, lockedBy });
-    const result = {
-        claimedRuns: runs.length,
+    const result: AutomationProcessingResult = {
+        claimedRuns: 0,
         succeeded: 0,
         skipped: 0,
         failed: 0,
         retrying: 0,
         recoveredStaleRuns: staleResult.recovered,
         failedStaleRuns: staleResult.failed,
+        processedBatches: 0,
+        processingDurationMs: 0,
+        processingTimeBudgetMs: safeMaxDurationMs,
+        processingStopReason: 'queue_empty',
     };
 
-    const runResults = await Promise.all(
-        runs.map((run) => executeAutomationRun(run)),
-    );
+    let currentTimeMs = getTimeMs();
+    result.processingDurationMs = Math.max(0, currentTimeMs - startedAtMs);
+    let lastBatchDurationMs = 0;
 
-    for (const runResult of runResults) {
-        if (runResult.status === 'succeeded') {
-            result.succeeded += 1;
-        } else if (runResult.status === 'skipped') {
-            result.skipped += 1;
-        } else if (runResult.status === 'retrying') {
-            result.retrying += 1;
-        } else {
-            result.failed += 1;
+    while (safeLimit > 0 && result.processedBatches < safeMaxBatches) {
+        if (result.processedBatches > 0) {
+            const elapsedMs = Math.max(0, currentTimeMs - startedAtMs);
+            const estimatedNextBatchMs = Math.max(lastBatchDurationMs, 1);
+            if (
+                elapsedMs + estimatedNextBatchMs + safeMinRemainingMs >
+                safeMaxDurationMs
+            ) {
+                result.processingStopReason = 'time_budget';
+                break;
+            }
         }
+
+        const batchStartedAtMs = currentTimeMs;
+        const runs = await claimDueAutomationRuns({
+            limit: safeLimit,
+            lockedBy,
+        });
+
+        if (runs.length === 0) {
+            result.processingStopReason = 'queue_empty';
+            break;
+        }
+
+        result.claimedRuns += runs.length;
+        result.processedBatches += 1;
+
+        const runResults = await Promise.all(
+            runs.map((run) => executeAutomationRun(run)),
+        );
+
+        for (const runResult of runResults) {
+            if (runResult.status === 'succeeded') {
+                result.succeeded += 1;
+            } else if (runResult.status === 'skipped') {
+                result.skipped += 1;
+            } else if (runResult.status === 'retrying') {
+                result.retrying += 1;
+            } else {
+                result.failed += 1;
+            }
+        }
+
+        currentTimeMs = getTimeMs();
+        lastBatchDurationMs = Math.max(0, currentTimeMs - batchStartedAtMs);
+        result.processingDurationMs = Math.max(0, currentTimeMs - startedAtMs);
+    }
+
+    if (
+        safeLimit > 0 &&
+        result.processedBatches >= safeMaxBatches &&
+        result.processingStopReason === 'queue_empty'
+    ) {
+        result.processingStopReason = 'batch_limit';
     }
 
     return result;
@@ -167,11 +253,17 @@ export async function runAutomations({
     eventBatchLimit = defaultEventBatchLimit,
     scheduleBatchLimit,
     runBatchLimit = defaultRunBatchLimit,
+    runMaxBatches = defaultRunMaxBatches,
+    runMaxDurationMs = defaultRunMaxDurationMs,
+    runMinRemainingMs = defaultRunMinRemainingMs,
     lockedBy = 'automation-runner',
 }: {
     eventBatchLimit?: number;
     scheduleBatchLimit?: number;
     runBatchLimit?: number;
+    runMaxBatches?: number;
+    runMaxDurationMs?: number;
+    runMinRemainingMs?: number;
     lockedBy?: string;
 } = {}): Promise<AutomationRunnerResult> {
     const scheduleResult = await enqueueAutomationRunsFromSchedules({
@@ -182,6 +274,9 @@ export async function runAutomations({
     });
     const processResult = await processDueAutomationRuns({
         limit: runBatchLimit,
+        maxBatches: runMaxBatches,
+        maxDurationMs: runMaxDurationMs,
+        minRemainingMs: runMinRemainingMs,
         lockedBy,
     });
 

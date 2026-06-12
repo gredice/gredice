@@ -53,7 +53,7 @@ attempts, scheduled runs, and periodic queue execution.
 
 ## Runner Lifecycle
 
-`runAutomations()` in `packages/storage/src/automations/runner.ts` performs four
+`runAutomations()` in `packages/storage/src/automations/runner.ts` performs
 bounded phases:
 
 1. Ensure default automation definitions exist.
@@ -61,9 +61,13 @@ bounded phases:
    repeated cron ticks do not duplicate the same period.
 3. Read new domain events after the cursor and enqueue matching enabled
    automation runs.
-4. Recover stale running jobs, claim due queued/retryable runs up to each
-   automation definition's concurrency cap, and execute the claimed batch
-   through the graph executor.
+4. Recover stale running jobs.
+5. Claim due queued/retryable runs up to each automation definition's
+   concurrency cap and execute the claimed batch through the graph executor.
+6. When a batch finishes quickly, claim another due batch in the same cron
+   invocation. The runner measures batch duration and only starts another batch
+   when the estimated next batch plus the safety margin still fits inside the
+   processing budget.
 
 When defaults are first installed, the runner initializes the event cursor to
 the current latest domain event id if no cursor exists. This prevents the MVP
@@ -78,7 +82,11 @@ The API cron route is protected with `CRON_SECRET` and is registered in
 ```
 
 The cron remains bounded and idempotent: it enqueues missed schedule/event runs,
-recovers stale locks, and claims a limited batch of due queued/retrying runs.
+recovers stale locks, and claims limited batches of due queued/retrying runs.
+The API cron currently allows up to 10 processing batches, with a 45-second
+processing budget and a 5-second safety margin. This lets fast skipped/no-op
+jobs drain without waiting for another cron tick, while slower batches naturally
+pause for the next one.
 
 ## Module Registry
 
