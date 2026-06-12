@@ -213,7 +213,7 @@ function WeatherHudTestProviders({
     );
 }
 
-export function WeatherHudTimePopoverStory({
+export function WeatherHudStory({
     withAlerts = false,
 }: {
     withAlerts?: boolean;

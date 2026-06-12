@@ -22,6 +22,7 @@ import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import { type FC, useState } from 'react';
 import { useWeatherForecast } from '../../../hooks/useWeatherForecast';
+import { TimeOfDayDetails } from '../TimeOfDayDetails';
 import { RainIcon } from './icons/RainIcon';
 import { WeatherHistoryPanel } from './WeatherHistoryModal';
 import { weatherIcons } from './WeatherIcons';
@@ -177,6 +178,7 @@ export function WeatherForecastDetails() {
                 </Row>
             </Row>
             <Divider />
+            <TimeOfDayDetails compact className="border-b bg-muted/20" />
             {view === 'graph' ? (
                 <WeatherHistoryPanel className="p-3" />
             ) : (

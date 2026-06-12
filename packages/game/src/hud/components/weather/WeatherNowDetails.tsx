@@ -32,6 +32,7 @@ import {
 import { usePushPermissionOnboarding } from '../../../hooks/usePushPermissionOnboarding';
 import { useWeatherNow } from '../../../hooks/useWeatherNow';
 import { notificationsViewSearchParam } from '../../../notificationFilters';
+import { TimeOfDayDetails } from '../TimeOfDayDetails';
 import { RainIcon } from './icons/RainIcon';
 import { WeatherForecastDays } from './WeatherForecastDetails';
 import { WeatherHistoryPanel } from './WeatherHistoryModal';
@@ -498,6 +499,10 @@ export function WeatherNowDetails({ farmId }: { farmId?: number | null } = {}) {
                 <WeatherViewToggle value={view} onValueChange={setView} />
             </Row>
             <Divider />
+            <TimeOfDayDetails
+                compact
+                className="shrink-0 border-b bg-muted/20"
+            />
             <div
                 className="min-h-0 overflow-y-auto overscroll-contain"
                 data-weather-now-scroll="true"

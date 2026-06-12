@@ -1,0 +1,86 @@
+'use client';
+
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
+import { useCallback } from 'react';
+import { useGameFlags } from '../../GameFlagsContext';
+import { useLiveTime } from '../../hooks/useLiveTime';
+import { useGameState } from '../../useGameState';
+import { createDateForGameTimeOfDay } from '../../utils/timeOfDay';
+import { TimeOfDayVisualization } from './TimeOfDayVisualization';
+
+export function TimeOfDayDetails({
+    className,
+    compact = false,
+}: {
+    className?: string;
+    compact?: boolean;
+}) {
+    const { enableDebugHudFlag = false } = useGameFlags();
+    const currentTime = useLiveTime();
+    const timeOfDay = useGameState((state) => state.timeOfDay);
+    const sunrise = useGameState((state) => state.sunriseTime);
+    const sunset = useGameState((state) => state.sunsetTime);
+    const setFreezeTime = useGameState((state) => state.setFreezeTime);
+    const setDayNightCycleDisabled = useGameState(
+        (state) => state.setDayNightCycleDisabled,
+    );
+
+    const isDaytime = timeOfDay >= 0.2 && timeOfDay <= 0.8;
+    const updateTimeOfDay = useCallback(
+        (nextTimeOfDay: number) => {
+            setDayNightCycleDisabled(false);
+            setFreezeTime(
+                createDateForGameTimeOfDay(currentTime, nextTimeOfDay),
+            );
+        },
+        [currentTime, setDayNightCycleDisabled, setFreezeTime],
+    );
+
+    return (
+        <Stack
+            className={cx('min-w-0 px-4 py-3', className)}
+            data-time-of-day-details="true"
+        >
+            <TimeOfDayVisualization
+                className={compact ? 'mb-1' : 'mb-2'}
+                compact={compact}
+                interactive={enableDebugHudFlag}
+                onChange={updateTimeOfDay}
+                timeOfDay={timeOfDay}
+            />
+            <Row className="gap-3" justifyContent="space-between">
+                <Typography level="body3" className="whitespace-nowrap">
+                    {(isDaytime ? sunrise : sunset)?.toLocaleTimeString(
+                        'hr-HR',
+                        { hour: '2-digit', minute: '2-digit' },
+                    )}
+                </Typography>
+                <Typography
+                    center
+                    className="min-w-0 whitespace-nowrap font-[Arial,sans-serif]"
+                >
+                    {currentTime?.toLocaleTimeString('hr-HR', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                    })}
+                </Typography>
+                <Typography level="body3" className="whitespace-nowrap">
+                    {(isDaytime ? sunset : sunrise)?.toLocaleTimeString(
+                        'hr-HR',
+                        { hour: '2-digit', minute: '2-digit' },
+                    )}
+                </Typography>
+            </Row>
+            <Typography level={compact ? 'body3' : 'body2'} center>
+                {currentTime.toLocaleDateString('hr-HR', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                })}
+            </Typography>
+        </Stack>
+    );
+}
