@@ -81,6 +81,7 @@ export class AutomationModuleExecutionError extends Error {
         message: string,
         readonly code: string,
         readonly retryable = false,
+        readonly output?: AutomationJsonObject,
     ) {
         super(message);
         this.name = 'AutomationModuleExecutionError';

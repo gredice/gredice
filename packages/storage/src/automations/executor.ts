@@ -420,6 +420,10 @@ export async function executeAutomationRun(run: SelectAutomationRun) {
             const errorMessage = truncateErrorMessage(
                 error instanceof Error ? error.message : 'Unknown error',
             );
+            const errorOutput =
+                error instanceof AutomationModuleExecutionError
+                    ? error.output
+                    : undefined;
             const retryAt =
                 retryable && run.attempt < run.maxAttempts
                     ? new Date(
@@ -432,6 +436,7 @@ export async function executeAutomationRun(run: SelectAutomationRun) {
                 node,
                 status: 'failed',
                 input: stepInput,
+                output: errorOutput,
                 errorCode,
                 errorMessage,
                 startedAt,

@@ -1465,11 +1465,27 @@ const createPlantStatusRequestsFromImageAnalysisActionModule: AutomationModule =
                     requestedBy,
                 });
                 if (!result.ok) {
+                    if ('retryable' in result && result.retryable) {
+                        throw new AutomationModuleExecutionError(
+                            result.reason,
+                            'errorCode' in result &&
+                                typeof result.errorCode === 'string'
+                                ? result.errorCode
+                                : 'raised_bed_image_plant_status_review_failed',
+                            true,
+                            result.output,
+                        );
+                    }
+
                     return skip(result.reason, result.output);
                 }
 
                 return success(result.output);
             } catch (error) {
+                if (error instanceof AutomationModuleExecutionError) {
+                    throw error;
+                }
+
                 throw new AutomationModuleExecutionError(
                     error instanceof Error
                         ? error.message
