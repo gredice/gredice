@@ -595,6 +595,34 @@ export const harvestOperationCoverRecipes = [
     },
 ] satisfies readonly OperationCoverRecipe[];
 
+export const inventoryOperationCoverRecipes = [
+    {
+        operationId: 'inventoryGreenhouses',
+        operationLabel: 'Inventura plastenika',
+        outputFileName: 'inventoryGreenhouses.webp',
+        camera: {
+            position: [2.7, 2.1, 4.8],
+            target: [0.46, 0.28, 0.45],
+            zoom: 132,
+        },
+        assets: [
+            {
+                assetName: 'Greenhouse',
+                position: [0.31, 0.04, 0.48],
+                rotation: [0.08, 0.72, 0],
+                scale: 0.26,
+            },
+            {
+                assetName: 'FieldworkClipboard',
+                position: [0.72, 0.24, 0.34],
+                rotation: [0.18, -0.55, -0.22],
+                scale: 0.16,
+            },
+        ],
+        showBackground: false,
+    },
+] satisfies readonly OperationCoverRecipe[];
+
 export const cuttingOperationCoverRecipes = [
     {
         operationId: 'formative-pruning',
@@ -1398,6 +1426,7 @@ export const operationCoverRecipes = [
     ...liquidPreparationOperationCoverRecipes,
     ...waterOperationCoverRecipes,
     ...harvestOperationCoverRecipes,
+    ...inventoryOperationCoverRecipes,
     ...cuttingOperationCoverRecipes,
     ...bedMaintenanceOperationCoverRecipes,
 ] satisfies readonly OperationCoverRecipe[];
