@@ -326,10 +326,6 @@ export type GLTFResult = GLTF & {
         CameraPhone_Body: THREE.Mesh;
         CameraPhone_Edge_Highlight: THREE.Mesh;
         CameraPhone_Screen: THREE.Mesh;
-        CameraPhone_Camera_Island: THREE.Mesh;
-        CameraPhone_Camera_Lens: THREE.Mesh;
-        CameraPhone_Camera_Glass: THREE.Mesh;
-        CameraPhone_Flash: THREE.Mesh;
         CameraPhone_Button: THREE.Mesh;
         CameraPhone_Photo_Frame: THREE.Mesh;
         CameraPhone_Photo_Sky: THREE.Mesh;
@@ -558,8 +554,6 @@ export type GLTFResult = GLTF & {
         'Material.Cactus.Spines': THREE.MeshStandardMaterial;
         'Material.CameraPhone.Body': THREE.MeshStandardMaterial;
         'Material.CameraPhone.Edge': THREE.MeshStandardMaterial;
-        'Material.CameraPhone.Flash': THREE.MeshStandardMaterial;
-        'Material.CameraPhone.Lens': THREE.MeshStandardMaterial;
         'Material.CameraPhone.PhotoCream': THREE.MeshStandardMaterial;
         'Material.CameraPhone.PhotoGreen': THREE.MeshStandardMaterial;
         'Material.CameraPhone.PhotoSky': THREE.MeshStandardMaterial;
