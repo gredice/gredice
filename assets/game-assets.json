@@ -568,6 +568,35 @@
             ]
         },
         {
+            "name": "FarmSupplyKit",
+            "source": "FarmSupplyKit.blend",
+            "output": "FarmSupplyKit.glb",
+            "preload": "lazy",
+            "objects": [
+                "FarmSupplyKit_Crate_Base",
+                "FarmSupplyKit_Crate_Front",
+                "FarmSupplyKit_Crate_Back",
+                "FarmSupplyKit_Crate_Left",
+                "FarmSupplyKit_Crate_Right",
+                "FarmSupplyKit_Crate_Rim_Front",
+                "FarmSupplyKit_Crate_Rim_Back",
+                "FarmSupplyKit_Crate_Handle_Left",
+                "FarmSupplyKit_Crate_Handle_Right",
+                "FarmSupplyKit_Sack_Left",
+                "FarmSupplyKit_Sack_Left_Label",
+                "FarmSupplyKit_Sack_Right",
+                "FarmSupplyKit_Sack_Right_Label",
+                "FarmSupplyKit_Scoop_Bowl",
+                "FarmSupplyKit_Scoop_Handle",
+                "FarmSupplyKit_Scoop_Collar",
+                "FarmSupplyKit_Granule_01",
+                "FarmSupplyKit_Granule_02",
+                "FarmSupplyKit_Granule_03",
+                "FarmSupplyKit_Granule_04",
+                "FarmSupplyKit_Granule_05"
+            ]
+        },
+        {
             "name": "WaterWell",
             "source": "WaterWell.blend",
             "output": "WaterWell.glb",
