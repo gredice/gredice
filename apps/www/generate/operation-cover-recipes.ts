@@ -538,6 +538,61 @@ export const harvestOperationCoverRecipes = [
         ],
         showBackground: false,
     },
+    {
+        operationId: 'harvestMature',
+        operationLabel: 'Branje zrelih plodova',
+        outputFileName: 'harvestMature.webp',
+        camera: {
+            position: [2.5, 2.1, 4.8],
+            target: [0.45, 0.3, 0.45],
+            zoom: 138,
+        },
+        plants: [
+            {
+                id: 'fruiting-plant',
+                plantType: 'tomato',
+                generation: 8,
+                seed: 'operation-cover-harvest-mature',
+                position: [0.33, 0.03, 0.44],
+                scale: 0.8,
+                showFlowers: false,
+            },
+        ],
+        assets: [
+            {
+                id: 'ripe-fruit-on-plant',
+                assetName: 'HarvestBasket',
+                visibleNodeNames: harvestBasketLooseTomatoNodes,
+                position: [0.36, 0.36, 0.4],
+                rotation: [0.08, -0.55, 0.05],
+                scale: 0.16,
+            },
+            {
+                assetName: 'HarvestBasket',
+                visibleNodeNames: harvestBasketHalfNodes,
+                position: [0.63, 0.08, 0.5],
+                rotation: [0.08, -0.55, 0.05],
+                scale: 0.28,
+            },
+            {
+                id: 'ripe-fruit-front',
+                assetName: 'HarvestBasket',
+                visibleNodeNames: harvestBasketLooseTomatoNodes,
+                position: [0.58, 0.16, 0.42],
+                rotation: [0.08, -0.55, 0.05],
+                scale: 0.25,
+            },
+            {
+                id: 'ripe-fruit-top',
+                assetName: 'HarvestBasket',
+                visibleNodeNames: harvestBasketLooseTomatoNodes,
+                position: [0.62, 0.18, 0.48],
+                rotation: [0.08, -0.55, 0.05],
+                scale: 0.23,
+            },
+        ],
+        showBackground: false,
+    },
 ] satisfies readonly OperationCoverRecipe[];
 
 export const cuttingOperationCoverRecipes = [
