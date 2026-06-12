@@ -8,6 +8,7 @@ import { MOUSE, type Object3D, Vector3 } from 'three';
 import { v4 as uuidv4 } from 'uuid';
 import type { GameAssetName } from '../data/models';
 import { EntityFactory } from '../entities/EntityFactory';
+import type { EntityName } from '../entities/entityNameMap';
 import { GameFlagsContext } from '../GameFlagsContext';
 import { GameSceneDetailContext } from '../GameSceneDetailContext';
 import { useGeneratedLSystemSymbols } from '../generators/plant/hooks/useGeneratedLSystem';
@@ -49,7 +50,7 @@ export type OperationCoverAsset = {
 
 export type OperationCoverEntity = {
     id?: string;
-    entityName: GameAssetName;
+    entityName: EntityName;
     position?: OperationCoverVector3;
     rotation?: number;
     variant?: number;
