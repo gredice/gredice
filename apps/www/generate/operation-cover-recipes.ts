@@ -1565,6 +1565,44 @@ export const sensorOperationCoverRecipes = [
     },
 ] satisfies readonly OperationCoverRecipe[];
 
+export const soilOperationCoverRecipes = [
+    {
+        operationId: 'freshSoil10L',
+        operationLabel: 'Dodatna zemlja 10L',
+        outputFileName: 'freshSoil10L.webp',
+        camera: {
+            position: [2.8, 2.2, 5],
+            target: [0.45, 0.24, 0.45],
+            zoom: 124,
+        },
+        assets: [
+            {
+                assetName: 'RaisedBed',
+                visibleNodeNames: raisedBedCompactNodes,
+                position: [0.45, -0.06, 0.46],
+                rotation: [0, 0.72, 0],
+                scale: 0.4,
+            },
+            {
+                id: 'soil-bag',
+                assetName: 'FarmSupplyKit',
+                visibleNodeNames: farmSupplyKitSackAndGranuleNodes,
+                position: [0.34, 0.08, 0.55],
+                rotation: [0.08, 0.58, 0.03],
+                scale: 0.15,
+            },
+            {
+                id: 'fresh-soil-mound',
+                assetName: 'MulchWood',
+                position: [0.5, 0.08, 0.47],
+                rotation: [0.14, -0.3, 0.1],
+                scale: [0.23, 0.09, 0.18],
+            },
+        ],
+        showBackground: false,
+    },
+] satisfies readonly OperationCoverRecipe[];
+
 export const cuttingOperationCoverRecipes = [
     {
         operationId: 'formative-pruning',
@@ -2373,6 +2411,7 @@ export const operationCoverRecipes = [
     ...plantingOperationCoverRecipes,
     ...protectionOperationCoverRecipes,
     ...sensorOperationCoverRecipes,
+    ...soilOperationCoverRecipes,
     ...cuttingOperationCoverRecipes,
     ...bedMaintenanceOperationCoverRecipes,
 ] satisfies readonly OperationCoverRecipe[];
