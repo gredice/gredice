@@ -128,6 +128,10 @@ function updateNodeVisibility({
     const hidden = hiddenNodeNames ? new Set(hiddenNodeNames) : null;
 
     root.traverse((node) => {
+        if (!('isMesh' in node)) {
+            return;
+        }
+
         if (visible) {
             node.visible = visible.has(node.name);
         }
