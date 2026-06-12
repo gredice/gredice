@@ -1842,6 +1842,39 @@ export const storageOperationCoverRecipes = [
         ],
         showBackground: false,
     },
+    {
+        operationId: 'abandonRaisedBed',
+        operationLabel: 'Oslobađanje gredice',
+        outputFileName: 'abandonRaisedBed.webp',
+        camera: {
+            position: [2.8, 2.2, 5],
+            target: [0.45, 0.24, 0.45],
+            zoom: 120,
+        },
+        assets: [
+            {
+                assetName: 'RaisedBed',
+                visibleNodeNames: raisedBedCompactNodes,
+                position: [0.39, -0.06, 0.47],
+                rotation: [0, 0.72, 0],
+                scale: 0.4,
+            },
+            {
+                id: 'storage-box',
+                assetName: 'GardenBox',
+                position: [0.68, 0.06, 0.38],
+                rotation: [0.08, -0.55, 0.03],
+                scale: 0.15,
+            },
+            {
+                assetName: 'FieldworkClipboard',
+                position: [0.66, 0.2, 0.33],
+                rotation: [0.18, -0.55, -0.22],
+                scale: 0.15,
+            },
+        ],
+        showBackground: false,
+    },
 ] satisfies readonly OperationCoverRecipe[];
 
 export const cuttingOperationCoverRecipes = [
