@@ -64,6 +64,11 @@ const gardenFlowerHeadNodes = [
     'GardenFlower_Center',
 ] as const;
 
+const gardenFlowerLeafNodes = [
+    'GardenFlower_Leaves',
+    'GardenFlower_Stem',
+] as const;
+
 export const liquidPreparationOperationCoverRecipes =
     liquidPreparationBottleAssets.map((assetName) => ({
         operationId: assetName,
@@ -804,10 +809,75 @@ export const cuttingOperationCoverRecipes = [
     },
 ] satisfies readonly OperationCoverRecipe[];
 
+export const bedMaintenanceOperationCoverRecipes = [
+    {
+        operationId: 'riasedBedCleanup',
+        operationLabel: 'Čišćenje gredice',
+        outputFileName: 'riasedBedCleanup.webp',
+        camera: {
+            position: [2.8, 2.2, 5],
+            target: [0.45, 0.25, 0.45],
+            zoom: 104,
+        },
+        assets: [
+            {
+                assetName: 'RaisedBed',
+                visibleNodeNames: raisedBedCompactNodes,
+                position: [0.45, -0.06, 0.45],
+                rotation: [0, 0.72, 0],
+                scale: 0.4,
+            },
+            {
+                id: 'swept-weeds',
+                assetName: 'GardenFlower',
+                visibleNodeNames: gardenFlowerLeafNodes,
+                position: [0.26, 0.1, 0.31],
+                rotation: [0.6, -0.4, -0.7],
+                scale: 0.2,
+            },
+            {
+                id: 'loose-hay',
+                assetName: 'MulchHey',
+                position: [0.3, 0.08, 0.36],
+                rotation: [0.1, 0.35, -0.15],
+                scale: 0.14,
+            },
+            {
+                id: 'loose-stick',
+                assetName: 'Stick',
+                position: [0.25, 0.09, 0.42],
+                rotation: [0.2, 0.45, -1.15],
+                scale: [0.04, 0.2, 0.04],
+            },
+            {
+                assetName: 'FieldworkClipboard',
+                position: [0.64, 0.22, 0.32],
+                rotation: [0.18, -0.55, -0.22],
+                scale: 0.16,
+            },
+        ],
+        plants: [
+            {
+                id: 'corner-weed',
+                plantType: 'basil',
+                generation: 4,
+                seed: 'operation-cover-raised-bed-cleanup-weed',
+                position: [0.22, 0.08, 0.37],
+                rotation: [0, -0.6, -0.2],
+                scale: 0.36,
+                showFlowers: false,
+                showProduce: false,
+            },
+        ],
+        showBackground: false,
+    },
+] satisfies readonly OperationCoverRecipe[];
+
 export const operationCoverRecipes = [
     ...liquidPreparationOperationCoverRecipes,
     ...waterOperationCoverRecipes,
     ...cuttingOperationCoverRecipes,
+    ...bedMaintenanceOperationCoverRecipes,
 ] satisfies readonly OperationCoverRecipe[];
 
 export function validateOperationCoverRecipes(
