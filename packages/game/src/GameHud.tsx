@@ -35,7 +35,10 @@ export const gameHudBottomBarClassName =
     'pointer-events-none absolute bottom-0 left-0 right-0 flex flex-col items-center md:block';
 
 export const gameHudBottomControlsClassName =
-    'flex flex-row items-end p-2 md:absolute md:bottom-0 md:left-0';
+    'self-start flex flex-row items-end justify-start p-2 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-4 motion-safe:duration-300 motion-safe:ease-out md:absolute md:bottom-0 md:left-0';
+
+const gameHudEntranceClassName =
+    'motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-300 motion-safe:ease-out';
 
 export function GameHud({
     debugHud,
@@ -94,7 +97,13 @@ export function GameHud({
 
     return (
         <>
-            <div className="absolute top-2 left-2 flex flex-col items-start gap-2">
+            <div
+                className={cx(
+                    'absolute top-2 left-2 flex flex-col items-start gap-2',
+                    gameHudEntranceClassName,
+                    'motion-safe:slide-in-from-left-4',
+                )}
+            >
                 {!isLocalSandbox && <AccountHud />}
                 {!isLocalSandbox && !isSandbox && enableTutorialChecklist && (
                     <TutorialChecklistHud />
@@ -116,7 +125,13 @@ export function GameHud({
                     </div>
                 )}
             </div>
-            <div className="absolute top-2 right-2 flex items-end flex-col-reverse md:flex-row gap-1 md:gap-2">
+            <div
+                className={cx(
+                    'absolute top-2 right-2 flex items-end flex-col-reverse gap-1 md:flex-row md:gap-2',
+                    gameHudEntranceClassName,
+                    'motion-safe:slide-in-from-right-4',
+                )}
+            >
                 <div className={closeupHiddenHudClassName}>
                     {isSandbox ? (
                         <SandboxEnvironmentHud />

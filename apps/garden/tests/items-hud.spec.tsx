@@ -54,6 +54,54 @@ test('item picker stays centered on tablet layouts', async ({
     );
 });
 
+test('item picker floats above the bottom edge without a border', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(SHORT_MOBILE_VIEWPORT);
+    await mount(<ItemsHudAlignmentStory />);
+
+    const picker = page.locator('[data-items-hud]');
+    await expect(picker).toBeVisible();
+    await page.waitForTimeout(350);
+
+    const pickerBox = await picker.boundingBox();
+    expect(pickerBox).not.toBeNull();
+
+    const bottomGap =
+        SHORT_MOBILE_VIEWPORT.height -
+        ((pickerBox?.y ?? 0) + (pickerBox?.height ?? 0));
+    expect(Math.round(bottomGap)).toBeGreaterThanOrEqual(4);
+
+    const surfaceStyle = await picker.evaluate((node) => {
+        const style = window.getComputedStyle(node);
+        return {
+            borderWidths: [
+                style.borderTopWidth,
+                style.borderRightWidth,
+                style.borderBottomWidth,
+                style.borderLeftWidth,
+            ],
+            boxShadow: style.boxShadow,
+        };
+    });
+
+    expect(surfaceStyle.borderWidths).toEqual(['0px', '0px', '0px', '0px']);
+    expect(surfaceStyle.boxShadow).not.toBe('none');
+});
+
+test('bottom helper controls are left aligned', async ({ mount, page }) => {
+    await page.setViewportSize(SHORT_MOBILE_VIEWPORT);
+    await mount(<ItemsHudAlignmentStory />);
+
+    const controls = page.getByTestId('bottom-controls');
+    await expect(controls).toBeVisible();
+
+    const controlsBox = await controls.boundingBox();
+    expect(controlsBox).not.toBeNull();
+    expect(Math.round(controlsBox?.x ?? 0)).toBe(0);
+});
+
 test('controls instructions clear the item picker on tablet layouts', async ({
     mount,
     page,
