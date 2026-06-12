@@ -1929,6 +1929,48 @@ export const supportOperationCoverRecipes = [
         ],
         showBackground: false,
     },
+    {
+        operationId: 'supportTying',
+        operationLabel: 'Vezanje za potporanj',
+        outputFileName: 'supportTying.webp',
+        camera: {
+            position: [2.45, 2.1, 4.75],
+            target: [0.43, 0.35, 0.44],
+            zoom: 150,
+        },
+        plants: [
+            {
+                id: 'tying-plant',
+                plantType: 'tomato',
+                generation: 7,
+                seed: 'operation-cover-support-tying',
+                position: [0.35, 0.02, 0.45],
+                scale: 1.16,
+                showFlowers: false,
+                showProduce: false,
+            },
+        ],
+        assets: [
+            {
+                id: 'tie-loop',
+                assetName: 'PlantTieLoop',
+                visibleNodeNames: plantTieBandNodes,
+                position: [0.43, 0.32, 0.44],
+                rotation: [0.07, 0.18, 0.04],
+                scale: 0.15,
+            },
+        ],
+        supportStakes: [
+            {
+                id: 'support-stake',
+                position: [0.48, 0.03, 0.43],
+                rotation: [0.02, 0.14, 0.02],
+                height: 0.75,
+                radius: 0.018,
+            },
+        ],
+        showBackground: false,
+    },
 ] satisfies readonly OperationCoverRecipe[];
 
 export const cuttingOperationCoverRecipes = [
