@@ -541,6 +541,33 @@
             ]
         },
         {
+            "name": "FieldworkClipboard",
+            "source": "FieldworkClipboard.blend",
+            "output": "FieldworkClipboard.glb",
+            "preload": "lazy",
+            "objects": [
+                "FieldworkClipboard_Board",
+                "FieldworkClipboard_Paper",
+                "FieldworkClipboard_Clip",
+                "FieldworkClipboard_Checkbox_01",
+                "FieldworkClipboard_Line_01",
+                "FieldworkClipboard_Check_01_A",
+                "FieldworkClipboard_Check_01_B",
+                "FieldworkClipboard_Checkbox_02",
+                "FieldworkClipboard_Line_02",
+                "FieldworkClipboard_Check_02_A",
+                "FieldworkClipboard_Check_02_B",
+                "FieldworkClipboard_Checkbox_03",
+                "FieldworkClipboard_Line_03",
+                "FieldworkClipboard_Check_03_A",
+                "FieldworkClipboard_Check_03_B",
+                "FieldworkClipboard_Pencil_Body",
+                "FieldworkClipboard_Pencil_Wood",
+                "FieldworkClipboard_Pencil_Graphite",
+                "FieldworkClipboard_Pencil_Eraser"
+            ]
+        },
+        {
             "name": "WaterWell",
             "source": "WaterWell.blend",
             "output": "WaterWell.glb",
