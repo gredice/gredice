@@ -16,11 +16,21 @@ export type RaisedBedOnboardingGoal =
 
 export type RaisedBedOnboardingCare = 'easy' | 'balanced' | 'varied';
 
+type RaisedBedOnboardingImage = {
+    cover?: {
+        url?: string | null;
+    } | null;
+} | null;
+
 export type RaisedBedOnboardingPlantSortCandidate = {
     id: number;
+    image?: RaisedBedOnboardingImage;
+    images?: RaisedBedOnboardingImage;
     information: {
         name?: string | null;
         plant: {
+            image?: RaisedBedOnboardingImage;
+            images?: RaisedBedOnboardingImage;
             information?: {
                 name?: string | null;
             } | null;
@@ -35,6 +45,7 @@ export type RaisedBedOnboardingCrop = {
     key: RaisedBedOnboardingCropKey;
     label: string;
     plantName: string;
+    sort: RaisedBedOnboardingPlantSortCandidate;
     sortId: number;
     sortName: string;
 };
@@ -328,6 +339,7 @@ export function resolveRaisedBedOnboardingCrops(
             key: definition.key,
             label: definition.label,
             plantName: definition.plantName,
+            sort: prioritizedSort,
             sortId: prioritizedSort.id,
             sortName: prioritizedSort.information.name ?? definition.label,
         };

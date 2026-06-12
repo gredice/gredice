@@ -10,9 +10,9 @@ describe('tutorialChecklistFlag', () => {
         assert.equal(tutorialChecklistFlag.key, 'tutorialChecklist');
     });
 
-    it('defaults to disabled without an override', async () => {
+    it('defaults to enabled for garden-side rollout debugging', async () => {
         const request = new Request('https://api.gredice.test/api/accounts');
 
-        assert.equal(await isTutorialChecklistEnabled(request), false);
+        assert.equal(await isTutorialChecklistEnabled(request), true);
     });
 });

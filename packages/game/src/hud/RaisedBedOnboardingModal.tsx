@@ -15,6 +15,7 @@ import {
     Sprout,
 } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
+import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -50,8 +51,21 @@ const DISMISSED_STORAGE_VERSION = 1;
 
 type RaisedBedOnboardingModalProps = {
     enabled: boolean;
+    autoOpen?: boolean;
     onResolved?: () => void;
+    showTrigger?: boolean;
 };
+
+type RaisedBedOnboardingStep = 'preferences' | 'layouts' | 'tasks';
+
+const onboardingSteps: {
+    id: RaisedBedOnboardingStep;
+    label: string;
+}[] = [
+    { id: 'preferences', label: 'Odabir' },
+    { id: 'layouts', label: 'Raspored' },
+    { id: 'tasks', label: 'Koraci' },
+];
 
 function dismissedStorageKey(gardenId: number) {
     return `game:raised-bed-onboarding:v${DISMISSED_STORAGE_VERSION}:garden:${gardenId.toString()}`;
@@ -112,9 +126,11 @@ function hasRaisedBedCartActivity(
 }
 
 function LayoutGrid({
+    compact,
     layout,
     selected,
 }: {
+    compact?: boolean;
     layout: RaisedBedOnboardingLayout;
     selected?: boolean;
 }) {
@@ -129,23 +145,24 @@ function LayoutGrid({
         <div
             aria-hidden="true"
             className={cx(
-                'grid grid-cols-6 gap-1 rounded-lg border bg-muted/30 p-2',
+                'grid grid-cols-3 gap-1 rounded-xl border bg-muted/30 p-2',
+                compact ? 'w-28' : 'mx-auto w-full max-w-64 gap-1.5 p-2.5',
                 selected && 'border-primary bg-primary/5',
             )}
         >
             {Array.from({ length: 18 }, (_, visualIndex) => {
-                const row = Math.floor(visualIndex / 6);
-                const col = visualIndex % 6;
-                const positionIndex = col * 3 + row;
+                const row = Math.floor(visualIndex / 3);
+                const col = visualIndex % 3;
+                const positionIndex = row * 3 + col;
                 const placement = placementsByPosition.get(positionIndex);
 
                 return (
                     <div
                         className={cx(
-                            'flex aspect-square min-w-0 items-center justify-center rounded-md border text-[10px] font-semibold leading-none',
+                            'relative flex aspect-square min-w-0 items-center justify-center overflow-hidden rounded-md border text-[10px] font-semibold leading-none',
                             placement
-                                ? 'border-green-500/40 bg-green-100 text-green-950 dark:border-green-700/60 dark:bg-green-950/50 dark:text-green-100'
-                                : 'border-dashed border-border bg-background text-muted-foreground',
+                                ? 'border-green-500/50 bg-green-100 text-green-950 dark:border-green-700/60 dark:bg-green-950/50 dark:text-green-100'
+                                : 'border-dashed border-border bg-background/80 text-muted-foreground',
                         )}
                         key={positionIndex}
                         title={
@@ -154,13 +171,56 @@ function LayoutGrid({
                                 : 'Prazno za kasnije'
                         }
                     >
-                        {placement
-                            ? placement.cropDetails.label.slice(0, 2)
-                            : ''}
+                        {placement ? (
+                            <>
+                                <PlantOrSortImage
+                                    alt={placement.cropDetails.sortName}
+                                    className="object-cover"
+                                    fill
+                                    plantSort={placement.cropDetails.sort}
+                                    sizes={compact ? '44px' : '76px'}
+                                />
+                                <span className="absolute bottom-0.5 left-0.5 rounded bg-black/55 px-1 py-0.5 text-[9px] font-semibold leading-none text-white shadow-sm">
+                                    {placement.cropDetails.label.slice(0, 2)}
+                                </span>
+                            </>
+                        ) : null}
                     </div>
                 );
             })}
         </div>
+    );
+}
+
+function StepProgress({ step }: { step: RaisedBedOnboardingStep }) {
+    const currentIndex = onboardingSteps.findIndex((item) => item.id === step);
+
+    return (
+        <Row spacing={1.5} className="flex-wrap">
+            {onboardingSteps.map((item, index) => {
+                const isCurrent = item.id === step;
+                const isDone = index < currentIndex;
+
+                return (
+                    <span
+                        className={cx(
+                            'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold',
+                            isCurrent &&
+                                'border-primary bg-primary text-primary-foreground',
+                            isDone &&
+                                'border-primary/50 bg-primary/10 text-primary',
+                            !isCurrent &&
+                                !isDone &&
+                                'border-border bg-muted/40 text-muted-foreground',
+                        )}
+                        key={item.id}
+                    >
+                        {isDone ? <Check className="size-3.5" /> : null}
+                        {item.label}
+                    </span>
+                );
+            })}
+        </Row>
     );
 }
 
@@ -176,7 +236,7 @@ function LayoutCard({
     return (
         <button
             className={cx(
-                'grid min-w-0 gap-3 rounded-lg border bg-card p-3 text-left shadow-sm transition-colors hover:bg-muted/60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                'grid min-w-0 gap-3 rounded-lg border bg-card p-3 text-left shadow-sm transition-colors hover:bg-muted/60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:grid-cols-[minmax(0,1fr)_7rem]',
                 selected && 'border-primary ring-1 ring-primary',
             )}
             onClick={onSelect}
@@ -204,8 +264,8 @@ function LayoutCard({
                     </span>
                 ) : null}
             </Row>
-            <LayoutGrid layout={layout} selected={selected} />
-            <div className="flex flex-wrap gap-1.5">
+            <LayoutGrid compact layout={layout} selected={selected} />
+            <div className="flex flex-wrap gap-1.5 md:col-span-2">
                 {cropCounts(layout).map((item) => (
                     <Chip key={item.label} size="sm" variant="soft">
                         {item.label} x{item.count.toString()}
@@ -217,8 +277,10 @@ function LayoutCard({
 }
 
 export function RaisedBedOnboardingModal({
+    autoOpen,
     enabled,
     onResolved,
+    showTrigger,
 }: RaisedBedOnboardingModalProps) {
     const { track } = useGameAnalytics();
     const gardenQuery = useCurrentGarden();
@@ -229,7 +291,7 @@ export function RaisedBedOnboardingModal({
     const setRaisedBedCloseupParam = useSetRaisedBedCloseupParam();
     const [goal, setGoal] = useState<RaisedBedOnboardingGoal>('salads');
     const [care, setCare] = useState<RaisedBedOnboardingCare>('balanced');
-    const [step, setStep] = useState<'preferences' | 'layouts'>('preferences');
+    const [step, setStep] = useState<RaisedBedOnboardingStep>('preferences');
     const [selectedLayoutId, setSelectedLayoutId] = useState<string | null>(
         null,
     );
@@ -252,6 +314,7 @@ export function RaisedBedOnboardingModal({
         dismissedSnapshot.key === dismissedKey
             ? dismissedSnapshot.dismissed
             : true;
+    const shouldAutoOpen = autoOpen ?? enabled;
 
     const crops = useMemo(
         () => resolveRaisedBedOnboardingCrops(sortsQuery.data),
@@ -311,14 +374,14 @@ export function RaisedBedOnboardingModal({
         !gardenQuery.isFetching &&
         !sortsQuery.isFetching &&
         !cartQuery.isFetching;
-    const canOfferOnboarding = Boolean(
+    const canRenderOnboarding = Boolean(
         enabled &&
             dataReady &&
             targetRaisedBed &&
             targetBlock &&
-            layouts.length > 0 &&
-            !dismissed,
+            layouts.length > 0,
     );
+    const canAutoOpenOnboarding = canRenderOnboarding && !dismissed;
 
     const reportResolved = useCallback(() => {
         if (resolvedRef.current) {
@@ -381,7 +444,11 @@ export function RaisedBedOnboardingModal({
             return;
         }
 
-        if (!canOfferOnboarding) {
+        if (!shouldAutoOpen) {
+            return;
+        }
+
+        if (!canAutoOpenOnboarding) {
             reportResolved();
             return;
         }
@@ -395,11 +462,12 @@ export function RaisedBedOnboardingModal({
             });
         }
     }, [
-        canOfferOnboarding,
+        canAutoOpenOnboarding,
         currentGarden?.id,
         dataReady,
         enabled,
         reportResolved,
+        shouldAutoOpen,
         targetRaisedBed?.id,
         track,
     ]);
@@ -497,10 +565,32 @@ export function RaisedBedOnboardingModal({
             title="Brzi plan gredice"
             open={open}
             onOpenChange={(nextOpen) => {
+                if (nextOpen) {
+                    setOpen(true);
+                    track('game_raised_bed_onboarding_opened', {
+                        garden_id: currentGarden?.id,
+                        raised_bed_id: targetRaisedBed?.id,
+                        source: 'trigger',
+                    });
+                    return;
+                }
                 if (!nextOpen) {
                     dismiss('closed');
                 }
             }}
+            trigger={
+                showTrigger ? (
+                    <Button
+                        className="rounded-full gap-2"
+                        size="sm"
+                        startDecorator={<Sprout className="size-4" />}
+                        title="Otvori vodič za prvu gredicu"
+                        variant="soft"
+                    >
+                        Prva gredica
+                    </Button>
+                ) : undefined
+            }
             disableMobile
             overlayClassName="bg-black/45 backdrop-blur-md"
             className="!inset-0 !h-dvh !max-h-dvh !w-screen !max-w-none !translate-x-0 !translate-y-0 !overflow-hidden !rounded-none !border-0 !p-0 md:!inset-auto md:!left-1/2 md:!top-1/2 md:!h-[calc(100dvh-2rem)] md:!w-[calc(100vw-2rem)] md:!max-w-6xl md:!-translate-x-1/2 md:!-translate-y-1/2 md:!rounded-lg md:!border md:border-tertiary md:border-b-4"
@@ -511,26 +601,18 @@ export function RaisedBedOnboardingModal({
                         alignItems="start"
                         justifyContent="space-between"
                         spacing={4}
+                        className="flex-wrap"
                     >
                         <Stack spacing={1} className="min-w-0">
                             <Row spacing={2} className="flex-wrap">
-                                <Chip
-                                    color="success"
-                                    size="sm"
-                                    startDecorator={
-                                        <Sprout className="size-3.5" />
-                                    }
-                                    variant="soft"
-                                >
+                                <span className="inline-flex items-center gap-2 rounded-full bg-primary px-3 py-1.5 text-base font-semibold text-primary-foreground shadow-sm md:text-lg">
+                                    <Sprout className="size-5" />
                                     Prva gredica
-                                </Chip>
-                                <Chip size="sm" variant="outlined">
-                                    12 polja + 6 praznih
-                                </Chip>
+                                </span>
                             </Row>
                             <Typography
                                 level="h2"
-                                className="text-2xl md:text-3xl"
+                                className="text-xl md:text-2xl"
                             >
                                 Brzi plan sadnje
                             </Typography>
@@ -553,119 +635,133 @@ export function RaisedBedOnboardingModal({
                                 Detaljan vodič
                             </Button>
                         </Stack>
-                        <div className="hidden min-w-44 md:block">
-                            {selectedLayout ? (
-                                <LayoutGrid layout={selectedLayout} selected />
-                            ) : null}
-                        </div>
+                        <StepProgress step={step} />
                     </Row>
                 </header>
                 <div className="min-h-0 overflow-y-auto px-4 py-4 md:px-6 md:py-5">
                     {step === 'preferences' ? (
-                        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)]">
-                            <Stack spacing={5}>
-                                <Stack spacing={2}>
-                                    <Typography className="text-lg" semiBold>
-                                        Što želiš najčešće jesti?
-                                    </Typography>
-                                    <div className="grid gap-2 sm:grid-cols-2">
-                                        {raisedBedOnboardingGoals.map(
-                                            (option) => (
-                                                <button
-                                                    className={cx(
-                                                        'rounded-lg border bg-card p-3 text-left transition-colors hover:bg-muted/60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                                                        goal === option.value &&
-                                                            'border-primary bg-primary/5 ring-1 ring-primary',
-                                                    )}
-                                                    key={option.value}
-                                                    onClick={() =>
-                                                        setGoal(option.value)
-                                                    }
-                                                    type="button"
-                                                >
+                        <Stack spacing={5} className="max-w-5xl">
+                            <Stack spacing={2}>
+                                <Typography className="text-lg" semiBold>
+                                    Što želiš najčešće jesti?
+                                </Typography>
+                                <div className="grid gap-2 sm:grid-cols-2">
+                                    {raisedBedOnboardingGoals.map((option) => (
+                                        <button
+                                            className={cx(
+                                                'rounded-lg border bg-card p-3 text-left transition-colors hover:bg-muted/60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                                                goal === option.value &&
+                                                    'border-primary bg-primary/5 ring-1 ring-primary',
+                                            )}
+                                            key={option.value}
+                                            onClick={() =>
+                                                setGoal(option.value)
+                                            }
+                                            type="button"
+                                        >
+                                            <Row
+                                                alignItems="start"
+                                                justifyContent="space-between"
+                                                spacing={2}
+                                            >
+                                                <Stack spacing={1}>
+                                                    <Typography semiBold>
+                                                        {option.label}
+                                                    </Typography>
+                                                    <Typography
+                                                        level="body3"
+                                                        secondary
+                                                    >
+                                                        {option.description}
+                                                    </Typography>
+                                                </Stack>
+                                                {goal === option.value ? (
+                                                    <Check className="size-5 shrink-0 text-primary" />
+                                                ) : null}
+                                            </Row>
+                                        </button>
+                                    ))}
+                                </div>
+                            </Stack>
+                            <Stack spacing={2}>
+                                <Typography className="text-lg" semiBold>
+                                    Kakav ritam želiš?
+                                </Typography>
+                                <div className="grid gap-2 md:grid-cols-3">
+                                    {raisedBedOnboardingCareOptions.map(
+                                        (option) => (
+                                            <button
+                                                className={cx(
+                                                    'rounded-lg border bg-card p-3 text-left transition-colors hover:bg-muted/60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                                                    care === option.value &&
+                                                        'border-primary bg-primary/5 ring-1 ring-primary',
+                                                )}
+                                                key={option.value}
+                                                onClick={() =>
+                                                    setCare(option.value)
+                                                }
+                                                type="button"
+                                            >
+                                                <Stack spacing={1}>
                                                     <Row
-                                                        alignItems="start"
                                                         justifyContent="space-between"
                                                         spacing={2}
                                                     >
-                                                        <Stack spacing={1}>
-                                                            <Typography
-                                                                semiBold
-                                                            >
-                                                                {option.label}
-                                                            </Typography>
-                                                            <Typography
-                                                                level="body3"
-                                                                secondary
-                                                            >
-                                                                {
-                                                                    option.description
-                                                                }
-                                                            </Typography>
-                                                        </Stack>
-                                                        {goal ===
+                                                        <Typography semiBold>
+                                                            {option.label}
+                                                        </Typography>
+                                                        {care ===
                                                         option.value ? (
                                                             <Check className="size-5 shrink-0 text-primary" />
                                                         ) : null}
                                                     </Row>
-                                                </button>
-                                            ),
-                                        )}
-                                    </div>
-                                </Stack>
-                                <Stack spacing={2}>
+                                                    <Typography
+                                                        level="body3"
+                                                        secondary
+                                                    >
+                                                        {option.description}
+                                                    </Typography>
+                                                </Stack>
+                                            </button>
+                                        ),
+                                    )}
+                                </div>
+                            </Stack>
+                        </Stack>
+                    ) : null}
+                    {step === 'layouts' ? (
+                        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(15rem,18rem)]">
+                            <Stack spacing={4}>
+                                <Stack spacing={1}>
                                     <Typography className="text-lg" semiBold>
-                                        Kakav ritam želiš?
+                                        Odaberi raspored
                                     </Typography>
-                                    <div className="grid gap-2 md:grid-cols-3">
-                                        {raisedBedOnboardingCareOptions.map(
-                                            (option) => (
-                                                <button
-                                                    className={cx(
-                                                        'rounded-lg border bg-card p-3 text-left transition-colors hover:bg-muted/60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                                                        care === option.value &&
-                                                            'border-primary bg-primary/5 ring-1 ring-primary',
-                                                    )}
-                                                    key={option.value}
-                                                    onClick={() =>
-                                                        setCare(option.value)
-                                                    }
-                                                    type="button"
-                                                >
-                                                    <Stack spacing={1}>
-                                                        <Row
-                                                            justifyContent="space-between"
-                                                            spacing={2}
-                                                        >
-                                                            <Typography
-                                                                semiBold
-                                                            >
-                                                                {option.label}
-                                                            </Typography>
-                                                            {care ===
-                                                            option.value ? (
-                                                                <Check className="size-5 shrink-0 text-primary" />
-                                                            ) : null}
-                                                        </Row>
-                                                        <Typography
-                                                            level="body3"
-                                                            secondary
-                                                        >
-                                                            {option.description}
-                                                        </Typography>
-                                                    </Stack>
-                                                </button>
-                                            ),
-                                        )}
-                                    </div>
+                                    <Typography level="body2" secondary>
+                                        Svi prijedlozi ostavljaju šest praznih
+                                        polja za tvoje kasnije ideje.
+                                    </Typography>
                                 </Stack>
+                                <div className="grid gap-3 lg:grid-cols-2">
+                                    {layouts.slice(0, 4).map((layout) => (
+                                        <LayoutCard
+                                            key={layout.id}
+                                            layout={layout}
+                                            onSelect={() =>
+                                                setSelectedLayoutId(layout.id)
+                                            }
+                                            selected={
+                                                layout.id === selectedLayout?.id
+                                            }
+                                        />
+                                    ))}
+                                </div>
                             </Stack>
                             <aside className="rounded-lg border bg-card p-4">
                                 <Stack spacing={3}>
                                     <Row spacing={2}>
                                         <Leaf className="size-5 text-primary" />
                                         <Typography semiBold>
-                                            Prvi prijedlog
+                                            Odabrani prijedlog
                                         </Typography>
                                     </Row>
                                     {selectedLayout ? (
@@ -700,82 +796,86 @@ export function RaisedBedOnboardingModal({
                                             </div>
                                         </>
                                     ) : null}
-                                    <Stack
-                                        spacing={2}
-                                        className="border-t pt-3"
-                                    >
-                                        <Row spacing={2}>
-                                            <Info className="size-4 text-primary" />
-                                            <Typography semiBold>
-                                                Tvoji zadaci
-                                            </Typography>
-                                        </Row>
-                                        <ol className="grid gap-2">
-                                            {firstRaisedBedTutorialTasks.map(
-                                                (task, index) => (
-                                                    <li
-                                                        className="grid grid-cols-[1.5rem_minmax(0,1fr)] gap-2"
-                                                        key={task.id}
-                                                    >
-                                                        <span className="grid size-6 place-items-center rounded-md bg-muted text-xs font-semibold text-muted-foreground">
-                                                            {(
-                                                                index + 1
-                                                            ).toString()}
-                                                        </span>
-                                                        <Stack spacing={0}>
-                                                            <Typography
-                                                                level="body3"
-                                                                semiBold
-                                                            >
-                                                                {task.title}
-                                                            </Typography>
-                                                            <Typography
-                                                                level="body3"
-                                                                secondary
-                                                            >
-                                                                {
-                                                                    task.shortDescription
-                                                                }
-                                                            </Typography>
-                                                        </Stack>
-                                                    </li>
-                                                ),
-                                            )}
-                                        </ol>
-                                    </Stack>
                                 </Stack>
                             </aside>
                         </div>
-                    ) : (
-                        <Stack spacing={4}>
-                            <Stack spacing={1}>
-                                <Typography className="text-lg" semiBold>
-                                    Odaberi raspored
-                                </Typography>
-                                <Typography level="body2" secondary>
-                                    Svi prijedlozi ostavljaju šest praznih polja
-                                    za tvoje kasnije ideje.
-                                </Typography>
+                    ) : null}
+                    {step === 'tasks' ? (
+                        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(15rem,18rem)]">
+                            <Stack spacing={4}>
+                                <Stack spacing={1}>
+                                    <Typography className="text-lg" semiBold>
+                                        Tvoji zadaci
+                                    </Typography>
+                                    <Typography level="body2" secondary>
+                                        Kratki redoslijed za prvu narudžbu.
+                                    </Typography>
+                                </Stack>
+                                <ol className="grid gap-2">
+                                    {firstRaisedBedTutorialTasks.map(
+                                        (task, index) => (
+                                            <li
+                                                className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3 rounded-lg border bg-card p-3"
+                                                key={task.id}
+                                            >
+                                                <span className="grid size-8 place-items-center rounded-md bg-primary/10 text-sm font-semibold text-primary">
+                                                    {(index + 1).toString()}
+                                                </span>
+                                                <Stack spacing={0.5}>
+                                                    <Typography
+                                                        level="body2"
+                                                        semiBold
+                                                    >
+                                                        {task.title}
+                                                    </Typography>
+                                                    <Typography
+                                                        level="body3"
+                                                        secondary
+                                                    >
+                                                        {task.shortDescription}
+                                                    </Typography>
+                                                </Stack>
+                                            </li>
+                                        ),
+                                    )}
+                                </ol>
                             </Stack>
-                            <div className="grid gap-3 lg:grid-cols-2">
-                                {layouts.slice(0, 4).map((layout) => (
-                                    <LayoutCard
-                                        key={layout.id}
-                                        layout={layout}
-                                        onSelect={() =>
-                                            setSelectedLayoutId(layout.id)
-                                        }
-                                        selected={
-                                            layout.id === selectedLayout?.id
-                                        }
-                                    />
-                                ))}
-                            </div>
-                            {applyError ? (
-                                <Alert color="danger">{applyError}</Alert>
-                            ) : null}
-                        </Stack>
-                    )}
+                            <aside className="rounded-lg border bg-card p-4">
+                                <Stack spacing={3}>
+                                    <Row spacing={2}>
+                                        <Info className="size-4 text-primary" />
+                                        <Typography semiBold>
+                                            Spremno za košaru
+                                        </Typography>
+                                    </Row>
+                                    {selectedLayout ? (
+                                        <>
+                                            <LayoutGrid
+                                                layout={selectedLayout}
+                                                selected
+                                            />
+                                            <Stack spacing={1}>
+                                                <Typography semiBold>
+                                                    {selectedLayout.title}
+                                                </Typography>
+                                                <Typography
+                                                    level="body3"
+                                                    secondary
+                                                >
+                                                    {selectedLayout.subtitle}
+                                                </Typography>
+                                            </Stack>
+                                        </>
+                                    ) : null}
+                                    {applyError ? (
+                                        <Alert color="danger">
+                                            {applyError}
+                                        </Alert>
+                                    ) : null}
+                                </Stack>
+                            </aside>
+                        </div>
+                    ) : null}
                 </div>
                 <footer className="border-t bg-background/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur md:px-6">
                     <Row
@@ -798,7 +898,13 @@ export function RaisedBedOnboardingModal({
                             ) : (
                                 <Button
                                     disabled={isApplying}
-                                    onClick={() => setStep('preferences')}
+                                    onClick={() =>
+                                        setStep(
+                                            step === 'tasks'
+                                                ? 'layouts'
+                                                : 'preferences',
+                                        )
+                                    }
                                     variant="plain"
                                 >
                                     Natrag
@@ -818,9 +924,19 @@ export function RaisedBedOnboardingModal({
                                 onClick={() => setStep('layouts')}
                                 startDecorator={<Leaf className="size-4" />}
                             >
-                                Prikaži rasporede
+                                Prikaži prijedloge
                             </Button>
-                        ) : (
+                        ) : null}
+                        {step === 'layouts' ? (
+                            <Button
+                                disabled={!selectedLayout}
+                                onClick={() => setStep('tasks')}
+                                startDecorator={<Info className="size-4" />}
+                            >
+                                Dalje
+                            </Button>
+                        ) : null}
+                        {step === 'tasks' ? (
                             <Button
                                 disabled={!selectedLayout}
                                 loading={isApplying}
@@ -831,7 +947,7 @@ export function RaisedBedOnboardingModal({
                             >
                                 Dodaj plan u košaru
                             </Button>
-                        )}
+                        ) : null}
                     </Row>
                 </footer>
             </div>
