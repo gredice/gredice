@@ -37,6 +37,7 @@ export const gameAssetModels = {
     Dog: { url: '/assets/models/Dog.glb' },
     Bucket: { url: '/assets/models/Bucket.glb' },
     WateringCan: { url: '/assets/models/WateringCan.glb?v=8b128e30b990' },
+    WaterSprayKit: { url: '/assets/models/WaterSprayKit.glb' },
     LiquidPreparationBottlePestControl: {
         url: '/assets/models/LiquidPreparationBottlePestControl.glb',
     },
@@ -144,6 +145,7 @@ export const lazyGameAssetNames = [
     'Dog',
     'Bucket',
     'WateringCan',
+    'WaterSprayKit',
     'LiquidPreparationBottlePestControl',
     'LiquidPreparationBottleAphidControl',
     'LiquidPreparationBottleSlugControl',
@@ -221,6 +223,7 @@ export const allGameAssetNames = [
     'Dog',
     'Bucket',
     'WateringCan',
+    'WaterSprayKit',
     'LiquidPreparationBottlePestControl',
     'LiquidPreparationBottleAphidControl',
     'LiquidPreparationBottleSlugControl',
