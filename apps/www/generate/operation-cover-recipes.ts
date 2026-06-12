@@ -142,6 +142,20 @@ const farmSupplyKitCrateBoardNodes = [
     'FarmSupplyKit_Crate_Rim_Back',
 ] as const;
 
+const farmSupplyKitSackAndGranuleNodes = [
+    'FarmSupplyKit_Sack_Left',
+    'FarmSupplyKit_Sack_Left_Fold',
+    'FarmSupplyKit_Sack_Left_Label',
+    'FarmSupplyKit_Sack_Right',
+    'FarmSupplyKit_Sack_Right_Fold',
+    'FarmSupplyKit_Sack_Right_Label',
+    'FarmSupplyKit_Granule_01',
+    'FarmSupplyKit_Granule_02',
+    'FarmSupplyKit_Granule_03',
+    'FarmSupplyKit_Granule_04',
+    'FarmSupplyKit_Granule_05',
+] as const;
+
 export const liquidPreparationOperationCoverRecipes =
     liquidPreparationBottleAssets.map((assetName) => ({
         operationId: assetName,
@@ -858,6 +872,46 @@ export const inventoryOperationCoverRecipes = [
                 position: [0.42, 0.18, 0.45],
                 rotation: [0.12, 0.72, 0.2],
                 scale: [0.2, 0.08, 0.14],
+            },
+            {
+                assetName: 'FieldworkClipboard',
+                position: [0.68, 0.22, 0.34],
+                rotation: [0.18, -0.55, -0.22],
+                scale: 0.16,
+            },
+        ],
+        showBackground: false,
+    },
+    {
+        operationId: 'inventoryRaisedBedSoil',
+        operationLabel: 'Inventura zemlje za gredice',
+        outputFileName: 'inventoryRaisedBedSoil.webp',
+        camera: {
+            position: [2.7, 2.1, 4.8],
+            target: [0.45, 0.25, 0.45],
+            zoom: 142,
+        },
+        assets: [
+            {
+                assetName: 'FarmSupplyKit',
+                visibleNodeNames: farmSupplyKitSackAndGranuleNodes,
+                position: [0.33, 0.06, 0.49],
+                rotation: [0.08, 0.55, 0.04],
+                scale: 0.22,
+            },
+            {
+                id: 'soil-mound-front',
+                assetName: 'MulchWood',
+                position: [0.32, 0.08, 0.62],
+                rotation: [0.16, 0.45, -0.08],
+                scale: [0.34, 0.16, 0.25],
+            },
+            {
+                id: 'soil-mound-side',
+                assetName: 'MulchWood',
+                position: [0.47, 0.07, 0.57],
+                rotation: [0.14, -0.3, 0.1],
+                scale: [0.24, 0.12, 0.18],
             },
             {
                 assetName: 'FieldworkClipboard',
