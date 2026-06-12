@@ -49,6 +49,35 @@ describe('isAppliedOperationCurrentForRaisedBedFields', () => {
         );
     });
 
+    it('keeps field operations after placement even before the active plant sowing date', () => {
+        const fields = [
+            {
+                id: 10,
+                active: true,
+                plantSowDate: new Date('2026-06-02T08:00:00.000Z'),
+                plantCycles: [
+                    {
+                        active: true,
+                        plantSowDate: new Date('2026-06-02T08:00:00.000Z'),
+                        startedAt: new Date('2026-05-01T08:00:00.000Z'),
+                    },
+                ],
+            },
+        ];
+
+        assert.equal(
+            isAppliedOperationCurrentForRaisedBedFields(
+                {
+                    raisedBedFieldId: 10,
+                    createdAt: new Date('2026-06-01T08:00:00.000Z'),
+                    completedAt: new Date('2026-06-01T09:00:00.000Z'),
+                },
+                fields,
+            ),
+            true,
+        );
+    });
+
     it('keeps field operations applied during the active plant cycle', () => {
         assert.equal(
             isAppliedOperationCurrentForRaisedBedFields(

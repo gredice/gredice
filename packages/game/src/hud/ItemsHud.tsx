@@ -57,13 +57,6 @@ const rockItems: HudItemEntity[] = [
     { type: 'entity', name: 'DesertStoneLarge' },
 ];
 
-const mulchItems: HudItemEntity[] = [
-    { type: 'entity', name: 'BaleHey' },
-    { type: 'entity', name: 'MulchHey' },
-    { type: 'entity', name: 'MulchCoconut' },
-    { type: 'entity', name: 'MulchWood' },
-];
-
 const items: HudItem[] = [
     {
         type: 'picker',
@@ -103,12 +96,6 @@ const items: HudItem[] = [
                 imageSrc:
                     'https://www.gredice.com/assets/blocks/StoneMedium.webp',
                 items: rockItems,
-            },
-            {
-                type: 'picker',
-                label: 'Malč',
-                imageSrc: 'https://www.gredice.com/assets/blocks/MulchHey.webp',
-                items: mulchItems,
             },
             { type: 'entity', name: 'Shade' },
             { type: 'entity', name: 'Stool' },

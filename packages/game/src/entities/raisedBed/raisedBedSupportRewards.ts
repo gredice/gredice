@@ -8,6 +8,7 @@ type RaisedBedSupportFieldInput = {
     id: number | string;
     plantCycles?: Array<{
         active?: boolean | null;
+        plantSowDate?: TimestampValue;
         startedAt?: TimestampValue;
     }> | null;
     plantSowDate?: TimestampValue;
@@ -44,25 +45,29 @@ function timestampMs(value: TimestampValue) {
     return Number.isFinite(timestamp) ? timestamp : null;
 }
 
-function activePlantCycleStartMs(field: RaisedBedSupportFieldInput) {
+function activePlantRewardBoundaryMs(field: RaisedBedSupportFieldInput) {
     const activePlantCycle = field.plantCycles?.find(
         (plantCycle) => plantCycle.active,
     );
+    const timestamps = [
+        timestampMs(activePlantCycle?.startedAt),
+        timestampMs(activePlantCycle?.plantSowDate),
+        timestampMs(field.plantSowDate),
+    ].filter((value): value is number => value != null);
 
-    return timestampMs(activePlantCycle?.startedAt);
+    return timestamps.length > 0 ? Math.max(...timestamps) : null;
 }
 
 function isSupportRewardCurrentForField(
     reward: OperationVisualReward,
     field: RaisedBedSupportFieldInput,
 ) {
-    const cycleStartMs =
-        activePlantCycleStartMs(field) ?? timestampMs(field.plantSowDate);
-    if (cycleStartMs == null || reward.timestampMs <= 0) {
+    const rewardBoundaryMs = activePlantRewardBoundaryMs(field);
+    if (rewardBoundaryMs == null || reward.timestampMs <= 0) {
         return true;
     }
 
-    return reward.timestampMs >= cycleStartMs;
+    return reward.timestampMs >= rewardBoundaryMs;
 }
 
 export function resolveRaisedBedSupportPositions({
