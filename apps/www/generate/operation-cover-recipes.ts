@@ -37,6 +37,20 @@ const waterSprayNozzleNodes = [
     'WaterSprayKit_Nozzle',
 ] as const;
 
+const pestBugAphidNodes = [
+    'PestBugKit_Aphid_Body',
+    'PestBugKit_Aphid_Head',
+    'PestBugKit_Aphid_Legs',
+] as const;
+
+const pestBugBeetleNodes = [
+    'PestBugKit_Beetle_Body',
+    'PestBugKit_Beetle_Shell',
+    'PestBugKit_Beetle_Shell_Stripe',
+    'PestBugKit_Beetle_Head',
+    'PestBugKit_Beetle_Legs',
+] as const;
+
 export const liquidPreparationOperationCoverRecipes =
     liquidPreparationBottleAssets.map((assetName) => ({
         operationId: assetName,
@@ -187,6 +201,63 @@ export const waterOperationCoverRecipes = [
                 position: [0.56, 0.25, 0.42],
                 rotation: [0.1, -0.2, 0.4],
                 scale: 0.26,
+            },
+        ],
+        showBackground: false,
+    },
+    {
+        operationId: 'rinsePestsFromPlant',
+        operationLabel: 'Ispiranje biljke od štetnika',
+        outputFileName: 'rinsePestsFromPlant.webp',
+        camera: {
+            position: [2.5, 2.1, 4.8],
+            target: [0.45, 0.36, 0.45],
+            zoom: 134,
+        },
+        plants: [
+            {
+                id: 'plant',
+                plantType: 'basil',
+                generation: 9,
+                seed: 'operation-cover-rinse-pests',
+                position: [0.45, 0.08, 0.45],
+                scale: 1.08,
+                showFlowers: false,
+                showProduce: false,
+            },
+        ],
+        assets: [
+            {
+                id: 'spray-nozzle',
+                assetName: 'WaterSprayKit',
+                visibleNodeNames: waterSprayNozzleNodes,
+                position: [0.08, 0.39, 0.5],
+                rotation: [0.1, 0.85, -0.55],
+                scale: 0.34,
+            },
+            {
+                id: 'spray-drops',
+                assetName: 'WaterSprayKit',
+                visibleNodeNames: waterSprayDropletNodes,
+                position: [0.32, 0.32, 0.48],
+                rotation: [0.12, 0.25, -0.35],
+                scale: 0.26,
+            },
+            {
+                id: 'aphid',
+                assetName: 'PestBugKit',
+                visibleNodeNames: pestBugAphidNodes,
+                position: [0.36, 0.34, 0.38],
+                rotation: [0.1, 0.2, -0.1],
+                scale: 0.22,
+            },
+            {
+                id: 'beetle',
+                assetName: 'PestBugKit',
+                visibleNodeNames: pestBugBeetleNodes,
+                position: [0.58, 0.2, 0.5],
+                rotation: [0.1, -0.35, 0.2],
+                scale: 0.18,
             },
         ],
         showBackground: false,
