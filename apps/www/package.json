@@ -24,6 +24,8 @@
         "generate-playwright:plants": "playwright test --config playwright-generate.config.ts generate/plants-snapshots.specgen.tsx",
         "generate-playwright:ui": "node ./generate/populate-test-cases.js && playwright test --config playwright-generate.config.ts --ui",
         "operation-covers:sync-urls": "pnpm --dir ../../packages/storage exec tsx --conditions=react-server --env-file=.env ../../apps/www/generate/sync-operation-cover-urls.ts",
+        "operation-covers:verify": "pnpm --dir ../../packages/storage exec tsx --conditions=react-server ../../apps/www/generate/verify-operation-cover-assets.ts",
+        "operation-covers:verify-public": "pnpm run test:prepare && OPERATION_COVER_PUBLIC_QA=1 playwright test --project=chromium tests/operation-cover-public.spec.ts",
         "test:local": "pnpm run test:prepare && pnpm run test:run",
         "test:llms": "node --experimental-strip-types --test ./app/llms-routes.spec.ts"
     },
