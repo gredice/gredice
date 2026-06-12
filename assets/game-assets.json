@@ -387,9 +387,6 @@
                 "WaterSprayKit_Cap",
                 "WaterSprayKit_Pump_Stem",
                 "WaterSprayKit_Pump_Handle",
-                "WaterSprayKit_Back_Handle_L",
-                "WaterSprayKit_Back_Handle_R",
-                "WaterSprayKit_Back_Handle_Grip",
                 "WaterSprayKit_Hose_A",
                 "WaterSprayKit_Hose_B",
                 "WaterSprayKit_Wand",
@@ -397,8 +394,7 @@
                 "WaterSprayKit_Droplet_01",
                 "WaterSprayKit_Droplet_02",
                 "WaterSprayKit_Droplet_03",
-                "WaterSprayKit_Droplet_04",
-                "WaterSprayKit_Front_Label"
+                "WaterSprayKit_Droplet_04"
             ]
         },
         {

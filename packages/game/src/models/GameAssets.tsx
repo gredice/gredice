@@ -212,9 +212,6 @@ export type GLTFResult = GLTF & {
         WaterSprayKit_Cap: THREE.Mesh;
         WaterSprayKit_Pump_Stem: THREE.Mesh;
         WaterSprayKit_Pump_Handle: THREE.Mesh;
-        WaterSprayKit_Back_Handle_L: THREE.Mesh;
-        WaterSprayKit_Back_Handle_R: THREE.Mesh;
-        WaterSprayKit_Back_Handle_Grip: THREE.Mesh;
         WaterSprayKit_Hose_A: THREE.Mesh;
         WaterSprayKit_Hose_B: THREE.Mesh;
         WaterSprayKit_Wand: THREE.Mesh;
@@ -223,7 +220,6 @@ export type GLTFResult = GLTF & {
         WaterSprayKit_Droplet_02: THREE.Mesh;
         WaterSprayKit_Droplet_03: THREE.Mesh;
         WaterSprayKit_Droplet_04: THREE.Mesh;
-        WaterSprayKit_Front_Label: THREE.Mesh;
         LiquidPreparationBottlePestControl_Base_Rim: THREE.Mesh;
         LiquidPreparationBottlePestControl_Body: THREE.Mesh;
         LiquidPreparationBottlePestControl_Shoulder: THREE.Mesh;
