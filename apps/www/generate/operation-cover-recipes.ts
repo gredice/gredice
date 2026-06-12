@@ -133,6 +133,15 @@ const farmSupplyKitCrateAndSackNodes = [
     'FarmSupplyKit_Granule_05',
 ] as const;
 
+const farmSupplyKitCrateBoardNodes = [
+    'FarmSupplyKit_Crate_Front',
+    'FarmSupplyKit_Crate_Back',
+    'FarmSupplyKit_Crate_Left',
+    'FarmSupplyKit_Crate_Right',
+    'FarmSupplyKit_Crate_Rim_Front',
+    'FarmSupplyKit_Crate_Rim_Back',
+] as const;
+
 export const liquidPreparationOperationCoverRecipes =
     liquidPreparationBottleAssets.map((assetName) => ({
         operationId: assetName,
@@ -812,6 +821,49 @@ export const inventoryOperationCoverRecipes = [
                 position: [0.56, 0.14, 0.39],
                 rotation: [0.06, -0.5, -0.2],
                 scale: 0.32,
+            },
+        ],
+        showBackground: false,
+    },
+    {
+        operationId: 'inventoryRaisedBedBoards',
+        operationLabel: 'Inventura daski za gredice',
+        outputFileName: 'inventoryRaisedBedBoards.webp',
+        camera: {
+            position: [2.7, 2.1, 4.8],
+            target: [0.46, 0.27, 0.45],
+            zoom: 138,
+        },
+        assets: [
+            {
+                id: 'board-stack-bottom',
+                assetName: 'FarmSupplyKit',
+                visibleNodeNames: farmSupplyKitCrateBoardNodes,
+                position: [0.34, 0.08, 0.5],
+                rotation: [0.12, 0.72, -0.14],
+                scale: [0.24, 0.1, 0.16],
+            },
+            {
+                id: 'board-stack-middle',
+                assetName: 'FarmSupplyKit',
+                visibleNodeNames: farmSupplyKitCrateBoardNodes,
+                position: [0.38, 0.13, 0.47],
+                rotation: [0.12, 0.72, 0.04],
+                scale: [0.22, 0.09, 0.15],
+            },
+            {
+                id: 'board-stack-top',
+                assetName: 'FarmSupplyKit',
+                visibleNodeNames: farmSupplyKitCrateBoardNodes,
+                position: [0.42, 0.18, 0.45],
+                rotation: [0.12, 0.72, 0.2],
+                scale: [0.2, 0.08, 0.14],
+            },
+            {
+                assetName: 'FieldworkClipboard',
+                position: [0.68, 0.22, 0.34],
+                rotation: [0.18, -0.55, -0.22],
+                scale: 0.16,
             },
         ],
         showBackground: false,
