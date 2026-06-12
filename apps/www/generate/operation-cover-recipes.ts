@@ -1651,6 +1651,71 @@ export const soilOperationCoverRecipes = [
         ],
         showBackground: false,
     },
+    {
+        operationId: 'freshSoil50L',
+        operationLabel: 'Dodatna zemlja 50L',
+        outputFileName: 'freshSoil50L.webp',
+        camera: {
+            position: [2.8, 2.2, 5],
+            target: [0.45, 0.24, 0.45],
+            zoom: 120,
+        },
+        assets: [
+            {
+                assetName: 'RaisedBed',
+                visibleNodeNames: raisedBedCompactNodes,
+                position: [0.45, -0.06, 0.46],
+                rotation: [0, 0.72, 0],
+                scale: 0.4,
+            },
+            {
+                id: 'soil-bag-left',
+                assetName: 'FarmSupplyKit',
+                visibleNodeNames: farmSupplyKitSackAndGranuleNodes,
+                position: [0.22, 0.08, 0.6],
+                rotation: [0.08, 0.6, 0.03],
+                scale: 0.17,
+            },
+            {
+                id: 'soil-bag-center',
+                assetName: 'FarmSupplyKit',
+                visibleNodeNames: farmSupplyKitSackAndGranuleNodes,
+                position: [0.33, 0.09, 0.5],
+                rotation: [0.08, 0.42, -0.03],
+                scale: 0.17,
+            },
+            {
+                id: 'soil-bag-back',
+                assetName: 'FarmSupplyKit',
+                visibleNodeNames: farmSupplyKitSackAndGranuleNodes,
+                position: [0.42, 0.08, 0.4],
+                rotation: [0.08, 0.26, 0.04],
+                scale: 0.16,
+            },
+            {
+                id: 'fresh-soil-mound-left',
+                assetName: 'MulchWood',
+                position: [0.47, 0.08, 0.55],
+                rotation: [0.14, -0.3, 0.1],
+                scale: [0.24, 0.09, 0.18],
+            },
+            {
+                id: 'fresh-soil-mound-center',
+                assetName: 'MulchWood',
+                position: [0.58, 0.085, 0.47],
+                rotation: [0.14, 0.35, -0.08],
+                scale: [0.22, 0.08, 0.16],
+            },
+            {
+                id: 'fresh-soil-mound-right',
+                assetName: 'MulchWood',
+                position: [0.52, 0.08, 0.36],
+                rotation: [0.14, -0.72, 0.06],
+                scale: [0.18, 0.07, 0.14],
+            },
+        ],
+        showBackground: false,
+    },
 ] satisfies readonly OperationCoverRecipe[];
 
 export const cuttingOperationCoverRecipes = [
