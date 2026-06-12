@@ -35,7 +35,7 @@
         },
         {
             "path": "/api/internal/cron/automations",
-            "schedule": "*/5 * * * *"
+            "schedule": "* * * * *"
         },
         {
             "path": "/api/internal/cron/outlet-lifecycle",

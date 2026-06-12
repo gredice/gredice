@@ -265,6 +265,7 @@ export async function listAutomationDefinitions(filters?: {
     triggerEventType?: string;
     limit?: number;
     offset?: number;
+    db?: DatabaseClient;
 }): Promise<SelectAutomationDefinition[]> {
     const statuses = Array.isArray(filters?.status)
         ? filters.status
@@ -272,7 +273,9 @@ export async function listAutomationDefinitions(filters?: {
           ? [filters.status]
           : undefined;
 
-    return storage()
+    const db = filters?.db ?? storage();
+
+    return db
         .select()
         .from(automationDefinitions)
         .where(
@@ -295,11 +298,13 @@ export async function listAutomationDefinitions(filters?: {
 
 export function listEnabledAutomationDefinitionsForEventType(
     eventType: string,
+    db: DatabaseClient = storage(),
 ): Promise<SelectAutomationDefinition[]> {
     return listAutomationDefinitions({
         status: 'enabled',
         triggerEventType: eventType,
         limit: 500,
+        db,
     });
 }
 
@@ -321,6 +326,7 @@ export function listEnabledAutomationDefinitionsForTriggerModule(
 
 export async function createAutomationRun(
     input: CreateAutomationRunInput,
+    db: DatabaseClient = storage(),
 ): Promise<SelectAutomationRun | null> {
     const definition = input.automationDefinition;
     const sourceEvent = input.sourceEvent ?? null;
@@ -351,7 +357,7 @@ export async function createAutomationRun(
     }
 
     if (input.source === 'schedule') {
-        const [created] = await storage()
+        const [created] = await db
             .insert(automationRuns)
             .values(values)
             .onConflictDoNothing({
@@ -366,7 +372,7 @@ export async function createAutomationRun(
         return created ?? null;
     }
 
-    const [created] = await storage()
+    const [created] = await db
         .insert(automationRuns)
         .values(values)
         .onConflictDoNothing({
@@ -974,27 +980,36 @@ export async function getRunnableAutomationEventTypes() {
 
 export async function enqueueAutomationRunsForEvent(
     event: DomainEventRow,
+    {
+        db = storage(),
+    }: {
+        db?: DatabaseClient;
+    } = {},
 ): Promise<SelectAutomationRun[]> {
     const definitions = await listEnabledAutomationDefinitionsForEventType(
         event.type,
+        db,
     );
     const createdRuns: SelectAutomationRun[] = [];
 
     for (const definition of definitions) {
-        const run = await createAutomationRun({
-            automationDefinition: definition,
-            source: 'event',
-            sourceEvent: event,
-            input: {
-                eventId: event.id,
-                eventType: event.type,
-                aggregateId: event.aggregateId,
-                data:
-                    event.data && typeof event.data === 'object'
-                        ? (event.data as AutomationJsonObject)
-                        : {},
+        const run = await createAutomationRun(
+            {
+                automationDefinition: definition,
+                source: 'event',
+                sourceEvent: event,
+                input: {
+                    eventId: event.id,
+                    eventType: event.type,
+                    aggregateId: event.aggregateId,
+                    data:
+                        event.data && typeof event.data === 'object'
+                            ? (event.data as AutomationJsonObject)
+                            : {},
+                },
             },
-        });
+            db,
+        );
 
         if (run) {
             createdRuns.push(run);

@@ -45,6 +45,12 @@ Event-triggered runs are idempotent through a partial unique index on
 test, and replay runs can be repeated while still keeping their source event
 context.
 
+Matching event-triggered runs are enqueued as part of `createEvent()`, so live
+domain events do not need to wait for the polling cron before they appear in the
+automation queue. The cursor-based polling runner remains as a safety net for
+event writes that bypass immediate enqueueing, missed duplicate-safe enqueue
+attempts, scheduled runs, and periodic queue execution.
+
 ## Runner Lifecycle
 
 `runAutomations()` in `packages/storage/src/automations/runner.ts` performs four
@@ -65,14 +71,14 @@ from backfilling historical sowing events and creating past-dated seasonal
 watering operations on first cron execution.
 
 The API cron route is protected with `CRON_SECRET` and is registered in
-`apps/api/vercel.json` on a five-minute schedule:
+`apps/api/vercel.json` on a one-minute schedule:
 
 ```json
-{ "path": "/api/internal/cron/automations", "schedule": "*/5 * * * *" }
+{ "path": "/api/internal/cron/automations", "schedule": "* * * * *" }
 ```
 
-Five minutes is the MVP tradeoff: follow-up work is asynchronous and visible in
-run logs without adding a high-frequency cron job.
+The cron remains bounded and idempotent: it enqueues missed schedule/event runs,
+recovers stale locks, and claims a limited batch of due queued/retrying runs.
 
 ## Module Registry
 

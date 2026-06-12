@@ -7,7 +7,6 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
-import type { ReactNode } from 'react';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { KnownPages } from '../../../src/KnownPages';
 import { AutomationRunStatusIndicator } from './AutomationStatusIndicator';
@@ -39,53 +38,32 @@ function DateTimeValue({ value }: { value: string | null }) {
 function QueueTiming({ run }: { run: AutomationRunListItem }) {
     if (run.status === 'queued' || run.status === 'retrying') {
         return (
-            <DetailItem label="Sljedeće">
-                <LocalDateTime>{run.nextRunAt}</LocalDateTime>
-            </DetailItem>
+            <>
+                Sljedeće <LocalDateTime>{run.nextRunAt}</LocalDateTime>
+            </>
         );
     }
 
     if (run.status === 'running') {
         return (
-            <DetailItem label="Zaključano">
-                <DateTimeValue value={run.lockedAt} />
-                {run.lockedBy ? (
-                    <Typography
-                        level="body3"
-                        className="break-all text-muted-foreground"
-                    >
-                        {run.lockedBy}
-                    </Typography>
-                ) : null}
-            </DetailItem>
+            <>
+                Zaključano <DateTimeValue value={run.lockedAt} />
+            </>
         );
     }
 
     if (run.completedAt) {
         return (
-            <DetailItem label="Završeno">
-                <LocalDateTime>{run.completedAt}</LocalDateTime>
-            </DetailItem>
+            <>
+                Završeno <LocalDateTime>{run.completedAt}</LocalDateTime>
+            </>
         );
     }
 
-    return <DetailItem label="Obrada">-</DetailItem>;
-}
-
-function DetailItem({
-    children,
-    label,
-}: {
-    children: ReactNode;
-    label: string;
-}) {
     return (
-        <div className="min-w-0">
-            <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                {label}
-            </dt>
-            <dd className="mt-1 min-w-0 break-words text-sm">{children}</dd>
-        </div>
+        <>
+            Kreirano <LocalDateTime>{run.createdAt}</LocalDateTime>
+        </>
     );
 }
 
@@ -113,7 +91,7 @@ export function AutomationJobsQueueList({
                             className="text-muted-foreground"
                         >
                             Automatizacijski poslovi s trenutnim statusom,
-                            pokušajima i podacima za obradu.
+                            pokušajima i ključnim vremenom obrade.
                         </Typography>
                     </Stack>
                     {isFetching && !isFetchingNextPage ? (
@@ -137,39 +115,21 @@ export function AutomationJobsQueueList({
                 ) : (
                     <ul className="divide-y">
                         {runs.map((run) => (
-                            <li key={run.id} className="p-4">
-                                <Stack spacing={3}>
-                                    <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                                        <Stack spacing={1} className="min-w-0">
-                                            <Link
-                                                href={KnownPages.Automation(
-                                                    run.automationDefinitionId,
-                                                )}
-                                                className="font-medium text-primary hover:underline"
-                                            >
-                                                #{run.id}{' '}
-                                                {run.automationDefinitionName}
-                                            </Link>
-                                            <Typography
-                                                level="body3"
-                                                className="break-all text-muted-foreground"
-                                            >
-                                                {run.automationDefinitionKey}
-                                            </Typography>
-                                            {run.parentRunId ? (
-                                                <Typography
-                                                    level="body3"
-                                                    className="text-muted-foreground"
-                                                >
-                                                    Roditelj #{run.parentRunId}
-                                                </Typography>
-                                            ) : null}
-                                        </Stack>
-                                        <Stack
-                                            spacing={1}
-                                            className="items-start sm:items-end"
+                            <li key={run.id} className="px-4 py-3">
+                                <div className="grid min-w-0 gap-1.5">
+                                    <div className="flex min-w-0 items-start justify-between gap-3">
+                                        <Link
+                                            href={KnownPages.Automation(
+                                                run.automationDefinitionId,
+                                            )}
+                                            className="min-w-0 truncate font-medium text-primary hover:underline"
                                         >
+                                            #{run.id}{' '}
+                                            {run.automationDefinitionName}
+                                        </Link>
+                                        <div className="flex shrink-0 items-center gap-2">
                                             <AutomationRunStatusIndicator
+                                                className="text-xs sm:text-sm"
                                                 status={run.status}
                                             />
                                             {run.dryRun ? (
@@ -181,57 +141,37 @@ export function AutomationJobsQueueList({
                                                     Probno
                                                 </Chip>
                                             ) : null}
-                                        </Stack>
+                                        </div>
                                     </div>
 
                                     {run.errorMessage ? (
                                         <Typography
                                             level="body3"
-                                            className="break-words rounded-md bg-red-50 p-2 text-red-700 dark:bg-red-950 dark:text-red-300"
+                                            className="line-clamp-2 rounded-md bg-red-50 p-2 text-red-700 dark:bg-red-950 dark:text-red-300"
                                         >
                                             {run.errorMessage}
                                         </Typography>
                                     ) : null}
 
-                                    <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                                        <DetailItem label="Izvor">
-                                            <Stack spacing={1}>
-                                                <Chip size="sm" variant="soft">
-                                                    {sourceLabel(run.source)}
-                                                </Chip>
-                                                <span>
-                                                    {run.sourceEventType ?? '-'}
-                                                </span>
-                                                <Typography
-                                                    level="body3"
-                                                    className="break-all text-muted-foreground"
-                                                >
-                                                    {run.sourceAggregateId ??
-                                                        '-'}
-                                                </Typography>
-                                            </Stack>
-                                        </DetailItem>
-                                        <DetailItem label="Pokušaji">
-                                            {run.attempt} / {run.maxAttempts}
-                                        </DetailItem>
-                                        <QueueTiming run={run} />
-                                        <DetailItem label="Kreirano">
-                                            <LocalDateTime>
-                                                {run.createdAt}
-                                            </LocalDateTime>
-                                        </DetailItem>
-                                        <DetailItem label="Ažurirano">
-                                            <LocalDateTime>
-                                                {run.updatedAt}
-                                            </LocalDateTime>
-                                        </DetailItem>
-                                        <DetailItem label="Početak">
-                                            <DateTimeValue
-                                                value={run.startedAt}
-                                            />
-                                        </DetailItem>
-                                    </dl>
-                                </Stack>
+                                    <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                                        <span className="min-w-0 max-w-full truncate">
+                                            {run.automationDefinitionKey}
+                                        </span>
+                                        <span>{sourceLabel(run.source)}</span>
+                                        <span>
+                                            Pokušaj {run.attempt} /{' '}
+                                            {run.maxAttempts}
+                                        </span>
+                                        <span>
+                                            <QueueTiming run={run} />
+                                        </span>
+                                        {run.parentRunId ? (
+                                            <span>
+                                                Roditelj #{run.parentRunId}
+                                            </span>
+                                        ) : null}
+                                    </div>
+                                </div>
                             </li>
                         ))}
                     </ul>

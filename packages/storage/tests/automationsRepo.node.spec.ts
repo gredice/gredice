@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import test, { afterEach } from 'node:test';
 import {
     type AutomationGraph,
     acceptOperation,
+    automationDefinitions,
     automationEventCursors,
     automationModuleKeys,
+    automationRunSteps,
+    automationRuns,
     claimDueAutomationRuns,
     completeAutomationRun,
     createAccount,
@@ -55,6 +58,13 @@ import {
 } from './helpers/testHelpers';
 import { createTestDb } from './testDb';
 
+afterEach(async () => {
+    await storage().delete(automationRunSteps);
+    await storage().delete(automationRuns);
+    await storage().delete(automationDefinitions);
+    await storage().delete(automationEventCursors);
+});
+
 async function createAutomationRaisedBedContext() {
     const accountId = await createAccount();
     const farmId = await ensureFarmId();
@@ -81,6 +91,20 @@ async function getLatestEvent(type: string, aggregateId: string) {
     const event = events.at(-1);
     assert.ok(event, `Expected event ${type} for ${aggregateId}`);
     return event;
+}
+
+async function getAutomationRunForEvent(
+    automationDefinitionId: number,
+    sourceEventId: number,
+) {
+    const runs = await listAutomationRuns({
+        automationDefinitionId,
+        sourceEventId,
+    });
+    assert.strictEqual(runs.length, 1);
+    const run = runs[0];
+    assert.ok(run);
+    return run;
 }
 
 async function getScheduledFreeWateringDates(
@@ -187,20 +211,7 @@ test('automation definitions persist graph trigger metadata and event-run idempo
         aggregateId,
     );
 
-    const firstRun = await createAutomationRun({
-        automationDefinition: definition,
-        source: 'event',
-        sourceEvent: event,
-        input: {
-            eventId: event.id,
-            eventType: event.type,
-            aggregateId: event.aggregateId,
-            data:
-                event.data && typeof event.data === 'object'
-                    ? (event.data as Record<string, unknown>)
-                    : {},
-        },
-    });
+    const firstRun = await getAutomationRunForEvent(definition.id, event.id);
     const duplicateRun = await createAutomationRun({
         automationDefinition: definition,
         source: 'event',
@@ -811,21 +822,7 @@ test('default sowed automation queues seasonal watering operations through execu
     });
     assert.ok(definition);
 
-    const run = await createAutomationRun({
-        automationDefinition: definition,
-        source: 'event',
-        sourceEvent: event,
-        input: {
-            eventId: event.id,
-            eventType: event.type,
-            aggregateId: event.aggregateId,
-            data:
-                event.data && typeof event.data === 'object'
-                    ? (event.data as Record<string, unknown>)
-                    : {},
-        },
-    });
-    assert.ok(run);
+    const run = await getAutomationRunForEvent(definition.id, event.id);
     const [claimedRun] = await claimDueAutomationRuns({
         limit: 1,
         lockedBy: 'automations-test',
@@ -1217,21 +1214,7 @@ test('default plant-removal automation marks the operation target removed after 
         knownEventTypes.operations.verify,
         operationId.toString(),
     );
-    const run = await createAutomationRun({
-        automationDefinition: definition,
-        source: 'event',
-        sourceEvent: event,
-        input: {
-            eventId: event.id,
-            eventType: event.type,
-            aggregateId: event.aggregateId,
-            data:
-                event.data && typeof event.data === 'object'
-                    ? (event.data as Record<string, unknown>)
-                    : {},
-        },
-    });
-    assert.ok(run);
+    const run = await getAutomationRunForEvent(definition.id, event.id);
     const startedRun = await startAutomationRun(run.id, {
         lockedBy: 'automations-test',
     });
@@ -1351,13 +1334,10 @@ test('seedling transplant automation waits for verification before setting sowin
                 ? (verificationEvent.data as Record<string, unknown>)
                 : {},
     };
-    const run = await createAutomationRun({
-        automationDefinition: definition,
-        source: 'event',
-        sourceEvent: verificationEvent,
-        input: verificationInput,
-    });
-    assert.ok(run);
+    const run = await getAutomationRunForEvent(
+        definition.id,
+        verificationEvent.id,
+    );
     const startedRun = await startAutomationRun(run.id, {
         lockedBy: 'automations-test',
     });
@@ -1860,11 +1840,11 @@ test('automation runner seeds the initial event cursor without backfilling histo
     });
 
     assert.strictEqual(liveResult.scannedEvents, 1);
-    assert.ok(liveResult.enqueuedRuns >= 1);
+    assert.strictEqual(liveResult.enqueuedRuns, 0);
     assert.strictEqual(liveResult.lastEventId, liveEvent.id);
     assert.strictEqual(await getAutomationEventCursor(), liveEvent.id);
     const liveRuns = await listAutomationRuns({ sourceEventId: liveEvent.id });
-    assert.strictEqual(liveRuns.length, liveResult.enqueuedRuns);
+    assert.ok(liveRuns.length >= 1);
     assert.ok(liveRuns.every((run) => run.sourceEventId === liveEvent.id));
     for (const run of liveRuns) {
         await completeAutomationRun({
@@ -1896,20 +1876,7 @@ test('automation runner enqueues and processes due default automation runs', asy
         event.type,
     );
     assert.ok(definition);
-    await createAutomationRun({
-        automationDefinition: definition,
-        source: 'event',
-        sourceEvent: event,
-        input: {
-            eventId: event.id,
-            eventType: event.type,
-            aggregateId: event.aggregateId,
-            data:
-                event.data && typeof event.data === 'object'
-                    ? (event.data as Record<string, unknown>)
-                    : {},
-        },
-    });
+    await getAutomationRunForEvent(definition.id, event.id);
 
     const result = await processDueAutomationRuns({
         limit: 10,
