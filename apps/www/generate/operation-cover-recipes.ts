@@ -700,6 +700,48 @@ export const cuttingOperationCoverRecipes = [
         ],
         showBackground: false,
     },
+    {
+        operationId: 'green-pruning',
+        operationLabel: 'Zelena rezidba',
+        outputFileName: 'green-pruning.webp',
+        camera: {
+            position: [2.5, 2.1, 4.8],
+            target: [0.43, 0.29, 0.45],
+            zoom: 148,
+        },
+        plants: [
+            {
+                id: 'lush-plant',
+                plantType: 'lettuce',
+                generation: 8,
+                seed: 'operation-cover-green-pruning',
+                position: [0.37, 0.05, 0.45],
+                scale: 0.92,
+                showFlowers: false,
+                showProduce: false,
+            },
+            {
+                id: 'soft-side-growth',
+                plantType: 'basil',
+                generation: 6,
+                seed: 'operation-cover-green-pruning-side-growth',
+                position: [0.53, 0.13, 0.41],
+                rotation: [0, 0.9, 0.12],
+                scale: 0.54,
+                showFlowers: false,
+                showProduce: false,
+            },
+        ],
+        assets: [
+            {
+                assetName: 'GardenScissors',
+                position: [0.58, 0.31, 0.4],
+                rotation: [0.05, -0.68, -0.88],
+                scale: 0.2,
+            },
+        ],
+        showBackground: false,
+    },
 ] satisfies readonly OperationCoverRecipe[];
 
 export const operationCoverRecipes = [
