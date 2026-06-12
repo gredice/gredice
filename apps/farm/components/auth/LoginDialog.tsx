@@ -8,16 +8,15 @@ import {
     useLastLoginProvider,
 } from '@gredice/ui/auth';
 import { Button } from '@gredice/ui/Button';
-import { Divider } from '@gredice/ui/Divider';
 import { Input } from '@gredice/ui/Input';
-import { Warning } from '@gredice/ui/icons';
+import { Mail, Warning } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { usePostHog } from '@posthog/next';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useActionState, useCallback } from 'react';
+import { useActionState, useCallback, useState } from 'react';
 import { queryClient } from '../providers/ClientAppProvider';
 
 type OAuthProvider = 'google' | 'facebook';
@@ -25,6 +24,7 @@ type OAuthProvider = 'google' | 'facebook';
 export function LoginDialog() {
     const posthog = usePostHog();
     const router = useRouter();
+    const [emailExpanded, setEmailExpanded] = useState(false);
     const fetchLastLogin = useCallback(
         () => fetch('/api/gredice/api/auth/last-login'),
         [],
@@ -142,69 +142,79 @@ export function LoginDialog() {
                             svojom farmom.
                         </Typography>
                     </Stack>
-                    <Stack spacing={4}>
+                    {!emailExpanded ? (
                         <Stack spacing={2}>
-                            <FacebookLoginButton
-                                onClick={() => handleOAuthLogin('facebook')}
-                                lastUsed={lastLoginProvider === 'facebook'}
-                            />
                             <GoogleLoginButton
                                 onClick={() => handleOAuthLogin('google')}
                                 lastUsed={lastLoginProvider === 'google'}
-                            />
-                        </Stack>
-                        <div className="relative">
-                            <div className="absolute inset-0 flex items-center">
-                                <Divider />
-                            </div>
-                            <div className="relative flex justify-center">
-                                <span className="bg-background px-2 text-xs rounded-xs">
-                                    ili nastavi emailom
-                                </span>
-                            </div>
-                        </div>
-                    </Stack>
-                    <form action={submitAction} className="w-full space-y-4">
-                        <Stack spacing={6}>
-                            <Stack spacing={2}>
-                                <Input
-                                    name="email"
-                                    label="Email"
-                                    placeholder="ime@primjer.com"
-                                    type="email"
-                                    autoComplete="email"
-                                    fullWidth
-                                    required
-                                />
-                                <Input
-                                    name="password"
-                                    label="Zaporka"
-                                    type="password"
-                                    autoComplete="current-password"
-                                    fullWidth
-                                    required
-                                />
-                            </Stack>
-                            <Button
-                                type="submit"
-                                loading={isPending}
-                                variant="solid"
-                                fullWidth
                             >
-                                Prijavi se
+                                Google prijava
+                            </GoogleLoginButton>
+                            <FacebookLoginButton
+                                onClick={() => handleOAuthLogin('facebook')}
+                                lastUsed={lastLoginProvider === 'facebook'}
+                            >
+                                Facebook prijava
+                            </FacebookLoginButton>
+                            <Button
+                                type="button"
+                                variant="outlined"
+                                color="neutral"
+                                fullWidth
+                                startDecorator={
+                                    <Mail className="h-4 w-4 shrink-0" />
+                                }
+                                onClick={() => setEmailExpanded(true)}
+                            >
+                                Email prijava
                             </Button>
-                            {error && (
-                                <Alert
-                                    color="danger"
-                                    startDecorator={
-                                        <Warning className="size-5" />
-                                    }
-                                >
-                                    {error}
-                                </Alert>
-                            )}
                         </Stack>
-                    </form>
+                    ) : (
+                        <form
+                            action={submitAction}
+                            className="w-full space-y-4"
+                        >
+                            <Stack spacing={6}>
+                                <Stack spacing={2}>
+                                    <Input
+                                        name="email"
+                                        label="Email"
+                                        placeholder="ime@primjer.com"
+                                        type="email"
+                                        autoComplete="email"
+                                        fullWidth
+                                        required
+                                    />
+                                    <Input
+                                        name="password"
+                                        label="Zaporka"
+                                        type="password"
+                                        autoComplete="current-password"
+                                        fullWidth
+                                        required
+                                    />
+                                </Stack>
+                                <Button
+                                    type="submit"
+                                    loading={isPending}
+                                    variant="solid"
+                                    fullWidth
+                                >
+                                    Prijavi se
+                                </Button>
+                                {error && (
+                                    <Alert
+                                        color="danger"
+                                        startDecorator={
+                                            <Warning className="size-5" />
+                                        }
+                                    >
+                                        {error}
+                                    </Alert>
+                                )}
+                            </Stack>
+                        </form>
+                    )}
                 </Stack>
             </Modal>
         </div>
