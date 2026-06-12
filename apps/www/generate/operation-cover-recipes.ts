@@ -59,6 +59,11 @@ const pestBugLeafDamageNodes = [
     'PestBugKit_Leaf_Damage_Stem',
 ] as const;
 
+const gardenFlowerHeadNodes = [
+    'GardenFlower_Petals',
+    'GardenFlower_Center',
+] as const;
+
 export const liquidPreparationOperationCoverRecipes =
     liquidPreparationBottleAssets.map((assetName) => ({
         operationId: assetName,
@@ -609,6 +614,40 @@ export const cuttingOperationCoverRecipes = [
                 position: [0.49, 0.48, 0.41],
                 rotation: [0.05, -0.66, -0.88],
                 scale: 0.22,
+            },
+        ],
+        showBackground: false,
+    },
+    {
+        operationId: 'removeFlowers',
+        operationLabel: 'Uklanjanje cvijetova',
+        outputFileName: 'removeFlowers.webp',
+        camera: {
+            position: [2.5, 2.1, 4.8],
+            target: [0.43, 0.27, 0.45],
+            zoom: 150,
+        },
+        assets: [
+            {
+                id: 'flowering-plant',
+                assetName: 'GardenFlower',
+                position: [0.36, 0.02, 0.45],
+                rotation: [0, -0.28, 0],
+                scale: 0.48,
+            },
+            {
+                id: 'removed-flower-head',
+                assetName: 'GardenFlower',
+                visibleNodeNames: gardenFlowerHeadNodes,
+                position: [0.58, 0.07, 0.54],
+                rotation: [0.9, 0.4, -0.25],
+                scale: 0.36,
+            },
+            {
+                assetName: 'GardenScissors',
+                position: [0.49, 0.29, 0.4],
+                rotation: [0.05, -0.68, -0.9],
+                scale: 0.17,
             },
         ],
         showBackground: false,
