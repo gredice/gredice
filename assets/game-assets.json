@@ -670,14 +670,10 @@
             "objects": [
                 "GardenScissors_Blade_L",
                 "GardenScissors_Blade_R",
-                "GardenScissors_Blade_Edge_L",
-                "GardenScissors_Blade_Edge_R",
                 "GardenScissors_Tang_L",
                 "GardenScissors_Tang_R",
                 "GardenScissors_Handle_L",
                 "GardenScissors_Handle_R",
-                "GardenScissors_Grip_L",
-                "GardenScissors_Grip_R",
                 "GardenScissors_Pivot",
                 "GardenScissors_Pivot_Cap",
                 "GardenScissors_Pivot_Slot"
