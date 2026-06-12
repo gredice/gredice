@@ -69,6 +69,25 @@ const gardenFlowerLeafNodes = [
     'GardenFlower_Stem',
 ] as const;
 
+const harvestBasketBaseNodes = [
+    'HarvestBasket_Weave',
+    'HarvestBasket_Rim',
+    'HarvestBasket_Inner',
+    'HarvestBasket_Handle',
+    'HarvestBasket_Pin',
+] as const;
+
+const harvestBasketTomatoNodes = [
+    ...harvestBasketBaseNodes,
+    'HarvestBasket_Tomato',
+    'HarvestBasket_TomatoCalyx',
+] as const;
+
+const harvestBasketLooseTomatoNodes = [
+    'HarvestBasket_Tomato',
+    'HarvestBasket_TomatoCalyx',
+] as const;
+
 export const liquidPreparationOperationCoverRecipes =
     liquidPreparationBottleAssets.map((assetName) => ({
         operationId: assetName,
@@ -276,6 +295,48 @@ export const waterOperationCoverRecipes = [
                 position: [0.58, 0.2, 0.5],
                 rotation: [0.1, -0.35, 0.2],
                 scale: 0.18,
+            },
+        ],
+        showBackground: false,
+    },
+] satisfies readonly OperationCoverRecipe[];
+
+export const harvestOperationCoverRecipes = [
+    {
+        operationId: 'harvest25Mature',
+        operationLabel: 'Branje 25% najzrelijih plodova',
+        outputFileName: 'harvest25Mature.webp',
+        camera: {
+            position: [2.5, 2.1, 4.8],
+            target: [0.45, 0.3, 0.45],
+            zoom: 136,
+        },
+        plants: [
+            {
+                id: 'fruiting-plant',
+                plantType: 'tomato',
+                generation: 8,
+                seed: 'operation-cover-harvest-quarter',
+                position: [0.34, 0.03, 0.44],
+                scale: 0.86,
+                showFlowers: false,
+            },
+        ],
+        assets: [
+            {
+                assetName: 'HarvestBasket',
+                visibleNodeNames: harvestBasketTomatoNodes,
+                position: [0.62, 0.08, 0.5],
+                rotation: [0.08, -0.55, 0.05],
+                scale: 0.24,
+            },
+            {
+                id: 'ripe-fruit-highlight',
+                assetName: 'HarvestBasket',
+                visibleNodeNames: harvestBasketLooseTomatoNodes,
+                position: [0.57, 0.14, 0.42],
+                rotation: [0.08, -0.55, 0.05],
+                scale: 0.24,
             },
         ],
         showBackground: false,
@@ -1084,6 +1145,7 @@ export const bedMaintenanceOperationCoverRecipes = [
 export const operationCoverRecipes = [
     ...liquidPreparationOperationCoverRecipes,
     ...waterOperationCoverRecipes,
+    ...harvestOperationCoverRecipes,
     ...cuttingOperationCoverRecipes,
     ...bedMaintenanceOperationCoverRecipes,
 ] satisfies readonly OperationCoverRecipe[];
