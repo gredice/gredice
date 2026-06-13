@@ -156,6 +156,14 @@ const farmSupplyKitSackAndGranuleNodes = [
     'FarmSupplyKit_Granule_05',
 ] as const;
 
+const farmSupplyKitGranuleNodes = [
+    'FarmSupplyKit_Granule_01',
+    'FarmSupplyKit_Granule_02',
+    'FarmSupplyKit_Granule_03',
+    'FarmSupplyKit_Granule_04',
+    'FarmSupplyKit_Granule_05',
+] as const;
+
 export const liquidPreparationOperationCoverRecipes =
     liquidPreparationBottleAssets.map((assetName) => ({
         operationId: assetName,
@@ -912,6 +920,61 @@ export const inventoryOperationCoverRecipes = [
                 position: [0.47, 0.07, 0.57],
                 rotation: [0.14, -0.3, 0.1],
                 scale: [0.24, 0.12, 0.18],
+            },
+            {
+                assetName: 'FieldworkClipboard',
+                position: [0.68, 0.22, 0.34],
+                rotation: [0.18, -0.55, -0.22],
+                scale: 0.16,
+            },
+        ],
+        showBackground: false,
+    },
+    {
+        operationId: 'inventorySeeds',
+        operationLabel: 'Inventura sjemena',
+        outputFileName: 'inventorySeeds.webp',
+        camera: {
+            position: [2.7, 2.1, 4.8],
+            target: [0.45, 0.27, 0.45],
+            zoom: 140,
+        },
+        assets: [
+            {
+                assetName: 'FarmSupplyKit',
+                visibleNodeNames: farmSupplyKitCrateAndSackNodes,
+                position: [0.33, 0.07, 0.49],
+                rotation: [0.08, 0.52, 0.03],
+                scale: 0.22,
+            },
+            {
+                id: 'seed-front-left',
+                assetName: 'Seed',
+                position: [0.27, 0.13, 0.62],
+                rotation: [0.1, 0.55, -0.1],
+                scale: 1.15,
+            },
+            {
+                id: 'seed-front-center',
+                assetName: 'Seed',
+                position: [0.36, 0.14, 0.65],
+                rotation: [0.12, -0.1, 0.08],
+                scale: 1.28,
+            },
+            {
+                id: 'seed-front-right',
+                assetName: 'Seed',
+                position: [0.46, 0.13, 0.61],
+                rotation: [0.1, -0.62, 0.05],
+                scale: 1.1,
+            },
+            {
+                id: 'seed-granule-pile',
+                assetName: 'FarmSupplyKit',
+                visibleNodeNames: farmSupplyKitGranuleNodes,
+                position: [0.36, -0.16, 0.6],
+                rotation: [0.08, 0.52, 0.03],
+                scale: 0.56,
             },
             {
                 assetName: 'FieldworkClipboard',
