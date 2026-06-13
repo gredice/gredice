@@ -121,6 +121,15 @@ const greenhouseStoredNodes = [
     'Greenhouse_X_Stick_B',
 ] as const;
 
+const plantTieBandNodes = [
+    'PlantTieLoop_MainLoop',
+    'PlantTieLoop_Knot',
+    'PlantTieLoop_Tail_Left',
+    'PlantTieLoop_Tail_Right',
+    'PlantTieLoop_Band_Short',
+    'PlantTieLoop_Band_Long',
+] as const;
+
 const farmSupplyKitCrateAndSackNodes = [
     'FarmSupplyKit_Crate_Base',
     'FarmSupplyKit_Crate_Front',
@@ -1877,6 +1886,51 @@ export const storageOperationCoverRecipes = [
     },
 ] satisfies readonly OperationCoverRecipe[];
 
+export const supportOperationCoverRecipes = [
+    {
+        operationId: 'growthPlantSupport',
+        operationLabel: 'Postavljanje potpornja i vezanje',
+        outputFileName: 'growthPlantSupport.webp',
+        camera: {
+            position: [2.5, 2.1, 4.8],
+            target: [0.42, 0.34, 0.45],
+            zoom: 132,
+        },
+        plants: [
+            {
+                id: 'supported-plant',
+                plantType: 'tomato',
+                generation: 8,
+                seed: 'operation-cover-growth-plant-support',
+                position: [0.36, 0.02, 0.45],
+                scale: 1.18,
+                showFlowers: false,
+                showProduce: false,
+            },
+        ],
+        assets: [
+            {
+                id: 'tie-loop',
+                assetName: 'PlantTieLoop',
+                visibleNodeNames: plantTieBandNodes,
+                position: [0.43, 0.31, 0.44],
+                rotation: [0.08, 0.28, 0.05],
+                scale: 0.12,
+            },
+        ],
+        supportStakes: [
+            {
+                id: 'support-stake',
+                position: [0.47, 0.03, 0.43],
+                rotation: [0.02, 0.18, 0.02],
+                height: 0.78,
+                radius: 0.018,
+            },
+        ],
+        showBackground: false,
+    },
+] satisfies readonly OperationCoverRecipe[];
+
 export const cuttingOperationCoverRecipes = [
     {
         operationId: 'formative-pruning',
@@ -2687,6 +2741,7 @@ export const operationCoverRecipes = [
     ...sensorOperationCoverRecipes,
     ...soilOperationCoverRecipes,
     ...storageOperationCoverRecipes,
+    ...supportOperationCoverRecipes,
     ...cuttingOperationCoverRecipes,
     ...bedMaintenanceOperationCoverRecipes,
 ] satisfies readonly OperationCoverRecipe[];
@@ -2729,7 +2784,8 @@ export function validateOperationCoverRecipes(
             !recipe.assets?.length &&
             !recipe.entities?.length &&
             !recipe.plants?.length &&
-            !recipe.agrotextileCovers?.length
+            !recipe.agrotextileCovers?.length &&
+            !recipe.supportStakes?.length
         ) {
             errors.push(
                 `${recipe.outputFileName}: recipe must include at least one asset, entity, plant, or cover primitive.`,
