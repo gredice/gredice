@@ -1888,6 +1888,38 @@ export const storageOperationCoverRecipes = [
 
 export const supportOperationCoverRecipes = [
     {
+        operationId: 'plantingPlantSupport',
+        operationLabel: 'Postavljanje potpornja (bez vezanja)',
+        outputFileName: 'plantingPlantSupport.webp',
+        camera: {
+            position: [2.45, 2.1, 4.75],
+            target: [0.42, 0.28, 0.45],
+            zoom: 150,
+        },
+        plants: [
+            {
+                id: 'supported-plant',
+                plantType: 'tomato',
+                generation: 4,
+                seed: 'operation-cover-planting-plant-support',
+                position: [0.36, 0.02, 0.45],
+                scale: 1.08,
+                showFlowers: false,
+                showProduce: false,
+            },
+        ],
+        supportStakes: [
+            {
+                id: 'support-stake',
+                position: [0.48, 0.03, 0.43],
+                rotation: [0.02, 0.16, 0.02],
+                height: 0.68,
+                radius: 0.018,
+            },
+        ],
+        showBackground: false,
+    },
+    {
         operationId: 'growthPlantSupport',
         operationLabel: 'Postavljanje potpornja i vezanje',
         outputFileName: 'growthPlantSupport.webp',
@@ -2774,6 +2806,21 @@ export const bedMaintenanceOperationCoverRecipes = [
 
 export const operationCoverRecipes = [
     ...liquidPreparationOperationCoverRecipes,
+    ...waterOperationCoverRecipes,
+    ...harvestOperationCoverRecipes,
+    ...inventoryOperationCoverRecipes,
+    ...photographyOperationCoverRecipes,
+    ...plantingOperationCoverRecipes,
+    ...protectionOperationCoverRecipes,
+    ...sensorOperationCoverRecipes,
+    ...soilOperationCoverRecipes,
+    ...storageOperationCoverRecipes,
+    ...supportOperationCoverRecipes,
+    ...cuttingOperationCoverRecipes,
+    ...bedMaintenanceOperationCoverRecipes,
+] satisfies readonly OperationCoverRecipe[];
+
+export const directoryOperationCoverRecipes = [
     ...waterOperationCoverRecipes,
     ...harvestOperationCoverRecipes,
     ...inventoryOperationCoverRecipes,
