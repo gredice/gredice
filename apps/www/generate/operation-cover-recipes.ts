@@ -51,6 +51,14 @@ const pestBugBeetleNodes = [
     'PestBugKit_Beetle_Legs',
 ] as const;
 
+const pestBugLeafDamageNodes = [
+    'PestBugKit_Leaf_Damage_Leaf',
+    'PestBugKit_Leaf_Damage_Bite_01',
+    'PestBugKit_Leaf_Damage_Bite_02',
+    'PestBugKit_Leaf_Damage_Bite_03',
+    'PestBugKit_Leaf_Damage_Stem',
+] as const;
+
 export const liquidPreparationOperationCoverRecipes =
     liquidPreparationBottleAssets.map((assetName) => ({
         operationId: assetName,
@@ -520,6 +528,45 @@ export const cuttingOperationCoverRecipes = [
                 position: [0.33, 0.16, 0.43],
                 rotation: [0.08, -0.68, -0.9],
                 scale: 0.13,
+            },
+        ],
+        showBackground: false,
+    },
+    {
+        operationId: 'hygiene-pruning',
+        operationLabel: 'Sanitarna rezidba',
+        outputFileName: 'hygiene-pruning.webp',
+        camera: {
+            position: [2.5, 2.1, 4.8],
+            target: [0.43, 0.34, 0.45],
+            zoom: 138,
+        },
+        plants: [
+            {
+                id: 'plant',
+                plantType: 'tomato',
+                generation: 7,
+                seed: 'operation-cover-hygiene-pruning',
+                position: [0.37, -0.03, 0.45],
+                scale: 0.8,
+                showFlowers: false,
+                showProduce: false,
+            },
+        ],
+        assets: [
+            {
+                id: 'damaged-branch',
+                assetName: 'PestBugKit',
+                visibleNodeNames: pestBugLeafDamageNodes,
+                position: [0.52, 0.33, 0.41],
+                rotation: [0.12, -0.2, -0.35],
+                scale: 0.32,
+            },
+            {
+                assetName: 'GardenScissors',
+                position: [0.61, 0.39, 0.4],
+                rotation: [0.05, -0.7, -0.9],
+                scale: 0.21,
             },
         ],
         showBackground: false,
