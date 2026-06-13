@@ -726,6 +726,49 @@ export const inventoryOperationCoverRecipes = [
         ],
         showBackground: false,
     },
+    {
+        operationId: 'inventoryProtectiveFabrics',
+        operationLabel: 'Inventura zaštitnih tkanina',
+        outputFileName: 'inventoryProtectiveFabrics.webp',
+        camera: {
+            position: [2.7, 2.1, 4.8],
+            target: [0.46, 0.26, 0.45],
+            zoom: 138,
+        },
+        assets: [
+            {
+                id: 'fabric-stack-bottom',
+                assetName: 'Shade',
+                visibleNodeNames: ['Shade_Solo'],
+                position: [0.34, 0.08, 0.5],
+                rotation: [0.18, 0.72, -0.18],
+                scale: [0.2, 0.08, 0.16],
+            },
+            {
+                id: 'fabric-stack-middle',
+                assetName: 'Shade',
+                visibleNodeNames: ['Shade_Solo'],
+                position: [0.39, 0.12, 0.47],
+                rotation: [0.18, 0.72, 0.05],
+                scale: [0.19, 0.07, 0.15],
+            },
+            {
+                id: 'fabric-stack-top',
+                assetName: 'Shade',
+                visibleNodeNames: ['Shade_Solo'],
+                position: [0.44, 0.16, 0.44],
+                rotation: [0.18, 0.72, 0.25],
+                scale: [0.17, 0.06, 0.14],
+            },
+            {
+                assetName: 'FieldworkClipboard',
+                position: [0.68, 0.22, 0.34],
+                rotation: [0.18, -0.55, -0.22],
+                scale: 0.16,
+            },
+        ],
+        showBackground: false,
+    },
 ] satisfies readonly OperationCoverRecipe[];
 
 export const cuttingOperationCoverRecipes = [
