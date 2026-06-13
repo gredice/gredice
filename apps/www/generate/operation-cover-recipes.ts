@@ -652,6 +652,54 @@ export const cuttingOperationCoverRecipes = [
         ],
         showBackground: false,
     },
+    {
+        operationId: 'removeFlowersMaintenance',
+        operationLabel: 'Uklanjanje suvišnih cvijetova',
+        outputFileName: 'removeFlowersMaintenance.webp',
+        camera: {
+            position: [2.5, 2.1, 4.8],
+            target: [0.45, 0.3, 0.45],
+            zoom: 150,
+        },
+        assets: [
+            {
+                id: 'flower-left',
+                assetName: 'GardenFlower',
+                position: [0.34, 0.02, 0.47],
+                rotation: [0, -0.45, 0],
+                scale: 0.42,
+            },
+            {
+                id: 'flower-center',
+                assetName: 'GardenFlower',
+                position: [0.46, 0.02, 0.43],
+                rotation: [0, 0.18, 0],
+                scale: 0.46,
+            },
+            {
+                id: 'flower-right',
+                assetName: 'GardenFlower',
+                position: [0.57, 0.02, 0.48],
+                rotation: [0, 0.45, 0],
+                scale: 0.38,
+            },
+            {
+                id: 'removed-flower-head',
+                assetName: 'GardenFlower',
+                visibleNodeNames: gardenFlowerHeadNodes,
+                position: [0.6, 0.09, 0.57],
+                rotation: [0.95, 0.4, -0.28],
+                scale: 0.34,
+            },
+            {
+                assetName: 'GardenScissors',
+                position: [0.54, 0.3, 0.4],
+                rotation: [0.05, -0.68, -0.9],
+                scale: 0.17,
+            },
+        ],
+        showBackground: false,
+    },
 ] satisfies readonly OperationCoverRecipe[];
 
 export const operationCoverRecipes = [
