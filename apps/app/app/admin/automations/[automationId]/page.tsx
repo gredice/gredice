@@ -1,6 +1,5 @@
 import {
     type AutomationGraph,
-    type AutomationRunStatus,
     automationModuleKeys,
     automationRunStatusValues,
     getAutomationDefinitionById,
@@ -16,7 +15,6 @@ import { AdminPageTitle } from '../../../../components/admin/navigation';
 import { auth } from '../../../../lib/auth/auth';
 import { AutomationFlowEditor } from '../AutomationFlowEditor';
 import {
-    type AutomationRunStatusFilter,
     AutomationRunsTable,
     type AutomationRunsTableRun,
 } from '../AutomationRunsTable';
@@ -24,6 +22,10 @@ import {
     AutomationTestPanel,
     type RecentAutomationEvent,
 } from '../AutomationTestPanel';
+import {
+    normalizeAutomationRunStatusFilter,
+    statusesForAutomationRunFilter,
+} from '../automationRunFilters';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,36 +46,6 @@ function getTriggerModuleKey(graph: AutomationGraph) {
 
 function firstSearchParam(value: string | string[] | undefined) {
     return Array.isArray(value) ? value[0] : value;
-}
-
-function normalizeRunStatusFilter(
-    value: string | undefined,
-): AutomationRunStatusFilter {
-    if (value === 'all') {
-        return 'all';
-    }
-
-    const status = automationRunStatusValues.find(
-        (candidate) => candidate === value,
-    );
-
-    return status ?? 'withoutSkipped';
-}
-
-function statusesForRunFilter(
-    filter: AutomationRunStatusFilter,
-): AutomationRunStatus | AutomationRunStatus[] | undefined {
-    if (filter === 'all') {
-        return undefined;
-    }
-
-    if (filter === 'withoutSkipped') {
-        return automationRunStatusValues.filter(
-            (status) => status !== 'skipped',
-        );
-    }
-
-    return filter;
 }
 
 function dateToIso(value: Date | null) {
@@ -110,10 +82,12 @@ export default async function AutomationDetailPage({
             : triggerModuleKey === automationModuleKeys.triggerScheduleMonthly
               ? 'schedule'
               : 'unsupported';
-    const currentRunStatusFilter = normalizeRunStatusFilter(
+    const currentRunStatusFilter = normalizeAutomationRunStatusFilter(
         firstSearchParam(resolvedSearchParams.runStatus),
     );
-    const runStatusFilter = statusesForRunFilter(currentRunStatusFilter);
+    const runStatusFilter = statusesForAutomationRunFilter(
+        currentRunStatusFilter,
+    );
     const [runs, recentEvents] = await Promise.all([
         listAutomationRuns({
             automationDefinitionId: definition.id,
@@ -198,7 +172,6 @@ export default async function AutomationDetailPage({
             />
 
             <AutomationRunsTable
-                currentStatusFilter={currentRunStatusFilter}
                 runs={tableRuns}
                 statusOptions={[...automationRunStatusValues]}
             />

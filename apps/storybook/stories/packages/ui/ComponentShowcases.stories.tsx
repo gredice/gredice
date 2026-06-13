@@ -194,6 +194,7 @@ const tableFilters: FilterOption[] = [
     {
         key: 'status',
         label: 'Status',
+        activeLabel: null,
         icon: <Filter className="size-4" />,
         options: [
             { value: '', label: 'Svi statusi' },

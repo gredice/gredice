@@ -1,6 +1,5 @@
 import { Card, CardHeader, CardOverflow, CardTitle } from '@gredice/ui/Card';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { KnownPages } from '../../../src/KnownPages';
@@ -19,9 +18,6 @@ export function AutomationDefinitionsList({
         <Card className="h-full">
             <CardHeader>
                 <CardTitle>Definicije</CardTitle>
-                <Typography level="body3" className="text-muted-foreground">
-                    Aktivne automatizacije i njihova zadnja učitana izvođenja.
-                </Typography>
             </CardHeader>
             <CardOverflow>
                 {definitions.length === 0 ? (

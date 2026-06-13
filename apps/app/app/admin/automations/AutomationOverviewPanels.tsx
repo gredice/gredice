@@ -1,12 +1,12 @@
 'use client';
 
-import type { AutomationRunStatus } from '@gredice/storage';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { AutomationDefinitionsList } from './AutomationDefinitionsList';
 import { AutomationJobsQueueList } from './AutomationJobsQueueTable';
 import { isAutomationRunLive } from './AutomationStatusIndicator';
+import type { AutomationRunStatusFilter } from './automationRunFilters';
 import type { AutomationDefinitionListItem, AutomationRunsPage } from './types';
 
 function activeRunsInPages(pages: AutomationRunsPage[] | undefined) {
@@ -16,28 +16,19 @@ function activeRunsInPages(pages: AutomationRunsPage[] | undefined) {
 }
 
 async function fetchAutomationRunsPage({
-    failedOnly,
     limit,
     offset,
-    runStatus,
+    runStatusFilter,
 }: {
-    failedOnly: boolean;
     limit: number;
     offset: number;
-    runStatus?: AutomationRunStatus;
+    runStatusFilter: AutomationRunStatusFilter;
 }) {
     const searchParams = new URLSearchParams({
         limit: String(limit),
         offset: String(offset),
+        runStatus: runStatusFilter,
     });
-
-    if (runStatus) {
-        searchParams.set('runStatus', runStatus);
-    }
-
-    if (failedOnly) {
-        searchParams.set('failedOnly', '1');
-    }
 
     const response = await fetch(
         `/api/admin/automations/runs?${searchParams.toString()}`,
@@ -53,23 +44,20 @@ async function fetchAutomationRunsPage({
 
 export function AutomationOverviewPanels({
     definitions,
-    failedOnly,
     initialRunsPage,
-    runStatus,
+    runStatusFilter,
 }: {
     definitions: AutomationDefinitionListItem[];
-    failedOnly: boolean;
     initialRunsPage: AutomationRunsPage;
-    runStatus?: AutomationRunStatus;
+    runStatusFilter: AutomationRunStatusFilter;
 }) {
     const runsQuery = useInfiniteQuery({
-        queryKey: ['automation-runs', { failedOnly, runStatus }],
+        queryKey: ['automation-runs', { runStatusFilter }],
         queryFn: ({ pageParam }) =>
             fetchAutomationRunsPage({
-                failedOnly,
                 limit: initialRunsPage.pageSize,
                 offset: pageParam,
-                runStatus,
+                runStatusFilter,
             }),
         initialData: {
             pages: [initialRunsPage],

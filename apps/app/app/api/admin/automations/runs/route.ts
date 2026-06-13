@@ -1,8 +1,8 @@
-import {
-    type AutomationRunStatus,
-    automationRunStatusValues,
-} from '@gredice/storage';
 import { withAuth } from '../../../../../lib/auth/auth';
+import {
+    normalizeAutomationRunStatusFilter,
+    statusesForAutomationRunFilter,
+} from '../../../../admin/automations/automationRunFilters';
 import {
     automationQueuePageSize,
     listAutomationRunsPage,
@@ -10,10 +10,14 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-function parseAutomationRunStatus(
-    value: string | null,
-): AutomationRunStatus | undefined {
-    return automationRunStatusValues.find((status) => status === value);
+function parseAutomationRunStatus(value: string | null) {
+    if (!value) {
+        return undefined;
+    }
+
+    return statusesForAutomationRunFilter(
+        normalizeAutomationRunStatusFilter(value),
+    );
 }
 
 function parseInteger(value: string | null, fallback: number) {
