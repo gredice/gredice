@@ -871,6 +871,73 @@ export const bedMaintenanceOperationCoverRecipes = [
         ],
         showBackground: false,
     },
+    {
+        operationId: 'hillingPlant',
+        operationLabel: 'Okopavanje',
+        outputFileName: 'hillingPlant.webp',
+        camera: {
+            position: [2.8, 2.2, 5],
+            target: [0.45, 0.25, 0.45],
+            zoom: 140,
+        },
+        plants: [
+            {
+                id: 'plant',
+                plantType: 'tomato',
+                generation: 7,
+                seed: 'operation-cover-hilling-plant',
+                position: [0.41, 0.04, 0.45],
+                scale: 0.98,
+                showFlowers: false,
+                showProduce: false,
+            },
+        ],
+        assets: [
+            {
+                assetName: 'RaisedBed',
+                visibleNodeNames: raisedBedCompactNodes,
+                position: [0.45, -0.06, 0.45],
+                rotation: [0, 0.72, 0],
+                scale: 0.38,
+            },
+            {
+                id: 'soil-mound-left',
+                assetName: 'MulchWood',
+                position: [0.36, 0.08, 0.48],
+                rotation: [0.12, 0.45, -0.08],
+                scale: [0.16, 0.08, 0.14],
+            },
+            {
+                id: 'soil-mound-right',
+                assetName: 'MulchWood',
+                position: [0.47, 0.08, 0.43],
+                rotation: [0.12, -0.35, 0.08],
+                scale: [0.16, 0.08, 0.14],
+            },
+            {
+                id: 'soil-mound-front',
+                assetName: 'MulchWood',
+                position: [0.42, 0.075, 0.56],
+                rotation: [0.14, 0.95, -0.08],
+                scale: [0.17, 0.08, 0.13],
+            },
+            {
+                id: 'soil-mound-back',
+                assetName: 'MulchWood',
+                position: [0.42, 0.085, 0.39],
+                rotation: [0.12, -0.95, 0.06],
+                scale: [0.14, 0.07, 0.12],
+            },
+            {
+                id: 'shovel',
+                assetName: 'ShovelSmall',
+                position: [0.57, 0.12, 0.44],
+                rotation: [0.22, -0.95, -0.78],
+                scale: 0.2,
+            },
+        ],
+        showBackground: false,
+    },
 ] satisfies readonly OperationCoverRecipe[];
 
 export const operationCoverRecipes = [
