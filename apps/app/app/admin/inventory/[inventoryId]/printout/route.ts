@@ -4,16 +4,12 @@ import {
     getInventoryItemsByConfig,
 } from '@gredice/storage';
 import { auth } from '../../../../../lib/auth/auth';
-import { getInventorySelectOptions } from '../../../../../lib/inventoryFieldTypes';
 import {
     generateInventoryPrintoutPdf,
     type InventoryPrintoutPdfItem,
     inventoryPrintoutFilename,
 } from '../inventoryPrintoutPdf';
-import {
-    getInventoryItemState,
-    type InventoryStateFilter,
-} from '../inventoryStatus';
+import { getInventoryItemState } from '../inventoryStatus';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,18 +39,11 @@ export async function GET(
     );
     const printoutItems = items
         .map((item) => {
-            const quantityStatus = inventoryStateLabel(
-                getInventoryItemState(item, config.lowCountThreshold),
-            );
-            const configuredStatus = configuredInventoryStatus(item, config);
-
             return {
                 label: itemLabel(item, config.entityTypeName, entityLabels),
                 details: itemDetails(item, config),
                 quantity: item.quantity,
-                currentStatus: configuredStatus
-                    ? `${configuredStatus} / ${quantityStatus}`
-                    : quantityStatus,
+                notes: item.notes,
             };
         })
         .sort(comparePrintoutItems);
@@ -120,10 +109,12 @@ function comparePrintoutItems(
         return labelComparison;
     }
 
-    return left.currentStatus.localeCompare(right.currentStatus, 'hr-HR', {
-        numeric: true,
-        sensitivity: 'base',
-    });
+    return left.details
+        .join(' ')
+        .localeCompare(right.details.join(' '), 'hr-HR', {
+            numeric: true,
+            sensitivity: 'base',
+        });
 }
 
 function itemLabel(
@@ -139,51 +130,6 @@ function itemLabel(
     }
 
     return `Stavka #${item.id}`;
-}
-
-function configuredInventoryStatus(
-    item: InventoryItem,
-    config: InventoryConfig,
-) {
-    const statusAttributeName = config.statusAttributeName;
-    if (!statusAttributeName) {
-        return null;
-    }
-
-    const value = item.additionalFields?.[statusAttributeName];
-    if (value === null || value === undefined || value === '') {
-        return null;
-    }
-
-    const fieldDefinition = config.fieldDefinitions.find(
-        (field) => field.name === statusAttributeName,
-    );
-
-    return formatAdditionalFieldValue(value, fieldDefinition?.dataType);
-}
-
-function formatAdditionalFieldValue(value: unknown, dataType?: string) {
-    if (typeof value === 'string') {
-        if (dataType) {
-            const option = getInventorySelectOptions(dataType).find(
-                (selectOption) => selectOption.value === value,
-            );
-            return option?.label ?? value;
-        }
-
-        return value;
-    }
-
-    if (typeof value === 'number') {
-        return String(value);
-    }
-
-    if (typeof value === 'boolean') {
-        return value ? 'Da' : 'Ne';
-    }
-
-    const jsonValue = JSON.stringify(value);
-    return jsonValue ?? null;
 }
 
 function itemDetails(item: InventoryItem, config: InventoryConfig) {
@@ -203,10 +149,6 @@ function itemDetails(item: InventoryItem, config: InventoryConfig) {
 
     details.push(`Dodano: ${formatItemDate(item.createdAt)}`);
 
-    if (item.notes) {
-        details.push(`Biljeska: ${item.notes}`);
-    }
-
     return details;
 }
 
@@ -221,17 +163,6 @@ function formatItemDate(date: Date) {
         month: '2-digit',
         day: '2-digit',
     }).format(date);
-}
-
-function inventoryStateLabel(state: InventoryStateFilter) {
-    if (state === 'critical') {
-        return 'Prazno';
-    }
-    if (state === 'warning') {
-        return 'Nisko';
-    }
-
-    return 'Uredno';
 }
 
 function entityDisplayName(entity: InventoryEntity) {
