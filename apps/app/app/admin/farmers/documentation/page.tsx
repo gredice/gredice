@@ -10,9 +10,11 @@ import { KnownPages } from '../../../../src/KnownPages';
 import { DocumentationChangeTypeBadge } from './DocumentationChangeTypeBadge';
 import { DocumentationSummaryCard } from './DocumentationSummaryCard';
 import {
+    discardedDocumentationPages,
     type FarmerDocumentationChangeType,
     formatDocumentationDateTime,
     getFarmerDocumentationPackage,
+    includedDocumentationPages,
     parseDocumentationSince,
 } from './farmerDocumentationData';
 
@@ -21,6 +23,7 @@ export const dynamic = 'force-dynamic';
 type PackageRow = {
     code: string;
     label: string;
+    documentTypeLabel: string;
     changeType: FarmerDocumentationChangeType;
     changedAt: Date | null;
     detail: string;
@@ -70,8 +73,8 @@ export default async function FarmerDocumentationPage({
                     Dokumentacija farmera
                 </Typography>
                 <Typography level="body2" className="text-muted-foreground">
-                    Ispis priručnika radnji iz farmer aplikacije, organiziran po
-                    stabilnim OP kodovima.
+                    Ispis priručnika radnji i sorti iz farmer aplikacije,
+                    organiziran po stabilnim OP i PS kodovima.
                 </Typography>
             </Stack>
 
@@ -114,18 +117,35 @@ export default async function FarmerDocumentationPage({
                 </CardContent>
             </Card>
 
-            <div className="grid gap-3 md:grid-cols-4">
+            <div className="grid gap-3 md:grid-cols-6">
                 <DocumentationSummaryCard
-                    label="Trenutnih radnji"
+                    label="Trenutnih priručnika"
+                    value={
+                        documentationPackage.totalOperations +
+                        documentationPackage.totalPlantSorts
+                    }
+                />
+                <DocumentationSummaryCard
+                    label="Radnji"
                     value={documentationPackage.totalOperations}
                 />
                 <DocumentationSummaryCard
+                    label="Sorti"
+                    value={documentationPackage.totalPlantSorts}
+                />
+                <DocumentationSummaryCard
                     label="Stranica u paketu"
-                    value={documentationPackage.includedOperations.length}
+                    value={
+                        documentationPackage.includedOperations.length +
+                        documentationPackage.includedPlantSorts.length
+                    }
                 />
                 <DocumentationSummaryCard
                     label="Za uklanjanje"
-                    value={documentationPackage.discardedOperations.length}
+                    value={
+                        documentationPackage.discardedOperations.length +
+                        documentationPackage.discardedPlantSorts.length
+                    }
                 />
                 <DocumentationSummaryCard
                     label="Od zadnjeg ispisa"
@@ -149,7 +169,8 @@ export default async function FarmerDocumentationPage({
                             <Table.Header>
                                 <Table.Row>
                                     <Table.Head>Kod</Table.Head>
-                                    <Table.Head>Radnja</Table.Head>
+                                    <Table.Head>Priručnik</Table.Head>
+                                    <Table.Head>Vrsta</Table.Head>
                                     <Table.Head>Status</Table.Head>
                                     <Table.Head>Promjena</Table.Head>
                                     <Table.Head>Sažetak</Table.Head>
@@ -164,6 +185,9 @@ export default async function FarmerDocumentationPage({
                                             {row.code}
                                         </Table.Cell>
                                         <Table.Cell>{row.label}</Table.Cell>
+                                        <Table.Cell className="text-muted-foreground">
+                                            {row.documentTypeLabel}
+                                        </Table.Cell>
                                         <Table.Cell>
                                             <DocumentationChangeTypeBadge
                                                 type={row.changeType}
@@ -220,23 +244,24 @@ function packageTableRows(
     >,
 ): PackageRow[] {
     return [
-        ...documentationPackage.includedOperations.map(
-            (operation): PackageRow => ({
-                code: operation.code,
-                label: operation.label,
-                changeType: operation.changeType,
-                changedAt: operation.changedAt,
-                detail:
-                    operation.revisionActions.join(', ') || 'Aktualna verzija',
+        ...includedDocumentationPages(documentationPackage).map(
+            (page): PackageRow => ({
+                code: page.code,
+                label: page.label,
+                documentTypeLabel: page.documentTypeLabel,
+                changeType: page.changeType,
+                changedAt: page.changedAt,
+                detail: page.revisionActions.join(', ') || 'Aktualna verzija',
             }),
         ),
-        ...documentationPackage.discardedOperations.map(
-            (operation): PackageRow => ({
-                code: operation.code,
-                label: operation.label,
+        ...discardedDocumentationPages(documentationPackage).map(
+            (page): PackageRow => ({
+                code: page.code,
+                label: page.label,
+                documentTypeLabel: page.documentTypeLabel,
                 changeType: 'discard',
-                changedAt: operation.changedAt,
-                detail: operation.revisionActions.join(', '),
+                changedAt: page.changedAt,
+                detail: page.revisionActions.join(', '),
             }),
         ),
     ].sort((left, right) => left.code.localeCompare(right.code));

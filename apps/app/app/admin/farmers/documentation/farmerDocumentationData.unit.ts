@@ -10,11 +10,14 @@ import { generateFarmerDocumentationPdf } from './farmerDocumentationPdf';
 const generatedAt = new Date('2026-06-13T10:00:00.000Z');
 const since = new Date('2026-06-01T00:00:00.000Z');
 
-test('builds insert, replace, and discard instructions from operation revisions', () => {
+test('builds insert, replace, and discard instructions from manual revisions', () => {
     const documentationPackage = buildFarmerDocumentationPackage({
         generatedAt,
         since,
-        labelAttributeDefinitionIds: new Set([10]),
+        labelAttributeDefinitionIds: {
+            operation: new Set([10]),
+            plantSort: new Set([20]),
+        },
         operations: [
             operationFixture(4, 'Zalijevanje', {
                 duration: 25,
@@ -23,6 +26,11 @@ test('builds insert, replace, and discard instructions from operation revisions'
             operationFixture(8, 'Čišćenje gredice', {
                 duration: 40,
                 frequency: 'required',
+            }),
+        ],
+        plantSorts: [
+            plantSortFixture(14, 'Cherry rajčica', {
+                reproductionType: 'seed',
             }),
         ],
         revisions: [
@@ -55,10 +63,37 @@ test('builds insert, replace, and discard instructions from operation revisions'
                 nextState: 'published',
                 createdAt: new Date('2026-06-10T12:30:00.000Z'),
             }),
+            revisionFixture({
+                id: 5,
+                entityId: 14,
+                entityTypeName: 'plantSort',
+                action: 'entity.created',
+                createdAt: new Date('2026-06-11T12:00:00.000Z'),
+            }),
+            revisionFixture({
+                id: 6,
+                entityId: 16,
+                entityTypeName: 'plantSort',
+                action: 'attribute.updated',
+                attributeDefinitionId: 20,
+                previousValue: 'Stara sorta',
+                nextValue: 'Stara sorta',
+                createdAt: new Date('2026-06-12T12:00:00.000Z'),
+            }),
+            revisionFixture({
+                id: 7,
+                entityId: 16,
+                entityTypeName: 'plantSort',
+                action: 'entity.deleted',
+                previousState: 'published',
+                nextState: 'published',
+                createdAt: new Date('2026-06-12T12:30:00.000Z'),
+            }),
         ],
     });
 
     assert.equal(documentationPackage.totalOperations, 2);
+    assert.equal(documentationPackage.totalPlantSorts, 1);
     assert.deepEqual(
         documentationPackage.includedOperations.map((operation) => [
             operation.code,
@@ -70,11 +105,25 @@ test('builds insert, replace, and discard instructions from operation revisions'
         ],
     );
     assert.deepEqual(
+        documentationPackage.includedPlantSorts.map((plantSort) => [
+            plantSort.code,
+            plantSort.changeType,
+        ]),
+        [['PS-0014', 'insert']],
+    );
+    assert.deepEqual(
         documentationPackage.discardedOperations.map((operation) => [
             operation.code,
             operation.label,
         ]),
         [['OP-0011', 'Stara radnja']],
+    );
+    assert.deepEqual(
+        documentationPackage.discardedPlantSorts.map((plantSort) => [
+            plantSort.code,
+            plantSort.label,
+        ]),
+        [['PS-0016', 'Stara sorta']],
     );
 });
 
@@ -82,11 +131,19 @@ test('generates a guide-first PDF without page numbering text', () => {
     const documentationPackage = buildFarmerDocumentationPackage({
         generatedAt,
         since,
-        labelAttributeDefinitionIds: new Set(),
+        labelAttributeDefinitionIds: {
+            operation: new Set(),
+            plantSort: new Set(),
+        },
         operations: [
             operationFixture(4, 'Zalijevanje', {
                 duration: 25,
                 application: 'raisedBedFull',
+            }),
+        ],
+        plantSorts: [
+            plantSortFixture(14, 'Cherry rajčica', {
+                reproductionType: 'seed',
             }),
         ],
         revisions: [
@@ -95,6 +152,13 @@ test('generates a guide-first PDF without page numbering text', () => {
                 entityId: 4,
                 action: 'attribute.updated',
                 createdAt: new Date('2026-06-08T12:00:00.000Z'),
+            }),
+            revisionFixture({
+                id: 2,
+                entityId: 14,
+                entityTypeName: 'plantSort',
+                action: 'attribute.updated',
+                createdAt: new Date('2026-06-08T13:00:00.000Z'),
             }),
         ],
     });
@@ -105,7 +169,9 @@ test('generates a guide-first PDF without page numbering text', () => {
     assert.match(content, /^%PDF-1\.4/);
     assert.match(content, /ORG-GUIDE/);
     assert.match(content, /OP-0004/);
+    assert.match(content, /PS-0014/);
     assert.match(content, /Zalijevanje/);
+    assert.match(content, /Cherry rajcica/);
     assert.doesNotMatch(content, /Stranica \d/);
 });
 
@@ -130,11 +196,48 @@ function operationFixture(
     };
 }
 
+function plantSortFixture(
+    id: number,
+    label: string,
+    attributes: EntityStandardized['attributes'],
+): EntityStandardized {
+    return {
+        id,
+        information: {
+            label,
+            name: label,
+            description: 'Kratak opis sorte.',
+            plant: {
+                id: 1000 + id,
+                information: {
+                    label: 'Rajčica',
+                    name: 'Rajčica',
+                    description: 'Opis biljke.',
+                },
+                attributes: {
+                    seedingDistance: 30,
+                    germinationWindowMin: 7,
+                    germinationWindowMax: 10,
+                    growthWindowMin: 60,
+                    growthWindowMax: 80,
+                    water: 'Vlažno tlo',
+                    yieldMin: 100,
+                    yieldMax: 200,
+                    yieldType: 'perPlant',
+                    cleanHarvest: false,
+                },
+            },
+        },
+        attributes,
+    };
+}
+
 function revisionFixture({
     action,
     attributeDefinitionId = null,
     createdAt,
     entityId,
+    entityTypeName = 'operation',
     id,
     nextState = null,
     nextValue = null,
@@ -145,6 +248,7 @@ function revisionFixture({
     attributeDefinitionId?: number | null;
     createdAt: Date;
     entityId: number;
+    entityTypeName?: 'operation' | 'plantSort';
     id: number;
     nextState?: string | null;
     nextValue?: string | null;
@@ -158,7 +262,7 @@ function revisionFixture({
         attributeDefinitionId,
         createdAt,
         entityId,
-        entityTypeName: 'operation',
+        entityTypeName,
         nextState,
         nextValue,
         previousState,
