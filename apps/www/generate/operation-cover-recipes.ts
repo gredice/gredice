@@ -296,6 +296,37 @@ export const cuttingOperationCoverRecipes = [
         ],
         showBackground: false,
     },
+    {
+        operationId: 'pruning',
+        operationLabel: 'Jednostavna rezidba',
+        outputFileName: 'pruning.webp',
+        camera: {
+            position: [2.5, 2.1, 4.8],
+            target: [0.43, 0.31, 0.45],
+            zoom: 150,
+        },
+        plants: [
+            {
+                id: 'plant',
+                plantType: 'basil',
+                generation: 8,
+                seed: 'operation-cover-pruning',
+                position: [0.4, 0.03, 0.45],
+                scale: 1.15,
+                showFlowers: false,
+                showProduce: false,
+            },
+        ],
+        assets: [
+            {
+                assetName: 'GardenScissors',
+                position: [0.53, 0.32, 0.42],
+                rotation: [0.08, -0.72, -0.92],
+                scale: 0.21,
+            },
+        ],
+        showBackground: false,
+    },
 ] satisfies readonly OperationCoverRecipe[];
 
 export const operationCoverRecipes = [
