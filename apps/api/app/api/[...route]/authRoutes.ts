@@ -511,7 +511,11 @@ const app = new Hono()
             // Check email verified
             const { isVerified } = JSON.parse(login.loginData);
             if (isVerified !== true) {
-                console.warn('User email not verified', email);
+                console.warn('User email not verified', {
+                    loginId: login.id,
+                    provider: 'email',
+                    userId: user.id,
+                });
                 return context.json(
                     {
                         error: 'User email not verified',
@@ -679,7 +683,11 @@ const app = new Hono()
 
                 return context.redirect(redirectUrl.toString());
             } catch (error) {
-                console.error('Google OAuth error:', error);
+                console.error('Google OAuth callback failed', {
+                    error,
+                    hasCode: Boolean(context.req.query('code')),
+                    hasState: Boolean(context.req.query('state')),
+                });
                 const redirectUrl = resolveRedirectUrl(
                     context,
                     '/prijava/google-prijava/povratak',
@@ -826,7 +834,11 @@ const app = new Hono()
 
                 return context.redirect(redirectUrl.toString());
             } catch (error) {
-                console.error('Facebook OAuth error:', error);
+                console.error('Facebook OAuth callback failed', {
+                    error,
+                    hasCode: Boolean(context.req.query('code')),
+                    hasState: Boolean(context.req.query('state')),
+                });
                 const redirectUrl = resolveRedirectUrl(
                     context,
                     '/prijava/facebook-prijava/povratak',

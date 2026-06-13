@@ -1126,9 +1126,11 @@ const app = new Hono<{ Variables: AuthVariables }>()
         async (context) => {
             // TODO: Use zod
             const token = context.req.query('token');
-            console.info(
-                `[AccountDelete] Deleting account with token=${token}`,
-            );
+            const hasDeletionToken =
+                typeof token === 'string' && token.length > 0;
+            console.info('Account deletion requested', {
+                hasToken: hasDeletionToken,
+            });
             let currentUserId: string | undefined;
             let requestedAccountId: string | undefined;
             try {
@@ -1139,7 +1141,13 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     },
                 );
                 if (error || !result?.payload.sub) {
-                    console.warn('JWT verify returned error:', error);
+                    console.warn(
+                        'Account deletion token verification returned error',
+                        {
+                            error,
+                            hasToken: hasDeletionToken,
+                        },
+                    );
                     throw new Error('Invalid state token');
                 }
                 currentUserId = result.payload.sub;
@@ -1149,7 +1157,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         ? accountIdClaim
                         : undefined;
             } catch (error) {
-                console.warn('Error verifying JWT:', error);
+                console.warn('Account deletion token verification failed', {
+                    error,
+                    hasToken: hasDeletionToken,
+                });
                 return context.json({ error: 'Invalid or expired link.' }, 400);
             }
 
@@ -1186,7 +1197,11 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     message: 'Account deleted successfully.',
                 });
             } catch (error) {
-                console.error('[AccountDelete] Error deleting account:', error);
+                console.error('Account deletion failed', {
+                    accountId: requestedAccountId,
+                    error,
+                    userId: currentUserId,
+                });
                 return context.json({ error: 'Invalid or expired link.' }, 500);
             }
         },

@@ -55,3 +55,10 @@ Use this guide for database, storage, background jobs, payments, notifications, 
 - Preserve existing PostHog, Vercel Analytics, and OpenTelemetry instrumentation patterns.
 - Add event names and properties that match `apps/api/posthog-setup-report.md` or nearby analytics code.
 - Use logs for operational diagnostics, not user-facing control flow.
+
+## Logging
+
+- Keep console messages stable and action-oriented; put request, account, garden, operation, and entity IDs in the second argument object.
+- Include the caught `error` in that context object when logging failed critical-path work.
+- Do not interpolate IDs or secrets into log messages. Never log tokens; use booleans like `hasToken` when presence is enough for diagnosis.
+- Use `console.error` for aborted or corrupt critical-path work, `console.warn` for recovered anomalies, and avoid `console.log` in server paths.
