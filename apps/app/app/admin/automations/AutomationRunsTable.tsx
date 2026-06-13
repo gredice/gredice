@@ -9,15 +9,16 @@ import type {
 import { Chip } from '@gredice/ui/Chip';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Row } from '@gredice/ui/Row';
-import { SelectItems } from '@gredice/ui/SelectItems';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import { cx } from '@gredice/ui/utils';
-import type { Route } from 'next';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
+import { AutomationRunStatusFilter } from './AutomationRunStatusFilter';
+import {
+    AutomationRunsCompactTable,
+    type AutomationRunsCompactTableRow,
+} from './AutomationRunsCompactTable';
 import { AutomationSlidePanel } from './AutomationSlidePanel';
 import {
     AutomationRunStatusIndicator,
@@ -29,11 +30,6 @@ import {
     automationModuleKindLabel,
     automationRunStatusMeta,
 } from './presentation';
-
-export type AutomationRunStatusFilter =
-    | 'withoutSkipped'
-    | 'all'
-    | AutomationRunStatus;
 
 export type AutomationRunsTableRun = {
     run: {
@@ -112,35 +108,14 @@ function DetailItem({
     );
 }
 
-function ListDetailItem({
-    children,
-    label,
-}: {
-    children: ReactNode;
-    label: string;
-}) {
-    return (
-        <div className="min-w-0">
-            <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                {label}
-            </dt>
-            <dd className="mt-1 min-w-0 break-words">{children}</dd>
-        </div>
-    );
-}
-
 export function AutomationRunsTable({
-    currentStatusFilter,
     runs,
     statusOptions,
 }: {
-    currentStatusFilter: AutomationRunStatusFilter;
     runs: AutomationRunsTableRun[];
     statusOptions: AutomationRunStatus[];
 }) {
     const router = useRouter();
-    const pathname = usePathname();
-    const searchParams = useSearchParams();
     const [selectedRunId, setSelectedRunId] = useState<number | null>(null);
     const selectedRun = useMemo(
         () => runs.find(({ run }) => run.id === selectedRunId) ?? null,
@@ -150,34 +125,25 @@ export function AutomationRunsTable({
         () => runs.some(({ run }) => isAutomationRunLive(run.status)),
         [runs],
     );
-    const filterItems = useMemo<
-        Array<{ value: AutomationRunStatusFilter; label: string }>
-    >(
-        () => [
-            { value: 'withoutSkipped', label: 'Svi osim preskočenih' },
-            { value: 'all', label: 'Svi statusi' },
-            ...statusOptions.map((status) => ({
-                value: status,
-                label: automationRunStatusMeta(status).label,
+    const tableRows = useMemo<AutomationRunsCompactTableRow[]>(
+        () =>
+            runs.map(({ run, steps }) => ({
+                id: run.id,
+                title: `#${run.id}`,
+                subtitle: `${steps.length} koraka`,
+                status: run.status,
+                dryRun: run.dryRun,
+                sourceLabel: run.sourceEventType,
+                sourceDetail: run.sourceAggregateId,
+                attempt: run.attempt,
+                maxAttempts: run.maxAttempts,
+                timeLabel: 'Kreirano',
+                timeValue: run.createdAt,
+                secondaryTime: formatDuration(run.startedAt, run.completedAt),
+                errorMessage: run.errorMessage,
             })),
-        ],
-        [statusOptions],
+        [runs],
     );
-
-    function updateStatusFilter(nextFilter: AutomationRunStatusFilter) {
-        const nextSearchParams = new URLSearchParams(searchParams.toString());
-        if (nextFilter === 'withoutSkipped') {
-            nextSearchParams.delete('runStatus');
-        } else {
-            nextSearchParams.set('runStatus', nextFilter);
-        }
-
-        const queryString = nextSearchParams.toString();
-        setSelectedRunId(null);
-        router.replace(
-            (queryString ? `${pathname}?${queryString}` : pathname) as Route,
-        );
-    }
 
     useEffect(() => {
         if (!hasLiveRuns) {
@@ -194,115 +160,18 @@ export function AutomationRunsTable({
     return (
         <>
             <div className="min-w-0 overflow-hidden rounded-md border bg-background">
-                <div className="flex flex-col gap-3 border-b px-4 py-3 sm:flex-row sm:items-end sm:justify-between">
-                    <Stack spacing={1}>
-                        <Typography level="h5" component="h2">
-                            Izvršavanja
-                        </Typography>
-                        <Typography
-                            level="body3"
-                            className="text-muted-foreground"
-                        >
-                            Preskočena izvođenja su skrivena dok ih ne uključite
-                            filtrom.
-                        </Typography>
-                    </Stack>
-                    <SelectItems<AutomationRunStatusFilter>
-                        className="w-full sm:w-64"
-                        label="Status"
-                        value={currentStatusFilter}
-                        items={filterItems}
-                        searchable={false}
-                        onValueChange={updateStatusFilter}
-                    />
+                <div className="flex flex-col gap-3 border-b px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <Typography level="h5" component="h2">
+                        Izvršavanja
+                    </Typography>
+                    <AutomationRunStatusFilter statusOptions={statusOptions} />
                 </div>
-                {runs.length === 0 ? (
-                    <div className="p-4">
-                        <NoDataPlaceholder>
-                            Automatizacija nema izvođenja za odabrani filter.
-                        </NoDataPlaceholder>
-                    </div>
-                ) : (
-                    <ul className="divide-y">
-                        {runs.map(({ run, steps }) => (
-                            <li key={run.id}>
-                                <button
-                                    type="button"
-                                    aria-pressed={selectedRunId === run.id}
-                                    className={cx(
-                                        'grid w-full gap-3 p-4 text-left transition-colors hover:bg-muted/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
-                                        selectedRunId === run.id &&
-                                            'bg-muted/70',
-                                    )}
-                                    onClick={() => setSelectedRunId(run.id)}
-                                >
-                                    <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                                        <Stack spacing={1} className="min-w-0">
-                                            <Row
-                                                spacing={2}
-                                                className="flex-wrap items-center"
-                                            >
-                                                <AutomationRunStatusIndicator
-                                                    status={run.status}
-                                                />
-                                                {run.dryRun ? (
-                                                    <Chip
-                                                        size="sm"
-                                                        color="info"
-                                                        variant="soft"
-                                                    >
-                                                        Probno
-                                                    </Chip>
-                                                ) : null}
-                                            </Row>
-                                            <Typography
-                                                level="body3"
-                                                className="text-muted-foreground"
-                                            >
-                                                {steps.length} koraka
-                                            </Typography>
-                                        </Stack>
-                                        <Stack
-                                            spacing={1}
-                                            className="text-muted-foreground sm:items-end"
-                                        >
-                                            <LocalDateTime>
-                                                {run.createdAt}
-                                            </LocalDateTime>
-                                            <Typography level="body3">
-                                                {formatDuration(
-                                                    run.startedAt,
-                                                    run.completedAt,
-                                                )}
-                                            </Typography>
-                                        </Stack>
-                                    </div>
-
-                                    <dl className="grid gap-3 text-sm sm:grid-cols-3">
-                                        <ListDetailItem label="Tip eventa">
-                                            {run.sourceEventType ?? '-'}
-                                        </ListDetailItem>
-                                        <ListDetailItem label="Agregat">
-                                            {run.sourceAggregateId ?? '-'}
-                                        </ListDetailItem>
-                                        <ListDetailItem label="Pokušaj">
-                                            {run.attempt} / {run.maxAttempts}
-                                        </ListDetailItem>
-                                    </dl>
-
-                                    {run.errorMessage ? (
-                                        <Typography
-                                            level="body3"
-                                            className="break-words rounded-md bg-red-50 p-2 text-red-700 dark:bg-red-950 dark:text-red-300"
-                                        >
-                                            {run.errorMessage}
-                                        </Typography>
-                                    ) : null}
-                                </button>
-                            </li>
-                        ))}
-                    </ul>
-                )}
+                <AutomationRunsCompactTable
+                    rows={tableRows}
+                    emptyMessage="Automatizacija nema izvođenja za odabrani filter."
+                    selectedRunId={selectedRunId}
+                    onRunSelect={setSelectedRunId}
+                />
             </div>
 
             <AutomationSlidePanel

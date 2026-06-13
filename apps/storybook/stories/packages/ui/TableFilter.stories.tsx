@@ -66,6 +66,7 @@ export const MultipleFilters: Story = {
             {
                 key: 'status',
                 label: 'Status',
+                activeLabel: null,
                 icon: <Filter className="size-4" />,
                 options: [
                     { value: '', label: 'Svi statusi' },

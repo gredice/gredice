@@ -90,7 +90,7 @@ export async function listAutomationRunsPage({
     failedOnly?: boolean;
     limit?: number;
     offset?: number;
-    status?: AutomationRunStatus;
+    status?: AutomationRunStatus | AutomationRunStatus[];
 }): Promise<AutomationRunsPage> {
     const pageSize = normalizeLimit(limit);
     const rows = await listAutomationRuns({

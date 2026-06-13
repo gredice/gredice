@@ -3,6 +3,7 @@ import type {
     AutomationGraph,
     AutomationModuleKind,
     AutomationModuleMetadata,
+    AutomationRunSource,
     AutomationRunStatus,
     AutomationStepStatus,
 } from '@gredice/storage';
@@ -261,6 +262,21 @@ export function automationRunStatusMeta(status: AutomationRunStatus): {
             return { label: 'Ponavlja se', color: 'warning' };
         case 'canceled':
             return { label: 'Otkazana', color: 'neutral' };
+    }
+}
+
+export function automationRunSourceLabel(source: AutomationRunSource) {
+    switch (source) {
+        case 'event':
+            return 'Event';
+        case 'manual':
+            return 'Ručno';
+        case 'schedule':
+            return 'Raspored';
+        case 'test':
+            return 'Test';
+        case 'replay':
+            return 'Ponovljeno';
     }
 }
 

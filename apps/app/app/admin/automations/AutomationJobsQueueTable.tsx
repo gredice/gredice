@@ -1,70 +1,53 @@
 import { Button } from '@gredice/ui/Button';
 import { Card, CardHeader, CardOverflow, CardTitle } from '@gredice/ui/Card';
-import { Chip } from '@gredice/ui/Chip';
 import { LoaderSpinner } from '@gredice/ui/icons';
-import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import Link from 'next/link';
-import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { KnownPages } from '../../../src/KnownPages';
-import { AutomationRunStatusIndicator } from './AutomationStatusIndicator';
+import {
+    AutomationRunsCompactTable,
+    type AutomationRunsCompactTableRow,
+} from './AutomationRunsCompactTable';
+import { automationRunSourceLabel } from './presentation';
 import type { AutomationRunListItem } from './types';
 
-function sourceLabel(source: AutomationRunListItem['source']) {
-    switch (source) {
-        case 'event':
-            return 'Event';
-        case 'manual':
-            return 'Ručno';
-        case 'schedule':
-            return 'Raspored';
-        case 'test':
-            return 'Test';
-        case 'replay':
-            return 'Ponovljeno';
-    }
-}
-
-function DateTimeValue({ value }: { value: string | null }) {
-    if (!value) {
-        return <span>-</span>;
-    }
-
-    return <LocalDateTime>{value}</LocalDateTime>;
-}
-
-function QueueTiming({ run }: { run: AutomationRunListItem }) {
+function queueTiming(run: AutomationRunListItem) {
     if (run.status === 'queued' || run.status === 'retrying') {
-        return (
-            <>
-                Sljedeće <LocalDateTime>{run.nextRunAt}</LocalDateTime>
-            </>
-        );
+        return { timeLabel: 'Sljedeće', timeValue: run.nextRunAt };
     }
 
     if (run.status === 'running') {
-        return (
-            <>
-                Zaključano <DateTimeValue value={run.lockedAt} />
-            </>
-        );
+        return { timeLabel: 'Zaključano', timeValue: run.lockedAt };
     }
 
     if (run.completedAt) {
-        return (
-            <>
-                Završeno <LocalDateTime>{run.completedAt}</LocalDateTime>
-            </>
-        );
+        return { timeLabel: 'Završeno', timeValue: run.completedAt };
     }
 
-    return (
-        <>
-            Kreirano <LocalDateTime>{run.createdAt}</LocalDateTime>
-        </>
-    );
+    return { timeLabel: 'Kreirano', timeValue: run.createdAt };
+}
+
+function queueRunToTableRow(
+    run: AutomationRunListItem,
+): AutomationRunsCompactTableRow {
+    const timing = queueTiming(run);
+
+    return {
+        id: run.id,
+        title: `#${run.id} ${run.automationDefinitionName}`,
+        href: KnownPages.Automation(run.automationDefinitionId),
+        subtitle: run.automationDefinitionKey,
+        status: run.status,
+        dryRun: run.dryRun,
+        sourceLabel: automationRunSourceLabel(run.source),
+        sourceDetail: run.parentRunId ? `Roditelj #${run.parentRunId}` : null,
+        attempt: run.attempt,
+        maxAttempts: run.maxAttempts,
+        timeLabel: timing.timeLabel,
+        timeValue: timing.timeValue,
+        errorMessage: run.errorMessage,
+    };
 }
 
 export function AutomationJobsQueueList({
@@ -80,6 +63,8 @@ export function AutomationJobsQueueList({
     loadMore: () => void;
     runs: AutomationRunListItem[];
 }) {
+    const rows = runs.map(queueRunToTableRow);
+
     return (
         <Card className="h-full">
             <CardHeader>
@@ -106,76 +91,10 @@ export function AutomationJobsQueueList({
                 </div>
             </CardHeader>
             <CardOverflow>
-                {runs.length === 0 ? (
-                    <div className="p-4">
-                        <NoDataPlaceholder>
-                            Nema poslova za odabrane filtere.
-                        </NoDataPlaceholder>
-                    </div>
-                ) : (
-                    <ul className="divide-y">
-                        {runs.map((run) => (
-                            <li key={run.id} className="px-4 py-3">
-                                <div className="grid min-w-0 gap-1.5">
-                                    <div className="flex min-w-0 items-start justify-between gap-3">
-                                        <Link
-                                            href={KnownPages.Automation(
-                                                run.automationDefinitionId,
-                                            )}
-                                            className="min-w-0 truncate font-medium text-primary hover:underline"
-                                        >
-                                            #{run.id}{' '}
-                                            {run.automationDefinitionName}
-                                        </Link>
-                                        <div className="flex shrink-0 items-center gap-2">
-                                            <AutomationRunStatusIndicator
-                                                className="text-xs sm:text-sm"
-                                                status={run.status}
-                                            />
-                                            {run.dryRun ? (
-                                                <Chip
-                                                    size="sm"
-                                                    color="info"
-                                                    variant="soft"
-                                                >
-                                                    Probno
-                                                </Chip>
-                                            ) : null}
-                                        </div>
-                                    </div>
-
-                                    {run.errorMessage ? (
-                                        <Typography
-                                            level="body3"
-                                            className="line-clamp-2 rounded-md bg-red-50 p-2 text-red-700 dark:bg-red-950 dark:text-red-300"
-                                        >
-                                            {run.errorMessage}
-                                        </Typography>
-                                    ) : null}
-
-                                    <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                                        <span className="min-w-0 max-w-full truncate">
-                                            {run.automationDefinitionKey}
-                                        </span>
-                                        <span>{sourceLabel(run.source)}</span>
-                                        <span>
-                                            Pokušaj {run.attempt} /{' '}
-                                            {run.maxAttempts}
-                                        </span>
-                                        <span>
-                                            <QueueTiming run={run} />
-                                        </span>
-                                        {run.parentRunId ? (
-                                            <span>
-                                                Roditelj #{run.parentRunId}
-                                            </span>
-                                        ) : null}
-                                    </div>
-                                </div>
-                            </li>
-                        ))}
-                    </ul>
-                )}
+                <AutomationRunsCompactTable
+                    rows={rows}
+                    emptyMessage="Nema poslova za odabrane filtere."
+                />
 
                 {hasMore ? (
                     <div className="border-t p-4">
