@@ -356,16 +356,18 @@ test('notification settings explains required groups and hydrates saved preferen
     ).toBeVisible();
     await expect(page.getByText('Vrste obavijesti')).toBeVisible();
     await expect(
-        page.getByRole('checkbox', { name: /sigurnost računa/u }),
-    ).toHaveCount(0);
+        page.getByRole('switch', {
+            name: /Obavezna obavijest sigurnost računa/u,
+        }),
+    ).toBeChecked();
     await expect(
         page.getByText('Promotivne ponude i sezonske preporuke'),
     ).toBeVisible();
     await expect(
-        page.getByRole('checkbox', { name: 'Uključi podsjetnici i zadaci' }),
+        page.getByRole('switch', { name: 'Isključi podsjetnici i zadaci' }),
     ).toBeChecked();
     await expect(
-        page.getByRole('checkbox', { name: 'Ne ometaj' }),
+        page.getByRole('switch', { name: 'Isključi ne ometaj' }),
     ).toBeChecked();
     await expect(page.getByRole('textbox', { name: 'Od' })).toHaveValue(
         '22:00',
@@ -374,6 +376,49 @@ test('notification settings explains required groups and hydrates saved preferen
         '07:00',
     );
     await expect(page.getByText('Tjedno')).toBeVisible();
+});
+
+test('notification settings keeps switch thumbs inside their tracks', async ({
+    mount,
+    page,
+}) => {
+    await mockNotificationSettingsApi(page);
+    await page.evaluate(() =>
+        window.localStorage.setItem('game:push:device-id', 'current-device'),
+    );
+
+    await mount(<NotificationsTabStory />);
+    await page.getByRole('tab', { name: 'Postavke' }).click();
+
+    await expect(page.getByText('Vrste obavijesti')).toBeVisible();
+
+    const overflowingSwitches = await page
+        .locator('button[role="switch"]')
+        .evaluateAll((switches) =>
+            switches
+                .map((control) => {
+                    const thumb = control.querySelector('span');
+                    if (!thumb) {
+                        return null;
+                    }
+
+                    const controlRect = control.getBoundingClientRect();
+                    const thumbRect = thumb.getBoundingClientRect();
+                    const tolerance = 1;
+                    const isContained =
+                        thumbRect.left >= controlRect.left - tolerance &&
+                        thumbRect.right <= controlRect.right + tolerance &&
+                        thumbRect.top >= controlRect.top - tolerance &&
+                        thumbRect.bottom <= controlRect.bottom + tolerance;
+
+                    return isContained
+                        ? null
+                        : control.getAttribute('aria-label');
+                })
+                .filter(Boolean),
+        );
+
+    expect(overflowingSwitches).toEqual([]);
 });
 
 test('notification settings toggles the what is new widget', async ({
@@ -465,7 +510,7 @@ test('notification settings calls preference, device, and test notification APIs
     await expect(page.getByText('Ovaj uređaj')).toBeVisible();
     await expect(page.getByText('Chrome test browser')).toHaveCount(0);
     await page
-        .getByRole('checkbox', { name: 'Uključi radovi i berba u vrtu' })
+        .getByRole('switch', { name: 'Uključi radovi i berba u vrtu' })
         .click();
 
     await expect

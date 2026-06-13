@@ -61,3 +61,14 @@ export const WithDescription: Story = {
         label: 'Tihi nacin',
     },
 };
+
+export const InConstrainedRow: Story = {
+    render: () => (
+        <div className="flex w-64 items-center justify-between gap-4 rounded-md border p-3">
+            <span className="min-w-0 flex-1 text-sm">
+                Vrlo duga postavka koja ne smije izgurati prekidac izvan reda
+            </span>
+            <Switch aria-label="Ukljuci dugu postavku" defaultChecked />
+        </div>
+    ),
+};
