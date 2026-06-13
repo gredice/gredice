@@ -1459,6 +1459,68 @@ export const protectionOperationCoverRecipes = [
         ],
         showBackground: false,
     },
+    {
+        operationId: 'removeAgrotextileWhite',
+        operationLabel: 'Uklanjanje agrotekstila',
+        outputFileName: 'removeAgrotextileWhite.webp',
+        camera: {
+            position: [2.8, 2.2, 5],
+            target: [0.45, 0.25, 0.45],
+            zoom: 122,
+        },
+        assets: [
+            {
+                assetName: 'RaisedBed',
+                visibleNodeNames: raisedBedCompactNodes,
+                position: [0.49, -0.06, 0.46],
+                rotation: [0, 0.72, 0],
+                scale: 0.38,
+            },
+        ],
+        agrotextileCovers: [
+            {
+                id: 'folded-cloth-bottom',
+                position: [0.25, 0.1, 0.58],
+                rotation: [0.06, 0.72, -0.24],
+                width: 0.34,
+                depth: 0.18,
+                opacity: 0.82,
+            },
+            {
+                id: 'folded-cloth-top',
+                position: [0.2, 0.14, 0.54],
+                rotation: [0.08, 0.76, 0.18],
+                width: 0.28,
+                depth: 0.15,
+                opacity: 0.86,
+            },
+        ],
+        plants: [
+            {
+                id: 'revealed-plant-left',
+                plantType: 'lettuce',
+                generation: 5,
+                seed: 'operation-cover-remove-agrotextile-left',
+                position: [0.41, 0.08, 0.53],
+                rotation: [0, -0.3, 0],
+                scale: 0.34,
+                showFlowers: false,
+                showProduce: false,
+            },
+            {
+                id: 'revealed-plant-right',
+                plantType: 'basil',
+                generation: 6,
+                seed: 'operation-cover-remove-agrotextile-right',
+                position: [0.55, 0.09, 0.43],
+                rotation: [0, 0.4, 0],
+                scale: 0.34,
+                showFlowers: false,
+                showProduce: false,
+            },
+        ],
+        showBackground: false,
+    },
 ] satisfies readonly OperationCoverRecipe[];
 
 export const cuttingOperationCoverRecipes = [
