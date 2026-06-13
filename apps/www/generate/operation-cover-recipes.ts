@@ -571,6 +571,48 @@ export const cuttingOperationCoverRecipes = [
         ],
         showBackground: false,
     },
+    {
+        operationId: 'decapitation',
+        operationLabel: 'Dekapitacija',
+        outputFileName: 'decapitation.webp',
+        camera: {
+            position: [2.5, 2.1, 4.8],
+            target: [0.42, 0.42, 0.45],
+            zoom: 132,
+        },
+        plants: [
+            {
+                id: 'lower-stem',
+                plantType: 'tomato',
+                generation: 6,
+                seed: 'operation-cover-decapitation-lower',
+                position: [0.36, -0.03, 0.45],
+                scale: 0.8,
+                showFlowers: false,
+                showProduce: false,
+            },
+            {
+                id: 'separated-top',
+                plantType: 'tomato',
+                generation: 5,
+                seed: 'operation-cover-decapitation-top',
+                position: [0.48, 0.62, 0.42],
+                rotation: [0.42, 0.55, 0.38],
+                scale: 0.5,
+                showFlowers: false,
+                showProduce: false,
+            },
+        ],
+        assets: [
+            {
+                assetName: 'GardenScissors',
+                position: [0.49, 0.48, 0.41],
+                rotation: [0.05, -0.66, -0.88],
+                scale: 0.22,
+            },
+        ],
+        showBackground: false,
+    },
 ] satisfies readonly OperationCoverRecipe[];
 
 export const operationCoverRecipes = [
