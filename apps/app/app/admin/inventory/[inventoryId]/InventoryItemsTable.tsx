@@ -1,7 +1,7 @@
 'use client';
 
-import { Edit } from '@gredice/ui/icons';
-import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { Input } from '@gredice/ui/Input';
+import { Edit, Search } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Table } from '@gredice/ui/Table';
 import Link from 'next/link';
@@ -52,13 +52,30 @@ export function InventoryItemsTable({
     stateFilter?: InventoryStateFilter | '';
 }) {
     const [sort, setSort] = useState<SortState>(defaultSort);
-    const filteredItems = stateFilter
+    const [searchQuery, setSearchQuery] = useState('');
+    const stateFilteredItems = stateFilter
         ? items.filter((item) => getInventoryItemState(item) === stateFilter)
         : items;
+    const normalizedSearchQuery = normalizeSearchTerm(searchQuery);
+    const filteredItems = normalizedSearchQuery
+        ? stateFilteredItems.filter((item) =>
+              inventoryItemMatchesSearch(
+                  item,
+                  entityTypeName,
+                  normalizedSearchQuery,
+              ),
+          )
+        : stateFilteredItems;
     const sortedItems = [...filteredItems].sort((left, right) =>
         compareInventoryItems(left, right, sort),
     );
-    const columnCount = tracksSerialNumbers ? 6 : 5;
+    const columnCount = tracksSerialNumbers ? 5 : 4;
+    const emptyMessage =
+        items.length === 0
+            ? 'Nema stavki u zalihi. Dodajte prvu stavku.'
+            : stateFilteredItems.length === 0
+              ? 'Nema stavki za odabrano stanje zalihe.'
+              : 'Nema stavki za upisanu pretragu.';
 
     function handleSort(key: SortKey) {
         setSort((current) =>
@@ -108,84 +125,116 @@ export function InventoryItemsTable({
     }
 
     return (
-        <Table>
-            <Table.Header>
-                <Table.Row>
-                    {sortableHead('entity', 'Entitet')}
-                    {tracksSerialNumbers &&
-                        sortableHead('serialNumber', 'Serijski br.')}
-                    {sortableHead('quantity', 'Količina')}
-                    {sortableHead('notes', 'Bilješke')}
-                    {sortableHead('createdAt', 'Dodano')}
-                    <Table.Head />
-                </Table.Row>
-            </Table.Header>
-            <Table.Body>
-                {sortedItems.length === 0 && (
+        <>
+            <div className="border-b px-4 py-3">
+                <Input
+                    aria-label="Pretraži stavke po nazivu ili bilješkama"
+                    className="w-full md:min-w-80"
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Pretraži naziv ili bilješke"
+                    startDecorator={<Search className="ml-3 size-4 shrink-0" />}
+                    value={searchQuery}
+                />
+            </div>
+            <Table>
+                <Table.Header>
                     <Table.Row>
-                        <Table.Cell colSpan={columnCount}>
-                            <NoDataPlaceholder>
-                                {items.length === 0
-                                    ? 'Nema stavki u zalihi. Dodajte prvu stavku.'
-                                    : 'Nema stavki za odabrano stanje zalihe.'}
-                            </NoDataPlaceholder>
-                        </Table.Cell>
+                        {sortableHead('entity', 'Entitet')}
+                        {tracksSerialNumbers &&
+                            sortableHead('serialNumber', 'Serijski br.')}
+                        {sortableHead('quantity', 'Količina')}
+                        {sortableHead('notes', 'Bilješke')}
+                        <Table.Head />
                     </Table.Row>
-                )}
-                {sortedItems.map((item) => (
-                    <Table.Row key={item.id}>
-                        <Table.Cell>
-                            {item.entityId ? (
-                                <Link
-                                    href={KnownPages.DirectoryEntity(
-                                        entityTypeName,
-                                        item.entityId,
-                                    )}
-                                    className="text-primary hover:underline"
-                                >
-                                    {item.entityLabel ??
-                                        `${entityTypeName} ${item.entityId}`}
-                                </Link>
-                            ) : (
-                                '-'
+                </Table.Header>
+                <Table.Body>
+                    {sortedItems.length === 0 && (
+                        <Table.Row>
+                            <Table.Cell colSpan={columnCount}>
+                                <NoDataPlaceholder>
+                                    {emptyMessage}
+                                </NoDataPlaceholder>
+                            </Table.Cell>
+                        </Table.Row>
+                    )}
+                    {sortedItems.map((item) => (
+                        <Table.Row key={item.id}>
+                            <Table.Cell>
+                                {item.entityId ? (
+                                    <Link
+                                        href={KnownPages.DirectoryEntity(
+                                            entityTypeName,
+                                            item.entityId,
+                                        )}
+                                        className="text-primary hover:underline"
+                                    >
+                                        {inventoryItemName(
+                                            item,
+                                            entityTypeName,
+                                        )}
+                                    </Link>
+                                ) : (
+                                    '-'
+                                )}
+                            </Table.Cell>
+                            {tracksSerialNumbers && (
+                                <Table.Cell>
+                                    {item.serialNumber ?? '-'}
+                                </Table.Cell>
                             )}
-                        </Table.Cell>
-                        {tracksSerialNumbers && (
-                            <Table.Cell>{item.serialNumber ?? '-'}</Table.Cell>
-                        )}
-                        <Table.Cell>
-                            <InventoryQuantityValue
-                                quantity={item.quantity}
-                                lowCountThreshold={item.lowCountThreshold}
-                            />
-                        </Table.Cell>
-                        <Table.Cell>{item.notes ?? '-'}</Table.Cell>
-                        <Table.Cell>
-                            <LocalDateTime time={false}>
-                                {item.createdAt}
-                            </LocalDateTime>
-                        </Table.Cell>
-                        <Table.Cell>
-                            <Row spacing={2}>
-                                <Link
-                                    href={KnownPages.InventoryItem(
-                                        inventoryConfigId,
-                                        item.id,
-                                    )}
-                                >
-                                    <Edit className="size-4 text-muted-foreground hover:text-foreground" />
-                                </Link>
-                                <DeleteInventoryItemButton
-                                    inventoryConfigId={inventoryConfigId}
-                                    itemId={item.id}
+                            <Table.Cell>
+                                <InventoryQuantityValue
+                                    quantity={item.quantity}
+                                    lowCountThreshold={item.lowCountThreshold}
                                 />
-                            </Row>
-                        </Table.Cell>
-                    </Table.Row>
-                ))}
-            </Table.Body>
-        </Table>
+                            </Table.Cell>
+                            <Table.Cell>{item.notes ?? '-'}</Table.Cell>
+                            <Table.Cell>
+                                <Row spacing={2}>
+                                    <Link
+                                        href={KnownPages.InventoryItem(
+                                            inventoryConfigId,
+                                            item.id,
+                                        )}
+                                    >
+                                        <Edit className="size-4 text-muted-foreground hover:text-foreground" />
+                                    </Link>
+                                    <DeleteInventoryItemButton
+                                        inventoryConfigId={inventoryConfigId}
+                                        itemId={item.id}
+                                    />
+                                </Row>
+                            </Table.Cell>
+                        </Table.Row>
+                    ))}
+                </Table.Body>
+            </Table>
+        </>
     );
+}
+
+function inventoryItemMatchesSearch(
+    item: InventoryItemTableRow,
+    entityTypeName: string,
+    normalizedSearchQuery: string,
+) {
+    return [inventoryItemName(item, entityTypeName), item.notes].some((value) =>
+        normalizeSearchTerm(value).includes(normalizedSearchQuery),
+    );
+}
+
+function inventoryItemName(
+    item: InventoryItemTableRow,
+    entityTypeName: string,
+) {
+    return (
+        item.entityLabel ??
+        (item.entityId ? `${entityTypeName} ${item.entityId}` : '')
+    );
+}
+
+function normalizeSearchTerm(value: string | null) {
+    return value?.trim().toLocaleLowerCase('hr') ?? '';
 }
 
 function compareInventoryItems(
