@@ -12,6 +12,7 @@ export const PublicPagePaths = {
     Sowing: '/sjetva',
     Operations: '/radnje',
     FAQ: '/cesta-pitanja',
+    CompanionPlanting: '/biljni-susjedi',
     QualityHarvestSafety: '/kvaliteta-i-sigurnost-uroda',
     Contact: '/kontakt',
     Pricing: '/cjenik',

@@ -1,6 +1,9 @@
 import { PublicDirectoryPaths } from '@gredice/directory-types';
 import type { Route } from 'next';
-import { QUALITY_HARVEST_SAFETY_PATH } from './publicPagePaths';
+import {
+    COMPANION_PLANTING_PATH,
+    QUALITY_HARVEST_SAFETY_PATH,
+} from './publicPagePaths';
 
 // TODO: Deprecate KnownPages in favor of using route types directly
 export const KnownPages = {
@@ -36,6 +39,7 @@ export const KnownPages = {
     Recipe: (slug: string) => `/recepti/${encodeURIComponent(slug)}` as Route,
     AboutUs: '/o-nama',
     FAQ: PublicDirectoryPaths.FAQ as Route,
+    CompanionPlanting: COMPANION_PLANTING_PATH as Route,
     QualityHarvestSafety: QUALITY_HARVEST_SAFETY_PATH as Route,
     Contact: '/kontakt',
     Pricing: '/cjenik',

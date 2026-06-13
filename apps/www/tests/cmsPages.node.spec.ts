@@ -2,6 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { hasReservedFirstSegment } from '../app/[...slug]/cmsPageRouteUtils.ts';
 import {
+    COMPANION_PLANTING_PATH,
+    COMPANION_PLANTING_SLUG,
+    companionPlantingCmsPage,
     getSourceCmsPageBySlug,
     QUALITY_HARVEST_SAFETY_PATH,
     QUALITY_HARVEST_SAFETY_SLUG,
@@ -15,6 +18,43 @@ const bannedPublicClaimPhrases = [
     'ready-to-eat',
     'oprano i spremno za jelo',
 ];
+
+test('companion planting source CMS page is published and canonical', () => {
+    assert.equal(companionPlantingCmsPage.slug, COMPANION_PLANTING_SLUG);
+    assert.equal(companionPlantingCmsPage.state, 'published');
+    assert.equal(companionPlantingCmsPage.noIndex, false);
+    assert.equal(
+        companionPlantingCmsPage.canonicalPath,
+        COMPANION_PLANTING_PATH,
+    );
+    assert.ok(companionPlantingCmsPage.metaTitle);
+    assert.ok(companionPlantingCmsPage.metaDescription.length <= 160);
+    assert.ok(getSourceCmsPageBySlug(COMPANION_PLANTING_SLUG));
+});
+
+test('companion planting source CMS page has editable explanation sections', () => {
+    const components = companionPlantingCmsPage.content.map(
+        (section) => section.component,
+    );
+
+    assert.deepEqual(components, [
+        'PageHeader',
+        'TextBlock',
+        'Feature1',
+        'CalloutBlock',
+        'MarkdownBlock',
+        'Faq1',
+        'CtaBand',
+    ]);
+    assert.match(
+        JSON.stringify(companionPlantingCmsPage.content),
+        /Nije strogo pravilo niti jamstvo prinosa/u,
+    );
+    assert.match(
+        JSON.stringify(companionPlantingCmsPage.content),
+        /Kada se izvori razilaze/u,
+    );
+});
 
 test('quality harvest safety source CMS page is published and canonical', () => {
     assert.equal(qualityHarvestSafetyCmsPage.slug, QUALITY_HARVEST_SAFETY_SLUG);

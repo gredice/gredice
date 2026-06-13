@@ -6,6 +6,7 @@ export const KnownPages = {
         `https://www.gredice.com/biljke/${slugify(alias)}`,
     GredicePlantSort: (alias: string, sortAlias: string) =>
         `https://www.gredice.com/biljke/${slugify(alias)}/sorte/${slugify(sortAlias)}`,
+    GrediceCompanionPlanting: 'https://www.gredice.com/biljni-susjedi',
     GrediceOperations: 'https://www.gredice.com/radnje',
     GrediceOperation: (alias: string) =>
         `https://www.gredice.com/radnje/${slugify(alias)}`,

@@ -135,6 +135,13 @@ function sectionsData(linkMode: PublicChromeLinkMode): SectionData[] {
                             ),
                         },
                         {
+                            label: 'Biljni susjedi',
+                            href: publicChromeHref(
+                                PublicPagePaths.CompanionPlanting,
+                                linkMode,
+                            ),
+                        },
+                        {
                             label: 'Radnje',
                             href: publicChromeHref(
                                 PublicPagePaths.Operations,
