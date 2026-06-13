@@ -16,6 +16,7 @@ import {
     getDomainEventById,
     listAutomationRunSteps,
     maxAutomationMaxConcurrentRuns,
+    retryFailedAutomationRun,
     updateAutomationDefinition,
     validateAutomationGraph,
 } from '@gredice/storage';
@@ -574,6 +575,23 @@ async function runAutomationRunAgain({
             ok: false,
             errors: ['Samo neuspjela izvođenja mogu se ponovno pokrenuti.'],
         };
+    }
+
+    if (actionName === 'retry') {
+        const run = await retryFailedAutomationRun({
+            id: originalRun.id,
+            manualRequestedByUserId: userId,
+        });
+
+        if (!run) {
+            return {
+                ok: false,
+                errors: ['Ponovno pokretanje nije zakazano.'],
+            };
+        }
+
+        revalidateAutomationPages(originalRun.automationDefinitionId);
+        return { ok: true, runId: run.id, status: run.status };
     }
 
     const definition = await getAutomationDefinitionById(
