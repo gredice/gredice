@@ -53,6 +53,8 @@ const detailFontSize = 7.4;
 const bodyFontSize = 9;
 const labelLineHeight = 11.2;
 const detailLineHeight = 9;
+const logoWordmarkFontSize = 18.75;
+const logoWordmarkStrokeWidth = 0.16;
 
 const columns = [
     { key: 'number', label: '#', width: 28 },
@@ -105,6 +107,7 @@ class PdfCanvas {
         size,
         font = 'F1',
         color = colors.text,
+        strokeWidth,
     }: {
         x: number;
         y: number;
@@ -112,14 +115,25 @@ class PdfCanvas {
         size: number;
         font?: PdfFontKey;
         color?: PdfColor;
+        strokeWidth?: number;
     }) {
+        const strokeOperations =
+            strokeWidth !== undefined
+                ? [`${formatColor(color)} RG`, `${formatNumber(strokeWidth)} w`]
+                : [];
+        const textRenderingMode =
+            strokeWidth !== undefined ? `${formatNumber(2)} Tr` : null;
+
         this.operations.push(
             [
                 'q',
                 `${formatColor(color)} rg`,
+                ...strokeOperations,
                 `BT /${font} ${formatNumber(size)} Tf 1 0 0 1 ${formatNumber(
                     x,
-                )} ${formatNumber(y)} Tm (${escapePdfText(value)}) Tj ET`,
+                )} ${formatNumber(
+                    y,
+                )} Tm ${textRenderingMode ?? ''} (${escapePdfText(value)}) Tj ET`,
                 'Q',
             ].join(' '),
         );
@@ -348,14 +362,6 @@ function drawFirstPageHeader(page: PdfCanvas, data: InventoryPrintoutPdfData) {
         `${data.summary.emptyItems} / ${data.summary.lowItems} / ${data.summary.normalItems}`,
     );
 
-    page.line({
-        x1: margin,
-        y1: pageHeight - margin - 120,
-        x2: pageWidth - margin,
-        y2: pageHeight - margin - 120,
-        color: colors.line,
-    });
-
     return pageHeight - margin - 140;
 }
 
@@ -404,10 +410,10 @@ function drawLogo(page: PdfCanvas, x: number, y: number, scale = 1) {
 
     page.text({
         x: x + 35 * scale,
-        y: y + 8.2 * scale,
+        y: y + 3.9 * scale,
         value: 'Gredice',
-        size: 12 * scale,
-        font: 'F2',
+        size: logoWordmarkFontSize * scale,
+        strokeWidth: logoWordmarkStrokeWidth * scale,
         color: colors.brand,
     });
 }

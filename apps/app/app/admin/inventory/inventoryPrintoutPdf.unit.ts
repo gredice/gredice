@@ -37,6 +37,7 @@ test('generates an inventory worksheet PDF with printable inventory fields', () 
     assert.match(content, /^%PDF-1\.4/);
     assert.match(content, /\/MediaBox \[0 0 595\.28 841\.89\]/);
     assert.match(content, /Gredice/);
+    assert.match(content, /\/F1 18\.75 Tf .* 2 Tr \(Gredice\) Tj/);
     assert.doesNotMatch(content, /GREDICE/);
     assert.match(content, /INVENTURNI LIST/);
     assert.match(content, /Sjeme rajcice/);
