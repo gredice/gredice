@@ -1354,9 +1354,13 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                 } else if (typeof data?.plantSortId === 'string') {
                     plantSortId = parseInt(data.plantSortId, 10);
                 } else {
-                    console.error(
-                        `Invalid plantSortId in event ${event.id} for field ${field.id}`,
-                    );
+                    console.error('Invalid raised bed field plant sort ID', {
+                        eventId: event.id,
+                        fieldId: field.id,
+                        plantSortId: data?.plantSortId,
+                        positionIndex: field.positionIndex,
+                        raisedBedId: field.raisedBedId,
+                    });
                 }
                 sowingLocation =
                     parseSowingLocation(data?.sowingLocation) ?? 'direct';
@@ -1516,9 +1520,13 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                 plantSortId = undefined;
                 plantScheduledDate = undefined;
             } else {
-                console.warn(
-                    `Unhandled event type: ${event.type} for field ${field.id}`,
-                );
+                console.warn('Unhandled raised bed field event type', {
+                    eventId: event.id,
+                    eventType: event.type,
+                    fieldId: field.id,
+                    positionIndex: field.positionIndex,
+                    raisedBedId: field.raisedBedId,
+                });
             }
         }
 

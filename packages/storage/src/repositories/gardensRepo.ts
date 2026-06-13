@@ -410,9 +410,11 @@ export async function updateGardenStack(
         })
     )?.id;
     if (!stackId) {
-        console.warn(
-            `Stack not found for gardenId:${gardenId} at position x:${stacks.x} y:${stacks.y}`,
-        );
+        console.warn('Garden stack not found', {
+            gardenId,
+            x: stacks.x,
+            y: stacks.y,
+        });
         throw new Error('Stack not found');
     }
 

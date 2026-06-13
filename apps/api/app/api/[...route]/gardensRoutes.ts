@@ -680,7 +680,13 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     return diaryRescheduleErrorResponse(context, error);
                 }
 
-                console.error('Error rescheduling diary operation:', error);
+                console.error('Failed to reschedule diary operation', {
+                    accountId,
+                    error,
+                    gardenId: gardenIdNumber,
+                    operationId: operationIdNumber,
+                    scheduledDate,
+                });
                 return context.json(
                     { error: 'Failed to reschedule operation' },
                     500,
@@ -735,7 +741,13 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     return diaryCancelErrorResponse(context, error);
                 }
 
-                console.error('Error canceling diary operation:', error);
+                console.error('Failed to cancel diary operation', {
+                    accountId,
+                    error,
+                    gardenId: gardenIdNumber,
+                    operationId: operationIdNumber,
+                    userId,
+                });
                 return context.json(
                     { error: 'Failed to cancel operation' },
                     500,
@@ -2944,10 +2956,14 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     return diaryRescheduleErrorResponse(context, error);
                 }
 
-                console.error(
-                    'Error rescheduling diary raised bed field:',
+                console.error('Failed to reschedule diary raised bed field', {
+                    accountId,
                     error,
-                );
+                    gardenId: gardenIdNumber,
+                    positionIndex: positionIndexNumber,
+                    raisedBedId: raisedBedIdNumber,
+                    scheduledDate,
+                });
                 return context.json(
                     { error: 'Failed to reschedule raised bed field' },
                     500,
@@ -3004,7 +3020,14 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     return diaryCancelErrorResponse(context, error);
                 }
 
-                console.error('Error canceling diary raised bed field:', error);
+                console.error('Failed to cancel diary raised bed field', {
+                    accountId,
+                    error,
+                    gardenId: gardenIdNumber,
+                    positionIndex: positionIndexNumber,
+                    raisedBedId: raisedBedIdNumber,
+                    userId,
+                });
                 return context.json(
                     { error: 'Failed to cancel raised bed field' },
                     500,
