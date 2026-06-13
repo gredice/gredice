@@ -28,7 +28,7 @@ export function PlantCalendarPicker({
                 {hasCalendarData ? (
                     <Tabs defaultValue="year">
                         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-                            <TabsList className="grid w-full min-w-0 max-w-full grid-cols-2 overflow-hidden">
+                            <TabsList className="grid w-fit min-w-0 max-w-full grid-cols-2 overflow-hidden">
                                 <TabsTrigger
                                     value="year"
                                     className="flex min-w-0 gap-1 overflow-hidden px-2"
