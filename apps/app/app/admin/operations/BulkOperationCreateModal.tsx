@@ -4,8 +4,8 @@ import { Button } from '@gredice/ui/Button';
 import { Input } from '@gredice/ui/Input';
 import { Modal } from '@gredice/ui/Modal';
 import { Stack } from '@gredice/ui/Stack';
+import { Switch } from '@gredice/ui/Switch';
 import { Typography } from '@gredice/ui/Typography';
-import { cx } from '@gredice/ui/utils';
 import { useActionState, useEffect, useMemo, useRef, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { getEntities } from '../../../components/shared/attributes/actions/entitiesActions';
@@ -166,33 +166,11 @@ export function BulkOperationCreateModal({
                         <span className="text-sm font-medium">
                             Odobri odmah
                         </span>
-                        <button
-                            type="button"
-                            role="switch"
-                            aria-checked={approveOnCreate}
+                        <Switch
                             aria-label="Odobri odmah"
-                            onClick={() =>
-                                setApproveOnCreate((current) => !current)
-                            }
-                            className={cx(
-                                'relative flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                                approveOnCreate
-                                    ? 'border-primary/60 bg-primary'
-                                    : 'border-border bg-muted/70 hover:bg-muted',
-                            )}
-                        >
-                            <span
-                                className={cx(
-                                    'inline-block size-5 rounded-full shadow-xs transition-transform',
-                                    approveOnCreate
-                                        ? 'translate-x-5 bg-primary-foreground'
-                                        : 'translate-x-0.5 bg-muted-foreground',
-                                )}
-                            />
-                            <span className="sr-only">
-                                {approveOnCreate ? 'Da' : 'Ne'}
-                            </span>
-                        </button>
+                            checked={approveOnCreate}
+                            onCheckedChange={setApproveOnCreate}
+                        />
                     </div>
                     <input
                         type="hidden"

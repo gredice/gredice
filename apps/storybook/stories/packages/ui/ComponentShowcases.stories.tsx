@@ -147,6 +147,7 @@ import { Spinner } from '@gredice/ui/Spinner';
 import { SplitView } from '@gredice/ui/SplitView';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
+import { Switch } from '@gredice/ui/Switch';
 import { Table } from '@gredice/ui/Table';
 import {
     type FilterOption,
@@ -750,6 +751,10 @@ function OperationsDashboardShowcase() {
                                     <Checkbox
                                         checked="indeterminate"
                                         label="Djelomicno odabrane zone"
+                                    />
+                                    <Switch
+                                        defaultChecked
+                                        label="Obavijesti o promjenama"
                                     />
                                     <ControlledSlider />
                                 </Stack>
