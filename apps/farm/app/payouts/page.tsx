@@ -160,6 +160,7 @@ async function PayoutsContent({ selectedFarmId }: { selectedFarmId?: number }) {
     ]);
 
     const totalEarned = balance.totalEarned;
+    const totalOperationEarned = balance.totalOperationEarned;
     const totalAdjustment = balance.totalAdjustment;
     const totalPaid = balance.totalPaid;
     const totalPending = balance.totalPending;
@@ -176,7 +177,9 @@ async function PayoutsContent({ selectedFarmId }: { selectedFarmId?: number }) {
         0,
     );
     const minuteWage =
-        totalDurationMinutes > 0 ? totalEarned / totalDurationMinutes : null;
+        totalDurationMinutes > 0
+            ? totalOperationEarned / totalDurationMinutes
+            : null;
     const hourlyWage = minuteWage === null ? null : minuteWage * 60;
 
     const farmWithBalance = selectedFarm;
