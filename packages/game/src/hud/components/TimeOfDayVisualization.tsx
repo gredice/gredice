@@ -10,6 +10,12 @@ import {
 } from 'react';
 import { clampTimeOfDay } from '../../utils/timeOfDay';
 
+const COMPACT_VIEWBOX_X_INSET = 6;
+const DEFAULT_VIEWBOX = '0 0 100 32';
+const COMPACT_VIEWBOX = `-${COMPACT_VIEWBOX_X_INSET} 0 ${
+    100 + COMPACT_VIEWBOX_X_INSET * 2
+} 32`;
+
 function formatTimeOfDayLabel(timeOfDay: number) {
     const totalMinutes = Math.round(clampTimeOfDay(timeOfDay) * 24 * 60);
     if (totalMinutes >= 24 * 60) {
@@ -84,6 +90,7 @@ export function TimeOfDayVisualization({
     const dayArcId = `${generatedId}-dayArc`;
     const nightArcId = `${generatedId}-nightArc`;
     const sunGlowId = `${generatedId}-sunGlow`;
+    const viewBox = compact ? COMPACT_VIEWBOX : DEFAULT_VIEWBOX;
 
     const updateFromPointer = useCallback(
         (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -164,7 +171,7 @@ export function TimeOfDayVisualization({
         <svg
             aria-hidden="true"
             className="h-full w-full overflow-visible"
-            viewBox="0 0 100 32"
+            viewBox={viewBox}
         >
             <defs>
                 <linearGradient id={dayArcId} x1="20%" x2="80%">
@@ -246,6 +253,7 @@ export function TimeOfDayVisualization({
             />
             <g
                 className="transition-transform duration-100 ease-out"
+                data-time-of-day-marker="true"
                 transform={`translate(${point.x}, ${point.y})`}
             >
                 {isDaytime ? (

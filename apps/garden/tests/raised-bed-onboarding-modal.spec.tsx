@@ -69,10 +69,10 @@ test('raised-bed onboarding uses a near full-screen desktop modal', async ({
         height: document.documentElement.clientHeight,
         width: document.documentElement.clientWidth,
     }));
+    await expect
+        .poll(async () => Math.round((await dialog.boundingBox())?.width ?? 0))
+        .toBeGreaterThanOrEqual(layoutViewport.width - 80);
     const dialogBox = await dialog.boundingBox();
-    expect(Math.round(dialogBox?.width ?? 0)).toBeGreaterThanOrEqual(
-        layoutViewport.width - 80,
-    );
     expect(dialogBox?.height).toBeGreaterThan(700);
 
     const actions = page.locator('[data-raised-bed-onboarding-actions="true"]');
