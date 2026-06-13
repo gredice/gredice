@@ -52,6 +52,7 @@ type NotificationDeviceListItem = {
     deviceLabel?: string | null;
     enabled: boolean;
     id: string;
+    permissionState?: string | null;
     platform?: string | null;
     userAgent?: string | null;
 };
@@ -467,20 +468,15 @@ export function NotificationsTab({
     const deviceMutationBusy = updateDeviceMutation.isPending;
     const testNotificationResult = sendTestMutation.data;
     const currentPushDeviceId = readCurrentPushDeviceId();
-    const currentNotificationDevice =
-        (currentPushDeviceId
-            ? devicesQuery.data?.find(
-                  (device) => device.deviceId === currentPushDeviceId,
-              )
-            : undefined) ??
-        devicesQuery.data?.find((device) =>
-            device.deviceLabel?.startsWith('Ovaj uređaj'),
-        ) ??
-        devicesQuery.data?.find((device) => device.enabled) ??
-        devicesQuery.data?.[0];
+    const currentNotificationDevice = currentPushDeviceId
+        ? devicesQuery.data?.find(
+              (device) => device.deviceId === currentPushDeviceId,
+          )
+        : undefined;
     const currentDeviceNotificationsEnabled =
-        pushStatusQuery.data?.status === 'subscribed';
-    const currentDeviceStatusLabel = pushStatusQuery.isPending
+        Boolean(currentNotificationDevice?.enabled) &&
+        currentNotificationDevice?.permissionState !== 'denied';
+    const currentDeviceStatusLabel = devicesQuery.isPending
         ? 'Učitavanje'
         : currentDeviceNotificationsEnabled
           ? 'Uključeno'
@@ -491,21 +487,17 @@ export function NotificationsTab({
         pushOnboarding.status !== 'unconfigured';
     const currentDeviceToggleDisabled =
         pushStatusQuery.isPending ||
+        devicesQuery.isPending ||
+        devicesQuery.isError ||
         pushStatusQuery.isError ||
         deviceMutationBusy ||
-        (currentDeviceNotificationsEnabled
-            ? !currentNotificationDevice
-            : !canRequestPush);
+        (!currentNotificationDevice && !canRequestPush);
 
     function handleCurrentDeviceToggle() {
-        if (currentDeviceNotificationsEnabled) {
-            if (!currentNotificationDevice) {
-                return;
-            }
-
+        if (currentNotificationDevice) {
             updateDeviceMutation.mutate({
                 id: currentNotificationDevice.id,
-                payload: { enabled: false },
+                payload: { enabled: !currentDeviceNotificationsEnabled },
             });
             return;
         }

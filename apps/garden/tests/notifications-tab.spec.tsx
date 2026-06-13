@@ -73,6 +73,7 @@ const defaultPreferences = [
 const defaultDevices = [
     {
         createdAt: '2026-05-20T08:00:00.000Z',
+        deviceId: 'current-device',
         deviceLabel: 'Ovaj uređaj (MacIntel)',
         enabled: true,
         id: 'device-1',
@@ -397,6 +398,25 @@ test('notification settings toggles the what is new widget', async ({
     });
 });
 
+test('notification settings keeps current device off without a local device id', async ({
+    mount,
+    page,
+}) => {
+    const recorded = await mockNotificationSettingsApi(page);
+
+    await mount(<NotificationsTabStory />);
+    await page.getByRole('tab', { name: 'Postavke' }).click();
+
+    const currentDeviceSwitch = page.getByRole('switch', {
+        name: 'Uključi obavijesti na ovom uređaju',
+    });
+    await expect(currentDeviceSwitch).toHaveAttribute('aria-checked', 'false');
+    await expect(
+        page.getByRole('switch', { name: 'Isključi Ovaj uređaj' }),
+    ).toHaveAttribute('aria-checked', 'true');
+    await expect.poll(() => recorded.devicePatches.length).toBe(0);
+});
+
 test('notification settings shows endpoint errors without hiding the settings tab', async ({
     mount,
     page,
@@ -435,6 +455,9 @@ test('notification settings calls preference, device, and test notification APIs
     page,
 }) => {
     const recorded = await mockNotificationSettingsApi(page);
+    await page.evaluate(() =>
+        window.localStorage.setItem('game:push:device-id', 'current-device'),
+    );
 
     await mount(<NotificationsTabStory />);
     await page.getByRole('tab', { name: 'Postavke' }).click();
