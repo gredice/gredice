@@ -83,6 +83,55 @@ export const waterOperationCoverRecipes = [
         ],
         showBackground: false,
     },
+    {
+        operationId: 'watterRaisedBed',
+        operationLabel: 'Zalijevanje gredice (50L)',
+        outputFileName: 'watterRaisedBed.webp',
+        camera: {
+            position: [2.8, 2.2, 5],
+            target: [0.45, 0.25, 0.45],
+            zoom: 102,
+        },
+        assets: [
+            {
+                assetName: 'RaisedBed',
+                visibleNodeNames: raisedBedCompactNodes,
+                position: [0.45, -0.06, 0.45],
+                rotation: [0, 0.72, 0],
+                scale: 0.4,
+            },
+            {
+                id: 'bucket-left',
+                assetName: 'Bucket',
+                position: [0.22, 0.05, 0.25],
+                rotation: [0, 0.35, 0],
+                scale: 0.18,
+            },
+            {
+                id: 'bucket-right',
+                assetName: 'Bucket',
+                position: [0.66, 0.05, 0.34],
+                rotation: [0, -0.45, 0],
+                scale: 0.18,
+            },
+            {
+                id: 'bucket-front',
+                assetName: 'Bucket',
+                position: [0.35, 0.05, 0.62],
+                rotation: [0, 0.1, 0],
+                scale: 0.18,
+            },
+            {
+                id: 'water-glints',
+                assetName: 'WaterSprayKit',
+                visibleNodeNames: waterSprayDropletNodes,
+                position: [0.43, 0.2, 0.48],
+                rotation: [0.15, 0.2, -0.3],
+                scale: 0.24,
+            },
+        ],
+        showBackground: false,
+    },
 ] satisfies readonly OperationCoverRecipe[];
 
 export const operationCoverRecipes = [
