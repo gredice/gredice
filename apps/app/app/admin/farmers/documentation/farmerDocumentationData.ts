@@ -558,6 +558,7 @@ function toDocumentationOperation(
             ['Kod', getFarmerDocumentationCode('operation', operation.id)],
             ['Vrsta', documentationEntityConfig.operation.documentTypeLabel],
             ['Trajanje', operationDurationLabel(operation)],
+            ['Cijena', operationPriceLabel(operation)],
             ['Dokaz fotografijom', operationPhotoProofLabel(operation)],
             [
                 'Promjena',
@@ -680,6 +681,15 @@ function operationDurationLabel(operation: EntityStandardized) {
         return `${hours} h`;
     }
     return `${minutes} min`;
+}
+
+function operationPriceLabel(operation: EntityStandardized) {
+    const price = operation.prices?.perOperation;
+    if (typeof price !== 'number' || !Number.isFinite(price)) {
+        return 'Nije definirano';
+    }
+
+    return `${price.toFixed(2).replace('.', ',')} EUR`;
 }
 
 function operationPhotoProofLabel(operation: EntityStandardized) {
@@ -1172,8 +1182,15 @@ function revisionActionSummary(
 }
 
 function compareDocumentationPage(
-    left: { code: string },
-    right: { code: string },
+    left: { code: string; label: string },
+    right: { code: string; label: string },
 ) {
+    const labelComparison = left.label.localeCompare(right.label, 'hr', {
+        numeric: true,
+    });
+    if (labelComparison !== 0) {
+        return labelComparison;
+    }
+
     return left.code.localeCompare(right.code, 'hr', { numeric: true });
 }

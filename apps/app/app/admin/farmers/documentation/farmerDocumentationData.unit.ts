@@ -4,6 +4,7 @@ import type { EntityStandardized } from '@gredice/storage';
 import {
     buildFarmerDocumentationPackage,
     type FarmerDocumentationRevision,
+    includedDocumentationPages,
 } from './farmerDocumentationData';
 import { generateFarmerDocumentationPdf } from './farmerDocumentationPdf';
 
@@ -19,10 +20,15 @@ test('builds insert, replace, and discard instructions from manual revisions', (
             plantSort: new Set([20]),
         },
         operations: [
-            operationFixture(4, 'Zalijevanje', {
-                duration: 25,
-                application: 'raisedBedFull',
-            }),
+            operationFixture(
+                4,
+                'Zalijevanje',
+                {
+                    duration: 25,
+                    application: 'raisedBedFull',
+                },
+                { perOperation: 2.5 },
+            ),
             operationFixture(8, 'Čišćenje gredice', {
                 duration: 40,
                 frequency: 'required',
@@ -91,6 +97,7 @@ test('builds insert, replace, and discard instructions from manual revisions', (
             }),
         ],
     });
+    const pagesByHeader = includedDocumentationPages(documentationPackage);
 
     assert.equal(documentationPackage.totalOperations, 2);
     assert.equal(documentationPackage.totalPlantSorts, 1);
@@ -110,6 +117,16 @@ test('builds insert, replace, and discard instructions from manual revisions', (
             plantSort.changeType,
         ]),
         [['PS-0014', 'insert']],
+    );
+    assert.deepEqual(
+        pagesByHeader.map((page) => page.code),
+        ['PS-0014', 'OP-0008', 'OP-0004'],
+    );
+    assert.deepEqual(
+        documentationPackage.includedOperations[0]?.summaryRows.find(
+            (row) => row.label === 'Cijena',
+        ),
+        { label: 'Cijena', value: '2,50 EUR' },
     );
     assert.deepEqual(
         documentationPackage.discardedOperations.map((operation) => [
@@ -136,10 +153,15 @@ test('generates a guide-first PDF without page numbering text', () => {
             plantSort: new Set(),
         },
         operations: [
-            operationFixture(4, 'Zalijevanje', {
-                duration: 25,
-                application: 'raisedBedFull',
-            }),
+            operationFixture(
+                4,
+                'Zalijevanje',
+                {
+                    duration: 25,
+                    application: 'raisedBedFull',
+                },
+                { perOperation: 2.5 },
+            ),
         ],
         plantSorts: [
             plantSortFixture(14, 'Cherry rajčica', {
@@ -172,6 +194,10 @@ test('generates a guide-first PDF without page numbering text', () => {
     assert.match(content, /PS-0014/);
     assert.match(content, /Zalijevanje/);
     assert.match(content, /Cherry rajcica/);
+    assert.match(content, /CIJENA/);
+    assert.match(content, /2,50 EUR/);
+    assert.match(content, /abecedno prije OP-0004 - Zalijevanje/);
+    assert.match(content, /2 Tr \(Gredice\)/);
     assert.doesNotMatch(content, /Stranica \d/);
 });
 
@@ -179,6 +205,7 @@ function operationFixture(
     id: number,
     label: string,
     attributes: EntityStandardized['attributes'],
+    prices?: EntityStandardized['prices'],
 ): EntityStandardized {
     return {
         id,
@@ -189,6 +216,7 @@ function operationFixture(
             instructions: '1. Provjeri gredicu.\n2. Odradi radnju.',
         },
         attributes,
+        ...(prices === undefined ? {} : { prices }),
         conditions: {
             completionAttachImages: true,
             completionAttachImagesRequired: false,
