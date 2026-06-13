@@ -39,6 +39,7 @@ import {
     scheduleHideShoppingCartTransientHub,
     showShoppingCartTransientHub,
 } from '../../hooks/useShoppingCartTransientHub';
+import { KnownPages } from '../../knownPages';
 import { PlantsList } from './PlantsList';
 import { PlantsSortList } from './PlantsSortList';
 import {
@@ -506,6 +507,16 @@ export function PlantPicker({
                     <Typography level="body2">
                         {steps[currentStep].subHeader}
                     </Typography>
+                    {neighborPlants.length > 0 && (
+                        <Button
+                            className="self-start px-0"
+                            href={KnownPages.GrediceCompanionPlanting}
+                            size="sm"
+                            variant="link"
+                        >
+                            Kako čitati biljne susjede
+                        </Button>
+                    )}
                 </Stack>
                 {currentStep < 1 && (
                     <Input

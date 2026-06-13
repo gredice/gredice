@@ -5,6 +5,7 @@ import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import Link from 'next/link';
 import { KnownPages } from '../../../src/KnownPages';
 
 type PlantRelationship = NonNullable<
@@ -117,6 +118,13 @@ export function PlantRelationshipsSection({
                 id={slug('Biljni susjedi')}
             >
                 Biljni susjedi
+            </Typography>
+            <Typography level="body2" secondary>
+                Biljni susjedi su smjernice za planiranje blizine biljaka.{' '}
+                <Link className="underline" href={KnownPages.CompanionPlanting}>
+                    Saznaj kako ih čitati
+                </Link>
+                .
             </Typography>
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <PlantRelationshipGroup

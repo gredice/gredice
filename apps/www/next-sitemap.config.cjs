@@ -20,7 +20,7 @@ function normalizeSitemapPath(path) {
     return search ? `${normalizedPathname}?${search}` : normalizedPathname;
 }
 
-const sourceCmsPagePaths = ['/kvaliteta-i-sigurnost-uroda'];
+const sourceCmsPagePaths = ['/biljni-susjedi', '/kvaliteta-i-sigurnost-uroda'];
 const staticNewsPaths = ['/novosti', '/novosti/sto-je-novo'];
 
 async function addNewsFeedPaths({ baseUrl, sitemapPaths }) {
