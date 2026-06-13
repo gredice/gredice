@@ -12,6 +12,7 @@ import { Card, CardContent } from '@gredice/ui/Card';
 import { Add } from '@gredice/ui/icons';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import { redirect } from 'next/navigation';
 import { AdminPageHeader } from '../../../components/admin/navigation';
 import { auth } from '../../../lib/auth/auth';
 import { KnownPages } from '../../../src/KnownPages';
@@ -35,6 +36,7 @@ import {
 export const dynamic = 'force-dynamic';
 
 type AutomationsSearchParams = {
+    failedOnly?: string | string[];
     status?: string | string[];
     triggerEventType?: string | string[];
     runStatus?: string | string[];
@@ -42,6 +44,42 @@ type AutomationsSearchParams = {
 
 function firstParam(value: string | string[] | undefined) {
     return Array.isArray(value) ? value[0] : value;
+}
+
+function appendSearchParam(
+    searchParams: URLSearchParams,
+    key: string,
+    value: string | string[] | undefined,
+) {
+    if (Array.isArray(value)) {
+        value.forEach((item) => {
+            searchParams.append(key, item);
+        });
+        return;
+    }
+
+    if (value !== undefined) {
+        searchParams.set(key, value);
+    }
+}
+
+function legacyFailedOnlyRedirectUrl(params: AutomationsSearchParams) {
+    if (firstParam(params.failedOnly) !== '1') {
+        return null;
+    }
+
+    const searchParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+        if (key === 'failedOnly' || key === 'runStatus') {
+            return;
+        }
+
+        appendSearchParam(searchParams, key, value);
+    });
+    searchParams.set('runStatus', 'failed');
+
+    const query = searchParams.toString();
+    return `/admin/automations${query ? `?${query}` : ''}`;
 }
 
 function parseDefinitionStatusFilter(
@@ -63,10 +101,15 @@ export default async function AutomationsPage({
 }: {
     searchParams: Promise<AutomationsSearchParams>;
 }) {
+    const params = await searchParams;
+    const redirectUrl = legacyFailedOnlyRedirectUrl(params);
+    if (redirectUrl) {
+        redirect(redirectUrl);
+    }
+
     await auth(['admin']);
     await ensureDefaultAutomationDefinitions();
 
-    const params = await searchParams;
     const definitionStatusFilter = parseDefinitionStatusFilter(params.status);
     const definitionStatus =
         definitionStatusFilter === 'all' ? undefined : definitionStatusFilter;
