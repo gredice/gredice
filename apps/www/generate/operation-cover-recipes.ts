@@ -621,6 +621,46 @@ export const inventoryOperationCoverRecipes = [
         ],
         showBackground: false,
     },
+    {
+        operationId: 'inventoryPlantSupports',
+        operationLabel: 'Inventura potpornja',
+        outputFileName: 'inventoryPlantSupports.webp',
+        camera: {
+            position: [2.7, 2.1, 4.8],
+            target: [0.45, 0.25, 0.45],
+            zoom: 140,
+        },
+        assets: [
+            {
+                id: 'support-left',
+                assetName: 'Stick',
+                position: [0.3, 0.11, 0.48],
+                rotation: [0.14, 0.2, -0.62],
+                scale: [0.06, 0.38, 0.06],
+            },
+            {
+                id: 'support-center',
+                assetName: 'Stick',
+                position: [0.39, 0.12, 0.44],
+                rotation: [0.1, -0.1, -0.46],
+                scale: [0.06, 0.4, 0.06],
+            },
+            {
+                id: 'support-right',
+                assetName: 'Stick',
+                position: [0.48, 0.11, 0.47],
+                rotation: [0.14, -0.4, -0.3],
+                scale: [0.06, 0.36, 0.06],
+            },
+            {
+                assetName: 'FieldworkClipboard',
+                position: [0.7, 0.22, 0.34],
+                rotation: [0.18, -0.55, -0.22],
+                scale: 0.16,
+            },
+        ],
+        showBackground: false,
+    },
 ] satisfies readonly OperationCoverRecipe[];
 
 export const cuttingOperationCoverRecipes = [
