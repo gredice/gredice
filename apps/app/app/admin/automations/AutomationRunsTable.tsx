@@ -11,14 +11,12 @@ import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import { useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
+import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { AutomationRunStatusFilter } from './AutomationRunStatusFilter';
-import {
-    AutomationRunsCompactTable,
-    type AutomationRunsCompactTableRow,
-} from './AutomationRunsCompactTable';
 import { AutomationSlidePanel } from './AutomationSlidePanel';
 import {
     AutomationRunStatusIndicator,
@@ -26,6 +24,10 @@ import {
     isAutomationRunLive,
 } from './AutomationStatusIndicator';
 import { AutomationRunRetryControls } from './AutomationTestPanel';
+import {
+    automationRunDurationIsLive,
+    automationRunDurationTiming,
+} from './automationRunDuration';
 import {
     automationModuleKindLabel,
     automationRunStatusMeta,
@@ -43,9 +45,11 @@ export type AutomationRunsTableRun = {
         input: AutomationJsonObject;
         output: AutomationJsonObject;
         errorMessage: string | null;
+        lockedAt: string | null;
         startedAt: string | null;
         completedAt: string | null;
         createdAt: string;
+        updatedAt: string;
     };
     steps: Array<{
         id: number;
@@ -61,21 +65,6 @@ export type AutomationRunsTableRun = {
         createdAt: string;
     }>;
 };
-
-function formatDuration(startedAt: string | null, completedAt: string | null) {
-    if (!startedAt || !completedAt) {
-        return '-';
-    }
-
-    const startedAtMs = new Date(startedAt).getTime();
-    const completedAtMs = new Date(completedAt).getTime();
-
-    if (Number.isNaN(startedAtMs) || Number.isNaN(completedAtMs)) {
-        return '-';
-    }
-
-    return `${Math.max(0, completedAtMs - startedAtMs)} ms`;
-}
 
 function JsonPreview({ value }: { value: unknown }) {
     return (
@@ -108,6 +97,47 @@ function DetailItem({
     );
 }
 
+function ListDetailItem({
+    children,
+    label,
+}: {
+    children: ReactNode;
+    label: string;
+}) {
+    return (
+        <div className="min-w-0">
+            <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                {label}
+            </dt>
+            <dd className="mt-1 min-w-0 break-words">{children}</dd>
+        </div>
+    );
+}
+
+function useLiveDurationNow(runs: AutomationRunsTableRun[]) {
+    const hasLiveDurations = useMemo(
+        () => runs.some(({ run }) => automationRunDurationIsLive(run.status)),
+        [runs],
+    );
+    const [nowMs, setNowMs] = useState<number | null>(null);
+
+    useEffect(() => {
+        if (!hasLiveDurations) {
+            setNowMs(null);
+            return;
+        }
+
+        const updateNow = () => setNowMs(Date.now());
+        updateNow();
+
+        const intervalId = window.setInterval(updateNow, 1000);
+
+        return () => window.clearInterval(intervalId);
+    }, [hasLiveDurations]);
+
+    return nowMs;
+}
+
 export function AutomationRunsTable({
     runs,
     statusOptions,
@@ -125,25 +155,7 @@ export function AutomationRunsTable({
         () => runs.some(({ run }) => isAutomationRunLive(run.status)),
         [runs],
     );
-    const tableRows = useMemo<AutomationRunsCompactTableRow[]>(
-        () =>
-            runs.map(({ run, steps }) => ({
-                id: run.id,
-                title: `#${run.id}`,
-                subtitle: `${steps.length} koraka`,
-                status: run.status,
-                dryRun: run.dryRun,
-                sourceLabel: run.sourceEventType,
-                sourceDetail: run.sourceAggregateId,
-                attempt: run.attempt,
-                maxAttempts: run.maxAttempts,
-                timeLabel: 'Kreirano',
-                timeValue: run.createdAt,
-                secondaryTime: formatDuration(run.startedAt, run.completedAt),
-                errorMessage: run.errorMessage,
-            })),
-        [runs],
-    );
+    const nowMs = useLiveDurationNow(runs);
 
     useEffect(() => {
         if (!hasLiveRuns) {
@@ -166,12 +178,114 @@ export function AutomationRunsTable({
                     </Typography>
                     <AutomationRunStatusFilter statusOptions={statusOptions} />
                 </div>
-                <AutomationRunsCompactTable
-                    rows={tableRows}
-                    emptyMessage="Automatizacija nema izvođenja za odabrani filter."
-                    selectedRunId={selectedRunId}
-                    onRunSelect={setSelectedRunId}
-                />
+                {runs.length === 0 ? (
+                    <div className="p-4">
+                        <NoDataPlaceholder>
+                            Automatizacija nema izvođenja za odabrani filter.
+                        </NoDataPlaceholder>
+                    </div>
+                ) : (
+                    <ul className="divide-y">
+                        {runs.map(({ run, steps }) => {
+                            const timing = automationRunDurationTiming(
+                                run,
+                                nowMs,
+                            );
+                            const isSelected = selectedRunId === run.id;
+
+                            return (
+                                <li key={run.id}>
+                                    <button
+                                        type="button"
+                                        aria-pressed={isSelected}
+                                        className={cx(
+                                            'grid w-full gap-3 p-4 text-left transition-colors hover:bg-muted/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+                                            isSelected && 'bg-muted/70',
+                                        )}
+                                        onClick={() => setSelectedRunId(run.id)}
+                                    >
+                                        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                            <Stack
+                                                spacing={1}
+                                                className="min-w-0"
+                                            >
+                                                <Row
+                                                    spacing={2}
+                                                    className="flex-wrap items-center"
+                                                >
+                                                    <Typography
+                                                        level="body2"
+                                                        semiBold
+                                                    >
+                                                        #{run.id}
+                                                    </Typography>
+                                                    <AutomationRunStatusIndicator
+                                                        status={run.status}
+                                                    />
+                                                    {run.dryRun ? (
+                                                        <Chip
+                                                            size="sm"
+                                                            color="info"
+                                                            variant="soft"
+                                                        >
+                                                            Probno
+                                                        </Chip>
+                                                    ) : null}
+                                                </Row>
+                                                <Typography
+                                                    level="body3"
+                                                    className="text-muted-foreground"
+                                                >
+                                                    {steps.length} koraka
+                                                </Typography>
+                                            </Stack>
+                                            <Stack
+                                                spacing={1}
+                                                className="text-muted-foreground sm:items-end"
+                                            >
+                                                <Typography level="body3">
+                                                    Kreirano{' '}
+                                                    <LocalDateTime>
+                                                        {run.createdAt}
+                                                    </LocalDateTime>
+                                                </Typography>
+                                                <Typography
+                                                    level="body3"
+                                                    className="tabular-nums"
+                                                >
+                                                    {timing.label}{' '}
+                                                    {timing.value}
+                                                </Typography>
+                                            </Stack>
+                                        </div>
+
+                                        <dl className="grid gap-3 text-sm sm:grid-cols-3">
+                                            <ListDetailItem label="Tip eventa">
+                                                {run.sourceEventType ?? '-'}
+                                            </ListDetailItem>
+                                            <ListDetailItem label="Agregat">
+                                                {run.sourceAggregateId ?? '-'}
+                                            </ListDetailItem>
+                                            <ListDetailItem label="Pokušaj">
+                                                {run.attempt} /{' '}
+                                                {run.maxAttempts}
+                                            </ListDetailItem>
+                                        </dl>
+
+                                        {run.errorMessage ? (
+                                            <Typography
+                                                level="body3"
+                                                className="break-words rounded-md bg-red-50 p-2 text-red-700 dark:bg-red-950 dark:text-red-300"
+                                            >
+                                                {run.errorMessage}
+                                            </Typography>
+                                        ) : null}
+                                    </button>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                )}
             </div>
 
             <AutomationSlidePanel
@@ -217,10 +331,12 @@ export function AutomationRunsTable({
                                     {selectedRun.run.maxAttempts}
                                 </DetailItem>
                                 <DetailItem label="Trajanje">
-                                    {formatDuration(
-                                        selectedRun.run.startedAt,
-                                        selectedRun.run.completedAt,
-                                    )}
+                                    {
+                                        automationRunDurationTiming(
+                                            selectedRun.run,
+                                            nowMs,
+                                        ).value
+                                    }
                                 </DetailItem>
                                 <DetailItem label="Kreirano">
                                     <DateTimeValue
