@@ -422,6 +422,44 @@ export const cuttingOperationCoverRecipes = [
         ],
         showBackground: false,
     },
+    {
+        operationId: 'rejuvenation-pruning',
+        operationLabel: 'Pomlađujuća rezidba',
+        outputFileName: 'rejuvenation-pruning.webp',
+        camera: {
+            position: [2.5, 2.1, 4.8],
+            target: [0.43, 0.3, 0.45],
+            zoom: 138,
+        },
+        assets: [
+            {
+                assetName: 'DeadTreeStump',
+                position: [0.36, 0.03, 0.45],
+                rotation: [0, -0.45, 0],
+                scale: 0.36,
+            },
+            {
+                assetName: 'GardenScissors',
+                position: [0.49, 0.29, 0.42],
+                rotation: [0.05, -0.68, -0.86],
+                scale: 0.21,
+            },
+        ],
+        plants: [
+            {
+                id: 'fresh-shoot',
+                plantType: 'basil',
+                generation: 5,
+                seed: 'operation-cover-rejuvenation-fresh-shoot',
+                position: [0.48, 0.07, 0.43],
+                rotation: [0, 0.7, 0],
+                scale: 0.48,
+                showFlowers: false,
+                showProduce: false,
+            },
+        ],
+        showBackground: false,
+    },
 ] satisfies readonly OperationCoverRecipe[];
 
 export const operationCoverRecipes = [
