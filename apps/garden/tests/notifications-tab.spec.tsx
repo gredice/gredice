@@ -421,6 +421,37 @@ test('notification settings keeps switch thumbs inside their tracks', async ({
     expect(overflowingSwitches).toEqual([]);
 });
 
+test('notification settings does not add a nested scroll region', async ({
+    mount,
+    page,
+}) => {
+    await mockNotificationSettingsApi(page);
+
+    await mount(<NotificationsTabStory />);
+    await page.getByRole('tab', { name: 'Postavke' }).click();
+
+    await expect(page.getByText('Vrste obavijesti')).toBeVisible();
+
+    const nestedScrollRegions = await page
+        .locator('[role="tabpanel"][data-state="active"]')
+        .evaluate((tabpanel) =>
+            Array.from(tabpanel.querySelectorAll('*'))
+                .filter((element) => {
+                    const style = window.getComputedStyle(element);
+                    return (
+                        style.overflowY === 'auto' ||
+                        style.overflowY === 'scroll'
+                    );
+                })
+                .map((element) => ({
+                    className: element.getAttribute('class'),
+                    tagName: element.tagName.toLowerCase(),
+                })),
+        );
+
+    expect(nestedScrollRegions).toEqual([]);
+});
+
 test('notification settings toggles the what is new widget', async ({
     mount,
     page,

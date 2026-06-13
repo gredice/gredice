@@ -575,10 +575,7 @@ export function NotificationsTab({
                     </Stack>
                 </TabsContent>
                 <TabsContent value="settings" className="mt-3 min-h-0">
-                    <Stack
-                        spacing={2}
-                        className="max-h-[calc(100dvh-13rem)] overflow-y-auto pr-1 md:max-h-[calc(90dvh-10rem)]"
-                    >
+                    <Stack spacing={2}>
                         <WhatsNewNotificationToggle />
                         <Card className="bg-card p-2">
                             <Stack spacing={1.5}>
