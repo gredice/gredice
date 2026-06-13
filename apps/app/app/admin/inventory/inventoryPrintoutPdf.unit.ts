@@ -19,30 +19,41 @@ test('generates an inventory worksheet PDF with printable inventory fields', () 
         items: [
             {
                 label: 'Raj\u010dica cherry',
-                details: ['ID #1', 'Serijski br.: LOT-7', 'Minimum: 4'],
+                details: [
+                    'ID #1',
+                    'Pracenje: komadi',
+                    'Minimum: 4',
+                    'Dodano: 12. 06. 2026.',
+                ],
                 quantity: 13,
-                currentStatus: 'Uredno',
+                notes: 'Paket otvoren',
             },
             {
                 label: 'Bosiljak',
-                details: ['ID #2', 'Pracenje: komadi'],
+                details: ['ID #2', 'Pracenje: komadi', 'Dodano: 12. 06. 2026.'],
                 quantity: 0,
-                currentStatus: 'Prazno',
+                notes: null,
             },
         ],
     });
     const content = new TextDecoder().decode(pdf);
 
     assert.match(content, /^%PDF-1\.4/);
-    assert.match(content, /GREDICE/);
+    assert.match(content, /\/MediaBox \[0 0 595\.28 841\.89\]/);
+    assert.match(content, /Gredice/);
+    assert.doesNotMatch(content, /GREDICE/);
     assert.match(content, /INVENTURNI LIST/);
     assert.match(content, /Sjeme rajcice/);
     assert.match(content, /DATUM ISPISA/);
     assert.match(content, /INVENTURA OBAVLJENA/);
+    assert.match(content, /INVENTURU OBAVIO\/LA/);
     assert.match(content, /STAVKA I DETALJI/);
+    assert.match(content, /BILJESKA/);
     assert.match(content, /NOVO STANJE/);
+    assert.doesNotMatch(content, /STATUS/);
     assert.match(content, /Rajcica cherry/);
-    assert.match(content, /Serijski br.: LOT-7/);
+    assert.match(content, /Pracenje: komadi/);
+    assert.match(content, /Paket otvoren/);
     assert.match(content, /Stranica 1 \/ 1/);
     assert.doesNotMatch(content, /Raj\u010dica/);
 });
