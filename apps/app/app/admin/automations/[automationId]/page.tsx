@@ -120,9 +120,11 @@ export default async function AutomationDetailPage({
                 input: run.input,
                 output: run.output,
                 errorMessage: run.errorMessage,
+                lockedAt: dateToIso(run.lockedAt),
                 startedAt: dateToIso(run.startedAt),
                 completedAt: dateToIso(run.completedAt),
                 createdAt: run.createdAt.toISOString(),
+                updatedAt: run.updatedAt.toISOString(),
             },
             steps: steps.map((step) => ({
                 id: step.id,
