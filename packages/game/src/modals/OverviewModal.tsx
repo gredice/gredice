@@ -151,7 +151,7 @@ export function OverviewModal() {
             className="max-h-[90dvh] overflow-hidden md:min-w-full lg:min-w-[80%] xl:min-w-[60%] md:min-h-[70%] md:max-h-full md:border-tertiary md:border-b-4"
             title="Profil"
         >
-            <div className="grid max-h-[calc(90dvh-5rem)] grid-rows-[auto_1fr] gap-4 overflow-y-auto pr-1 md:max-h-none md:gap-0 md:grid-rows-1 md:grid-cols-[minmax(230px,auto)_1fr] md:overflow-hidden md:pr-0">
+            <div className="grid max-h-[calc(90dvh-5rem)] min-h-0 grid-rows-[auto_1fr] gap-4 overflow-y-auto pr-1 md:gap-0 md:grid-rows-1 md:grid-cols-[minmax(230px,auto)_1fr] md:overflow-hidden md:pr-0">
                 <Stack spacing={4} className="md:border-r md:pl-2">
                     <ProfileInfo />
                     <SelectItems
@@ -192,7 +192,7 @@ export function OverviewModal() {
                         ))}
                     </List>
                 </Stack>
-                <div className="overflow-y-auto md:pl-6">
+                <div className="min-h-0 overflow-y-auto md:pl-6">
                     {settingsMode === 'generalno' && <GeneralTab />}
                     {settingsMode === 'vrt' && <GardenTab />}
                     {settingsMode === 'igra' && <GameTab />}

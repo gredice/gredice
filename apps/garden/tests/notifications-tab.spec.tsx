@@ -73,6 +73,7 @@ const defaultPreferences = [
 const defaultDevices = [
     {
         createdAt: '2026-05-20T08:00:00.000Z',
+        deviceId: 'current-device',
         deviceLabel: 'Ovaj uređaj (MacIntel)',
         enabled: true,
         id: 'device-1',
@@ -324,7 +325,7 @@ test('notification settings shows loading, status, and empty device states', asy
 
     await expect(page.getByText('Postavke se učitavaju.')).toBeVisible();
     await expect(page.getByText('Uređaji se učitavaju.')).toBeVisible();
-    await expect(page.getByText(/Status:\s*učitavanje/u)).toBeVisible();
+    await expect(page.getByText('Učitavanje')).toBeVisible();
 
     preferencesDelay.resolve();
     devicesDelay.resolve();
@@ -333,7 +334,9 @@ test('notification settings shows loading, status, and empty device states', asy
     await expect(
         page.getByText('Nema uređaja prijavljenih za obavijesti.'),
     ).toBeVisible();
-    await expect(page.getByText(/Status:\s*nije uključeno/u)).toBeVisible();
+    await expect(page.getByText('Isključeno')).toBeVisible();
+    await expect(page.getByRole('textbox', { name: 'Od' })).toHaveCount(0);
+    await expect(page.getByText('Razdoblje sažetka')).toHaveCount(0);
 });
 
 test('notification settings explains required groups and hydrates saved preference timing', async ({
@@ -351,7 +354,7 @@ test('notification settings explains required groups and hydrates saved preferen
     await expect(
         page.getByText('Plaćanja, računi i potvrde narudžbi'),
     ).toBeVisible();
-    await expect(page.getByText('Uvijek uključeno').first()).toBeVisible();
+    await expect(page.getByText('Vrste obavijesti')).toBeVisible();
     await expect(
         page.getByRole('checkbox', { name: /sigurnost računa/u }),
     ).toHaveCount(0);
@@ -395,6 +398,25 @@ test('notification settings toggles the what is new widget', async ({
     });
 });
 
+test('notification settings keeps current device off without a local device id', async ({
+    mount,
+    page,
+}) => {
+    const recorded = await mockNotificationSettingsApi(page);
+
+    await mount(<NotificationsTabStory />);
+    await page.getByRole('tab', { name: 'Postavke' }).click();
+
+    const currentDeviceSwitch = page.getByRole('switch', {
+        name: 'Uključi obavijesti na ovom uređaju',
+    });
+    await expect(currentDeviceSwitch).toHaveAttribute('aria-checked', 'false');
+    await expect(
+        page.getByRole('switch', { name: 'Isključi Ovaj uređaj' }),
+    ).toHaveAttribute('aria-checked', 'true');
+    await expect.poll(() => recorded.devicePatches.length).toBe(0);
+});
+
 test('notification settings shows endpoint errors without hiding the settings tab', async ({
     mount,
     page,
@@ -433,11 +455,15 @@ test('notification settings calls preference, device, and test notification APIs
     page,
 }) => {
     const recorded = await mockNotificationSettingsApi(page);
+    await page.evaluate(() =>
+        window.localStorage.setItem('game:push:device-id', 'current-device'),
+    );
 
     await mount(<NotificationsTabStory />);
     await page.getByRole('tab', { name: 'Postavke' }).click();
 
-    await expect(page.getByText('Ovaj uređaj (MacIntel)')).toBeVisible();
+    await expect(page.getByText('Ovaj uređaj')).toBeVisible();
+    await expect(page.getByText('Chrome test browser')).toHaveCount(0);
     await page
         .getByRole('checkbox', { name: 'Uključi radovi i berba u vrtu' })
         .click();
@@ -459,12 +485,13 @@ test('notification settings calls preference, device, and test notification APIs
         ],
     });
 
-    await page.getByRole('button', { name: 'Isključi' }).click();
+    await page
+        .getByRole('switch', {
+            name: 'Isključi obavijesti na ovom uređaju',
+        })
+        .click();
     await expect.poll(() => recorded.devicePatches.length).toBe(1);
     expect(recorded.devicePatches[0]).toEqual({ enabled: false });
-
-    await page.getByRole('button', { name: 'Ukloni' }).click();
-    await expect.poll(() => recorded.deviceDeletes).toEqual(['device-1']);
 
     await page
         .getByRole('button', { name: 'Pošalji probnu obavijest' })
