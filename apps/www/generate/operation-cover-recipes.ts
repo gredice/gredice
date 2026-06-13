@@ -1523,6 +1523,48 @@ export const protectionOperationCoverRecipes = [
     },
 ] satisfies readonly OperationCoverRecipe[];
 
+export const sensorOperationCoverRecipes = [
+    {
+        operationId: 'sensor',
+        operationLabel: 'Postavljanje senzora',
+        outputFileName: 'sensor.webp',
+        camera: {
+            position: [2.8, 2.2, 5],
+            target: [0.45, 0.28, 0.45],
+            zoom: 122,
+        },
+        assets: [
+            {
+                assetName: 'RaisedBed',
+                visibleNodeNames: raisedBedCompactNodes,
+                position: [0.45, -0.06, 0.46],
+                rotation: [0, 0.72, 0],
+                scale: 0.4,
+            },
+            {
+                assetName: 'SensorStakeMeter',
+                position: [0.55, 0.12, 0.58],
+                rotation: [0.08, -0.55, -0.1],
+                scale: 0.32,
+            },
+        ],
+        plants: [
+            {
+                id: 'sensor-bed-plant',
+                plantType: 'lettuce',
+                generation: 5,
+                seed: 'operation-cover-sensor-bed-plant',
+                position: [0.35, 0.08, 0.46],
+                rotation: [0, -0.3, 0],
+                scale: 0.34,
+                showFlowers: false,
+                showProduce: false,
+            },
+        ],
+        showBackground: false,
+    },
+] satisfies readonly OperationCoverRecipe[];
+
 export const cuttingOperationCoverRecipes = [
     {
         operationId: 'formative-pruning',
@@ -2330,6 +2372,7 @@ export const operationCoverRecipes = [
     ...photographyOperationCoverRecipes,
     ...plantingOperationCoverRecipes,
     ...protectionOperationCoverRecipes,
+    ...sensorOperationCoverRecipes,
     ...cuttingOperationCoverRecipes,
     ...bedMaintenanceOperationCoverRecipes,
 ] satisfies readonly OperationCoverRecipe[];
