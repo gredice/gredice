@@ -3,6 +3,7 @@
 import {
     AI,
     Bank,
+    Book,
     Calendar,
     Discount,
     Euro,
@@ -128,6 +129,10 @@ const breadcrumbSections: {
             },
             { ...adminPages.Greenhouse, icon: <Sprout className="size-4" /> },
             { ...adminPages.Operations, icon: <Hammer className="size-4" /> },
+            {
+                ...adminPages.FarmerDocumentation,
+                icon: <Book className="size-4" />,
+            },
         ],
     },
     {

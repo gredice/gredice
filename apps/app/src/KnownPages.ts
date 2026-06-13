@@ -131,6 +131,8 @@ export const KnownPages = {
     FarmerPayouts: '/admin/farmers/payouts',
     FarmerPayout: (id: number) => `/admin/farmers/payouts/${id}` as Route,
     FarmerPrices: '/admin/farmers/prices',
+    FarmerDocumentation: '/admin/farmers/documentation',
+    FarmerDocumentationPrintout: '/admin/farmers/documentation/printout',
 
     // Delivery management
     DeliverySlots: '/admin/delivery/slots',
