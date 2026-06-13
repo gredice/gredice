@@ -21,6 +21,15 @@ const liquidPreparationBottleAssets = [
     'LiquidPreparationBottleBeetleControl',
 ] as const satisfies readonly GameAssetName[];
 
+const raisedBedCompactNodes = ['Raised_Bed_O_1', 'Raised_Bed_O_2'] as const;
+
+const waterSprayDropletNodes = [
+    'WaterSprayKit_Droplet_01',
+    'WaterSprayKit_Droplet_02',
+    'WaterSprayKit_Droplet_03',
+    'WaterSprayKit_Droplet_04',
+] as const;
+
 export const liquidPreparationOperationCoverRecipes =
     liquidPreparationBottleAssets.map((assetName) => ({
         operationId: assetName,
@@ -40,8 +49,45 @@ export const liquidPreparationOperationCoverRecipes =
         showBackground: false,
     })) satisfies readonly OperationCoverRecipe[];
 
+export const waterOperationCoverRecipes = [
+    {
+        operationId: 'watterSurfaceRaisedBed',
+        operationLabel: 'Površinsko zalijevanje gredice (20L)',
+        outputFileName: 'watterSurfaceRaisedBed.webp',
+        camera: {
+            position: [2.8, 2.2, 5],
+            target: [0.45, 0.25, 0.45],
+            zoom: 100,
+        },
+        assets: [
+            {
+                assetName: 'RaisedBed',
+                visibleNodeNames: raisedBedCompactNodes,
+                position: [0.45, -0.05, 0.45],
+                rotation: [0, 0.72, 0],
+                scale: 0.42,
+            },
+            {
+                assetName: 'WateringCan',
+                position: [0.29, 0.55, 0.5],
+                rotation: [-0.35, 0.75, -0.75],
+                scale: 0.13,
+            },
+            {
+                assetName: 'WaterSprayKit',
+                visibleNodeNames: waterSprayDropletNodes,
+                position: [0.42, 0.12, 0.44],
+                rotation: [0.15, 0.2, -0.3],
+                scale: 0.28,
+            },
+        ],
+        showBackground: false,
+    },
+] satisfies readonly OperationCoverRecipe[];
+
 export const operationCoverRecipes = [
     ...liquidPreparationOperationCoverRecipes,
+    ...waterOperationCoverRecipes,
 ] satisfies readonly OperationCoverRecipe[];
 
 export function validateOperationCoverRecipes(
