@@ -95,6 +95,14 @@ const harvestBasketHalfNodes = [
     'HarvestBasket_Zucchini',
 ] as const;
 
+const harvestBasketGreensNodes = [
+    ...harvestBasketBaseNodes,
+    'HarvestBasket_Cabbage',
+    'HarvestBasket_Turnip',
+    'HarvestBasket_TurnipSprout',
+    'HarvestBasket_CarrotGreens',
+] as const;
+
 export const liquidPreparationOperationCoverRecipes =
     liquidPreparationBottleAssets.map((assetName) => ({
         operationId: assetName,
@@ -391,6 +399,68 @@ export const harvestOperationCoverRecipes = [
                 position: [0.62, 0.13, 0.5],
                 rotation: [0.08, -0.55, 0.05],
                 scale: 0.22,
+            },
+        ],
+        showBackground: false,
+    },
+    {
+        operationId: 'harvestPlant',
+        operationLabel: 'Branje biljke',
+        outputFileName: 'harvestPlant.webp',
+        camera: {
+            position: [2.5, 2.1, 4.8],
+            target: [0.47, 0.22, 0.47],
+            zoom: 148,
+        },
+        assets: [
+            {
+                id: 'clean-soil-spot',
+                assetName: 'MulchWood',
+                position: [0.36, 0.02, 0.43],
+                rotation: [0.16, 0.45, -0.08],
+                scale: [0.18, 0.08, 0.14],
+            },
+            {
+                assetName: 'HarvestBasket',
+                visibleNodeNames: harvestBasketGreensNodes,
+                position: [0.56, 0.08, 0.5],
+                rotation: [0.08, -0.45, 0.03],
+                scale: 0.3,
+            },
+        ],
+        plants: [
+            {
+                id: 'leafy-harvest-left',
+                plantType: 'basil',
+                generation: 5,
+                seed: 'operation-cover-harvest-plant-greens-left',
+                position: [0.53, 0.16, 0.46],
+                rotation: [0.28, -0.28, -0.65],
+                scale: 0.64,
+                showFlowers: false,
+                showProduce: false,
+            },
+            {
+                id: 'leafy-harvest-right',
+                plantType: 'basil',
+                generation: 4,
+                seed: 'operation-cover-harvest-plant-greens-right',
+                position: [0.62, 0.15, 0.52],
+                rotation: [0.28, 0.36, 0.62],
+                scale: 0.56,
+                showFlowers: false,
+                showProduce: false,
+            },
+            {
+                id: 'leafy-harvest-center',
+                plantType: 'basil',
+                generation: 4,
+                seed: 'operation-cover-harvest-plant-greens-center',
+                position: [0.58, 0.15, 0.49],
+                rotation: [0.2, 0.1, -0.12],
+                scale: 0.44,
+                showFlowers: false,
+                showProduce: false,
             },
         ],
         showBackground: false,
