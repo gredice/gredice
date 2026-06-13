@@ -192,7 +192,7 @@ export function OverviewModal() {
                         ))}
                     </List>
                 </Stack>
-                <div className="min-h-0 overflow-y-auto md:pl-6">
+                <div className="min-h-0 overflow-visible md:overflow-y-auto md:pl-6">
                     {settingsMode === 'generalno' && <GeneralTab />}
                     {settingsMode === 'vrt' && <GardenTab />}
                     {settingsMode === 'igra' && <GameTab />}
