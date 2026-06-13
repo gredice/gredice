@@ -1,7 +1,6 @@
 import { clientAuthenticated } from '@gredice/client';
 import { Button } from '@gredice/ui/Button';
 import { Card } from '@gredice/ui/Card';
-import { Checkbox } from '@gredice/ui/Checkbox';
 import { Input } from '@gredice/ui/Input';
 import {
     Approved,
@@ -15,9 +14,9 @@ import {
 import { Row } from '@gredice/ui/Row';
 import { SelectItems } from '@gredice/ui/SelectItems';
 import { Stack } from '@gredice/ui/Stack';
+import { Switch } from '@gredice/ui/Switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import { Typography } from '@gredice/ui/Typography';
-import { cx } from '@gredice/ui/utils';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
@@ -588,7 +587,10 @@ export function NotificationsTab({
                                     className="gap-4"
                                     justifyContent="space-between"
                                 >
-                                    <Stack spacing={0.5}>
+                                    <Stack
+                                        spacing={0.5}
+                                        className="min-w-0 flex-1"
+                                    >
                                         <Typography level="body1" semiBold>
                                             Obavijesti na ovom uređaju
                                         </Typography>
@@ -596,35 +598,20 @@ export function NotificationsTab({
                                             {currentDeviceStatusLabel}
                                         </Typography>
                                     </Stack>
-                                    <button
-                                        aria-checked={
-                                            currentDeviceNotificationsEnabled
-                                        }
+                                    <Switch
                                         aria-label={
                                             currentDeviceNotificationsEnabled
                                                 ? 'Isključi obavijesti na ovom uređaju'
                                                 : 'Uključi obavijesti na ovom uređaju'
                                         }
-                                        className={cx(
-                                            'relative h-6 w-11 shrink-0 rounded-full border transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+                                        checked={
                                             currentDeviceNotificationsEnabled
-                                                ? 'border-primary bg-primary'
-                                                : 'border-border bg-muted',
-                                        )}
+                                        }
                                         disabled={currentDeviceToggleDisabled}
-                                        onClick={handleCurrentDeviceToggle}
-                                        role="switch"
-                                        type="button"
-                                    >
-                                        <span
-                                            className={cx(
-                                                'absolute top-0.5 size-5 rounded-full bg-background shadow-xs transition-transform',
-                                                currentDeviceNotificationsEnabled
-                                                    ? 'translate-x-[1.25rem]'
-                                                    : 'translate-x-0.5',
-                                            )}
-                                        />
-                                    </button>
+                                        onCheckedChange={
+                                            handleCurrentDeviceToggle
+                                        }
+                                    />
                                 </Row>
                                 {pushStatusQuery.isError && (
                                     <Typography level="body3" secondary>
@@ -668,18 +655,20 @@ export function NotificationsTab({
                                                 Omogući sve
                                             </Button>
                                         </Row>
-                                        {requiredNotificationGroups.map(
-                                            (item) => (
-                                                <div
-                                                    key={item.category}
-                                                    className="rounded border border-border/60 p-2"
-                                                >
+                                        <Stack spacing={0.5}>
+                                            {requiredNotificationGroups.map(
+                                                (item) => (
                                                     <Row
+                                                        key={item.category}
                                                         justifyContent="space-between"
                                                         alignItems="start"
                                                         spacing={4}
+                                                        className="py-2"
                                                     >
-                                                        <Stack spacing={0.5}>
+                                                        <Stack
+                                                            spacing={0.5}
+                                                            className="min-w-0 flex-1"
+                                                        >
                                                             <Typography
                                                                 semiBold
                                                             >
@@ -694,88 +683,114 @@ export function NotificationsTab({
                                                                 }
                                                             </Typography>
                                                         </Stack>
-                                                        <Typography
-                                                            level="body3"
-                                                            semiBold
+                                                        <Stack
+                                                            spacing={0.5}
+                                                            alignItems="center"
                                                             className="shrink-0"
                                                         >
-                                                            Obavezno
-                                                        </Typography>
-                                                    </Row>
-                                                </div>
-                                            ),
-                                        )}
-                                        {preferencesQuery.isPending ? (
-                                            <Typography level="body2" secondary>
-                                                Postavke se učitavaju.
-                                            </Typography>
-                                        ) : preferencesQuery.isError ? (
-                                            <Typography level="body2" secondary>
-                                                Postavke obavijesti nisu
-                                                učitane.
-                                            </Typography>
-                                        ) : (
-                                            categoryPreferences.map((item) => {
-                                                const preference =
-                                                    findPreference(item);
-                                                const checked =
-                                                    preference?.enabled ??
-                                                    item.defaultEnabled;
-                                                return (
-                                                    <div
-                                                        key={item.category}
-                                                        className="rounded border border-border/60 p-2"
-                                                    >
-                                                        <Row
-                                                            justifyContent="space-between"
-                                                            alignItems="start"
-                                                            spacing={4}
-                                                        >
-                                                            <Stack
-                                                                spacing={0.5}
+                                                            <Switch
+                                                                aria-label={`Obavezna obavijest ${item.label.toLowerCase()}`}
+                                                                checked
+                                                                readOnly
+                                                            />
+                                                            <Typography
+                                                                level="body3"
+                                                                secondary
                                                             >
-                                                                <Typography
-                                                                    semiBold
-                                                                >
-                                                                    {item.label}
-                                                                </Typography>
-                                                                <Typography
-                                                                    level="body3"
-                                                                    secondary
-                                                                >
-                                                                    {
-                                                                        item.description
+                                                                Obavezno
+                                                            </Typography>
+                                                        </Stack>
+                                                    </Row>
+                                                ),
+                                            )}
+                                            {preferencesQuery.isPending ? (
+                                                <Typography
+                                                    level="body2"
+                                                    secondary
+                                                >
+                                                    Postavke se učitavaju.
+                                                </Typography>
+                                            ) : preferencesQuery.isError ? (
+                                                <Typography
+                                                    level="body2"
+                                                    secondary
+                                                >
+                                                    Postavke obavijesti nisu
+                                                    učitane.
+                                                </Typography>
+                                            ) : (
+                                                categoryPreferences.map(
+                                                    (item) => {
+                                                        const preference =
+                                                            findPreference(
+                                                                item,
+                                                            );
+                                                        const checked =
+                                                            preference?.enabled ??
+                                                            item.defaultEnabled;
+                                                        return (
+                                                            <Row
+                                                                key={
+                                                                    item.category
+                                                                }
+                                                                justifyContent="space-between"
+                                                                alignItems="start"
+                                                                spacing={4}
+                                                                className="py-2"
+                                                            >
+                                                                <Stack
+                                                                    spacing={
+                                                                        0.5
                                                                     }
-                                                                </Typography>
-                                                            </Stack>
-                                                            <Checkbox
-                                                                aria-label={`Uključi ${item.label.toLowerCase()}`}
-                                                                checked={
-                                                                    checked
-                                                                }
-                                                                disabled={
-                                                                    settingsBusy
-                                                                }
-                                                                onCheckedChange={(
-                                                                    checked: boolean,
-                                                                ) =>
-                                                                    savePreferencesMutation.mutate(
-                                                                        [
-                                                                            buildPreferenceUpdate(
-                                                                                item,
-                                                                                Boolean(
+                                                                    className="min-w-0 flex-1"
+                                                                >
+                                                                    <Typography
+                                                                        semiBold
+                                                                    >
+                                                                        {
+                                                                            item.label
+                                                                        }
+                                                                    </Typography>
+                                                                    <Typography
+                                                                        level="body3"
+                                                                        secondary
+                                                                    >
+                                                                        {
+                                                                            item.description
+                                                                        }
+                                                                    </Typography>
+                                                                </Stack>
+                                                                <Switch
+                                                                    aria-label={`${
+                                                                        checked
+                                                                            ? 'Isključi'
+                                                                            : 'Uključi'
+                                                                    } ${item.label.toLowerCase()}`}
+                                                                    checked={
+                                                                        checked
+                                                                    }
+                                                                    disabled={
+                                                                        settingsBusy
+                                                                    }
+                                                                    onCheckedChange={(
+                                                                        checked,
+                                                                    ) =>
+                                                                        savePreferencesMutation.mutate(
+                                                                            [
+                                                                                buildPreferenceUpdate(
+                                                                                    item,
                                                                                     checked,
                                                                                 ),
-                                                                            ),
-                                                                        ],
-                                                                    )
-                                                                }
-                                                            />
-                                                        </Row>
-                                                    </div>
-                                                );
-                                            })
-                                        )}
+                                                                            ],
+                                                                        )
+                                                                    }
+                                                                />
+                                                            </Row>
+                                                        );
+                                                    },
+                                                )
+                                            )}
+                                        </Stack>
                                         {savePreferencesMutation.isError && (
                                             <Typography level="body3" secondary>
                                                 Postavke obavijesti nisu
@@ -787,118 +802,149 @@ export function NotificationsTab({
 
                                 <Card className="bg-card p-2">
                                     <Stack spacing={2}>
-                                        <Checkbox
-                                            label="Ne ometaj"
-                                            checked={quietHoursEnabled}
-                                            disabled={settingsBusy}
-                                            onCheckedChange={(
-                                                checked: boolean,
-                                            ) => {
-                                                const enabled =
-                                                    Boolean(checked);
-                                                setQuietHoursEnabled(enabled);
-                                                saveAllPreferenceSettings({
-                                                    quietEnabled: enabled,
-                                                });
-                                            }}
-                                        />
-                                        {quietHoursEnabled && (
-                                            <>
-                                                <Typography
-                                                    level="body3"
-                                                    secondary
-                                                >
-                                                    Vrijedi samo za
-                                                    prilagodljive obavijesti
-                                                    koje podržavaju tihi period.
+                                        <Row
+                                            justifyContent="space-between"
+                                            alignItems="start"
+                                            spacing={4}
+                                        >
+                                            <Stack
+                                                spacing={0.5}
+                                                className="min-w-0 flex-1"
+                                            >
+                                                <Typography semiBold>
+                                                    Ne ometaj
                                                 </Typography>
-                                                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                                                    <Input
-                                                        label="Od"
-                                                        type="time"
-                                                        value={minuteToTimeValue(
-                                                            quietHoursStartMinute,
-                                                        )}
-                                                        disabled={settingsBusy}
-                                                        onChange={(event) => {
-                                                            const minute =
-                                                                timeValueToMinute(
-                                                                    event.target
-                                                                        .value,
-                                                                );
-                                                            if (
-                                                                minute === null
-                                                            ) {
-                                                                return;
-                                                            }
-                                                            setQuietHoursStartMinute(
-                                                                minute,
+                                                {quietHoursEnabled ? (
+                                                    <Typography
+                                                        level="body3"
+                                                        secondary
+                                                    >
+                                                        Vrijedi samo za
+                                                        prilagodljive obavijesti
+                                                        koje podržavaju tihi
+                                                        period.
+                                                    </Typography>
+                                                ) : null}
+                                            </Stack>
+                                            <Switch
+                                                aria-label={
+                                                    quietHoursEnabled
+                                                        ? 'Isključi ne ometaj'
+                                                        : 'Uključi ne ometaj'
+                                                }
+                                                checked={quietHoursEnabled}
+                                                disabled={settingsBusy}
+                                                onCheckedChange={(checked) => {
+                                                    setQuietHoursEnabled(
+                                                        checked,
+                                                    );
+                                                    saveAllPreferenceSettings({
+                                                        quietEnabled: checked,
+                                                    });
+                                                }}
+                                            />
+                                        </Row>
+                                        {quietHoursEnabled && (
+                                            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                                <Input
+                                                    label="Od"
+                                                    type="time"
+                                                    value={minuteToTimeValue(
+                                                        quietHoursStartMinute,
+                                                    )}
+                                                    disabled={settingsBusy}
+                                                    onChange={(event) => {
+                                                        const minute =
+                                                            timeValueToMinute(
+                                                                event.target
+                                                                    .value,
                                                             );
-                                                            saveAllPreferenceSettings(
-                                                                {
-                                                                    quietStart:
-                                                                        minute,
-                                                                },
+                                                        if (minute === null) {
+                                                            return;
+                                                        }
+                                                        setQuietHoursStartMinute(
+                                                            minute,
+                                                        );
+                                                        saveAllPreferenceSettings(
+                                                            {
+                                                                quietStart:
+                                                                    minute,
+                                                            },
+                                                        );
+                                                    }}
+                                                />
+                                                <Input
+                                                    label="Do"
+                                                    type="time"
+                                                    value={minuteToTimeValue(
+                                                        quietHoursEndMinute,
+                                                    )}
+                                                    disabled={settingsBusy}
+                                                    onChange={(event) => {
+                                                        const minute =
+                                                            timeValueToMinute(
+                                                                event.target
+                                                                    .value,
                                                             );
-                                                        }}
-                                                    />
-                                                    <Input
-                                                        label="Do"
-                                                        type="time"
-                                                        value={minuteToTimeValue(
-                                                            quietHoursEndMinute,
-                                                        )}
-                                                        disabled={settingsBusy}
-                                                        onChange={(event) => {
-                                                            const minute =
-                                                                timeValueToMinute(
-                                                                    event.target
-                                                                        .value,
-                                                                );
-                                                            if (
-                                                                minute === null
-                                                            ) {
-                                                                return;
-                                                            }
-                                                            setQuietHoursEndMinute(
-                                                                minute,
-                                                            );
-                                                            saveAllPreferenceSettings(
-                                                                {
-                                                                    quietEnd:
-                                                                        minute,
-                                                                },
-                                                            );
-                                                        }}
-                                                    />
-                                                </div>
-                                            </>
+                                                        if (minute === null) {
+                                                            return;
+                                                        }
+                                                        setQuietHoursEndMinute(
+                                                            minute,
+                                                        );
+                                                        saveAllPreferenceSettings(
+                                                            {
+                                                                quietEnd:
+                                                                    minute,
+                                                            },
+                                                        );
+                                                    }}
+                                                />
+                                            </div>
                                         )}
                                     </Stack>
                                 </Card>
 
                                 <Card className="bg-card p-2">
                                     <Stack spacing={2}>
-                                        <Checkbox
-                                            label="Primaj sažetak obavijesti"
-                                            checked={digestEnabled}
-                                            disabled={settingsBusy}
-                                            onCheckedChange={(
-                                                checked: boolean,
-                                            ) => {
-                                                const enabled =
-                                                    Boolean(checked);
-                                                setDigestEnabled(enabled);
-                                                saveAllPreferenceSettings({
-                                                    summaryEnabled: enabled,
-                                                });
-                                            }}
-                                        />
-                                        <Typography level="body3" secondary>
-                                            Sažetak vrijedi za prilagodljive
-                                            kategorije; obavezne poruke ne
-                                            čekaju sažetak.
-                                        </Typography>
+                                        <Row
+                                            justifyContent="space-between"
+                                            alignItems="start"
+                                            spacing={4}
+                                        >
+                                            <Stack
+                                                spacing={0.5}
+                                                className="min-w-0 flex-1"
+                                            >
+                                                <Typography semiBold>
+                                                    Primaj sažetak obavijesti
+                                                </Typography>
+                                                <Typography
+                                                    level="body3"
+                                                    secondary
+                                                >
+                                                    Sažetak vrijedi za
+                                                    prilagodljive kategorije;
+                                                    obavezne poruke ne čekaju
+                                                    sažetak.
+                                                </Typography>
+                                            </Stack>
+                                            <Switch
+                                                aria-label={
+                                                    digestEnabled
+                                                        ? 'Isključi primanje sažetka obavijesti'
+                                                        : 'Uključi primanje sažetka obavijesti'
+                                                }
+                                                checked={digestEnabled}
+                                                disabled={settingsBusy}
+                                                onCheckedChange={(checked) => {
+                                                    setDigestEnabled(checked);
+                                                    saveAllPreferenceSettings({
+                                                        summaryEnabled: checked,
+                                                    });
+                                                }}
+                                            />
+                                        </Row>
                                         {digestEnabled && (
                                             <Stack spacing={1}>
                                                 <Typography
@@ -1014,25 +1060,17 @@ export function NotificationsTab({
                                                             : 'Isključeno'}
                                                     </Typography>
                                                 </Stack>
-                                                <button
-                                                    aria-checked={
-                                                        device.enabled
-                                                    }
+                                                <Switch
                                                     aria-label={`${
                                                         device.enabled
                                                             ? 'Isključi'
                                                             : 'Uključi'
                                                     } ${label}`}
-                                                    className={cx(
-                                                        'relative h-6 w-11 shrink-0 rounded-full border transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
-                                                        device.enabled
-                                                            ? 'border-primary bg-primary'
-                                                            : 'border-border bg-muted',
-                                                    )}
+                                                    checked={device.enabled}
                                                     disabled={
                                                         deviceMutationBusy
                                                     }
-                                                    onClick={() =>
+                                                    onCheckedChange={() =>
                                                         updateDeviceMutation.mutate(
                                                             {
                                                                 id: device.id,
@@ -1043,18 +1081,7 @@ export function NotificationsTab({
                                                             },
                                                         )
                                                     }
-                                                    role="switch"
-                                                    type="button"
-                                                >
-                                                    <span
-                                                        className={cx(
-                                                            'absolute top-0.5 size-5 rounded-full bg-background shadow-xs transition-transform',
-                                                            device.enabled
-                                                                ? 'translate-x-[1.25rem]'
-                                                                : 'translate-x-0.5',
-                                                        )}
-                                                    />
-                                                </button>
+                                                />
                                             </div>
                                         );
                                     })

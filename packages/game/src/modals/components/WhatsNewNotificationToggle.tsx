@@ -21,7 +21,7 @@ export function WhatsNewNotificationToggle() {
                 className="gap-4"
                 justifyContent="space-between"
             >
-                <Stack spacing={0.5}>
+                <Stack spacing={0.5} className="min-w-0 flex-1">
                     <Typography level="body1" semiBold>
                         Što je novo u vrtu
                     </Typography>
