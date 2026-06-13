@@ -129,7 +129,10 @@ function itemLabel(
 }
 
 function itemDetails(item: InventoryItem) {
-    return item.notes ? [`Biljeska: ${item.notes}`] : [];
+    return [
+        ...(item.serialNumber ? [`Serijski br.: ${item.serialNumber}`] : []),
+        ...(item.notes ? [`Biljeska: ${item.notes}`] : []),
+    ];
 }
 
 function entityDisplayName(entity: InventoryEntity) {

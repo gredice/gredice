@@ -19,7 +19,10 @@ test('generates an inventory worksheet PDF with printable inventory fields', () 
         items: [
             {
                 label: 'Raj\u010dica cherry',
-                details: ['Biljeska: Paket otvoren'],
+                details: [
+                    'Serijski br.: SN-42',
+                    'Biljeska: Paket otvoren s dugom operativnom napomenom za inventuru. Druga recenica mora ostati vidljiva u PDF-u. Treca recenica takoder ostaje u PDF-u.',
+                ],
                 quantity: 13,
             },
             {
@@ -45,7 +48,9 @@ test('generates an inventory worksheet PDF with printable inventory fields', () 
     assert.match(content, /NOVO STANJE/);
     assert.doesNotMatch(content, /STATUS/);
     assert.match(content, /Rajcica cherry/);
+    assert.match(content, /Serijski br\.: SN-42/);
     assert.match(content, /Biljeska: Paket otvoren/);
+    assert.match(content, /Treca recenica/);
     assert.doesNotMatch(content, /ID #1/);
     assert.doesNotMatch(content, /Pracenje/);
     assert.doesNotMatch(content, /Minimum/);

@@ -499,7 +499,7 @@ function buildRowLayout(item: InventoryPrintoutPdfItem): RowLayout {
         item.details.filter(Boolean).join('  |  '),
         itemWidth,
         detailFontSize,
-    ).slice(0, 2);
+    );
     const itemHeight =
         rowPaddingY * 2 +
         labelLines.length * labelLineHeight +
