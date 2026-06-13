@@ -14,6 +14,8 @@ import {
 import { storage } from '../storage';
 import { createEvent, knownEvents } from './eventsRepo';
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 // Receipt creation data interface
 export interface ReceiptCreationData {
     paymentMethod: 'card' | 'cash' | 'bank_transfer';
@@ -187,10 +189,10 @@ export async function getInvoicesByStatus(status: string, accountId?: string) {
 }
 
 export async function getOverdueInvoices(accountId?: string) {
-    const today = new Date();
+    const overdueBoundary = new Date(Date.now() - DAY_MS);
     const whereConditions = [
         eq(invoices.status, 'sent'),
-        lte(invoices.dueDate, today),
+        lte(invoices.dueDate, overdueBoundary),
         isNull(invoices.paidDate),
         eq(invoices.isDeleted, false),
     ];
@@ -264,7 +266,10 @@ export function isOverdue(invoice: {
     if (invoice.status === 'paid' || invoice.paidDate) {
         return false;
     }
-    return invoice.status === 'sent' && new Date() > new Date(invoice.dueDate);
+    return (
+        invoice.status === 'sent' &&
+        Date.now() >= new Date(invoice.dueDate).getTime() + DAY_MS
+    );
 }
 
 export async function changeInvoiceStatus(
