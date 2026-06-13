@@ -1083,6 +1083,57 @@ export const inventoryOperationCoverRecipes = [
         ],
         showBackground: false,
     },
+    {
+        operationId: 'inventoryPlasticDeliveryBags',
+        operationLabel: 'Inventura plastičnih vrećica za dostavu',
+        outputFileName: 'inventoryPlasticDeliveryBags.webp',
+        camera: {
+            position: [2.7, 2.1, 4.8],
+            target: [0.45, 0.25, 0.45],
+            zoom: 142,
+        },
+        assets: [
+            {
+                id: 'plastic-bag-flat-back',
+                assetName: 'FarmSupplyKit',
+                visibleNodeNames: farmSupplyKitSackNodes,
+                position: [0.29, 0.09, 0.5],
+                rotation: [0.22, 0.6, -0.28],
+                scale: [0.24, 0.1, 0.18],
+            },
+            {
+                id: 'plastic-bag-flat-center',
+                assetName: 'FarmSupplyKit',
+                visibleNodeNames: farmSupplyKitSackNodes,
+                position: [0.4, 0.12, 0.48],
+                rotation: [0.24, 0.48, 0.02],
+                scale: [0.27, 0.11, 0.19],
+            },
+            {
+                id: 'plastic-bag-flat-front',
+                assetName: 'FarmSupplyKit',
+                visibleNodeNames: farmSupplyKitSackNodes,
+                position: [0.5, 0.08, 0.58],
+                rotation: [0.24, 0.82, 0.25],
+                scale: [0.22, 0.09, 0.17],
+            },
+            {
+                id: 'plastic-shine',
+                assetName: 'WaterSprayKit',
+                visibleNodeNames: waterSprayDropletNodes,
+                position: [0.4, 0.14, 0.52],
+                rotation: [0.18, 0.2, -0.28],
+                scale: 0.16,
+            },
+            {
+                assetName: 'FieldworkClipboard',
+                position: [0.68, 0.22, 0.34],
+                rotation: [0.18, -0.55, -0.22],
+                scale: 0.16,
+            },
+        ],
+        showBackground: false,
+    },
 ] satisfies readonly OperationCoverRecipe[];
 
 export const cuttingOperationCoverRecipes = [
