@@ -4,6 +4,7 @@ import { WeatherHudStory } from './WeatherHudStory';
 
 const DESKTOP_VIEWPORT = { width: 770, height: 610 };
 const MOBILE_VIEWPORT = { width: 320, height: 568 };
+const EDGE_TOLERANCE_PX = 2;
 
 async function expectWeatherTimeVisualizationWithinViewport(
     page: Page,
@@ -28,10 +29,12 @@ async function expectWeatherTimeVisualizationWithinViewport(
     const visualization = page.locator('[data-time-of-day-visualization]');
     const visualizationBox = await visualization.boundingBox();
     expect(visualizationBox).not.toBeNull();
-    expect(visualizationBox?.x ?? 0).toBeGreaterThanOrEqual(popoverBox?.x ?? 0);
     expect(
-        (visualizationBox?.x ?? 0) + (visualizationBox?.width ?? 0),
-    ).toBeLessThanOrEqual((popoverBox?.x ?? 0) + (popoverBox?.width ?? 0));
+        Math.abs((visualizationBox?.x ?? 0) - (popoverBox?.x ?? 0)),
+    ).toBeLessThanOrEqual(EDGE_TOLERANCE_PX);
+    expect(
+        Math.abs((visualizationBox?.width ?? 0) - (popoverBox?.width ?? 0)),
+    ).toBeLessThanOrEqual(EDGE_TOLERANCE_PX);
 
     const pageWidth = await page.evaluate(() => ({
         clientWidth: document.documentElement.clientWidth,
@@ -95,6 +98,17 @@ test('forecast popover scrolls within desktop viewport with time of day', async 
     expect(detailsBox?.height ?? 0).toBeLessThanOrEqual(
         DESKTOP_VIEWPORT.height - 48,
     );
+
+    const visualizationBox = await details
+        .locator('[data-time-of-day-visualization]')
+        .boundingBox();
+    expect(visualizationBox).not.toBeNull();
+    expect(
+        Math.abs((visualizationBox?.x ?? 0) - (detailsBox?.x ?? 0)),
+    ).toBeLessThanOrEqual(EDGE_TOLERANCE_PX);
+    expect(
+        Math.abs((visualizationBox?.width ?? 0) - (detailsBox?.width ?? 0)),
+    ).toBeLessThanOrEqual(EDGE_TOLERANCE_PX);
 
     const scrollStats = await page
         .locator('[data-weather-forecast-scroll="true"]')

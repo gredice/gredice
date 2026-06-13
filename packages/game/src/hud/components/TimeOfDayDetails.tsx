@@ -41,17 +41,20 @@ export function TimeOfDayDetails({
 
     return (
         <Stack
-            className={cx('min-w-0 px-4 py-3', className)}
+            className={cx('min-w-0 py-3', compact ? 'px-0' : 'px-4', className)}
             data-time-of-day-details="true"
         >
             <TimeOfDayVisualization
-                className={compact ? 'mb-1' : 'mb-2'}
+                className={compact ? 'mb-1 rounded-none' : 'mb-2'}
                 compact={compact}
                 interactive={enableDebugHudFlag}
                 onChange={updateTimeOfDay}
                 timeOfDay={timeOfDay}
             />
-            <Row className="gap-3" justifyContent="space-between">
+            <Row
+                className={cx('gap-3', compact && 'px-4')}
+                justifyContent="space-between"
+            >
                 <Typography level="body3" className="whitespace-nowrap">
                     {(isDaytime ? sunrise : sunset)?.toLocaleTimeString(
                         'hr-HR',
@@ -74,7 +77,11 @@ export function TimeOfDayDetails({
                     )}
                 </Typography>
             </Row>
-            <Typography level={compact ? 'body3' : 'body2'} center>
+            <Typography
+                level={compact ? 'body3' : 'body2'}
+                center
+                className={compact ? 'px-4' : undefined}
+            >
                 {currentTime.toLocaleDateString('hr-HR', {
                     day: 'numeric',
                     month: 'long',
