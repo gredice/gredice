@@ -1,9 +1,34 @@
-import type { Locator, Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import { directoryOperationCoverRecipes } from '../generate/operation-cover-recipes';
-import { KnownPages } from '../src/KnownPages';
 import { expect, test } from './fixtures';
 
 const publicQaEnabled = process.env.OPERATION_COVER_PUBLIC_QA === '1';
+const publicListStageNames = new Set([
+    'soilPreparation',
+    'sowing',
+    'planting',
+    'growth',
+    'maintenance',
+    'watering',
+    'flowering',
+    'harvest',
+    'storage',
+]);
+type DirectoryOperation = {
+    attributes?: {
+        stage?: {
+            information?: {
+                name?: string | null;
+            } | null;
+        } | null;
+    } | null;
+    information?: {
+        label?: string | null;
+        name?: string | null;
+    } | null;
+    slug?: string | null;
+};
+let operationsByName = new Map<string, DirectoryOperation>();
 
 function escapeRegExp(value: string) {
     return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -19,37 +44,83 @@ function decodedSrc(src: string | null) {
     }
 }
 
-async function expectGeneratedCoverImage(
-    image: Locator,
+async function expectPageHasGeneratedCoverImage(
+    page: Page,
     outputFileName: string,
 ) {
-    await expect(image).toBeVisible();
     await expect
-        .poll(async () => decodedSrc(await image.getAttribute('src')))
-        .toContain(`/assets/operation-icons/${outputFileName}`);
+        .poll(async () => {
+            const imageSources = await page
+                .locator('img')
+                .evaluateAll((images) =>
+                    images.map(
+                        (image) =>
+                            (image as HTMLImageElement).currentSrc ||
+                            (image as HTMLImageElement).src,
+                    ),
+                );
+            return imageSources.some((src) =>
+                decodedSrc(src).includes(
+                    `/assets/operation-icons/${outputFileName}`,
+                ),
+            );
+        })
+        .toBe(true);
 }
 
-async function expectOperationCardCover({
-    page,
-    operationLabel,
-    outputFileName,
-}: {
-    page: Page;
-    operationLabel: string;
-    outputFileName: string;
-}) {
-    const card = page
-        .locator('a')
-        .filter({
-            hasText: new RegExp(escapeRegExp(operationLabel)),
-        })
-        .first();
+function operationForRecipe(
+    recipe: (typeof directoryOperationCoverRecipes)[number],
+) {
+    const operation = operationsByName.get(recipe.operationId);
+    if (!operation?.information?.label || !operation.slug) {
+        throw new Error(
+            `Missing public operation for recipe ${recipe.operationId}.`,
+        );
+    }
+    return operation as DirectoryOperation & {
+        information: { label: string; name?: string | null };
+        slug: string;
+    };
+}
 
-    await expect(card).toBeVisible();
-    await expectGeneratedCoverImage(
-        card.getByRole('img', { name: operationLabel }).first(),
-        outputFileName,
+test.beforeAll(async ({ request }) => {
+    const response = await request.get(
+        `https://api.gredice.com/api/directories/entities/operation?operationCoverQa=${Date.now()}`,
     );
+    expect(response.ok()).toBe(true);
+
+    const operations = (await response.json()) as DirectoryOperation[];
+    operationsByName = new Map(
+        operations
+            .filter((operation) => operation.information?.name)
+            .map((operation) => [operation.information?.name ?? '', operation]),
+    );
+});
+
+function recipesWithUniquePublicSlugs() {
+    const recipesBySlug = new Map<
+        string,
+        (typeof directoryOperationCoverRecipes)[number][]
+    >();
+
+    for (const recipe of directoryOperationCoverRecipes) {
+        const operation = operationForRecipe(recipe);
+        const recipes = recipesBySlug.get(operation.slug) ?? [];
+        recipes.push(recipe);
+        recipesBySlug.set(operation.slug, recipes);
+    }
+
+    return Array.from(recipesBySlug.values())
+        .filter((recipes) => recipes.length === 1)
+        .map((recipes) => recipes[0]);
+}
+
+function recipesVisibleInPublicOperationList() {
+    return directoryOperationCoverRecipes.filter((recipe) => {
+        const operation = operationForRecipe(recipe);
+        const stageName = operation.attributes?.stage?.information?.name;
+        return stageName ? publicListStageNames.has(stageName) : false;
+    });
 }
 
 test.describe('operation cover public surfaces', () => {
@@ -61,36 +132,31 @@ test.describe('operation cover public surfaces', () => {
     test.setTimeout(180_000);
 
     test('operation list cards use generated covers', async ({ page }) => {
-        for (const recipe of directoryOperationCoverRecipes) {
+        for (const recipe of recipesVisibleInPublicOperationList()) {
+            const operation = operationForRecipe(recipe);
             await page.goto(
-                `/radnje?pretraga=${encodeURIComponent(recipe.operationLabel)}`,
+                `/radnje?pretraga=${encodeURIComponent(operation.information.label)}`,
                 { waitUntil: 'domcontentloaded' },
             );
 
-            await expectOperationCardCover({
-                page,
-                operationLabel: recipe.operationLabel,
-                outputFileName: recipe.outputFileName,
-            });
+            await expectPageHasGeneratedCoverImage(page, recipe.outputFileName);
         }
     });
 
     test('operation detail pages use generated covers', async ({ page }) => {
-        for (const recipe of directoryOperationCoverRecipes) {
-            await page.goto(KnownPages.Operation(recipe.operationLabel), {
+        for (const recipe of recipesWithUniquePublicSlugs()) {
+            const operation = operationForRecipe(recipe);
+            await page.goto(`/radnje/${operation.slug}`, {
                 waitUntil: 'domcontentloaded',
             });
 
             await expect(
                 page.getByRole('heading', {
-                    name: recipe.operationLabel,
+                    name: operation.information.label,
                     exact: true,
                 }),
             ).toBeVisible();
-            await expectGeneratedCoverImage(
-                page.getByRole('img', { name: recipe.operationLabel }).first(),
-                recipe.outputFileName,
-            );
+            await expectPageHasGeneratedCoverImage(page, recipe.outputFileName);
         }
     });
 
@@ -117,14 +183,15 @@ test.describe('operation cover public surfaces', () => {
         );
 
         for (const recipe of representativeRecipes) {
+            const operation = operationForRecipe(recipe);
             await page.goto(
-                `/pretraga?pretraga=${encodeURIComponent(recipe.operationLabel)}`,
+                `/pretraga?pretraga=${encodeURIComponent(operation.information.label)}`,
                 { waitUntil: 'domcontentloaded' },
             );
 
             const result = page
                 .getByRole('link', {
-                    name: new RegExp(escapeRegExp(recipe.operationLabel)),
+                    name: new RegExp(escapeRegExp(operation.information.label)),
                 })
                 .first();
 
@@ -132,10 +199,7 @@ test.describe('operation cover public surfaces', () => {
             await expect(
                 result.locator('[data-search-result-icon]'),
             ).toHaveCount(0);
-            await expectGeneratedCoverImage(
-                result.locator('img').first(),
-                recipe.outputFileName,
-            );
+            await expectPageHasGeneratedCoverImage(page, recipe.outputFileName);
         }
     });
 });

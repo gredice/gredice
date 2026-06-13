@@ -8,19 +8,8 @@ import {
     upsertAttributeValue,
 } from '@gredice/storage';
 import {
-    bedMaintenanceOperationCoverRecipes,
-    cuttingOperationCoverRecipes,
-    harvestOperationCoverRecipes,
-    inventoryOperationCoverRecipes,
-    photographyOperationCoverRecipes,
-    plantingOperationCoverRecipes,
-    protectionOperationCoverRecipes,
-    sensorOperationCoverRecipes,
-    soilOperationCoverRecipes,
-    storageOperationCoverRecipes,
-    supportOperationCoverRecipes,
+    directoryOperationCoverRecipes,
     validateOperationCoverRecipes,
-    waterOperationCoverRecipes,
 } from './operation-cover-recipes';
 
 type OperationDirectoryEntity = {
@@ -60,20 +49,7 @@ const coverDefinitionConfig = {
     required: false,
 };
 
-const targetOperationCoverRecipes = [
-    ...waterOperationCoverRecipes,
-    ...harvestOperationCoverRecipes,
-    ...inventoryOperationCoverRecipes,
-    ...photographyOperationCoverRecipes,
-    ...plantingOperationCoverRecipes,
-    ...protectionOperationCoverRecipes,
-    ...sensorOperationCoverRecipes,
-    ...soilOperationCoverRecipes,
-    ...storageOperationCoverRecipes,
-    ...supportOperationCoverRecipes,
-    ...cuttingOperationCoverRecipes,
-    ...bedMaintenanceOperationCoverRecipes,
-] as const;
+const targetOperationCoverRecipes = directoryOperationCoverRecipes;
 
 function parseArgs(argv: string[]) {
     const options = {
