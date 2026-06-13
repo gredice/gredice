@@ -1229,6 +1229,41 @@ export const inventoryOperationCoverRecipes = [
     },
 ] satisfies readonly OperationCoverRecipe[];
 
+export const photographyOperationCoverRecipes = [
+    {
+        operationId: 'plantPhoto',
+        operationLabel: 'Fotografija biljke',
+        outputFileName: 'plantPhoto.webp',
+        camera: {
+            position: [2.5, 2.1, 4.8],
+            target: [0.43, 0.33, 0.45],
+            zoom: 148,
+        },
+        plants: [
+            {
+                id: 'photo-subject',
+                plantType: 'basil',
+                generation: 9,
+                seed: 'operation-cover-plant-photo-subject',
+                position: [0.36, 0.04, 0.45],
+                scale: 0.78,
+                showFlowers: false,
+                showProduce: false,
+            },
+        ],
+        assets: [
+            {
+                id: 'camera-phone',
+                assetName: 'CameraPhone',
+                position: [0.63, 0.18, 0.38],
+                rotation: [0.18, -0.68, -0.34],
+                scale: 0.27,
+            },
+        ],
+        showBackground: false,
+    },
+] satisfies readonly OperationCoverRecipe[];
+
 export const cuttingOperationCoverRecipes = [
     {
         operationId: 'formative-pruning',
@@ -2033,6 +2068,7 @@ export const operationCoverRecipes = [
     ...waterOperationCoverRecipes,
     ...harvestOperationCoverRecipes,
     ...inventoryOperationCoverRecipes,
+    ...photographyOperationCoverRecipes,
     ...cuttingOperationCoverRecipes,
     ...bedMaintenanceOperationCoverRecipes,
 ] satisfies readonly OperationCoverRecipe[];
