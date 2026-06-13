@@ -486,6 +486,8 @@ test('manual retry reuses a failed automation run and clears failed summary afte
         lockedBy: 'automations-test',
     });
     assert.ok(startedRun);
+    assert.strictEqual(startedRun.source, 'test');
+    assert.strictEqual(startedRun.dryRun, true);
     assert.strictEqual(startedRun.attempt, 1);
     assert.strictEqual(startedRun.maxAttempts, 1);
 
@@ -509,7 +511,9 @@ test('manual retry reuses a failed automation run and clears failed summary afte
 
     assert.ok(retriedRun);
     assert.strictEqual(retriedRun.id, startedRun.id);
+    assert.strictEqual(retriedRun.source, 'manual');
     assert.strictEqual(retriedRun.status, 'retrying');
+    assert.strictEqual(retriedRun.dryRun, false);
     assert.strictEqual(retriedRun.attempt, 1);
     assert.strictEqual(retriedRun.maxAttempts, 2);
     assert.strictEqual(retriedRun.completedAt, null);
@@ -525,6 +529,8 @@ test('manual retry reuses a failed automation run and clears failed summary afte
     });
     assert.ok(claimedRetry);
     assert.strictEqual(claimedRetry.id, startedRun.id);
+    assert.strictEqual(claimedRetry.source, 'manual');
+    assert.strictEqual(claimedRetry.dryRun, false);
     assert.strictEqual(claimedRetry.attempt, 2);
     assert.strictEqual(claimedRetry.maxAttempts, 2);
 

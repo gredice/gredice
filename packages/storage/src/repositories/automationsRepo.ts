@@ -802,7 +802,9 @@ export async function retryFailedAutomationRun(
     const [updated] = await storage()
         .update(automationRuns)
         .set({
+            source: 'manual',
             status: 'retrying',
+            dryRun: false,
             maxAttempts: sql<number>`${automationRuns.maxAttempts} + 1`,
             nextRunAt: input.retryAt ?? now,
             lockedAt: null,
