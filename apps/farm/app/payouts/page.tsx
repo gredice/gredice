@@ -100,6 +100,10 @@ function formatWage(amount: number | null, unit: string) {
     return `${formatPrice(amount)} / ${unit}`;
 }
 
+function formatSignedPrice(amount: number) {
+    return amount > 0 ? `+${formatPrice(amount)}` : formatPrice(amount);
+}
+
 function mergeEarnings(earnings: FarmerEarning[]) {
     const merged = new Map<string, FarmerEarning>();
 
@@ -156,6 +160,7 @@ async function PayoutsContent({ selectedFarmId }: { selectedFarmId?: number }) {
     ]);
 
     const totalEarned = balance.totalEarned;
+    const totalAdjustment = balance.totalAdjustment;
     const totalPaid = balance.totalPaid;
     const totalPending = balance.totalPending;
     const availableBalance = balance.availableBalance;
@@ -361,6 +366,25 @@ async function PayoutsContent({ selectedFarmId }: { selectedFarmId?: number }) {
                                         </Table.Cell>
                                     </Table.Row>
                                 ))}
+                                {totalAdjustment !== 0 && (
+                                    <Table.Row>
+                                        <Table.Cell>
+                                            Korekcije isplata
+                                        </Table.Cell>
+                                        <Table.Cell className="text-right tabular-nums">
+                                            {balance.adjustmentCount}
+                                        </Table.Cell>
+                                        <Table.Cell className="text-right">
+                                            —
+                                        </Table.Cell>
+                                        <Table.Cell className="text-right">
+                                            —
+                                        </Table.Cell>
+                                        <Table.Cell className="text-right tabular-nums font-medium">
+                                            {formatSignedPrice(totalAdjustment)}
+                                        </Table.Cell>
+                                    </Table.Row>
+                                )}
                                 <Table.Row className="bg-muted/40 font-medium hover:bg-muted/40">
                                     <Table.Cell>Ukupno</Table.Cell>
                                     <Table.Cell className="text-right tabular-nums">

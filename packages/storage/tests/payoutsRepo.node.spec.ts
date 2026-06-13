@@ -504,6 +504,84 @@ test('getFarmerBalance counts payable work after the last paid farm payout', asy
     assert.equal(balance.availableBalance, 0.3);
 });
 
+test('getFarmerBalance applies open payout adjustments to payable balance', async () => {
+    createTestDb();
+
+    const userId = randomUUID();
+    const adminUserId = randomUUID();
+    await storage()
+        .insert(users)
+        .values([
+            {
+                id: userId,
+                userName: `payout-balance-adjustment-${userId}@example.com`,
+                displayName: 'Payout Balance Adjustment Farmer',
+                role: 'farmer',
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            },
+            {
+                id: adminUserId,
+                userName: `payout-balance-adjustment-admin-${adminUserId}@example.com`,
+                displayName: 'Payout Balance Adjustment Admin',
+                role: 'admin',
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            },
+        ]);
+
+    const farmId = await createFarm({
+        name: `Balance Adjustment Payout Farm ${randomUUID()}`,
+        longitude: 0,
+        latitude: 0,
+    });
+    await assignUserToFarm(farmId, userId);
+
+    const operationEntityId = await createPublishedOperationEntity(
+        'Berba za korekciju',
+        30,
+    );
+    await upsertOperationPrice({
+        farmId,
+        entityTypeName: 'operation',
+        entityId: operationEntityId,
+        pricePerUnit: '100.00',
+        currency: 'eur',
+    });
+    await createVerifiedAcceptedOperation({
+        farmId,
+        entityId: operationEntityId,
+        completedBy: userId,
+    });
+
+    const [request] = await storage()
+        .insert(farmerPayoutRequests)
+        .values({
+            farmId,
+            userId,
+            requestedAmount: '100.00',
+            currency: 'eur',
+            status: 'pending',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        })
+        .returning();
+    assert.ok(request);
+
+    await approvePayoutRequest(request.id, adminUserId, undefined, [
+        { label: 'Korekcija duplikata', amount: -20 },
+    ]);
+
+    const balance = await getFarmerBalance(userId, farmId);
+
+    assert.equal(balance.totalOperationEarned, 100);
+    assert.equal(balance.totalAdjustment, -20);
+    assert.equal(balance.adjustmentCount, 1);
+    assert.equal(balance.totalEarned, 80);
+    assert.equal(balance.totalPending, 80);
+    assert.equal(balance.availableBalance, 0);
+});
+
 test('approvePayoutRequest stores adjustment items and updates final amount', async () => {
     createTestDb();
 

@@ -234,6 +234,9 @@ export type FarmerEarning = {
 
 export type FarmerBalance = {
     totalEarned: number;
+    totalOperationEarned: number;
+    totalAdjustment: number;
+    adjustmentCount: number;
     totalPaid: number;
     totalPending: number;
     availableBalance: number;
@@ -280,6 +283,27 @@ function getAdjustmentTotalCents(
     );
 }
 
+function getActivePayoutAdjustmentTotal(
+    payouts: (SelectFarmerPayoutRequest & {
+        adjustments: Pick<SelectFarmerPayoutRequestAdjustment, 'amount'>[];
+    })[],
+) {
+    return payouts
+        .filter(
+            (payout) =>
+                payout.status === 'pending' || payout.status === 'approved',
+        )
+        .reduce(
+            (result, payout) => ({
+                amountCents:
+                    result.amountCents +
+                    getAdjustmentTotalCents(payout.adjustments),
+                count: result.count + payout.adjustments.length,
+            }),
+            { amountCents: 0, count: 0 },
+        );
+}
+
 function normalizePayoutAdjustments(
     adjustments: readonly PayoutAdjustmentInput[] | undefined,
     currency: string,
@@ -319,7 +343,7 @@ export async function getFarmerBalance(
 ): Promise<FarmerBalance> {
     const [prices, payouts, operationsData] = await Promise.all([
         getOperationPrices(farmId),
-        getFarmPayoutRequests(farmId),
+        getFarmPayoutRequestsWithAdjustments(farmId),
         getEntitiesFormatted<OperationData>('operation'),
     ]);
     const lastPaidPayoutAt = getLastPaidPayoutAt(payouts);
@@ -434,7 +458,7 @@ export async function getFarmerBalance(
         }
     }
 
-    const totalEarned = Array.from(earningsByKey.values()).reduce(
+    const totalOperationEarned = Array.from(earningsByKey.values()).reduce(
         (acc, e) => acc + e.totalEarned,
         0,
     );
@@ -443,21 +467,31 @@ export async function getFarmerBalance(
         0,
     );
 
-    const totalPaid = payouts
+    const totalPaidCents = payouts
         .filter((p) => p.status === 'paid')
-        .reduce((acc, p) => acc + parseFloat(p.requestedAmount), 0);
+        .reduce((acc, p) => acc + moneyToCents(p.requestedAmount), 0);
 
-    const totalPending = payouts
+    const totalPendingCents = payouts
         .filter((p) => p.status === 'pending' || p.status === 'approved')
-        .reduce((acc, p) => acc + parseFloat(p.requestedAmount), 0);
+        .reduce((acc, p) => acc + moneyToCents(p.requestedAmount), 0);
 
-    const availableBalance = Math.max(0, totalEarned - totalPending);
+    const activeAdjustments = getActivePayoutAdjustmentTotal(payouts);
+    const totalOperationEarnedCents = moneyToCents(totalOperationEarned);
+    const totalEarnedCents =
+        totalOperationEarnedCents + activeAdjustments.amountCents;
+    const availableBalanceCents = Math.max(
+        0,
+        totalEarnedCents - totalPendingCents,
+    );
 
     return {
-        totalEarned,
-        totalPaid,
-        totalPending,
-        availableBalance,
+        totalEarned: totalEarnedCents / 100,
+        totalOperationEarned: totalOperationEarnedCents / 100,
+        totalAdjustment: activeAdjustments.amountCents / 100,
+        adjustmentCount: activeAdjustments.count,
+        totalPaid: totalPaidCents / 100,
+        totalPending: totalPendingCents / 100,
+        availableBalance: availableBalanceCents / 100,
         totalDurationMinutes,
         currency,
         earningsByType: Array.from(earningsByKey.values()),
@@ -545,6 +579,24 @@ export async function getFarmPayoutRequests(
     return storage().query.farmerPayoutRequests.findMany({
         where: eq(farmerPayoutRequests.farmId, farmId),
         orderBy: desc(farmerPayoutRequests.createdAt),
+    });
+}
+
+async function getFarmPayoutRequestsWithAdjustments(farmId: number): Promise<
+    (SelectFarmerPayoutRequest & {
+        adjustments: Pick<SelectFarmerPayoutRequestAdjustment, 'amount'>[];
+    })[]
+> {
+    return storage().query.farmerPayoutRequests.findMany({
+        where: eq(farmerPayoutRequests.farmId, farmId),
+        orderBy: desc(farmerPayoutRequests.createdAt),
+        with: {
+            adjustments: {
+                columns: {
+                    amount: true,
+                },
+            },
+        },
     });
 }
 
