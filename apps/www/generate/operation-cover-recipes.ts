@@ -264,9 +264,44 @@ export const waterOperationCoverRecipes = [
     },
 ] satisfies readonly OperationCoverRecipe[];
 
+export const cuttingOperationCoverRecipes = [
+    {
+        operationId: 'formative-pruning',
+        operationLabel: 'Formativna rezidba',
+        outputFileName: 'formative-pruning.webp',
+        camera: {
+            position: [2.5, 2.1, 4.8],
+            target: [0.39, 0.42, 0.45],
+            zoom: 128,
+        },
+        plants: [
+            {
+                id: 'plant',
+                plantType: 'tomato',
+                generation: 7,
+                seed: 'operation-cover-formative-pruning',
+                position: [0.36, -0.03, 0.45],
+                scale: 0.82,
+                showFlowers: false,
+                showProduce: false,
+            },
+        ],
+        assets: [
+            {
+                assetName: 'GardenScissors',
+                position: [0.51, 0.48, 0.42],
+                rotation: [0.08, -0.65, -0.95],
+                scale: 0.25,
+            },
+        ],
+        showBackground: false,
+    },
+] satisfies readonly OperationCoverRecipe[];
+
 export const operationCoverRecipes = [
     ...liquidPreparationOperationCoverRecipes,
     ...waterOperationCoverRecipes,
+    ...cuttingOperationCoverRecipes,
 ] satisfies readonly OperationCoverRecipe[];
 
 export function validateOperationCoverRecipes(
