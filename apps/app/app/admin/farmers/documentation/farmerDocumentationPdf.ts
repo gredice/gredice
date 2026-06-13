@@ -1,10 +1,12 @@
 import { create as createQrCode } from 'qrcode';
 import {
+    discardedDocumentationPages,
     documentationChangeLabel,
-    type FarmerDocumentationOperation,
     type FarmerDocumentationPackage,
+    type FarmerDocumentationPage,
     formatDocumentationDateTime,
     getFarmerAppOrigin,
+    includedDocumentationPages,
 } from './farmerDocumentationData';
 
 type PdfFontKey = 'F1' | 'F2';
@@ -162,8 +164,8 @@ export function generateFarmerDocumentationPdf(
 
     drawOrganizationGuide({ data, farmOrigin, pages, version });
 
-    for (const operation of data.includedOperations) {
-        drawOperationManual({ farmOrigin, operation, pages, version, data });
+    for (const page of includedDocumentationPages(data)) {
+        drawDocumentationPage({ data, farmOrigin, pages, version, page });
     }
 
     return writePdf(pages.map((page) => page.toString()));
@@ -217,40 +219,39 @@ function drawOrganizationGuide({
         subtitle: data.since
             ? `Promjene od ${formatDocumentationDateTime(data.since)}`
             : 'Cijeli prirucnik',
-        qrUrl: `${farmOrigin}/operations`,
+        qrUrl: farmOrigin,
         version,
         generatedAt: data.generatedAt,
     });
     const packageType = data.since
-        ? 'Paket sadrzi organizacijski vodic i sve radnje promijenjene od zadnjeg ispisa.'
-        : 'Paket sadrzi organizacijski vodic i sve trenutno objavljene radnje.';
+        ? 'Paket sadrzi organizacijski vodic i sve prirucnike promijenjene od zadnjeg ispisa.'
+        : 'Paket sadrzi organizacijski vodic i sve trenutno objavljene prirucnike.';
+    const includedPages = includedDocumentationPages(data);
+    const discardedPages = discardedDocumentationPages(data);
 
     context = drawSection(context, 'Svrha paketa', [
         packageType,
-        'Stranice radnji nisu numerirane. U registratoru ih drzi po rastucem kodu OP-0001, OP-0002, OP-0003 i tako dalje.',
-        'Kod dodavanja novih radnji umetni ih na mjesto prema kodu, bez pomicanja ili prepisivanja brojeva stranica.',
+        'Stranice nisu numerirane. U registratoru ih drzi u odjeljcima prema kodu: OP za radnje i PS za sorte.',
+        'U svakom odjeljku stranice slozi po rastucem kodu, primjerice OP-0001, OP-0002 ili PS-0001, PS-0002.',
+        'Kod dodavanja novih prirucnika umetni ih na mjesto prema kodu, bez pomicanja ili prepisivanja brojeva stranica.',
     ]);
 
     context = drawActionList(
         context,
         'Umetni nove stranice',
-        data.includedOperations.filter(
-            (operation) => operation.changeType === 'insert',
-        ),
+        includedPages.filter((page) => page.changeType === 'insert'),
     );
     context = drawActionList(
         context,
         'Zamijeni postojece stranice',
-        data.includedOperations.filter(
-            (operation) => operation.changeType === 'replace',
-        ),
+        includedPages.filter((page) => page.changeType === 'replace'),
     );
-    context = drawDiscardList(context, data.discardedOperations);
+    context = drawDiscardList(context, discardedPages);
     context = drawSection(context, 'Kontrola nakon umetanja', [
-        '1. Provjeri da je svaka nova ili zamijenjena stranica umetnuta pod istim OP kodom kao u ovom vodicu.',
+        '1. Provjeri da je svaka nova ili zamijenjena stranica umetnuta pod istim kodom kao u ovom vodicu.',
         '2. Stare stranice iz odjeljka za zamjenu izdvoji i odbaci nakon sto nova verzija stoji u registratoru.',
         '3. Stranice iz odjeljka za uklanjanje izvadi iz registratora bez zamjenske stranice.',
-        '4. QR kod na svakoj stranici vodi na farmer aplikaciju za aktualnu digitalnu verziju radnje.',
+        '4. QR kod na svakoj stranici vodi na farmer aplikaciju za aktualnu digitalnu verziju prirucnika.',
     ]);
 
     drawFooter(context.page);
@@ -259,27 +260,27 @@ function drawOrganizationGuide({
 function drawActionList(
     context: FlowContext,
     title: string,
-    operations: FarmerDocumentationOperation[],
+    pages: FarmerDocumentationPage[],
 ) {
-    if (operations.length === 0) {
+    if (pages.length === 0) {
         return drawSection(context, title, ['Nema stranica u ovoj skupini.']);
     }
 
     return drawSection(
         context,
         title,
-        operations.map(
-            (operation) =>
-                `${operation.code} - ${operation.label} (${operation.revisionActions.join(', ') || 'aktualna verzija'})`,
+        pages.map(
+            (page) =>
+                `${page.code} - ${page.label} [${page.documentTypeLabel}] (${page.revisionActions.join(', ') || 'aktualna verzija'})`,
         ),
     );
 }
 
 function drawDiscardList(
     context: FlowContext,
-    discardedOperations: FarmerDocumentationPackage['discardedOperations'],
+    discardedPages: ReturnType<typeof discardedDocumentationPages>,
 ) {
-    if (discardedOperations.length === 0) {
+    if (discardedPages.length === 0) {
         return drawSection(context, 'Ukloni bez zamjene', [
             'Nema stranica za uklanjanje.',
         ]);
@@ -288,80 +289,52 @@ function drawDiscardList(
     return drawSection(
         context,
         'Ukloni bez zamjene',
-        discardedOperations.map(
-            (operation) =>
-                `${operation.code} - ${operation.label} (${operation.revisionActions.join(', ')})`,
+        discardedPages.map(
+            (page) =>
+                `${page.code} - ${page.label} [${page.documentTypeLabel}] (${page.revisionActions.join(', ')})`,
         ),
     );
 }
 
-function drawOperationManual({
+function drawDocumentationPage({
     data,
     farmOrigin,
-    operation,
+    page,
     pages,
     version,
 }: {
     data: FarmerDocumentationPackage;
     farmOrigin: string;
-    operation: FarmerDocumentationOperation;
+    page: FarmerDocumentationPage;
     pages: PdfCanvas[];
     version: string;
 }) {
-    const operationUrl = `${farmOrigin}/operations/${operation.id}`;
     let context = startPage(pages, {
-        code: operation.code,
-        title: operation.label,
+        code: page.code,
+        title: page.label,
         subtitle: data.since
-            ? documentationChangeLabel(operation.changeType)
-            : 'Cijeli prirucnik',
-        qrUrl: operationUrl,
+            ? `${page.documentTypeLabel} - ${documentationChangeLabel(page.changeType)}`
+            : page.documentTypeLabel,
+        qrUrl: `${farmOrigin}${page.appPath}`,
         version,
         generatedAt: data.generatedAt,
     });
 
-    context = drawOperationSummary(context, operation);
-    context = drawSection(
-        context,
-        'Opis',
-        markdownToPlainLines(operation.description ?? 'Opis nije definiran.'),
-    );
-    context = drawSection(
-        context,
-        'Upute',
-        markdownToPlainLines(
-            operation.instructions ?? 'Upute nisu definirane.',
-        ),
-    );
+    context = drawPageSummary(context, page);
 
-    if (operation.attributes.length > 0) {
+    for (const section of page.sections) {
         context = drawSection(
             context,
-            'Podaci radnje',
-            operation.attributes.map(
-                (attribute) => `${attribute.label}: ${attribute.value}`,
-            ),
+            section.title,
+            section.lines.flatMap((line) => markdownToPlainLines(line)),
         );
     }
 
     drawFooter(context.page);
 }
 
-function drawOperationSummary(
-    context: FlowContext,
-    operation: FarmerDocumentationOperation,
-) {
-    const rows = [
-        ['Kod', operation.code],
-        ['Trajanje', operation.durationLabel],
-        ['Dokaz fotografijom', operation.photoProofLabel],
-        [
-            'Promjena',
-            operation.changedAt
-                ? formatDocumentationDateTime(operation.changedAt)
-                : 'Cijeli prirucnik',
-        ],
-    ];
+function drawPageSummary(context: FlowContext, page: FarmerDocumentationPage) {
+    const rows = page.summaryRows;
     const boxHeight = rows.length * 21 + 18;
     context = ensureSpace(context, boxHeight);
     context.page.fillRect({
@@ -373,11 +346,11 @@ function drawOperationSummary(
     });
 
     let y = context.y - 25;
-    for (const [label, value] of rows) {
+    for (const row of rows) {
         context.page.text({
             x: margin + 12,
             y,
-            value: label.toUpperCase(),
+            value: row.label.toUpperCase(),
             size: 6.9,
             font: 'F2',
             color: colors.muted,
@@ -385,7 +358,7 @@ function drawOperationSummary(
         context.page.text({
             x: margin + 142,
             y,
-            value,
+            value: row.value,
             size: 9,
             font: 'F2',
             color: colors.text,
