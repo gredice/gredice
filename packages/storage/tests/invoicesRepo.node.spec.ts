@@ -36,6 +36,8 @@ import {
 import { createTestAccount } from './helpers/testHelpers';
 import { createTestDb } from './testDb';
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 async function baseInvoice(transactionId?: number): Promise<InsertInvoice> {
     const accountId = await createTestAccount();
     const currentDate = new Date();
@@ -311,22 +313,37 @@ test('calculateInvoiceTotals', async () => {
     assert.strictEqual(totals.itemCount, 2);
 });
 
-test('getOverdueInvoices finds overdue invoices', async () => {
+test('getOverdueInvoices applies the 24-hour due-day boundary', async () => {
     createTestDb();
 
-    // Create an overdue invoice (due date in the past)
-    const invoiceData = await baseInvoice();
-    const pastDate = new Date();
-    pastDate.setDate(pastDate.getDate() - 5); // 5 days ago
+    const now = new Date();
+    const twoDaysAgo = new Date(now.getTime() - 2 * DAY_MS);
+    const dueTodayUtc = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    );
 
-    invoiceData.status = 'sent';
-    invoiceData.dueDate = pastDate;
+    const overdueInvoiceData = await baseInvoice();
+    overdueInvoiceData.status = 'sent';
+    overdueInvoiceData.dueDate = twoDaysAgo;
 
-    const invoiceId = await createInvoice(invoiceData);
+    const dueTodayInvoiceData = await baseInvoice();
+    dueTodayInvoiceData.status = 'sent';
+    dueTodayInvoiceData.dueDate = dueTodayUtc;
+
+    const paidInvoiceData = await baseInvoice();
+    paidInvoiceData.status = 'sent';
+    paidInvoiceData.dueDate = twoDaysAgo;
+    paidInvoiceData.paidDate = now;
+
+    const overdueInvoiceId = await createInvoice(overdueInvoiceData);
+    const dueTodayInvoiceId = await createInvoice(dueTodayInvoiceData);
+    const paidInvoiceId = await createInvoice(paidInvoiceData);
 
     const overdueInvoices = await getOverdueInvoices();
     assert.ok(Array.isArray(overdueInvoices));
-    assert.ok(overdueInvoices.some((inv) => inv.id === invoiceId));
+    assert.ok(overdueInvoices.some((inv) => inv.id === overdueInvoiceId));
+    assert.ok(!overdueInvoices.some((inv) => inv.id === dueTodayInvoiceId));
+    assert.ok(!overdueInvoices.some((inv) => inv.id === paidInvoiceId));
 });
 
 test('getReceiptByInvoice returns receipt for paid invoice', async () => {
@@ -502,14 +519,18 @@ test('canCancelInvoice returns correct permissions', async () => {
 });
 
 test('isOverdue correctly identifies overdue invoices', async () => {
-    const today = new Date();
-    const pastDate = new Date();
-    pastDate.setDate(today.getDate() - 5);
-    const futureDate = new Date();
-    futureDate.setDate(today.getDate() + 5);
+    const now = new Date();
+    const pastDate = new Date(now.getTime() - 2 * DAY_MS);
+    const dueTodayUtc = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    );
+    const futureDate = new Date(now.getTime() + 5 * DAY_MS);
 
-    // Overdue invoice (sent and past due date)
+    // Overdue invoice (sent and due day fully passed)
     assert.ok(isOverdue({ status: 'sent', dueDate: pastDate }));
+
+    // Not overdue - due date is today
+    assert.ok(!isOverdue({ status: 'sent', dueDate: dueTodayUtc }));
 
     // Not overdue - future due date
     assert.ok(!isOverdue({ status: 'sent', dueDate: futureDate }));
