@@ -19,6 +19,7 @@ import type { SelectEntityType } from '@gredice/storage';
 import {
     AI,
     Bank,
+    Book,
     Calendar,
     Cloud,
     Discount,
@@ -97,6 +98,8 @@ function quickActionIcon(quickAction: { href: string; icon?: string | null }) {
         case KnownPages.FarmerPrices:
         case KnownPages.Transactions:
             return <Euro className="size-5" />;
+        case KnownPages.FarmerDocumentation:
+            return <Book className="size-5" />;
         case KnownPages.Outlet:
             return <Discount className="size-5" />;
         case KnownPages.Farms:
@@ -452,6 +455,7 @@ export function Nav({
                         adminPages.Transactions.href,
                         adminPages.FarmerPayouts.href,
                         adminPages.FarmerPrices.href,
+                        adminPages.FarmerDocumentation.href,
                         adminPages.Sunflowers.href,
                         adminPages.Receipts.href,
                         adminPages.Outlet.href,
@@ -494,6 +498,14 @@ export function Nav({
                         href={adminPages.FarmerPrices.href}
                         label={adminPages.FarmerPrices.label}
                         icon={<Euro className="size-5" />}
+                        onClick={onItemClick}
+                        compact={compact}
+                        nested
+                    />
+                    <NavItem
+                        href={adminPages.FarmerDocumentation.href}
+                        label={adminPages.FarmerDocumentation.label}
+                        icon={<Book className="size-5" />}
                         onClick={onItemClick}
                         compact={compact}
                         nested

@@ -30,6 +30,10 @@ export const adminPages = {
     Operations: { href: KnownPages.Operations, label: 'Radnje' },
     FarmerPayouts: { href: KnownPages.FarmerPayouts, label: 'Isplate farmera' },
     FarmerPrices: { href: KnownPages.FarmerPrices, label: 'Cijene radnji' },
+    FarmerDocumentation: {
+        href: KnownPages.FarmerDocumentation,
+        label: 'Dokumentacija farmera',
+    },
     Inventory: { href: KnownPages.Inventory, label: 'Zalihe' },
     Occasions: { href: KnownPages.Occasions, label: 'Prigode' },
     Approvals: { href: KnownPages.Approvals, label: 'Odobrenja' },
@@ -93,6 +97,7 @@ export const adminBreadcrumbPages = [
     adminPages.Operations,
     adminPages.FarmerPayouts,
     adminPages.FarmerPrices,
+    adminPages.FarmerDocumentation,
     adminPages.Approvals,
     adminPages.Inventory,
     adminPages.Occasions,
