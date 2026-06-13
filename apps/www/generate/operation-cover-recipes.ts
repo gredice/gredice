@@ -88,6 +88,13 @@ const harvestBasketLooseTomatoNodes = [
     'HarvestBasket_TomatoCalyx',
 ] as const;
 
+const harvestBasketHalfNodes = [
+    ...harvestBasketTomatoNodes,
+    'HarvestBasket_Carrot',
+    'HarvestBasket_CarrotGreens',
+    'HarvestBasket_Zucchini',
+] as const;
+
 export const liquidPreparationOperationCoverRecipes =
     liquidPreparationBottleAssets.map((assetName) => ({
         operationId: assetName,
@@ -337,6 +344,53 @@ export const harvestOperationCoverRecipes = [
                 position: [0.57, 0.14, 0.42],
                 rotation: [0.08, -0.55, 0.05],
                 scale: 0.24,
+            },
+        ],
+        showBackground: false,
+    },
+    {
+        operationId: 'harvest50Mature',
+        operationLabel: 'Branje 50% najzrelijih plodova',
+        outputFileName: 'harvest50Mature.webp',
+        camera: {
+            position: [2.5, 2.1, 4.8],
+            target: [0.45, 0.3, 0.45],
+            zoom: 136,
+        },
+        plants: [
+            {
+                id: 'fruiting-plant',
+                plantType: 'tomato',
+                generation: 8,
+                seed: 'operation-cover-harvest-half',
+                position: [0.34, 0.03, 0.44],
+                scale: 0.86,
+                showFlowers: false,
+            },
+        ],
+        assets: [
+            {
+                assetName: 'HarvestBasket',
+                visibleNodeNames: harvestBasketHalfNodes,
+                position: [0.62, 0.08, 0.5],
+                rotation: [0.08, -0.55, 0.05],
+                scale: 0.25,
+            },
+            {
+                id: 'ripe-fruit-highlight',
+                assetName: 'HarvestBasket',
+                visibleNodeNames: harvestBasketLooseTomatoNodes,
+                position: [0.56, 0.14, 0.42],
+                rotation: [0.08, -0.55, 0.05],
+                scale: 0.24,
+            },
+            {
+                id: 'ripe-fruit-second',
+                assetName: 'HarvestBasket',
+                visibleNodeNames: harvestBasketLooseTomatoNodes,
+                position: [0.62, 0.13, 0.5],
+                rotation: [0.08, -0.55, 0.05],
+                scale: 0.22,
             },
         ],
         showBackground: false,
