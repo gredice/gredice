@@ -3,8 +3,8 @@
 import { Card } from '@gredice/ui/Card';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
+import { Switch } from '@gredice/ui/Switch';
 import { Typography } from '@gredice/ui/Typography';
-import { cx } from '@gredice/ui/utils';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { useUpdateUser } from '../../hooks/useUpdateUser';
 
@@ -39,33 +39,16 @@ export function WhatsNewNotificationToggle() {
                         </Typography>
                     ) : null}
                 </Stack>
-                <button
-                    aria-checked={widgetEnabled}
+                <Switch
                     aria-label="Prikaži widget Što je novo u vrtu"
-                    className={cx(
-                        'relative h-6 w-11 shrink-0 rounded-full border transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
-                        widgetEnabled
-                            ? 'border-primary bg-primary'
-                            : 'border-border bg-muted',
-                    )}
+                    checked={widgetEnabled}
                     disabled={disabled}
-                    onClick={() =>
+                    onCheckedChange={(checked) =>
                         updateUser.mutate({
-                            whatsNewPopupDisabled: widgetEnabled,
+                            whatsNewPopupDisabled: !checked,
                         })
                     }
-                    role="switch"
-                    type="button"
-                >
-                    <span
-                        className={cx(
-                            'absolute top-0.5 size-5 rounded-full bg-background shadow-xs transition-transform',
-                            widgetEnabled
-                                ? 'translate-x-[1.25rem]'
-                                : 'translate-x-0.5',
-                        )}
-                    />
-                </button>
+                />
             </Row>
         </Card>
     );

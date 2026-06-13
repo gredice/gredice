@@ -31,6 +31,7 @@ import {
     Warning,
 } from '@gredice/ui/icons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { Switch } from '@gredice/ui/Switch';
 import { cx } from '@gredice/ui/utils';
 import type { ReactNode } from 'react';
 
@@ -339,26 +340,12 @@ function isCompactValue(value: EntityDetailsPropertyListItem['value']) {
 
 function renderBooleanValueToggle(value: boolean) {
     return (
-        <button
-            type="button"
-            role="switch"
-            aria-checked={value}
+        <Switch
+            aria-label={value ? 'Da' : 'Ne'}
+            checked={value}
+            className="disabled:cursor-default disabled:opacity-100"
             disabled
-            className={cx(
-                'relative flex h-5 w-9 shrink-0 items-center rounded-full border transition-colors disabled:cursor-default disabled:opacity-100',
-                value
-                    ? 'border-primary/60 bg-primary'
-                    : 'border-border bg-muted/70',
-            )}
-        >
-            <span
-                className={cx(
-                    'inline-block size-4 rounded-full shadow-xs transition-transform',
-                    value ? 'bg-primary-foreground' : 'bg-muted-foreground',
-                    value ? 'translate-x-4' : 'translate-x-0.5',
-                )}
-            />
-            <span className="sr-only">{value ? 'Da' : 'Ne'}</span>
-        </button>
+            size="sm"
+        />
     );
 }
