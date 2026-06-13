@@ -1404,6 +1404,63 @@ export const plantingOperationCoverRecipes = [
     },
 ] satisfies readonly OperationCoverRecipe[];
 
+export const protectionOperationCoverRecipes = [
+    {
+        operationId: 'setAgrotextileWhite',
+        operationLabel:
+            'Postavljanje agrotekstila - zaštita od mraza i hladnoće',
+        outputFileName: 'setAgrotextileWhite.webp',
+        camera: {
+            position: [2.8, 2.2, 5],
+            target: [0.45, 0.25, 0.45],
+            zoom: 118,
+        },
+        assets: [
+            {
+                assetName: 'RaisedBed',
+                visibleNodeNames: raisedBedCompactNodes,
+                position: [0.45, -0.06, 0.46],
+                rotation: [0, 0.72, 0],
+                scale: 0.4,
+            },
+        ],
+        agrotextileCovers: [
+            {
+                id: 'agrotextile-cover',
+                position: [0.45, 0.1, 0.46],
+                rotation: [0, 0.72, 0],
+                width: 0.58,
+                depth: 0.42,
+            },
+        ],
+        plants: [
+            {
+                id: 'plant-edge-left',
+                plantType: 'lettuce',
+                generation: 4,
+                seed: 'operation-cover-agrotextile-edge-left',
+                position: [0.28, 0.07, 0.55],
+                rotation: [0, -0.35, 0],
+                scale: 0.28,
+                showFlowers: false,
+                showProduce: false,
+            },
+            {
+                id: 'plant-edge-right',
+                plantType: 'basil',
+                generation: 5,
+                seed: 'operation-cover-agrotextile-edge-right',
+                position: [0.6, 0.08, 0.42],
+                rotation: [0, 0.4, 0],
+                scale: 0.26,
+                showFlowers: false,
+                showProduce: false,
+            },
+        ],
+        showBackground: false,
+    },
+] satisfies readonly OperationCoverRecipe[];
+
 export const cuttingOperationCoverRecipes = [
     {
         operationId: 'formative-pruning',
@@ -2210,6 +2267,7 @@ export const operationCoverRecipes = [
     ...inventoryOperationCoverRecipes,
     ...photographyOperationCoverRecipes,
     ...plantingOperationCoverRecipes,
+    ...protectionOperationCoverRecipes,
     ...cuttingOperationCoverRecipes,
     ...bedMaintenanceOperationCoverRecipes,
 ] satisfies readonly OperationCoverRecipe[];
@@ -2251,10 +2309,11 @@ export function validateOperationCoverRecipes(
         if (
             !recipe.assets?.length &&
             !recipe.entities?.length &&
-            !recipe.plants?.length
+            !recipe.plants?.length &&
+            !recipe.agrotextileCovers?.length
         ) {
             errors.push(
-                `${recipe.outputFileName}: recipe must include at least one asset, entity, or plant.`,
+                `${recipe.outputFileName}: recipe must include at least one asset, entity, plant, or cover primitive.`,
             );
         }
 
