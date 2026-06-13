@@ -324,7 +324,7 @@ test('notification settings shows loading, status, and empty device states', asy
 
     await expect(page.getByText('Postavke se učitavaju.')).toBeVisible();
     await expect(page.getByText('Uređaji se učitavaju.')).toBeVisible();
-    await expect(page.getByText(/Status:\s*učitavanje/u)).toBeVisible();
+    await expect(page.getByText('Učitavanje')).toBeVisible();
 
     preferencesDelay.resolve();
     devicesDelay.resolve();
@@ -333,7 +333,9 @@ test('notification settings shows loading, status, and empty device states', asy
     await expect(
         page.getByText('Nema uređaja prijavljenih za obavijesti.'),
     ).toBeVisible();
-    await expect(page.getByText(/Status:\s*nije uključeno/u)).toBeVisible();
+    await expect(page.getByText('Isključeno')).toBeVisible();
+    await expect(page.getByRole('textbox', { name: 'Od' })).toHaveCount(0);
+    await expect(page.getByText('Razdoblje sažetka')).toHaveCount(0);
 });
 
 test('notification settings explains required groups and hydrates saved preference timing', async ({
@@ -351,7 +353,7 @@ test('notification settings explains required groups and hydrates saved preferen
     await expect(
         page.getByText('Plaćanja, računi i potvrde narudžbi'),
     ).toBeVisible();
-    await expect(page.getByText('Uvijek uključeno').first()).toBeVisible();
+    await expect(page.getByText('Vrste obavijesti')).toBeVisible();
     await expect(
         page.getByRole('checkbox', { name: /sigurnost računa/u }),
     ).toHaveCount(0);
@@ -437,7 +439,8 @@ test('notification settings calls preference, device, and test notification APIs
     await mount(<NotificationsTabStory />);
     await page.getByRole('tab', { name: 'Postavke' }).click();
 
-    await expect(page.getByText('Ovaj uređaj (MacIntel)')).toBeVisible();
+    await expect(page.getByText('Ovaj uređaj')).toBeVisible();
+    await expect(page.getByText('Chrome test browser')).toHaveCount(0);
     await page
         .getByRole('checkbox', { name: 'Uključi radovi i berba u vrtu' })
         .click();
@@ -459,12 +462,13 @@ test('notification settings calls preference, device, and test notification APIs
         ],
     });
 
-    await page.getByRole('button', { name: 'Isključi' }).click();
+    await page
+        .getByRole('switch', {
+            name: 'Isključi obavijesti na ovom uređaju',
+        })
+        .click();
     await expect.poll(() => recorded.devicePatches.length).toBe(1);
     expect(recorded.devicePatches[0]).toEqual({ enabled: false });
-
-    await page.getByRole('button', { name: 'Ukloni' }).click();
-    await expect.poll(() => recorded.deviceDeletes).toEqual(['device-1']);
 
     await page
         .getByRole('button', { name: 'Pošalji probnu obavijest' })

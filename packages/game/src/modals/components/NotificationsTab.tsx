@@ -3,12 +3,21 @@ import { Button } from '@gredice/ui/Button';
 import { Card } from '@gredice/ui/Card';
 import { Checkbox } from '@gredice/ui/Checkbox';
 import { Input } from '@gredice/ui/Input';
-import { Approved, Close, Empty, Megaphone } from '@gredice/ui/icons';
+import {
+    Approved,
+    Desktop,
+    Device,
+    Empty,
+    Laptop,
+    Megaphone,
+    Tablet,
+} from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { SelectItems } from '@gredice/ui/SelectItems';
 import { Stack } from '@gredice/ui/Stack';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
@@ -38,6 +47,15 @@ type DigestFrequency = NonNullable<
 >;
 type DigestPeriod = Exclude<DigestFrequency, 'off'>;
 
+type NotificationDeviceListItem = {
+    deviceId?: string | null;
+    deviceLabel?: string | null;
+    enabled: boolean;
+    id: string;
+    platform?: string | null;
+    userAgent?: string | null;
+};
+
 type NotificationPreferenceItem = {
     category: string;
     channel: NotificationPreferenceUpdate['channel'];
@@ -50,6 +68,7 @@ type NotificationPreferenceItem = {
 
 const notificationDevicesKey = ['notifications', 'devices'];
 const notificationPushStatusKey = ['notifications', 'push-status'];
+const pushDeviceIdKey = 'game:push:device-id';
 const defaultQuietHoursStartMinute = 22 * 60;
 const defaultQuietHoursEndMinute = 7 * 60;
 
@@ -59,6 +78,14 @@ function readBooleanFlag(value: string | undefined, defaultValue: boolean) {
         return defaultValue;
     }
     return ['1', 'true', 'yes', 'on', 'enabled'].includes(normalizedValue);
+}
+
+function readCurrentPushDeviceId() {
+    if (typeof window === 'undefined') {
+        return undefined;
+    }
+
+    return window.localStorage.getItem(pushDeviceIdKey) ?? undefined;
 }
 
 const premiumNotificationControlsEnabled = readBooleanFlag(
@@ -177,40 +204,32 @@ function timeValueToMinute(value: string) {
     return hours * 60 + minutes;
 }
 
-function permissionStatusLabel(status: string) {
-    switch (status) {
-        case 'granted':
-            return 'dopušteno';
-        case 'denied':
-            return 'odbijeno';
-        case 'unsupported':
-            return 'nije podržano';
-        case 'unconfigured':
-            return 'nije konfigurirano';
-        case 'prompt-dismissed':
-            return 'odgođeno';
-        case 'subscribed':
-            return 'uključeno';
-        default:
-            return 'nije odlučeno';
+function deviceDisplayName(device: NotificationDeviceListItem) {
+    const label = device.deviceLabel?.trim();
+    if (!label) {
+        return 'Nepoznati uređaj';
     }
+
+    return label.replace(/\s*\([^)]*\)\s*$/u, '');
 }
 
-function pushStatusLabel(status: string | undefined) {
-    switch (status) {
-        case 'subscribed':
-            return 'uključeno';
-        case 'unsubscribed':
-            return 'nije uključeno';
-        case 'denied':
-            return 'blokirano';
-        case 'disabled':
-            return 'isključeno';
-        case undefined:
-            return 'učitavanje';
-        default:
-            return status;
+function deviceIcon(device: NotificationDeviceListItem) {
+    const deviceText =
+        `${device.platform ?? ''} ${device.userAgent ?? ''}`.toLowerCase();
+
+    if (/ipad|tablet/u.test(deviceText)) {
+        return <Tablet aria-hidden className="size-5" />;
     }
+
+    if (/iphone|android|mobile/u.test(deviceText)) {
+        return <Device aria-hidden className="size-5" />;
+    }
+
+    if (/mac|linux|windows/u.test(deviceText)) {
+        return <Laptop aria-hidden className="size-5" />;
+    }
+
+    return <Desktop aria-hidden className="size-5" />;
 }
 
 type NotificationsTabProps = {
@@ -292,24 +311,6 @@ export function NotificationsTab({
                     json: payload,
                 });
             if (!response.ok) throw new Error('Uređaj nije ažuriran');
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: notificationDevicesKey });
-            queryClient.invalidateQueries({
-                queryKey: notificationPushStatusKey,
-            });
-        },
-    });
-
-    const revokeDeviceMutation = useMutation({
-        mutationFn: async (id: string) => {
-            const response =
-                await clientAuthenticated().api.notifications.devices[
-                    ':id'
-                ].$delete({
-                    param: { id },
-                });
-            if (!response.ok) throw new Error('Uređaj nije uklonjen');
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: notificationDevicesKey });
@@ -459,15 +460,58 @@ export function NotificationsTab({
         markAllNotificationsRead.mutate({ readWhere: 'game' });
     };
 
-    const notificationsSupported =
-        typeof window !== 'undefined' && 'Notification' in window;
     const settingsBusy =
         savePreferencesMutation.isPending ||
         preferencesQuery.isPending ||
         preferencesQuery.isError;
-    const deviceMutationBusy =
-        updateDeviceMutation.isPending || revokeDeviceMutation.isPending;
+    const deviceMutationBusy = updateDeviceMutation.isPending;
     const testNotificationResult = sendTestMutation.data;
+    const currentPushDeviceId = readCurrentPushDeviceId();
+    const currentNotificationDevice =
+        (currentPushDeviceId
+            ? devicesQuery.data?.find(
+                  (device) => device.deviceId === currentPushDeviceId,
+              )
+            : undefined) ??
+        devicesQuery.data?.find((device) =>
+            device.deviceLabel?.startsWith('Ovaj uređaj'),
+        ) ??
+        devicesQuery.data?.find((device) => device.enabled) ??
+        devicesQuery.data?.[0];
+    const currentDeviceNotificationsEnabled =
+        pushStatusQuery.data?.status === 'subscribed';
+    const currentDeviceStatusLabel = pushStatusQuery.isPending
+        ? 'Učitavanje'
+        : currentDeviceNotificationsEnabled
+          ? 'Uključeno'
+          : 'Isključeno';
+    const canRequestPush =
+        pushOnboarding.status !== 'denied' &&
+        pushOnboarding.status !== 'unsupported' &&
+        pushOnboarding.status !== 'unconfigured';
+    const currentDeviceToggleDisabled =
+        pushStatusQuery.isPending ||
+        pushStatusQuery.isError ||
+        deviceMutationBusy ||
+        (currentDeviceNotificationsEnabled
+            ? !currentNotificationDevice
+            : !canRequestPush);
+
+    function handleCurrentDeviceToggle() {
+        if (currentDeviceNotificationsEnabled) {
+            if (!currentNotificationDevice) {
+                return;
+            }
+
+            updateDeviceMutation.mutate({
+                id: currentNotificationDevice.id,
+                payload: { enabled: false },
+            });
+            return;
+        }
+
+        void handleEnablePush();
+    }
 
     return (
         <Stack spacing={4}>
@@ -539,28 +583,57 @@ export function NotificationsTab({
                         </div>
                     </Stack>
                 </TabsContent>
-                <TabsContent value="settings" className="mt-3">
-                    <Stack spacing={2}>
+                <TabsContent value="settings" className="mt-3 min-h-0">
+                    <Stack
+                        spacing={2}
+                        className="max-h-[calc(100dvh-13rem)] overflow-y-auto pr-1 md:max-h-[calc(90dvh-10rem)]"
+                    >
                         <WhatsNewNotificationToggle />
                         <Card className="bg-card p-2">
-                            <Stack spacing={2}>
-                                <Typography level="body1" semiBold>
-                                    Obavijesti na ovom uređaju
-                                </Typography>
-                                <Typography level="body2" secondary>
-                                    Preglednik:{' '}
-                                    {notificationsSupported
-                                        ? 'podržava obavijesti'
-                                        : 'ne podržava obavijesti'}{' '}
-                                    · Dozvola:{' '}
-                                    {permissionStatusLabel(
-                                        pushOnboarding.status,
-                                    )}{' '}
-                                    · Status:{' '}
-                                    {pushStatusLabel(
-                                        pushStatusQuery.data?.status,
-                                    )}
-                                </Typography>
+                            <Stack spacing={1.5}>
+                                <Row
+                                    alignItems="center"
+                                    className="gap-4"
+                                    justifyContent="space-between"
+                                >
+                                    <Stack spacing={0.5}>
+                                        <Typography level="body1" semiBold>
+                                            Obavijesti na ovom uređaju
+                                        </Typography>
+                                        <Typography level="body3" secondary>
+                                            {currentDeviceStatusLabel}
+                                        </Typography>
+                                    </Stack>
+                                    <button
+                                        aria-checked={
+                                            currentDeviceNotificationsEnabled
+                                        }
+                                        aria-label={
+                                            currentDeviceNotificationsEnabled
+                                                ? 'Isključi obavijesti na ovom uređaju'
+                                                : 'Uključi obavijesti na ovom uređaju'
+                                        }
+                                        className={cx(
+                                            'relative h-6 w-11 shrink-0 rounded-full border transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+                                            currentDeviceNotificationsEnabled
+                                                ? 'border-primary bg-primary'
+                                                : 'border-border bg-muted',
+                                        )}
+                                        disabled={currentDeviceToggleDisabled}
+                                        onClick={handleCurrentDeviceToggle}
+                                        role="switch"
+                                        type="button"
+                                    >
+                                        <span
+                                            className={cx(
+                                                'absolute top-0.5 size-5 rounded-full bg-background shadow-xs transition-transform',
+                                                currentDeviceNotificationsEnabled
+                                                    ? 'translate-x-[1.25rem]'
+                                                    : 'translate-x-0.5',
+                                            )}
+                                        />
+                                    </button>
+                                </Row>
                                 {pushStatusQuery.isError && (
                                     <Typography level="body3" secondary>
                                         Status obavijesti nije učitan.
@@ -573,21 +646,6 @@ export function NotificationsTab({
                                         obavijesti za ovu stranicu.
                                     </Typography>
                                 )}
-                                {pushOnboarding.canPrompt &&
-                                    pushStatusQuery.data?.status !==
-                                        'subscribed' && (
-                                        <Row justifyContent="end">
-                                            <Button
-                                                size="sm"
-                                                onClick={handleEnablePush}
-                                                startDecorator={
-                                                    <Megaphone className="size-4" />
-                                                }
-                                            >
-                                                Uključi obavijesti
-                                            </Button>
-                                        </Row>
-                                    )}
                             </Stack>
                         </Card>
 
@@ -595,14 +653,29 @@ export function NotificationsTab({
                             <>
                                 <Card className="bg-card p-2">
                                     <Stack spacing={2}>
-                                        <Typography level="body1" semiBold>
-                                            Uvijek uključeno
-                                        </Typography>
-                                        <Typography level="body2" secondary>
-                                            Sigurnosne, pravne i naplatne
-                                            obavijesti ne koriste sažetak ni
-                                            tihi period.
-                                        </Typography>
+                                        <Row justifyContent="space-between">
+                                            <Typography level="body1" semiBold>
+                                                Vrste obavijesti
+                                            </Typography>
+                                            <Button
+                                                size="sm"
+                                                variant="plain"
+                                                disabled={settingsBusy}
+                                                onClick={() =>
+                                                    savePreferencesMutation.mutate(
+                                                        categoryPreferences.map(
+                                                            (item) =>
+                                                                buildPreferenceUpdate(
+                                                                    item,
+                                                                    true,
+                                                                ),
+                                                        ),
+                                                    )
+                                                }
+                                            >
+                                                Omogući sve
+                                            </Button>
+                                        </Row>
                                         {requiredNotificationGroups.map(
                                             (item) => (
                                                 <div
@@ -634,40 +707,12 @@ export function NotificationsTab({
                                                             semiBold
                                                             className="shrink-0"
                                                         >
-                                                            Uvijek uključeno
+                                                            Obavezno
                                                         </Typography>
                                                     </Row>
                                                 </div>
                                             ),
                                         )}
-                                    </Stack>
-                                </Card>
-
-                                <Card className="bg-card p-2">
-                                    <Stack spacing={2}>
-                                        <Row justifyContent="space-between">
-                                            <Typography level="body1" semiBold>
-                                                Vrste koje možeš prilagoditi
-                                            </Typography>
-                                            <Button
-                                                size="sm"
-                                                variant="plain"
-                                                disabled={settingsBusy}
-                                                onClick={() =>
-                                                    savePreferencesMutation.mutate(
-                                                        categoryPreferences.map(
-                                                            (item) =>
-                                                                buildPreferenceUpdate(
-                                                                    item,
-                                                                    true,
-                                                                ),
-                                                        ),
-                                                    )
-                                                }
-                                            >
-                                                Omogući sve
-                                            </Button>
-                                        </Row>
                                         {preferencesQuery.isPending ? (
                                             <Typography level="body2" secondary>
                                                 Postavke se učitavaju.
@@ -765,75 +810,78 @@ export function NotificationsTab({
                                                 });
                                             }}
                                         />
-                                        <Typography level="body3" secondary>
-                                            Vrijedi samo za prilagodljive
-                                            obavijesti koje podržavaju tihi
-                                            period.
-                                        </Typography>
-                                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                                            <Input
-                                                label="Od"
-                                                type="time"
-                                                value={minuteToTimeValue(
-                                                    quietHoursStartMinute,
-                                                )}
-                                                disabled={
-                                                    !quietHoursEnabled ||
-                                                    settingsBusy
-                                                }
-                                                onChange={(event) => {
-                                                    const minute =
-                                                        timeValueToMinute(
-                                                            event.target.value,
-                                                        );
-                                                    if (minute === null) {
-                                                        return;
-                                                    }
-                                                    setQuietHoursStartMinute(
-                                                        minute,
-                                                    );
-                                                    if (quietHoursEnabled) {
-                                                        saveAllPreferenceSettings(
-                                                            {
-                                                                quietStart:
-                                                                    minute,
-                                                            },
-                                                        );
-                                                    }
-                                                }}
-                                            />
-                                            <Input
-                                                label="Do"
-                                                type="time"
-                                                value={minuteToTimeValue(
-                                                    quietHoursEndMinute,
-                                                )}
-                                                disabled={
-                                                    !quietHoursEnabled ||
-                                                    settingsBusy
-                                                }
-                                                onChange={(event) => {
-                                                    const minute =
-                                                        timeValueToMinute(
-                                                            event.target.value,
-                                                        );
-                                                    if (minute === null) {
-                                                        return;
-                                                    }
-                                                    setQuietHoursEndMinute(
-                                                        minute,
-                                                    );
-                                                    if (quietHoursEnabled) {
-                                                        saveAllPreferenceSettings(
-                                                            {
-                                                                quietEnd:
-                                                                    minute,
-                                                            },
-                                                        );
-                                                    }
-                                                }}
-                                            />
-                                        </div>
+                                        {quietHoursEnabled && (
+                                            <>
+                                                <Typography
+                                                    level="body3"
+                                                    secondary
+                                                >
+                                                    Vrijedi samo za
+                                                    prilagodljive obavijesti
+                                                    koje podržavaju tihi period.
+                                                </Typography>
+                                                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                                    <Input
+                                                        label="Od"
+                                                        type="time"
+                                                        value={minuteToTimeValue(
+                                                            quietHoursStartMinute,
+                                                        )}
+                                                        disabled={settingsBusy}
+                                                        onChange={(event) => {
+                                                            const minute =
+                                                                timeValueToMinute(
+                                                                    event.target
+                                                                        .value,
+                                                                );
+                                                            if (
+                                                                minute === null
+                                                            ) {
+                                                                return;
+                                                            }
+                                                            setQuietHoursStartMinute(
+                                                                minute,
+                                                            );
+                                                            saveAllPreferenceSettings(
+                                                                {
+                                                                    quietStart:
+                                                                        minute,
+                                                                },
+                                                            );
+                                                        }}
+                                                    />
+                                                    <Input
+                                                        label="Do"
+                                                        type="time"
+                                                        value={minuteToTimeValue(
+                                                            quietHoursEndMinute,
+                                                        )}
+                                                        disabled={settingsBusy}
+                                                        onChange={(event) => {
+                                                            const minute =
+                                                                timeValueToMinute(
+                                                                    event.target
+                                                                        .value,
+                                                                );
+                                                            if (
+                                                                minute === null
+                                                            ) {
+                                                                return;
+                                                            }
+                                                            setQuietHoursEndMinute(
+                                                                minute,
+                                                            );
+                                                            saveAllPreferenceSettings(
+                                                                {
+                                                                    quietEnd:
+                                                                        minute,
+                                                                },
+                                                            );
+                                                        }}
+                                                    />
+                                                </div>
+                                            </>
+                                        )}
                                     </Stack>
                                 </Card>
 
@@ -859,17 +907,14 @@ export function NotificationsTab({
                                             kategorije; obavezne poruke ne
                                             čekaju sažetak.
                                         </Typography>
-                                        <Stack spacing={1}>
-                                            <Typography level="body2" semiBold>
-                                                Razdoblje sažetka
-                                            </Typography>
-                                            <div
-                                                className={
-                                                    digestEnabled
-                                                        ? undefined
-                                                        : 'pointer-events-none opacity-50'
-                                                }
-                                            >
+                                        {digestEnabled && (
+                                            <Stack spacing={1}>
+                                                <Typography
+                                                    level="body2"
+                                                    semiBold
+                                                >
+                                                    Razdoblje sažetka
+                                                </Typography>
                                                 <SelectItems
                                                     value={digestFrequency}
                                                     onValueChange={(value) => {
@@ -883,19 +928,17 @@ export function NotificationsTab({
                                                         setDigestFrequency(
                                                             value,
                                                         );
-                                                        if (digestEnabled) {
-                                                            saveAllPreferenceSettings(
-                                                                {
-                                                                    summaryFrequency:
-                                                                        value,
-                                                                },
-                                                            );
-                                                        }
+                                                        saveAllPreferenceSettings(
+                                                            {
+                                                                summaryFrequency:
+                                                                    value,
+                                                            },
+                                                        );
                                                     }}
                                                     items={digestFrequencyItems}
                                                 />
-                                            </div>
-                                        </Stack>
+                                            </Stack>
+                                        )}
                                     </Stack>
                                 </Card>
                             </>
@@ -952,84 +995,77 @@ export function NotificationsTab({
                                         Uređaji za obavijesti nisu učitani.
                                     </Typography>
                                 ) : devicesQuery.data?.length ? (
-                                    devicesQuery.data.map((device) => (
-                                        <Card
-                                            key={device.id}
-                                            className="p-1 bg-muted/20"
-                                        >
-                                            <Stack spacing={1}>
-                                                <Typography semiBold>
-                                                    {device.deviceLabel ||
-                                                        'Nepoznati uređaj'}
-                                                </Typography>
-                                                <Typography
-                                                    level="body3"
-                                                    secondary
+                                    devicesQuery.data.map((device) => {
+                                        const label = deviceDisplayName(device);
+
+                                        return (
+                                            <div
+                                                key={device.id}
+                                                className="flex items-center gap-3 rounded border border-border/60 p-2"
+                                            >
+                                                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                                                    {deviceIcon(device)}
+                                                </div>
+                                                <Stack
+                                                    spacing={0.5}
+                                                    className="min-w-0 flex-1"
                                                 >
-                                                    {device.userAgent ||
-                                                        'Nepoznat preglednik'}
-                                                </Typography>
-                                                <Typography
-                                                    level="body3"
-                                                    secondary
-                                                >
-                                                    Status:{' '}
-                                                    {device.enabled
-                                                        ? 'aktivan'
-                                                        : 'isključen'}{' '}
-                                                    · Zadnji put viđen:{' '}
-                                                    {device.lastSeenAt
-                                                        ? new Date(
-                                                              device.lastSeenAt,
-                                                          ).toLocaleString(
-                                                              'hr-HR',
-                                                          )
-                                                        : 'nema podataka'}
-                                                </Typography>
-                                                <Row spacing={2}>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="plain"
-                                                        disabled={
-                                                            deviceMutationBusy
-                                                        }
-                                                        onClick={() =>
-                                                            updateDeviceMutation.mutate(
-                                                                {
-                                                                    id: device.id,
-                                                                    payload: {
-                                                                        enabled:
-                                                                            !device.enabled,
-                                                                    },
-                                                                },
-                                                            )
-                                                        }
+                                                    <Typography semiBold>
+                                                        {label}
+                                                    </Typography>
+                                                    <Typography
+                                                        level="body3"
+                                                        secondary
                                                     >
                                                         {device.enabled
+                                                            ? 'Uključeno'
+                                                            : 'Isključeno'}
+                                                    </Typography>
+                                                </Stack>
+                                                <button
+                                                    aria-checked={
+                                                        device.enabled
+                                                    }
+                                                    aria-label={`${
+                                                        device.enabled
                                                             ? 'Isključi'
-                                                            : 'Uključi'}
-                                                    </Button>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="plain"
-                                                        disabled={
-                                                            deviceMutationBusy
-                                                        }
-                                                        startDecorator={
-                                                            <Close className="size-4" />
-                                                        }
-                                                        onClick={() =>
-                                                            revokeDeviceMutation.mutate(
-                                                                device.id,
-                                                            )
-                                                        }
-                                                    >
-                                                        Ukloni
-                                                    </Button>
-                                                </Row>
-                                            </Stack>
-                                        </Card>
-                                    ))
+                                                            : 'Uključi'
+                                                    } ${label}`}
+                                                    className={cx(
+                                                        'relative h-6 w-11 shrink-0 rounded-full border transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+                                                        device.enabled
+                                                            ? 'border-primary bg-primary'
+                                                            : 'border-border bg-muted',
+                                                    )}
+                                                    disabled={
+                                                        deviceMutationBusy
+                                                    }
+                                                    onClick={() =>
+                                                        updateDeviceMutation.mutate(
+                                                            {
+                                                                id: device.id,
+                                                                payload: {
+                                                                    enabled:
+                                                                        !device.enabled,
+                                                                },
+                                                            },
+                                                        )
+                                                    }
+                                                    role="switch"
+                                                    type="button"
+                                                >
+                                                    <span
+                                                        className={cx(
+                                                            'absolute top-0.5 size-5 rounded-full bg-background shadow-xs transition-transform',
+                                                            device.enabled
+                                                                ? 'translate-x-[1.25rem]'
+                                                                : 'translate-x-0.5',
+                                                        )}
+                                                    />
+                                                </button>
+                                            </div>
+                                        );
+                                    })
                                 ) : (
                                     <Typography level="body2" secondary>
                                         Nema uređaja prijavljenih za obavijesti.
