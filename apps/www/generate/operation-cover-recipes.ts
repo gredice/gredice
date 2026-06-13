@@ -1325,6 +1325,85 @@ export const photographyOperationCoverRecipes = [
     },
 ] satisfies readonly OperationCoverRecipe[];
 
+export const plantingOperationCoverRecipes = [
+    {
+        operationId: 'seedlingTranslanting',
+        operationLabel: 'Presađivanje presadnica',
+        outputFileName: 'seedlingTranslanting.webp',
+        camera: {
+            position: [2.8, 2.2, 5],
+            target: [0.45, 0.25, 0.45],
+            zoom: 128,
+        },
+        assets: [
+            {
+                assetName: 'RaisedBed',
+                visibleNodeNames: raisedBedCompactNodes,
+                position: [0.51, -0.06, 0.47],
+                rotation: [0, 0.72, 0],
+                scale: 0.36,
+            },
+            {
+                id: 'seedling-tray',
+                assetName: 'FarmSupplyKit',
+                visibleNodeNames: farmSupplyKitSeedlingTrayNodes,
+                position: [0.25, 0.05, 0.55],
+                rotation: [0.1, -0.32, 0.02],
+                scale: [0.17, 0.07, 0.12],
+            },
+            {
+                id: 'lifted-soil-cube',
+                assetName: 'MulchWood',
+                position: [0.42, 0.16, 0.46],
+                rotation: [0.12, 0.42, -0.08],
+                scale: [0.14, 0.08, 0.12],
+            },
+            {
+                id: 'shovel',
+                assetName: 'ShovelSmall',
+                position: [0.63, 0.14, 0.39],
+                rotation: [0.22, -0.95, -0.78],
+                scale: 0.2,
+            },
+        ],
+        plants: [
+            {
+                id: 'tray-seedling',
+                plantType: 'lettuce',
+                generation: 3,
+                seed: 'operation-cover-transplant-tray',
+                position: [0.25, 0.11, 0.55],
+                rotation: [0, -0.45, 0],
+                scale: 0.28,
+                showFlowers: false,
+                showProduce: false,
+            },
+            {
+                id: 'lifted-seedling',
+                plantType: 'basil',
+                generation: 4,
+                seed: 'operation-cover-transplant-lifted',
+                position: [0.42, 0.21, 0.46],
+                scale: 0.36,
+                showFlowers: false,
+                showProduce: false,
+            },
+            {
+                id: 'planted-seedling',
+                plantType: 'lettuce',
+                generation: 4,
+                seed: 'operation-cover-transplant-planted',
+                position: [0.55, 0.08, 0.5],
+                rotation: [0, 0.35, 0],
+                scale: 0.34,
+                showFlowers: false,
+                showProduce: false,
+            },
+        ],
+        showBackground: false,
+    },
+] satisfies readonly OperationCoverRecipe[];
+
 export const cuttingOperationCoverRecipes = [
     {
         operationId: 'formative-pruning',
@@ -2130,6 +2209,7 @@ export const operationCoverRecipes = [
     ...harvestOperationCoverRecipes,
     ...inventoryOperationCoverRecipes,
     ...photographyOperationCoverRecipes,
+    ...plantingOperationCoverRecipes,
     ...cuttingOperationCoverRecipes,
     ...bedMaintenanceOperationCoverRecipes,
 ] satisfies readonly OperationCoverRecipe[];
