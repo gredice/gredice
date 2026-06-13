@@ -19,20 +19,13 @@ test('generates an inventory worksheet PDF with printable inventory fields', () 
         items: [
             {
                 label: 'Raj\u010dica cherry',
-                details: [
-                    'ID #1',
-                    'Pracenje: komadi',
-                    'Minimum: 4',
-                    'Dodano: 12. 06. 2026.',
-                ],
+                details: ['Biljeska: Paket otvoren'],
                 quantity: 13,
-                notes: 'Paket otvoren',
             },
             {
                 label: 'Bosiljak',
-                details: ['ID #2', 'Pracenje: komadi', 'Dodano: 12. 06. 2026.'],
+                details: [],
                 quantity: 0,
-                notes: null,
             },
         ],
     });
@@ -52,8 +45,11 @@ test('generates an inventory worksheet PDF with printable inventory fields', () 
     assert.match(content, /NOVO STANJE/);
     assert.doesNotMatch(content, /STATUS/);
     assert.match(content, /Rajcica cherry/);
-    assert.match(content, /Pracenje: komadi/);
-    assert.match(content, /Paket otvoren/);
+    assert.match(content, /Biljeska: Paket otvoren/);
+    assert.doesNotMatch(content, /ID #1/);
+    assert.doesNotMatch(content, /Pracenje/);
+    assert.doesNotMatch(content, /Minimum/);
+    assert.doesNotMatch(content, /Dodano/);
     assert.match(content, /Stranica 1 \/ 1/);
     assert.doesNotMatch(content, /Raj\u010dica/);
 });

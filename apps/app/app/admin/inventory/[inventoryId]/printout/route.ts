@@ -41,9 +41,8 @@ export async function GET(
         .map((item) => {
             return {
                 label: itemLabel(item, config.entityTypeName, entityLabels),
-                details: itemDetails(item, config),
+                details: itemDetails(item),
                 quantity: item.quantity,
-                notes: item.notes,
             };
         })
         .sort(comparePrintoutItems);
@@ -89,9 +88,6 @@ export async function GET(
     });
 }
 
-type InventoryConfig = NonNullable<
-    Awaited<ReturnType<typeof getInventoryConfig>>
->;
 type InventoryEntity = Awaited<ReturnType<typeof getEntitiesRaw>>[number];
 type InventoryItem = Awaited<
     ReturnType<typeof getInventoryItemsByConfig>
@@ -132,37 +128,8 @@ function itemLabel(
     return `Stavka #${item.id}`;
 }
 
-function itemDetails(item: InventoryItem, config: InventoryConfig) {
-    const details = [
-        `ID #${item.id}`,
-        `Pracenje: ${trackingTypeLabel(item.trackingType)}`,
-    ];
-    if (item.serialNumber) {
-        details.push(`Serijski br.: ${item.serialNumber}`);
-    }
-
-    const lowCountThreshold =
-        item.lowCountThreshold ?? config.lowCountThreshold;
-    if (lowCountThreshold !== null) {
-        details.push(`Minimum: ${lowCountThreshold}`);
-    }
-
-    details.push(`Dodano: ${formatItemDate(item.createdAt)}`);
-
-    return details;
-}
-
-function trackingTypeLabel(trackingType: string) {
-    return trackingType === 'serialNumber' ? 'serijski broj' : 'komadi';
-}
-
-function formatItemDate(date: Date) {
-    return new Intl.DateTimeFormat('hr-HR', {
-        timeZone: 'Europe/Zagreb',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-    }).format(date);
+function itemDetails(item: InventoryItem) {
+    return item.notes ? [`Biljeska: ${item.notes}`] : [];
 }
 
 function entityDisplayName(entity: InventoryEntity) {

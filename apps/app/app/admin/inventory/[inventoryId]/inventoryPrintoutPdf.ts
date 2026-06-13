@@ -10,7 +10,6 @@ export type InventoryPrintoutPdfItem = {
     label: string;
     details: string[];
     quantity: number;
-    notes: string | null;
 };
 
 export type InventoryPrintoutPdfData = {
@@ -30,7 +29,6 @@ type PdfColor = {
 
 const colors = {
     brand: { r: 0.18, g: 0.44, b: 0.25 },
-    iconBackground: { r: 0.07, g: 0.07, b: 0.07 },
     text: { r: 0.09, g: 0.1, b: 0.12 },
     muted: { r: 0.42, g: 0.45, b: 0.5 },
     lightText: { r: 0.3, g: 0.34, b: 0.38 },
@@ -55,7 +53,6 @@ const detailFontSize = 7.4;
 const bodyFontSize = 9;
 const labelLineHeight = 11.2;
 const detailLineHeight = 9;
-const bodyLineHeight = 11;
 
 const columns = [
     { key: 'number', label: '#', width: 28 },
@@ -210,57 +207,6 @@ class PdfCanvas {
         );
     }
 
-    fillRoundedRect({
-        x,
-        y,
-        width,
-        height,
-        radius,
-        color,
-    }: {
-        x: number;
-        y: number;
-        width: number;
-        height: number;
-        radius: number;
-        color: PdfColor;
-    }) {
-        const right = x + width;
-        const top = y + height;
-        const curve = radius * 0.5522847498;
-        this.path({
-            commands: [
-                `${formatNumber(x + radius)} ${formatNumber(y)} m`,
-                `${formatNumber(right - radius)} ${formatNumber(y)} l`,
-                `${formatNumber(right - radius + curve)} ${formatNumber(
-                    y,
-                )} ${formatNumber(right)} ${formatNumber(
-                    y + radius - curve,
-                )} ${formatNumber(right)} ${formatNumber(y + radius)} c`,
-                `${formatNumber(right)} ${formatNumber(top - radius)} l`,
-                `${formatNumber(right)} ${formatNumber(
-                    top - radius + curve,
-                )} ${formatNumber(right - radius + curve)} ${formatNumber(
-                    top,
-                )} ${formatNumber(right - radius)} ${formatNumber(top)} c`,
-                `${formatNumber(x + radius)} ${formatNumber(top)} l`,
-                `${formatNumber(x + radius - curve)} ${formatNumber(
-                    top,
-                )} ${formatNumber(x)} ${formatNumber(
-                    top - radius + curve,
-                )} ${formatNumber(x)} ${formatNumber(top - radius)} c`,
-                `${formatNumber(x)} ${formatNumber(y + radius)} l`,
-                `${formatNumber(x)} ${formatNumber(
-                    y + radius - curve,
-                )} ${formatNumber(x + radius - curve)} ${formatNumber(
-                    y,
-                )} ${formatNumber(x + radius)} ${formatNumber(y)} c`,
-                'h',
-            ].join(' '),
-            color,
-        });
-    }
-
     toString() {
         return this.operations.join('\n');
     }
@@ -280,7 +226,6 @@ type PdfTransform = {
 type RowLayout = {
     labelLines: string[];
     detailLines: string[];
-    noteLines: string[];
     height: number;
 };
 
@@ -442,19 +387,10 @@ function drawLogo(page: PdfCanvas, x: number, y: number, scale = 1) {
     const markSize = 25 * scale;
     const iconScale = markSize / 30;
 
-    page.fillRoundedRect({
-        x,
-        y,
-        width: markSize,
-        height: markSize,
-        radius: 5 * scale,
-        color: colors.iconBackground,
-    });
-
     for (const commands of logoMarkPaths) {
         page.path({
             commands,
-            color: colors.white,
+            color: colors.brand,
             transform: {
                 a: iconScale,
                 b: 0,
@@ -558,25 +494,21 @@ function drawEmptyItemsRow(page: PdfCanvas, topY: number) {
 
 function buildRowLayout(item: InventoryPrintoutPdfItem): RowLayout {
     const itemWidth = columnWidth('item') - 12;
-    const notesWidth = columnWidth('notes') - 12;
     const labelLines = wrapText(item.label, itemWidth, labelFontSize);
     const detailLines = wrapText(
         item.details.filter(Boolean).join('  |  '),
         itemWidth,
         detailFontSize,
     ).slice(0, 2);
-    const noteLines = wrapText(item.notes ?? '', notesWidth, bodyFontSize);
     const itemHeight =
         rowPaddingY * 2 +
         labelLines.length * labelLineHeight +
         detailLines.length * detailLineHeight;
-    const notesHeight = rowPaddingY * 2 + noteLines.length * bodyLineHeight;
-    const height = Math.max(38, itemHeight, notesHeight);
+    const height = Math.max(38, itemHeight);
 
     return {
         labelLines,
         detailLines,
-        noteLines,
         height,
     };
 }
@@ -646,14 +578,13 @@ function drawTableRow(
         color: colors.text,
     });
 
-    row.noteLines.forEach((line, lineIndex) => {
-        page.text({
-            x: notesX,
-            y: rowTop - lineIndex * bodyLineHeight,
-            value: line,
-            size: bodyFontSize,
-            color: colors.lightText,
-        });
+    page.line({
+        x1: notesX,
+        y1: topY - row.height + 13,
+        x2: columnX('newStatus') - 8,
+        y2: topY - row.height + 13,
+        color: colors.line,
+        width: 0.7,
     });
 
     page.line({
