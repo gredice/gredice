@@ -75,6 +75,12 @@ export type CompleteAutomationRunInput = {
     retryAt?: Date | null;
 };
 
+export type RetryFailedAutomationRunInput = {
+    id: number;
+    manualRequestedByUserId?: string | null;
+    retryAt?: Date;
+};
+
 export type RecordAutomationRunStepInput = {
     runId: number;
     nodeId: string;
@@ -784,6 +790,33 @@ export async function completeAutomationRun(
             updatedAt: now,
         })
         .where(eq(automationRuns.id, input.id))
+        .returning();
+
+    return updated ?? null;
+}
+
+export async function retryFailedAutomationRun(
+    input: RetryFailedAutomationRunInput,
+): Promise<SelectAutomationRun | null> {
+    const now = new Date();
+    const [updated] = await storage()
+        .update(automationRuns)
+        .set({
+            status: 'retrying',
+            maxAttempts: sql<number>`${automationRuns.maxAttempts} + 1`,
+            nextRunAt: input.retryAt ?? now,
+            lockedAt: null,
+            lockedBy: null,
+            completedAt: null,
+            manualRequestedByUserId: input.manualRequestedByUserId ?? null,
+            updatedAt: now,
+        })
+        .where(
+            and(
+                eq(automationRuns.id, input.id),
+                eq(automationRuns.status, 'failed'),
+            ),
+        )
         .returning();
 
     return updated ?? null;

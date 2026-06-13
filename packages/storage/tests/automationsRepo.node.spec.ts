@@ -41,6 +41,7 @@ import {
     processDueAutomationRuns,
     RAISED_BED_WATERING_50L_OPERATION_ID,
     recordAutomationRunStep,
+    retryFailedAutomationRun,
     seasonalSowedWateringAutomationGraph,
     seedlingTransplantDirectSowingLocationAutomationGraph,
     seedlingTransplantWateringAutomationGraph,
@@ -463,6 +464,90 @@ test('automation definition run summaries are independent per definition', async
         latestRun: null,
         failedRunsCount: 0,
     });
+});
+
+test('manual retry reuses a failed automation run and clears failed summary after success', async () => {
+    createTestDb();
+    const definition = await createAutomationDefinition({
+        key: 'test.manual-retry-automation',
+        name: 'Manual retry automation',
+        status: 'enabled',
+        graph: seasonalSowedWateringAutomationGraph(),
+    });
+    const createdRun = await createAutomationRun({
+        automationDefinition: definition,
+        source: 'test',
+        input: { order: 'manual-retry' },
+        maxAttempts: 1,
+    });
+    assert.ok(createdRun);
+
+    const startedRun = await startAutomationRun(createdRun.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedRun);
+    assert.strictEqual(startedRun.attempt, 1);
+    assert.strictEqual(startedRun.maxAttempts, 1);
+
+    await completeAutomationRun({
+        id: startedRun.id,
+        status: 'failed',
+        errorMessage: 'Expected retry test failure.',
+    });
+
+    const [failedSummary] = await listAutomationDefinitionRunSummaries([
+        definition.id,
+    ]);
+    assert.strictEqual(failedSummary?.failedRunsCount, 1);
+
+    const retryAt = new Date('2026-06-13T10:00:00.000Z');
+    const retriedRun = await retryFailedAutomationRun({
+        id: startedRun.id,
+        manualRequestedByUserId: null,
+        retryAt,
+    });
+
+    assert.ok(retriedRun);
+    assert.strictEqual(retriedRun.id, startedRun.id);
+    assert.strictEqual(retriedRun.status, 'retrying');
+    assert.strictEqual(retriedRun.attempt, 1);
+    assert.strictEqual(retriedRun.maxAttempts, 2);
+    assert.strictEqual(retriedRun.completedAt, null);
+    assert.strictEqual(
+        retriedRun.nextRunAt.toISOString(),
+        retryAt.toISOString(),
+    );
+
+    const [claimedRetry] = await claimDueAutomationRuns({
+        limit: 1,
+        now: retryAt,
+        lockedBy: 'automations-test',
+    });
+    assert.ok(claimedRetry);
+    assert.strictEqual(claimedRetry.id, startedRun.id);
+    assert.strictEqual(claimedRetry.attempt, 2);
+    assert.strictEqual(claimedRetry.maxAttempts, 2);
+
+    await completeAutomationRun({
+        id: claimedRetry.id,
+        status: 'succeeded',
+        output: { ok: true },
+    });
+
+    const [succeededSummary] = await listAutomationDefinitionRunSummaries([
+        definition.id,
+    ]);
+    assert.strictEqual(succeededSummary?.latestRun?.id, startedRun.id);
+    assert.strictEqual(succeededSummary?.latestRun?.status, 'succeeded');
+    assert.strictEqual(succeededSummary?.failedRunsCount, 0);
+
+    const runs = await listAutomationRuns({
+        automationDefinitionId: definition.id,
+    });
+    assert.deepStrictEqual(
+        runs.map((run) => run.id),
+        [startedRun.id],
+    );
 });
 
 test('automation run claiming respects definition concurrency', async () => {
