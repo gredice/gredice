@@ -435,14 +435,21 @@ function useEnvironmentElements({
         backgroundPaletteIndex,
         timeOfDay,
     });
+    const hasThemedBackground = themedBackground !== null;
 
     // Directional light
-    const directionalLightColor = useRef<Color>(new Color());
-    directionalLightColor.current.setRGB(
-        sunTemperature[0] / 255,
-        sunTemperature[1] / 255,
-        sunTemperature[2] / 255,
-        'srgb',
+    const sunTemperatureRed = sunTemperature[0] / 255;
+    const sunTemperatureGreen = sunTemperature[1] / 255;
+    const sunTemperatureBlue = sunTemperature[2] / 255;
+    const directionalLightColor = useMemo(
+        () =>
+            new Color().setRGB(
+                sunTemperatureRed,
+                sunTemperatureGreen,
+                sunTemperatureBlue,
+                'srgb',
+            ),
+        [sunTemperatureBlue, sunTemperatureGreen, sunTemperatureRed],
     );
     const directionalLightIntensity = Math.max(
         0,
@@ -462,86 +469,105 @@ function useEnvironmentElements({
 
     // Background color
     const effectiveBackground = themedBackground?.background ?? background;
-    const backgroundColor = useRef<Color>(new Color());
-    backgroundColor.current.setRGB(
-        effectiveBackground[0] / 255,
-        effectiveBackground[1] / 255,
-        effectiveBackground[2] / 255,
-        'srgb',
-    );
-    const moonlitBackground = { h: 0, s: 0, l: 0 };
-    backgroundColor.current.getHSL(moonlitBackground);
-    backgroundColor.current.setHSL(
-        moonlitBackground.h,
-        moonlitBackground.s,
-        moonlitBackground.l * moonlitNightScales.skyScale,
-    );
+    const backgroundRed = effectiveBackground[0] / 255;
+    const backgroundGreen = effectiveBackground[1] / 255;
+    const backgroundBlue = effectiveBackground[2] / 255;
+    const cloudy = weather?.cloudy ?? 0;
+    const foggy = weather?.foggy ?? 0;
+    const backgroundColor = useMemo(() => {
+        const color = new Color().setRGB(
+            backgroundRed,
+            backgroundGreen,
+            backgroundBlue,
+            'srgb',
+        );
+        const moonlitBackground = { h: 0, s: 0, l: 0 };
+        color.getHSL(moonlitBackground);
+        color.setHSL(
+            moonlitBackground.h,
+            moonlitBackground.s,
+            moonlitBackground.l * moonlitNightScales.skyScale,
+        );
 
-    // Set background color based on weather
-    if (weather && ((weather?.cloudy ?? 0) > 0 || (weather?.foggy ?? 0) > 0)) {
-        const cloudy = weather.cloudy ?? 0;
-        const foggy = weather.foggy ?? 0;
-        const rainyBackground = { h: 0, s: 0, l: 0 };
-        backgroundColor.current.getHSL(rainyBackground);
-        backgroundColor.current.setHSL(
-            rainyBackground.h,
-            rainyBackground.s * (1 - Math.min(0.7, cloudy + foggy)), // * (weather.cloudy > 0.5 || weather.foggy > 0.5 ? 0.3 : 0.8),
-            rainyBackground.l * (1 - Math.min(0.1, cloudy + foggy)),
-        ); // * (weather.cloudy > 0.9 ? 0.8 : (weather.cloudy > 0.4 ? 0.9 : 0.95)));
-    }
+        // Set background color based on weather
+        if (cloudy > 0 || foggy > 0) {
+            const rainyBackground = { h: 0, s: 0, l: 0 };
+            color.getHSL(rainyBackground);
+            color.setHSL(
+                rainyBackground.h,
+                rainyBackground.s * (1 - Math.min(0.7, cloudy + foggy)), // * (weather.cloudy > 0.5 || weather.foggy > 0.5 ? 0.3 : 0.8),
+                rainyBackground.l * (1 - Math.min(0.1, cloudy + foggy)),
+            ); // * (weather.cloudy > 0.9 ? 0.8 : (weather.cloudy > 0.4 ? 0.9 : 0.95)));
+        }
+
+        return color;
+    }, [
+        backgroundBlue,
+        backgroundGreen,
+        backgroundRed,
+        cloudy,
+        foggy,
+        moonlitNightScales.skyScale,
+    ]);
 
     const waterColors = resolveWaterColors({
-        skyColor: backgroundColor.current,
+        skyColor: backgroundColor,
         timeOfDay,
         weather: weather ?? undefined,
     });
 
-    const hemisphereColor = useRef<Color>(new Color());
     const effectiveHemisphereSkyColor =
         themedBackground?.hemisphereSkyColor ?? hemisphereSkyColor;
-    if (themedBackground) {
-        hemisphereColor.current.setRGB(
-            effectiveHemisphereSkyColor[0] / 255,
-            effectiveHemisphereSkyColor[1] / 255,
-            effectiveHemisphereSkyColor[2] / 255,
-            'srgb',
-        );
-    } else {
-        hemisphereColor.current.setRGB(
-            (effectiveHemisphereSkyColor[0] / 255) * -0,
-            effectiveHemisphereSkyColor[1] / 255,
-            effectiveHemisphereSkyColor[2] / 255,
-            'srgb',
-        );
-    }
+    const hemisphereSkyRed = effectiveHemisphereSkyColor[0] / 255;
+    const hemisphereSkyGreen = effectiveHemisphereSkyColor[1] / 255;
+    const hemisphereSkyBlue = effectiveHemisphereSkyColor[2] / 255;
+    const hemisphereColor = useMemo(
+        () =>
+            new Color().setRGB(
+                hasThemedBackground ? hemisphereSkyRed : hemisphereSkyRed * -0,
+                hemisphereSkyGreen,
+                hemisphereSkyBlue,
+                'srgb',
+            ),
+        [
+            hasThemedBackground,
+            hemisphereSkyBlue,
+            hemisphereSkyGreen,
+            hemisphereSkyRed,
+        ],
+    );
 
-    const hemisphereGroundColor = useRef<Color>(new Color());
-    if (themedBackground) {
-        hemisphereGroundColor.current.copy(backgroundColor.current);
-        hemisphereGroundColor.current.multiplyScalar(0.42);
-    } else {
-        hemisphereGroundColor.current.setRGB(
-            (backgroundColor.current.r / 255) * 0.5,
-            (backgroundColor.current.g / 255) * 0.5,
-            (backgroundColor.current.b / 255) * 0.5,
+    const hemisphereGroundColor = useMemo(() => {
+        const color = new Color();
+        if (hasThemedBackground) {
+            color.copy(backgroundColor);
+            color.multiplyScalar(0.42);
+            return color;
+        }
+
+        color.setRGB(
+            (backgroundColor.r / 255) * 0.5,
+            (backgroundColor.g / 255) * 0.5,
+            (backgroundColor.b / 255) * 0.5,
             'srgb',
         );
-    }
+        return color;
+    }, [backgroundColor, hasThemedBackground]);
     const hemisphereIntensity =
         (sunIntensity * 2 + 3) * moonlitNightScales.lightScale;
 
     return {
-        background: backgroundColor.current,
+        background: backgroundColor,
         ambient: {
             intensity: ambientLightIntensity,
         },
         hemisphere: {
-            color: hemisphereColor.current,
-            groundColor: hemisphereGroundColor.current,
+            color: hemisphereColor,
+            groundColor: hemisphereGroundColor,
             intensity: hemisphereIntensity,
         },
         directionalLight: {
-            color: directionalLightColor.current,
+            color: directionalLightColor,
             position: directionalLightPosition,
             intensity: directionalLightIntensity,
         },
