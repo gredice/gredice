@@ -3,11 +3,25 @@ import { Vector4 } from 'three';
 import type { Block } from '../types/Block';
 import type { Stack } from '../types/Stack';
 import { getStackHeight } from '../utils/stackHeightCore';
+import { waterBlockBottomOverlap } from './waterBlockGeometry';
+import { getWaterBlockVisualHeight } from './waterBlockHeight';
 
 export const waterBlockName = 'Block_Water';
-const waterLevelEpsilon = 1e-6;
+const waterRangeOverlapEpsilon = 1e-6;
 
-function getWaterBlockLevel({
+type WaterVerticalRange = {
+    max: number;
+    min: number;
+};
+
+function getFallbackWaterBlockVerticalRange(blockIndex: number) {
+    return {
+        min: blockIndex,
+        max: blockIndex + 1,
+    } satisfies WaterVerticalRange;
+}
+
+function getWaterBlockVerticalRange({
     block,
     blockData,
     stack,
@@ -21,22 +35,40 @@ function getWaterBlockLevel({
         return null;
     }
 
-    return blockData ? getStackHeight(blockData, stack, block) : blockIndex;
+    if (!blockData) {
+        return getFallbackWaterBlockVerticalRange(blockIndex);
+    }
+
+    const stackHeight = getStackHeight(blockData, stack, block);
+    const waterHeight = getWaterBlockVisualHeight({
+        block,
+        blockData,
+        stack,
+    });
+
+    return {
+        min: stackHeight - waterBlockBottomOverlap,
+        max: stackHeight + waterHeight - waterBlockBottomOverlap,
+    } satisfies WaterVerticalRange;
 }
 
-function isSameWaterLevel(left: number | null, right: number | null) {
+function doWaterRangesOverlap(
+    left: WaterVerticalRange | null,
+    right: WaterVerticalRange | null,
+) {
     return (
         left !== null &&
         right !== null &&
-        Math.abs(left - right) <= waterLevelEpsilon
+        Math.min(left.max, right.max) - Math.max(left.min, right.min) >
+            waterRangeOverlapEpsilon
     );
 }
 
-function hasWaterAtLevel(
+function hasOverlappingWater(
     stacks: Stack[] | undefined,
     x: number,
     z: number,
-    level: number | null,
+    range: WaterVerticalRange | null,
     blockData: BlockData[] | null | undefined,
 ) {
     return stacks?.some((candidate) => {
@@ -47,9 +79,13 @@ function hasWaterAtLevel(
         return candidate.blocks.some(
             (block) =>
                 block.name === waterBlockName &&
-                isSameWaterLevel(
-                    getWaterBlockLevel({ block, blockData, stack: candidate }),
-                    level,
+                doWaterRangesOverlap(
+                    getWaterBlockVerticalRange({
+                        block,
+                        blockData,
+                        stack: candidate,
+                    }),
+                    range,
                 ),
         );
     });
@@ -72,12 +108,12 @@ export function resolveWaterFoamEdges({
     }
 
     const { x, z } = stack.position;
-    const level = getWaterBlockLevel({ block, blockData, stack });
+    const range = getWaterBlockVerticalRange({ block, blockData, stack });
     return new Vector4(
-        hasWaterAtLevel(allStacks, x - 1, z, level, blockData) ? 0 : 1,
-        hasWaterAtLevel(allStacks, x + 1, z, level, blockData) ? 0 : 1,
-        hasWaterAtLevel(allStacks, x, z - 1, level, blockData) ? 0 : 1,
-        hasWaterAtLevel(allStacks, x, z + 1, level, blockData) ? 0 : 1,
+        hasOverlappingWater(allStacks, x - 1, z, range, blockData) ? 0 : 1,
+        hasOverlappingWater(allStacks, x + 1, z, range, blockData) ? 0 : 1,
+        hasOverlappingWater(allStacks, x, z - 1, range, blockData) ? 0 : 1,
+        hasOverlappingWater(allStacks, x, z + 1, range, blockData) ? 0 : 1,
     );
 }
 
@@ -98,29 +134,53 @@ export function resolveWaterFoamCorners({
     }
 
     const { x, z } = stack.position;
-    const level = getWaterBlockLevel({ block, blockData, stack });
-    const hasNegXWater = hasWaterAtLevel(allStacks, x - 1, z, level, blockData);
-    const hasPosXWater = hasWaterAtLevel(allStacks, x + 1, z, level, blockData);
-    const hasNegZWater = hasWaterAtLevel(allStacks, x, z - 1, level, blockData);
-    const hasPosZWater = hasWaterAtLevel(allStacks, x, z + 1, level, blockData);
+    const range = getWaterBlockVerticalRange({ block, blockData, stack });
+    const hasNegXWater = hasOverlappingWater(
+        allStacks,
+        x - 1,
+        z,
+        range,
+        blockData,
+    );
+    const hasPosXWater = hasOverlappingWater(
+        allStacks,
+        x + 1,
+        z,
+        range,
+        blockData,
+    );
+    const hasNegZWater = hasOverlappingWater(
+        allStacks,
+        x,
+        z - 1,
+        range,
+        blockData,
+    );
+    const hasPosZWater = hasOverlappingWater(
+        allStacks,
+        x,
+        z + 1,
+        range,
+        blockData,
+    );
 
     return new Vector4(
-        !hasWaterAtLevel(allStacks, x - 1, z - 1, level, blockData) &&
+        !hasOverlappingWater(allStacks, x - 1, z - 1, range, blockData) &&
             hasNegXWater &&
             hasNegZWater
             ? 1
             : 0,
-        !hasWaterAtLevel(allStacks, x + 1, z - 1, level, blockData) &&
+        !hasOverlappingWater(allStacks, x + 1, z - 1, range, blockData) &&
             hasPosXWater &&
             hasNegZWater
             ? 1
             : 0,
-        !hasWaterAtLevel(allStacks, x - 1, z + 1, level, blockData) &&
+        !hasOverlappingWater(allStacks, x - 1, z + 1, range, blockData) &&
             hasNegXWater &&
             hasPosZWater
             ? 1
             : 0,
-        !hasWaterAtLevel(allStacks, x + 1, z + 1, level, blockData) &&
+        !hasOverlappingWater(allStacks, x + 1, z + 1, range, blockData) &&
             hasPosXWater &&
             hasPosZWater
             ? 1

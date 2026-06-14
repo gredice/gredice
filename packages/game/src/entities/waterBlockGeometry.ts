@@ -33,6 +33,11 @@ type WaterSideInstance = {
     waterHeight?: number;
 };
 
+type WaterSideInstanceRange = {
+    max: number;
+    min: number;
+};
+
 type WaterSideSegment = {
     axis: 'x' | 'z';
     line: number;
@@ -185,8 +190,8 @@ export function createWaterBlockGeometry(
     return createGeometryFromFaces(faces);
 }
 
-function positionKey(x: number, y: number, z: number) {
-    return `${x}|${y}|${z}`;
+function stackPositionKey(x: number, z: number) {
+    return `${x}|${z}`;
 }
 
 function segmentGroupKey(segment: WaterSideSegment) {
@@ -354,71 +359,204 @@ function waterSideSegmentToFace(segment: WaterSideSegment): WaterFace {
     };
 }
 
+function getWaterSideInstanceHeight(instance: WaterSideInstance) {
+    return instance.waterHeight ?? defaultWaterBlockVisualHeight;
+}
+
+function getWaterSideInstanceRange(instance: WaterSideInstance) {
+    const [, y] = instance.position;
+    const halfHeight = getWaterSideInstanceHeight(instance) / 2;
+
+    return {
+        min: y - halfHeight,
+        max: y + halfHeight,
+    } satisfies WaterSideInstanceRange;
+}
+
+function groupWaterSideInstancesByStackPosition(
+    instances: WaterSideInstance[],
+) {
+    const groups = new Map<string, WaterSideInstance[]>();
+
+    for (const instance of instances) {
+        const [x, , z] = instance.position;
+        const key = stackPositionKey(x, z);
+        const group = groups.get(key);
+
+        if (group) {
+            group.push(instance);
+        } else {
+            groups.set(key, [instance]);
+        }
+    }
+
+    return groups;
+}
+
+function clipWaterSideRange(
+    range: WaterSideInstanceRange,
+    clipRange: WaterSideInstanceRange,
+) {
+    const clipMin = Math.max(range.min, clipRange.min);
+    const clipMax = Math.min(range.max, clipRange.max);
+
+    if (clipMax - clipMin <= segmentMergeEpsilon) {
+        return [range];
+    }
+
+    const remainingRanges: WaterSideInstanceRange[] = [];
+
+    if (clipMin - range.min > segmentMergeEpsilon) {
+        remainingRanges.push({
+            min: range.min,
+            max: clipMin,
+        });
+    }
+
+    if (range.max - clipMax > segmentMergeEpsilon) {
+        remainingRanges.push({
+            min: clipMax,
+            max: range.max,
+        });
+    }
+
+    return remainingRanges;
+}
+
+function getVisibleWaterSideRanges({
+    range,
+    stackGroups,
+    x,
+    z,
+}: {
+    range: WaterSideInstanceRange;
+    stackGroups: Map<string, WaterSideInstance[]>;
+    x: number;
+    z: number;
+}) {
+    const neighborRanges =
+        stackGroups
+            .get(stackPositionKey(x, z))
+            ?.map(getWaterSideInstanceRange)
+            .sort((left, right) => left.min - right.min) ?? [];
+    let visibleRanges = [range];
+
+    for (const neighborRange of neighborRanges) {
+        visibleRanges = visibleRanges.flatMap((visibleRange) =>
+            clipWaterSideRange(visibleRange, neighborRange),
+        );
+
+        if (visibleRanges.length === 0) {
+            break;
+        }
+    }
+
+    return visibleRanges;
+}
+
+function pushVisibleWaterSideSegments({
+    axis,
+    end,
+    line,
+    normal,
+    range,
+    sideSegments,
+    stackGroups,
+    start,
+    x,
+    z,
+}: {
+    axis: 'x' | 'z';
+    end: number;
+    line: number;
+    normal: [number, number, number];
+    range: WaterSideInstanceRange;
+    sideSegments: WaterSideSegment[];
+    stackGroups: Map<string, WaterSideInstance[]>;
+    start: number;
+    x: number;
+    z: number;
+}) {
+    for (const visibleRange of getVisibleWaterSideRanges({
+        range,
+        stackGroups,
+        x,
+        z,
+    })) {
+        sideSegments.push({
+            axis,
+            line,
+            normal,
+            start,
+            end,
+            yMin: visibleRange.min,
+            yMax: visibleRange.max,
+        });
+    }
+}
+
 export function createMergedWaterSideGeometry(instances: WaterSideInstance[]) {
-    const waterPositions = new Set(
-        instances.map((instance) =>
-            positionKey(
-                instance.position[0],
-                instance.position[1],
-                instance.position[2],
-            ),
-        ),
-    );
+    const stackGroups = groupWaterSideInstancesByStackPosition(instances);
     const sideSegments: WaterSideSegment[] = [];
 
     for (const instance of instances) {
         const [x, y, z] = instance.position;
-        const height = instance.waterHeight ?? defaultWaterBlockVisualHeight;
+        const height = getWaterSideInstanceHeight(instance);
         const yMin = y + waterBlockMinY(height);
         const yMax = y + waterBlockMaxY(height);
+        const range = { min: yMin, max: yMax };
 
-        if (!waterPositions.has(positionKey(x - 1, y, z))) {
-            sideSegments.push({
-                axis: 'x',
-                line: x - waterBlockHalfSize,
-                normal: [-1, 0, 0],
-                start: z - waterBlockHalfSize,
-                end: z + waterBlockHalfSize,
-                yMin,
-                yMax,
-            });
-        }
+        pushVisibleWaterSideSegments({
+            axis: 'x',
+            line: x - waterBlockHalfSize,
+            normal: [-1, 0, 0],
+            start: z - waterBlockHalfSize,
+            end: z + waterBlockHalfSize,
+            range,
+            sideSegments,
+            stackGroups,
+            x: x - 1,
+            z,
+        });
 
-        if (!waterPositions.has(positionKey(x + 1, y, z))) {
-            sideSegments.push({
-                axis: 'x',
-                line: x + waterBlockHalfSize,
-                normal: [1, 0, 0],
-                start: z - waterBlockHalfSize,
-                end: z + waterBlockHalfSize,
-                yMin,
-                yMax,
-            });
-        }
+        pushVisibleWaterSideSegments({
+            axis: 'x',
+            line: x + waterBlockHalfSize,
+            normal: [1, 0, 0],
+            start: z - waterBlockHalfSize,
+            end: z + waterBlockHalfSize,
+            range,
+            sideSegments,
+            stackGroups,
+            x: x + 1,
+            z,
+        });
 
-        if (!waterPositions.has(positionKey(x, y, z - 1))) {
-            sideSegments.push({
-                axis: 'z',
-                line: z - waterBlockHalfSize,
-                normal: [0, 0, -1],
-                start: x - waterBlockHalfSize,
-                end: x + waterBlockHalfSize,
-                yMin,
-                yMax,
-            });
-        }
+        pushVisibleWaterSideSegments({
+            axis: 'z',
+            line: z - waterBlockHalfSize,
+            normal: [0, 0, -1],
+            start: x - waterBlockHalfSize,
+            end: x + waterBlockHalfSize,
+            range,
+            sideSegments,
+            stackGroups,
+            x,
+            z: z - 1,
+        });
 
-        if (!waterPositions.has(positionKey(x, y, z + 1))) {
-            sideSegments.push({
-                axis: 'z',
-                line: z + waterBlockHalfSize,
-                normal: [0, 0, 1],
-                start: x - waterBlockHalfSize,
-                end: x + waterBlockHalfSize,
-                yMin,
-                yMax,
-            });
-        }
+        pushVisibleWaterSideSegments({
+            axis: 'z',
+            line: z + waterBlockHalfSize,
+            normal: [0, 0, 1],
+            start: x - waterBlockHalfSize,
+            end: x + waterBlockHalfSize,
+            range,
+            sideSegments,
+            stackGroups,
+            x,
+            z: z + 1,
+        });
     }
 
     return createGeometryFromFaces(
