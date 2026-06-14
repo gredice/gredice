@@ -33,17 +33,17 @@ const blockHitboxes = {
     BaleHey: { width: 0.44, height: 0.36, depth: 0.82 },
     BirdHouse: { width: 0.72, height: 1.3, depth: 0.72 },
     Block_Grass: cell(0.4),
-    Block_Grass_Angle: cell(0.25),
-    Block_Grass_Corner: cell(0.25),
-    Block_Grass_Reverse_Corner: cell(0.25),
+    Block_Grass_Angle: cell(0.4),
+    Block_Grass_Corner: cell(0.4),
+    Block_Grass_Reverse_Corner: cell(0.4),
     Block_Ground: cell(0.4),
-    Block_Ground_Angle: cell(0.25),
-    Block_Ground_Corner: cell(0.25),
-    Block_Ground_Reverse_Corner: cell(0.25),
+    Block_Ground_Angle: cell(0.4),
+    Block_Ground_Corner: cell(0.4),
+    Block_Ground_Reverse_Corner: cell(0.4),
     Block_Sand: cell(0.4),
-    Block_Sand_Angle: cell(0.25),
-    Block_Sand_Corner: cell(0.25),
-    Block_Sand_Reverse_Corner: cell(0.25),
+    Block_Sand_Angle: cell(0.4),
+    Block_Sand_Corner: cell(0.4),
+    Block_Sand_Reverse_Corner: cell(0.4),
     Block_Snow: cell(0.4),
     Block_Snow_Angle: cell(0.4),
     Block_Snow_Corner: cell(0.4),
@@ -100,6 +100,18 @@ const blockHitboxes = {
     WaterWell: { width: 1.22, height: 1.36, depth: 0.95 },
     WateringCan: { width: 1, height: 0.56, depth: 0.45 },
 } satisfies Record<string, HitboxSize>;
+
+const shapedTerrainVisualHeights = {
+    Block_Grass_Angle: 0.4,
+    Block_Grass_Corner: 0.4,
+    Block_Grass_Reverse_Corner: 0.4,
+    Block_Ground_Angle: 0.4,
+    Block_Ground_Corner: 0.4,
+    Block_Ground_Reverse_Corner: 0.4,
+    Block_Sand_Angle: 0.4,
+    Block_Sand_Corner: 0.4,
+    Block_Sand_Reverse_Corner: 0.4,
+} satisfies Record<string, number>;
 
 const hitboxDefinitionSpecs = [
     {
@@ -185,7 +197,12 @@ async function getPublishedBlockIdsByName() {
         throw new Error('Missing block information.name definition.');
     }
 
-    const blockNames = Object.keys(blockHitboxes);
+    const blockNames = Array.from(
+        new Set([
+            ...Object.keys(blockHitboxes),
+            ...Object.keys(shapedTerrainVisualHeights),
+        ]),
+    );
     const rows = await storage()
         .select({
             entityId: entities.id,
@@ -217,7 +234,30 @@ async function getPublishedBlockIdsByName() {
     );
 }
 
-async function upsertHitboxValue({
+async function getRequiredBlockAttributeDefinitionId({
+    category,
+    name,
+}: {
+    category: string;
+    name: string;
+}) {
+    const definition = await storage().query.attributeDefinitions.findFirst({
+        where: and(
+            eq(attributeDefinitions.entityTypeName, 'block'),
+            eq(attributeDefinitions.category, category),
+            eq(attributeDefinitions.name, name),
+            eq(attributeDefinitions.isDeleted, false),
+        ),
+    });
+
+    if (!definition) {
+        throw new Error(`Missing block ${category}.${name} definition.`);
+    }
+
+    return definition.id;
+}
+
+async function upsertBlockAttributeValue({
     attributeDefinitionId,
     entityId,
     nextValue,
@@ -315,7 +355,7 @@ async function main() {
             if (!attributeDefinitionId) {
                 throw new Error(`Missing definition id for ${spec.name}.`);
             }
-            const changed = await upsertHitboxValue({
+            const changed = await upsertBlockAttributeValue({
                 attributeDefinitionId,
                 entityId,
                 nextValue: String(spec.value(hitbox)),
@@ -324,6 +364,30 @@ async function main() {
                 changedEntityIds.add(entityId);
                 changedValueCount += 1;
             }
+        }
+    }
+
+    const heightDefinitionId = await getRequiredBlockAttributeDefinitionId({
+        category: 'attributes',
+        name: 'height',
+    });
+    let changedVisualHeightCount = 0;
+    for (const [blockName, height] of Object.entries(
+        shapedTerrainVisualHeights,
+    )) {
+        const entityId = blockIdsByName.get(blockName);
+        if (!entityId) {
+            continue;
+        }
+
+        const changed = await upsertBlockAttributeValue({
+            attributeDefinitionId: heightDefinitionId,
+            entityId,
+            nextValue: String(height),
+        });
+        if (changed) {
+            changedEntityIds.add(entityId);
+            changedVisualHeightCount += 1;
         }
     }
 
@@ -336,7 +400,7 @@ async function main() {
     ]);
 
     console.log(
-        `Upserted ${hitboxDefinitionSpecs.length} definitions and ${changedValueCount} block hitbox values across ${changedEntityIds.size} changed entities.`,
+        `Upserted ${hitboxDefinitionSpecs.length} definitions, ${changedValueCount} block hitbox values, and ${changedVisualHeightCount} shaped terrain visual heights across ${changedEntityIds.size} changed entities.`,
     );
 }
 

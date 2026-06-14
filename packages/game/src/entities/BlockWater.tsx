@@ -6,16 +6,15 @@ import { useSceneTimeUniform } from '../scene/SceneTime';
 import { defaultWaterColors } from '../scene/waterColors';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useGameState } from '../useGameState';
-import { getStackHeight } from '../utils/getStackHeight';
 import {
     resolveWaterFoamCorners,
     resolveWaterFoamEdges,
 } from './waterBlockFoam';
+import { createWaterBlockGeometry } from './waterBlockGeometry';
 import {
-    createWaterBlockGeometry,
-    getWaterBlockYOffset,
-} from './waterBlockGeometry';
-import { getWaterBlockVisualHeight } from './waterBlockHeight';
+    getWaterBlockCenterY,
+    getWaterBlockVisualHeight,
+} from './waterBlockHeight';
 
 const waterVertexShader = `
 varying vec3 vLocalPosition;
@@ -208,8 +207,12 @@ export function useWaterBlockMaterial(
 
 export function BlockWater({ stack, block, stacks }: EntityInstanceProps) {
     const { data: blockData } = useBlockData();
-    const currentStackHeight = getStackHeight(blockData, stack, block);
     const waterHeight = getWaterBlockVisualHeight({
+        block,
+        blockData,
+        stack,
+    });
+    const waterCenterY = getWaterBlockCenterY({
         block,
         blockData,
         stack,
@@ -238,11 +241,7 @@ export function BlockWater({ stack, block, stacks }: EntityInstanceProps) {
     useEffect(() => () => geometry.dispose(), [geometry]);
 
     return (
-        <animated.group
-            position={stack.position
-                .clone()
-                .setY(currentStackHeight + getWaterBlockYOffset(waterHeight))}
-        >
+        <animated.group position={stack.position.clone().setY(waterCenterY)}>
             <mesh
                 receiveShadow
                 geometry={geometry}
