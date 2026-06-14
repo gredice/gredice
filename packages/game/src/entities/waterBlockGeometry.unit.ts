@@ -121,7 +121,7 @@ describe('createMergedWaterSideGeometry', () => {
         geometry.dispose();
     });
 
-    it('hides side walls when adjacent water ranges overlap', () => {
+    it('clips side walls to adjacent water range overlaps', () => {
         const geometry = createMergedWaterSideGeometry([
             {
                 position: [0, 0.25 + getWaterBlockYOffset(0.25), 0],
@@ -135,8 +135,9 @@ describe('createMergedWaterSideGeometry', () => {
         const positionAttribute = geometry.getAttribute('position');
         const indexAttribute = geometry.getIndex();
 
-        assert.equal(positionAttribute.count, 24);
-        assert.equal(indexAttribute?.count, 36);
+        assert.equal(positionAttribute.count, 32);
+        assert.equal(indexAttribute?.count, 48);
+        assert.deepEqual(geometryYExtents(geometry), [0.19, 0.34, 0.44, 0.74]);
 
         geometry.dispose();
     });
