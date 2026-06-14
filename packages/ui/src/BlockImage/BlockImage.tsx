@@ -1,5 +1,5 @@
-import { getBlockImageUrl } from '@gredice/js/blocks';
 import Image, { type ImageProps } from 'next/image';
+import { getBlockImageUrl } from './blockImageUrl';
 
 type BlockImageProps = Omit<ImageProps, 'src' | 'alt'> & {
     blockName: string;

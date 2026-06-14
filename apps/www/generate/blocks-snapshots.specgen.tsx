@@ -75,7 +75,16 @@ const CLOSEUP_ENTITIES = new Set<string>([
     'LiquidPreparationBottleVoleControl',
     'LiquidPreparationBottleBeetleControl',
     'Tulip',
+    'SummerHat',
+    'BeachBall',
+    'SandcastleSmallA',
 ]);
+const CLOSEUP_ENTITY_ZOOM = new Map<string, number>([
+    ['SummerHat', 105],
+    ['BeachBall', 175],
+    ['SandcastleSmallA', 145],
+]);
+const FAR_ENTITIES = new Set<string>(['PalmTree']);
 const gameAssetBaseUrl =
     process.env.GAME_ASSET_BASE_URL ?? 'https://vrt.gredice.com';
 
@@ -84,7 +93,10 @@ function getSnapshotView(entity: BlockData): SnapshotView {
         return 'closeup';
     }
 
-    if (entity.attributes.height > 1.5) {
+    if (
+        FAR_ENTITIES.has(entity.information.name) ||
+        entity.attributes.height > 1.5
+    ) {
         return 'far';
     }
 
@@ -125,7 +137,7 @@ function getViewOptions(
             };
         case 'closeup':
             return {
-                zoom: 130,
+                zoom: CLOSEUP_ENTITY_ZOOM.get(entity.information.name) ?? 130,
                 itemPosition: hasMultiBlockFootprint
                     ? centeredItemPosition
                     : undefined,

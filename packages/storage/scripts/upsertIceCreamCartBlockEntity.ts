@@ -41,12 +41,12 @@ const spanDefinitionSpecs = [
 >[];
 
 const iceCreamCartAttributes = {
-    'attributes.height': '1',
-    'attributes.hitboxDepth': '0.75',
-    'attributes.hitboxHeight': '1',
-    'attributes.hitboxWidth': '1.25',
-    'attributes.spanDepth': '1',
-    'attributes.spanWidth': '1',
+    'attributes.height': '1.9',
+    'attributes.hitboxDepth': '1.25',
+    'attributes.hitboxHeight': '1.9',
+    'attributes.hitboxWidth': '2.4',
+    'attributes.spanDepth': '2',
+    'attributes.spanWidth': '3',
     'attributes.stackable': 'false',
     'attributes.type': 'decoration',
     'functions.raisedBed': 'false',

@@ -29,7 +29,7 @@ const supportNodeNames = [
     'BeachUmbrella_Ribs',
 ] satisfies BeachUmbrellaNodeName[];
 
-const beachUmbrellaScale = 0.78;
+const beachUmbrellaScale = 1.08;
 
 function BeachUmbrellaPart({
     children,

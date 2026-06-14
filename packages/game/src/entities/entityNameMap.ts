@@ -1,5 +1,8 @@
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { BaleHey } from './BaleHey';
+import { BeachBall } from './BeachBall';
+import { BeachChair } from './BeachChair';
+import { BeachTowelStriped } from './BeachTowelStriped';
 import { BeachUmbrella } from './BeachUmbrella';
 import { BirdHouse } from './BirdHouse';
 import { BlockGrass } from './BlockGrass';
@@ -42,9 +45,11 @@ import { GiftBoxPurpleSilver } from './GiftBoxPurpleSilver';
 import { GiftBoxRedWhite } from './GiftBoxRedWhite';
 import { GiftBoxWhiteGreen } from './GiftBoxWhiteGreen';
 import { IceCreamCart } from './IceCreamCart';
+import { InflatablePoolSmall } from './InflatablePoolSmall';
 import { LemonadeStand } from './LemonadeStand';
 import { LiquidPreparationBottle } from './LiquidPreparationBottle';
 import { PaintRoller } from './PaintRoller';
+import { PalmTree } from './PalmTree';
 import { Pine } from './Pine';
 import { PineAdvent } from './PineAdvent';
 import { Pot } from './Pot';
@@ -54,6 +59,7 @@ import { MulchHey } from './raisedBed/MulchHey';
 import { MulchWood } from './raisedBed/MulchWood';
 import { Seed } from './raisedBed/Seed';
 import { Stick } from './raisedBed/Stick';
+import { SandcastleSmallA } from './SandcastleSmall';
 import { Shade } from './Shade';
 import { ShovelSmall } from './ShovelSmall';
 import { Snowman } from './Snowman';
@@ -61,6 +67,7 @@ import { StoneLarge } from './StoneLarge';
 import { StoneMedium } from './StoneMedium';
 import { StoneSmall } from './StoneSmall';
 import { Stool } from './Stool';
+import { SummerHat } from './SummerHat';
 import { Sunflower } from './Sunflower';
 import { Tree } from './Tree';
 import { Tulip } from './Tulip';
@@ -108,6 +115,13 @@ export const entityNameMap = {
     WaterWell: WaterWell,
     LemonadeStand: LemonadeStand,
     IceCreamCart: IceCreamCart,
+    SummerHat: SummerHat,
+    BeachTowelStriped: BeachTowelStriped,
+    InflatablePoolSmall: InflatablePoolSmall,
+    BeachChair: BeachChair,
+    PalmTree: PalmTree,
+    BeachBall: BeachBall,
+    SandcastleSmallA: SandcastleSmallA,
     BirdHouse: BirdHouse,
     CatPillow: CatPillow,
     Cat_Pillow: CatPillow,

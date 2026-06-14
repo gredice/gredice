@@ -1,5 +1,6 @@
 import { animated } from '@react-spring/three';
 import { useMemo } from 'react';
+import { Vector3 } from 'three';
 import type { GLTFResult } from '../models/GameAssets';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
 import { SnowOverlay } from '../snow/SnowOverlay';
@@ -10,7 +11,15 @@ import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
 type IceCreamCartNode = GLTFResult['nodes'][keyof GLTFResult['nodes']];
 
-const iceCreamCartScale = 0.24;
+const iceCreamCartScale = 0.45;
+
+function getFootprintCenterOffset(rotation: number) {
+    const normalizedRotation = ((Math.round(rotation) % 2) + 2) % 2;
+
+    return normalizedRotation === 1
+        ? new Vector3(0.5, 0, 1)
+        : new Vector3(1, 0, 0.5);
+}
 
 function receivesWeatherOverlay(name: string) {
     const lowerName = name.toLowerCase();
@@ -77,7 +86,10 @@ export function IceCreamCart({ stack, block, rotation }: EntityInstanceProps) {
             ),
         [nodes],
     );
-    const position = stack.position.clone().setY(currentStackHeight + 0.03);
+    const position = stack.position
+        .clone()
+        .add(getFootprintCenterOffset(rotation))
+        .setY(currentStackHeight + 0.05);
 
     return (
         <animated.group
