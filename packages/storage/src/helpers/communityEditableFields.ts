@@ -316,6 +316,18 @@ const communityEditableFieldRegistry: CommunityEditableFieldDefinition[] = [
         pageLevel: true,
         inline: true,
     },
+    {
+        entityTypeName: 'block',
+        fieldKey: 'block.placeable-on-water',
+        sectionKey: 'attributes',
+        category: 'attributes',
+        name: 'placeableOnWater',
+        publicLabel: 'Postavljanje na vodu',
+        helpText: 'Dopušta postavljanje bloka izravno na vodeni blok.',
+        controlType: 'boolean',
+        pageLevel: true,
+        inline: true,
+    },
 ];
 
 export function getCommunityEditableFieldDefinitions(

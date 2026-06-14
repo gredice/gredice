@@ -28,6 +28,7 @@ function createBlockData({
     height = 1,
     id,
     name,
+    placeableOnWater,
     recycler = false,
     stackable = true,
     spanDepth,
@@ -36,6 +37,7 @@ function createBlockData({
     height?: number;
     id: number;
     name: string;
+    placeableOnWater?: boolean;
     recycler?: boolean;
     stackable?: boolean;
     spanDepth?: number;
@@ -58,6 +60,7 @@ function createBlockData({
         attributes: {
             height,
             stackable,
+            ...(placeableOnWater !== undefined ? { placeableOnWater } : {}),
             type: 'decoration',
             nightOnlyPurchase: false,
             ...(spanDepth !== undefined ? { spanDepth } : {}),
@@ -128,6 +131,11 @@ const blockData = [
         stackable: false,
         spanDepth: 1,
         spanWidth: 2,
+    }),
+    createBlockData({
+        id: 8,
+        name: 'Block_Water',
+        placeableOnWater: true,
     }),
 ];
 
@@ -308,5 +316,43 @@ describe('resolvePickupPlacementPreviewForRelative', () => {
         });
 
         assert.equal(preview?.nextIsBlocked, true);
+    });
+
+    it('blocks drops onto water when the moving block is not placeable on water', () => {
+        const tree = createBlock('Tree', 'tree');
+        const water = createBlock('Block_Water', 'water');
+        const sourceStack = createStack(0, 0, [tree]);
+        const waterStack = createStack(1, 0, [water]);
+
+        const preview = resolvePickupPlacementPreviewForRelative({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments: [createMovingSegment({ block: tree, sourceStack })],
+            relative: new Vector3(1, 0, 0),
+            stacks: [sourceStack, waterStack],
+        });
+
+        assert.equal(preview?.nextIsBlocked, true);
+    });
+
+    it('allows drops onto water when the moving block is placeable on water', () => {
+        const waterA = createBlock('Block_Water', 'water-a');
+        const waterB = createBlock('Block_Water', 'water-b');
+        const sourceStack = createStack(0, 0, [waterA]);
+        const waterStack = createStack(1, 0, [waterB]);
+
+        const preview = resolvePickupPlacementPreviewForRelative({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments: [
+                createMovingSegment({ block: waterA, sourceStack }),
+            ],
+            relative: new Vector3(1, 0, 0),
+            stacks: [sourceStack, waterStack],
+        });
+
+        assert.equal(preview?.nextIsBlocked, false);
     });
 });

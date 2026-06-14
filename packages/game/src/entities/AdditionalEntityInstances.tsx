@@ -57,6 +57,7 @@ import {
     getWaterBlockCenterY,
     getWaterBlockVisualHeight,
 } from './waterBlockHeight';
+import { isWaterBlockTopSurfaceVisible } from './waterBlockSurface';
 
 type CommonWeatherProps = Pick<
     EntityInstancesBlockBaseProps,
@@ -437,7 +438,9 @@ function WaterBlockInstances({ stacks }: { stacks: Stack[] | undefined }) {
         return null;
     }
 
-    const topSurfaceInstances = waterInstances.filter(isWaterTopSurfaceVisible);
+    const topSurfaceInstances = waterInstances.filter(
+        isWaterBlockTopSurfaceVisible,
+    );
     const groupedInstances = resolveWaterBlockInstanceGroups({
         blockData,
         instances: topSurfaceInstances,
@@ -459,10 +462,6 @@ function WaterBlockInstances({ stacks }: { stacks: Stack[] | undefined }) {
             <WaterBlockMergedSides instances={waterInstances} />
         </>
     );
-}
-
-function isWaterTopSurfaceVisible(instance: EntityBlockInstance) {
-    return instance.blockIndex === instance.stack.blocks.length - 1;
 }
 
 function foamEdgeKey(foamEdges: Vector4) {

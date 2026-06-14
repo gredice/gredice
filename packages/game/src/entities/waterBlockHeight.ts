@@ -7,7 +7,7 @@ import {
     waterBlockBottomOverlap,
 } from './waterBlockGeometry';
 
-export const shapedTerrainWaterTopInset = 0.01;
+export const shapedTerrainWaterTopInset = waterBlockBottomOverlap;
 
 export type WaterBlockVerticalRange = {
     max: number;

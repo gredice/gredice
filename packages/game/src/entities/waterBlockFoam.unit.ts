@@ -117,17 +117,14 @@ describe('resolveWaterFoamEdges', () => {
         );
     });
 
-    it('removes foam when shaped and full-height water ranges overlap', () => {
+    it('removes foam when shaped and standalone water ranges overlap', () => {
         const blockData = getLocalSandboxBlockData();
         const currentWater = waterBlock('water-shaped');
         const currentStack = stack(0, 0, [
             grassAngleBlock('angle-a'),
             currentWater,
         ]);
-        const stacks = [
-            currentStack,
-            stack(1, 0, [grassBlock('grass-a'), waterBlock('water-east')]),
-        ];
+        const stacks = [currentStack, stack(1, 0, [waterBlock('water-east')])];
 
         assert.deepEqual(
             resolveWaterFoamEdges({

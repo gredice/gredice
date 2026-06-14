@@ -15,7 +15,7 @@ const blockData: PlacementBlockData[] = [
     },
     {
         information: { name: 'Block_Water' },
-        attributes: { stackable: true, height: 1 },
+        attributes: { stackable: true, height: 1, placeableOnWater: true },
     },
     {
         information: { name: 'Raised_Bed' },
@@ -26,6 +26,58 @@ const blockData: PlacementBlockData[] = [
         attributes: { stackable: false, height: 1 },
     },
 ];
+
+const maxSpiralSteps = 1000;
+
+function spiral(step: number) {
+    const r = Math.floor((Math.sqrt(step + 1) - 1) / 2) + 1;
+    const p = (8 * r * (r - 1)) / 2;
+    const en = r * 2;
+    const a = (1 + step - p) % (r * 8);
+
+    switch (Math.floor(a / (r * 2))) {
+        case 0:
+            return { x: a - r, z: -r };
+        case 1:
+            return { x: r, z: (a % en) - r };
+        case 2:
+            return { x: r - (a % en), z: r };
+        case 3:
+            return { x: -r, z: r - (a % en) };
+        default:
+            return { x: 0, z: 0 };
+    }
+}
+
+function createWaterOnlyGarden() {
+    return {
+        stacks: [
+            {
+                position: new Vector3(0, 0, 0),
+                blocks: [
+                    {
+                        id: 'water-origin',
+                        name: 'Block_Water',
+                        rotation: 0,
+                    },
+                ],
+            },
+            ...Array.from({ length: maxSpiralSteps }, (_, step) => {
+                const { x, z } = spiral(step);
+                return {
+                    position: new Vector3(x, 0, z),
+                    blocks: [
+                        {
+                            id: `water-${step}`,
+                            name: 'Block_Water',
+                            rotation: 0,
+                        },
+                    ],
+                };
+            }),
+        ],
+    };
+}
 
 describe('createOptimisticBlockPlacement', () => {
     it('uses the shared placement resolver for new block purchases', () => {
@@ -112,6 +164,44 @@ describe('createOptimisticBlockPlacement', () => {
                 {
                     id: 'optimistic-shade',
                     name: 'Shade',
+                    rotation: 0,
+                },
+            ],
+        });
+    });
+
+    it('does not place new non-water blocks on water-only gardens', () => {
+        const placement = createOptimisticBlockPlacement(
+            createWaterOnlyGarden(),
+            blockData,
+            'Shade',
+            'optimistic-shade',
+        );
+
+        assert.equal(placement, null);
+    });
+
+    it('allows new water blocks on water-only gardens', () => {
+        const placement = createOptimisticBlockPlacement(
+            createWaterOnlyGarden(),
+            blockData,
+            'Block_Water',
+            'optimistic-water',
+        );
+
+        assert.ok(placement);
+        assert.deepStrictEqual(placement.position, new Vector3(0, 0, 0));
+        assert.deepStrictEqual(placement.stacks[0], {
+            position: new Vector3(0, 0, 0),
+            blocks: [
+                {
+                    id: 'water-origin',
+                    name: 'Block_Water',
+                    rotation: 0,
+                },
+                {
+                    id: 'optimistic-water',
+                    name: 'Block_Water',
                     rotation: 0,
                 },
             ],

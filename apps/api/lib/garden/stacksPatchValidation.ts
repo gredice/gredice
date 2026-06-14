@@ -1,4 +1,5 @@
 import {
+    canStackBlockOnBlock,
     getGardenBlockFootprintOffsets,
     type GardenBlockDataLike as SharedGardenBlockDataLike,
 } from '@gredice/js/gardenBlocks';
@@ -19,6 +20,7 @@ type BlockDataLike = SharedGardenBlockDataLike;
 
 type OccupiedCell = {
     blockId: string;
+    blockName: string;
     stackable: boolean;
     topHeight: number;
 };
@@ -138,6 +140,7 @@ function createOccupiedCells(params: {
                     const existing = occupiedCells.get(key);
                     const cell = {
                         blockId,
+                        blockName,
                         stackable: blockData?.attributes?.stackable ?? true,
                         topHeight: stackHeight + blockHeight,
                     };
@@ -235,7 +238,23 @@ export function validateStackPlacement(params: {
         }
 
         const belowBlockData = blockDataByName.get(belowBlockName);
-        if (!belowBlockData?.attributes?.stackable) {
+        const aboveBlockName = blockNameById.get(aboveBlockId);
+        if (!aboveBlockName) {
+            return {
+                valid: false,
+                error: `Invalid stack placement: unknown block ${aboveBlockId} above ${belowBlockId}`,
+            };
+        }
+
+        const aboveBlockData = blockDataByName.get(aboveBlockName);
+        if (
+            !canStackBlockOnBlock({
+                aboveBlockData,
+                aboveBlockName,
+                belowBlockData,
+                belowBlockName,
+            })
+        ) {
             return {
                 valid: false,
                 error: `Invalid stack placement: block ${belowBlockId} cannot support block ${aboveBlockId}`,
@@ -438,8 +457,22 @@ export function validateConnectedRaisedBedMove(params: {
         }
 
         const blockUnderData = blockDataByName.get(blockUnderName);
-        const isStackable = blockUnderData?.attributes?.stackable ?? true;
-        if (!isStackable) {
+        const blockName = blockNameById.get(blockId);
+        if (!blockName) {
+            return {
+                valid: false,
+                error: `Invalid connected raised bed move: unknown block ${blockId}`,
+            };
+        }
+
+        if (
+            !canStackBlockOnBlock({
+                aboveBlockData: blockDataByName.get(blockName),
+                aboveBlockName: blockName,
+                belowBlockData: blockUnderData,
+                belowBlockName: blockUnderName,
+            })
+        ) {
             return {
                 valid: false,
                 error: `Invalid connected raised bed move: block ${blockUnderId} cannot support block ${blockId}`,
@@ -538,7 +571,15 @@ export function validateSpanningBlockMove(params: {
         const x = destinationPosition.x + offset.x;
         const y = destinationPosition.y + offset.y;
         const topOccupiedCell = getTopOccupiedCell(occupiedCells, x, y);
-        if (topOccupiedCell && !topOccupiedCell.stackable) {
+        if (
+            topOccupiedCell &&
+            !canStackBlockOnBlock({
+                aboveBlockData: movedBlockData,
+                aboveBlockName: movedBlockName,
+                belowBlockData: blockDataByName.get(topOccupiedCell.blockName),
+                belowBlockName: topOccupiedCell.blockName,
+            })
+        ) {
             return {
                 valid: false,
                 error: `Invalid block placement: block ${topOccupiedCell.blockId} cannot support ${movedBlockName}`,
