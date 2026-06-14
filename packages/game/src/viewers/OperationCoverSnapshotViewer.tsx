@@ -38,12 +38,32 @@ export type OperationCoverCamera = {
     zoom?: number;
 };
 
+export type OperationCoverLighting = {
+    ambientIntensity?: number;
+    fillIntensity?: number;
+    fillPosition?: OperationCoverVector3;
+    hemisphereGroundColor?: string;
+    hemisphereIntensity?: number;
+    hemisphereSkyColor?: string;
+    keyColor?: string;
+    keyIntensity?: number;
+    keyPosition?: OperationCoverVector3;
+    shadowCameraSize?: number;
+    shadowIntensity?: number;
+    shadowMapSize?: number;
+    shadowNormalBias?: number;
+    shadowRadius?: number;
+    shadows?: boolean;
+};
+
 export type OperationCoverAsset = {
     id?: string;
     assetName: GameAssetName;
     position?: OperationCoverVector3;
     rotation?: OperationCoverVector3;
     scale?: number | OperationCoverVector3;
+    castShadow?: boolean;
+    receiveShadow?: boolean;
     visibleNodeNames?: readonly string[];
     hiddenNodeNames?: readonly string[];
 };
@@ -97,6 +117,7 @@ export type OperationCoverRecipe = {
     plants?: readonly OperationCoverPlant[];
     agrotextileCovers?: readonly OperationCoverAgrotextileCover[];
     supportStakes?: readonly OperationCoverSupportStake[];
+    lighting?: OperationCoverLighting;
     showBackground?: boolean;
 };
 
@@ -106,6 +127,23 @@ const defaultCamera = {
     target: [0.5, 0.62, 0.5],
     zoom: 118,
 } satisfies Required<OperationCoverCamera>;
+const defaultSnapshotLighting = {
+    ambientIntensity: 1.25,
+    fillIntensity: 0.75,
+    fillPosition: [-2.8, 2.6, -3.2],
+    hemisphereGroundColor: '#d7c5a6',
+    hemisphereIntensity: 1.15,
+    hemisphereSkyColor: '#f4fff3',
+    keyColor: '#fff6e5',
+    keyIntensity: 3.2,
+    keyPosition: [2.6, 4.8, 5.8],
+    shadowCameraSize: 1.8,
+    shadowIntensity: 0.34,
+    shadowMapSize: 2048,
+    shadowNormalBias: 0.012,
+    shadowRadius: 1.5,
+    shadows: true,
+} satisfies Required<OperationCoverLighting>;
 
 function toVector3(
     value: OperationCoverVector3 | undefined,
@@ -137,12 +175,72 @@ function CameraLookAt({ target }: { target: OperationCoverVector3 }) {
     return null;
 }
 
+function OperationCoverSnapshotLighting({
+    lighting,
+}: {
+    lighting: OperationCoverLighting | undefined;
+}) {
+    const resolvedLighting = {
+        ...defaultSnapshotLighting,
+        ...lighting,
+    };
+
+    return (
+        <>
+            <ambientLight intensity={resolvedLighting.ambientIntensity} />
+            <hemisphereLight
+                position={[0, 1, 0]}
+                color={resolvedLighting.hemisphereSkyColor}
+                groundColor={resolvedLighting.hemisphereGroundColor}
+                intensity={resolvedLighting.hemisphereIntensity}
+            />
+            <directionalLight
+                position={toVector3(
+                    resolvedLighting.keyPosition,
+                    defaultSnapshotLighting.keyPosition,
+                )}
+                color={resolvedLighting.keyColor}
+                intensity={resolvedLighting.keyIntensity}
+                shadow-intensity={resolvedLighting.shadowIntensity}
+                shadow-mapSize-width={resolvedLighting.shadowMapSize}
+                shadow-mapSize-height={resolvedLighting.shadowMapSize}
+                shadow-radius={resolvedLighting.shadowRadius}
+                shadow-normalBias={resolvedLighting.shadowNormalBias}
+                castShadow={resolvedLighting.shadows}
+            >
+                <orthographicCamera
+                    attach="shadow-camera"
+                    args={[
+                        -resolvedLighting.shadowCameraSize,
+                        resolvedLighting.shadowCameraSize,
+                        resolvedLighting.shadowCameraSize,
+                        -resolvedLighting.shadowCameraSize,
+                        0.1,
+                        20,
+                    ]}
+                />
+            </directionalLight>
+            <directionalLight
+                position={toVector3(
+                    resolvedLighting.fillPosition,
+                    defaultSnapshotLighting.fillPosition,
+                )}
+                intensity={resolvedLighting.fillIntensity}
+            />
+        </>
+    );
+}
+
 function updateNodeVisibility({
     root,
+    castShadow,
+    receiveShadow,
     visibleNodeNames,
     hiddenNodeNames,
 }: {
     root: Object3D;
+    castShadow?: boolean;
+    receiveShadow?: boolean;
     visibleNodeNames?: readonly string[];
     hiddenNodeNames?: readonly string[];
 }) {
@@ -161,6 +259,14 @@ function updateNodeVisibility({
         if (hidden?.has(node.name)) {
             node.visible = false;
         }
+
+        if (castShadow !== undefined) {
+            node.castShadow = castShadow;
+        }
+
+        if (receiveShadow !== undefined) {
+            node.receiveShadow = receiveShadow;
+        }
     });
 }
 
@@ -173,6 +279,8 @@ function getAssetKey(recipe: OperationCoverRecipe, asset: OperationCoverAsset) {
         asset.position?.join(','),
         asset.rotation?.join(','),
         Array.isArray(asset.scale) ? asset.scale.join(',') : asset.scale,
+        asset.castShadow,
+        asset.receiveShadow,
         asset.visibleNodeNames?.join(','),
         asset.hiddenNodeNames?.join(','),
     ].join(':');
@@ -283,11 +391,19 @@ function OperationCoverAssetModel({ asset }: { asset: OperationCoverAsset }) {
         const clone = gltf.scene.clone(true);
         updateNodeVisibility({
             root: clone,
+            castShadow: asset.castShadow,
+            receiveShadow: asset.receiveShadow,
             visibleNodeNames: asset.visibleNodeNames,
             hiddenNodeNames: asset.hiddenNodeNames,
         });
         return clone;
-    }, [asset.hiddenNodeNames, asset.visibleNodeNames, gltf.scene]);
+    }, [
+        asset.castShadow,
+        asset.hiddenNodeNames,
+        asset.receiveShadow,
+        asset.visibleNodeNames,
+        gltf.scene,
+    ]);
     const scale = normalizeOperationCoverScale(asset.scale);
 
     return (
@@ -468,9 +584,18 @@ export function OperationCoverSnapshotViewer({
     };
     const cameraPosition = toVector3(camera.position, defaultCamera.position);
     const cameraTarget = toVector3(camera.target, defaultCamera.target);
+    const lighting = recipe.lighting
+        ? {
+              ...defaultSnapshotLighting,
+              ...recipe.lighting,
+          }
+        : null;
     const snapshotQuality = {
         ...gameQualityProfiles.low,
         dpr: deviceScaleFactor,
+        shadowMapSize:
+            lighting?.shadowMapSize ?? gameQualityProfiles.low.shadowMapSize,
+        shadows: lighting?.shadows ?? gameQualityProfiles.low.shadows,
     };
 
     return (
@@ -492,9 +617,15 @@ export function OperationCoverSnapshotViewer({
                             {...rest}
                         >
                             <ParticleSystemProvider>
-                                <StaticEnvironment
-                                    noBackground={!recipe.showBackground}
-                                />
+                                {lighting ? (
+                                    <OperationCoverSnapshotLighting
+                                        lighting={lighting}
+                                    />
+                                ) : (
+                                    <StaticEnvironment
+                                        noBackground={!recipe.showBackground}
+                                    />
+                                )}
                                 <CameraLookAt target={cameraTarget} />
                                 {recipe.entities?.map((entity) => (
                                     <OperationCoverEntityModel
