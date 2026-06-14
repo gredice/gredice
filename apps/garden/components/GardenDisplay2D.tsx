@@ -1,5 +1,6 @@
 import type { BlockData } from '@gredice/client';
 import { orderBy } from '@gredice/js/arrays';
+import { getBlockImageUrl } from '@gredice/ui/BlockImage';
 import type { HTMLAttributes } from 'react';
 
 export type GardenDisplay2DProps = {
@@ -129,7 +130,7 @@ export function GardenDisplay2D({
             return {
                 id: block.id,
                 name: block.name,
-                src: `https://www.gredice.com/assets/blocks/${block.name}_${rotationSuffix}.webp`,
+                src: getBlockImageUrl(block.name, { rotationSuffix }),
                 realizedBlockSize,
                 horizontalOffset,
                 underStackHeight: currentUnderStackHeight,
