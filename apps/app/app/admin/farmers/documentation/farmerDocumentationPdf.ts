@@ -1,5 +1,6 @@
 import { create as createQrCode } from 'qrcode';
 import {
+    currentDocumentationPages,
     discardedDocumentationPages,
     documentationChangeLabel,
     type FarmerDocumentationPackage,
@@ -227,6 +228,7 @@ function drawOrganizationGuide({
         ? 'Paket sadrzi organizacijski vodic i sve prirucnike promijenjene od zadnjeg ispisa.'
         : 'Paket sadrzi organizacijski vodic i sve trenutno objavljene prirucnike.';
     const includedPages = includedDocumentationPages(data);
+    const allCurrentPages = currentDocumentationPages(data);
     const discardedPages = discardedDocumentationPages(data);
 
     context = drawSection(context, 'Svrha paketa', [
@@ -240,11 +242,13 @@ function drawOrganizationGuide({
         context,
         'Umetni nove stranice',
         includedPages.filter((page) => page.changeType === 'insert'),
+        allCurrentPages,
     );
     context = drawActionList(
         context,
         'Zamijeni postojece stranice',
         includedPages.filter((page) => page.changeType === 'replace'),
+        allCurrentPages,
     );
     context = drawDiscardList(context, discardedPages);
     context = drawSection(context, 'Kontrola nakon umetanja', [
@@ -261,6 +265,7 @@ function drawActionList(
     context: FlowContext,
     title: string,
     pages: FarmerDocumentationPage[],
+    allPages: FarmerDocumentationPage[],
 ) {
     if (pages.length === 0) {
         return drawSection(context, title, ['Nema stranica u ovoj skupini.']);
@@ -271,9 +276,47 @@ function drawActionList(
         title,
         pages.map(
             (page) =>
-                `${page.code} - ${page.label} [${page.documentTypeLabel}] (${page.revisionActions.join(', ') || 'aktualna verzija'})`,
+                `${page.code} - ${page.label} [${page.documentTypeLabel}] (${page.revisionActions.join(', ') || 'aktualna verzija'}). ${pagePlacementInstruction(page, allPages)}`,
         ),
     );
+}
+
+function pagePlacementInstruction(
+    page: FarmerDocumentationPage,
+    allPages: FarmerDocumentationPage[],
+) {
+    const sectionPages = allPages.filter(
+        (candidate) => candidate.entityTypeName === page.entityTypeName,
+    );
+    const pageIndex = sectionPages.findIndex(
+        (candidate) => candidate.id === page.id,
+    );
+    const sectionLabel = page.documentTypeLabel.toLowerCase();
+
+    if (pageIndex === -1) {
+        return `Mjesto: slozi prema rastucem kodu u odjeljku za ${sectionLabel}.`;
+    }
+
+    const previousPage = sectionPages[pageIndex - 1];
+    const nextPage = sectionPages[pageIndex + 1];
+
+    if (previousPage && nextPage) {
+        return `Mjesto: izmedju ${pagePlacementLabel(previousPage)} i ${pagePlacementLabel(nextPage)}.`;
+    }
+
+    if (previousPage) {
+        return `Mjesto: nakon ${pagePlacementLabel(previousPage)}.`;
+    }
+
+    if (nextPage) {
+        return `Mjesto: prije ${pagePlacementLabel(nextPage)}.`;
+    }
+
+    return `Mjesto: jedina stranica u odjeljku za ${sectionLabel}.`;
+}
+
+function pagePlacementLabel(page: FarmerDocumentationPage) {
+    return `${page.code} - ${page.label}`;
 }
 
 function drawDiscardList(
