@@ -1,5 +1,6 @@
 import { create as createQrCode } from 'qrcode';
 import {
+    currentDocumentationPages,
     discardedDocumentationPages,
     documentationChangeLabel,
     type FarmerDocumentationPackage,
@@ -300,6 +301,7 @@ function drawOrganizationGuide({
         ? 'Paket sadrzi organizacijski vodic i sve prirucnike promijenjene od zadnjeg ispisa.'
         : 'Paket sadrzi organizacijski vodic i sve trenutno objavljene prirucnike.';
     const includedPages = includedDocumentationPages(data);
+    const allCurrentPages = currentDocumentationPages(data);
     const discardedPages = discardedDocumentationPages(data);
 
     context = drawSection(context, 'Svrha paketa', [
@@ -313,13 +315,13 @@ function drawOrganizationGuide({
         context,
         'Umetni nove stranice',
         includedPages.filter((page) => page.changeType === 'insert'),
-        includedPages,
+        allCurrentPages,
     );
     context = drawActionList(
         context,
         'Zamijeni postojece stranice',
         includedPages.filter((page) => page.changeType === 'replace'),
-        includedPages,
+        allCurrentPages,
     );
     context = drawDiscardList(context, discardedPages);
     context = drawSection(context, 'Kontrola nakon umetanja', [

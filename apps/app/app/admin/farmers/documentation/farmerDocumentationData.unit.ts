@@ -3,6 +3,7 @@ import test from 'node:test';
 import type { EntityStandardized } from '@gredice/storage';
 import {
     buildFarmerDocumentationPackage,
+    currentDocumentationPages,
     type FarmerDocumentationRevision,
     includedDocumentationPages,
 } from './farmerDocumentationData';
@@ -29,6 +30,10 @@ test('builds insert, replace, and discard instructions from manual revisions', (
                 },
                 { perOperation: 2.5 },
             ),
+            operationFixture(6, 'Okopavanje', {
+                duration: 30,
+                application: 'raisedBed',
+            }),
             operationFixture(8, 'Čišćenje gredice', {
                 duration: 40,
                 frequency: 'required',
@@ -99,8 +104,20 @@ test('builds insert, replace, and discard instructions from manual revisions', (
     });
     const pagesByHeader = includedDocumentationPages(documentationPackage);
 
-    assert.equal(documentationPackage.totalOperations, 2);
+    assert.equal(documentationPackage.totalOperations, 3);
     assert.equal(documentationPackage.totalPlantSorts, 1);
+    assert.deepEqual(
+        currentDocumentationPages(documentationPackage).map((page) => [
+            page.code,
+            page.label,
+        ]),
+        [
+            ['PS-0014', 'Cherry rajčica'],
+            ['OP-0008', 'Čišćenje gredice'],
+            ['OP-0006', 'Okopavanje'],
+            ['OP-0004', 'Zalijevanje'],
+        ],
+    );
     assert.deepEqual(
         documentationPackage.includedOperations.map((operation) => [
             operation.code,
@@ -162,6 +179,14 @@ test('generates a guide-first PDF without page numbering text', () => {
                 },
                 { perOperation: 2.5 },
             ),
+            operationFixture(6, 'Okopavanje', {
+                duration: 30,
+                application: 'raisedBed',
+            }),
+            operationFixture(8, 'Berba', {
+                duration: 35,
+                application: 'raisedBed',
+            }),
         ],
         plantSorts: [
             plantSortFixture(14, 'Cherry rajčica', {
@@ -177,6 +202,12 @@ test('generates a guide-first PDF without page numbering text', () => {
             }),
             revisionFixture({
                 id: 2,
+                entityId: 8,
+                action: 'attribute.updated',
+                createdAt: new Date('2026-06-08T12:30:00.000Z'),
+            }),
+            revisionFixture({
+                id: 3,
                 entityId: 14,
                 entityTypeName: 'plantSort',
                 action: 'attribute.updated',
@@ -191,12 +222,18 @@ test('generates a guide-first PDF without page numbering text', () => {
     assert.match(content, /^%PDF-1\.4/);
     assert.match(content, /ORG-GUIDE/);
     assert.match(content, /OP-0004/);
+    assert.match(content, /OP-0008/);
     assert.match(content, /PS-0014/);
     assert.match(content, /Zalijevanje/);
+    assert.match(content, /abecedno prije PS-0014 - Cherry rajcica/);
+    assert.match(
+        content,
+        /abecedno izmedju OP-0008 - Berba i OP-0006 - Okopavanje/,
+    );
+    assert.match(content, /abecedno poslije OP-0006 - Okopavanje/);
     assert.match(content, /Cherry rajcica/);
     assert.match(content, /CIJENA/);
     assert.match(content, /2,50 EUR/);
-    assert.match(content, /abecedno prije OP-0004 - Zalijevanje/);
     assert.match(content, /2 Tr \(Gredice\)/);
     assert.doesNotMatch(content, /Stranica \d/);
 });

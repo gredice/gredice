@@ -65,6 +65,8 @@ export type FarmerDocumentationPackage = {
     generatedAt: Date;
     totalOperations: number;
     totalPlantSorts: number;
+    currentOperations: FarmerDocumentationOperation[];
+    currentPlantSorts: FarmerDocumentationPlantSort[];
     includedOperations: FarmerDocumentationOperation[];
     includedPlantSorts: FarmerDocumentationPlantSort[];
     discardedOperations: FarmerDocumentationDiscard[];
@@ -250,6 +252,15 @@ export function includedDocumentationPages(
     ].sort(compareDocumentationPage);
 }
 
+export function currentDocumentationPages(
+    documentationPackage: FarmerDocumentationPackage,
+) {
+    return [
+        ...documentationPackage.currentOperations,
+        ...documentationPackage.currentPlantSorts,
+    ].sort(compareDocumentationPage);
+}
+
 export function discardedDocumentationPages(
     documentationPackage: FarmerDocumentationPackage,
 ) {
@@ -326,48 +337,48 @@ export function buildFarmerDocumentationPackage({
         }),
     );
     const revisionsByEntityKey = groupRevisionsByEntityKey(revisions);
-    const includedOperations = sortedOperations
-        .filter((operation) =>
-            shouldIncludeCurrentEntity(
-                operation,
-                'operation',
-                since,
-                revisionsByEntityKey,
-            ),
-        )
-        .map((operation) =>
-            toDocumentationOperation(
-                operation,
-                revisionsByEntityKey.get(
-                    documentationEntityKey('operation', operation.id),
-                ) ?? [],
-                since,
-            ),
-        );
-    const includedPlantSorts = sortedPlantSorts
-        .filter((plantSort) =>
-            shouldIncludeCurrentEntity(
-                plantSort,
-                'plantSort',
-                since,
-                revisionsByEntityKey,
-            ),
-        )
-        .map((plantSort) =>
-            toDocumentationPlantSort(
-                plantSort,
-                revisionsByEntityKey.get(
-                    documentationEntityKey('plantSort', plantSort.id),
-                ) ?? [],
-                since,
-            ),
-        );
+    const currentOperations = sortedOperations.map((operation) =>
+        toDocumentationOperation(
+            operation,
+            revisionsByEntityKey.get(
+                documentationEntityKey('operation', operation.id),
+            ) ?? [],
+            since,
+        ),
+    );
+    const currentPlantSorts = sortedPlantSorts.map((plantSort) =>
+        toDocumentationPlantSort(
+            plantSort,
+            revisionsByEntityKey.get(
+                documentationEntityKey('plantSort', plantSort.id),
+            ) ?? [],
+            since,
+        ),
+    );
+    const includedOperations = currentOperations.filter((operation) =>
+        shouldIncludeCurrentEntity(
+            operation,
+            'operation',
+            since,
+            revisionsByEntityKey,
+        ),
+    );
+    const includedPlantSorts = currentPlantSorts.filter((plantSort) =>
+        shouldIncludeCurrentEntity(
+            plantSort,
+            'plantSort',
+            since,
+            revisionsByEntityKey,
+        ),
+    );
 
     return {
         since,
         generatedAt,
         totalOperations: sortedOperations.length,
         totalPlantSorts: sortedPlantSorts.length,
+        currentOperations,
+        currentPlantSorts,
         includedOperations,
         includedPlantSorts,
         discardedOperations: discardedPagesForType({
@@ -474,7 +485,7 @@ function documentationEntityKey(
 }
 
 function shouldIncludeCurrentEntity(
-    entity: EntityStandardized,
+    entity: { id: number },
     entityTypeName: FarmerDocumentationEntityTypeName,
     since: Date | null,
     revisionsByEntityKey: ReadonlyMap<string, FarmerDocumentationRevision[]>,
