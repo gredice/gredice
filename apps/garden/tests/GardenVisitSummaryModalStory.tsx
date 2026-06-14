@@ -269,20 +269,32 @@ function OpeningFlowProviders({
     );
 }
 
-function OpeningFlowHarness() {
+function OpeningFlowSequence({
+    suppressOpeningHud = false,
+}: {
+    suppressOpeningHud?: boolean;
+}) {
     const [welcomeConfirmed, setWelcomeConfirmed] = useState(false);
     const [visitSummaryConfirmed, setVisitSummaryConfirmed] = useState(false);
-    const summaryEnabled = welcomeConfirmed && !visitSummaryConfirmed;
-    const openingFlowComplete = welcomeConfirmed && visitSummaryConfirmed;
+    const summaryEnabled =
+        !suppressOpeningHud && welcomeConfirmed && !visitSummaryConfirmed;
+    const openingFlowComplete =
+        !suppressOpeningHud && welcomeConfirmed && visitSummaryConfirmed;
 
     return (
         <div className="relative h-[640px] w-[720px] bg-background">
-            <WelcomeMessage onClosed={() => setWelcomeConfirmed(true)} />
-            <GardenVisitSummaryModal
-                enabled={summaryEnabled}
-                onClosed={() => setVisitSummaryConfirmed(true)}
-            />
-            <WhatsNewWidget enabled={openingFlowComplete} />
+            {!suppressOpeningHud && (
+                <>
+                    <WelcomeMessage
+                        onClosed={() => setWelcomeConfirmed(true)}
+                    />
+                    <GardenVisitSummaryModal
+                        enabled={summaryEnabled}
+                        onClosed={() => setVisitSummaryConfirmed(true)}
+                    />
+                    <WhatsNewWidget enabled={openingFlowComplete} />
+                </>
+            )}
             <output data-testid="opening-flow-state" className="sr-only">
                 {[
                     welcomeConfirmed ? 'welcome:closed' : 'welcome:open',
@@ -333,10 +345,12 @@ export function VisitSummaryOpeningFlowFixture({
     dailyRewardCanClaim = false,
     facts = summaryFacts,
     factsHash = 'summary-fixture-hash',
+    suppressOpeningHud = false,
 }: {
     dailyRewardCanClaim?: boolean;
     facts?: GardenVisitSummaryFact[];
     factsHash?: string | null;
+    suppressOpeningHud?: boolean;
 }) {
     return (
         <OpeningFlowProviders
@@ -344,7 +358,7 @@ export function VisitSummaryOpeningFlowFixture({
             facts={facts}
             factsHash={factsHash}
         >
-            <OpeningFlowHarness />
+            <OpeningFlowSequence suppressOpeningHud={suppressOpeningHud} />
         </OpeningFlowProviders>
     );
 }

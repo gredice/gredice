@@ -188,6 +188,32 @@ test('opening flow shows daily reward, visit summary, then what is new', async (
         .toEqual([{ factsHash: 'summary-fixture-hash' }]);
 });
 
+test('opening flow stays hidden during admin impersonation', async ({
+    mount,
+    page,
+}) => {
+    const recorded = await mockOpeningFlowMutations(page);
+
+    await mount(
+        <VisitSummaryOpeningFlowFixture
+            dailyRewardCanClaim
+            suppressOpeningHud
+        />,
+    );
+
+    await expect(
+        page.getByRole('button', { name: /Kreni u avanturu/u }),
+    ).toHaveCount(0);
+    await expect(
+        page.getByRole('dialog', { name: 'Od zadnjeg posjeta' }),
+    ).toHaveCount(0);
+    await expect(
+        page.getByRole('button', { name: /Vrt je življi/u }),
+    ).toHaveCount(0);
+    await expect.poll(() => recorded.claimRequests.length).toBe(0);
+    await expect.poll(() => recorded.seenRequests).toEqual([]);
+});
+
 test('opening flow shows the visit summary when there is no daily reward', async ({
     mount,
     page,

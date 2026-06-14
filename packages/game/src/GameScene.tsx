@@ -77,6 +77,7 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     noBackground?: boolean;
     noControls?: boolean;
     hideHud?: boolean;
+    suppressOpeningHud?: boolean;
     debugHud?: boolean;
     noWeather?: boolean;
     noSound?: boolean;
@@ -177,6 +178,7 @@ export function GameScene({
     noBackground,
     noSound,
     hideHud,
+    suppressOpeningHud,
     className,
     flags,
     debugHud,
@@ -415,6 +417,7 @@ export function GameScene({
                     debugHud={showDebugHud}
                     flags={flags}
                     noWeather={noWeather}
+                    suppressOpeningHud={suppressOpeningHud}
                 />
             )}
             {hideHud && showDebugHud && <DebugHud />}

@@ -1,4 +1,5 @@
 import { SignedIn, SignedOut } from '@gredice/ui/auth';
+import { cookies } from 'next/headers';
 import type { ComponentProps } from 'react';
 import LoginModal from '../components/auth/LoginModal';
 import { GameSceneWithAnalytics } from '../components/game/GameSceneWithAnalytics';
@@ -11,7 +12,12 @@ import {
     tutorialChecklistFlag,
 } from './flags';
 
+const impersonationFlagCookieName = 'gredice_impersonating';
+
 export default async function Home() {
+    const cookieStore = await cookies();
+    const suppressOpeningHud =
+        cookieStore.get(impersonationFlagCookieName)?.value === '1';
     const flags: ComponentProps<typeof GameSceneWithAnalytics>['flags'] = {
         enableDebugHudFlag: await enableDebugHudFlag(),
         enablePlantGeneratorFlag: await lsystemPlantsFlag(),
@@ -24,7 +30,11 @@ export default async function Home() {
     return (
         <div className="grid grid-cols-1 h-[100dvh] relative overflow-hidden">
             <SignedIn>
-                <GameSceneWithAnalytics flags={flags} deferDetails />
+                <GameSceneWithAnalytics
+                    flags={flags}
+                    deferDetails
+                    suppressOpeningHud={suppressOpeningHud}
+                />
             </SignedIn>
             <SignedOut>
                 <GameSceneWithAnalytics
