@@ -1,0 +1,83 @@
+import assert from 'node:assert/strict';
+import { describe, it } from 'node:test';
+import { Vector3 } from 'three';
+import { getLocalSandboxBlockData } from '../localSandboxBlockData';
+import type { Block } from '../types/Block';
+import type { Stack } from '../types/Stack';
+import { defaultWaterBlockVisualHeight } from './waterBlockGeometry';
+import { getWaterBlockVisualHeight } from './waterBlockHeight';
+
+function block(id: string, name: string): Block {
+    return { id, name, rotation: 0 };
+}
+
+function stack(blocks: Block[]): Stack {
+    return {
+        blocks,
+        position: new Vector3(0, 0, 0),
+    };
+}
+
+describe('getWaterBlockVisualHeight', () => {
+    it('uses the default height for unsupported water blocks', () => {
+        const water = block('water-a', 'Block_Water');
+        const currentStack = stack([water]);
+
+        assert.equal(
+            getWaterBlockVisualHeight({
+                block: water,
+                blockData: getLocalSandboxBlockData(),
+                stack: currentStack,
+            }),
+            defaultWaterBlockVisualHeight,
+        );
+    });
+
+    it('matches water height to the angle block directly below it', () => {
+        const water = block('water-a', 'Block_Water');
+        const currentStack = stack([
+            block('angle-a', 'Block_Grass_Angle'),
+            water,
+        ]);
+
+        assert.equal(
+            getWaterBlockVisualHeight({
+                block: water,
+                blockData: getLocalSandboxBlockData(),
+                stack: currentStack,
+            }),
+            0.25,
+        );
+    });
+
+    it('matches water height to the corner block directly below it', () => {
+        const water = block('water-a', 'Block_Water');
+        const currentStack = stack([
+            block('corner-a', 'Block_Sand_Reverse_Corner'),
+            water,
+        ]);
+
+        assert.equal(
+            getWaterBlockVisualHeight({
+                block: water,
+                blockData: getLocalSandboxBlockData(),
+                stack: currentStack,
+            }),
+            0.25,
+        );
+    });
+
+    it('keeps the default height when the support block is not an edge or corner terrain block', () => {
+        const water = block('water-a', 'Block_Water');
+        const currentStack = stack([block('grass-a', 'Block_Grass'), water]);
+
+        assert.equal(
+            getWaterBlockVisualHeight({
+                block: water,
+                blockData: getLocalSandboxBlockData(),
+                stack: currentStack,
+            }),
+            defaultWaterBlockVisualHeight,
+        );
+    });
+});

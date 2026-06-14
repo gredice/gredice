@@ -6,8 +6,8 @@ import {
 } from 'three';
 
 const waterBlockHalfSize = 0.5;
-const waterBlockMinY = -0.2;
-const waterBlockMaxY = 0.2;
+export const defaultWaterBlockVisualHeight = 0.4;
+export const waterBlockBottomOverlap = 0.06;
 const segmentMergeEpsilon = 1e-6;
 
 type WaterFoamEdge = 'x' | 'y' | 'z' | 'w';
@@ -23,12 +23,14 @@ type WaterFace = {
 };
 
 type WaterBlockGeometryOptions = {
+    height?: number;
     includeSides?: boolean;
     includeTop?: boolean;
 };
 
 type WaterSideInstance = {
     position: [number, number, number];
+    waterHeight?: number;
 };
 
 type WaterSideSegment = {
@@ -41,58 +43,79 @@ type WaterSideSegment = {
     yMin: number;
 };
 
-const topFace: WaterFace = {
-    normal: [0, 1, 0],
-    vertices: [
-        [-waterBlockHalfSize, waterBlockMaxY, -waterBlockHalfSize],
-        [-waterBlockHalfSize, waterBlockMaxY, waterBlockHalfSize],
-        [waterBlockHalfSize, waterBlockMaxY, waterBlockHalfSize],
-        [waterBlockHalfSize, waterBlockMaxY, -waterBlockHalfSize],
-    ],
-};
+export function getWaterBlockYOffset(height = defaultWaterBlockVisualHeight) {
+    return height / 2 - waterBlockBottomOverlap;
+}
 
-const waterSideFaces = [
-    {
-        edge: 'x',
-        normal: [-1, 0, 0],
+function waterBlockMinY(height: number) {
+    return -height / 2;
+}
+
+function waterBlockMaxY(height: number) {
+    return height / 2;
+}
+
+function createTopFace(height: number): WaterFace {
+    const y = waterBlockMaxY(height);
+
+    return {
+        normal: [0, 1, 0],
         vertices: [
-            [-waterBlockHalfSize, waterBlockMinY, waterBlockHalfSize],
-            [-waterBlockHalfSize, waterBlockMaxY, waterBlockHalfSize],
-            [-waterBlockHalfSize, waterBlockMaxY, -waterBlockHalfSize],
-            [-waterBlockHalfSize, waterBlockMinY, -waterBlockHalfSize],
+            [-waterBlockHalfSize, y, -waterBlockHalfSize],
+            [-waterBlockHalfSize, y, waterBlockHalfSize],
+            [waterBlockHalfSize, y, waterBlockHalfSize],
+            [waterBlockHalfSize, y, -waterBlockHalfSize],
         ],
-    },
-    {
-        edge: 'y',
-        normal: [1, 0, 0],
-        vertices: [
-            [waterBlockHalfSize, waterBlockMinY, -waterBlockHalfSize],
-            [waterBlockHalfSize, waterBlockMaxY, -waterBlockHalfSize],
-            [waterBlockHalfSize, waterBlockMaxY, waterBlockHalfSize],
-            [waterBlockHalfSize, waterBlockMinY, waterBlockHalfSize],
-        ],
-    },
-    {
-        edge: 'z',
-        normal: [0, 0, -1],
-        vertices: [
-            [waterBlockHalfSize, waterBlockMinY, -waterBlockHalfSize],
-            [waterBlockHalfSize, waterBlockMaxY, -waterBlockHalfSize],
-            [-waterBlockHalfSize, waterBlockMaxY, -waterBlockHalfSize],
-            [-waterBlockHalfSize, waterBlockMinY, -waterBlockHalfSize],
-        ],
-    },
-    {
-        edge: 'w',
-        normal: [0, 0, 1],
-        vertices: [
-            [-waterBlockHalfSize, waterBlockMinY, waterBlockHalfSize],
-            [-waterBlockHalfSize, waterBlockMaxY, waterBlockHalfSize],
-            [waterBlockHalfSize, waterBlockMaxY, waterBlockHalfSize],
-            [waterBlockHalfSize, waterBlockMinY, waterBlockHalfSize],
-        ],
-    },
-] satisfies Array<WaterFace & { edge: WaterFoamEdge }>;
+    };
+}
+
+function createWaterSideFaces(height: number) {
+    const yMin = waterBlockMinY(height);
+    const yMax = waterBlockMaxY(height);
+
+    return [
+        {
+            edge: 'x',
+            normal: [-1, 0, 0],
+            vertices: [
+                [-waterBlockHalfSize, yMin, waterBlockHalfSize],
+                [-waterBlockHalfSize, yMax, waterBlockHalfSize],
+                [-waterBlockHalfSize, yMax, -waterBlockHalfSize],
+                [-waterBlockHalfSize, yMin, -waterBlockHalfSize],
+            ],
+        },
+        {
+            edge: 'y',
+            normal: [1, 0, 0],
+            vertices: [
+                [waterBlockHalfSize, yMin, -waterBlockHalfSize],
+                [waterBlockHalfSize, yMax, -waterBlockHalfSize],
+                [waterBlockHalfSize, yMax, waterBlockHalfSize],
+                [waterBlockHalfSize, yMin, waterBlockHalfSize],
+            ],
+        },
+        {
+            edge: 'z',
+            normal: [0, 0, -1],
+            vertices: [
+                [waterBlockHalfSize, yMin, -waterBlockHalfSize],
+                [waterBlockHalfSize, yMax, -waterBlockHalfSize],
+                [-waterBlockHalfSize, yMax, -waterBlockHalfSize],
+                [-waterBlockHalfSize, yMin, -waterBlockHalfSize],
+            ],
+        },
+        {
+            edge: 'w',
+            normal: [0, 0, 1],
+            vertices: [
+                [-waterBlockHalfSize, yMin, waterBlockHalfSize],
+                [-waterBlockHalfSize, yMax, waterBlockHalfSize],
+                [waterBlockHalfSize, yMax, waterBlockHalfSize],
+                [waterBlockHalfSize, yMin, waterBlockHalfSize],
+            ],
+        },
+    ] satisfies Array<WaterFace & { edge: WaterFoamEdge }>;
+}
 
 function pushFace({
     face,
@@ -143,12 +166,16 @@ function createGeometryFromFaces(faces: WaterFace[]) {
 
 export function createWaterBlockGeometry(
     foamEdges: Vector4,
-    { includeSides = true, includeTop = true }: WaterBlockGeometryOptions = {},
+    {
+        height = defaultWaterBlockVisualHeight,
+        includeSides = true,
+        includeTop = true,
+    }: WaterBlockGeometryOptions = {},
 ) {
-    const faces = includeTop ? [topFace] : [];
+    const faces = includeTop ? [createTopFace(height)] : [];
 
     if (includeSides) {
-        for (const face of waterSideFaces) {
+        for (const face of createWaterSideFaces(height)) {
             if (foamEdges[face.edge] > 0.5) {
                 faces.push(face);
             }
@@ -341,8 +368,9 @@ export function createMergedWaterSideGeometry(instances: WaterSideInstance[]) {
 
     for (const instance of instances) {
         const [x, y, z] = instance.position;
-        const yMin = y + waterBlockMinY;
-        const yMax = y + waterBlockMaxY;
+        const height = instance.waterHeight ?? defaultWaterBlockVisualHeight;
+        const yMin = y + waterBlockMinY(height);
+        const yMax = y + waterBlockMaxY(height);
 
         if (!waterPositions.has(positionKey(x - 1, y, z))) {
             sideSegments.push({

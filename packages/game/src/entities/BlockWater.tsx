@@ -11,7 +11,11 @@ import {
     resolveWaterFoamCorners,
     resolveWaterFoamEdges,
 } from './waterBlockFoam';
-import { createWaterBlockGeometry } from './waterBlockGeometry';
+import {
+    createWaterBlockGeometry,
+    getWaterBlockYOffset,
+} from './waterBlockGeometry';
+import { getWaterBlockVisualHeight } from './waterBlockHeight';
 
 const waterVertexShader = `
 varying vec3 vLocalPosition;
@@ -205,6 +209,11 @@ export function useWaterBlockMaterial(
 export function BlockWater({ stack, block, stacks }: EntityInstanceProps) {
     const { data: blockData } = useBlockData();
     const currentStackHeight = getStackHeight(blockData, stack, block);
+    const waterHeight = getWaterBlockVisualHeight({
+        block,
+        blockData,
+        stack,
+    });
     const foamEdges = useMemo(
         () => resolveWaterFoamEdges({ block, blockData, stack, stacks }),
         [block, blockData, stack, stacks],
@@ -217,8 +226,12 @@ export function BlockWater({ stack, block, stacks }: EntityInstanceProps) {
     const includeTop =
         waterBlockIndex < 0 || waterBlockIndex === stack.blocks.length - 1;
     const geometry = useMemo(
-        () => createWaterBlockGeometry(foamEdges, { includeTop }),
-        [foamEdges, includeTop],
+        () =>
+            createWaterBlockGeometry(foamEdges, {
+                height: waterHeight,
+                includeTop,
+            }),
+        [foamEdges, includeTop, waterHeight],
     );
     const material = useWaterBlockMaterial(foamEdges, true, foamCorners);
 
@@ -226,7 +239,9 @@ export function BlockWater({ stack, block, stacks }: EntityInstanceProps) {
 
     return (
         <animated.group
-            position={stack.position.clone().setY(currentStackHeight + 0.14)}
+            position={stack.position
+                .clone()
+                .setY(currentStackHeight + getWaterBlockYOffset(waterHeight))}
         >
             <mesh
                 receiveShadow
