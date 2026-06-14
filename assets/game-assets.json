@@ -809,6 +809,19 @@
             ]
         },
         {
+            "name": "BeachUmbrella",
+            "source": "BeachUmbrella.blend",
+            "output": "BeachUmbrella.glb",
+            "preload": "lazy",
+            "objects": [
+                "BeachUmbrella_Pole",
+                "BeachUmbrella_Stake",
+                "BeachUmbrella_Canopy",
+                "BeachUmbrella_CanopyTrim",
+                "BeachUmbrella_Ribs"
+            ]
+        },
+        {
             "name": "ShovelSmall",
             "source": "ShovelSmall.blend",
             "output": "ShovelSmall.glb",

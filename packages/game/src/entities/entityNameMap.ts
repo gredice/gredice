@@ -1,5 +1,6 @@
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { BaleHey } from './BaleHey';
+import { BeachUmbrella } from './BeachUmbrella';
 import { BirdHouse } from './BirdHouse';
 import { BlockGrass } from './BlockGrass';
 import { BlockGrassAngle } from './BlockGrassAngle';
@@ -86,6 +87,7 @@ export const entityNameMap = {
     Composter: Composter,
     Raised_Bed: RaisedBed,
     Shade: Shade,
+    BeachUmbrella: BeachUmbrella,
     Fence: Fence,
     GardenBox: GardenBox,
     Stool: Stool,
