@@ -98,6 +98,7 @@ const items: HudItem[] = [
                 items: rockItems,
             },
             { type: 'entity', name: 'Shade' },
+            { type: 'entity', name: 'BeachUmbrella' },
             { type: 'entity', name: 'Stool' },
             { type: 'entity', name: 'Fence' },
             { type: 'entity', name: 'WaterWell' },

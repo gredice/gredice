@@ -673,6 +673,14 @@ export type GLTFResult = GLTF & {
         Shade_Single_Right: THREE.Mesh;
         Shade_Solo: THREE.Mesh;
         Shade_W: THREE.Mesh;
+        BeachUmbrella_Pole: THREE.Mesh;
+        BeachUmbrella_Stake: THREE.Mesh;
+        BeachUmbrella_CanopyMesh: THREE.Mesh;
+        BeachUmbrella_CanopyMesh_1: THREE.Mesh;
+        BeachUmbrella_CanopyMesh_2: THREE.Mesh;
+        BeachUmbrella_CanopyMesh_3: THREE.Mesh;
+        BeachUmbrella_CanopyTrim: THREE.Mesh;
+        BeachUmbrella_Ribs: THREE.Mesh;
         Shovel_Small: THREE.Mesh;
         GardenScissors_Blade_L: THREE.Mesh;
         GardenScissors_Blade_R: THREE.Mesh;
@@ -844,6 +852,13 @@ export type GLTFResult = GLTF & {
         'Material.BasketPin': THREE.MeshStandardMaterial;
         'Material.BasketRim': THREE.MeshStandardMaterial;
         'Material.BasketWeave': THREE.MeshStandardMaterial;
+        'Material.BeachUmbrella.CanopyCoral': THREE.MeshStandardMaterial;
+        'Material.BeachUmbrella.CanopyCream': THREE.MeshStandardMaterial;
+        'Material.BeachUmbrella.CanopyTeal': THREE.MeshStandardMaterial;
+        'Material.BeachUmbrella.CanopyYellow': THREE.MeshStandardMaterial;
+        'Material.BeachUmbrella.Pole': THREE.MeshStandardMaterial;
+        'Material.BeachUmbrella.Stake': THREE.MeshStandardMaterial;
+        'Material.BeachUmbrella.Trim': THREE.MeshStandardMaterial;
         'Material.Bee.Black': THREE.MeshStandardMaterial;
         'Material.Bee.Cheek': THREE.MeshStandardMaterial;
         'Material.Bee.Gold': THREE.MeshStandardMaterial;

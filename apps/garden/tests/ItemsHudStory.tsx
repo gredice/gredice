@@ -62,6 +62,7 @@ const blockNames = [
     'PotTallSlenderCone',
     'PotWideLippedCup',
     'Shade',
+    'BeachUmbrella',
     'Stool',
     'Fence',
     'StoneSmall',
