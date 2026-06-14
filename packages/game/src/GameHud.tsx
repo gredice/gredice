@@ -45,10 +45,12 @@ export function GameHud({
     debugHud,
     flags,
     noWeather,
+    suppressOpeningHud,
 }: {
     debugHud?: boolean;
     flags: GameSceneProps['flags'];
     noWeather?: boolean;
+    suppressOpeningHud?: boolean;
 }) {
     const [welcomeConfirmed, setWelcomeConfirmed] = useState(false);
     const [visitSummaryConfirmation, setVisitSummaryConfirmation] = useState<{
@@ -87,15 +89,21 @@ export function GameHud({
         (raisedBedOnboardingConfirmation.confirmed &&
             raisedBedOnboardingConfirmation.gardenId === currentGardenId);
     const visitSummaryEnabled =
-        welcomeConfirmed && !visitSummaryConfirmed && !isSandbox;
+        !suppressOpeningHud &&
+        welcomeConfirmed &&
+        !visitSummaryConfirmed &&
+        !isSandbox;
     const visitSummaryStageComplete =
-        welcomeConfirmed && (isSandbox || visitSummaryConfirmed);
+        !suppressOpeningHud &&
+        welcomeConfirmed &&
+        (isSandbox || visitSummaryConfirmed);
     const raisedBedOnboardingEnabled =
         raisedBedOnboardingChecklistEnabled &&
         visitSummaryStageComplete &&
         !raisedBedOnboardingChecklistResolved &&
         !isSandbox;
     const openingFlowComplete =
+        !suppressOpeningHud &&
         visitSummaryStageComplete &&
         (isSandbox || raisedBedOnboardingChecklistResolved);
 
@@ -175,7 +183,7 @@ export function GameHud({
             {!isLocalSandbox && <OverviewModal />}
             {!isLocalSandbox && <AdventModal />}
             {!isLocalSandbox && <GiftBoxModal />}
-            {!isLocalSandbox && (
+            {!isLocalSandbox && !suppressOpeningHud && (
                 <>
                     <WelcomeMessage
                         onClosed={() => setWelcomeConfirmed(true)}
