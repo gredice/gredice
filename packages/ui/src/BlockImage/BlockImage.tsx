@@ -1,3 +1,4 @@
+import { getBlockImageUrl } from '@gredice/js/blocks';
 import Image, { type ImageProps } from 'next/image';
 
 type BlockImageProps = Omit<ImageProps, 'src' | 'alt'> & {
@@ -6,11 +7,7 @@ type BlockImageProps = Omit<ImageProps, 'src' | 'alt'> & {
 };
 
 export function BlockImage({ alt, blockName, ...rest }: BlockImageProps) {
-    return (
-        <Image
-            src={`https://www.gredice.com/assets/blocks/${blockName}.webp`}
-            alt={alt || blockName}
-            {...rest}
-        />
-    );
+    const src = getBlockImageUrl(blockName) ?? '';
+
+    return <Image src={src} alt={alt || blockName} {...rest} />;
 }

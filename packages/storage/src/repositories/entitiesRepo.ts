@@ -22,6 +22,11 @@ import {
 } from '../cache/directoriesCached';
 import { getEntityCompleteness } from '../helpers/entityCompleteness';
 import {
+    attributeDefinitionPath,
+    generatedImageAttributeValue,
+    parseGeneratedImageUrlDefaultValue,
+} from '../helpers/generatedAttributeValues';
+import {
     buildPlantHealthReadModels,
     isPlantHealthAffectedPlantAttributeDefinition,
     isPlantHealthIssueEntityTypeName,
@@ -182,17 +187,14 @@ function populateMissingAttributes(
             (a) => a.attributeDefinition.id === definition.id && !a.isDeleted,
         );
         // If attribute is missing and we have default defined, create a default one
-        if (
-            !hasAtleastOneAttributeValue &&
-            typeof definition.defaultValue !== 'undefined' &&
-            definition.defaultValue !== null
-        ) {
+        const defaultValue = resolveAttributeDefaultValue(entity, definition);
+        if (!hasAtleastOneAttributeValue && defaultValue !== null) {
             entity.attributes.push({
                 entityId: entity.id,
                 entityTypeName: entity.entityType.name,
                 attributeDefinitionId: definition.id,
                 attributeDefinition: definition,
-                value: definition.defaultValue ?? null,
+                value: defaultValue,
                 order: definition.order,
                 createdAt: new Date(),
                 updatedAt: new Date(),
@@ -210,6 +212,39 @@ function populateMissingAttributes(
     });
 
     return entity;
+}
+
+function resolveAttributeDefaultValue(
+    entity: EntityWithAttributesAndDefinitions,
+    definition: SelectAttributeDefinition,
+) {
+    if (
+        typeof definition.defaultValue === 'undefined' ||
+        definition.defaultValue === null
+    ) {
+        return null;
+    }
+
+    const generatedImageConfig = parseGeneratedImageUrlDefaultValue(
+        definition.defaultValue,
+    );
+    if (!generatedImageConfig) {
+        return definition.defaultValue;
+    }
+
+    if (definition.dataType !== 'image') {
+        return null;
+    }
+
+    const sourceValue =
+        entity.attributes.find(
+            (attribute) =>
+                !attribute.isDeleted &&
+                attributeDefinitionPath(attribute.attributeDefinition) ===
+                    generatedImageConfig.source,
+        )?.value ?? null;
+
+    return generatedImageAttributeValue(generatedImageConfig, sourceValue);
 }
 
 export async function getEntitiesRaw(entityTypeName: string, state?: string) {

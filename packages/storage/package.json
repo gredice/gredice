@@ -28,6 +28,8 @@
         "notifications:backfill-rollout": "tsx --env-file=.env ./scripts/backfillNotificationRolloutDefaults.ts",
         "plant-relationships:backfill": "tsx --conditions=react-server --env-file=.env ./scripts/backfillPlantRelationships.ts",
         "plant-health:backfill": "tsx --conditions=react-server --env-file=.env ./scripts/backfillPlantHealthDirectory.ts",
+        "generated-images:backfill": "tsx --conditions=react-server --env-file=.env ./scripts/upsertGeneratedImageAttributes.ts",
+        "blocks:images:backfill": "tsx --conditions=react-server --env-file=.env ./scripts/upsertGeneratedImageAttributes.ts --entity-type block --source information.name --target image.cover --template 'https://www.gredice.com/assets/blocks/{encodedValue}.webp' --label Slika --description 'Public block image generated from the in-game block name and used by admin previews, directory cards, search results, and compact block UI.' --order aa",
         "harvest-traces:backfill": "tsx --conditions=react-server --env-file=.env ./scripts/backfillHarvestTraceLinks.ts"
     },
     "devDependencies": {
