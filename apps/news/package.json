@@ -14,7 +14,7 @@
         "test": "pnpm run typecheck"
     },
     "dependencies": {
-        "@posthog/next": "0.4.67",
+        "@posthog/next": "0.4.86",
         "@vercel/analytics": "2.0.1",
         "@vercel/toolbar": "0.2.6",
         "next": "16.2.6",
