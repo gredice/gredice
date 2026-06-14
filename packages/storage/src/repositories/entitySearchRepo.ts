@@ -3,6 +3,7 @@ import {
     publicSearchCategoryForDirectoryEntityType,
     resolveDirectoryEntityPublicPathFromParts,
 } from '@gredice/directory-types';
+import { getBlockImageUrl } from '@gredice/js/blocks';
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import {
     attributeValues,
@@ -184,8 +185,13 @@ function blockImageMetadata(entity: EntitySearchSource): ImageMetadata | null {
         return null;
     }
 
+    const imageUrl = getBlockImageUrl(blockName);
+    if (!imageUrl) {
+        return null;
+    }
+
     return {
-        url: `https://www.gredice.com/assets/blocks/${encodeURIComponent(blockName)}.webp`,
+        url: imageUrl,
         alt: entityTitle(entity),
     };
 }
@@ -467,6 +473,12 @@ async function entityImageMetadata(
 ): Promise<ImageMetadata | null> {
     const direct = directEntityImageMetadata(entity);
     if (direct) {
+        if (entity.entityTypeName === 'block') {
+            return {
+                url: direct.url,
+                alt: direct.alt ?? entityTitle(entity),
+            };
+        }
         return direct;
     }
 

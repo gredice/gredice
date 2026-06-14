@@ -6,7 +6,9 @@ import {
     createEntity,
     deleteAttributeValue,
     deleteEntity,
+    generatedImageUrlDefaultValue,
     getEntitiesFormatted,
+    getEntitiesRaw,
     getEntityFormatted,
     getEntityIncomingLinks,
     getEntityRaw,
@@ -995,6 +997,144 @@ test('plant health issue formatting filters duplicate, draft, deleted, and inval
                 hasNestedInformation: false,
             },
         ],
+    );
+});
+
+test('CMS generated image attributes are configured by attribute definitions', async () => {
+    createTestDb();
+    const suffix = randomUUID();
+    const entityTypeName = `generated-image-${suffix}`;
+
+    await upsertEntityType({
+        name: entityTypeName,
+        label: `Generated Image ${suffix}`,
+    });
+
+    const nameDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'name',
+        label: 'Name',
+        entityTypeName,
+        dataType: 'text',
+    });
+    await createAttributeDefinition({
+        category: 'image',
+        name: 'cover',
+        label: 'Cover',
+        entityTypeName,
+        dataType: 'image',
+        defaultValue: generatedImageUrlDefaultValue({
+            source: 'information.name',
+            template: 'https://cdn.example.test/assets/{encodedValue}.webp',
+        }),
+        display: true,
+    });
+
+    const entityId = await createEntity(entityTypeName);
+    await upsertAttributeValue({
+        attributeDefinitionId: nameDefinitionId,
+        entityTypeName,
+        entityId,
+        value: 'Snow Block',
+    });
+
+    const snowImageValue = JSON.stringify({
+        url: 'https://cdn.example.test/assets/Snow%20Block.webp',
+    });
+    let rawEntity = await getEntityRaw(entityId);
+    let imageAttribute = rawEntity?.attributes.find(
+        (attribute) =>
+            attribute.attributeDefinition.category === 'image' &&
+            attribute.attributeDefinition.name === 'cover',
+    );
+    assert.equal(imageAttribute?.value, snowImageValue);
+
+    const nameAttribute = rawEntity?.attributes.find(
+        (attribute) => attribute.attributeDefinitionId === nameDefinitionId,
+    );
+    assert.ok(nameAttribute);
+
+    await upsertAttributeValue({
+        id: nameAttribute.id,
+        attributeDefinitionId: nameDefinitionId,
+        entityTypeName,
+        entityId,
+        value: 'Water Block',
+    });
+
+    const waterImageValue = JSON.stringify({
+        url: 'https://cdn.example.test/assets/Water%20Block.webp',
+    });
+    rawEntity = await getEntityRaw(entityId);
+    imageAttribute = rawEntity?.attributes.find(
+        (attribute) =>
+            attribute.attributeDefinition.category === 'image' &&
+            attribute.attributeDefinition.name === 'cover',
+    );
+    assert.equal(imageAttribute?.value, waterImageValue);
+
+    await deleteAttributeValue(nameAttribute.id);
+
+    rawEntity = await getEntityRaw(entityId);
+    imageAttribute = rawEntity?.attributes.find(
+        (attribute) =>
+            attribute.attributeDefinition.category === 'image' &&
+            attribute.attributeDefinition.name === 'cover',
+    );
+    assert.equal(imageAttribute, undefined);
+
+    const parentEntityId = await createEntity(entityTypeName);
+    await upsertAttributeValue({
+        attributeDefinitionId: nameDefinitionId,
+        entityTypeName,
+        entityId: parentEntityId,
+        value: 'Parent Block',
+    });
+
+    const childEntityId = await createEntity(entityTypeName);
+    await updateEntity({ id: childEntityId, parentId: parentEntityId });
+    await upsertAttributeValue({
+        attributeDefinitionId: nameDefinitionId,
+        entityTypeName,
+        entityId: childEntityId,
+        value: 'Child Block',
+    });
+
+    const childRawEntity = await getEntityRaw(childEntityId);
+    imageAttribute = childRawEntity?.attributes.find(
+        (attribute) =>
+            attribute.attributeDefinition.category === 'image' &&
+            attribute.attributeDefinition.name === 'cover',
+    );
+    assert.equal(
+        imageAttribute?.value,
+        JSON.stringify({
+            url: 'https://cdn.example.test/assets/Child%20Block.webp',
+        }),
+    );
+
+    const childNameAttribute = childRawEntity?.attributes.find(
+        (attribute) =>
+            attribute.attributeDefinitionId === nameDefinitionId &&
+            attribute.entityId === childEntityId,
+    );
+    assert.ok(childNameAttribute);
+
+    await deleteAttributeValue(childNameAttribute.id);
+
+    const effectiveChildEntity = (await getEntitiesRaw(entityTypeName)).find(
+        (entity) => entity.id === childEntityId,
+    );
+    imageAttribute = effectiveChildEntity?.attributes.find(
+        (attribute) =>
+            attribute.attributeDefinition.category === 'image' &&
+            attribute.attributeDefinition.name === 'cover',
+    );
+    assert.equal(
+        imageAttribute?.value,
+        JSON.stringify({
+            url: 'https://cdn.example.test/assets/Parent%20Block.webp',
+        }),
     );
 });
 

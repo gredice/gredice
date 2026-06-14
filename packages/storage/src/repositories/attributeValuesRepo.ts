@@ -7,6 +7,11 @@ import {
     cacheKeys,
 } from '../cache/directoriesCached';
 import {
+    attributeDefinitionPath,
+    generatedImageAttributeValue,
+    parseGeneratedImageUrlDefaultValue,
+} from '../helpers/generatedAttributeValues';
+import {
     isPlantHealthAffectedPlantAttributeDefinition,
     isPlantHealthIssueEntityTypeName,
     parsePlantHealthReferenceTargetId,
@@ -22,6 +27,8 @@ import {
     attributeValues,
     entityRevisions,
     type InsertAttributeValue,
+    type SelectAttributeDefinition,
+    type SelectAttributeValue,
 } from '../schema';
 
 type StorageClient = ReturnType<typeof storage>;
@@ -118,6 +125,239 @@ async function refreshEntitySearchDocumentAfterMutation(
             entityId,
             error,
         });
+    }
+}
+
+async function getExistingAttributeValue({
+    db,
+    attributeDefinitionId,
+    entityId,
+}: {
+    db: DatabaseClient;
+    attributeDefinitionId: number;
+    entityId: number;
+}) {
+    return db.query.attributeValues.findFirst({
+        where: and(
+            eq(attributeValues.attributeDefinitionId, attributeDefinitionId),
+            eq(attributeValues.entityId, entityId),
+            eq(attributeValues.isDeleted, false),
+        ),
+    });
+}
+
+async function upsertGeneratedAttributeValue({
+    db,
+    entityId,
+    definition,
+    existingValue,
+    nextValue,
+    missingValueBehavior = 'clear',
+    actor,
+}: {
+    db: DatabaseClient;
+    entityId: number;
+    definition: SelectAttributeDefinition;
+    existingValue: SelectAttributeValue | undefined;
+    nextValue: string | null;
+    missingValueBehavior?: 'clear' | 'delete';
+    actor?: { id?: string; name?: string };
+}) {
+    if (nextValue === null && missingValueBehavior === 'delete') {
+        if (!existingValue) {
+            return false;
+        }
+
+        await Promise.all([
+            db
+                .update(attributeValues)
+                .set({ isDeleted: true })
+                .where(eq(attributeValues.id, existingValue.id)),
+            db.insert(entityRevisions).values({
+                entityId,
+                entityTypeName: definition.entityTypeName,
+                action: 'attribute.deleted',
+                actorId: actor?.id,
+                actorName: actor?.name,
+                attributeValueId: existingValue.id,
+                attributeDefinitionId: definition.id,
+                previousValue: existingValue.value,
+                nextValue: null,
+            }),
+        ]);
+        return true;
+    }
+
+    if (existingValue?.value === nextValue) {
+        return false;
+    }
+
+    if (!existingValue && nextValue === null) {
+        return false;
+    }
+
+    if (existingValue) {
+        await Promise.all([
+            db
+                .update(attributeValues)
+                .set({
+                    order: definition.order,
+                    value: nextValue,
+                })
+                .where(eq(attributeValues.id, existingValue.id)),
+            db.insert(entityRevisions).values({
+                entityId,
+                entityTypeName: definition.entityTypeName,
+                action: 'attribute.updated',
+                actorId: actor?.id,
+                actorName: actor?.name,
+                attributeValueId: existingValue.id,
+                attributeDefinitionId: definition.id,
+                previousValue: existingValue.value,
+                nextValue,
+            }),
+        ]);
+        return true;
+    }
+
+    const [createdValue] = await db
+        .insert(attributeValues)
+        .values({
+            attributeDefinitionId: definition.id,
+            entityId,
+            entityTypeName: definition.entityTypeName,
+            order: definition.order,
+            value: nextValue,
+        })
+        .returning({ id: attributeValues.id });
+    await db.insert(entityRevisions).values({
+        entityId,
+        entityTypeName: definition.entityTypeName,
+        action: 'attribute.created',
+        actorId: actor?.id,
+        actorName: actor?.name,
+        attributeValueId: createdValue.id,
+        attributeDefinitionId: definition.id,
+        previousValue: null,
+        nextValue,
+    });
+    return true;
+}
+
+async function generatedAttributeValueForMutation({
+    db,
+    definition,
+    entityId,
+}: {
+    db: DatabaseClient;
+    definition: SelectAttributeDefinition;
+    entityId: number | null | undefined;
+}) {
+    const config = parseGeneratedImageUrlDefaultValue(definition.defaultValue);
+    if (!config) {
+        return definition.defaultValue ?? null;
+    }
+    if (!entityId || definition.dataType !== 'image') {
+        return null;
+    }
+
+    const [sourceCategory, ...sourceNameParts] = config.source.split('.');
+    const sourceName = sourceNameParts.join('.');
+    if (!sourceCategory || !sourceName) {
+        return null;
+    }
+
+    const sourceDefinition = await db.query.attributeDefinitions.findFirst({
+        where: and(
+            eq(attributeDefinitions.entityTypeName, definition.entityTypeName),
+            eq(attributeDefinitions.category, sourceCategory),
+            eq(attributeDefinitions.name, sourceName),
+            eq(attributeDefinitions.isDeleted, false),
+        ),
+    });
+    if (!sourceDefinition) {
+        return null;
+    }
+
+    const sourceValue = await getExistingAttributeValue({
+        db,
+        attributeDefinitionId: sourceDefinition.id,
+        entityId,
+    });
+    return generatedImageAttributeValue(config, sourceValue?.value);
+}
+
+async function syncGeneratedAttributesForSource({
+    db,
+    sideEffects,
+    entityId,
+    sourceDefinition,
+    sourceValue,
+    missingValueBehavior,
+    actor,
+}: {
+    db: DatabaseClient;
+    sideEffects: AttributeValueMutationSideEffects;
+    entityId: number | null | undefined;
+    sourceDefinition: SelectAttributeDefinition;
+    sourceValue: string | null | undefined;
+    missingValueBehavior?: 'clear' | 'delete';
+    actor?: { id?: string; name?: string };
+}) {
+    if (!entityId) {
+        return;
+    }
+
+    const sourcePath = attributeDefinitionPath(sourceDefinition);
+    const targetDefinitions = (
+        await db.query.attributeDefinitions.findMany({
+            where: and(
+                eq(
+                    attributeDefinitions.entityTypeName,
+                    sourceDefinition.entityTypeName,
+                ),
+                eq(attributeDefinitions.dataType, 'image'),
+                eq(attributeDefinitions.isDeleted, false),
+            ),
+        })
+    ).filter((definition) => {
+        const config = parseGeneratedImageUrlDefaultValue(
+            definition.defaultValue,
+        );
+        return config?.source === sourcePath;
+    });
+
+    for (const definition of targetDefinitions) {
+        const config = parseGeneratedImageUrlDefaultValue(
+            definition.defaultValue,
+        );
+        if (!config) {
+            continue;
+        }
+
+        const nextValue = generatedImageAttributeValue(config, sourceValue);
+
+        const existingValue = await getExistingAttributeValue({
+            db,
+            attributeDefinitionId: definition.id,
+            entityId,
+        });
+        const changed = await upsertGeneratedAttributeValue({
+            db,
+            entityId,
+            definition,
+            existingValue,
+            nextValue,
+            missingValueBehavior,
+            actor,
+        });
+
+        if (changed) {
+            addAttributeValueMutationSideEffects(sideEffects, {
+                entityId,
+                entityTypeName: definition.entityTypeName,
+            });
+        }
     }
 }
 
@@ -219,17 +459,21 @@ export async function upsertAttributeValue(
         db,
         attributeValue.attributeDefinitionId,
     );
-
-    // Handle default value - assign default value if value is not provided
-    if (!value && definition?.defaultValue) {
-        value = definition.defaultValue;
-    }
-
     const existingValue = attributeValue.id
         ? await db.query.attributeValues.findFirst({
               where: eq(attributeValues.id, attributeValue.id),
           })
         : undefined;
+
+    // Handle default value - assign default value if value is not provided
+    if (!value && definition?.defaultValue) {
+        value = await generatedAttributeValueForMutation({
+            db,
+            definition,
+            entityId: attributeValue.entityId ?? existingValue?.entityId,
+        });
+    }
+
     const previousRelationshipTargetId = definition
         ? plantRelationshipTargetIdForAttributeValue(
               definition,
@@ -307,6 +551,16 @@ export async function upsertAttributeValue(
     }
     if (definition && isPlantRelationshipAttributeDefinition(definition)) {
         sideEffects.entityTypeNames.add('plantSort');
+    }
+    if (definition) {
+        await syncGeneratedAttributesForSource({
+            db,
+            sideEffects,
+            entityId: attributeValue.entityId ?? existingValue?.entityId,
+            sourceDefinition: definition,
+            sourceValue: value,
+            actor,
+        });
     }
     if (!options?.sideEffects) {
         await flushAttributeValueMutationSideEffects(sideEffects);
@@ -388,6 +642,17 @@ export async function deleteAttributeValue(
     }
     if (definition && isPlantRelationshipAttributeDefinition(definition)) {
         sideEffects.entityTypeNames.add('plantSort');
+    }
+    if (definition) {
+        await syncGeneratedAttributesForSource({
+            db,
+            sideEffects,
+            entityId: existingValue?.entityId,
+            sourceDefinition: definition,
+            sourceValue: null,
+            missingValueBehavior: 'delete',
+            actor,
+        });
     }
     if (!options?.sideEffects) {
         await flushAttributeValueMutationSideEffects(sideEffects);
