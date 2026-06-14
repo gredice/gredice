@@ -24,6 +24,7 @@ import { useStackHeight } from '../utils/getStackHeight';
 import { findRaisedBedByBlockId } from '../utils/raisedBedBlocks';
 import { entityNameMap } from './entityNameMap';
 import { QueuedPlacementDropAnimation } from './helpers/PlacementDropAnimation';
+import { UnknownEntityPlaceholder } from './UnknownEntityPlaceholder';
 
 export type EntityFactoryProps = {
     name: string;
@@ -231,14 +232,6 @@ export function EntityFactory({
           })
         : undefined;
 
-    if (!EntityComponent) {
-        console.error(
-            `Unknown entity: ${name} at ${stack.position.x}, ${stack.position.z}`,
-        );
-        console.debug(stack);
-        return null;
-    }
-
     if (isInstancedInView) {
         if (noControl || view === 'closeup') {
             return (
@@ -282,6 +275,16 @@ export function EntityFactory({
         );
     }
 
+    const entity = EntityComponent ? (
+        <EntityComponent stack={stack} block={block} {...rest} />
+    ) : (
+        <UnknownEntityPlaceholder
+            stack={stack}
+            block={block}
+            rotation={rest.rotation}
+        />
+    );
+
     if (noControl || view === 'closeup') {
         return (
             <>
@@ -290,7 +293,7 @@ export function EntityFactory({
                     block={block}
                     instanced={false}
                 />
-                <EntityComponent stack={stack} block={block} {...rest} />
+                {entity}
             </>
         );
     }
@@ -303,7 +306,7 @@ export function EntityFactory({
                     block={block}
                     instanced={false}
                 />
-                <EntityComponent stack={stack} block={block} {...rest} />
+                {entity}
             </RotatableGroup>
         </EntityPlacementDropAnimation>
     );
