@@ -7,6 +7,8 @@ import {
     waterBlockBottomOverlap,
 } from './waterBlockGeometry';
 
+export const shapedTerrainWaterTopInset = waterBlockBottomOverlap / 2;
+
 export type WaterBlockVerticalRange = {
     max: number;
     min: number;
@@ -48,10 +50,11 @@ export function getWaterBlockVisualHeight({
         return defaultWaterBlockVisualHeight;
     }
 
-    return (
+    const supportHeight =
         getBlockDataByName(blockData, supportBlock.name)?.attributes.height ??
-        defaultWaterBlockVisualHeight
-    );
+        defaultWaterBlockVisualHeight;
+
+    return Math.max(supportHeight - shapedTerrainWaterTopInset, 0);
 }
 
 export function getWaterBlockVerticalRange({
@@ -83,9 +86,10 @@ export function getWaterBlockVerticalRange({
     });
 
     if (isWaterFillSupportBlock(stack, block)) {
+        const waterTop = stackHeight - shapedTerrainWaterTopInset;
         return {
-            min: stackHeight - waterHeight,
-            max: stackHeight,
+            min: waterTop - waterHeight,
+            max: waterTop,
         } satisfies WaterBlockVerticalRange;
     }
 
