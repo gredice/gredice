@@ -52,9 +52,11 @@ import {
 import {
     createMergedWaterSideGeometry,
     createWaterBlockGeometry,
-    getWaterBlockYOffset,
 } from './waterBlockGeometry';
-import { getWaterBlockVisualHeight } from './waterBlockHeight';
+import {
+    getWaterBlockCenterY,
+    getWaterBlockVisualHeight,
+} from './waterBlockHeight';
 
 type CommonWeatherProps = Pick<
     EntityInstancesBlockBaseProps,
@@ -418,9 +420,11 @@ function WaterBlockInstances({ stacks }: { stacks: Stack[] | undefined }) {
                     ...instance,
                     position: [
                         instance.position[0],
-                        instance.stackHeight +
-                            getWaterBlockYOffset(waterHeight) +
-                            previewYOffset,
+                        getWaterBlockCenterY({
+                            block: instance.block,
+                            blockData,
+                            stack: instance.stack,
+                        }) + previewYOffset,
                         instance.position[2],
                     ],
                     waterHeight,

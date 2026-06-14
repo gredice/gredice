@@ -2,59 +2,17 @@ import type { BlockData } from '@gredice/client';
 import { Vector4 } from 'three';
 import type { Block } from '../types/Block';
 import type { Stack } from '../types/Stack';
-import { getStackHeight } from '../utils/stackHeightCore';
-import { waterBlockBottomOverlap } from './waterBlockGeometry';
-import { getWaterBlockVisualHeight } from './waterBlockHeight';
+import {
+    getWaterBlockVerticalRange,
+    type WaterBlockVerticalRange,
+} from './waterBlockHeight';
 
 export const waterBlockName = 'Block_Water';
 const waterRangeOverlapEpsilon = 1e-6;
 
-type WaterVerticalRange = {
-    max: number;
-    min: number;
-};
-
-function getFallbackWaterBlockVerticalRange(blockIndex: number) {
-    return {
-        min: blockIndex,
-        max: blockIndex + 1,
-    } satisfies WaterVerticalRange;
-}
-
-function getWaterBlockVerticalRange({
-    block,
-    blockData,
-    stack,
-}: {
-    block: Block;
-    blockData: BlockData[] | null | undefined;
-    stack: Stack;
-}) {
-    const blockIndex = stack.blocks.indexOf(block);
-    if (blockIndex < 0) {
-        return null;
-    }
-
-    if (!blockData) {
-        return getFallbackWaterBlockVerticalRange(blockIndex);
-    }
-
-    const stackHeight = getStackHeight(blockData, stack, block);
-    const waterHeight = getWaterBlockVisualHeight({
-        block,
-        blockData,
-        stack,
-    });
-
-    return {
-        min: stackHeight - waterBlockBottomOverlap,
-        max: stackHeight + waterHeight - waterBlockBottomOverlap,
-    } satisfies WaterVerticalRange;
-}
-
 function doWaterRangesOverlap(
-    left: WaterVerticalRange | null,
-    right: WaterVerticalRange | null,
+    left: WaterBlockVerticalRange | null,
+    right: WaterBlockVerticalRange | null,
 ) {
     return (
         left !== null &&
@@ -68,7 +26,7 @@ function hasOverlappingWater(
     stacks: Stack[] | undefined,
     x: number,
     z: number,
-    range: WaterVerticalRange | null,
+    range: WaterBlockVerticalRange | null,
     blockData: BlockData[] | null | undefined,
 ) {
     return stacks?.some((candidate) => {
