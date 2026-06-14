@@ -4,12 +4,13 @@ import { Button } from '@gredice/ui/Button';
 import { Chip } from '@gredice/ui/Chip';
 import { DotIndicator } from '@gredice/ui/DotIndicator';
 import { IconButton } from '@gredice/ui/IconButton';
-import { Check, ExpandDown, ListTodo } from '@gredice/ui/icons';
+import { Check, ExpandDown } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
+import Image from 'next/image';
 import { parseAsString, useQueryState } from 'nuqs';
 import { useMemo, useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
@@ -26,6 +27,8 @@ import { formatSunflowers } from '../utils/sunflowerPricing';
 import { HudCard } from './components/HudCard';
 import { RAISED_BED_ONBOARDING_OPEN_EVENT } from './RaisedBedOnboardingModal';
 import styles from './TutorialChecklistHud.module.css';
+
+const tutorialTaskListIconSrc = '/assets/hud/tutorial-task-list.png';
 
 function RewardText({ task }: { task: TutorialChecklistTask }) {
     if (task.rewardLabel) {
@@ -419,7 +422,16 @@ function TutorialChecklistContent({
                 className="mt-4 rounded-md border border-green-200/80 bg-gradient-to-br from-green-50 via-white to-amber-50 px-5 py-5 text-center shadow-sm dark:border-green-800/70 dark:from-green-950/45 dark:via-slate-950 dark:to-amber-950/25 dark:shadow-black/25 sm:mx-8"
             >
                 <span className="grid size-12 place-items-center rounded-full border-2 border-green-500 bg-white text-green-700 shadow-[0_5px_0_rgb(22_101_52_/_0.14)] dark:bg-slate-950 dark:text-green-200 dark:shadow-[0_5px_0_rgb(34_197_94_/_0.18)]">
-                    <ListTodo aria-hidden className="size-6" />
+                    <Image
+                        alt=""
+                        aria-hidden="true"
+                        className="size-11 object-contain drop-shadow-[0_2px_4px_rgb(15_23_42_/_0.25)]"
+                        height={48}
+                        loading="eager"
+                        src={tutorialTaskListIconSrc}
+                        unoptimized
+                        width={48}
+                    />
                 </span>
                 <Typography
                     className="text-2xl leading-tight font-semibold tracking-tight text-foreground dark:text-green-50"
@@ -589,9 +601,16 @@ export function TutorialChecklistHud() {
                         title="Zadaci"
                         variant="plain"
                     >
-                        <ListTodo
-                            className="absolute left-1/2 top-0 size-5 shrink-0 -translate-x-1/2 -translate-y-2"
-                            aria-hidden
+                        <Image
+                            alt=""
+                            aria-hidden="true"
+                            className="pointer-events-none absolute left-1/2 top-0 size-11 shrink-0 -translate-x-1/2 -translate-y-5 object-contain drop-shadow-[0_2px_3px_rgb(15_23_42_/_0.35)]"
+                            data-tutorial-checklist-trigger-icon="true"
+                            height={44}
+                            loading="eager"
+                            src={tutorialTaskListIconSrc}
+                            unoptimized
+                            width={44}
                         />
                         {progressLabel ? (
                             <Typography

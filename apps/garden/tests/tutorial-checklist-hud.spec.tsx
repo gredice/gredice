@@ -13,7 +13,15 @@ test('tutorial checklist trigger shows icon with progress count below it', async
     await expect(trigger).toBeVisible();
     await expect(trigger).not.toContainText('Zadaci');
     await expect(progress).toHaveText('1/3');
-    await expect(trigger.locator('svg')).toBeVisible();
+    const triggerIcon = trigger.locator(
+        '[data-tutorial-checklist-trigger-icon="true"]',
+    );
+    await expect(triggerIcon).toBeVisible();
+    await expect(triggerIcon).toHaveAttribute(
+        'src',
+        /\/assets\/hud\/tutorial-task-list\.png/,
+    );
+    await expect(trigger.locator('svg')).toHaveCount(0);
     await expect(claimDot).toBeVisible();
     await expect(claimDot).toHaveText('');
 
@@ -21,10 +29,11 @@ test('tutorial checklist trigger shows icon with progress count below it', async
     expect(Math.round(triggerBox?.width ?? 0)).toBe(40);
     expect(Math.round(triggerBox?.height ?? 0)).toBe(40);
 
-    const iconBox = await trigger.locator('svg').boundingBox();
+    const iconBox = await triggerIcon.boundingBox();
     const progressBox = await progress.boundingBox();
     const dotBox = await claimDot.boundingBox();
     expect(iconBox).not.toBeNull();
+    expect(iconBox?.width ?? 0).toBeGreaterThanOrEqual(30);
     expect(progressBox).not.toBeNull();
     expect(dotBox).not.toBeNull();
     expect(iconBox?.y ?? 0).toBeLessThan(triggerBox?.y ?? 0);

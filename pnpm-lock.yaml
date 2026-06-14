@@ -603,6 +603,9 @@ importers:
       sass:
         specifier: 1.100.0
         version: 1.100.0
+      sharp:
+        specifier: 0.34.5
+        version: 0.34.5
       tailwindcss:
         specifier: 4.3.0
         version: 4.3.0

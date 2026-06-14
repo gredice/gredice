@@ -22,6 +22,7 @@
         "test:run": "playwright test",
         "test:sw": "node --test tests/push-notifications-sw.node.spec.mjs",
         "test-ui": "pnpm run test:prepare && playwright test --ui",
+        "generate-playwright:tutorial-task-list-icon": "playwright test --config playwright-generate.config.ts generate/tutorial-task-list-icon.specgen.tsx",
         "generate:models-types": "node ../../scripts/generate-game-model-types.mjs",
         "test:local": "pnpm run test:prepare && pnpm run test:run"
     },
@@ -58,6 +59,7 @@
         "nuqs": "2.8.9",
         "postcss": "8.5.15",
         "sass": "1.100.0",
+        "sharp": "0.34.5",
         "tailwindcss": "4.3.0",
         "typescript": "6.0.3"
     }

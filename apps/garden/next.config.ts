@@ -51,6 +51,10 @@ const nextConfig: NextConfig = {
                 source: '/assets/textures/:path*',
                 headers: assetCacheHeaders,
             },
+            {
+                source: '/assets/hud/:path*',
+                headers: assetCacheHeaders,
+            },
         ];
     },
     async rewrites() {
