@@ -121,6 +121,26 @@ describe('createMergedWaterSideGeometry', () => {
         geometry.dispose();
     });
 
+    it('hides side walls when adjacent water ranges overlap', () => {
+        const geometry = createMergedWaterSideGeometry([
+            {
+                position: [0, 0.25 + getWaterBlockYOffset(0.25), 0],
+                waterHeight: 0.25,
+            },
+            {
+                position: [1, 0.4 + getWaterBlockYOffset(0.4), 0],
+                waterHeight: 0.4,
+            },
+        ]);
+        const positionAttribute = geometry.getAttribute('position');
+        const indexAttribute = geometry.getIndex();
+
+        assert.equal(positionAttribute.count, 24);
+        assert.equal(indexAttribute?.count, 36);
+
+        geometry.dispose();
+    });
+
     it('merges continuous exterior side walls across stacked water blocks', () => {
         const geometry = createMergedWaterSideGeometry([
             { position: [0, 0, 0] },

@@ -33,6 +33,11 @@ type WaterSideInstance = {
     waterHeight?: number;
 };
 
+type WaterSideInstanceRange = {
+    max: number;
+    min: number;
+};
+
 type WaterSideSegment = {
     axis: 'x' | 'z';
     line: number;
@@ -185,8 +190,8 @@ export function createWaterBlockGeometry(
     return createGeometryFromFaces(faces);
 }
 
-function positionKey(x: number, y: number, z: number) {
-    return `${x}|${y}|${z}`;
+function stackPositionKey(x: number, z: number) {
+    return `${x}|${z}`;
 }
 
 function segmentGroupKey(segment: WaterSideSegment) {
@@ -354,25 +359,92 @@ function waterSideSegmentToFace(segment: WaterSideSegment): WaterFace {
     };
 }
 
-export function createMergedWaterSideGeometry(instances: WaterSideInstance[]) {
-    const waterPositions = new Set(
-        instances.map((instance) =>
-            positionKey(
-                instance.position[0],
-                instance.position[1],
-                instance.position[2],
-            ),
-        ),
+function getWaterSideInstanceHeight(instance: WaterSideInstance) {
+    return instance.waterHeight ?? defaultWaterBlockVisualHeight;
+}
+
+function getWaterSideInstanceRange(instance: WaterSideInstance) {
+    const [, y] = instance.position;
+    const halfHeight = getWaterSideInstanceHeight(instance) / 2;
+
+    return {
+        min: y - halfHeight,
+        max: y + halfHeight,
+    } satisfies WaterSideInstanceRange;
+}
+
+function doWaterSideRangesOverlap(
+    left: WaterSideInstanceRange,
+    right: WaterSideInstanceRange,
+) {
+    return (
+        Math.min(left.max, right.max) - Math.max(left.min, right.min) >
+        segmentMergeEpsilon
     );
+}
+
+function groupWaterSideInstancesByStackPosition(
+    instances: WaterSideInstance[],
+) {
+    const groups = new Map<string, WaterSideInstance[]>();
+
+    for (const instance of instances) {
+        const [x, , z] = instance.position;
+        const key = stackPositionKey(x, z);
+        const group = groups.get(key);
+
+        if (group) {
+            group.push(instance);
+        } else {
+            groups.set(key, [instance]);
+        }
+    }
+
+    return groups;
+}
+
+function hasOverlappingWaterSideInstance({
+    range,
+    stackGroups,
+    x,
+    z,
+}: {
+    range: WaterSideInstanceRange;
+    stackGroups: Map<string, WaterSideInstance[]>;
+    x: number;
+    z: number;
+}) {
+    return (
+        stackGroups
+            .get(stackPositionKey(x, z))
+            ?.some((instance) =>
+                doWaterSideRangesOverlap(
+                    range,
+                    getWaterSideInstanceRange(instance),
+                ),
+            ) ?? false
+    );
+}
+
+export function createMergedWaterSideGeometry(instances: WaterSideInstance[]) {
+    const stackGroups = groupWaterSideInstancesByStackPosition(instances);
     const sideSegments: WaterSideSegment[] = [];
 
     for (const instance of instances) {
         const [x, y, z] = instance.position;
-        const height = instance.waterHeight ?? defaultWaterBlockVisualHeight;
+        const height = getWaterSideInstanceHeight(instance);
         const yMin = y + waterBlockMinY(height);
         const yMax = y + waterBlockMaxY(height);
+        const range = { min: yMin, max: yMax };
 
-        if (!waterPositions.has(positionKey(x - 1, y, z))) {
+        if (
+            !hasOverlappingWaterSideInstance({
+                range,
+                stackGroups,
+                x: x - 1,
+                z,
+            })
+        ) {
             sideSegments.push({
                 axis: 'x',
                 line: x - waterBlockHalfSize,
@@ -384,7 +456,14 @@ export function createMergedWaterSideGeometry(instances: WaterSideInstance[]) {
             });
         }
 
-        if (!waterPositions.has(positionKey(x + 1, y, z))) {
+        if (
+            !hasOverlappingWaterSideInstance({
+                range,
+                stackGroups,
+                x: x + 1,
+                z,
+            })
+        ) {
             sideSegments.push({
                 axis: 'x',
                 line: x + waterBlockHalfSize,
@@ -396,7 +475,14 @@ export function createMergedWaterSideGeometry(instances: WaterSideInstance[]) {
             });
         }
 
-        if (!waterPositions.has(positionKey(x, y, z - 1))) {
+        if (
+            !hasOverlappingWaterSideInstance({
+                range,
+                stackGroups,
+                x,
+                z: z - 1,
+            })
+        ) {
             sideSegments.push({
                 axis: 'z',
                 line: z - waterBlockHalfSize,
@@ -408,7 +494,14 @@ export function createMergedWaterSideGeometry(instances: WaterSideInstance[]) {
             });
         }
 
-        if (!waterPositions.has(positionKey(x, y, z + 1))) {
+        if (
+            !hasOverlappingWaterSideInstance({
+                range,
+                stackGroups,
+                x,
+                z: z + 1,
+            })
+        ) {
             sideSegments.push({
                 axis: 'z',
                 line: z + waterBlockHalfSize,

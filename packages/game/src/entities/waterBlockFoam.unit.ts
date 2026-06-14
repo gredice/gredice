@@ -21,6 +21,10 @@ function sandBlock(id: string): Block {
     return { id, name: 'Block_Sand', rotation: 0 };
 }
 
+function grassAngleBlock(id: string): Block {
+    return { id, name: 'Block_Grass_Angle', rotation: 0 };
+}
+
 function stack(x: number, z: number, blocks: Block[]): Stack {
     return {
         position: new Vector3(x, 0, z),
@@ -110,6 +114,29 @@ describe('resolveWaterFoamEdges', () => {
                 stacks,
             }).toArray(),
             [1, 1, 1, 1],
+        );
+    });
+
+    it('removes foam when shaped and full-height water ranges overlap', () => {
+        const blockData = getLocalSandboxBlockData();
+        const currentWater = waterBlock('water-shaped');
+        const currentStack = stack(0, 0, [
+            grassAngleBlock('angle-a'),
+            currentWater,
+        ]);
+        const stacks = [
+            currentStack,
+            stack(1, 0, [grassBlock('grass-a'), waterBlock('water-east')]),
+        ];
+
+        assert.deepEqual(
+            resolveWaterFoamEdges({
+                block: currentWater,
+                blockData,
+                stack: currentStack,
+                stacks,
+            }).toArray(),
+            [1, 0, 1, 1],
         );
     });
 
