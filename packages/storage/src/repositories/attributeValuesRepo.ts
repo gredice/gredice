@@ -152,6 +152,7 @@ async function upsertGeneratedAttributeValue({
     definition,
     existingValue,
     nextValue,
+    missingValueBehavior = 'clear',
     actor,
 }: {
     db: DatabaseClient;
@@ -159,8 +160,34 @@ async function upsertGeneratedAttributeValue({
     definition: SelectAttributeDefinition;
     existingValue: SelectAttributeValue | undefined;
     nextValue: string | null;
+    missingValueBehavior?: 'clear' | 'delete';
     actor?: { id?: string; name?: string };
 }) {
+    if (nextValue === null && missingValueBehavior === 'delete') {
+        if (!existingValue) {
+            return false;
+        }
+
+        await Promise.all([
+            db
+                .update(attributeValues)
+                .set({ isDeleted: true })
+                .where(eq(attributeValues.id, existingValue.id)),
+            db.insert(entityRevisions).values({
+                entityId,
+                entityTypeName: definition.entityTypeName,
+                action: 'attribute.deleted',
+                actorId: actor?.id,
+                actorName: actor?.name,
+                attributeValueId: existingValue.id,
+                attributeDefinitionId: definition.id,
+                previousValue: existingValue.value,
+                nextValue: null,
+            }),
+        ]);
+        return true;
+    }
+
     if (existingValue?.value === nextValue) {
         return false;
     }
@@ -266,6 +293,7 @@ async function syncGeneratedAttributesForSource({
     entityId,
     sourceDefinition,
     sourceValue,
+    missingValueBehavior,
     actor,
 }: {
     db: DatabaseClient;
@@ -273,6 +301,7 @@ async function syncGeneratedAttributesForSource({
     entityId: number | null | undefined;
     sourceDefinition: SelectAttributeDefinition;
     sourceValue: string | null | undefined;
+    missingValueBehavior?: 'clear' | 'delete';
     actor?: { id?: string; name?: string };
 }) {
     if (!entityId) {
@@ -319,6 +348,7 @@ async function syncGeneratedAttributesForSource({
             definition,
             existingValue,
             nextValue,
+            missingValueBehavior,
             actor,
         });
 
@@ -620,6 +650,7 @@ export async function deleteAttributeValue(
             entityId: existingValue?.entityId,
             sourceDefinition: definition,
             sourceValue: null,
+            missingValueBehavior: 'delete',
             actor,
         });
     }

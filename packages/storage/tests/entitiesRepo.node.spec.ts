@@ -8,6 +8,7 @@ import {
     deleteEntity,
     generatedImageUrlDefaultValue,
     getEntitiesFormatted,
+    getEntitiesRaw,
     getEntityFormatted,
     getEntityIncomingLinks,
     getEntityRaw,
@@ -1080,7 +1081,61 @@ test('CMS generated image attributes are configured by attribute definitions', a
             attribute.attributeDefinition.category === 'image' &&
             attribute.attributeDefinition.name === 'cover',
     );
-    assert.equal(imageAttribute?.value, null);
+    assert.equal(imageAttribute, undefined);
+
+    const parentEntityId = await createEntity(entityTypeName);
+    await upsertAttributeValue({
+        attributeDefinitionId: nameDefinitionId,
+        entityTypeName,
+        entityId: parentEntityId,
+        value: 'Parent Block',
+    });
+
+    const childEntityId = await createEntity(entityTypeName);
+    await updateEntity({ id: childEntityId, parentId: parentEntityId });
+    await upsertAttributeValue({
+        attributeDefinitionId: nameDefinitionId,
+        entityTypeName,
+        entityId: childEntityId,
+        value: 'Child Block',
+    });
+
+    const childRawEntity = await getEntityRaw(childEntityId);
+    imageAttribute = childRawEntity?.attributes.find(
+        (attribute) =>
+            attribute.attributeDefinition.category === 'image' &&
+            attribute.attributeDefinition.name === 'cover',
+    );
+    assert.equal(
+        imageAttribute?.value,
+        JSON.stringify({
+            url: 'https://cdn.example.test/assets/Child%20Block.webp',
+        }),
+    );
+
+    const childNameAttribute = childRawEntity?.attributes.find(
+        (attribute) =>
+            attribute.attributeDefinitionId === nameDefinitionId &&
+            attribute.entityId === childEntityId,
+    );
+    assert.ok(childNameAttribute);
+
+    await deleteAttributeValue(childNameAttribute.id);
+
+    const effectiveChildEntity = (await getEntitiesRaw(entityTypeName)).find(
+        (entity) => entity.id === childEntityId,
+    );
+    imageAttribute = effectiveChildEntity?.attributes.find(
+        (attribute) =>
+            attribute.attributeDefinition.category === 'image' &&
+            attribute.attributeDefinition.name === 'cover',
+    );
+    assert.equal(
+        imageAttribute?.value,
+        JSON.stringify({
+            url: 'https://cdn.example.test/assets/Parent%20Block.webp',
+        }),
+    );
 });
 
 test('CMS entity variants inherit parent attributes and allow override reset', async () => {
