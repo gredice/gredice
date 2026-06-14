@@ -5,6 +5,7 @@ import {
     buildFarmerDocumentationPackage,
     currentDocumentationPages,
     type FarmerDocumentationRevision,
+    includedDocumentationPages,
 } from './farmerDocumentationData';
 import { generateFarmerDocumentationPdf } from './farmerDocumentationPdf';
 
@@ -20,10 +21,15 @@ test('builds insert, replace, and discard instructions from manual revisions', (
             plantSort: new Set([20]),
         },
         operations: [
-            operationFixture(4, 'Zalijevanje', {
-                duration: 25,
-                application: 'raisedBedFull',
-            }),
+            operationFixture(
+                4,
+                'Zalijevanje',
+                {
+                    duration: 25,
+                    application: 'raisedBedFull',
+                },
+                { perOperation: 2.5 },
+            ),
             operationFixture(6, 'Okopavanje', {
                 duration: 30,
                 application: 'raisedBed',
@@ -96,6 +102,7 @@ test('builds insert, replace, and discard instructions from manual revisions', (
             }),
         ],
     });
+    const pagesByHeader = includedDocumentationPages(documentationPackage);
 
     assert.equal(documentationPackage.totalOperations, 3);
     assert.equal(documentationPackage.totalPlantSorts, 1);
@@ -105,10 +112,10 @@ test('builds insert, replace, and discard instructions from manual revisions', (
             page.label,
         ]),
         [
-            ['OP-0004', 'Zalijevanje'],
-            ['OP-0006', 'Okopavanje'],
-            ['OP-0008', 'Čišćenje gredice'],
             ['PS-0014', 'Cherry rajčica'],
+            ['OP-0008', 'Čišćenje gredice'],
+            ['OP-0006', 'Okopavanje'],
+            ['OP-0004', 'Zalijevanje'],
         ],
     );
     assert.deepEqual(
@@ -127,6 +134,16 @@ test('builds insert, replace, and discard instructions from manual revisions', (
             plantSort.changeType,
         ]),
         [['PS-0014', 'insert']],
+    );
+    assert.deepEqual(
+        pagesByHeader.map((page) => page.code),
+        ['PS-0014', 'OP-0008', 'OP-0004'],
+    );
+    assert.deepEqual(
+        documentationPackage.includedOperations[0]?.summaryRows.find(
+            (row) => row.label === 'Cijena',
+        ),
+        { label: 'Cijena', value: '2,50 EUR' },
     );
     assert.deepEqual(
         documentationPackage.discardedOperations.map((operation) => [
@@ -153,10 +170,15 @@ test('generates a guide-first PDF without page numbering text', () => {
             plantSort: new Set(),
         },
         operations: [
-            operationFixture(4, 'Zalijevanje', {
-                duration: 25,
-                application: 'raisedBedFull',
-            }),
+            operationFixture(
+                4,
+                'Zalijevanje',
+                {
+                    duration: 25,
+                    application: 'raisedBedFull',
+                },
+                { perOperation: 2.5 },
+            ),
             operationFixture(6, 'Okopavanje', {
                 duration: 30,
                 application: 'raisedBed',
@@ -203,9 +225,16 @@ test('generates a guide-first PDF without page numbering text', () => {
     assert.match(content, /OP-0008/);
     assert.match(content, /PS-0014/);
     assert.match(content, /Zalijevanje/);
-    assert.match(content, /Mjesto: prije OP-0006 - Okopavanje/);
-    assert.match(content, /Mjesto: nakon OP-0006 - Okopavanje/);
+    assert.match(content, /abecedno prije PS-0014 - Cherry rajcica/);
+    assert.match(
+        content,
+        /abecedno izmedju OP-0008 - Berba i OP-0006 - Okopavanje/,
+    );
+    assert.match(content, /abecedno poslije OP-0006 - Okopavanje/);
     assert.match(content, /Cherry rajcica/);
+    assert.match(content, /CIJENA/);
+    assert.match(content, /2,50 EUR/);
+    assert.match(content, /2 Tr \(Gredice\)/);
     assert.doesNotMatch(content, /Stranica \d/);
 });
 
@@ -213,6 +242,7 @@ function operationFixture(
     id: number,
     label: string,
     attributes: EntityStandardized['attributes'],
+    prices?: EntityStandardized['prices'],
 ): EntityStandardized {
     return {
         id,
@@ -223,6 +253,7 @@ function operationFixture(
             instructions: '1. Provjeri gredicu.\n2. Odradi radnju.',
         },
         attributes,
+        ...(prices === undefined ? {} : { prices }),
         conditions: {
             completionAttachImages: true,
             completionAttachImagesRequired: false,

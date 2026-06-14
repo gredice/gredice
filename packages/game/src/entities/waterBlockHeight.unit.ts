@@ -5,7 +5,12 @@ import { getLocalSandboxBlockData } from '../localSandboxBlockData';
 import type { Block } from '../types/Block';
 import type { Stack } from '../types/Stack';
 import { defaultWaterBlockVisualHeight } from './waterBlockGeometry';
-import { getWaterBlockVisualHeight } from './waterBlockHeight';
+import {
+    getWaterBlockCenterY,
+    getWaterBlockVerticalRange,
+    getWaterBlockVisualHeight,
+    shapedTerrainWaterTopInset,
+} from './waterBlockHeight';
 
 function block(id: string, name: string): Block {
     return { id, name, rotation: 0 };
@@ -19,6 +24,9 @@ function stack(blocks: Block[]): Stack {
 }
 
 describe('getWaterBlockVisualHeight', () => {
+    const shapedTerrainWaterHeight =
+        defaultWaterBlockVisualHeight - shapedTerrainWaterTopInset;
+
     it('uses the default height for unsupported water blocks', () => {
         const water = block('water-a', 'Block_Water');
         const currentStack = stack([water]);
@@ -46,7 +54,7 @@ describe('getWaterBlockVisualHeight', () => {
                 blockData: getLocalSandboxBlockData(),
                 stack: currentStack,
             }),
-            0.25,
+            shapedTerrainWaterHeight,
         );
     });
 
@@ -63,7 +71,7 @@ describe('getWaterBlockVisualHeight', () => {
                 blockData: getLocalSandboxBlockData(),
                 stack: currentStack,
             }),
-            0.25,
+            shapedTerrainWaterHeight,
         );
     });
 
@@ -79,5 +87,42 @@ describe('getWaterBlockVisualHeight', () => {
             }),
             defaultWaterBlockVisualHeight,
         );
+    });
+
+    it('keeps shaped terrain water slightly below the support block edge', () => {
+        const water = block('water-a', 'Block_Water');
+        const currentStack = stack([
+            block('corner-a', 'Block_Sand_Reverse_Corner'),
+            water,
+        ]);
+        const range = getWaterBlockVerticalRange({
+            block: water,
+            blockData: getLocalSandboxBlockData(),
+            stack: currentStack,
+        });
+        const waterTop =
+            defaultWaterBlockVisualHeight - shapedTerrainWaterTopInset;
+
+        assert.deepEqual(range, { min: 0, max: waterTop });
+        assert.equal(
+            getWaterBlockCenterY({
+                block: water,
+                blockData: getLocalSandboxBlockData(),
+                stack: currentStack,
+            }),
+            waterTop / 2,
+        );
+    });
+
+    it('keeps normal water above its support block', () => {
+        const water = block('water-a', 'Block_Water');
+        const currentStack = stack([block('sand-a', 'Block_Sand'), water]);
+        const range = getWaterBlockVerticalRange({
+            block: water,
+            blockData: getLocalSandboxBlockData(),
+            stack: currentStack,
+        });
+
+        assert.deepEqual(range, { min: 0.34, max: 0.74 });
     });
 });
