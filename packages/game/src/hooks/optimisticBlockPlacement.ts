@@ -37,6 +37,16 @@ function createBlockNameById(stacks: Stack[]) {
     return blockNameById;
 }
 
+function createBlockRotationById(stacks: Stack[]) {
+    const blockRotationById = new Map<string, number>();
+    for (const stack of stacks) {
+        for (const block of stack.blocks) {
+            blockRotationById.set(block.id, block.rotation);
+        }
+    }
+    return blockRotationById;
+}
+
 function createPlacementStacks(stacks: Stack[]): GardenBlockStack[] {
     return stacks.map((stack) => ({
         positionX: stack.position.x,
@@ -61,6 +71,7 @@ export function createOptimisticBlockPlacement<
         blockName,
         stacks: createPlacementStacks(garden.stacks),
         blockNameById: createBlockNameById(garden.stacks),
+        blockRotationById: createBlockRotationById(garden.stacks),
         blockDataByName: createBlockDataByName(blockData),
     });
     if (!placement.valid) {

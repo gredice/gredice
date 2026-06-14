@@ -2356,6 +2356,10 @@ export interface components {
                 hitboxHeight?: number;
                 /** @description Dubina nevidljive zone za odabir i povlačenje bloka u vrtu. */
                 hitboxDepth?: number;
+                /** @description Broj vrtnih blokova koje zauzima po širini. */
+                spanWidth?: number;
+                /** @description Broj vrtnih blokova koje zauzima po dubini. */
+                spanDepth?: number;
             };
             prices: {
                 sunflowers: number;

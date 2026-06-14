@@ -7,6 +7,17 @@ const blockDataByName = new Map([
     ['Block_Water', { attributes: { stackable: true, height: 1 } }],
     ['Raised_Bed', { attributes: { stackable: true, height: 1 } }],
     ['Shade', { attributes: { stackable: false, height: 1 } }],
+    [
+        'LemonadeStand',
+        {
+            attributes: {
+                stackable: false,
+                height: 1,
+                spanWidth: 3,
+                spanDepth: 2,
+            },
+        },
+    ],
 ]);
 
 const maxSpiralSteps = 1000;
@@ -152,6 +163,97 @@ describe('resolveGardenBlockPlacement', () => {
                 y: 0,
                 index: 1,
                 existingBlocks: ['water-origin'],
+            },
+        });
+    });
+
+    it('rejects multi-block placement on uneven footprint support', () => {
+        const placement = resolveGardenBlockPlacement({
+            blockName: 'LemonadeStand',
+            requestedPosition: { x: 0, y: 0 },
+            stacks: [
+                { positionX: 0, positionY: 0, blocks: ['grass-a'] },
+                { positionX: 0, positionY: 1, blocks: ['grass-b'] },
+                { positionX: 1, positionY: 0, blocks: ['grass-c'] },
+                { positionX: 1, positionY: 1, blocks: ['grass-d'] },
+                { positionX: 2, positionY: 0, blocks: ['grass-e'] },
+            ],
+            blockNameById: new Map([
+                ['grass-a', 'Block_Grass'],
+                ['grass-b', 'Block_Grass'],
+                ['grass-c', 'Block_Grass'],
+                ['grass-d', 'Block_Grass'],
+                ['grass-e', 'Block_Grass'],
+            ]),
+            blockDataByName,
+        });
+
+        assert.deepStrictEqual(placement, {
+            valid: false,
+            error: 'Invalid block placement: all spanned cells must be on the same level',
+        });
+    });
+
+    it('treats existing multi-block footprints as occupied cells', () => {
+        const placement = resolveGardenBlockPlacement({
+            blockName: 'Shade',
+            requestedPosition: { x: 1, y: 0 },
+            stacks: [
+                {
+                    positionX: 0,
+                    positionY: 0,
+                    blocks: ['grass-a', 'stand-a'],
+                },
+                { positionX: 1, positionY: 0, blocks: ['grass-b'] },
+            ],
+            blockNameById: new Map([
+                ['grass-a', 'Block_Grass'],
+                ['grass-b', 'Block_Grass'],
+                ['stand-a', 'LemonadeStand'],
+            ]),
+            blockDataByName,
+        });
+
+        assert.deepStrictEqual(placement, {
+            valid: false,
+            error: 'Invalid block placement: block stand-a cannot support Shade',
+        });
+    });
+
+    it('treats water anywhere under a multi-block footprint as a fallback', () => {
+        const supportBlocks = [
+            { x: 0, y: 0, id: 'grass-0-0', name: 'Block_Grass' },
+            { x: 1, y: 0, id: 'water-1-0', name: 'Block_Water' },
+            { x: 2, y: 0, id: 'grass-2-0', name: 'Block_Grass' },
+            { x: 3, y: 0, id: 'grass-3-0', name: 'Block_Grass' },
+            { x: 0, y: 1, id: 'grass-0-1', name: 'Block_Grass' },
+            { x: 1, y: 1, id: 'grass-1-1', name: 'Block_Grass' },
+            { x: 2, y: 1, id: 'grass-2-1', name: 'Block_Grass' },
+            { x: 3, y: 1, id: 'grass-3-1', name: 'Block_Grass' },
+            { x: 1, y: 2, id: 'grass-1-2', name: 'Block_Grass' },
+            { x: 2, y: 2, id: 'grass-2-2', name: 'Block_Grass' },
+            { x: 3, y: 2, id: 'grass-3-2', name: 'Block_Grass' },
+        ];
+        const placement = resolveGardenBlockPlacement({
+            blockName: 'LemonadeStand',
+            stacks: supportBlocks.map((block) => ({
+                positionX: block.x,
+                positionY: block.y,
+                blocks: [block.id],
+            })),
+            blockNameById: new Map(
+                supportBlocks.map((block) => [block.id, block.name]),
+            ),
+            blockDataByName,
+        });
+
+        assert.deepStrictEqual(placement, {
+            valid: true,
+            placement: {
+                x: 1,
+                y: 1,
+                index: 1,
+                existingBlocks: ['grass-1-1'],
             },
         });
     });

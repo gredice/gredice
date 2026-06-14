@@ -68,6 +68,8 @@ const blockNames = [
     'StoneMedium',
     'StoneLarge',
     'WaterWell',
+    'LemonadeStand',
+    'IceCreamCart',
     'DesertStoneSmall',
     'DesertStoneMedium',
     'DesertStoneLarge',
