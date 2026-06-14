@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v6.0.3
         with:
           fetch-depth: 2
 
@@ -85,7 +85,7 @@ jobs:
       matrix:
         shard: ${{ fromJSON(inputs.testShardMatrix) }}
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v6.0.3
         with:
           fetch-depth: 2
 
