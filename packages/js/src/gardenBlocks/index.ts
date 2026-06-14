@@ -10,6 +10,7 @@ export type GardenBlockDataLike = {
         height?: number | null;
         spanWidth?: number | null;
         spanDepth?: number | null;
+        placeableOnWater?: boolean | null;
     } | null;
 };
 
@@ -56,7 +57,7 @@ export type GardenBlockPlacementResult =
 
 const CANDIDATE_BLOCK_ID = '__candidate_block__';
 const MAX_SPIRAL_STEPS = 1000;
-const WATER_BLOCK_NAME = 'Block_Water';
+export const WATER_BLOCK_NAME = 'Block_Water';
 
 function toPositiveGridSpan(value: number | null | undefined) {
     return typeof value === 'number' && Number.isFinite(value) && value > 0
@@ -218,7 +219,7 @@ function getTopOccupiedCell(
 }
 
 function isGroundBlock(blockName: string) {
-    return blockName.startsWith('Block');
+    return blockName.startsWith('Block') && blockName !== WATER_BLOCK_NAME;
 }
 
 function isWaterPlacement(params: {
@@ -241,6 +242,44 @@ function isWaterPlacement(params: {
         return stack?.blocks.some(
             (blockId) => blockNameById.get(blockId) === WATER_BLOCK_NAME,
         );
+    });
+}
+
+export function isBlockPlaceableOnWater({
+    blockData,
+    blockName,
+}: {
+    blockData: GardenBlockDataLike | undefined;
+    blockName: string;
+}) {
+    return (
+        blockData?.attributes?.placeableOnWater ??
+        blockName === WATER_BLOCK_NAME
+    );
+}
+
+export function canStackBlockOnBlock({
+    aboveBlockData,
+    aboveBlockName,
+    belowBlockData,
+    belowBlockName,
+}: {
+    aboveBlockData: GardenBlockDataLike | undefined;
+    aboveBlockName: string;
+    belowBlockData: GardenBlockDataLike | undefined;
+    belowBlockName: string;
+}) {
+    if (!belowBlockData?.attributes?.stackable) {
+        return false;
+    }
+
+    if (belowBlockName !== WATER_BLOCK_NAME) {
+        return true;
+    }
+
+    return isBlockPlaceableOnWater({
+        blockData: aboveBlockData,
+        blockName: aboveBlockName,
     });
 }
 
@@ -269,8 +308,24 @@ export function validateStackPlacement(params: {
             };
         }
 
+        const aboveBlockName = blockNameById.get(aboveBlockId);
+        if (!aboveBlockName) {
+            return {
+                valid: false,
+                error: `Invalid stack placement: unknown block ${aboveBlockId} above ${belowBlockId}`,
+            };
+        }
+
         const belowBlockData = blockDataByName.get(belowBlockName);
-        if (!belowBlockData?.attributes?.stackable) {
+        const aboveBlockData = blockDataByName.get(aboveBlockName);
+        if (
+            !canStackBlockOnBlock({
+                aboveBlockData,
+                aboveBlockName,
+                belowBlockData,
+                belowBlockName,
+            })
+        ) {
             return {
                 valid: false,
                 error: `Invalid stack placement: block ${belowBlockId} cannot support block ${aboveBlockId}`,
@@ -422,7 +477,15 @@ function validatePlacementAtPosition(params: {
             };
         }
 
-        if (topOccupiedCell && !topOccupiedCell.stackable) {
+        if (
+            topOccupiedCell &&
+            !canStackBlockOnBlock({
+                aboveBlockData: blockData,
+                aboveBlockName: blockName,
+                belowBlockData: blockDataByName.get(topOccupiedCell.blockName),
+                belowBlockName: topOccupiedCell.blockName,
+            })
+        ) {
             return {
                 valid: false,
                 error: `Invalid block placement: block ${topOccupiedCell.blockId} cannot support ${blockName}`,

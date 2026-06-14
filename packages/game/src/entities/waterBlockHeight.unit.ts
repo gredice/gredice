@@ -4,7 +4,10 @@ import { Vector3 } from 'three';
 import { getLocalSandboxBlockData } from '../localSandboxBlockData';
 import type { Block } from '../types/Block';
 import type { Stack } from '../types/Stack';
-import { defaultWaterBlockVisualHeight } from './waterBlockGeometry';
+import {
+    defaultWaterBlockVisualHeight,
+    waterBlockBottomOverlap,
+} from './waterBlockGeometry';
 import {
     getWaterBlockCenterY,
     getWaterBlockVerticalRange,
@@ -89,7 +92,7 @@ describe('getWaterBlockVisualHeight', () => {
         );
     });
 
-    it('keeps shaped terrain water slightly below the support block edge', () => {
+    it('aligns shaped terrain water with a standalone water block top', () => {
         const water = block('water-a', 'Block_Water');
         const currentStack = stack([
             block('corner-a', 'Block_Sand_Reverse_Corner'),
@@ -101,7 +104,7 @@ describe('getWaterBlockVisualHeight', () => {
             stack: currentStack,
         });
         const waterTop =
-            defaultWaterBlockVisualHeight - shapedTerrainWaterTopInset;
+            defaultWaterBlockVisualHeight - waterBlockBottomOverlap;
 
         assert.deepEqual(range, { min: 0, max: waterTop });
         assert.equal(

@@ -140,6 +140,13 @@ const hitboxDefinitionSpecs = [
     },
 ] as const;
 
+const placeableOnWaterDefinitionSpec = {
+    name: 'placeableOnWater',
+    label: 'Postavljanje na vodu',
+    description: 'Dopušta postavljanje bloka izravno na vodeni blok.',
+    defaultValue: 'false',
+} as const;
+
 async function upsertHitboxDefinition(
     spec: (typeof hitboxDefinitionSpecs)[number],
 ) {
@@ -163,6 +170,49 @@ async function upsertHitboxDefinition(
         entityTypeName: 'block',
         dataType: 'number',
         defaultValue: spec.defaultValue,
+        required: false,
+        display: false,
+    };
+
+    if (!existingDefinition) {
+        const [created] = await storage()
+            .insert(attributeDefinitions)
+            .values(definitionValues)
+            .returning({ id: attributeDefinitions.id });
+        return created.id;
+    }
+
+    await storage()
+        .update(attributeDefinitions)
+        .set(definitionValues)
+        .where(eq(attributeDefinitions.id, existingDefinition.id));
+    return existingDefinition.id;
+}
+
+async function upsertPlaceableOnWaterDefinition() {
+    const [existingDefinition] = await storage()
+        .select()
+        .from(attributeDefinitions)
+        .where(
+            and(
+                eq(attributeDefinitions.entityTypeName, 'block'),
+                eq(attributeDefinitions.category, 'attributes'),
+                eq(
+                    attributeDefinitions.name,
+                    placeableOnWaterDefinitionSpec.name,
+                ),
+                eq(attributeDefinitions.isDeleted, false),
+            ),
+        );
+
+    const definitionValues = {
+        category: 'attributes',
+        name: placeableOnWaterDefinitionSpec.name,
+        label: placeableOnWaterDefinitionSpec.label,
+        description: placeableOnWaterDefinitionSpec.description,
+        entityTypeName: 'block',
+        dataType: 'boolean',
+        defaultValue: placeableOnWaterDefinitionSpec.defaultValue,
         required: false,
         display: false,
     };
@@ -331,6 +381,8 @@ async function main() {
     for (const spec of hitboxDefinitionSpecs) {
         definitionIds.set(spec.name, await upsertHitboxDefinition(spec));
     }
+    const placeableOnWaterDefinitionId =
+        await upsertPlaceableOnWaterDefinition();
 
     const blockIdsByName = await getPublishedBlockIdsByName();
     const missingBlockNames = Object.keys(blockHitboxes).filter(
@@ -391,6 +443,20 @@ async function main() {
         }
     }
 
+    const waterBlockEntityId = blockIdsByName.get('Block_Water');
+    let changedWaterPlacementCount = 0;
+    if (waterBlockEntityId) {
+        const changed = await upsertBlockAttributeValue({
+            attributeDefinitionId: placeableOnWaterDefinitionId,
+            entityId: waterBlockEntityId,
+            nextValue: 'true',
+        });
+        if (changed) {
+            changedEntityIds.add(waterBlockEntityId);
+            changedWaterPlacementCount += 1;
+        }
+    }
+
     await Promise.all([
         bustCached(cacheKeys.entityTypeName('block')),
         bustCachedByPrefixes(['entities:formatted:', 'dashboard:admin:']),
@@ -400,7 +466,7 @@ async function main() {
     ]);
 
     console.log(
-        `Upserted ${hitboxDefinitionSpecs.length} definitions, ${changedValueCount} block hitbox values, and ${changedVisualHeightCount} shaped terrain visual heights across ${changedEntityIds.size} changed entities.`,
+        `Upserted ${hitboxDefinitionSpecs.length + 1} definitions, ${changedValueCount} block hitbox values, ${changedVisualHeightCount} shaped terrain visual heights, and ${changedWaterPlacementCount} water placement values across ${changedEntityIds.size} changed entities.`,
     );
 }
 

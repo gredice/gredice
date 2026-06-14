@@ -1,5 +1,8 @@
 import type { BlockData } from '@gredice/client';
-import { getGardenBlockFootprintOffsets } from '@gredice/js/gardenBlocks';
+import {
+    canStackBlockOnBlock,
+    getGardenBlockFootprintOffsets,
+} from '@gredice/js/gardenBlocks';
 import type { Vector3 } from 'three';
 import {
     type ActiveDragPreviewTargetOffset,
@@ -366,6 +369,10 @@ export function resolvePickupPlacementPreviewForRelative({
             const blockUnderData = blockUnder
                 ? getBlockDataByName(blockData, blockUnder.name)
                 : null;
+            const movingBaseBlock = segment.blocks[0];
+            const movingBaseBlockData = movingBaseBlock
+                ? getBlockDataByName(blockData, movingBaseBlock.name)
+                : null;
             const isRecycler = isRecyclerPlacementTarget({
                 canRecycle: segment.canRecycle,
                 sourcePosition: segment.sourceStack.position,
@@ -390,9 +397,22 @@ export function resolvePickupPlacementPreviewForRelative({
                           ),
                       }
                     : undefined;
+                const occupiedBlockData = occupiedCell
+                    ? getBlockDataByName(blockData, occupiedCell.block.name)
+                    : null;
+                const isSupported =
+                    !occupiedCell ||
+                    (movingBaseBlock
+                        ? canStackBlockOnBlock({
+                              aboveBlockData: movingBaseBlockData ?? undefined,
+                              aboveBlockName: movingBaseBlock.name,
+                              belowBlockData: occupiedBlockData ?? undefined,
+                              belowBlockName: occupiedCell.block.name,
+                          })
+                        : true);
 
                 return {
-                    isBlocked: occupiedCell !== null && !occupiedCell.stackable,
+                    isBlocked: !isSupported,
                     hoverHeight:
                         (occupiedCell?.topHeight ??
                             getStackHeight(

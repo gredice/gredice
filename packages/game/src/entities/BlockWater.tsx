@@ -15,6 +15,7 @@ import {
     getWaterBlockCenterY,
     getWaterBlockVisualHeight,
 } from './waterBlockHeight';
+import { isWaterBlockTopSurfaceVisible } from './waterBlockSurface';
 
 const waterVertexShader = `
 varying vec3 vLocalPosition;
@@ -225,9 +226,7 @@ export function BlockWater({ stack, block, stacks }: EntityInstanceProps) {
         () => resolveWaterFoamCorners({ block, blockData, stack, stacks }),
         [block, blockData, stack, stacks],
     );
-    const waterBlockIndex = stack.blocks.indexOf(block);
-    const includeTop =
-        waterBlockIndex < 0 || waterBlockIndex === stack.blocks.length - 1;
+    const includeTop = isWaterBlockTopSurfaceVisible({ block, stack });
     const geometry = useMemo(
         () =>
             createWaterBlockGeometry(foamEdges, {

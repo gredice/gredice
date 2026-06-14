@@ -4,7 +4,16 @@ import { resolveGardenBlockPlacement } from './blockPlacementService';
 
 const blockDataByName = new Map([
     ['Block_Grass', { attributes: { stackable: true, height: 1 } }],
-    ['Block_Water', { attributes: { stackable: true, height: 1 } }],
+    [
+        'Block_Water',
+        {
+            attributes: {
+                stackable: true,
+                height: 1,
+                placeableOnWater: true,
+            },
+        },
+    ],
     ['Raised_Bed', { attributes: { stackable: true, height: 1 } }],
     ['Shade', { attributes: { stackable: false, height: 1 } }],
     [
@@ -147,10 +156,25 @@ describe('resolveGardenBlockPlacement', () => {
         });
     });
 
-    it('uses a water stack when no non-water placement is available', () => {
+    it('rejects water stacks when the placed block is not placeable on water', () => {
         const { blockNameById, stacks } = createWaterOnlyPlacementSearch();
         const placement = resolveGardenBlockPlacement({
             blockName: 'Shade',
+            stacks,
+            blockNameById,
+            blockDataByName,
+        });
+
+        assert.deepStrictEqual(placement, {
+            valid: false,
+            error: 'No valid placement position found',
+        });
+    });
+
+    it('uses a water stack when the placed block is placeable on water', () => {
+        const { blockNameById, stacks } = createWaterOnlyPlacementSearch();
+        const placement = resolveGardenBlockPlacement({
+            blockName: 'Block_Water',
             stacks,
             blockNameById,
             blockDataByName,
