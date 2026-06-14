@@ -4,6 +4,7 @@ import { Vector4 } from 'three';
 import {
     createMergedWaterSideGeometry,
     createWaterBlockGeometry,
+    getWaterBlockYOffset,
 } from './waterBlockGeometry';
 
 describe('createWaterBlockGeometry', () => {
@@ -44,6 +45,16 @@ describe('createWaterBlockGeometry', () => {
             ['-1,0,0', '0,0,-1'],
         );
     });
+
+    it('uses the requested visual height for water faces', () => {
+        const geometry = createWaterBlockGeometry(new Vector4(1, 1, 1, 1), {
+            height: 0.25,
+        });
+
+        assert.deepEqual(geometryYExtents(geometry), [-0.125, 0.125]);
+
+        geometry.dispose();
+    });
 });
 
 function geometryNormals(
@@ -66,6 +77,19 @@ function geometryNormals(
 
     geometry.dispose();
     return [...normals].sort();
+}
+
+function geometryYExtents(
+    geometry: ReturnType<typeof createWaterBlockGeometry>,
+) {
+    const positionAttribute = geometry.getAttribute('position');
+    const yValues = new Set<number>();
+
+    for (let index = 0; index < positionAttribute.count; index += 1) {
+        yValues.add(Number(positionAttribute.getY(index).toFixed(6)));
+    }
+
+    return [...yValues].sort((left, right) => left - right);
 }
 
 describe('createMergedWaterSideGeometry', () => {
@@ -107,6 +131,19 @@ describe('createMergedWaterSideGeometry', () => {
 
         assert.equal(positionAttribute.count, 16);
         assert.equal(indexAttribute?.count, 24);
+
+        geometry.dispose();
+    });
+
+    it('uses per-instance water heights for merged side walls', () => {
+        const geometry = createMergedWaterSideGeometry([
+            {
+                position: [0, getWaterBlockYOffset(0.25), 0],
+                waterHeight: 0.25,
+            },
+        ]);
+
+        assert.deepEqual(geometryYExtents(geometry), [-0.06, 0.19]);
 
         geometry.dispose();
     });

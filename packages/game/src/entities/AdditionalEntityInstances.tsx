@@ -52,7 +52,9 @@ import {
 import {
     createMergedWaterSideGeometry,
     createWaterBlockGeometry,
+    getWaterBlockYOffset,
 } from './waterBlockGeometry';
+import { getWaterBlockVisualHeight } from './waterBlockHeight';
 
 type CommonWeatherProps = Pick<
     EntityInstancesBlockBaseProps,
@@ -87,6 +89,9 @@ type LoadedAssetBlockMaterialProps = Omit<
     gltf: GLTFResult;
     groundPatch?: GroundPatchSurface;
     material: (gltf: GLTFResult) => Material | Material[];
+};
+type WaterBlockInstance = EntityBlockInstance & {
+    waterHeight: number;
 };
 
 const potBlockNames = [
@@ -394,11 +399,35 @@ function BlockGroundInstances({
 
 function WaterBlockInstances({ stacks }: { stacks: Stack[] | undefined }) {
     const { data: blockData } = useBlockData();
-    const waterInstances = useEntityBlockInstances({
+    const baseWaterInstances = useEntityBlockInstances({
         name: 'Block_Water',
         stacks,
-        yOffset: 0.14,
     });
+    const waterInstances = useMemo(
+        () =>
+            baseWaterInstances?.map((instance): WaterBlockInstance => {
+                const waterHeight = getWaterBlockVisualHeight({
+                    block: instance.block,
+                    blockData,
+                    stack: instance.stack,
+                });
+                const previewYOffset =
+                    instance.position[1] - instance.stackHeight;
+
+                return {
+                    ...instance,
+                    position: [
+                        instance.position[0],
+                        instance.stackHeight +
+                            getWaterBlockYOffset(waterHeight) +
+                            previewYOffset,
+                        instance.position[2],
+                    ],
+                    waterHeight,
+                };
+            }),
+        [baseWaterInstances, blockData],
+    );
 
     if (!waterInstances?.length) {
         return null;
@@ -420,6 +449,7 @@ function WaterBlockInstances({ stacks }: { stacks: Stack[] | undefined }) {
                     foamEdges={mask.foamEdges}
                     instances={mask.instances}
                     maskKey={mask.key}
+                    waterHeight={mask.waterHeight}
                 />
             ))}
             <WaterBlockMergedSides instances={waterInstances} />
@@ -438,11 +468,13 @@ function foamEdgeKey(foamEdges: Vector4) {
 function waterFoamMaskKey({
     foamCorners,
     foamEdges,
+    waterHeight,
 }: {
     foamCorners: Vector4;
     foamEdges: Vector4;
+    waterHeight: number;
 }) {
-    return `${foamEdgeKey(foamEdges)}-${foamEdgeKey(foamCorners)}`;
+    return `${foamEdgeKey(foamEdges)}-${foamEdgeKey(foamCorners)}-${waterHeight}`;
 }
 
 function resolveWaterBlockInstanceGroups({
@@ -451,7 +483,7 @@ function resolveWaterBlockInstanceGroups({
     stacks,
 }: {
     blockData: Parameters<typeof resolveWaterFoamEdges>[0]['blockData'];
-    instances: EntityBlockInstance[];
+    instances: WaterBlockInstance[];
     stacks: Stack[] | undefined;
 }) {
     const groupedInstances = new Map<
@@ -459,12 +491,14 @@ function resolveWaterBlockInstanceGroups({
         {
             foamCorners: Vector4;
             foamEdges: Vector4;
-            instances: EntityBlockInstance[];
+            instances: WaterBlockInstance[];
             key: string;
+            waterHeight: number;
         }
     >();
 
     for (const instance of instances) {
+        const { waterHeight } = instance;
         const foamEdges = resolveWaterFoamEdges({
             block: instance.block,
             blockData,
@@ -477,7 +511,11 @@ function resolveWaterBlockInstanceGroups({
             stack: instance.stack,
             stacks,
         });
-        const key = waterFoamMaskKey({ foamCorners, foamEdges });
+        const key = waterFoamMaskKey({
+            foamCorners,
+            foamEdges,
+            waterHeight,
+        });
         const group = groupedInstances.get(key);
 
         if (group) {
@@ -488,6 +526,7 @@ function resolveWaterBlockInstanceGroups({
                 foamEdges,
                 instances: [instance],
                 key,
+                waterHeight,
             });
         }
     }
@@ -500,16 +539,22 @@ function WaterBlockMaskInstances({
     foamEdges,
     instances,
     maskKey,
+    waterHeight,
 }: {
     foamCorners: Vector4;
     foamEdges: Vector4;
-    instances: EntityBlockInstance[];
+    instances: WaterBlockInstance[];
     maskKey: string;
+    waterHeight: number;
 }) {
     const material = useWaterBlockMaterial(foamEdges, true, foamCorners);
     const geometry = useMemo(
-        () => createWaterBlockGeometry(foamEdges, { includeSides: false }),
-        [foamEdges],
+        () =>
+            createWaterBlockGeometry(foamEdges, {
+                height: waterHeight,
+                includeSides: false,
+            }),
+        [foamEdges, waterHeight],
     );
 
     useEffect(() => () => geometry.dispose(), [geometry]);
@@ -535,7 +580,7 @@ const mergedWaterSideFoamEdges = new Vector4(0, 0, 0, 0);
 function WaterBlockMergedSides({
     instances,
 }: {
-    instances: EntityBlockInstance[];
+    instances: WaterBlockInstance[];
 }) {
     const material = useWaterBlockMaterial(mergedWaterSideFoamEdges, false);
     const geometry = useMemo(
