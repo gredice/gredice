@@ -338,8 +338,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui
       '@mdxeditor/editor':
-        specifier: 4.0.1
-        version: 4.0.1(@codemirror/language@6.12.3)(@lezer/highlight@1.2.3)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(yjs@13.6.27)
+        specifier: 4.0.2
+        version: 4.0.2(@codemirror/language@6.12.3)(@lezer/highlight@1.2.3)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(yjs@13.6.27)
       '@playwright/experimental-ct-react':
         specifier: 1.60.0
         version: 1.60.0(@types/node@24.12.4)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.100.0)(tsx@4.22.3)(vite@8.0.14(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(tsx@4.22.3)(yaml@2.9.0))(yaml@2.9.0)
@@ -468,8 +468,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui
       '@mdxeditor/editor':
-        specifier: 4.0.1
-        version: 4.0.1(@codemirror/language@6.12.3)(@lezer/highlight@1.2.3)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(yjs@13.6.27)
+        specifier: 4.0.2
+        version: 4.0.2(@codemirror/language@6.12.3)(@lezer/highlight@1.2.3)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(yjs@13.6.27)
       '@playwright/experimental-ct-react':
         specifier: 1.60.0
         version: 1.60.0(@types/node@24.12.4)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.100.0)(tsx@4.22.3)(vite@8.0.14(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(tsx@4.22.3)(yaml@2.9.0))(yaml@2.9.0)
@@ -805,8 +805,8 @@ importers:
   apps/www:
     dependencies:
       '@mdxeditor/editor':
-        specifier: 4.0.1
-        version: 4.0.1(@codemirror/language@6.12.3)(@lezer/highlight@1.2.3)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(yjs@13.6.27)
+        specifier: 4.0.2
+        version: 4.0.2(@codemirror/language@6.12.3)(@lezer/highlight@1.2.3)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(yjs@13.6.27)
       '@opentelemetry/api-logs':
         specifier: 0.218.0
         version: 0.218.0
@@ -3205,8 +3205,8 @@ packages:
       '@types/react': 19.2.14
       react: '>=16'
 
-  '@mdxeditor/editor@4.0.1':
-    resolution: {integrity: sha512-5CKZAIqrXLNjR+Vwi0IL6ihlFxIO9mhfWoQt9eGEwAgrVITbQ18MC7gPPYylen+jylSedTCjpk7bdnKz7HYqWQ==}
+  '@mdxeditor/editor@4.0.2':
+    resolution: {integrity: sha512-tS286FC61NbA+pEJomUBLc5pgEtpowQ0z3nVuqba275CwmVWb//dQVAgIX9lN+ZB8VRa/XwpDXBxi+AMnP8Wpg==}
     engines: {node: '>=16'}
     peerDependencies:
       react: '>= 18 || >= 19'
@@ -11854,7 +11854,7 @@ snapshots:
       '@types/react': 19.2.14
       react: 19.2.6
 
-  '@mdxeditor/editor@4.0.1(@codemirror/language@6.12.3)(@lezer/highlight@1.2.3)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(yjs@13.6.27)':
+  '@mdxeditor/editor@4.0.2(@codemirror/language@6.12.3)(@lezer/highlight@1.2.3)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(yjs@13.6.27)':
     dependencies:
       '@codemirror/commands': 6.10.3
       '@codemirror/lang-markdown': 6.5.0

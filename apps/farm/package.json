@@ -39,7 +39,7 @@
         "@gredice/label-printer": "workspace:*",
         "@gredice/storage": "workspace:*",
         "@gredice/ui": "workspace:*",
-        "@mdxeditor/editor": "4.0.1",
+        "@mdxeditor/editor": "4.0.2",
         "@playwright/experimental-ct-react": "1.60.0",
         "@playwright/test": "1.60.0",
         "@tailwindcss/postcss": "4.3.0",
