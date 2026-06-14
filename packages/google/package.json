@@ -11,8 +11,8 @@
     },
     "scripts": {},
     "devDependencies": {
-        "@types/node": "*",
-        "server-only": "*"
+        "@types/node": "24.12.4",
+        "server-only": "0.0.1"
     },
     "dependencies": {}
 }

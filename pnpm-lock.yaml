@@ -7,20 +7,20 @@ settings:
 overrides:
   '@types/react': 19.2.14
   '@types/react-dom': 19.2.3
-  '@hono/node-server': '>=1.19.13 <2.0.0'
-  '@xmldom/xmldom': '>=0.8.13 <0.9.0'
-  fast-uri: '>=3.1.2 <4.0.0'
-  ip-address: '>=10.1.1 <11.0.0'
-  minimatch@10>brace-expansion: '>=5.0.6 <6.0.0'
-  postcss: '>=8.5.10 <9.0.0'
-  qs: '>=6.15.2 <7.0.0'
+  '@hono/node-server': 1.19.14
+  '@xmldom/xmldom': 0.8.13
+  fast-uri: 3.1.2
+  ip-address: 10.2.0
+  minimatch@10>brace-expansion: 5.0.6
+  postcss: 8.5.15
+  qs: 6.15.2
 
 importers:
 
   .:
     dependencies:
       corepack:
-        specifier: ^0.35.0
+        specifier: 0.35.0
         version: 0.35.0
     devDependencies:
       rimraf:
@@ -211,7 +211,7 @@ importers:
         specifier: 12.1.3
         version: 12.1.3
       postcss:
-        specifier: '>=8.5.10 <9.0.0'
+        specifier: 8.5.15
         version: 8.5.15
       tailwindcss:
         specifier: 4.3.0
@@ -265,7 +265,7 @@ importers:
         specifier: 6.198.0
         version: 6.198.0
       '@xyflow/react':
-        specifier: ^12.10.2
+        specifier: 12.10.2
         version: 12.10.2(@types/react@19.2.14)(immer@11.1.4)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       drizzle-orm:
         specifier: 0.45.2
@@ -377,7 +377,7 @@ importers:
         specifier: 19.1.0-rc.3
         version: 19.1.0-rc.3
       postcss:
-        specifier: '>=8.5.10 <9.0.0'
+        specifier: 8.5.15
         version: 8.5.15
       tailwindcss:
         specifier: 4.3.0
@@ -501,7 +501,7 @@ importers:
         specifier: 19.1.0-rc.3
         version: 19.1.0-rc.3
       postcss:
-        specifier: '>=8.5.10 <9.0.0'
+        specifier: 8.5.15
         version: 8.5.15
       tailwindcss:
         specifier: 4.3.0
@@ -598,7 +598,7 @@ importers:
         specifier: 2.8.9
         version: 2.8.9(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0))(react@19.2.6)
       postcss:
-        specifier: '>=8.5.10 <9.0.0'
+        specifier: 8.5.15
         version: 8.5.15
       sass:
         specifier: 1.100.0
@@ -668,7 +668,7 @@ importers:
         specifier: 19.1.0-rc.3
         version: 19.1.0-rc.3
       postcss:
-        specifier: '>=8.5.10 <9.0.0'
+        specifier: 8.5.15
         version: 8.5.15
       tailwindcss:
         specifier: 4.3.0
@@ -717,7 +717,7 @@ importers:
         specifier: 19.1.0-rc.3
         version: 19.1.0-rc.3
       postcss:
-        specifier: '>=8.5.10 <9.0.0'
+        specifier: 8.5.15
         version: 8.5.15
       tailwindcss:
         specifier: 4.3.0
@@ -787,7 +787,7 @@ importers:
         specifier: 19.2.3
         version: 19.2.3(@types/react@19.2.14)
       postcss:
-        specifier: '>=8.5.10 <9.0.0'
+        specifier: 8.5.15
         version: 8.5.15
       storybook:
         specifier: 10.4.1
@@ -914,7 +914,7 @@ importers:
         specifier: 4.2.3
         version: 4.2.3(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0))
       postcss:
-        specifier: '>=8.5.10 <9.0.0'
+        specifier: 8.5.15
         version: 8.5.15
       react-confetti-boom:
         specifier: 2.0.1
@@ -1241,10 +1241,10 @@ importers:
   packages/google:
     devDependencies:
       '@types/node':
-        specifier: '*'
+        specifier: 24.12.4
         version: 24.12.4
       server-only:
-        specifier: '*'
+        specifier: 0.0.1
         version: 0.0.1
 
   packages/js:
@@ -1498,7 +1498,7 @@ importers:
         specifier: 1.2.8
         version: 1.2.8(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@tanstack/react-query':
-        specifier: ~5.100.14
+        specifier: 5.100.14
         version: 5.100.14(react@19.2.6)
       class-variance-authority:
         specifier: 0.7.1
@@ -1510,7 +1510,7 @@ importers:
         specifier: 1.17.0
         version: 1.17.0(react@19.2.6)
       motion:
-        specifier: ~12.40.0
+        specifier: 12.40.0
         version: 12.40.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       next:
         specifier: 16.2.6
