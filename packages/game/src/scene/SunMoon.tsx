@@ -387,8 +387,9 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
     ]);
 
     useLayoutEffect(() => {
+        updateSunMoon();
+
         if (!gameCamera) {
-            updateSunMoon();
             return;
         }
 
