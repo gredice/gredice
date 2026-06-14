@@ -1,4 +1,5 @@
 import type { BlockData } from '@gredice/client';
+import { getGardenBlockFootprintOffsets } from '@gredice/js/gardenBlocks';
 import type { Vector3 } from 'three';
 import {
     type ActiveDragPreviewTargetOffset,
@@ -24,6 +25,7 @@ type PlacementPreview = {
         x: number;
         z: number;
     };
+    footprintCellCount: number;
     hoverHeight: number;
     isRecycler: boolean;
     isBlocked: boolean;
@@ -49,6 +51,101 @@ function getStack(
             candidate.position.x === destination.x &&
             candidate.position.z === destination.z,
     );
+}
+
+type OccupiedCell = {
+    block: Block;
+    blockIndex: number;
+    stack: Stack;
+    stackable: boolean;
+    topHeight: number;
+};
+
+function cellKey(position: { x: number; z: number }) {
+    return `${position.x}|${position.z}`;
+}
+
+function createOccupiedCells({
+    blockData,
+    movingBlockIds,
+    stacks,
+}: {
+    blockData: BlockData[] | null | undefined;
+    movingBlockIds: Set<string>;
+    stacks: Stack[] | undefined;
+}) {
+    const occupiedCells = new Map<string, OccupiedCell[]>();
+
+    for (const stack of stacks ?? []) {
+        let stackHeight = 0;
+        stack.blocks.forEach((block, blockIndex) => {
+            const blockEntity = getBlockDataByName(blockData, block.name);
+            const blockHeight = blockEntity?.attributes?.height ?? 0;
+
+            if (!movingBlockIds.has(block.id)) {
+                for (const offset of getGardenBlockFootprintOffsets(
+                    blockEntity,
+                    block.rotation,
+                )) {
+                    const position = {
+                        x: stack.position.x + offset.x,
+                        z: stack.position.z + offset.y,
+                    };
+                    const key = cellKey(position);
+                    const existing = occupiedCells.get(key);
+                    const cell = {
+                        block,
+                        blockIndex,
+                        stack,
+                        stackable: blockEntity?.attributes?.stackable ?? true,
+                        topHeight: stackHeight + blockHeight,
+                    };
+
+                    if (existing) {
+                        existing.push(cell);
+                    } else {
+                        occupiedCells.set(key, [cell]);
+                    }
+                }
+
+                stackHeight += blockHeight;
+            }
+        });
+    }
+
+    return occupiedCells;
+}
+
+function getTopOccupiedCell(
+    occupiedCells: Map<string, OccupiedCell[]>,
+    position: { x: number; z: number },
+) {
+    const cells = occupiedCells.get(cellKey(position));
+    if (!cells?.length) {
+        return null;
+    }
+
+    return cells.reduce((topCell, cell) =>
+        cell.topHeight > topCell.topHeight ? cell : topCell,
+    );
+}
+
+function getSegmentFootprintOffsets(
+    blockData: BlockData[] | null | undefined,
+    segment: MovingSegment,
+) {
+    const offsetsByKey = new Map<string, { x: number; y: number }>();
+    for (const block of segment.blocks) {
+        const blockEntity = getBlockDataByName(blockData, block.name);
+        for (const offset of getGardenBlockFootprintOffsets(
+            blockEntity,
+            block.rotation,
+        )) {
+            offsetsByKey.set(`${offset.x}|${offset.y}`, offset);
+        }
+    }
+
+    return Array.from(offsetsByKey.values());
 }
 
 function createTargetOffsets(
@@ -241,6 +338,11 @@ export function resolvePickupPlacementPreviewForRelative({
             segment.blocks.map((segmentBlock) => segmentBlock.id),
         ),
     );
+    const occupiedCells = createOccupiedCells({
+        blockData,
+        movingBlockIds,
+        stacks,
+    });
 
     const placementPreviews: PlacementPreview[] = movingSegments.flatMap(
         (segment) => {
@@ -252,18 +354,15 @@ export function resolvePickupPlacementPreviewForRelative({
                 x: segment.sourceStack.position.x + relative.x,
                 z: segment.sourceStack.position.z + relative.z,
             };
-            const destinationStack = getStack(stacks, destination);
-            const destinationBlocks =
-                destinationStack?.blocks.filter(
-                    (candidate) => !movingBlockIds.has(candidate.id),
-                ) ?? [];
-            const destinationWithoutMoving = destinationStack
-                ? {
-                      ...destinationStack,
-                      blocks: destinationBlocks,
-                  }
-                : undefined;
-            const blockUnder = destinationBlocks.at(-1);
+            const footprintOffsets = getSegmentFootprintOffsets(
+                blockData,
+                segment,
+            );
+            const anchorOccupiedCell = getTopOccupiedCell(
+                occupiedCells,
+                destination,
+            );
+            const blockUnder = anchorOccupiedCell?.block;
             const blockUnderData = blockUnder
                 ? getBlockDataByName(blockData, blockUnder.name)
                 : null;
@@ -273,19 +372,60 @@ export function resolvePickupPlacementPreviewForRelative({
                 destination,
                 blockUnderData,
             });
-            const isStackable = blockUnderData?.attributes?.stackable ?? true;
-            const hoverHeight =
-                getStackHeight(blockData, destinationWithoutMoving) -
-                segment.baseHeight;
+            const footprintHeights = footprintOffsets.map((offset) => {
+                const footprintDestination = {
+                    x: destination.x + offset.x,
+                    z: destination.z + offset.y,
+                };
+                const occupiedCell = getTopOccupiedCell(
+                    occupiedCells,
+                    footprintDestination,
+                );
+                const supportStack = getStack(stacks, footprintDestination);
+                const supportStackWithoutMoving = supportStack
+                    ? {
+                          ...supportStack,
+                          blocks: supportStack.blocks.filter(
+                              (candidate) => !movingBlockIds.has(candidate.id),
+                          ),
+                      }
+                    : undefined;
+
+                return {
+                    isBlocked: occupiedCell !== null && !occupiedCell.stackable,
+                    hoverHeight:
+                        (occupiedCell?.topHeight ??
+                            getStackHeight(
+                                blockData,
+                                supportStackWithoutMoving,
+                            )) - segment.baseHeight,
+                };
+            });
+            const hoverHeight = Math.max(
+                ...footprintHeights.map(
+                    (footprintHeight) => footprintHeight.hoverHeight,
+                ),
+            );
+            const cellsMismatch = footprintHeights.some(
+                (footprintHeight) =>
+                    Math.abs(hoverHeight - footprintHeight.hoverHeight) >
+                    0.0001,
+            );
 
             return [
                 {
                     blockUnderId: blockUnder?.id ?? null,
                     blockUnderName: blockUnder?.name ?? null,
                     destination,
+                    footprintCellCount: footprintOffsets.length,
                     hoverHeight,
                     isRecycler,
-                    isBlocked: !isStackable && !isRecycler,
+                    isBlocked:
+                        (!isRecycler &&
+                            footprintHeights.some(
+                                (footprintHeight) => footprintHeight.isBlocked,
+                            )) ||
+                        cellsMismatch,
                     segment,
                 },
             ];
@@ -323,6 +463,7 @@ export function resolvePickupPlacementPreviewForRelative({
         sourcePreview.segment.blocks.length === 1 &&
         sourcePreview.segment.blocks[0]?.name !== 'GardenBox' &&
         sourcePreview.segment.blocks[0]?.name !== 'Raised_Bed' &&
+        sourcePreview.footprintCellCount === 1 &&
         placementPreviews.length === 1;
     const heightsMismatch = placementPreviews.some(
         (preview) => Math.abs(sourceHoverHeight - preview.hoverHeight) > 0.0001,

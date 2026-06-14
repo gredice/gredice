@@ -30,12 +30,16 @@ function createBlockData({
     name,
     recycler = false,
     stackable = true,
+    spanDepth,
+    spanWidth,
 }: {
     height?: number;
     id: number;
     name: string;
     recycler?: boolean;
     stackable?: boolean;
+    spanDepth?: number;
+    spanWidth?: number;
 }): BlockData {
     return {
         id,
@@ -56,6 +60,8 @@ function createBlockData({
             stackable,
             type: 'decoration',
             nightOnlyPurchase: false,
+            ...(spanDepth !== undefined ? { spanDepth } : {}),
+            ...(spanWidth !== undefined ? { spanWidth } : {}),
         },
         prices: {
             sunflowers: 0,
@@ -115,6 +121,13 @@ const blockData = [
         name: 'Composter',
         recycler: true,
         stackable: false,
+    }),
+    createBlockData({
+        id: 7,
+        name: 'LemonadeStand',
+        stackable: false,
+        spanDepth: 1,
+        spanWidth: 2,
     }),
 ];
 
@@ -254,6 +267,46 @@ describe('resolvePickupPlacementPreviewForRelative', () => {
 
         assert.equal(preview?.canStoreInGardenBox, false);
         assert.equal(preview?.nextIsOverRecycler, false);
+        assert.equal(preview?.nextIsBlocked, true);
+    });
+
+    it('blocks multi-cell drops that overlap a non-stackable footprint cell', () => {
+        const stand = createBlock('LemonadeStand', 'stand');
+        const waterWell = createBlock('WaterWell', 'water-well');
+        const sourceStack = createStack(0, 0, [stand]);
+        const supportStack = createStack(1, 0, [createBlock('Tree', 'tree')]);
+        const blockedStack = createStack(2, 0, [waterWell]);
+
+        const preview = resolvePickupPlacementPreviewForRelative({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments: [
+                createMovingSegment({ block: stand, sourceStack }),
+            ],
+            relative: new Vector3(1, 0, 0),
+            stacks: [sourceStack, supportStack, blockedStack],
+        });
+
+        assert.equal(preview?.nextIsBlocked, true);
+    });
+
+    it('blocks multi-cell drops onto uneven support heights', () => {
+        const stand = createBlock('LemonadeStand', 'stand');
+        const sourceStack = createStack(0, 0, [stand]);
+        const supportStack = createStack(1, 0, [createBlock('Tree', 'tree')]);
+
+        const preview = resolvePickupPlacementPreviewForRelative({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments: [
+                createMovingSegment({ block: stand, sourceStack }),
+            ],
+            relative: new Vector3(1, 0, 0),
+            stacks: [sourceStack, supportStack],
+        });
+
         assert.equal(preview?.nextIsBlocked, true);
     });
 });

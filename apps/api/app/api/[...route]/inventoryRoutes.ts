@@ -296,6 +296,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     gardenBlock.name,
                 ]),
             );
+            const blockRotationById = new Map(
+                gardenBlocks.map((gardenBlock) => [
+                    gardenBlock.id,
+                    gardenBlock.rotation,
+                ]),
+            );
             const blockDataByName = new Map<
                 string,
                 (typeof blockData)[number]
@@ -311,6 +317,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 blockName,
                 stacks: garden.stacks,
                 blockNameById,
+                blockRotationById,
                 blockDataByName,
             });
             if (!placement.valid) {

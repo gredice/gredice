@@ -93,6 +93,7 @@ import { calculateRaisedBedsValidity } from '../../../lib/garden/raisedBedsServi
 import {
     validateConnectedRaisedBedMove,
     validateRaisedBedPlacement,
+    validateSpanningBlockMove,
     validateStackPlacement,
 } from '../../../lib/garden/stacksPatchValidation';
 import {
@@ -1389,6 +1390,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const blockNameById = new Map(
                 gardenBlocks.map((block) => [block.id, block.name]),
             );
+            const blockRotationById = new Map(
+                gardenBlocks.map((block) => [block.id, block.rotation]),
+            );
             const blockDataByName = new Map(
                 blockData.map((block) => [block.information.name, block]),
             );
@@ -1787,6 +1791,23 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             : fromStack.blocks[fromPosition.index];
 
                     if (typeof fromValue === 'string') {
+                        const spanValidation = validateSpanningBlockMove({
+                            stacks: initialGardenState.stacks,
+                            fromPath: from,
+                            toPath: path,
+                            movedBlockId: fromValue,
+                            blockNameById,
+                            blockDataByName,
+                            blockRotationById,
+                            parsePath,
+                        });
+                        if (!spanValidation.valid) {
+                            return context.json(
+                                { error: spanValidation.error },
+                                400,
+                            );
+                        }
+
                         const validation = validateConnectedRaisedBedMove({
                             stacks: initialGardenState.stacks,
                             fromPath: from,
@@ -2157,6 +2178,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const blockNameById = new Map(
                 gardenBlocks.map((block) => [block.id, block.name] as const),
             );
+            const blockRotationById = new Map(
+                gardenBlocks.map((block) => [block.id, block.rotation]),
+            );
             const blockDataByName = new Map<
                 string,
                 (typeof blockData)[number]
@@ -2171,6 +2195,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 blockName,
                 stacks: garden.stacks,
                 blockNameById,
+                blockRotationById,
                 blockDataByName,
                 requestedPosition: position,
             });

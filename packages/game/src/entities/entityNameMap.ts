@@ -40,6 +40,8 @@ import { GiftBoxGreenGold } from './GiftBoxGreenGold';
 import { GiftBoxPurpleSilver } from './GiftBoxPurpleSilver';
 import { GiftBoxRedWhite } from './GiftBoxRedWhite';
 import { GiftBoxWhiteGreen } from './GiftBoxWhiteGreen';
+import { IceCreamCart } from './IceCreamCart';
+import { LemonadeStand } from './LemonadeStand';
 import { LiquidPreparationBottle } from './LiquidPreparationBottle';
 import { PaintRoller } from './PaintRoller';
 import { Pine } from './Pine';
@@ -102,6 +104,8 @@ export const entityNameMap = {
     LiquidPreparationBottleBeetleControl: LiquidPreparationBottle,
     PaintRoller: PaintRoller,
     WaterWell: WaterWell,
+    LemonadeStand: LemonadeStand,
+    IceCreamCart: IceCreamCart,
     BirdHouse: BirdHouse,
     CatPillow: CatPillow,
     Cat_Pillow: CatPillow,

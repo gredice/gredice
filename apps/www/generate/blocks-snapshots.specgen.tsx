@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import type { BlockData } from '@gredice/client';
+import { getGardenBlockSpan } from '@gredice/js/gardenBlocks';
 import { test } from '@playwright/experimental-ct-react';
 import sharp from 'sharp';
 import { allGameAssetNames } from '../../../packages/game/src/data/models';
@@ -90,25 +91,55 @@ function getSnapshotView(entity: BlockData): SnapshotView {
     return 'normal';
 }
 
-function getViewOptions(view: SnapshotView): {
+type SnapshotViewOptions = {
     zoom?: number;
     itemPosition?: [number, number, number];
+    cameraTarget?: [number, number, number];
     label: string;
-} {
+};
+function getViewOptions(
+    entity: BlockData,
+    rotation: number,
+    view: SnapshotView,
+): SnapshotViewOptions {
+    const span = getGardenBlockSpan(entity, rotation);
+    const hasMultiBlockFootprint = span.width > 1 || span.depth > 1;
+    const target: [number, number, number] = hasMultiBlockFootprint
+        ? [1.25, entity.attributes.height * 0.45, 1.25]
+        : [1.25, 0, 1.25];
+    const centeredItemPosition: [number, number, number] = [
+        target[0] - (span.width - 1) / 2,
+        0,
+        target[2] - (span.depth - 1) / 2,
+    ];
+
     switch (view) {
         case 'far':
             return {
-                zoom: 60,
-                itemPosition: [1.25, 0, 1.25],
+                zoom: hasMultiBlockFootprint ? 38 : 60,
+                itemPosition: hasMultiBlockFootprint
+                    ? centeredItemPosition
+                    : target,
+                cameraTarget: hasMultiBlockFootprint ? target : undefined,
                 label: 'zoomed out',
             };
         case 'closeup':
             return {
                 zoom: 130,
+                itemPosition: hasMultiBlockFootprint
+                    ? centeredItemPosition
+                    : undefined,
+                cameraTarget: hasMultiBlockFootprint ? target : undefined,
                 label: 'zoomed in',
             };
         default:
-            return { label: 'normal' };
+            return hasMultiBlockFootprint
+                ? {
+                      itemPosition: centeredItemPosition,
+                      cameraTarget: target,
+                      label: 'normal',
+                  }
+                : { label: 'normal' };
     }
 }
 
@@ -126,7 +157,8 @@ test.describe('block screenshots', async () => {
                     console.error('Browser page error:', error.message);
                 });
                 const view = getSnapshotView(entity);
-                const { itemPosition, label, zoom } = getViewOptions(view);
+                const { cameraTarget, itemPosition, label, zoom } =
+                    getViewOptions(entity, rotation, view);
                 console.info(
                     'Taking screenshot of',
                     entity.information.name,
@@ -138,6 +170,7 @@ test.describe('block screenshots', async () => {
                         <EntitySnapshotViewer
                             style={{ width: 160, height: 160 }}
                             zoom={zoom}
+                            cameraTarget={cameraTarget}
                             itemPosition={itemPosition}
                             entityName={entity.information.name}
                             appBaseUrl={gameAssetBaseUrl}
