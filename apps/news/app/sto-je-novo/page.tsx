@@ -1,3 +1,4 @@
+import { Timeline, TimelineEntry, TimelineGroup } from '@gredice/ui/Timeline';
 import Link from 'next/link';
 import { EmptyNewsState } from '../../components/EmptyNewsState';
 import {
@@ -7,6 +8,61 @@ import {
 } from '../../lib/news';
 
 export const dynamic = 'force-dynamic';
+
+const monthFormatter = new Intl.DateTimeFormat('hr-HR', {
+    month: 'long',
+    year: 'numeric',
+});
+
+type ChangelogEntry = Awaited<ReturnType<typeof getChangelogEntries>>[number];
+
+type ChangelogTimelineGroup = {
+    entries: ChangelogEntry[];
+    monthKey: string;
+    monthLabel: string;
+};
+
+function paddedDatePart(value: number) {
+    return value.toString().padStart(2, '0');
+}
+
+function getEntryDate(entry: ChangelogEntry) {
+    if (!entry.publishedAt) {
+        return null;
+    }
+
+    const date = new Date(entry.publishedAt);
+    return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function getMonthKey(date: Date) {
+    return [date.getFullYear(), paddedDatePart(date.getMonth() + 1)].join('-');
+}
+
+function groupEntriesByMonth(entries: ChangelogEntry[]) {
+    const groups: ChangelogTimelineGroup[] = [];
+    const groupsByKey = new Map<string, ChangelogTimelineGroup>();
+
+    for (const entry of entries) {
+        const date = getEntryDate(entry);
+        const monthKey = date ? getMonthKey(date) : 'unknown';
+        let group = groupsByKey.get(monthKey);
+
+        if (!group) {
+            group = {
+                entries: [],
+                monthKey,
+                monthLabel: date ? monthFormatter.format(date) : 'Bez datuma',
+            };
+            groupsByKey.set(monthKey, group);
+            groups.push(group);
+        }
+
+        group.entries.push(entry);
+    }
+
+    return groups;
+}
 
 export default async function WhatsNewPage({
     searchParams,
@@ -19,6 +75,9 @@ export default async function WhatsNewPage({
         tag ? getChangelogEntries({ tag }) : getChangelogEntries(),
     ]);
     const tags = uniqueNewsValues(allEntries, (item) => item.tags);
+    const timelineGroups = groupEntriesByMonth(entries);
+    const totalEntries = entries.length;
+    let entryIndex = 0;
 
     return (
         <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-10 sm:px-6 lg:px-8">
@@ -62,36 +121,57 @@ export default async function WhatsNewPage({
                 </div>
             ) : null}
             {entries.length > 0 ? (
-                <ol className="relative grid gap-4 border-l pl-5">
-                    {entries.map((entry) => (
-                        <li key={entry.id} className="relative">
-                            <span className="absolute -left-[1.82rem] top-5 size-3 rounded-full border-2 border-background bg-primary" />
-                            <Link
-                                className="grid gap-3 rounded-md border bg-card p-5 shadow-xs transition-colors hover:bg-muted/20"
-                                href={`/sto-je-novo/${entry.slug}`}
-                            >
-                                <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
-                                    {entry.publishedAt ? (
-                                        <span>
-                                            {formatNewsDate(entry.publishedAt)}
-                                        </span>
-                                    ) : null}
-                                    {entry.tags.map((entryTag) => (
-                                        <span key={entryTag}>{entryTag}</span>
-                                    ))}
-                                </div>
-                                <h2 className="text-xl font-bold leading-tight">
-                                    {entry.title}
-                                </h2>
-                                {entry.excerpt ? (
-                                    <p className="text-sm leading-6 text-muted-foreground">
-                                        {entry.excerpt}
-                                    </p>
-                                ) : null}
-                            </Link>
-                        </li>
+                <Timeline>
+                    {timelineGroups.map((group, groupIndex) => (
+                        <TimelineGroup
+                            hasItems={group.entries.length > 0}
+                            isFirst={groupIndex === 0}
+                            key={group.monthKey}
+                            label={group.monthLabel}
+                        >
+                            {group.entries.map((entry) => {
+                                const currentEntryIndex = entryIndex;
+                                const dateLabel = entry.publishedAt
+                                    ? formatNewsDate(entry.publishedAt)
+                                    : null;
+                                entryIndex += 1;
+
+                                return (
+                                    <TimelineEntry
+                                        index={currentEntryIndex}
+                                        isLast={
+                                            currentEntryIndex ===
+                                            totalEntries - 1
+                                        }
+                                        key={entry.id}
+                                        label={dateLabel ?? 'Bez datuma'}
+                                    >
+                                        <Link
+                                            className="grid gap-3 rounded-md border bg-card p-5 shadow-xs transition-colors hover:bg-muted/20"
+                                            href={`/sto-je-novo/${entry.slug}`}
+                                        >
+                                            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
+                                                {entry.tags.map((entryTag) => (
+                                                    <span key={entryTag}>
+                                                        {entryTag}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                            <h2 className="text-xl font-bold leading-tight">
+                                                {entry.title}
+                                            </h2>
+                                            {entry.excerpt ? (
+                                                <p className="text-sm leading-6 text-muted-foreground">
+                                                    {entry.excerpt}
+                                                </p>
+                                            ) : null}
+                                        </Link>
+                                    </TimelineEntry>
+                                );
+                            })}
+                        </TimelineGroup>
                     ))}
-                </ol>
+                </Timeline>
             ) : (
                 <EmptyNewsState title="Još nema zapisa">
                     Trenutačno nema objavljenih novosti.

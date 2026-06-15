@@ -157,6 +157,7 @@ import {
     TIME_FILTER_OPTIONS,
 } from '@gredice/ui/TableFilter';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
+import { Timeline, TimelineEntry, TimelineGroup } from '@gredice/ui/Timeline';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@gredice/ui/Tooltip';
 import { Typography } from '@gredice/ui/Typography';
 import { UserAvatar } from '@gredice/ui/UserAvatar';
@@ -268,6 +269,42 @@ const galleryPlants: GalleryPlant[] = [
         name: 'Paprika',
         state: 'Presadnica',
         imageUrl: 'https://cdn.gredice.com/avatars/farmer-male.png',
+    },
+];
+
+const publicReleaseTimelineGroups = [
+    {
+        id: '2026-06',
+        label: 'lipanj 2026.',
+        entries: [
+            {
+                id: 'delivery-slots',
+                date: '12. lipnja 2026.',
+                title: 'Jasniji status dostave',
+                description:
+                    'Korisnici vide sto je pripremljeno, sto je na putu i koji je sljedeci korak.',
+            },
+            {
+                id: 'harvest-traces',
+                date: '5. lipnja 2026.',
+                title: 'QR trag berbe',
+                description:
+                    'Javna vremenska crta povezuje radnje, fotografije i status biljke.',
+            },
+        ],
+    },
+    {
+        id: '2026-05',
+        label: 'svibanj 2026.',
+        entries: [
+            {
+                id: 'garden-summary',
+                date: '24. svibnja 2026.',
+                title: 'Tjedni pregled vrta',
+                description:
+                    'Vlasnici vrta imaju mirniji pregled nedavnih promjena i nadolazecih zadataka.',
+            },
+        ],
     },
 ];
 
@@ -828,6 +865,58 @@ function OperationsDashboardShowcase() {
     );
 }
 
+function PublicReleaseTimeline() {
+    let entryIndex = 0;
+    const totalEntries = publicReleaseTimelineGroups.reduce(
+        (total, group) => total + group.entries.length,
+        0,
+    );
+
+    return (
+        <section className="rounded-lg bg-background py-5 sm:py-7">
+            <Timeline>
+                {publicReleaseTimelineGroups.map((group, groupIndex) => (
+                    <TimelineGroup
+                        isFirst={groupIndex === 0}
+                        key={group.id}
+                        label={group.label}
+                    >
+                        {group.entries.map((entry) => {
+                            const currentEntryIndex = entryIndex;
+                            entryIndex += 1;
+
+                            return (
+                                <TimelineEntry
+                                    index={currentEntryIndex}
+                                    isLast={
+                                        currentEntryIndex === totalEntries - 1
+                                    }
+                                    key={entry.id}
+                                    label={entry.date}
+                                >
+                                    <Card className="p-5">
+                                        <Stack spacing={2}>
+                                            <Typography
+                                                level="h3"
+                                                className="text-xl"
+                                            >
+                                                {entry.title}
+                                            </Typography>
+                                            <Typography className="text-muted-foreground">
+                                                {entry.description}
+                                            </Typography>
+                                        </Stack>
+                                    </Card>
+                                </TimelineEntry>
+                            );
+                        })}
+                    </TimelineGroup>
+                ))}
+            </Timeline>
+        </section>
+    );
+}
+
 function PublicContentShowcase() {
     return (
         <div className="min-h-screen">
@@ -854,6 +943,8 @@ function PublicContentShowcase() {
                         header="Vodic kroz proljetnu sadnju"
                         description="Public content composition with CMS sections, media, text rendering, and navigation controls."
                     />
+
+                    <PublicReleaseTimeline />
 
                     <Heading1
                         tagline="Sezonski vodic"
