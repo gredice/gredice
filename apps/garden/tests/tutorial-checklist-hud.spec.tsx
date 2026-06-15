@@ -149,7 +149,7 @@ test('tutorial checklist modal uses claimable checklist cards and collapses comp
     const activeGroupClassName = await groups
         .nth(0)
         .evaluate((node) => node.className);
-    expect(activeGroupClassName).toContain('bg-white');
+    expect(activeGroupClassName).toContain('bg-card');
     expect(activeGroupClassName).toContain('overflow-hidden');
     const activeGroupHeader = groups
         .nth(0)
@@ -185,7 +185,8 @@ test('tutorial checklist modal uses claimable checklist cards and collapses comp
     });
     expect(claimableStyles.animationName).toContain('tutorial-task-glow');
     expect(claimableStyles.backgroundImage).toContain('conic-gradient');
-    expect(claimableStyles.className).toContain('bg-green-50');
+    expect(claimableStyles.className).toContain('bg-background');
+    expect(claimableStyles.className).toContain('border-green-500');
 
     const claimButtonClassName = await claimableTask
         .getByRole('button', { name: /\+10/ })
@@ -203,7 +204,7 @@ test('tutorial checklist modal uses claimable checklist cards and collapses comp
     const unfinishedClassName = await unfinishedTask.evaluate(
         (node) => node.className,
     );
-    expect(unfinishedClassName).toContain('bg-transparent');
+    expect(unfinishedClassName).toContain('bg-background');
     expect(unfinishedClassName).toContain('shadow-sm');
 
     const openButton = unfinishedTask.getByRole('button', { name: 'Otvori' });
@@ -212,7 +213,8 @@ test('tutorial checklist modal uses claimable checklist cards and collapses comp
     const openButtonClassName = await openButton.evaluate(
         (node) => node.className,
     );
-    expect(openButtonClassName).toContain('bg-white');
+    expect(openButtonClassName).toContain('bg-background');
+    expect(openButtonClassName).not.toContain('bg-white');
 
     await groups.nth(1).getByRole('button', { name: /Dan 2/ }).click();
     await expect(
@@ -260,10 +262,33 @@ test('tutorial checklist modal uses readable dark mode surfaces', async ({
     const titleColor = await claimableTask
         .getByText('Postavi biljku u gredicu')
         .evaluate((node) => window.getComputedStyle(node).color);
+    const tokenColors = await page.evaluate(() => {
+        const probe = document.createElement('div');
+        document.body.append(probe);
 
-    expect(dialogBackground).not.toBe('rgb(255, 255, 255)');
-    expect(groupBackground).not.toBe('rgb(255, 255, 255)');
-    expect(claimableBackground).not.toBe('rgb(240, 253, 244)');
-    expect(openButtonBackground).not.toBe('rgb(255, 255, 255)');
-    expect(titleColor).not.toBe('rgb(20, 83, 45)');
+        function readColor(value: string) {
+            probe.style.color = value;
+            return window.getComputedStyle(probe).color;
+        }
+
+        function readBackground(value: string) {
+            probe.style.backgroundColor = value;
+            return window.getComputedStyle(probe).backgroundColor;
+        }
+
+        const colors = {
+            background: readBackground('hsl(var(--background))'),
+            card: readBackground('hsl(var(--card))'),
+            foreground: readColor('hsl(var(--foreground))'),
+        };
+
+        probe.remove();
+        return colors;
+    });
+
+    expect(dialogBackground).toBe(tokenColors.background);
+    expect(groupBackground).toBe(tokenColors.card);
+    expect(claimableBackground).toBe(tokenColors.background);
+    expect(openButtonBackground).toBe(tokenColors.background);
+    expect(titleColor).toBe(tokenColors.foreground);
 });
