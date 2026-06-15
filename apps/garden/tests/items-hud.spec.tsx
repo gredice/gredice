@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import {
+    CloseupBottomHudStory,
     ItemsHudAlignmentStory,
     ItemsHudControlsTooltipStory,
     LowSunflowerBalanceItemsHudStory,
@@ -101,6 +102,36 @@ test('bottom helper controls are left aligned', async ({ mount, page }) => {
     const controlsBox = await controls.boundingBox();
     expect(controlsBox).not.toBeNull();
     expect(Math.round(controlsBox?.x ?? 0)).toBe(0);
+});
+
+test('bottom hud slides out and disables controls in closeup view', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(SHORT_MOBILE_VIEWPORT);
+    await mount(<CloseupBottomHudStory />);
+
+    const controls = page.getByTestId('bottom-controls');
+    const items = page.getByTestId('bottom-items');
+
+    await expect(controls).toHaveAttribute('aria-hidden', 'true');
+    await expect(items).toHaveAttribute('aria-hidden', 'true');
+    await expect(controls).toHaveCSS('opacity', '0');
+    await expect(items).toHaveCSS('opacity', '0');
+    await expect(controls).toHaveCSS('pointer-events', 'none');
+    await expect(items).toHaveCSS('pointer-events', 'none');
+
+    await expect
+        .poll(async () => {
+            const boxes = await Promise.all([
+                controls.boundingBox(),
+                items.boundingBox(),
+            ]);
+            return boxes.every(
+                (box) => box !== null && box.y >= SHORT_MOBILE_VIEWPORT.height,
+            );
+        })
+        .toBe(true);
 });
 
 test('controls instructions clear the item picker on tablet layouts', async ({
