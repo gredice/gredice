@@ -37,7 +37,7 @@
         "@standard-community/standard-openapi": "0.2.9",
         "@upstash/redis": "1.38.0",
         "@valibot/to-json-schema": "1.7.1",
-        "ai": "6.0.193",
+        "ai": "6.0.199",
         "date-fns": "4.3.0",
         "drizzle-orm": "0.45.2",
         "flags": "4.0.6",
