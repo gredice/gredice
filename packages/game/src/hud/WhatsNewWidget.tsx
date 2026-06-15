@@ -221,7 +221,15 @@ function ChangelogCoverImage({
     );
 }
 
-export function WhatsNewWidget({ enabled }: { enabled: boolean }) {
+type WhatsNewWidgetProps = {
+    enabled: boolean;
+    openRequestId?: number;
+};
+
+export function WhatsNewWidget({
+    enabled,
+    openRequestId,
+}: WhatsNewWidgetProps) {
     const { track } = useGameAnalytics();
     const { data: currentUser } = useCurrentUser(enabled);
     const updateUser = useUpdateUser({ enabled });
@@ -231,6 +239,7 @@ export function WhatsNewWidget({ enabled }: { enabled: boolean }) {
         string | null
     >(null);
     const markedLatestRef = useRef<string | null>(null);
+    const handledOpenRequestIdRef = useRef(openRequestId);
     const widgetEnabled = Boolean(
         enabled && currentUser && !currentUser.whatsNewPopupDisabled,
     );
@@ -289,6 +298,25 @@ export function WhatsNewWidget({ enabled }: { enabled: boolean }) {
             whatsNewLastSeenAt: newestPublishedAt,
         });
     }, [currentUser, newestPublishedAt, newestPublishedAtIso, updateUser]);
+
+    useEffect(() => {
+        if (
+            openRequestId === undefined ||
+            handledOpenRequestIdRef.current === openRequestId ||
+            !widgetEnabled ||
+            !latestEntry
+        ) {
+            return;
+        }
+
+        handledOpenRequestIdRef.current = openRequestId;
+        setExpandedEntryId(latestEntry.id);
+        setModalOpen(true);
+        track('game_whats_new_widget_opened', {
+            entryId: latestEntry.id,
+            source: 'hud_button',
+        });
+    }, [latestEntry, openRequestId, track, widgetEnabled]);
 
     useEffect(() => {
         if (!modalOpen) {

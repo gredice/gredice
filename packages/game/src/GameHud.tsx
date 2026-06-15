@@ -1,5 +1,7 @@
 'use client';
 
+import { IconButton } from '@gredice/ui/IconButton';
+import { Megaphone } from '@gredice/ui/icons';
 import { cx } from '@gredice/ui/utils';
 import { useState } from 'react';
 import type { GameSceneProps } from './GameScene';
@@ -67,6 +69,7 @@ export function GameHud({
     suppressOpeningHud?: boolean;
 }) {
     const [welcomeConfirmed, setWelcomeConfirmed] = useState(false);
+    const [whatsNewOpenRequestId, setWhatsNewOpenRequestId] = useState(0);
     const [visitSummaryConfirmation, setVisitSummaryConfirmation] = useState<{
         confirmed: boolean;
         gardenId: number | null;
@@ -120,6 +123,8 @@ export function GameHud({
         !suppressOpeningHud &&
         visitSummaryStageComplete &&
         (isSandbox || raisedBedOnboardingChecklistResolved);
+    const whatsNewHudEnabled =
+        !isLocalSandbox && !suppressOpeningHud && openingFlowComplete;
 
     return (
         <>
@@ -197,6 +202,20 @@ export function GameHud({
                     <CameraHud />
                     <AudioHud />
                     <ControlsTooltipHud />
+                    {whatsNewHudEnabled && (
+                        <IconButton
+                            title="Što je novo"
+                            variant="plain"
+                            onClick={() =>
+                                setWhatsNewOpenRequestId(
+                                    (current) => current + 1,
+                                )
+                            }
+                            className="pointer-events-auto hover:bg-muted"
+                        >
+                            <Megaphone className="size-5" />
+                        </IconButton>
+                    )}
                 </div>
                 <SandboxBlockTrashDropTarget />
                 <div
@@ -230,7 +249,10 @@ export function GameHud({
                         }
                     />
                     <GardenVisitSummaryHighlightHud />
-                    <WhatsNewWidget enabled={openingFlowComplete} />
+                    <WhatsNewWidget
+                        enabled={openingFlowComplete}
+                        openRequestId={whatsNewOpenRequestId}
+                    />
                 </>
             )}
             {!isLocalSandbox && <PaymentSuccessfulMessage />}

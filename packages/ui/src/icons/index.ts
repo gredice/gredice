@@ -58,6 +58,7 @@ export {
     Filter,
     Flame,
     Frown as SmileSad,
+    GamepadDirectional,
     Ghost,
     GitCommit as Channel,
     Globe,

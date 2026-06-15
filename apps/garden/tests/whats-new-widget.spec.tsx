@@ -1,6 +1,9 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import type { Page, Route } from '@playwright/test';
-import { WhatsNewWidgetStory } from './WhatsNewWidgetStory';
+import {
+    WhatsNewWidgetHudRequestStory,
+    WhatsNewWidgetStory,
+} from './WhatsNewWidgetStory';
 
 const latestPublishedAt = '2026-06-04T08:00:00.000Z';
 
@@ -232,4 +235,29 @@ test('what is new widget stays hidden for already seen changelog entries', async
     await expect(
         page.getByRole('button', { name: /Timski dokumenti/u }),
     ).toHaveCount(0);
+});
+
+test('what is new modal opens from a hud request after latest entry is seen', async ({
+    mount,
+    page,
+}) => {
+    const recorded = await mockWhatsNewApi(page, {
+        initialWhatsNewLastSeenAt: latestPublishedAt,
+    });
+
+    await mount(<WhatsNewWidgetHudRequestStory />);
+
+    await expect(
+        page.getByRole('button', { name: /Timski dokumenti/u }),
+    ).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Otvori novosti' }).click();
+
+    await expect(
+        page.getByRole('dialog', { name: 'Što je novo' }),
+    ).toBeVisible();
+    await expect(
+        page.getByText('Timski dokumenti sada su dostupni izravno u igri.'),
+    ).toBeVisible();
+    expect(recorded.userPatches).toHaveLength(0);
 });
