@@ -6,6 +6,7 @@ import { type ThreeEvent, useThree } from '@react-three/fiber';
 import {
     type PropsWithChildren,
     Suspense,
+    useCallback,
     useContext,
     useEffect,
     useLayoutEffect,
@@ -101,6 +102,8 @@ type PointerSession = {
     hintVisible: boolean;
     hintTimer: number | null;
     holdTimer: number | null;
+    dragAutopanFrame: number | null;
+    dragAutopanPreviousTime: number | null;
     latestPreview: ResolvedPlacementPreview | null;
 };
 
@@ -177,6 +180,7 @@ export function PickableGroup({
     const currentStackHeight = useStackHeight(stack, block);
 
     const effectsAudioMixer = useGameState((state) => state.audio.effects);
+    const gameCamera = useGameState((state) => state.gameCamera);
     const setIsDragging = useGameState((state) => state.setIsDragging);
     const pickupSound = effectsAudioMixer.useSoundEffect(
         'https://cdn.gredice.com/sounds/effects/Pick Grass 01.mp3',
@@ -278,6 +282,14 @@ export function PickableGroup({
     const pointerSession = useRef<PointerSession | null>(null);
     const pointerSessionCleanup = useRef<(() => void) | null>(null);
 
+    const stopDragAutopan = useCallback((session: PointerSession) => {
+        if (session.dragAutopanFrame !== null) {
+            window.cancelAnimationFrame(session.dragAutopanFrame);
+            session.dragAutopanFrame = null;
+        }
+        session.dragAutopanPreviousTime = null;
+    }, []);
+
     useEffect(() => {
         const hasStackPositionChanged =
             previousStackPosition.current.x !== stack.position.x ||
@@ -357,10 +369,11 @@ export function PickableGroup({
             if (session.holdTimer) {
                 window.clearTimeout(session.holdTimer);
             }
+            stopDragAutopan(session);
             pointerSessionCleanup.current?.();
             pointerSessionCleanup.current = null;
         };
-    }, []);
+    }, [stopDragAutopan]);
 
     function getMovingSegments(): MovingSegment[] {
         if (blockIndex < 0) {
@@ -648,6 +661,7 @@ export function PickableGroup({
 
         session.cancelled = true;
         clearSessionTimers(session);
+        stopDragAutopan(session);
         pointerSession.current = null;
         cleanupPointerSessionListeners();
         setPickupOutlineVisible(false);
@@ -655,6 +669,61 @@ export function PickableGroup({
         if (resetSpring) {
             dragSpringsApi.start({ internalPosition: [0, 0, 0], scale: 1 });
         }
+    }
+
+    function refreshPlacementPreviewFromSession(session: PointerSession) {
+        const preview = resolvePlacementPreview(
+            session.lastClientX,
+            session.lastClientY,
+            session.pickupAnchorOffset,
+        );
+        if (!preview) {
+            return;
+        }
+
+        session.latestPreview = preview;
+        applyActivePreview(preview);
+    }
+
+    function startDragAutopan(session: PointerSession) {
+        if (session.dragAutopanFrame !== null || !gameCamera) {
+            return;
+        }
+
+        const tick = (timestamp: number) => {
+            const activeSession = pointerSession.current;
+            if (
+                activeSession !== session ||
+                activeSession.cancelled ||
+                !activeSession.activated
+            ) {
+                stopDragAutopan(session);
+                return;
+            }
+
+            const previousTime =
+                activeSession.dragAutopanPreviousTime ?? timestamp;
+            activeSession.dragAutopanPreviousTime = timestamp;
+            const frameDeltaSeconds = Math.max(
+                0,
+                (timestamp - previousTime) / 1000,
+            );
+            const didPan = gameCamera.panByDragEdge(
+                {
+                    clientX: activeSession.lastClientX,
+                    clientY: activeSession.lastClientY,
+                },
+                frameDeltaSeconds,
+            );
+
+            if (didPan) {
+                refreshPlacementPreviewFromSession(activeSession);
+            }
+
+            activeSession.dragAutopanFrame = window.requestAnimationFrame(tick);
+        };
+
+        session.dragAutopanFrame = window.requestAnimationFrame(tick);
     }
 
     function applyActivePreview(preview: ResolvedPlacementPreview) {
@@ -946,23 +1015,14 @@ export function PickableGroup({
             }
 
             session.hasDraggedAfterPickup = true;
+            startDragAutopan(session);
         }
 
         setSandboxBlockTrashDropTargetActive(
             isPointerOverSandboxTrash(event.clientX, event.clientY),
         );
 
-        const preview = resolvePlacementPreview(
-            event.clientX,
-            event.clientY,
-            session.pickupAnchorOffset,
-        );
-        if (!preview) {
-            return;
-        }
-
-        session.latestPreview = preview;
-        applyActivePreview(preview);
+        refreshPlacementPreviewFromSession(session);
     }
 
     function handleWindowPointerUp(event: PointerEvent) {
@@ -972,6 +1032,7 @@ export function PickableGroup({
         }
 
         clearSessionTimers(session);
+        stopDragAutopan(session);
         cleanupPointerSessionListeners();
         pointerSession.current = null;
 
@@ -1048,6 +1109,8 @@ export function PickableGroup({
             hintVisible: false,
             hintTimer: null,
             holdTimer: null,
+            dragAutopanFrame: null,
+            dragAutopanPreviousTime: null,
             latestPreview: null,
         };
         pointerSession.current = session;
