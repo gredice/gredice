@@ -564,14 +564,10 @@ export function TutorialChecklistHud() {
     }, [data]);
 
     return (
-        <HudCard
-            open
-            position="floating"
-            className="relative grid size-11 place-items-center overflow-visible rounded-full p-0.5"
-        >
+        <HudCard open position="floating" className="relative grid">
             {claimableCount > 0 && (
                 <div
-                    className="pointer-events-none absolute -right-1.5 -top-1.5 z-20 grid size-4 place-items-center"
+                    className="pointer-events-none absolute right-0 top-0 z-20 grid size-4 place-items-center"
                     data-tutorial-checklist-claim-dot="true"
                 >
                     <div className="absolute inset-0 -z-10 rounded-full bg-green-500 animate-ping" />
@@ -596,7 +592,7 @@ export function TutorialChecklistHud() {
                         aria-label={
                             progressLabel ? `Zadaci ${progressLabel}` : 'Zadaci'
                         }
-                        className="relative size-10 overflow-visible rounded-full p-0"
+                        className="relative rounded-full w-10 h-10"
                         data-tutorial-checklist-trigger="true"
                         title="Zadaci"
                         variant="plain"
@@ -612,17 +608,15 @@ export function TutorialChecklistHud() {
                             unoptimized
                             width={36}
                         />
-                        {progressLabel ? (
-                            <Typography
-                                aria-hidden="true"
-                                bold
-                                className="pointer-events-none absolute bottom-1 left-1/2 -translate-x-1/2 text-[12px] leading-none text-foreground"
-                                data-tutorial-checklist-progress="true"
-                                level="body3"
-                            >
-                                {progressLabel}
-                            </Typography>
-                        ) : null}
+                        <Typography
+                            aria-hidden="true"
+                            bold
+                            className="pointer-events-none text-foreground mt-5"
+                            data-tutorial-checklist-progress="true"
+                            level="body3"
+                        >
+                            {progressLabel ?? '0/0'}
+                        </Typography>
                     </IconButton>
                 }
             >
