@@ -243,12 +243,15 @@ export function Nav({
     const categorizedTypes = navContext?.categorizedTypes || [];
     const uncategorizedTypes = navContext?.uncategorizedTypes || [];
     const shadowTypes = navContext?.shadowTypes || [];
+    const pendingCmsPagesReviewCount =
+        navContext?.pendingCmsPagesReviewCount ?? 0;
     const pendingAchievementsCount = navContext?.pendingAchievementsCount ?? 0;
     const pendingApprovalTasksCount =
         navContext?.pendingApprovalTasksCount ?? 0;
     const pendingCommunityEditRequestsCount =
         navContext?.pendingCommunityEditRequestsCount ?? 0;
     const quickActionBadgeCounts = {
+        pendingCmsPagesReviewCount,
         pendingAchievementsCount,
         pendingApprovalTasksCount,
     };
@@ -296,6 +299,7 @@ export function Nav({
                     label={adminPages.CmsPages.label}
                     icon={<File className="size-5" />}
                     onClick={onItemClick}
+                    badge={pendingCmsPagesReviewCount}
                     compact={compact}
                 />
             </NavSection>
