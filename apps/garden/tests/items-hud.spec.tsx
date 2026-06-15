@@ -223,6 +223,42 @@ test('pots are listed under the decoration picker without mulch blocks', async (
     ).toBeVisible();
 });
 
+test('trees are listed under the decoration tree picker', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<ItemsHudAlignmentStory />);
+
+    await expect(page.getByRole('button', { name: 'Drveće' })).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+
+    await expect(
+        page
+            .locator('[data-items-picker-group-label]')
+            .filter({ hasText: 'Drveće' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Tree', exact: true }),
+    ).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'PalmTree' })).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Drveće' }).click();
+
+    await expect(
+        page.getByRole('button', { name: 'Tree', exact: true }),
+    ).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Pine' })).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'DeadTreeTall' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'DeadTreeStump' }),
+    ).toBeVisible();
+    await expect(page.getByRole('button', { name: 'PalmTree' })).toBeVisible();
+});
+
 test('tool picker lists functional garden boxes outside sandbox', async ({
     mount,
     page,
@@ -269,8 +305,31 @@ test('sandbox decoration picker includes special blocks', async ({
     await expect(page.getByRole('button', { name: '🌻 0' })).not.toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Snowman' })).toBeVisible();
     await expect(
+        page
+            .locator('[data-items-picker-group-label]')
+            .filter({ hasText: 'Poklon kutije' }),
+    ).toBeVisible();
+    await expect(
+        page
+            .locator('[data-items-picker-group-label]')
+            .filter({ hasText: 'Drveće' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'GiftBox RedWhite' }),
+    ).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'PineAdvent' })).toHaveCount(
+        0,
+    );
+
+    await page.getByRole('button', { name: 'Poklon kutije' }).click();
+
+    await expect(
         page.getByRole('button', { name: 'GiftBox RedWhite' }),
     ).toBeVisible();
+
+    await page.getByRole('button', { name: 'Natrag' }).click();
+    await page.getByRole('button', { name: 'Drveće' }).click();
+
     await expect(
         page.getByRole('button', { name: 'PineAdvent' }),
     ).toBeVisible();

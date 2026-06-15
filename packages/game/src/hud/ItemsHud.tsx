@@ -57,6 +57,25 @@ const rockItems: HudItemEntity[] = [
     { type: 'entity', name: 'DesertStoneLarge' },
 ];
 
+const treeItems: HudItemEntity[] = [
+    { type: 'entity', name: 'PalmTree' },
+    { type: 'entity', name: 'Tree' },
+    { type: 'entity', name: 'Pine' },
+    { type: 'entity', name: 'DeadTreeTall' },
+    { type: 'entity', name: 'DeadTreeStump' },
+];
+
+const treeGroupEntityNames = new Set([
+    ...treeItems.map((item) => item.name),
+    'PineAdvent',
+]);
+
+const treePickerLabel = 'Drveće';
+const treePickerImageSrc = 'https://www.gredice.com/assets/blocks/Tree.webp';
+const giftBoxPickerLabel = 'Poklon kutije';
+const giftBoxPickerImageSrc =
+    'https://www.gredice.com/assets/blocks/GiftBox_RedWhite.webp';
+
 const items: HudItem[] = [
     {
         type: 'picker',
@@ -97,6 +116,12 @@ const items: HudItem[] = [
                     'https://www.gredice.com/assets/blocks/StoneMedium.webp',
                 items: rockItems,
             },
+            {
+                type: 'picker',
+                label: treePickerLabel,
+                imageSrc: treePickerImageSrc,
+                items: treeItems,
+            },
             { type: 'entity', name: 'Shade' },
             { type: 'entity', name: 'BeachUmbrella' },
             { type: 'entity', name: 'Stool' },
@@ -108,7 +133,6 @@ const items: HudItem[] = [
             { type: 'entity', name: 'BeachTowelStriped' },
             { type: 'entity', name: 'InflatablePoolSmall' },
             { type: 'entity', name: 'BeachChair' },
-            { type: 'entity', name: 'PalmTree' },
             { type: 'entity', name: 'BeachBall' },
             { type: 'entity', name: 'SandcastleSmallA' },
             { type: 'entity', name: 'BirdHouse' },
@@ -116,10 +140,6 @@ const items: HudItem[] = [
             { type: 'entity', name: 'CatPillow' },
             { type: 'entity', name: 'DogHouse' },
             { type: 'entity', name: 'Bush' },
-            { type: 'entity', name: 'Tree' },
-            { type: 'entity', name: 'Pine' },
-            { type: 'entity', name: 'DeadTreeTall' },
-            { type: 'entity', name: 'DeadTreeStump' },
             { type: 'entity', name: 'Tulip' },
             { type: 'entity', name: 'Sunflower' },
             { type: 'entity', name: 'CactusBarrel' },
@@ -177,11 +197,13 @@ function getSandboxExtraItemsByPicker(
     blockData: BlockData[] | null | undefined,
 ) {
     const extraItemsByPicker: Record<
-        'Blokovi' | 'Dekoracija',
+        'Blokovi' | 'Dekoracija' | 'Drvece' | 'PoklonKutije',
         HudItemEntity[]
     > = {
         Blokovi: [],
         Dekoracija: [],
+        Drvece: [],
+        PoklonKutije: [],
     };
 
     if (!blockData) {
@@ -202,13 +224,89 @@ function getSandboxExtraItemsByPicker(
         }
 
         names.add(name);
-        const pickerLabel = name.startsWith('Block_')
-            ? 'Blokovi'
-            : 'Dekoracija';
-        extraItemsByPicker[pickerLabel].push({ type: 'entity', name });
+        if (name.startsWith('Block_')) {
+            extraItemsByPicker.Blokovi.push({ type: 'entity', name });
+        } else if (name.startsWith('GiftBox_')) {
+            extraItemsByPicker.PoklonKutije.push({ type: 'entity', name });
+        } else if (treeGroupEntityNames.has(name)) {
+            extraItemsByPicker.Drvece.push({ type: 'entity', name });
+        } else {
+            extraItemsByPicker.Dekoracija.push({ type: 'entity', name });
+        }
     }
 
     return extraItemsByPicker;
+}
+
+function addItemsToNestedPicker({
+    hudItems,
+    label,
+    imageSrc,
+    extraItems,
+}: {
+    hudItems: HudItem[];
+    label: string;
+    imageSrc: string;
+    extraItems: HudItemEntity[];
+}): HudItem[] {
+    if (extraItems.length === 0) {
+        return hudItems;
+    }
+
+    let foundPicker = false;
+    const nextItems = hudItems.map((item) => {
+        if (item.type !== 'picker' || item.label !== label) {
+            return item;
+        }
+
+        foundPicker = true;
+        return {
+            ...item,
+            items: [...item.items, ...extraItems],
+        };
+    });
+
+    if (foundPicker) {
+        return nextItems;
+    }
+
+    return [
+        ...nextItems,
+        {
+            type: 'picker',
+            label,
+            imageSrc,
+            items: extraItems,
+        },
+    ];
+}
+
+function getDecorationItemsWithSandboxExtras({
+    decorationItems,
+    treeExtraItems,
+    giftBoxItems,
+    decorationExtraItems,
+}: {
+    decorationItems: HudItem[];
+    treeExtraItems: HudItemEntity[];
+    giftBoxItems: HudItemEntity[];
+    decorationExtraItems: HudItemEntity[];
+}): HudItem[] {
+    const itemsWithTreeExtras = addItemsToNestedPicker({
+        hudItems: decorationItems,
+        label: treePickerLabel,
+        imageSrc: treePickerImageSrc,
+        extraItems: treeExtraItems,
+    });
+
+    const itemsWithGiftBoxes = addItemsToNestedPicker({
+        hudItems: itemsWithTreeExtras,
+        label: giftBoxPickerLabel,
+        imageSrc: giftBoxPickerImageSrc,
+        extraItems: giftBoxItems,
+    });
+
+    return [...itemsWithGiftBoxes, ...decorationExtraItems];
 }
 
 function getSandboxHudItems(hudItems: HudItem[]): HudItem[] {
@@ -249,24 +347,34 @@ function getHudItems({
     const sandboxExtraItemsByPicker = getSandboxExtraItemsByPicker(blockData);
     if (
         sandboxExtraItemsByPicker.Blokovi.length === 0 &&
-        sandboxExtraItemsByPicker.Dekoracija.length === 0
+        sandboxExtraItemsByPicker.Dekoracija.length === 0 &&
+        sandboxExtraItemsByPicker.Drvece.length === 0 &&
+        sandboxExtraItemsByPicker.PoklonKutije.length === 0
     ) {
         return sandboxItems;
     }
 
     return sandboxItems.map((item) => {
-        if (
-            item.type === 'picker' &&
-            (item.label === 'Blokovi' || item.label === 'Dekoracija')
-        ) {
-            const sandboxExtraItems = sandboxExtraItemsByPicker[item.label];
-            if (sandboxExtraItems.length === 0) {
-                return item;
-            }
+        if (item.type !== 'picker') {
+            return item;
+        }
 
+        if (item.label === 'Blokovi') {
             return {
                 ...item,
-                items: [...item.items, ...sandboxExtraItems],
+                items: [...item.items, ...sandboxExtraItemsByPicker.Blokovi],
+            };
+        }
+
+        if (item.label === 'Dekoracija') {
+            return {
+                ...item,
+                items: getDecorationItemsWithSandboxExtras({
+                    decorationItems: item.items,
+                    treeExtraItems: sandboxExtraItemsByPicker.Drvece,
+                    giftBoxItems: sandboxExtraItemsByPicker.PoklonKutije,
+                    decorationExtraItems: sandboxExtraItemsByPicker.Dekoracija,
+                }),
             };
         }
 
