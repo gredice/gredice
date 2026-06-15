@@ -10,7 +10,7 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import Image from 'next/image';
-import { type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { useGameFlags } from '../../GameFlagsContext';
 import { isDiaryCancelTargetEligible } from '../../hooks/useCancelDiaryEntry';
 import { useRaisedBedDiaryEntries } from '../../hooks/useRaisedBedDiaryEntries';

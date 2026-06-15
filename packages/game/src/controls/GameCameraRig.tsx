@@ -13,6 +13,10 @@ import {
     findRaisedBedByBlockId,
     getRaisedBedBlockIds,
 } from '../utils/raisedBedBlocks';
+import {
+    getDragEdgeAutopanDelta,
+    hasDragEdgeAutopanDelta,
+} from './dragEdgeAutopan';
 import type { GameCameraRigApi, GameCameraSnapshot } from './GameCameraRigApi';
 
 const closeupZoom = 300;
@@ -461,6 +465,25 @@ export function GameCameraRig({
                     version: snapshotVersionRef.current,
                     zoom: isOrthographicCamera ? camera.zoom : 1,
                 }),
+            panByDragEdge: (pointer, frameDeltaSeconds) => {
+                if (!isOrthographicCamera) {
+                    return false;
+                }
+
+                const rect = gl.domElement.getBoundingClientRect();
+                const screenDelta = getDragEdgeAutopanDelta({
+                    frameDeltaSeconds,
+                    pointer,
+                    viewport: rect,
+                });
+
+                if (!hasDragEdgeAutopanDelta(screenDelta)) {
+                    return false;
+                }
+
+                panByScreenPixels(screenDelta.x, screenDelta.y);
+                return true;
+            },
             projectToScreen: (position) => {
                 const rect = gl.domElement.getBoundingClientRect();
                 if (rect.width <= 0 || rect.height <= 0) {
