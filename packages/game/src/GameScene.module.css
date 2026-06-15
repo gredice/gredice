@@ -1,0 +1,39 @@
+.interactionSurface {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.interactionSurface
+    :where(
+        :not(input):not(textarea):not(select):not([contenteditable="true"]):not(
+            [data-game-text-selectable="true"]
+        )
+    ) {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.interactionSurface :where(img, svg, canvas) {
+    -webkit-user-drag: none;
+}
+
+.interactionSurface
+    :where(
+        input,
+        textarea,
+        [contenteditable="true"],
+        [data-game-text-selectable="true"]
+    ) {
+    -webkit-touch-callout: default;
+    -webkit-user-select: text;
+    user-select: text;
+}
+
+.interactionSurface :where(select) {
+    -webkit-touch-callout: default;
+    -webkit-user-select: auto;
+    user-select: auto;
+}

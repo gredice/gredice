@@ -30,6 +30,7 @@ import {
 import type { GameFeatureFlags } from './GameFlagsContext';
 import { GameHud } from './GameHud';
 import { useGameLoading } from './GameLoadingContext';
+import styles from './GameScene.module.css';
 import { GameSceneDetailContext } from './GameSceneDetailContext';
 import {
     defaultGameCameraPosition,
@@ -266,7 +267,11 @@ export function GameScene({
 
     return (
         <div
-            className={cx('animate-in duration-1000 fade-in', className)}
+            className={cx(
+                styles.interactionSurface,
+                'animate-in duration-1000 fade-in',
+                className,
+            )}
             {...rest}
         >
             <GameSceneDetailContext.Provider value={{ renderDetails }}>
