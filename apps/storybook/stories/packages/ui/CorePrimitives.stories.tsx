@@ -7,10 +7,12 @@ import { IconButton } from '@gredice/ui/IconButton';
 import { Input } from '@gredice/ui/Input';
 import { Check, Search } from '@gredice/ui/icons';
 import { Link } from '@gredice/ui/Link';
+import { DropdownMenuItem } from '@gredice/ui/Menu';
 import { Progress } from '@gredice/ui/Progress';
 import { Row } from '@gredice/ui/Row';
 import { Skeleton } from '@gredice/ui/Skeleton';
 import { Spinner } from '@gredice/ui/Spinner';
+import { SplitButton } from '@gredice/ui/SplitButton';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
@@ -51,6 +53,23 @@ const meta = {
                         <Button startDecorator={<Check className="size-4" />}>
                             Primary
                         </Button>
+                        <SplitButton
+                            dropdownLabel="Odaberi dodatnu akciju"
+                            href="/"
+                            menuContent={
+                                <>
+                                    <DropdownMenuItem>
+                                        Iz predloska
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem>
+                                        Prazan zapis
+                                    </DropdownMenuItem>
+                                </>
+                            }
+                            startDecorator={<Check className="size-4" />}
+                        >
+                            Split action
+                        </SplitButton>
                         <Button color="secondary" variant="soft">
                             Secondary
                         </Button>
