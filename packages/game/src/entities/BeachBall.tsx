@@ -14,6 +14,7 @@ import {
     beachBallCollisionRadius,
     createBeachBallBounceEnvironment,
     createBeachBallBounceState,
+    getBeachBallSurfaceHeight,
 } from './beachBallBounce';
 import { HoverOutline } from './helpers/HoverOutline';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
@@ -29,6 +30,7 @@ const beachBallKickSpeed = 2.85;
 const beachBallKickSpeedVariance = 0.18;
 const beachBallSpinFallbackAngle = Math.PI * 0.765;
 const beachBallBounceFrequency = Math.PI * 5.8;
+const beachBallGroundLift = 0.008;
 const beachBallMaxBounceLift = 0.16;
 
 const beachBallNodeNames = [
@@ -91,7 +93,9 @@ export function BeachBall({
     const { data: blockData } = useBlockData();
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
-    const position = stack.position.clone().setY(currentStackHeight + 0.008);
+    const position = stack.position
+        .clone()
+        .setY(currentStackHeight + beachBallGroundLift);
     const motionGroupRef = useRef<Group>(null);
     const bounceStateRef = useRef(createBeachBallBounceState());
     const clickCountRef = useRef(0);
@@ -126,8 +130,23 @@ export function BeachBall({
         }
 
         const currentState = bounceStateRef.current;
+
+        const setMotionPosition = (state: typeof currentState, bounceY = 0) => {
+            const surfaceHeight = getBeachBallSurfaceHeight(bounceEnvironment, {
+                fallbackHeight: currentStackHeight,
+                worldX: stack.position.x + state.offsetX,
+                worldZ: stack.position.z + state.offsetZ,
+            });
+
+            motionGroup.position.set(
+                state.offsetX,
+                surfaceHeight - currentStackHeight + bounceY,
+                state.offsetZ,
+            );
+        };
+
         if (!currentState.active) {
-            motionGroup.position.y = 0;
+            setMotionPosition(currentState);
             return;
         }
 
@@ -157,7 +176,7 @@ export function BeachBall({
         const movementX = nextState.offsetX - previousOffsetX;
         const movementZ = nextState.offsetZ - previousOffsetZ;
 
-        motionGroup.position.set(nextState.offsetX, bounceY, nextState.offsetZ);
+        setMotionPosition(nextState, bounceY);
         motionGroup.rotation.x += movementZ / beachBallCollisionRadius;
         motionGroup.rotation.z -= movementX / beachBallCollisionRadius;
     });

@@ -9,6 +9,12 @@ export type BeachBallBounceObstacle = {
     z: number;
 };
 
+export type BeachBallBounceSurface = {
+    height: number;
+    x: number;
+    z: number;
+};
+
 export type BeachBallBounceBounds = {
     maxX: number;
     maxZ: number;
@@ -20,6 +26,7 @@ export type BeachBallBounceEnvironment = {
     bounds: BeachBallBounceBounds | null;
     obstacles: BeachBallBounceObstacle[];
     radius: number;
+    surfaces: BeachBallBounceSurface[];
 };
 
 export type BeachBallBounceState = {
@@ -44,6 +51,7 @@ const reboundStepRatio = 0.35;
 const velocityDampingPerSecond = 0.6;
 const minimumActiveSpeed = 0.16;
 const maxMotionSeconds = 5.4;
+const surfaceCellEpsilon = 0.0001;
 
 export const beachBallCollisionRadius = 0.24;
 
@@ -70,6 +78,10 @@ function cellKey(position: { x: number; z: number }) {
 
 function clamp(value: number, min: number, max: number) {
     return Math.min(Math.max(value, min), max);
+}
+
+function roundGridCell(value: number) {
+    return value < 0 ? Math.ceil(value - 0.5) : Math.floor(value + 0.5);
 }
 
 function createBounds({
@@ -113,6 +125,49 @@ function getBlockDataByName(
     return new Map(
         (blockData ?? []).map((entity) => [entity.information.name, entity]),
     );
+}
+
+function getBlockHeight(
+    blockDataByName: Map<string, BeachBallBlockDataLike>,
+    blockName: string,
+) {
+    const height = blockDataByName.get(blockName)?.attributes?.height;
+    return typeof height === 'number' && Number.isFinite(height)
+        ? height
+        : null;
+}
+
+function getStackSurfaceHeight({
+    blockDataByName,
+    movingBlockId,
+    stack,
+}: {
+    blockDataByName: Map<string, BeachBallBlockDataLike>;
+    movingBlockId: string;
+    stack: Stack;
+}) {
+    let height = 0;
+    let hasPassableTerrain = false;
+
+    for (const block of stack.blocks) {
+        if (block.id === movingBlockId) {
+            return height;
+        }
+
+        if (!isBeachBallPassableTerrainBlockName(block.name)) {
+            break;
+        }
+
+        const blockHeight = getBlockHeight(blockDataByName, block.name);
+        if (blockHeight === null) {
+            return null;
+        }
+
+        height += blockHeight;
+        hasPassableTerrain = true;
+    }
+
+    return hasPassableTerrain ? height : null;
 }
 
 function isPositionBlocked(
@@ -228,6 +283,7 @@ export function createBeachBallBounceEnvironment({
 }): BeachBallBounceEnvironment {
     const blockDataByName = getBlockDataByName(blockData);
     const obstaclesByKey = new Map<string, BeachBallBounceObstacle>();
+    const surfacesByKey = new Map<string, BeachBallBounceSurface>();
     let minX = Number.POSITIVE_INFINITY;
     let maxX = Number.NEGATIVE_INFINITY;
     let minZ = Number.POSITIVE_INFINITY;
@@ -238,6 +294,20 @@ export function createBeachBallBounceEnvironment({
         maxX = Math.max(maxX, stack.position.x);
         minZ = Math.min(minZ, stack.position.z);
         maxZ = Math.max(maxZ, stack.position.z);
+
+        const surfaceHeight = getStackSurfaceHeight({
+            blockDataByName,
+            movingBlockId,
+            stack,
+        });
+        if (surfaceHeight !== null) {
+            const surface = {
+                height: surfaceHeight,
+                x: stack.position.x,
+                z: stack.position.z,
+            };
+            surfacesByKey.set(cellKey(surface), surface);
+        }
 
         for (const block of stack.blocks) {
             if (
@@ -264,7 +334,41 @@ export function createBeachBallBounceEnvironment({
         bounds: createBounds({ minX, maxX, minZ, maxZ, radius }),
         obstacles: Array.from(obstaclesByKey.values()),
         radius,
+        surfaces: Array.from(surfacesByKey.values()),
     };
+}
+
+export function getBeachBallSurfaceHeight(
+    environment: BeachBallBounceEnvironment,
+    {
+        fallbackHeight,
+        worldX,
+        worldZ,
+    }: {
+        fallbackHeight: number;
+        worldX: number;
+        worldZ: number;
+    },
+) {
+    const roundedX = roundGridCell(worldX);
+    const roundedZ = roundGridCell(worldZ);
+
+    const exactSurface = environment.surfaces.find(
+        (surface) => surface.x === roundedX && surface.z === roundedZ,
+    );
+    if (exactSurface) {
+        return exactSurface.height;
+    }
+
+    const containingSurface = environment.surfaces.find(
+        (surface) =>
+            Math.abs(surface.x - worldX) <=
+                obstacleHalfExtent + surfaceCellEpsilon &&
+            Math.abs(surface.z - worldZ) <=
+                obstacleHalfExtent + surfaceCellEpsilon,
+    );
+
+    return containingSurface?.height ?? fallbackHeight;
 }
 
 export function advanceBeachBallBounce(

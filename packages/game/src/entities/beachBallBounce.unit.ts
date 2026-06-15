@@ -7,6 +7,7 @@ import {
     advanceBeachBallBounce,
     type BeachBallBounceState,
     createBeachBallBounceEnvironment,
+    getBeachBallSurfaceHeight,
     isBeachBallPassableTerrainBlockName,
 } from './beachBallBounce';
 
@@ -22,6 +23,17 @@ function stack(x: number, z: number, blocks: Block[]): Stack {
     return {
         blocks,
         position: new Vector3(x, 0, z),
+    };
+}
+
+function blockData(name: string, height: number) {
+    return {
+        attributes: {
+            height,
+        },
+        information: {
+            name,
+        },
     };
 }
 
@@ -146,5 +158,54 @@ describe('beach ball bounce', () => {
 
         assert.ok(nextState.offsetX < 0.22);
         assert.ok(nextState.velocityX < 0);
+    });
+
+    it('follows passable terrain height under the moving beach ball', () => {
+        const environment = createBeachBallBounceEnvironment({
+            blockData: [
+                blockData('Block_Grass', 0.4),
+                blockData('Block_Sand', 0.22),
+            ],
+            movingBlockId: 'ball',
+            stacks: [
+                stack(0, 0, [block('Block_Grass'), block('BeachBall', 'ball')]),
+                stack(1, 0, [block('Block_Sand')]),
+            ],
+        });
+
+        assert.equal(
+            getBeachBallSurfaceHeight(environment, {
+                fallbackHeight: 0.4,
+                worldX: 1.18,
+                worldZ: 0,
+            }),
+            0.22,
+        );
+    });
+
+    it('does not use non-terrain block height as a beach ball surface', () => {
+        const environment = createBeachBallBounceEnvironment({
+            blockData: [
+                blockData('Block_Grass', 0.4),
+                blockData('BeachChair', 0.75),
+            ],
+            movingBlockId: 'ball',
+            stacks: [
+                stack(0, 0, [block('Block_Grass'), block('BeachBall', 'ball')]),
+                stack(1, 0, [
+                    block('Block_Grass'),
+                    block('BeachChair', 'chair'),
+                ]),
+            ],
+        });
+
+        assert.equal(
+            getBeachBallSurfaceHeight(environment, {
+                fallbackHeight: 0.4,
+                worldX: 1,
+                worldZ: 0,
+            }),
+            0.4,
+        );
     });
 });
