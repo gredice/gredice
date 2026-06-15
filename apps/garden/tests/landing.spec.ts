@@ -26,6 +26,17 @@ const adventCalendar = {
     year: 2025,
 };
 
+const tutorialChecklist = {
+    groups: [],
+    totals: {
+        availableSunflowers: 0,
+        claimableCount: 0,
+        completedCount: 0,
+        earnedSunflowers: 0,
+        totalCount: 0,
+    },
+};
+
 const crashPatterns = [
     /Maximum update depth exceeded/u,
     /The result of getSnapshot should be cached/u,
@@ -116,6 +127,10 @@ async function mockGardenApi(page: Page, signedIn: boolean) {
             body = adventCalendar;
         } else if (pathname.endsWith('/api/accounts/current/sunflowers')) {
             body = { amount: 0 };
+        } else if (
+            pathname.endsWith('/api/accounts/current/tutorial-checklist')
+        ) {
+            body = tutorialChecklist;
         } else if (pathname.endsWith('/api/accounts/current')) {
             body = signedIn
                 ? { id: 'test-account', name: 'Test Account' }

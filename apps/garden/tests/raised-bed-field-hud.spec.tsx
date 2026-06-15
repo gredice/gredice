@@ -1501,13 +1501,18 @@ test.describe('RaisedBedFieldItem HUD (mobile)', () => {
         await expect(moreButton).toBeVisible();
         await expect(tabList).toBeVisible();
 
-        const moreBox = await moreButton.boundingBox();
-        const tabListBox = await tabList.boundingBox();
-        expect(moreBox).not.toBeNull();
-        expect(tabListBox).not.toBeNull();
-        expect((moreBox?.y ?? 0) + (moreBox?.height ?? 0)).toBeLessThanOrEqual(
-            tabListBox?.y ?? 0,
-        );
+        await expect
+            .poll(async () => {
+                const moreBox = await moreButton.boundingBox();
+                const tabListBox = await tabList.boundingBox();
+
+                if (!moreBox || !tabListBox) {
+                    return Number.POSITIVE_INFINITY;
+                }
+
+                return moreBox.y + moreBox.height - tabListBox.y;
+            })
+            .toBeLessThanOrEqual(0);
 
         await moreButton.click();
         await expect(
