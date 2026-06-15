@@ -42,6 +42,7 @@ function activeState(
 ): BeachBallBounceState {
     return {
         active: true,
+        collisionCount: 0,
         elapsedSeconds: 0,
         offsetX: 0,
         offsetZ: 0,
@@ -77,6 +78,8 @@ describe('beach ball bounce', () => {
 
         assert.ok(nextState.offsetX > 0);
         assert.ok(nextState.velocityX > 0);
+        assert.ok(Math.hypot(nextState.velocityX, nextState.velocityZ) < 1.5);
+        assert.equal(nextState.collisionCount, 0);
     });
 
     it('reflects velocity before entering an occupied block cell', () => {
@@ -103,6 +106,8 @@ describe('beach ball bounce', () => {
 
         assert.ok(nextState.offsetX < 0.25);
         assert.ok(nextState.velocityX < 0);
+        assert.ok(Math.hypot(nextState.velocityX, nextState.velocityZ) < 3);
+        assert.equal(nextState.collisionCount, 1);
     });
 
     it('uses multi-block footprint spans for obstacle cells', () => {
@@ -158,6 +163,7 @@ describe('beach ball bounce', () => {
 
         assert.ok(nextState.offsetX < 0.22);
         assert.ok(nextState.velocityX < 0);
+        assert.equal(nextState.collisionCount, 1);
     });
 
     it('follows passable terrain height under the moving beach ball', () => {
@@ -206,6 +212,29 @@ describe('beach ball bounce', () => {
                 worldZ: 0,
             }),
             0.4,
+        );
+    });
+
+    it('uses the highest terrain surface overlapped by the ball radius', () => {
+        const environment = createBeachBallBounceEnvironment({
+            blockData: [
+                blockData('Block_Grass', 0.4),
+                blockData('Block_Sand', 0.72),
+            ],
+            movingBlockId: 'ball',
+            stacks: [
+                stack(0, 0, [block('Block_Grass'), block('BeachBall', 'ball')]),
+                stack(1, 0, [block('Block_Sand')]),
+            ],
+        });
+
+        assert.equal(
+            getBeachBallSurfaceHeight(environment, {
+                fallbackHeight: 0.4,
+                worldX: 0.32,
+                worldZ: 0,
+            }),
+            0.72,
         );
     });
 });

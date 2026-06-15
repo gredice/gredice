@@ -31,6 +31,7 @@ export type BeachBallBounceEnvironment = {
 
 export type BeachBallBounceState = {
     active: boolean;
+    collisionCount: number;
     elapsedSeconds: number;
     offsetX: number;
     offsetZ: number;
@@ -78,10 +79,6 @@ function cellKey(position: { x: number; z: number }) {
 
 function clamp(value: number, min: number, max: number) {
     return Math.min(Math.max(value, min), max);
-}
-
-function roundGridCell(value: number) {
-    return value < 0 ? Math.ceil(value - 0.5) : Math.floor(value + 0.5);
 }
 
 function createBounds({
@@ -225,6 +222,7 @@ function resolveAxisMotion({
         )
     ) {
         return {
+            collided: false,
             offset: nextOffset,
             velocity,
         };
@@ -244,12 +242,14 @@ function resolveAxisMotion({
         )
     ) {
         return {
+            collided: true,
             offset: reboundOffset,
             velocity: reflectedVelocity,
         };
     }
 
     return {
+        collided: true,
         offset: axis === 'x' ? currentOffsetX : currentOffsetZ,
         velocity: reflectedVelocity,
     };
@@ -262,6 +262,7 @@ export function isBeachBallPassableTerrainBlockName(name: string) {
 export function createBeachBallBounceState(): BeachBallBounceState {
     return {
         active: false,
+        collisionCount: 0,
         elapsedSeconds: 0,
         offsetX: 0,
         offsetZ: 0,
@@ -350,25 +351,20 @@ export function getBeachBallSurfaceHeight(
         worldZ: number;
     },
 ) {
-    const roundedX = roundGridCell(worldX);
-    const roundedZ = roundGridCell(worldZ);
+    const surfaceReach =
+        obstacleHalfExtent + environment.radius + surfaceCellEpsilon;
 
-    const exactSurface = environment.surfaces.find(
-        (surface) => surface.x === roundedX && surface.z === roundedZ,
+    const overlappingSurfaces = environment.surfaces.filter(
+        (surface) =>
+            Math.abs(surface.x - worldX) <= surfaceReach &&
+            Math.abs(surface.z - worldZ) <= surfaceReach,
     );
-    if (exactSurface) {
-        return exactSurface.height;
+
+    if (overlappingSurfaces.length <= 0) {
+        return fallbackHeight;
     }
 
-    const containingSurface = environment.surfaces.find(
-        (surface) =>
-            Math.abs(surface.x - worldX) <=
-                obstacleHalfExtent + surfaceCellEpsilon &&
-            Math.abs(surface.z - worldZ) <=
-                obstacleHalfExtent + surfaceCellEpsilon,
-    );
-
-    return containingSurface?.height ?? fallbackHeight;
+    return Math.max(...overlappingSurfaces.map((surface) => surface.height));
 }
 
 export function advanceBeachBallBounce(
@@ -390,6 +386,7 @@ export function advanceBeachBallBounce(
     let offsetZ = state.offsetZ;
     let velocityX = state.velocityX;
     let velocityZ = state.velocityZ;
+    let collisionCount = state.collisionCount;
 
     const xMotion = resolveAxisMotion({
         axis: 'x',
@@ -404,6 +401,9 @@ export function advanceBeachBallBounce(
     });
     offsetX = xMotion.offset;
     velocityX = xMotion.velocity;
+    if (xMotion.collided) {
+        collisionCount += 1;
+    }
 
     const zMotion = resolveAxisMotion({
         axis: 'z',
@@ -418,6 +418,9 @@ export function advanceBeachBallBounce(
     });
     offsetZ = zMotion.offset;
     velocityZ = zMotion.velocity;
+    if (zMotion.collided) {
+        collisionCount += 1;
+    }
 
     const damping = velocityDampingPerSecond ** deltaSeconds;
     velocityX *= damping;
@@ -429,6 +432,7 @@ export function advanceBeachBallBounce(
 
     return {
         active,
+        collisionCount,
         elapsedSeconds,
         offsetX,
         offsetZ,

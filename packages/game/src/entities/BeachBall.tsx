@@ -25,12 +25,19 @@ type BeachBallNodeName = Extract<
 >;
 type BeachBallNode = GLTFResult['nodes'][BeachBallNodeName];
 
+type BeachBallVisualBounce = {
+    amplitude: number;
+    durationSeconds: number;
+    elapsedSeconds: number;
+};
+
 const beachBallScale = 0.1565;
 const beachBallKickSpeed = 2.85;
 const beachBallKickSpeedVariance = 0.18;
 const beachBallSpinFallbackAngle = Math.PI * 0.765;
-const beachBallBounceFrequency = Math.PI * 5.8;
+const beachBallBounceDurationSeconds = 0.58;
 const beachBallGroundLift = 0.008;
+const beachBallMinBounceLift = 0.026;
 const beachBallMaxBounceLift = 0.16;
 
 const beachBallNodeNames = [
@@ -83,6 +90,47 @@ function fallbackKickDirection(blockId: string, clickCount: number) {
     };
 }
 
+function createBeachBallVisualBounce(): BeachBallVisualBounce {
+    return {
+        amplitude: 0,
+        durationSeconds: 0,
+        elapsedSeconds: 0,
+    };
+}
+
+function createBeachBallCollisionBounce(speed: number): BeachBallVisualBounce {
+    return {
+        amplitude: Math.min(
+            beachBallMaxBounceLift,
+            beachBallMinBounceLift + speed * 0.035,
+        ),
+        durationSeconds: beachBallBounceDurationSeconds,
+        elapsedSeconds: 0,
+    };
+}
+
+function isBeachBallVisualBounceActive(bounce: BeachBallVisualBounce) {
+    return bounce.elapsedSeconds < bounce.durationSeconds;
+}
+
+function advanceBeachBallVisualBounce(
+    bounce: BeachBallVisualBounce,
+    deltaSeconds: number,
+) {
+    if (!isBeachBallVisualBounceActive(bounce)) {
+        return 0;
+    }
+
+    bounce.elapsedSeconds = Math.min(
+        bounce.durationSeconds,
+        bounce.elapsedSeconds + deltaSeconds,
+    );
+
+    const progress = bounce.elapsedSeconds / bounce.durationSeconds;
+    const decay = (1 - progress) ** 1.35;
+    return Math.sin(progress * Math.PI) * bounce.amplitude * decay;
+}
+
 export function BeachBall({
     stack,
     block,
@@ -98,6 +146,7 @@ export function BeachBall({
         .setY(currentStackHeight + beachBallGroundLift);
     const motionGroupRef = useRef<Group>(null);
     const bounceStateRef = useRef(createBeachBallBounceState());
+    const visualBounceRef = useRef(createBeachBallVisualBounce());
     const clickCountRef = useRef(0);
     const [hovered, setHovered] = useState(false);
     const bounceEnvironment = useMemo(
@@ -113,6 +162,7 @@ export function BeachBall({
     // biome-ignore lint/correctness/useExhaustiveDependencies: reset visual offset when this rendered beach ball moves to another block cell.
     useEffect(() => {
         bounceStateRef.current = createBeachBallBounceState();
+        visualBounceRef.current = createBeachBallVisualBounce();
 
         const motionGroup = motionGroupRef.current;
         if (!motionGroup) {
@@ -130,6 +180,7 @@ export function BeachBall({
         }
 
         const currentState = bounceStateRef.current;
+        const visualBounce = visualBounceRef.current;
 
         const setMotionPosition = (state: typeof currentState, bounceY = 0) => {
             const surfaceHeight = getBeachBallSurfaceHeight(bounceEnvironment, {
@@ -146,7 +197,10 @@ export function BeachBall({
         };
 
         if (!currentState.active) {
-            setMotionPosition(currentState);
+            setMotionPosition(
+                currentState,
+                advanceBeachBallVisualBounce(visualBounce, deltaSeconds),
+            );
             return;
         }
 
@@ -164,15 +218,13 @@ export function BeachBall({
         bounceStateRef.current = nextState;
 
         const speed = Math.hypot(nextState.velocityX, nextState.velocityZ);
-        const bounceLift = Math.min(
-            beachBallMaxBounceLift,
-            0.032 + speed * 0.035,
+        if (nextState.collisionCount > currentState.collisionCount) {
+            visualBounceRef.current = createBeachBallCollisionBounce(speed);
+        }
+        const bounceY = advanceBeachBallVisualBounce(
+            visualBounceRef.current,
+            deltaSeconds,
         );
-        const bounceY = nextState.active
-            ? Math.abs(
-                  Math.sin(nextState.elapsedSeconds * beachBallBounceFrequency),
-              ) * bounceLift
-            : 0;
         const movementX = nextState.offsetX - previousOffsetX;
         const movementZ = nextState.offsetZ - previousOffsetZ;
 
@@ -191,9 +243,16 @@ export function BeachBall({
 
     function handleClick(event: ThreeEvent<MouseEvent>) {
         event.stopPropagation();
-        clickCountRef.current += 1;
 
         const currentState = bounceStateRef.current;
+        if (
+            currentState.active ||
+            isBeachBallVisualBounceActive(visualBounceRef.current)
+        ) {
+            return;
+        }
+
+        clickCountRef.current += 1;
         const centerX = stack.position.x + currentState.offsetX;
         const centerZ = stack.position.z + currentState.offsetZ;
         let directionX = centerX - event.point.x;
@@ -218,11 +277,12 @@ export function BeachBall({
 
         bounceStateRef.current = {
             active: true,
+            collisionCount: currentState.collisionCount,
             elapsedSeconds: 0,
             offsetX: currentState.offsetX,
             offsetZ: currentState.offsetZ,
-            velocityX: directionX * speed + currentState.velocityX * 0.15,
-            velocityZ: directionZ * speed + currentState.velocityZ * 0.15,
+            velocityX: directionX * speed,
+            velocityZ: directionZ * speed,
         };
     }
 
