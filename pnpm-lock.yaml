@@ -66,8 +66,8 @@ importers:
         specifier: 0.218.0
         version: 0.218.0(@opentelemetry/api@1.9.1)
       '@posthog/next':
-        specifier: 0.4.86
-        version: 0.4.86(@types/react@19.2.14)(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+        specifier: 0.4.87
+        version: 0.4.87(@types/react@19.2.14)(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@scalar/api-reference-react':
         specifier: 0.9.41
         version: 0.9.41(axios@1.16.1)(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(react@19.2.6)(tailwindcss@4.3.0)(typescript@6.0.3)(zod@4.4.3)
@@ -256,8 +256,8 @@ importers:
         specifier: 0.218.0
         version: 0.218.0(@opentelemetry/api@1.9.1)
       '@posthog/next':
-        specifier: 0.4.86
-        version: 0.4.86(@types/react@19.2.14)(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+        specifier: 0.4.87
+        version: 0.4.87(@types/react@19.2.14)(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@vercel/blob':
         specifier: 2.4.0
         version: 2.4.0
@@ -419,8 +419,8 @@ importers:
         specifier: 0.218.0
         version: 0.218.0(@opentelemetry/api@1.9.1)
       '@posthog/next':
-        specifier: 0.4.86
-        version: 0.4.86(@types/react@19.2.14)(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+        specifier: 0.4.87
+        version: 0.4.87(@types/react@19.2.14)(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@vercel/blob':
         specifier: 2.4.0
         version: 2.4.0
@@ -525,8 +525,8 @@ importers:
         specifier: 0.218.0
         version: 0.218.0(@opentelemetry/api@1.9.1)
       '@posthog/next':
-        specifier: 0.4.86
-        version: 0.4.86(@types/react@19.2.14)(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+        specifier: 0.4.87
+        version: 0.4.87(@types/react@19.2.14)(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@vercel/toolbar':
         specifier: 0.2.6
         version: 0.2.6(@vercel/analytics@2.0.1(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0))(react@19.2.6)(vue@3.5.35(typescript@6.0.3)))(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite@8.0.14(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(tsx@4.22.3)(yaml@2.9.0))
@@ -616,8 +616,8 @@ importers:
   apps/news:
     dependencies:
       '@posthog/next':
-        specifier: 0.4.86
-        version: 0.4.86(@types/react@19.2.14)(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+        specifier: 0.4.87
+        version: 0.4.87(@types/react@19.2.14)(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@vercel/analytics':
         specifier: 2.0.1
         version: 2.0.1(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0))(react@19.2.6)(vue@3.5.35(typescript@6.0.3))
@@ -820,8 +820,8 @@ importers:
         specifier: 0.218.0
         version: 0.218.0(@opentelemetry/api@1.9.1)
       '@posthog/next':
-        specifier: 0.4.86
-        version: 0.4.86(@types/react@19.2.14)(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+        specifier: 0.4.87
+        version: 0.4.87(@types/react@19.2.14)(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@vercel/toolbar':
         specifier: 0.2.6
         version: 0.2.6(@vercel/analytics@2.0.1(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0))(react@19.2.6)(vue@3.5.35(typescript@6.0.3)))(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite@8.0.14(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(tsx@4.22.3)(yaml@2.9.0))
@@ -1468,8 +1468,8 @@ importers:
         specifier: workspace:*
         version: link:../js
       '@posthog/next':
-        specifier: 0.4.86
-        version: 0.4.86(@types/react@19.2.14)(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+        specifier: 0.4.87
+        version: 0.4.87(@types/react@19.2.14)(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@radix-ui/react-alert-dialog':
         specifier: 1.1.15
         version: 1.1.15(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -3747,11 +3747,11 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
-  '@posthog/core@1.30.14':
-    resolution: {integrity: sha512-cC0che/17kP6qMIMgdmxsoz3h8Jar8knQfDM8WqQwVacSeWXkrwkemoV7S5tCGmgTuRTTsdigirs9HiBXHQ/dA==}
+  '@posthog/core@1.31.0':
+    resolution: {integrity: sha512-tsZ/pyDy7AXUoPe4Skg/ybozerNPzmHxTzE8gyr8CSajkN0/YXRj8BVEaR8hoqpq7G5B3lUFxbqriNvV6NdPJw==}
 
-  '@posthog/next@0.4.86':
-    resolution: {integrity: sha512-Oh6FYjui42oJurdfyyZ6AUTiKOUphEsSrGPD7hAUn7lvJqBHvOM+dL2rx0gcn7L5DQPtELZkoj8cUtUNTyv8aw==}
+  '@posthog/next@0.4.87':
+    resolution: {integrity: sha512-NBMZxBMffYuRY5dW9foTCXUCVBRLg91WB76p0Vc3dnamSn4gjEyY8ox73H1TDHkFAE8rQAd9jLLhaYtvPWLJWQ==}
     peerDependencies:
       '@vercel/functions': '>=1.0.0'
       next: '>=13.0.0'
@@ -3771,8 +3771,8 @@ packages:
       '@types/react':
         optional: true
 
-  '@posthog/types@1.383.3':
-    resolution: {integrity: sha512-N4jtmLaJxzjQ/C0UHnF0igQPSwUqwScPDv9ePGjKCfDomIEUcO3+c6pBrjTp7woxuMQ49BmyM/pV4/SOBPpe0Q==}
+  '@posthog/types@1.384.0':
+    resolution: {integrity: sha512-A/KtSocfu6h8ocwOQ1WUme32xdmCFftUN7ziRSYvAahgXaJl3QGizjiRo+Kh60zS8k2tJgzlvCbXB3TqSuY5eg==}
 
   '@radix-ui/colors@3.0.0':
     resolution: {integrity: sha512-FUOsGBkHrYJwCSEtWRCIfQbZG7q1e6DgxCIOe1SUQzDe/7rXXeA47s8yCn6fuTNQAj1Zq4oTFi9Yjp3wzElcxg==}
@@ -8490,11 +8490,11 @@ packages:
     resolution: {integrity: sha512-9ZhXKM/rw350N1ovuWHbGxnGh/SNJ4cnxHiM0rxE4VN41wsg8P8zWn9hv/buK00RP4WvlOyr/RBDiptyxVbkZQ==}
     engines: {node: '>=0.10.0'}
 
-  posthog-js@1.383.3:
-    resolution: {integrity: sha512-caH+lSELdgqaS2uxmBiJT22/cr3epuMKSqBsO8QYQgORehokwdWB/Q4LIh3Dgyjy26B2yhprcAAqmuKMf4s3Nw==}
+  posthog-js@1.384.0:
+    resolution: {integrity: sha512-XXItua9oTjo8AIikSMIQJgOCaiX0MwRq2wIZQjp14MWLmLKWuTjC19fpmWlrEUNc8D5wICdEOsoB2fMwSN6uOQ==}
 
-  posthog-node@5.36.8:
-    resolution: {integrity: sha512-xBdJ3Y5zcveN1QINN39dIiZiCbEhfLeh/4qBiICoLLQOTYfat6zLlwfBmFPcr4hdyQ1nBXh8sIQ9KzSG/zcxpA==}
+  posthog-node@5.36.9:
+    resolution: {integrity: sha512-2EpDTF8peAJzJSFLUWfJu7MT5XRSoXd8ifsUCrk/sys+qRniTnrLK8f/7wRypwkV8RLwh86hqvzFay55qL6ASA==}
     engines: {node: ^20.20.0 || >=22.22.0}
     peerDependencies:
       rxjs: ^7.0.0
@@ -12256,17 +12256,17 @@ snapshots:
     dependencies:
       playwright: 1.60.0
 
-  '@posthog/core@1.30.14':
+  '@posthog/core@1.31.0':
     dependencies:
-      '@posthog/types': 1.383.3
+      '@posthog/types': 1.384.0
 
-  '@posthog/next@0.4.86(@types/react@19.2.14)(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
+  '@posthog/next@0.4.87(@types/react@19.2.14)(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
     dependencies:
-      '@posthog/core': 1.30.14
-      '@posthog/react': 1.10.1(@types/react@19.2.14)(posthog-js@1.383.3)(react@19.2.6)
+      '@posthog/core': 1.31.0
+      '@posthog/react': 1.10.1(@types/react@19.2.14)(posthog-js@1.384.0)(react@19.2.6)
       next: 16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0)
-      posthog-js: 1.383.3
-      posthog-node: 5.36.8
+      posthog-js: 1.384.0
+      posthog-node: 5.36.9
       react: 19.2.6
       react-dom: 19.2.6(react@19.2.6)
       server-only: 0.0.1
@@ -12274,13 +12274,13 @@ snapshots:
       - '@types/react'
       - rxjs
 
-  '@posthog/next@0.4.86(@types/react@19.2.14)(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
+  '@posthog/next@0.4.87(@types/react@19.2.14)(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
     dependencies:
-      '@posthog/core': 1.30.14
-      '@posthog/react': 1.10.1(@types/react@19.2.14)(posthog-js@1.383.3)(react@19.2.6)
+      '@posthog/core': 1.31.0
+      '@posthog/react': 1.10.1(@types/react@19.2.14)(posthog-js@1.384.0)(react@19.2.6)
       next: 16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0)
-      posthog-js: 1.383.3
-      posthog-node: 5.36.8
+      posthog-js: 1.384.0
+      posthog-node: 5.36.9
       react: 19.2.6
       react-dom: 19.2.6(react@19.2.6)
       server-only: 0.0.1
@@ -12288,14 +12288,14 @@ snapshots:
       - '@types/react'
       - rxjs
 
-  '@posthog/react@1.10.1(@types/react@19.2.14)(posthog-js@1.383.3)(react@19.2.6)':
+  '@posthog/react@1.10.1(@types/react@19.2.14)(posthog-js@1.384.0)(react@19.2.6)':
     dependencies:
-      posthog-js: 1.383.3
+      posthog-js: 1.384.0
       react: 19.2.6
     optionalDependencies:
       '@types/react': 19.2.14
 
-  '@posthog/types@1.383.3': {}
+  '@posthog/types@1.384.0': {}
 
   '@radix-ui/colors@3.0.0': {}
 
@@ -17640,10 +17640,10 @@ snapshots:
     dependencies:
       xtend: 4.0.2
 
-  posthog-js@1.383.3:
+  posthog-js@1.384.0:
     dependencies:
-      '@posthog/core': 1.30.14
-      '@posthog/types': 1.383.3
+      '@posthog/core': 1.31.0
+      '@posthog/types': 1.384.0
       core-js: 3.49.0
       dompurify: 3.4.7
       fflate: 0.4.8
@@ -17651,9 +17651,9 @@ snapshots:
       query-selector-shadow-dom: 1.0.1
       web-vitals: 5.3.0
 
-  posthog-node@5.36.8:
+  posthog-node@5.36.9:
     dependencies:
-      '@posthog/core': 1.30.14
+      '@posthog/core': 1.31.0
 
   postject@1.0.0-alpha.6:
     dependencies:
