@@ -64,6 +64,6 @@ export const plantHistoryFlag = flag<boolean>({
 export const tutorialChecklistFlag = flag<boolean>({
     key: 'tutorialChecklist',
     description: 'Enable the tutorial checklist HUD and reward claims.',
-    decide: () => false,
+    decide: () => true,
     options: booleanOptions,
 });
