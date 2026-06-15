@@ -3,7 +3,7 @@
 import { Accordion } from '@gredice/ui/Accordion';
 import { Button } from '@gredice/ui/Button';
 import { CmsMediaImage } from '@gredice/ui/cms';
-import { ExternalLink } from '@gredice/ui/icons';
+import { Close, ExternalLink } from '@gredice/ui/icons';
 import { Markdown } from '@gredice/ui/Markdown';
 import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
@@ -11,7 +11,14 @@ import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import {
+    type ReactNode,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { useUpdateUser } from '../hooks/useUpdateUser';
@@ -187,12 +194,42 @@ const audienceWhatsNewHref = `${KnownPages.GrediceWhatsNew}?tag=${encodeURICompo
     whatsNewEntriesAudienceTag,
 )}`;
 
+function ChangelogCoverImage({
+    className,
+    src,
+}: {
+    className?: string;
+    src: string | null | undefined;
+}) {
+    if (!src) {
+        return null;
+    }
+
+    return (
+        <div
+            className={cx(
+                'shrink-0 overflow-hidden rounded-md border bg-muted/30',
+                className,
+            )}
+        >
+            <CmsMediaImage
+                alt=""
+                className="h-full w-full object-cover"
+                src={src}
+            />
+        </div>
+    );
+}
+
 export function WhatsNewWidget({ enabled }: { enabled: boolean }) {
     const { track } = useGameAnalytics();
     const { data: currentUser } = useCurrentUser(enabled);
     const updateUser = useUpdateUser({ enabled });
     const [modalOpen, setModalOpen] = useState(false);
     const [expandedEntryId, setExpandedEntryId] = useState<number | null>(null);
+    const [dismissedPublishedAt, setDismissedPublishedAt] = useState<
+        string | null
+    >(null);
     const markedLatestRef = useRef<string | null>(null);
     const widgetEnabled = Boolean(
         enabled && currentUser && !currentUser.whatsNewPopupDisabled,
@@ -213,6 +250,13 @@ export function WhatsNewWidget({ enabled }: { enabled: boolean }) {
         () => latestPublishedAt(entries),
         [entries],
     );
+    const newestPublishedAtIso = newestPublishedAt?.toISOString() ?? null;
+    const hasUnreadEntries = Boolean(
+        newestPublishedAt &&
+            dismissedPublishedAt !== newestPublishedAtIso &&
+            (!currentUser?.whatsNewLastSeenAt ||
+                currentUser.whatsNewLastSeenAt < newestPublishedAt),
+    );
 
     useEffect(() => {
         if (!latestEntry || expandedEntryId !== null) {
@@ -222,12 +266,13 @@ export function WhatsNewWidget({ enabled }: { enabled: boolean }) {
         setExpandedEntryId(latestEntry.id);
     }, [expandedEntryId, latestEntry]);
 
-    useEffect(() => {
-        if (!modalOpen || !currentUser || !newestPublishedAt) {
+    const markNewestEntrySeen = useCallback(() => {
+        if (!currentUser || !newestPublishedAt || !newestPublishedAtIso) {
             return;
         }
 
-        const newestPublishedAtIso = newestPublishedAt.toISOString();
+        setDismissedPublishedAt(newestPublishedAtIso);
+
         if (markedLatestRef.current === newestPublishedAtIso) {
             return;
         }
@@ -243,9 +288,17 @@ export function WhatsNewWidget({ enabled }: { enabled: boolean }) {
         updateUser.mutate({
             whatsNewLastSeenAt: newestPublishedAt,
         });
-    }, [currentUser, modalOpen, newestPublishedAt, updateUser]);
+    }, [currentUser, newestPublishedAt, newestPublishedAtIso, updateUser]);
 
-    if (!widgetEnabled || !latestEntry) {
+    useEffect(() => {
+        if (!modalOpen) {
+            return;
+        }
+
+        markNewestEntrySeen();
+    }, [markNewestEntrySeen, modalOpen]);
+
+    if (!widgetEnabled || !latestEntry || (!hasUnreadEntries && !modalOpen)) {
         return null;
     }
 
@@ -253,29 +306,52 @@ export function WhatsNewWidget({ enabled }: { enabled: boolean }) {
 
     return (
         <>
-            <div className="pointer-events-none absolute bottom-[calc(env(safe-area-inset-bottom)+4.75rem)] left-2 z-20 md:bottom-16">
-                <button
-                    className="pointer-events-auto w-[min(18rem,calc(100vw-1rem))] rounded-lg border bg-background/95 px-3 py-2 text-left text-foreground shadow-lg backdrop-blur transition-colors hover:bg-card focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                    onClick={() => {
-                        setExpandedEntryId(latestEntry.id);
-                        setModalOpen(true);
-                        track('game_whats_new_widget_opened', {
-                            entryId: latestEntry.id,
-                            source: 'hud_widget',
-                        });
-                    }}
-                    type="button"
-                >
-                    <Stack spacing={1}>
-                        <Typography level="body3" secondary>
-                            Što je novo
-                        </Typography>
-                        <Typography className="line-clamp-2" semiBold>
-                            {latestEntry.title}
-                        </Typography>
-                    </Stack>
-                </button>
-            </div>
+            {hasUnreadEntries ? (
+                <div className="pointer-events-none absolute bottom-[calc(env(safe-area-inset-bottom)+4.75rem)] left-2 z-20 md:bottom-16">
+                    <div className="pointer-events-auto relative w-[min(21rem,calc(100vw-1rem))] overflow-hidden rounded-lg border bg-background/95 text-foreground shadow-lg backdrop-blur">
+                        <button
+                            className={cx(
+                                'grid w-full gap-3 px-3 py-2 pr-10 text-left transition-colors hover:bg-card focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                                latestEntry.metaImageUrl
+                                    ? 'grid-cols-[3.5rem_minmax(0,1fr)]'
+                                    : 'grid-cols-1',
+                            )}
+                            onClick={() => {
+                                setExpandedEntryId(latestEntry.id);
+                                setModalOpen(true);
+                                markNewestEntrySeen();
+                                track('game_whats_new_widget_opened', {
+                                    entryId: latestEntry.id,
+                                    source: 'hud_widget',
+                                });
+                            }}
+                            type="button"
+                        >
+                            <ChangelogCoverImage
+                                className="h-14 w-14"
+                                src={latestEntry.metaImageUrl}
+                            />
+                            <Stack className="min-w-0" spacing={1}>
+                                <Typography level="body3" secondary>
+                                    Što je novo
+                                </Typography>
+                                <Typography className="line-clamp-2" semiBold>
+                                    {latestEntry.title}
+                                </Typography>
+                            </Stack>
+                        </button>
+                        <button
+                            aria-label="Sakrij novost"
+                            className="absolute right-2 top-2 rounded-sm p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            onClick={markNewestEntrySeen}
+                            title="Sakrij novost"
+                            type="button"
+                        >
+                            <Close aria-hidden className="size-4" />
+                        </button>
+                    </div>
+                </div>
+            ) : null}
             <Modal
                 className="max-w-2xl overflow-hidden border-tertiary border-b-4 p-0"
                 onOpenChange={setModalOpen}
@@ -339,26 +415,41 @@ export function WhatsNewWidget({ enabled }: { enabled: boolean }) {
                                         open={isOpen}
                                         unmountOnExit
                                     >
-                                        <Stack className="min-w-0" spacing={1}>
-                                            <Row
-                                                className="flex-wrap text-xs font-semibold uppercase text-muted-foreground"
-                                                spacing={2}
-                                            >
-                                                {entryDate ? (
-                                                    <span>{entryDate}</span>
-                                                ) : null}
-                                                {entry.tags.map((tag) => (
-                                                    <span key={tag}>{tag}</span>
-                                                ))}
-                                            </Row>
-                                            <Typography
+                                        <Row
+                                            alignItems="center"
+                                            className="min-w-0 flex-1"
+                                            spacing={3}
+                                        >
+                                            <ChangelogCoverImage
+                                                className="h-14 w-16"
+                                                src={entry.metaImageUrl}
+                                            />
+                                            <Stack
                                                 className="min-w-0"
-                                                noWrap
-                                                semiBold
+                                                spacing={1}
                                             >
-                                                {entry.title}
-                                            </Typography>
-                                        </Stack>
+                                                <Row
+                                                    className="flex-wrap text-xs font-semibold uppercase text-muted-foreground"
+                                                    spacing={2}
+                                                >
+                                                    {entryDate ? (
+                                                        <span>{entryDate}</span>
+                                                    ) : null}
+                                                    {entry.tags.map((tag) => (
+                                                        <span key={tag}>
+                                                            {tag}
+                                                        </span>
+                                                    ))}
+                                                </Row>
+                                                <Typography
+                                                    className="min-w-0"
+                                                    noWrap
+                                                    semiBold
+                                                >
+                                                    {entry.title}
+                                                </Typography>
+                                            </Stack>
+                                        </Row>
                                         {detail?.isPending ? (
                                             <Typography level="body2" secondary>
                                                 Novost se učitava.
