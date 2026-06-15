@@ -565,7 +565,7 @@ export function TutorialChecklistHud() {
 
     return (
         <HudCard open position="floating" className="relative grid">
-            {claimableCount > -1 && (
+            {claimableCount > 0 && (
                 <div
                     className="pointer-events-none absolute right-0 top-0 z-20 grid size-4 place-items-center"
                     data-tutorial-checklist-claim-dot="true"
