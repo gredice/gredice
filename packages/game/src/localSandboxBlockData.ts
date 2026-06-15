@@ -113,7 +113,7 @@ const localSandboxStackHeights: Partial<Record<LocalSandboxBlockName, number>> =
         BeachUmbrella: 1.8,
         LemonadeStand: 1.9,
         IceCreamCart: 1.9,
-        SummerHat: 0.28,
+        SummerHat: 0.2,
         BeachTowelStriped: 0.08,
         InflatablePoolSmall: 0.35,
         BeachChair: 0.55,
@@ -124,6 +124,24 @@ const localSandboxStackHeights: Partial<Record<LocalSandboxBlockName, number>> =
         Raised_Bed: 0.35,
         Snowman: 0.5,
     };
+
+type LocalSandboxHitboxAttributes = Partial<
+    Record<
+        LocalSandboxBlockName,
+        Pick<
+            BlockData['attributes'],
+            'hitboxDepth' | 'hitboxHeight' | 'hitboxWidth'
+        >
+    >
+>;
+
+const localSandboxHitboxAttributes: LocalSandboxHitboxAttributes = {
+    SummerHat: {
+        hitboxDepth: 0.64,
+        hitboxHeight: 0.2,
+        hitboxWidth: 0.8,
+    },
+};
 
 function getLocalSandboxStackHeight(name: LocalSandboxBlockName) {
     return localSandboxStackHeights[name] ?? 0.8;
@@ -154,6 +172,7 @@ function createLocalSandboxBlockData(
             stackable: isGroundBlock,
             type: isRaisedBed ? 'raisedBed' : 'decoration',
             nightOnlyPurchase: false,
+            ...localSandboxHitboxAttributes[name],
             ...(['LemonadeStand', 'IceCreamCart'].includes(name)
                 ? { spanDepth: 2, spanWidth: 3 }
                 : {}),

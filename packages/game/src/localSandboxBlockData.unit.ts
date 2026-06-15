@@ -48,6 +48,18 @@ test('local sandbox exposes special seasonal blocks', () => {
     assert.equal(blockNames.has('Block_Snow_Falling'), true);
 });
 
+test('local sandbox summer hat metadata matches the reduced visual scale', () => {
+    const blockData = getLocalSandboxBlockData();
+    const summerHat = blockData.find(
+        (block) => block.information.name === 'SummerHat',
+    );
+
+    assert.equal(summerHat?.attributes.height, 0.2);
+    assert.equal(summerHat?.attributes.hitboxDepth, 0.64);
+    assert.equal(summerHat?.attributes.hitboxHeight, 0.2);
+    assert.equal(summerHat?.attributes.hitboxWidth, 0.8);
+});
+
 test('local sandbox exposes animal home blocks used by the item HUD', () => {
     const blockData = getLocalSandboxBlockData();
     const blockNames = new Set(

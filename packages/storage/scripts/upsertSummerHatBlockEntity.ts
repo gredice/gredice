@@ -41,10 +41,10 @@ const spanDefinitionSpecs = [
 >[];
 
 const summerHatAttributes = {
-    'attributes.height': '0.28',
-    'attributes.hitboxDepth': '0.95',
-    'attributes.hitboxHeight': '0.28',
-    'attributes.hitboxWidth': '1.15',
+    'attributes.height': '0.2',
+    'attributes.hitboxDepth': '0.64',
+    'attributes.hitboxHeight': '0.2',
+    'attributes.hitboxWidth': '0.8',
     'attributes.spanDepth': '1',
     'attributes.spanWidth': '1',
     'attributes.stackable': 'false',
