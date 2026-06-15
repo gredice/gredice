@@ -567,7 +567,7 @@ export function TutorialChecklistHud() {
         <HudCard
             open
             position="floating"
-            className="relative overflow-visible p-0.5"
+            className="relative grid size-11 place-items-center overflow-visible rounded-full p-0.5"
         >
             {claimableCount > 0 && (
                 <div
@@ -596,7 +596,7 @@ export function TutorialChecklistHud() {
                         aria-label={
                             progressLabel ? `Zadaci ${progressLabel}` : 'Zadaci'
                         }
-                        className="relative size-10 overflow-visible rounded-full"
+                        className="relative size-10 overflow-visible rounded-full p-0"
                         data-tutorial-checklist-trigger="true"
                         title="Zadaci"
                         variant="plain"
@@ -604,19 +604,19 @@ export function TutorialChecklistHud() {
                         <Image
                             alt=""
                             aria-hidden="true"
-                            className="pointer-events-none absolute left-1/2 top-0 size-11 shrink-0 -translate-x-1/2 -translate-y-5 object-contain drop-shadow-[0_2px_3px_rgb(15_23_42_/_0.35)]"
+                            className="pointer-events-none absolute left-1/2 top-0 size-9 shrink-0 -translate-x-1/2 -translate-y-3.5 object-contain drop-shadow-[0_2px_3px_rgb(15_23_42_/_0.35)]"
                             data-tutorial-checklist-trigger-icon="true"
-                            height={44}
+                            height={36}
                             loading="eager"
                             src={tutorialTaskListIconSrc}
                             unoptimized
-                            width={44}
+                            width={36}
                         />
                         {progressLabel ? (
                             <Typography
                                 aria-hidden="true"
                                 bold
-                                className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 text-[12px] leading-none text-foreground"
+                                className="pointer-events-none absolute bottom-1 left-1/2 -translate-x-1/2 text-[12px] leading-none text-foreground"
                                 data-tutorial-checklist-progress="true"
                                 level="body3"
                             >

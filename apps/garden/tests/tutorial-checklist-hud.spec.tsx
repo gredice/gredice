@@ -38,10 +38,13 @@ test('tutorial checklist trigger shows icon with progress count below it', async
     expect(dotBox).not.toBeNull();
     expect(iconBox?.y ?? 0).toBeLessThan(triggerBox?.y ?? 0);
     expect(progressBox?.y ?? 0).toBeGreaterThan(iconBox?.y ?? 0);
+    expect((iconBox?.y ?? 0) + (iconBox?.height ?? 0)).toBeLessThanOrEqual(
+        (progressBox?.y ?? 0) + 1,
+    );
     expect(
         (progressBox?.y ?? 0) + (progressBox?.height ?? 0),
     ).toBeLessThanOrEqual((triggerBox?.y ?? 0) + (triggerBox?.height ?? 0) + 1);
-    expect(dotBox?.x ?? 0).toBeGreaterThan(
+    expect(dotBox?.x ?? 0).toBeGreaterThanOrEqual(
         (triggerBox?.x ?? 0) + (triggerBox?.width ?? 0) - 10,
     );
     expect(dotBox?.y ?? 0).toBeLessThan((triggerBox?.y ?? 0) + 2);
@@ -49,6 +52,12 @@ test('tutorial checklist trigger shows icon with progress count below it', async
         (node) => window.getComputedStyle(node).fontSize,
     );
     expect(progressFontSize).toBe('12px');
+    const triggerBorderRadius = await trigger.evaluate((node) =>
+        Number.parseFloat(window.getComputedStyle(node).borderRadius),
+    );
+    expect(triggerBorderRadius).toBeGreaterThanOrEqual(
+        Math.round((triggerBox?.width ?? 0) / 2),
+    );
     await expect(claimDot.locator('.animate-ping')).toHaveCount(1);
 });
 
