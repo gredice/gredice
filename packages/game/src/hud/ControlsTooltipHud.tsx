@@ -1,7 +1,7 @@
 'use client';
 
 import { IconButton } from '@gredice/ui/IconButton';
-import { Check, Info } from '@gredice/ui/icons';
+import { Check, GamepadDirectional } from '@gredice/ui/icons';
 import { useEffect, useState } from 'react';
 import { ButtonGreen } from '../shared-ui/ButtonGreen';
 import type { DeviceType } from './controls-tooltip';
@@ -102,7 +102,7 @@ export function ControlsTooltipHud() {
                     onClick={() => setOpen(true)}
                     className="hover:bg-muted"
                 >
-                    <Info className="size-5" />
+                    <GamepadDirectional className="size-5" />
                 </IconButton>
             </div>
         );

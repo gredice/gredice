@@ -1,5 +1,5 @@
 import * as ReactQuery from '@tanstack/react-query';
-import { type PropsWithChildren, useMemo } from 'react';
+import { type PropsWithChildren, useMemo, useState } from 'react';
 import { GameAnalyticsProvider } from '../../../packages/game/src/analytics/GameAnalyticsContext';
 import { WhatsNewWidget } from '../../../packages/game/src/hud/WhatsNewWidget';
 
@@ -78,6 +78,30 @@ export function WhatsNewWidgetStory({
         <Providers currentUserOverride={currentUserOverride}>
             <div className="relative h-[420px] w-[640px] bg-background">
                 <WhatsNewWidget enabled />
+            </div>
+        </Providers>
+    );
+}
+
+export function WhatsNewWidgetHudRequestStory() {
+    const [openRequestId, setOpenRequestId] = useState(0);
+    const currentUserOverride = useMemo(
+        () => ({
+            whatsNewLastSeenAt: new Date('2026-06-04T08:00:00.000Z'),
+        }),
+        [],
+    );
+
+    return (
+        <Providers currentUserOverride={currentUserOverride}>
+            <div className="relative h-[420px] w-[640px] bg-background">
+                <button
+                    onClick={() => setOpenRequestId((current) => current + 1)}
+                    type="button"
+                >
+                    Otvori novosti
+                </button>
+                <WhatsNewWidget enabled openRequestId={openRequestId} />
             </div>
         </Providers>
     );
