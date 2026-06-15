@@ -24,6 +24,7 @@ import {
 import { OperationCategoryIcon } from '@gredice/ui/OperationImage';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Stack } from '@gredice/ui/Stack';
+import { Timeline, TimelineEntry, TimelineGroup } from '@gredice/ui/Timeline';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import type { Metadata } from 'next';
@@ -982,99 +983,6 @@ function TimelineWeekCard({ week }: { week: TimelineWeekGroup }) {
     );
 }
 
-function TimelineDateChip({ label }: { label: string }) {
-    return (
-        <Typography
-            component="span"
-            level="body2"
-            semiBold
-            className="inline-flex rounded-md bg-foreground px-3 py-1 text-background"
-        >
-            {label}
-        </Typography>
-    );
-}
-
-function TimelineMonthMarker({
-    hasWeeks,
-    isFirst,
-    label,
-}: {
-    hasWeeks: boolean;
-    isFirst: boolean;
-    label: string;
-}) {
-    return (
-        <div className="relative flex pl-9 sm:justify-center sm:pl-0">
-            {!isFirst ? (
-                <span className="absolute left-[5px] -top-10 bottom-1/2 w-px bg-border sm:left-1/2 sm:-translate-x-1/2" />
-            ) : null}
-            {hasWeeks ? (
-                <span className="absolute left-[5px] top-1/2 -bottom-8 w-px bg-border sm:left-1/2 sm:-translate-x-1/2" />
-            ) : null}
-            <Typography
-                component="span"
-                level="body2"
-                semiBold
-                className="relative z-10 inline-flex rounded-full bg-background px-3 py-1 capitalize text-primary shadow-sm ring-1 ring-border/70"
-            >
-                {label}
-            </Typography>
-        </div>
-    );
-}
-
-function TimelineWeek({
-    index,
-    isLast,
-    week,
-}: {
-    index: number;
-    isLast: boolean;
-    week: TimelineWeekGroup;
-}) {
-    const side = index % 2 === 0 ? 'right' : 'left';
-    const dateChip = <TimelineDateChip label={week.weekLabel} />;
-    const card = <TimelineWeekCard week={week} />;
-
-    return (
-        <li className="relative pl-9 sm:grid sm:grid-cols-[minmax(0,1fr)_2.5rem_minmax(0,1fr)] sm:items-start sm:pl-0">
-            <span className="absolute left-[5px] -top-8 h-[calc(2rem+0.875rem)] w-px bg-border sm:left-1/2 sm:-translate-x-1/2" />
-            <span className="absolute left-0 top-2 z-10 flex size-3 items-center justify-center rounded-full bg-foreground ring-4 ring-background sm:left-1/2 sm:-translate-x-1/2" />
-            {!isLast ? (
-                <span className="absolute left-[5px] top-[0.875rem] -bottom-8 w-px bg-border sm:left-1/2 sm:-translate-x-1/2" />
-            ) : null}
-
-            <div className="flex flex-col items-start gap-4 sm:hidden">
-                {dateChip}
-                {card}
-            </div>
-
-            <div
-                className={
-                    side === 'left'
-                        ? 'hidden sm:col-start-1 sm:block sm:pr-7'
-                        : 'hidden sm:col-start-1 sm:flex sm:justify-end sm:pr-5'
-                }
-            >
-                {side === 'left' ? card : dateChip}
-            </div>
-
-            <div className="hidden sm:col-start-2 sm:block" />
-
-            <div
-                className={
-                    side === 'right'
-                        ? 'hidden sm:col-start-3 sm:block sm:pl-7'
-                        : 'hidden sm:col-start-3 sm:flex sm:justify-start sm:pl-5'
-                }
-            >
-                {side === 'right' ? card : dateChip}
-            </div>
-        </li>
-    );
-}
-
 function TraceTimeline({ trace }: { trace: PublicHarvestTrace }) {
     const monthGroups = groupTimelineByWeek(trace.timeline);
     const totalWeeks = monthGroups.reduce(
@@ -1086,40 +994,34 @@ function TraceTimeline({ trace }: { trace: PublicHarvestTrace }) {
     return (
         <section className="rounded-lg bg-background py-5 sm:py-7">
             {monthGroups.length > 0 ? (
-                <div className="relative">
-                    <div className="space-y-10">
-                        {monthGroups.map((month, monthIndex) => (
-                            <div
-                                key={month.monthKey}
-                                className="relative space-y-6"
-                            >
-                                <TimelineMonthMarker
-                                    hasWeeks={month.weeks.length > 0}
-                                    isFirst={monthIndex === 0}
-                                    label={month.monthLabel}
-                                />
-                                <ol className="space-y-8">
-                                    {month.weeks.map((week) => {
-                                        const currentWeekIndex = weekIndex;
-                                        weekIndex += 1;
+                <Timeline>
+                    {monthGroups.map((month, monthIndex) => (
+                        <TimelineGroup
+                            hasItems={month.weeks.length > 0}
+                            isFirst={monthIndex === 0}
+                            key={month.monthKey}
+                            label={month.monthLabel}
+                        >
+                            {month.weeks.map((week) => {
+                                const currentWeekIndex = weekIndex;
+                                weekIndex += 1;
 
-                                        return (
-                                            <TimelineWeek
-                                                key={week.weekKey}
-                                                index={currentWeekIndex}
-                                                isLast={
-                                                    currentWeekIndex ===
-                                                    totalWeeks - 1
-                                                }
-                                                week={week}
-                                            />
-                                        );
-                                    })}
-                                </ol>
-                            </div>
-                        ))}
-                    </div>
-                </div>
+                                return (
+                                    <TimelineEntry
+                                        index={currentWeekIndex}
+                                        isLast={
+                                            currentWeekIndex === totalWeeks - 1
+                                        }
+                                        key={week.weekKey}
+                                        label={week.weekLabel}
+                                    >
+                                        <TimelineWeekCard week={week} />
+                                    </TimelineEntry>
+                                );
+                            })}
+                        </TimelineGroup>
+                    ))}
+                </Timeline>
             ) : (
                 <div className="rounded-lg bg-muted/30 p-4">
                     <Typography className="text-muted-foreground">
