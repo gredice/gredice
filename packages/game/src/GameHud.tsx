@@ -38,8 +38,22 @@ export const gameHudBottomBarClassName =
 export const gameHudBottomControlsClassName =
     'self-start flex flex-row items-end justify-start p-2 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-4 motion-safe:duration-300 motion-safe:ease-out md:absolute md:bottom-0 md:left-0';
 
+export const gameHudBottomItemsClassName = 'flex w-full justify-center';
+
 const gameHudEntranceClassName =
     'motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-300 motion-safe:ease-out';
+
+const gameHudCloseupBottomTransitionClassName =
+    'motion-safe:transition-[opacity,transform] motion-safe:duration-300 motion-safe:ease-in-out motion-reduce:transition-none';
+
+export function getGameHudBottomCloseupClassName(isCloseup: boolean) {
+    return cx(
+        gameHudCloseupBottomTransitionClassName,
+        isCloseup
+            ? 'pointer-events-none translate-y-[100dvh] opacity-0'
+            : 'translate-y-0 opacity-100',
+    );
+}
 
 export function GameHud({
     debugHud,
@@ -171,13 +185,31 @@ export function GameHud({
                 {!isSandbox && <SunflowersHud />}
             </div>
             <div className={gameHudBottomBarClassName}>
-                <div className={gameHudBottomControlsClassName}>
+                <div
+                    data-game-hud-bottom-controls
+                    aria-hidden={isCloseup}
+                    inert={isCloseup ? true : undefined}
+                    className={cx(
+                        gameHudBottomControlsClassName,
+                        getGameHudBottomCloseupClassName(isCloseup),
+                    )}
+                >
                     <CameraHud />
                     <AudioHud />
                     <ControlsTooltipHud />
                 </div>
                 <SandboxBlockTrashDropTarget />
-                <ItemsHud />
+                <div
+                    data-game-hud-bottom-items
+                    aria-hidden={isCloseup}
+                    inert={isCloseup ? true : undefined}
+                    className={cx(
+                        gameHudBottomItemsClassName,
+                        getGameHudBottomCloseupClassName(isCloseup),
+                    )}
+                >
+                    <ItemsHud />
+                </div>
             </div>
             {!isLocalSandbox && <RaisedBedFieldHud flags={flags} />}
             {!isLocalSandbox && <OverviewModal />}

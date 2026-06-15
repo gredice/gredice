@@ -1,10 +1,13 @@
 import type { BlockData } from '@gredice/client';
+import { cx } from '@gredice/ui/utils';
 import * as ReactQuery from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { type PropsWithChildren, useMemo } from 'react';
 import {
     gameHudBottomBarClassName,
     gameHudBottomControlsClassName,
+    gameHudBottomItemsClassName,
+    getGameHudBottomCloseupClassName,
 } from '../../../packages/game/src/GameHud';
 import { currentAccountKeys } from '../../../packages/game/src/hooks/useCurrentAccount';
 import { ControlsTooltipHud } from '../../../packages/game/src/hud/ControlsTooltipHud';
@@ -126,6 +129,7 @@ const blockNames = [
 
 type ItemsHudStoryOptions = {
     accountSunflowers?: number;
+    closeup?: boolean;
     isSandbox?: boolean;
     pickupBlock?: boolean;
     trashTargetActive?: boolean;
@@ -168,6 +172,7 @@ function ItemsHudTestProviders({
     children,
     accountSunflowers,
     isSandbox = false,
+    closeup = false,
     pickupBlock = false,
     trashTargetActive = false,
 }: PropsWithChildren<ItemsHudStoryOptions>) {
@@ -192,8 +197,11 @@ function ItemsHudTestProviders({
                 sandboxBlockTrashDropTargetActive: trashTargetActive,
             });
         }
+        if (closeup) {
+            store.setState({ view: 'closeup' });
+        }
         return store;
-    }, [pickupBlock, trashTargetActive]);
+    }, [closeup, pickupBlock, trashTargetActive]);
 
     return (
         <NuqsTestingAdapter>
@@ -206,6 +214,38 @@ function ItemsHudTestProviders({
     );
 }
 
+function BottomControlsTestFrame({ closeup = false }: { closeup?: boolean }) {
+    return (
+        <div
+            data-testid="bottom-controls"
+            aria-hidden={closeup}
+            inert={closeup ? true : undefined}
+            className={cx(
+                gameHudBottomControlsClassName,
+                getGameHudBottomCloseupClassName(closeup),
+            )}
+        >
+            <div className="h-10 w-40 rounded-lg border bg-muted" />
+        </div>
+    );
+}
+
+function ItemsHudTestFrame({ closeup = false }: { closeup?: boolean }) {
+    return (
+        <div
+            data-testid="bottom-items"
+            aria-hidden={closeup}
+            inert={closeup ? true : undefined}
+            className={cx(
+                gameHudBottomItemsClassName,
+                getGameHudBottomCloseupClassName(closeup),
+            )}
+        >
+            <ItemsHud />
+        </div>
+    );
+}
+
 export function ItemsHudAlignmentStory() {
     return (
         <ItemsHudTestProviders>
@@ -214,13 +254,8 @@ export function ItemsHudAlignmentStory() {
                     data-testid="bottom-hud"
                     className={gameHudBottomBarClassName}
                 >
-                    <div
-                        data-testid="bottom-controls"
-                        className={gameHudBottomControlsClassName}
-                    >
-                        <div className="h-10 w-40 rounded-lg border bg-muted" />
-                    </div>
-                    <ItemsHud />
+                    <BottomControlsTestFrame />
+                    <ItemsHudTestFrame />
                 </div>
             </div>
         </ItemsHudTestProviders>
@@ -235,13 +270,8 @@ export function LowSunflowerBalanceItemsHudStory() {
                     data-testid="bottom-hud"
                     className={gameHudBottomBarClassName}
                 >
-                    <div
-                        data-testid="bottom-controls"
-                        className={gameHudBottomControlsClassName}
-                    >
-                        <div className="h-10 w-40 rounded-lg border bg-muted" />
-                    </div>
-                    <ItemsHud />
+                    <BottomControlsTestFrame />
+                    <ItemsHudTestFrame />
                 </div>
             </div>
         </ItemsHudTestProviders>
@@ -258,12 +288,15 @@ export function ItemsHudControlsTooltipStory() {
                 >
                     <div
                         data-testid="bottom-controls"
-                        className={gameHudBottomControlsClassName}
+                        className={cx(
+                            gameHudBottomControlsClassName,
+                            getGameHudBottomCloseupClassName(false),
+                        )}
                     >
                         <div className="h-10 w-40 rounded-lg border bg-muted" />
                         <ControlsTooltipHud />
                     </div>
-                    <ItemsHud />
+                    <ItemsHudTestFrame />
                 </div>
             </div>
         </ItemsHudTestProviders>
@@ -278,13 +311,8 @@ export function SandboxItemsHudStory() {
                     data-testid="bottom-hud"
                     className={gameHudBottomBarClassName}
                 >
-                    <div
-                        data-testid="bottom-controls"
-                        className={gameHudBottomControlsClassName}
-                    >
-                        <div className="h-10 w-40 rounded-lg border bg-muted" />
-                    </div>
-                    <ItemsHud />
+                    <BottomControlsTestFrame />
+                    <ItemsHudTestFrame />
                 </div>
             </div>
         </ItemsHudTestProviders>
@@ -299,14 +327,25 @@ export function SandboxBlockTrashDropTargetStory() {
                     data-testid="bottom-hud"
                     className={gameHudBottomBarClassName}
                 >
-                    <div
-                        data-testid="bottom-controls"
-                        className={gameHudBottomControlsClassName}
-                    >
-                        <div className="h-10 w-40 rounded-lg border bg-muted" />
-                    </div>
+                    <BottomControlsTestFrame />
                     <SandboxBlockTrashDropTarget />
-                    <ItemsHud />
+                    <ItemsHudTestFrame />
+                </div>
+            </div>
+        </ItemsHudTestProviders>
+    );
+}
+
+export function CloseupBottomHudStory() {
+    return (
+        <ItemsHudTestProviders closeup>
+            <div className="relative h-screen w-screen overflow-hidden">
+                <div
+                    data-testid="bottom-hud"
+                    className={gameHudBottomBarClassName}
+                >
+                    <BottomControlsTestFrame closeup />
+                    <ItemsHudTestFrame closeup />
                 </div>
             </div>
         </ItemsHudTestProviders>
