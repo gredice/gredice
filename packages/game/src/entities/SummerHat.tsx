@@ -10,7 +10,7 @@ import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
 type SummerHatNode = GLTFResult['nodes'][keyof GLTFResult['nodes']];
 
-const summerHatScale = 0.32;
+const summerHatScale = 0.224;
 
 function SummerHatPart({ node }: { node: SummerHatNode }) {
     return (
