@@ -270,10 +270,10 @@ function AssetBlock({
     }
 
     return (
-        <div className="overflow-hidden rounded-lg border bg-muted/20">
+        <div className="flex max-w-full justify-center overflow-hidden rounded-lg border bg-muted/20">
             <CmsMediaImage
                 alt={assetAlt ?? ''}
-                className="h-auto w-full object-cover"
+                className="h-auto w-full object-contain"
                 darkSrc={assetDarkUrl}
                 src={assetUrl}
             />

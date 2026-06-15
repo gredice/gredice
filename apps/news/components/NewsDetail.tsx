@@ -35,12 +35,12 @@ export function NewsDetail({ entry }: { entry: NewsDetailEntry }) {
                 ) : null}
             </header>
             {entry.metaImageUrl ? (
-                <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8">
-                    <div className="overflow-hidden rounded-md border bg-muted/20">
+                <div className="mx-auto flex w-full max-w-5xl justify-center px-4 sm:px-6 lg:px-8">
+                    <div className="inline-flex max-w-full overflow-hidden rounded-md border bg-muted/20">
                         {/* biome-ignore lint/performance/noImgElement: CMS images are remote author content. */}
                         <img
                             alt=""
-                            className="max-h-[520px] w-full object-cover"
+                            className="h-auto max-h-[520px] max-w-full object-contain"
                             src={entry.metaImageUrl}
                         />
                     </div>
