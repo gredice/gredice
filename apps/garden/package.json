@@ -49,7 +49,7 @@
         "@playwright/experimental-ct-react": "1.60.0",
         "@playwright/test": "1.60.0",
         "@tailwindcss/postcss": "4.3.0",
-        "@tailwindcss/typography": "0.5.19",
+        "@tailwindcss/typography": "0.5.20",
         "@tanstack/react-query": "5.100.14",
         "@types/node": "24.12.4",
         "@types/react": "19.2.15",
