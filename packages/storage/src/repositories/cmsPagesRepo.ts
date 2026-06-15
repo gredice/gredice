@@ -1,6 +1,6 @@
 import 'server-only';
 import { slugify } from '@gredice/js/slug';
-import { and, desc, eq, gt, ne, sql } from 'drizzle-orm';
+import { and, count, desc, eq, gt, ne, sql } from 'drizzle-orm';
 import {
     cmsPageRevisions,
     cmsPages,
@@ -416,6 +416,17 @@ export async function getCmsPages(options: GetCmsPagesOptions = {}) {
 
     const stateKey = options.state ?? 'all';
     return directoriesCached(cacheKeys.cmsPagesList(stateKey), query, 300);
+}
+
+export async function getCmsPagesReadyForReviewCount() {
+    const result = await storage()
+        .select({ count: count() })
+        .from(cmsPages)
+        .where(
+            and(eq(cmsPages.isDeleted, false), eq(cmsPages.state, 'in-review')),
+        );
+
+    return result[0]?.count ?? 0;
 }
 
 function newsPagePublicWhere(options: GetPublishedCmsNewsPagesOptions = {}) {

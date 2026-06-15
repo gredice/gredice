@@ -1,4 +1,5 @@
 import {
+    getCmsPagesReadyForReviewCount,
     getEntityTypesOrganizedByCategories,
     getPendingAchievementsCount,
     getPendingCommunityEditRequestsCount,
@@ -48,12 +49,14 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
 
     const [
         { categorizedTypes, uncategorizedTypes, shadowTypes },
+        pendingCmsPagesReviewCount,
         pendingAchievementsCount,
         pendingApprovalTasksCount,
         pendingCommunityEditRequestsCount,
         dashboardQuickActionsSetting,
     ] = await Promise.all([
         getEntityTypesOrganizedByCategories(),
+        getCmsPagesReadyForReviewCount(),
         getPendingAchievementsCount(),
         getPendingAdminApprovalTaskCount(),
         getPendingCommunityEditRequestsCount(),
@@ -87,6 +90,7 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
                 categorizedTypes={categorizedTypes}
                 uncategorizedTypes={uncategorizedTypes}
                 shadowTypes={shadowTypes}
+                pendingCmsPagesReviewCount={pendingCmsPagesReviewCount}
                 pendingAchievementsCount={pendingAchievementsCount}
                 pendingApprovalTasksCount={pendingApprovalTasksCount}
                 pendingCommunityEditRequestsCount={

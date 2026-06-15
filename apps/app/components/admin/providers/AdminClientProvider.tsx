@@ -7,6 +7,7 @@ export function AdminClientProvider({
     categorizedTypes,
     uncategorizedTypes,
     shadowTypes,
+    pendingCmsPagesReviewCount,
     pendingAchievementsCount,
     pendingApprovalTasksCount,
     pendingCommunityEditRequestsCount,
@@ -16,6 +17,7 @@ export function AdminClientProvider({
     categorizedTypes: NavContextType['categorizedTypes'];
     uncategorizedTypes: NavContextType['uncategorizedTypes'];
     shadowTypes: NavContextType['shadowTypes'];
+    pendingCmsPagesReviewCount: number;
     pendingAchievementsCount: number;
     pendingApprovalTasksCount: number;
     pendingCommunityEditRequestsCount: number;
@@ -28,6 +30,7 @@ export function AdminClientProvider({
                 categorizedTypes,
                 uncategorizedTypes,
                 shadowTypes,
+                pendingCmsPagesReviewCount,
                 pendingAchievementsCount,
                 pendingApprovalTasksCount,
                 pendingCommunityEditRequestsCount,

@@ -1,4 +1,5 @@
 import {
+    getCmsPagesReadyForReviewCount,
     getEntityTypes,
     getPendingAchievementsCount,
     getSetting,
@@ -27,6 +28,7 @@ export async function AdminDashboard({ searchParams }: AdminDashboardProps) {
         data,
         entityTypes,
         dashboardQuickActionsSetting,
+        pendingCmsPagesReviewCount,
         pendingAchievementsCount,
         pendingApprovalTasksCount,
     ] = await Promise.all([
@@ -37,6 +39,7 @@ export async function AdminDashboard({ searchParams }: AdminDashboardProps) {
         ),
         getEntityTypes(),
         getSetting(SettingsKeys.DashboardQuickActions),
+        getCmsPagesReadyForReviewCount(),
         getPendingAchievementsCount(),
         getPendingAdminApprovalTaskCount(),
     ]);
@@ -69,6 +72,7 @@ export async function AdminDashboard({ searchParams }: AdminDashboardProps) {
             initialSunflowersData={data.sunflowers}
             initialQuickActions={quickActions}
             initialQuickActionBadgeCounts={{
+                pendingCmsPagesReviewCount,
                 pendingAchievementsCount,
                 pendingApprovalTasksCount,
             }}

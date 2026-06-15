@@ -11,6 +11,7 @@ export type DashboardQuickActionOption = {
 };
 
 export type DashboardQuickActionBadgeCounts = {
+    pendingCmsPagesReviewCount: number;
     pendingAchievementsCount: number;
     pendingApprovalTasksCount: number;
 };
@@ -398,6 +399,8 @@ export function getDashboardQuickActionBadge(
     counts: DashboardQuickActionBadgeCounts,
 ): number | undefined {
     switch (quickAction.href) {
+        case KnownPages.CmsPages:
+            return counts.pendingCmsPagesReviewCount;
         case KnownPages.Achievements:
             return counts.pendingAchievementsCount;
         case KnownPages.Approvals:
