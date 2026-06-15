@@ -147,23 +147,43 @@ export default async function WhatsNewPage({
                                         label={dateLabel ?? 'Bez datuma'}
                                     >
                                         <Link
-                                            className="grid gap-3 rounded-md border bg-card p-5 shadow-xs transition-colors hover:bg-muted/20"
+                                            className={`grid overflow-hidden rounded-md border bg-card shadow-xs transition-colors hover:bg-muted/20 ${
+                                                entry.metaImageUrl
+                                                    ? 'md:grid-cols-[minmax(0,1fr)_220px]'
+                                                    : ''
+                                            }`}
                                             href={`/sto-je-novo/${entry.slug}`}
                                         >
-                                            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
-                                                {entry.tags.map((entryTag) => (
-                                                    <span key={entryTag}>
-                                                        {entryTag}
-                                                    </span>
-                                                ))}
+                                            <div className="grid gap-3 p-5">
+                                                <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
+                                                    {entry.tags.map(
+                                                        (entryTag) => (
+                                                            <span
+                                                                key={entryTag}
+                                                            >
+                                                                {entryTag}
+                                                            </span>
+                                                        ),
+                                                    )}
+                                                </div>
+                                                <h2 className="text-xl font-bold leading-tight">
+                                                    {entry.title}
+                                                </h2>
+                                                {entry.excerpt ? (
+                                                    <p className="text-sm leading-6 text-muted-foreground">
+                                                        {entry.excerpt}
+                                                    </p>
+                                                ) : null}
                                             </div>
-                                            <h2 className="text-xl font-bold leading-tight">
-                                                {entry.title}
-                                            </h2>
-                                            {entry.excerpt ? (
-                                                <p className="text-sm leading-6 text-muted-foreground">
-                                                    {entry.excerpt}
-                                                </p>
+                                            {entry.metaImageUrl ? (
+                                                <div className="min-h-48 border-t bg-muted/30 md:border-l md:border-t-0">
+                                                    {/* biome-ignore lint/performance/noImgElement: CMS images are remote author content. */}
+                                                    <img
+                                                        alt=""
+                                                        className="h-full min-h-48 w-full object-cover"
+                                                        src={entry.metaImageUrl}
+                                                    />
+                                                </div>
                                             ) : null}
                                         </Link>
                                     </TimelineEntry>
