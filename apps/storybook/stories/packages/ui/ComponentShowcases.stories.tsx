@@ -66,6 +66,7 @@ import { ImageGallery } from '@gredice/ui/ImageGallery';
 import { ImageViewer } from '@gredice/ui/ImageViewer';
 import { Input } from '@gredice/ui/Input';
 import {
+    Add,
     Approved,
     Calendar,
     Check,
@@ -144,6 +145,7 @@ import { ShovelIcon } from '@gredice/ui/ShovelIcon';
 import { Skeleton } from '@gredice/ui/Skeleton';
 import { Slider } from '@gredice/ui/Slider';
 import { Spinner } from '@gredice/ui/Spinner';
+import { SplitButton } from '@gredice/ui/SplitButton';
 import { SplitView } from '@gredice/ui/SplitView';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
@@ -623,6 +625,29 @@ function OperationsDashboardShowcase() {
                                     </Typography>
                                 </Stack>
                                 <Row className="flex-wrap" spacing={2}>
+                                    <SplitButton
+                                        dropdownLabel="Odaberi vrstu nove radnje"
+                                        href="/"
+                                        menuContent={
+                                            <>
+                                                <DropdownMenuItem>
+                                                    Berba
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem>
+                                                    Sadnja
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem>
+                                                    Zalijevanje
+                                                </DropdownMenuItem>
+                                            </>
+                                        }
+                                        size="sm"
+                                        startDecorator={
+                                            <Add className="size-4 shrink-0" />
+                                        }
+                                    >
+                                        Nova radnja
+                                    </SplitButton>
                                     <ExpandableSearchDemo />
                                     <ControlledTableFilter />
                                     <StatusMenu />
