@@ -266,12 +266,10 @@ function TutorialChecklistTaskRow({
     return (
         <div
             className={cx(
-                'grid grid-cols-[auto_1fr] gap-3 rounded-md border border-border/70 bg-transparent p-3 shadow-sm transition-colors dark:border-slate-700/80 dark:bg-slate-950/20 dark:shadow-black/20 sm:grid-cols-[auto_1fr_auto] sm:items-center',
-                rewardSettled &&
-                    'border-green-200/80 bg-green-50/40 dark:border-green-700/50 dark:bg-green-950/20',
+                'grid grid-cols-[auto_1fr] gap-3 rounded-md border border-border/70 bg-background p-3 text-foreground shadow-sm transition-colors sm:grid-cols-[auto_1fr_auto] sm:items-center',
+                rewardSettled && 'bg-muted/30',
                 task.status === 'blocked' && 'opacity-70',
-                readyToClaim &&
-                    'border-green-500/60 bg-green-50 text-green-950 shadow-md dark:border-green-500/70 dark:bg-green-950/45 dark:text-green-50',
+                readyToClaim && 'border-green-500/60 shadow-md',
                 readyToClaim && styles.claimableTask,
             )}
             data-tutorial-checklist-claimable={readyToClaim ? 'true' : 'false'}
@@ -281,12 +279,12 @@ function TutorialChecklistTaskRow({
             <span
                 aria-hidden="true"
                 className={cx(
-                    'grid size-7 place-items-center rounded-full border-2 bg-background dark:bg-slate-950',
+                    'grid size-7 place-items-center rounded-full border-2 bg-background',
                     rewardSettled &&
                         'border-green-600 bg-green-600 text-white shadow-sm',
                     !rewardSettled &&
                         readyToClaim &&
-                        'border-green-600 bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-200',
+                        'border-green-600 text-green-700 dark:text-green-300',
                     !rewardSettled &&
                         !readyToClaim &&
                         'border-muted-foreground/35 text-muted-foreground',
@@ -301,10 +299,7 @@ function TutorialChecklistTaskRow({
                 <Typography
                     level="body2"
                     semiBold
-                    className={cx(
-                        'min-w-0 text-foreground',
-                        readyToClaim && 'text-green-950 dark:text-green-50',
-                    )}
+                    className="min-w-0 text-foreground"
                 >
                     {task.title}
                 </Typography>
@@ -336,7 +331,7 @@ function TutorialChecklistTaskRow({
                 </Button>
             ) : canOpen ? (
                 <Button
-                    className="col-span-2 w-full shrink-0 bg-white hover:bg-muted/70 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:hover:bg-slate-800 sm:col-span-1 sm:w-24"
+                    className="col-span-2 w-full shrink-0 sm:col-span-1 sm:w-24"
                     color="neutral"
                     onClick={() => onOpen(task)}
                     size="sm"
@@ -419,9 +414,9 @@ function TutorialChecklistContent({
             <Stack
                 alignItems="center"
                 spacing={2}
-                className="mt-4 rounded-md border border-green-200/80 bg-gradient-to-br from-green-50 via-white to-amber-50 px-5 py-5 text-center shadow-sm dark:border-green-800/70 dark:from-green-950/45 dark:via-slate-950 dark:to-amber-950/25 dark:shadow-black/25 sm:mx-8"
+                className="mt-4 rounded-md border bg-card px-5 py-5 text-center text-card-foreground shadow-sm sm:mx-8"
             >
-                <span className="grid size-12 place-items-center rounded-full border-2 border-green-500 bg-white text-green-700 shadow-[0_5px_0_rgb(22_101_52_/_0.14)] dark:bg-slate-950 dark:text-green-200 dark:shadow-[0_5px_0_rgb(34_197_94_/_0.18)]">
+                <span className="grid size-12 place-items-center rounded-full border bg-background text-foreground shadow-sm">
                     <Image
                         alt=""
                         aria-hidden="true"
@@ -434,7 +429,7 @@ function TutorialChecklistContent({
                     />
                 </span>
                 <Typography
-                    className="text-2xl leading-tight font-semibold tracking-tight text-foreground dark:text-green-50"
+                    className="text-2xl leading-tight font-semibold tracking-tight text-foreground"
                     component="h2"
                     data-tutorial-checklist-modal-title="true"
                     level="h3"
@@ -453,7 +448,7 @@ function TutorialChecklistContent({
 
                     return (
                         <Stack
-                            className="overflow-hidden rounded-md border border-border/70 bg-white shadow-sm dark:border-slate-700/80 dark:bg-slate-900/75 dark:shadow-black/25"
+                            className="overflow-hidden rounded-md border bg-card text-card-foreground shadow-sm"
                             data-group-complete={complete ? 'true' : 'false'}
                             data-tutorial-checklist-group={group.id}
                             key={group.id}
@@ -461,7 +456,7 @@ function TutorialChecklistContent({
                         >
                             <button
                                 aria-expanded={expanded}
-                                className="-mx-px flex w-[calc(100%+2px)] items-start justify-between gap-4 px-4 py-3 text-left outline-hidden transition-colors hover:bg-green-50/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset dark:hover:bg-green-950/30"
+                                className="-mx-px flex w-[calc(100%+2px)] items-start justify-between gap-4 px-4 py-3 text-left outline-hidden transition-colors hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                                 onClick={() =>
                                     setExpandedGroups((current) => ({
                                         ...current,
@@ -504,12 +499,7 @@ function TutorialChecklistContent({
                                             : 'neutral'
                                     }
                                     size="sm"
-                                    className={cx(
-                                        'min-h-8 px-3 text-sm',
-                                        group.claimableCount > 0
-                                            ? 'dark:bg-green-900/50 dark:text-green-100'
-                                            : 'dark:bg-slate-800 dark:text-slate-100',
-                                    )}
+                                    className="min-h-8 px-3 text-sm"
                                     variant="soft"
                                 >
                                     {group.completedCount}/{group.totalCount}
@@ -575,7 +565,7 @@ export function TutorialChecklistHud() {
                 </div>
             )}
             <Modal
-                className="z-[46] border-tertiary border-b-4 dark:border-green-800 dark:bg-slate-950 dark:text-slate-100 md:max-w-3xl"
+                className="z-[46] border-tertiary border-b-4 md:max-w-3xl"
                 onOpenChange={(open) => {
                     if (open) {
                         track('game_tutorial_checklist_opened', {
