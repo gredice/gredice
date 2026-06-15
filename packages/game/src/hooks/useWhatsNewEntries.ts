@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 
 export const whatsNewEntriesQueryKey = ['whatsNewEntries'];
 export const whatsNewEntryQueryKey = ['whatsNewEntry'];
+export const whatsNewEntriesAudienceTag = 'Korisnici';
 
 export function useWhatsNewEntries({
     enabled = true,
@@ -19,6 +20,7 @@ export function useWhatsNewEntries({
             {
                 limit,
                 since: since?.toISOString() ?? null,
+                tag: whatsNewEntriesAudienceTag,
             },
         ],
         queryFn: async () => {
@@ -26,6 +28,7 @@ export function useWhatsNewEntries({
                 query: {
                     limit: limit.toString(),
                     since: since?.toISOString(),
+                    tag: whatsNewEntriesAudienceTag,
                 },
             });
             if (!response.ok) {

@@ -54,12 +54,13 @@ async function fulfillJson(route: Route, body: unknown, status = 200) {
 }
 
 async function mockWhatsNewApi(page: Page) {
+    const changelogListQueries: Record<string, string>[] = [];
     const userPatches: unknown[] = [];
 
     await page.route('**/api/**', async (route) => {
         const request = route.request();
         const method = request.method();
-        const { pathname } = new URL(request.url());
+        const { pathname, searchParams } = new URL(request.url());
 
         if (pathname.includes('/api/users/current')) {
             await fulfillJson(route, {
@@ -97,6 +98,9 @@ async function mockWhatsNewApi(page: Page) {
         }
 
         if (pathname.endsWith('/api/news/changelog') && method === 'GET') {
+            changelogListQueries.push(
+                Object.fromEntries(searchParams.entries()),
+            );
             await fulfillJson(route, { items: changelogEntries });
             return;
         }
@@ -126,7 +130,7 @@ async function mockWhatsNewApi(page: Page) {
         );
     });
 
-    return { userPatches };
+    return { changelogListQueries, userPatches };
 }
 
 test('what is new widget opens the latest changelog entry expanded', async ({
@@ -144,7 +148,10 @@ test('what is new widget opens the latest changelog entry expanded', async ({
     ).toBeVisible();
     await expect(
         page.getByRole('link', { name: /Sve novosti/u }),
-    ).toHaveAttribute('href', 'https://www.gredice.com/novosti/sto-je-novo');
+    ).toHaveAttribute(
+        'href',
+        'https://www.gredice.com/novosti/sto-je-novo?tag=Korisnici',
+    );
     await expect(
         page.getByText('Timski dokumenti sada su dostupni izravno u igri.'),
     ).toBeVisible();
@@ -153,6 +160,10 @@ test('what is new widget opens the latest changelog entry expanded', async ({
         page.getByText('Podsjetnici su brzi i pregledni.'),
     ).toHaveCount(0);
     await expect.poll(() => recorded.userPatches.length).toBe(1);
+    expect(recorded.changelogListQueries[0]).toMatchObject({
+        limit: '8',
+        tag: 'Korisnici',
+    });
     expect(recorded.userPatches[0]).toMatchObject({
         whatsNewLastSeenAt: latestPublishedAt,
     });

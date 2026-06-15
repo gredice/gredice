@@ -18,6 +18,7 @@ import { useUpdateUser } from '../hooks/useUpdateUser';
 import {
     useWhatsNewEntries,
     useWhatsNewEntry,
+    whatsNewEntriesAudienceTag,
 } from '../hooks/useWhatsNewEntries';
 import { KnownPages } from '../knownPages';
 
@@ -182,6 +183,10 @@ function renderEntryContent(
     );
 }
 
+const audienceWhatsNewHref = `${KnownPages.GrediceWhatsNew}?tag=${encodeURIComponent(
+    whatsNewEntriesAudienceTag,
+)}`;
+
 export function WhatsNewWidget({ enabled }: { enabled: boolean }) {
     const { track } = useGameAnalytics();
     const { data: currentUser } = useCurrentUser(enabled);
@@ -290,7 +295,7 @@ export function WhatsNewWidget({ enabled }: { enabled: boolean }) {
                             <Typography semiBold>Što je novo</Typography>
                         </Stack>
                         <Button
-                            href={KnownPages.GrediceWhatsNew}
+                            href={audienceWhatsNewHref}
                             size="sm"
                             startDecorator={<ExternalLink className="size-4" />}
                             variant="plain"
