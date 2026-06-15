@@ -13,7 +13,7 @@ const changelogEntries = [
         excerpt: 'Dokumenti za tim sada su dostupni iz vrta.',
         id: 101,
         metaDescription: 'Dokumenti za tim sada su dostupni iz vrta.',
-        metaImageUrl: null,
+        metaImageUrl: 'https://www.gredice.com/assets/team-docs.jpg',
         metaTitle: 'Timski dokumenti',
         noIndex: false,
         path: '/novosti/sto-je-novo/timski-dokumenti',
@@ -53,9 +53,15 @@ async function fulfillJson(route: Route, body: unknown, status = 200) {
     });
 }
 
-async function mockWhatsNewApi(page: Page) {
+async function mockWhatsNewApi(
+    page: Page,
+    {
+        initialWhatsNewLastSeenAt = null,
+    }: { initialWhatsNewLastSeenAt?: string | null } = {},
+) {
     const changelogListQueries: Record<string, string>[] = [];
     const userPatches: unknown[] = [];
+    let whatsNewLastSeenAt = initialWhatsNewLastSeenAt;
 
     await page.route('**/api/**', async (route) => {
         const request = route.request();
@@ -73,14 +79,16 @@ async function mockWhatsNewApi(page: Page) {
                 email: 'test@example.com',
                 id: 'test-user',
                 userName: 'test-user',
-                whatsNewLastSeenAt: null,
+                whatsNewLastSeenAt,
                 whatsNewPopupDisabled: false,
             });
             return;
         }
 
         if (pathname.includes('/api/users/test-user') && method === 'PATCH') {
-            userPatches.push(request.postDataJSON());
+            const patch = request.postDataJSON();
+            userPatches.push(patch);
+            whatsNewLastSeenAt = patch.whatsNewLastSeenAt;
             await fulfillJson(route, {
                 avatarUrl: null,
                 birthday: null,
@@ -91,7 +99,7 @@ async function mockWhatsNewApi(page: Page) {
                 email: 'test@example.com',
                 id: 'test-user',
                 userName: 'test-user',
-                whatsNewLastSeenAt: request.postDataJSON().whatsNewLastSeenAt,
+                whatsNewLastSeenAt,
                 whatsNewPopupDisabled: false,
             });
             return;
@@ -141,6 +149,10 @@ test('what is new widget opens the latest changelog entry expanded', async ({
 
     await mount(<WhatsNewWidgetStory />);
 
+    await expect(
+        page.locator('img[src="https://www.gredice.com/assets/team-docs.jpg"]'),
+    ).toBeVisible();
+
     await page.getByRole('button', { name: /Timski dokumenti/u }).click();
 
     await expect(
@@ -152,6 +164,11 @@ test('what is new widget opens the latest changelog entry expanded', async ({
         'href',
         'https://www.gredice.com/novosti/sto-je-novo?tag=Korisnici',
     );
+    await expect(
+        page
+            .getByRole('dialog', { name: 'Što je novo' })
+            .locator('img[src="https://www.gredice.com/assets/team-docs.jpg"]'),
+    ).toBeVisible();
     await expect(
         page.getByText('Timski dokumenti sada su dostupni izravno u igri.'),
     ).toBeVisible();
@@ -167,4 +184,52 @@ test('what is new widget opens the latest changelog entry expanded', async ({
     expect(recorded.userPatches[0]).toMatchObject({
         whatsNewLastSeenAt: latestPublishedAt,
     });
+
+    await page.keyboard.press('Escape');
+    await expect(
+        page.getByRole('dialog', { name: 'Što je novo' }),
+    ).toBeHidden();
+    await expect(
+        page.getByRole('button', { name: /Timski dokumenti/u }),
+    ).toHaveCount(0);
+});
+
+test('what is new widget can be dismissed without opening the modal', async ({
+    mount,
+    page,
+}) => {
+    const recorded = await mockWhatsNewApi(page);
+
+    await mount(<WhatsNewWidgetStory />);
+
+    await page.getByRole('button', { name: 'Sakrij novost' }).click();
+
+    await expect(
+        page.getByRole('button', { name: /Timski dokumenti/u }),
+    ).toHaveCount(0);
+    await expect.poll(() => recorded.userPatches.length).toBe(1);
+    expect(recorded.userPatches[0]).toMatchObject({
+        whatsNewLastSeenAt: latestPublishedAt,
+    });
+});
+
+test('what is new widget stays hidden for already seen changelog entries', async ({
+    mount,
+    page,
+}) => {
+    await mockWhatsNewApi(page, {
+        initialWhatsNewLastSeenAt: latestPublishedAt,
+    });
+
+    await mount(
+        <WhatsNewWidgetStory
+            currentUserOverride={{
+                whatsNewLastSeenAt: new Date(latestPublishedAt),
+            }}
+        />,
+    );
+
+    await expect(
+        page.getByRole('button', { name: /Timski dokumenti/u }),
+    ).toHaveCount(0);
 });
