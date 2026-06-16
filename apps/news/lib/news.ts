@@ -80,9 +80,9 @@ export function formatNewsDate(value: string | Date | null) {
     }).format(new Date(value));
 }
 
-export function uniqueNewsValues(
-    items: NewsListItem[],
-    getter: (item: NewsListItem) => string | string[] | null,
+export function uniqueNewsValues<T>(
+    items: T[],
+    getter: (item: T) => string | string[] | null | undefined,
 ) {
     const values = new Map<string, string>();
     for (const item of items) {

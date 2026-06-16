@@ -1,15 +1,56 @@
+import type { Route } from 'next';
 import Link from 'next/link';
+
+type FilterParam = 'category' | 'tag' | 'type';
+
+type FilterOption = {
+    label: string;
+    value: string;
+};
+
+type CurrentFilters = Partial<Record<FilterParam, string | undefined>>;
+
+function filterOption(value: string | FilterOption): FilterOption {
+    return typeof value === 'string' ? { label: value, value } : value;
+}
+
+function filterHref({
+    currentFilters,
+    param,
+    value,
+}: {
+    currentFilters?: CurrentFilters;
+    param: FilterParam;
+    value?: string;
+}): Route {
+    const params = new URLSearchParams();
+
+    for (const [key, filterValue] of Object.entries(currentFilters ?? {})) {
+        if (key !== param && filterValue) {
+            params.set(key, filterValue);
+        }
+    }
+
+    if (value) {
+        params.set(param, value);
+    }
+
+    const query = params.toString();
+    return (query ? `/?${query}` : '/') as Route;
+}
 
 export function FilterPills({
     active,
+    currentFilters,
     label,
     param,
     values,
 }: {
     active?: string;
+    currentFilters?: CurrentFilters;
     label: string;
-    param: 'category' | 'tag';
-    values: string[];
+    param: FilterParam;
+    values: (string | FilterOption)[];
 }) {
     if (values.length === 0) {
         return null;
@@ -27,23 +68,31 @@ export function FilterPills({
                             ? 'bg-background text-muted-foreground'
                             : 'bg-primary text-primary-foreground'
                     }`}
-                    href="/"
+                    href={filterHref({ currentFilters, param })}
                 >
                     Sve
                 </Link>
-                {values.map((value) => (
-                    <Link
-                        key={value}
-                        className={`rounded-sm border px-3 py-1.5 text-sm font-medium ${
-                            active === value
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-background text-muted-foreground hover:text-foreground'
-                        }`}
-                        href={`/?${param}=${encodeURIComponent(value)}`}
-                    >
-                        {value}
-                    </Link>
-                ))}
+                {values.map((rawValue) => {
+                    const option = filterOption(rawValue);
+
+                    return (
+                        <Link
+                            key={option.value}
+                            className={`rounded-sm border px-3 py-1.5 text-sm font-medium ${
+                                active === option.value
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'bg-background text-muted-foreground hover:text-foreground'
+                            }`}
+                            href={filterHref({
+                                currentFilters,
+                                param,
+                                value: option.value,
+                            })}
+                        >
+                            {option.label}
+                        </Link>
+                    );
+                })}
             </div>
         </div>
     );

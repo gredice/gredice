@@ -1,17 +1,41 @@
-import type { NewsListItem } from '../lib/news';
 import { formatNewsDate } from '../lib/news';
+
+export type NewsCardKind = 'blog' | 'changelog';
+
+export type NewsCardEntry = {
+    category?: string | null;
+    excerpt?: string | null;
+    metaImageUrl?: string | null;
+    publishedAt?: string | null;
+    tags: string[];
+    title: string;
+};
+
+const kindLabels = {
+    blog: 'Blog',
+    changelog: 'Što je novo',
+} satisfies Record<NewsCardKind, string>;
 
 export function NewsCard({
     entry,
     href,
+    kind,
 }: {
-    entry: NewsListItem;
+    entry: NewsCardEntry;
     href: string;
+    kind: NewsCardKind;
 }) {
     return (
-        <article className="grid overflow-hidden rounded-md border bg-card shadow-xs md:grid-cols-[minmax(0,1fr)_220px]">
+        <article
+            className={`grid overflow-hidden rounded-md border bg-card shadow-xs ${
+                entry.metaImageUrl ? 'md:grid-cols-[minmax(0,1fr)_220px]' : ''
+            }`}
+        >
             <a className="grid gap-4 p-5 md:p-6" href={href}>
                 <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
+                    <span className="rounded-sm border bg-secondary px-2 py-1 text-secondary-foreground">
+                        {kindLabels[kind]}
+                    </span>
                     {entry.category ? <span>{entry.category}</span> : null}
                     {entry.publishedAt ? (
                         <span>{formatNewsDate(entry.publishedAt)}</span>
