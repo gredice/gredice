@@ -42,6 +42,7 @@ export function NewsCard({
             </a>
             {entry.metaImageUrl ? (
                 <a
+                    aria-label={`Pročitaj: ${entry.title}`}
                     className="block min-h-48 border-t bg-muted/30 md:border-l md:border-t-0"
                     href={href}
                 >

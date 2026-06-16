@@ -217,6 +217,34 @@ test('accountHasActiveRaisedBed ignores active beds in soft-deleted gardens', as
     assert.strictEqual(await accountHasActiveRaisedBed(accountId), false);
 });
 
+test('accountHasActiveRaisedBed uses the raised-bed account instead of the garden owner', async () => {
+    createTestDb();
+    const gardenOwnerAccountId = await createAccount();
+    const raisedBedAccountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({
+        accountId: gardenOwnerAccountId,
+        farmId,
+    });
+    const blockId = await createTestBlock(gardenId, 'Raised_Bed');
+    const raisedBedId = await createTestRaisedBed(
+        gardenId,
+        raisedBedAccountId,
+        blockId,
+    );
+
+    await updateRaisedBed({ id: raisedBedId, status: 'active' });
+
+    assert.strictEqual(
+        await accountHasActiveRaisedBed(raisedBedAccountId),
+        true,
+    );
+    assert.strictEqual(
+        await accountHasActiveRaisedBed(gardenOwnerAccountId),
+        false,
+    );
+});
+
 test('getGarden returns correct garden', async () => {
     createTestDb();
     const accountId = await createAccount();
