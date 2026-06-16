@@ -70,6 +70,20 @@ test('local sandbox exposes animal home blocks used by the item HUD', () => {
     assert.equal(blockNames.has('DogHouse'), true);
 });
 
+test('local sandbox exposes flower decorations used by the item HUD', () => {
+    const blockData = getLocalSandboxBlockData();
+    const blockNames = new Set(
+        blockData.map((block) => block.information.name),
+    );
+    const sunflower = blockData.find(
+        (block) => block.information.name === 'Sunflower',
+    );
+
+    assert.equal(blockNames.has('Tulip'), true);
+    assert.equal(blockNames.has('Sunflower'), true);
+    assert.equal(sunflower?.attributes.height, 1);
+});
+
 test('local sandbox does not expose mulch as placeable blocks', () => {
     const blockData = getLocalSandboxBlockData();
     const blockNames = new Set(
