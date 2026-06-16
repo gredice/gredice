@@ -4,6 +4,7 @@ import { handle } from 'hono/vercel';
 import { openAPIRouteHandler } from 'hono-openapi';
 import { sessionCookieName } from '../../../lib/auth/sessionConfig';
 import { openApiDocs } from '../../../lib/docs/openApiDocs';
+import { resolveCorsOrigin } from '../../../lib/http/corsOrigins';
 import accountsRoutes from './accountsRoutes';
 import authRoutes from './authRoutes';
 import checkoutRoutes from './checkoutRoutes';
@@ -74,7 +75,7 @@ const app = new Hono()
     .use(
         '*',
         cors({
-            origin: '*',
+            origin: resolveCorsOrigin,
             allowHeaders: ['Origin', 'Content-Type', 'Authorization'],
             allowMethods: ['OPTIONS', 'GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
             credentials: true,
