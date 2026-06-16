@@ -18,8 +18,8 @@
         "@vercel/analytics": "2.0.1",
         "@vercel/toolbar": "0.2.6",
         "next": "16.2.9",
-        "react": "19.2.6",
-        "react-dom": "19.2.6",
+        "react": "19.2.7",
+        "react-dom": "19.2.7",
         "server-only": "0.0.1"
     },
     "devDependencies": {
@@ -30,7 +30,7 @@
         "@tailwindcss/postcss": "4.3.0",
         "@tailwindcss/typography": "0.5.20",
         "@types/node": "24.12.4",
-        "@types/react": "19.2.15",
+        "@types/react": "19.2.17",
         "@types/react-dom": "19.2.3",
         "babel-plugin-react-compiler": "19.1.0-rc.3",
         "postcss": "8.5.15",
