@@ -2,6 +2,7 @@ import { tz } from '@date-fns/tz';
 import { sendEmail } from '@gredice/email/acs';
 import {
     acceptAccountInvitation,
+    accountHasActiveRaisedBed,
     cancelAccountInvitation,
     claimSunflowerDrop,
     claimTutorialChecklistTask,
@@ -19,7 +20,6 @@ import {
     getGarden,
     getGardenBlocks,
     getOrCreateSunflowerDropSpawn,
-    getRaisedBeds,
     getReferralAccountSummary,
     getSunflowers,
     getSunflowersHistory,
@@ -216,12 +216,7 @@ async function getDailyRewardState(accountId: string) {
 }
 
 async function hasActiveRaisedBed(accountId: string) {
-    const gardens = await getAccountGardens(accountId);
-    for (const garden of gardens) {
-        const raisedBeds = await getRaisedBeds(garden.id, { status: 'active' });
-        if (raisedBeds.length > 0) return true;
-    }
-    return false;
+    return accountHasActiveRaisedBed(accountId);
 }
 
 async function getSunflowerDropWeather(now: Date) {

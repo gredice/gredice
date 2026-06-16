@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    accountHasActiveRaisedBed,
     countRaisedBedsByAccount,
     createAccount,
     createDefaultGardenForAccount,
@@ -169,6 +170,79 @@ test('countRaisedBedsByAccount counts active raised beds for account quota', asy
         1,
     );
     assert.strictEqual(await countRaisedBedsByAccount(accountId), 2);
+});
+
+test('accountHasActiveRaisedBed returns true for an active raised bed in an account garden', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const blockId = await createTestBlock(gardenId, 'Raised_Bed');
+    const raisedBedId = await createTestRaisedBed(gardenId, accountId, blockId);
+
+    await updateRaisedBed({ id: raisedBedId, status: 'active' });
+
+    assert.strictEqual(await accountHasActiveRaisedBed(accountId), true);
+});
+
+test('accountHasActiveRaisedBed returns false when account beds are not active', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const blockId = await createTestBlock(gardenId, 'Raised_Bed');
+    await createTestRaisedBed(gardenId, accountId, blockId);
+
+    assert.strictEqual(await accountHasActiveRaisedBed(accountId), false);
+});
+
+test('accountHasActiveRaisedBed returns false when the account has no gardens', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+
+    assert.strictEqual(await accountHasActiveRaisedBed(accountId), false);
+});
+
+test('accountHasActiveRaisedBed ignores active beds in soft-deleted gardens', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const blockId = await createTestBlock(gardenId, 'Raised_Bed');
+    const raisedBedId = await createTestRaisedBed(gardenId, accountId, blockId);
+
+    await updateRaisedBed({ id: raisedBedId, status: 'active' });
+    await deleteGarden(gardenId);
+
+    assert.strictEqual(await accountHasActiveRaisedBed(accountId), false);
+});
+
+test('accountHasActiveRaisedBed uses the raised-bed account instead of the garden owner', async () => {
+    createTestDb();
+    const gardenOwnerAccountId = await createAccount();
+    const raisedBedAccountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({
+        accountId: gardenOwnerAccountId,
+        farmId,
+    });
+    const blockId = await createTestBlock(gardenId, 'Raised_Bed');
+    const raisedBedId = await createTestRaisedBed(
+        gardenId,
+        raisedBedAccountId,
+        blockId,
+    );
+
+    await updateRaisedBed({ id: raisedBedId, status: 'active' });
+
+    assert.strictEqual(
+        await accountHasActiveRaisedBed(raisedBedAccountId),
+        true,
+    );
+    assert.strictEqual(
+        await accountHasActiveRaisedBed(gardenOwnerAccountId),
+        false,
+    );
 });
 
 test('getGarden returns correct garden', async () => {
