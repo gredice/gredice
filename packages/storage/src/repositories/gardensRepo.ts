@@ -8,6 +8,7 @@ import {
     gardenStacks,
     gardens,
     type InsertGarden,
+    raisedBeds,
     type UpdateGarden,
     type UpdateGardenBlock,
     type UpdateGardenStack,
@@ -128,6 +129,23 @@ export async function getAccountGardensMetadata(accountId: string) {
             eq(gardens.isDeleted, false),
         ),
     });
+}
+
+export async function accountHasActiveRaisedBed(accountId: string) {
+    const result = await storage()
+        .select({ count: count() })
+        .from(raisedBeds)
+        .innerJoin(gardens, eq(raisedBeds.gardenId, gardens.id))
+        .where(
+            and(
+                eq(gardens.accountId, accountId),
+                eq(gardens.isDeleted, false),
+                eq(raisedBeds.status, 'active'),
+                eq(raisedBeds.isDeleted, false),
+            ),
+        );
+
+    return (result[0]?.count ?? 0) > 0;
 }
 
 export async function getAccountGardens(
