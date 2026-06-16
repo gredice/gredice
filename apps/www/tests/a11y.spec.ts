@@ -3,6 +3,13 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from './fixtures';
 
 const FALLBACK_ROUTES = ['/', '/recepti'];
+const EXTERNAL_REWRITE_PREFIXES = ['/novosti'];
+
+function isExternalRewriteRoute(route: string): boolean {
+    return EXTERNAL_REWRITE_PREFIXES.some(
+        (prefix) => route === prefix || route.startsWith(`${prefix}/`),
+    );
+}
 
 function getRoutesToCheck(): string[] {
     try {
@@ -20,6 +27,11 @@ test.describe('accessibility axe smoke tests', () => {
 
     for (const url of getRoutesToCheck()) {
         test(`page ${url} has no serious axe violations`, async ({ page }) => {
+            test.skip(
+                isExternalRewriteRoute(url),
+                'Route is rendered by a different app behind a www rewrite.',
+            );
+
             await page.goto(url, { waitUntil: 'domcontentloaded' });
 
             const results = await new AxeBuilder({ page })
