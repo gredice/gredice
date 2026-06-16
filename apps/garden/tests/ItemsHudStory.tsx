@@ -13,6 +13,7 @@ import { currentAccountKeys } from '../../../packages/game/src/hooks/useCurrentA
 import { ControlsTooltipHud } from '../../../packages/game/src/hud/ControlsTooltipHud';
 import { ItemsHud } from '../../../packages/game/src/hud/ItemsHud';
 import { SandboxBlockTrashDropTarget } from '../../../packages/game/src/hud/SandboxBlockTrashDropTarget';
+import { defaultLocalSandboxStorageKey } from '../../../packages/game/src/localSandboxGarden';
 import {
     createGameState,
     GameStateContext,
@@ -131,6 +132,7 @@ type ItemsHudStoryOptions = {
     accountSunflowers?: number;
     closeup?: boolean;
     isSandbox?: boolean;
+    localSandboxStorageKey?: string;
     pickupBlock?: boolean;
     trashTargetActive?: boolean;
 };
@@ -172,6 +174,7 @@ function ItemsHudTestProviders({
     children,
     accountSunflowers,
     isSandbox = false,
+    localSandboxStorageKey,
     closeup = false,
     pickupBlock = false,
     trashTargetActive = false,
@@ -185,6 +188,7 @@ function ItemsHudTestProviders({
             appBaseUrl: 'http://localhost',
             freezeTime: new Date('2026-05-13T12:00:00.000Z'),
             isMock: false,
+            localSandboxStorageKey,
             winterMode: 'summer',
         });
         if (pickupBlock) {
@@ -201,7 +205,7 @@ function ItemsHudTestProviders({
             store.setState({ view: 'closeup' });
         }
         return store;
-    }, [closeup, pickupBlock, trashTargetActive]);
+    }, [closeup, localSandboxStorageKey, pickupBlock, trashTargetActive]);
 
     return (
         <NuqsTestingAdapter>
@@ -306,6 +310,25 @@ export function ItemsHudControlsTooltipStory() {
 export function SandboxItemsHudStory() {
     return (
         <ItemsHudTestProviders isSandbox>
+            <div className="relative h-screen w-screen overflow-hidden">
+                <div
+                    data-testid="bottom-hud"
+                    className={gameHudBottomBarClassName}
+                >
+                    <BottomControlsTestFrame />
+                    <ItemsHudTestFrame />
+                </div>
+            </div>
+        </ItemsHudTestProviders>
+    );
+}
+
+export function LocalSandboxItemsHudStory() {
+    return (
+        <ItemsHudTestProviders
+            isSandbox
+            localSandboxStorageKey={`${defaultLocalSandboxStorageKey}.items-hud-test`}
+        >
             <div className="relative h-screen w-screen overflow-hidden">
                 <div
                     data-testid="bottom-hud"

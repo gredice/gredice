@@ -56,6 +56,7 @@ export const localSandboxBlockNames = [
     'DeadTreeTall',
     'DeadTreeStump',
     'Tulip',
+    'Sunflower',
     'CactusBarrel',
     'CactusColumnCluster',
     'CactusPricklyPear',
@@ -123,6 +124,7 @@ const localSandboxStackHeights: Partial<Record<LocalSandboxBlockName, number>> =
         PineAdvent: 2.6,
         Raised_Bed: 0.35,
         Snowman: 0.5,
+        Sunflower: 1,
     };
 
 type LocalSandboxHitboxAttributes = Partial<

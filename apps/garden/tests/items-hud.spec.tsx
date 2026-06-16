@@ -3,6 +3,7 @@ import {
     CloseupBottomHudStory,
     ItemsHudAlignmentStory,
     ItemsHudControlsTooltipStory,
+    LocalSandboxItemsHudStory,
     LowSunflowerBalanceItemsHudStory,
     SandboxBlockTrashDropTargetStory,
     SandboxItemsHudStory,
@@ -340,6 +341,18 @@ test('sandbox decoration picker includes special blocks', async ({
     await expect(
         page.getByRole('button', { name: 'Block Snow Falling' }),
     ).toBeVisible();
+});
+
+test('local sandbox decoration picker includes sunflower', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<LocalSandboxItemsHudStory />);
+
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+
+    await expect(page.getByRole('button', { name: 'Sunflower' })).toBeVisible();
 });
 
 test('item picker price buttons use the soft surface', async ({
