@@ -1,4 +1,5 @@
 import { Container } from '@gredice/ui/Container';
+import type { Route } from 'next';
 import { EmptyNewsState } from '../components/EmptyNewsState';
 import { FilterPills } from '../components/FilterPills';
 import {
@@ -21,7 +22,7 @@ const newsTypeFilters = [
 
 type NewsLandingItem = {
     entry: NewsCardEntry;
-    href: string;
+    href: Route;
     kind: NewsCardKind;
     sortTime: number;
 };
@@ -50,7 +51,8 @@ export default async function NewsHomePage({
 }) {
     const { category, tag, type } = await searchParams;
     const activeType = normalizeNewsTypeFilter(type);
-    const normalizedCategory = normalizeFilterValue(category);
+    const activeCategory = activeType === 'changelog' ? undefined : category;
+    const normalizedCategory = normalizeFilterValue(activeCategory);
     const normalizedTag = normalizeFilterValue(tag);
     const [allPosts, allChangelogEntries] = await Promise.all([
         getBlogPosts(),
@@ -59,18 +61,18 @@ export default async function NewsHomePage({
     const allItems: NewsLandingItem[] = [
         ...allPosts.map((entry) => ({
             entry,
-            href: `/${entry.slug}`,
+            href: `/${entry.slug}` as Route,
             kind: 'blog' as const,
             sortTime: normalizedTime(entry.publishedAt),
         })),
         ...allChangelogEntries.map((entry) => ({
             entry,
-            href: `/sto-je-novo/${entry.slug}`,
+            href: `/sto-je-novo/${entry.slug}` as Route,
             kind: 'changelog' as const,
             sortTime: normalizedTime(entry.publishedAt),
         })),
     ].sort((left, right) => right.sortTime - left.sortTime);
-    const currentFilters = { category, tag, type: activeType };
+    const currentFilters = { category: activeCategory, tag, type: activeType };
     const categories =
         activeType === 'changelog'
             ? []
@@ -142,7 +144,7 @@ export default async function NewsHomePage({
                     values={newsTypeFilters}
                 />
                 <FilterPills
-                    active={category}
+                    active={activeCategory}
                     currentFilters={currentFilters}
                     label="Kategorije"
                     param="category"

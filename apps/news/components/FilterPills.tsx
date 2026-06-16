@@ -26,6 +26,10 @@ function filterHref({
     const params = new URLSearchParams();
 
     for (const [key, filterValue] of Object.entries(currentFilters ?? {})) {
+        if (key === 'category' && param === 'type' && value === 'changelog') {
+            continue;
+        }
+
         if (key !== param && filterValue) {
             params.set(key, filterValue);
         }

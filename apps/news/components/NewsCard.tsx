@@ -1,3 +1,5 @@
+import type { Route } from 'next';
+import Link from 'next/link';
 import { formatNewsDate } from '../lib/news';
 
 export type NewsCardKind = 'blog' | 'changelog';
@@ -22,7 +24,7 @@ export function NewsCard({
     kind,
 }: {
     entry: NewsCardEntry;
-    href: string;
+    href: Route;
     kind: NewsCardKind;
 }) {
     return (
@@ -31,7 +33,7 @@ export function NewsCard({
                 entry.metaImageUrl ? 'md:grid-cols-[minmax(0,1fr)_220px]' : ''
             }`}
         >
-            <a className="grid gap-4 p-5 md:p-6" href={href}>
+            <Link className="grid gap-4 p-5 md:p-6" href={href}>
                 <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
                     <span className="rounded-sm border bg-secondary px-2 py-1 text-secondary-foreground">
                         {kindLabels[kind]}
@@ -63,9 +65,9 @@ export function NewsCard({
                         ))}
                     </div>
                 ) : null}
-            </a>
+            </Link>
             {entry.metaImageUrl ? (
-                <a
+                <Link
                     className="block min-h-48 border-t bg-muted/30 md:border-l md:border-t-0"
                     href={href}
                 >
@@ -75,7 +77,7 @@ export function NewsCard({
                         className="h-full min-h-48 w-full object-cover"
                         src={entry.metaImageUrl}
                     />
-                </a>
+                </Link>
             ) : null}
         </article>
     );
