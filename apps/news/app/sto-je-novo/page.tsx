@@ -1,5 +1,7 @@
+import { Container } from '@gredice/ui/Container';
 import { Timeline, TimelineEntry, TimelineGroup } from '@gredice/ui/Timeline';
 import Link from 'next/link';
+import { ChangelogTagFilters } from '../../components/ChangelogTagFilters';
 import { EmptyNewsState } from '../../components/EmptyNewsState';
 import {
     formatNewsDate,
@@ -13,6 +15,8 @@ const monthFormatter = new Intl.DateTimeFormat('hr-HR', {
     month: 'long',
     year: 'numeric',
 });
+const primaryTagLimit = 8;
+const recentPrimaryTagLimit = 4;
 
 type ChangelogEntry = Awaited<ReturnType<typeof getChangelogEntries>>[number];
 
@@ -64,6 +68,67 @@ function groupEntriesByMonth(entries: ChangelogEntry[]) {
     return groups;
 }
 
+function getPrimaryTags(entries: ChangelogEntry[]) {
+    const primaryTags = new Map<string, string>();
+    const tagStats = new Map<
+        string,
+        {
+            count: number;
+            latestTime: number;
+            value: string;
+        }
+    >();
+
+    for (const entry of entries) {
+        const latestTime = getEntryDate(entry)?.getTime() ?? 0;
+
+        for (const tag of entry.tags) {
+            const normalized = tag.trim();
+            if (!normalized) {
+                continue;
+            }
+
+            const key = normalized.toLocaleLowerCase('hr-HR');
+            if (primaryTags.size < recentPrimaryTagLimit) {
+                primaryTags.set(key, normalized);
+            }
+
+            const current = tagStats.get(key);
+            tagStats.set(key, {
+                count: (current?.count ?? 0) + 1,
+                latestTime: Math.max(current?.latestTime ?? 0, latestTime),
+                value: current?.value ?? normalized,
+            });
+        }
+    }
+
+    const popularTags = Array.from(tagStats.values())
+        .sort((left, right) => {
+            const countDiff = right.count - left.count;
+            if (countDiff !== 0) {
+                return countDiff;
+            }
+
+            const latestDiff = right.latestTime - left.latestTime;
+            if (latestDiff !== 0) {
+                return latestDiff;
+            }
+
+            return left.value.localeCompare(right.value, 'hr-HR');
+        })
+        .map((item) => item.value);
+
+    for (const tag of popularTags) {
+        if (primaryTags.size >= primaryTagLimit) {
+            break;
+        }
+
+        primaryTags.set(tag.toLocaleLowerCase('hr-HR'), tag);
+    }
+
+    return Array.from(primaryTags.values());
+}
+
 export default async function WhatsNewPage({
     searchParams,
 }: {
@@ -75,12 +140,19 @@ export default async function WhatsNewPage({
         tag ? getChangelogEntries({ tag }) : getChangelogEntries(),
     ]);
     const tags = uniqueNewsValues(allEntries, (item) => item.tags);
+    const primaryTags = getPrimaryTags(allEntries);
+    const primaryTagKeys = new Set(
+        primaryTags.map((value) => value.toLocaleLowerCase('hr-HR')),
+    );
+    const dropdownTags = tags.filter(
+        (value) => !primaryTagKeys.has(value.toLocaleLowerCase('hr-HR')),
+    );
     const timelineGroups = groupEntriesByMonth(entries);
     const totalEntries = entries.length;
     let entryIndex = 0;
 
     return (
-        <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-10 sm:px-6 lg:px-8">
+        <Container className="grid gap-8 py-10">
             <section className="grid gap-3">
                 <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                     Što je novo
@@ -94,31 +166,11 @@ export default async function WhatsNewPage({
                 </p>
             </section>
             {tags.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                    <Link
-                        className={`rounded-sm border px-3 py-1.5 text-sm font-medium ${
-                            tag
-                                ? 'bg-background text-muted-foreground'
-                                : 'bg-primary text-primary-foreground'
-                        }`}
-                        href="/sto-je-novo"
-                    >
-                        Sve
-                    </Link>
-                    {tags.map((value) => (
-                        <Link
-                            key={value}
-                            className={`rounded-sm border px-3 py-1.5 text-sm font-medium ${
-                                tag === value
-                                    ? 'bg-primary text-primary-foreground'
-                                    : 'bg-background text-muted-foreground hover:text-foreground'
-                            }`}
-                            href={`/sto-je-novo?tag=${encodeURIComponent(value)}`}
-                        >
-                            {value}
-                        </Link>
-                    ))}
-                </div>
+                <ChangelogTagFilters
+                    activeTag={tag}
+                    dropdownTags={dropdownTags}
+                    primaryTags={primaryTags}
+                />
             ) : null}
             {entries.length > 0 ? (
                 <Timeline>
@@ -155,11 +207,12 @@ export default async function WhatsNewPage({
                                             href={`/sto-je-novo/${entry.slug}`}
                                         >
                                             <div className="grid gap-3 p-5">
-                                                <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
+                                                <div className="flex flex-wrap items-center gap-2">
                                                     {entry.tags.map(
                                                         (entryTag) => (
                                                             <span
                                                                 key={entryTag}
+                                                                className="rounded-sm border bg-secondary px-2 py-1 text-xs font-semibold uppercase tracking-normal text-secondary-foreground"
                                                             >
                                                                 {entryTag}
                                                             </span>
@@ -197,6 +250,6 @@ export default async function WhatsNewPage({
                     Trenutačno nema objavljenih novosti.
                 </EmptyNewsState>
             )}
-        </div>
+        </Container>
     );
 }
