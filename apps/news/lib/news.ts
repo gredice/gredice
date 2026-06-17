@@ -8,6 +8,14 @@ type NewsListQuery = {
     limit?: number;
 };
 
+const primaryTagLimit = 8;
+const recentPrimaryTagLimit = 4;
+
+type NewsTagSource = {
+    publishedAt?: string | null;
+    tags: string[];
+};
+
 function newsQuery(input: NewsListQuery = {}) {
     return {
         ...(input.category ? { category: input.category } : {}),
@@ -101,4 +109,74 @@ export function uniqueNewsValues<T>(
     return Array.from(values.values()).sort((left, right) =>
         left.localeCompare(right, 'hr-HR'),
     );
+}
+
+function normalizedNewsTime(value: string | null | undefined) {
+    if (!value) {
+        return 0;
+    }
+
+    const time = new Date(value).getTime();
+    return Number.isNaN(time) ? 0 : time;
+}
+
+export function getPrimaryNewsTags<T extends NewsTagSource>(entries: T[]) {
+    const primaryTags = new Map<string, string>();
+    const tagStats = new Map<
+        string,
+        {
+            count: number;
+            latestTime: number;
+            value: string;
+        }
+    >();
+
+    for (const entry of entries) {
+        const latestTime = normalizedNewsTime(entry.publishedAt);
+
+        for (const tag of entry.tags) {
+            const normalized = tag.trim();
+            if (!normalized) {
+                continue;
+            }
+
+            const key = normalized.toLocaleLowerCase('hr-HR');
+            if (primaryTags.size < recentPrimaryTagLimit) {
+                primaryTags.set(key, normalized);
+            }
+
+            const current = tagStats.get(key);
+            tagStats.set(key, {
+                count: (current?.count ?? 0) + 1,
+                latestTime: Math.max(current?.latestTime ?? 0, latestTime),
+                value: current?.value ?? normalized,
+            });
+        }
+    }
+
+    const popularTags = Array.from(tagStats.values())
+        .sort((left, right) => {
+            const countDiff = right.count - left.count;
+            if (countDiff !== 0) {
+                return countDiff;
+            }
+
+            const latestDiff = right.latestTime - left.latestTime;
+            if (latestDiff !== 0) {
+                return latestDiff;
+            }
+
+            return left.value.localeCompare(right.value, 'hr-HR');
+        })
+        .map((item) => item.value);
+
+    for (const tag of popularTags) {
+        if (primaryTags.size >= primaryTagLimit) {
+            break;
+        }
+
+        primaryTags.set(tag.toLocaleLowerCase('hr-HR'), tag);
+    }
+
+    return Array.from(primaryTags.values());
 }
