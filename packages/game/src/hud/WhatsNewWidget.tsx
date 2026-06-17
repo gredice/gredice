@@ -267,14 +267,6 @@ export function WhatsNewWidget({
                 currentUser.whatsNewLastSeenAt < newestPublishedAt),
     );
 
-    useEffect(() => {
-        if (!latestEntry || expandedEntryId !== null) {
-            return;
-        }
-
-        setExpandedEntryId(latestEntry.id);
-    }, [expandedEntryId, latestEntry]);
-
     const markNewestEntrySeen = useCallback(() => {
         if (!currentUser || !newestPublishedAt || !newestPublishedAtIso) {
             return;
@@ -329,8 +321,6 @@ export function WhatsNewWidget({
     if (!widgetEnabled || !latestEntry || (!hasUnreadEntries && !modalOpen)) {
         return null;
     }
-
-    const latestDate = formatEntryDate(latestEntry.publishedAt);
 
     return (
         <>
@@ -389,15 +379,11 @@ export function WhatsNewWidget({
                 <div className="flex max-h-[calc(100dvh-2rem)] min-h-0 flex-col">
                     <Row
                         className="shrink-0 border-b px-4 py-3 pr-12"
+                        alignItems="center"
                         justifyContent="space-between"
                         spacing={3}
                     >
-                        <Stack spacing={0.5}>
-                            <Typography level="body3" secondary>
-                                {latestDate ?? 'Najnovije'}
-                            </Typography>
-                            <Typography semiBold>Što je novo</Typography>
-                        </Stack>
+                        <Typography semiBold>Što je novo</Typography>
                         <Button
                             href={audienceWhatsNewHref}
                             size="sm"
@@ -422,8 +408,9 @@ export function WhatsNewWidget({
                                 return (
                                     <Accordion
                                         className={cx(
-                                            'border-border/70 bg-card/70 shadow-none',
-                                            isOpen && 'bg-card',
+                                            'overflow-hidden rounded-md border bg-card shadow-xs transition-colors [&_button]:transition-colors [&_button]:hover:bg-muted/20',
+                                            isOpen &&
+                                                'border-border bg-background',
                                         )}
                                         key={entry.id}
                                         onOpenChanged={(_, nextOpen) => {
@@ -443,41 +430,70 @@ export function WhatsNewWidget({
                                         open={isOpen}
                                         unmountOnExit
                                     >
-                                        <Row
-                                            alignItems="center"
-                                            className="min-w-0 flex-1"
-                                            spacing={3}
+                                        <div
+                                            className={cx(
+                                                'grid min-w-0 flex-1 gap-3',
+                                                entry.metaImageUrl
+                                                    ? 'grid-cols-[4rem_minmax(0,1fr)]'
+                                                    : 'grid-cols-1',
+                                            )}
                                         >
                                             <ChangelogCoverImage
-                                                className="h-14 w-16"
+                                                className="h-16 w-16"
                                                 src={entry.metaImageUrl}
                                             />
                                             <Stack
                                                 className="min-w-0"
-                                                spacing={1}
+                                                spacing={2}
                                             >
-                                                <Row
-                                                    className="flex-wrap text-xs font-semibold uppercase text-muted-foreground"
-                                                    spacing={2}
+                                                {entry.tags.length > 0 ? (
+                                                    <div className="flex flex-wrap items-center gap-1.5">
+                                                        {entry.tags.map(
+                                                            (tag) => (
+                                                                <span
+                                                                    className="rounded-sm border bg-secondary px-2 py-1 text-xs font-semibold uppercase tracking-normal text-secondary-foreground"
+                                                                    key={tag}
+                                                                >
+                                                                    {tag}
+                                                                </span>
+                                                            ),
+                                                        )}
+                                                    </div>
+                                                ) : null}
+                                                <Stack
+                                                    className="min-w-0"
+                                                    spacing={1}
                                                 >
                                                     {entryDate ? (
-                                                        <span>{entryDate}</span>
+                                                        <Typography
+                                                            className="min-w-0 uppercase"
+                                                            level="body3"
+                                                            secondary
+                                                            semiBold
+                                                        >
+                                                            {entryDate}
+                                                        </Typography>
                                                     ) : null}
-                                                    {entry.tags.map((tag) => (
-                                                        <span key={tag}>
-                                                            {tag}
-                                                        </span>
-                                                    ))}
-                                                </Row>
-                                                <Typography
-                                                    className="min-w-0"
-                                                    noWrap
-                                                    semiBold
-                                                >
-                                                    {entry.title}
-                                                </Typography>
+                                                    <div className="grid gap-1">
+                                                        <Typography
+                                                            className="line-clamp-2 min-w-0"
+                                                            semiBold
+                                                        >
+                                                            {entry.title}
+                                                        </Typography>
+                                                        {entry.excerpt ? (
+                                                            <Typography
+                                                                className="line-clamp-2 leading-5"
+                                                                level="body2"
+                                                                secondary
+                                                            >
+                                                                {entry.excerpt}
+                                                            </Typography>
+                                                        ) : null}
+                                                    </div>
+                                                </Stack>
                                             </Stack>
-                                        </Row>
+                                        </div>
                                         {detail?.isPending ? (
                                             <Typography level="body2" secondary>
                                                 Novost se učitava.

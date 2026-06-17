@@ -178,7 +178,27 @@ test('what is new widget opens the latest changelog entry expanded', async ({
     await expect(page.getByText('Brzi podsjetnici')).toBeVisible();
     await expect(
         page.getByText('Podsjetnici su brzi i pregledni.'),
+    ).toBeVisible();
+
+    await page
+        .getByRole('dialog', { name: 'Što je novo' })
+        .getByRole('button', { name: /Timski dokumenti/u })
+        .click();
+
+    await expect(
+        page.getByText('Timski dokumenti sada su dostupni izravno u igri.'),
     ).toHaveCount(0);
+    await expect(
+        page
+            .getByRole('dialog', { name: 'Što je novo' })
+            .getByRole('button', { name: /Timski dokumenti/u }),
+    ).toBeVisible();
+    await expect(
+        page
+            .getByRole('dialog', { name: 'Što je novo' })
+            .getByRole('button', { name: /Brzi podsjetnici/u }),
+    ).toBeVisible();
+
     await expect.poll(() => recorded.userPatches.length).toBe(1);
     expect(recorded.changelogListQueries[0]).toMatchObject({
         limit: '8',
