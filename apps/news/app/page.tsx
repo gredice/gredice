@@ -154,7 +154,7 @@ export default async function NewsHomePage({
                 ) : null}
             </aside>
             {visibleItems.length > 0 ? (
-                <section className="grid gap-4 md:grid-cols-2">
+                <section className="grid items-start gap-4 md:grid-cols-2">
                     {visibleItems.map((item) => (
                         <NewsCard
                             key={`${item.kind}-${item.href}`}

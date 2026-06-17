@@ -38,12 +38,16 @@ export function NewsCard({
     const hasMetadata = showKindLabel || entry.category || dateLabel;
 
     return (
-        <article className="h-full">
+        <article className="w-full">
             <Link
-                className="grid h-full overflow-hidden rounded-md border bg-card shadow-xs transition-colors hover:bg-muted/20 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                className={`grid overflow-hidden rounded-md border bg-card shadow-xs transition-colors hover:bg-muted/20 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring ${
+                    entry.metaImageUrl
+                        ? 'md:grid-cols-[minmax(0,1fr)_10rem]'
+                        : ''
+                }`}
                 href={href}
             >
-                <div className="grid content-start gap-3 p-5 md:p-6">
+                <div className="grid content-start gap-3 p-5">
                     {entry.tags.length > 0 ? (
                         <div className="flex flex-wrap items-center gap-2">
                             {entry.tags.map((tag) => (
@@ -81,7 +85,7 @@ export function NewsCard({
                     </div>
                 </div>
                 {entry.metaImageUrl ? (
-                    <div className="aspect-[16/9] border-t bg-muted/30">
+                    <div className="aspect-[16/9] border-t bg-muted/30 md:aspect-auto md:min-h-36 md:border-l md:border-t-0">
                         {/* biome-ignore lint/performance/noImgElement: CMS images are remote author content. */}
                         <img
                             alt=""
