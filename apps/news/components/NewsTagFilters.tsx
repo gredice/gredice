@@ -4,18 +4,20 @@ import type { Route } from 'next';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
-const changelogPath = '/sto-je-novo' satisfies Route;
+const defaultTagPath = '/sto-je-novo' satisfies Route;
 
-function tagPath(tag: string): Route {
-    return `${changelogPath}?tag=${encodeURIComponent(tag)}` as Route;
+function tagPath(basePath: Route, tag: string): Route {
+    return `${basePath}?tag=${encodeURIComponent(tag)}` as Route;
 }
 
-export function ChangelogTagFilters({
+export function NewsTagFilters({
     activeTag,
+    basePath = defaultTagPath,
     dropdownTags,
     primaryTags,
 }: {
     activeTag?: string;
+    basePath?: Route;
     dropdownTags: string[];
     primaryTags: string[];
 }) {
@@ -29,7 +31,7 @@ export function ChangelogTagFilters({
                         ? 'bg-background text-muted-foreground'
                         : 'bg-primary text-primary-foreground'
                 }`}
-                href={changelogPath}
+                href={basePath}
             >
                 Sve
             </Link>
@@ -41,7 +43,7 @@ export function ChangelogTagFilters({
                             ? 'bg-primary text-primary-foreground'
                             : 'bg-background text-muted-foreground hover:text-foreground'
                     }`}
-                    href={tagPath(value)}
+                    href={tagPath(basePath, value)}
                 >
                     {value}
                 </Link>
@@ -53,7 +55,9 @@ export function ChangelogTagFilters({
                     onChange={(event) => {
                         const selectedTag = event.currentTarget.value;
                         router.push(
-                            selectedTag ? tagPath(selectedTag) : changelogPath,
+                            selectedTag
+                                ? tagPath(basePath, selectedTag)
+                                : basePath,
                         );
                     }}
                     value={

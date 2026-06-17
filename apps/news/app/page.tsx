@@ -1,5 +1,6 @@
 import { Container } from '@gredice/ui/Container';
 import type { Route } from 'next';
+import { redirect } from 'next/navigation';
 import { EmptyNewsState } from '../components/EmptyNewsState';
 import { FilterPills } from '../components/FilterPills';
 import {
@@ -7,9 +8,11 @@ import {
     type NewsCardEntry,
     type NewsCardKind,
 } from '../components/NewsCard';
+import { NewsTagFilters } from '../components/NewsTagFilters';
 import {
     getBlogPosts,
     getChangelogEntries,
+    getPrimaryNewsTags,
     uniqueNewsValues,
 } from '../lib/news';
 
@@ -44,16 +47,24 @@ function normalizeFilterValue(value: string | undefined) {
     return value?.trim().toLocaleLowerCase('hr-HR');
 }
 
+function changelogTagRedirectPath(tag: string): Route {
+    return `/sto-je-novo?tag=${encodeURIComponent(tag)}` as Route;
+}
+
 export default async function NewsHomePage({
     searchParams,
 }: {
     searchParams: Promise<{ category?: string; tag?: string; type?: string }>;
 }) {
     const { category, tag, type } = await searchParams;
+    const requestedTag = tag?.trim();
+    if (requestedTag) {
+        redirect(changelogTagRedirectPath(requestedTag));
+    }
+
     const activeType = normalizeNewsTypeFilter(type);
     const activeCategory = activeType === 'changelog' ? undefined : category;
     const normalizedCategory = normalizeFilterValue(activeCategory);
-    const normalizedTag = normalizeFilterValue(tag);
     const [allPosts, allChangelogEntries] = await Promise.all([
         getBlogPosts(),
         getChangelogEntries(),
@@ -72,29 +83,18 @@ export default async function NewsHomePage({
             sortTime: normalizedTime(entry.publishedAt),
         })),
     ].sort((left, right) => right.sortTime - left.sortTime);
-    const currentFilters = { category: activeCategory, tag, type: activeType };
+    const currentFilters = { category: activeCategory, type: activeType };
     const categories =
         activeType === 'changelog'
             ? []
             : uniqueNewsValues(allPosts, (item) => item.category);
-    const itemsForTagFilters = allItems.filter((item) => {
-        if (activeType && item.kind !== activeType) {
-            return false;
-        }
-
-        if (
-            normalizedCategory &&
-            normalizeFilterValue(item.entry.category ?? undefined) !==
-                normalizedCategory
-        ) {
-            return false;
-        }
-
-        return true;
-    });
-    const tags = uniqueNewsValues(
-        itemsForTagFilters,
-        (item) => item.entry.tags,
+    const tags = uniqueNewsValues(allChangelogEntries, (item) => item.tags);
+    const primaryTags = getPrimaryNewsTags(allChangelogEntries);
+    const primaryTagKeys = new Set(
+        primaryTags.map((value) => value.toLocaleLowerCase('hr-HR')),
+    );
+    const dropdownTags = tags.filter(
+        (value) => !primaryTagKeys.has(value.toLocaleLowerCase('hr-HR')),
     );
     const visibleItems = allItems.filter((item) => {
         if (activeType && item.kind !== activeType) {
@@ -105,15 +105,6 @@ export default async function NewsHomePage({
             normalizedCategory &&
             normalizeFilterValue(item.entry.category ?? undefined) !==
                 normalizedCategory
-        ) {
-            return false;
-        }
-
-        if (
-            normalizedTag &&
-            !item.entry.tags.some(
-                (itemTag) => normalizeFilterValue(itemTag) === normalizedTag,
-            )
         ) {
             return false;
         }
@@ -150,16 +141,20 @@ export default async function NewsHomePage({
                     param="category"
                     values={categories}
                 />
-                <FilterPills
-                    active={tag}
-                    currentFilters={currentFilters}
-                    label="Tagovi"
-                    param="tag"
-                    values={tags}
-                />
+                {tags.length > 0 ? (
+                    <div className="grid gap-2">
+                        <p className="text-xs font-semibold uppercase text-muted-foreground">
+                            Tagovi
+                        </p>
+                        <NewsTagFilters
+                            dropdownTags={dropdownTags}
+                            primaryTags={primaryTags}
+                        />
+                    </div>
+                ) : null}
             </aside>
             {visibleItems.length > 0 ? (
-                <section className="grid gap-4">
+                <section className="grid gap-4 md:grid-cols-2">
                     {visibleItems.map((item) => (
                         <NewsCard
                             key={`${item.kind}-${item.href}`}
