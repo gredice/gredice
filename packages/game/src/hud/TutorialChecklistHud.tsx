@@ -396,7 +396,7 @@ function TutorialChecklistContent({
         );
     }
 
-    if (checklistQuery.isError || !checklistQuery.data) {
+    if (!checklistQuery.data) {
         return (
             <Stack spacing={3}>
                 <Typography level="h3">Zadaci za novi vrt</Typography>
