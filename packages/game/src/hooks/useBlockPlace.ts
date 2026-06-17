@@ -16,6 +16,7 @@ import {
     type useCurrentAccount,
 } from './useCurrentAccount';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
+import { tutorialChecklistKeys } from './useTutorialChecklist';
 
 const mutationKey = ['gardens', 'current', 'blockPlace'];
 const optimisticBlockIdPrefix = 'optimistic-block';
@@ -310,6 +311,9 @@ export function useBlockPlace() {
                 });
                 await queryClient.invalidateQueries({
                     queryKey: gardenQueryKey,
+                });
+                await queryClient.invalidateQueries({
+                    queryKey: tutorialChecklistKeys,
                 });
             }
         },

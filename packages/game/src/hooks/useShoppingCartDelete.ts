@@ -1,6 +1,7 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useShoppingCartQueryKey } from './useShoppingCart';
+import { tutorialChecklistKeys } from './useTutorialChecklist';
 
 export function useShoppingCartDelete() {
     const queryClient = useQueryClient();
@@ -10,6 +11,7 @@ export function useShoppingCartDelete() {
             queryClient.invalidateQueries({
                 queryKey: useShoppingCartQueryKey,
             });
+            queryClient.invalidateQueries({ queryKey: tutorialChecklistKeys });
         },
         scope: {
             id: 'shoppingCartDelete',

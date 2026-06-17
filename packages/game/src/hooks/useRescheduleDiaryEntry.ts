@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useGardensKeys } from './useGardens';
 import { queryKeys as raisedBedDiaryQueryKeys } from './useRaisedBedDiaryEntries';
 import { queryKeys as raisedBedFieldDiaryQueryKeys } from './useRaisedBedFieldDiaryEntries';
+import { tutorialChecklistKeys } from './useTutorialChecklist';
 
 export type DiaryRescheduleTarget =
     | {
@@ -233,6 +234,9 @@ export function useRescheduleDiaryEntry(gardenId: number) {
             });
             await queryClient.invalidateQueries({
                 queryKey: useGardensKeys,
+            });
+            await queryClient.invalidateQueries({
+                queryKey: tutorialChecklistKeys,
             });
         },
     });

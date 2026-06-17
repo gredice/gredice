@@ -10,6 +10,7 @@ import {
     useShoppingCart,
     useShoppingCartQueryKey,
 } from './useShoppingCart';
+import { tutorialChecklistKeys } from './useTutorialChecklist';
 
 const mutationKey = ['gardens', 'current', 'useBlockRecycle'];
 
@@ -209,6 +210,9 @@ export function useBlockRecycle() {
                         queryKey: useShoppingCartQueryKey,
                     });
                 }
+                queryClient.invalidateQueries({
+                    queryKey: tutorialChecklistKeys,
+                });
             }
         },
     });

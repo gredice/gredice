@@ -7,6 +7,7 @@ import {
 } from '../raisedBedConstants';
 import { useGameState } from '../useGameState';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
+import { tutorialChecklistKeys } from './useTutorialChecklist';
 
 const mutationKey = ['gardens', 'current', 'raisedBedAbandon'];
 const SINGLE_MUTATION = 1;
@@ -90,6 +91,9 @@ export function useAbandonRaisedBed(gardenId: number, raisedBedId: number) {
                 });
                 await queryClient.invalidateQueries({
                     queryKey: ['garden-operations', gardenId],
+                });
+                await queryClient.invalidateQueries({
+                    queryKey: tutorialChecklistKeys,
                 });
             }
         },

@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { accountInvitationsKeys } from './useAccountInvitations';
 import { currentAccountUsersKeys } from './useCurrentAccountUsers';
 import { pendingInvitationsKeys } from './usePendingInvitations';
+import { tutorialChecklistKeys } from './useTutorialChecklist';
 
 export class InvitationError extends Error {
     code: string;
@@ -53,6 +54,7 @@ export function useSendInvitation() {
             queryClient.invalidateQueries({
                 queryKey: accountInvitationsKeys,
             });
+            queryClient.invalidateQueries({ queryKey: tutorialChecklistKeys });
         },
     });
 }
@@ -77,6 +79,7 @@ export function useCancelInvitation() {
             queryClient.invalidateQueries({
                 queryKey: accountInvitationsKeys,
             });
+            queryClient.invalidateQueries({ queryKey: tutorialChecklistKeys });
         },
     });
 }
@@ -104,6 +107,7 @@ export function useAcceptInvitation() {
             queryClient.invalidateQueries({
                 queryKey: currentAccountUsersKeys,
             });
+            queryClient.invalidateQueries({ queryKey: tutorialChecklistKeys });
         },
     });
 }

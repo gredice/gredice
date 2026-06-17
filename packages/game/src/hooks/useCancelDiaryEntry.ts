@@ -6,6 +6,7 @@ import { notificationsQueryKey } from './useNotifications';
 import { queryKeys as raisedBedDiaryQueryKeys } from './useRaisedBedDiaryEntries';
 import { queryKeys as raisedBedFieldDiaryQueryKeys } from './useRaisedBedFieldDiaryEntries';
 import type { DiaryRescheduleTarget } from './useRescheduleDiaryEntry';
+import { tutorialChecklistKeys } from './useTutorialChecklist';
 
 export type DiaryCancelTarget = DiaryRescheduleTarget;
 
@@ -187,6 +188,9 @@ export function useCancelDiaryEntry(gardenId: number) {
             });
             await queryClient.invalidateQueries({
                 queryKey: notificationsQueryKey,
+            });
+            await queryClient.invalidateQueries({
+                queryKey: tutorialChecklistKeys,
             });
         },
     });
