@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react';
 import Confetti from 'react-confetti-boom';
 import { currentAccountKeys } from '../../hooks/useCurrentAccount';
 import { useReferrals } from '../../hooks/useReferrals';
+import { tutorialChecklistKeys } from '../../hooks/useTutorialChecklist';
 import { KnownPages } from '../../knownPages';
 
 async function errorMessageFromResponse(response: Response, fallback: string) {
@@ -162,6 +163,9 @@ export function ReferralsTab() {
                 setUseCode('');
             }
             await refetch();
+            await queryClient.invalidateQueries({
+                queryKey: tutorialChecklistKeys,
+            });
         } finally {
             setIsUsingCode(false);
         }

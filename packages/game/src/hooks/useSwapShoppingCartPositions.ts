@@ -6,6 +6,7 @@ import {
     useShoppingCart,
     useShoppingCartQueryKey,
 } from './useShoppingCart';
+import { tutorialChecklistKeys } from './useTutorialChecklist';
 
 export function useSwapShoppingCartPositions() {
     const queryClient = useQueryClient();
@@ -110,6 +111,7 @@ export function useSwapShoppingCartPositions() {
             queryClient.invalidateQueries({
                 queryKey: useShoppingCartQueryKey,
             });
+            queryClient.invalidateQueries({ queryKey: tutorialChecklistKeys });
         },
         scope: {
             id: 'swapShoppingCartPositions',

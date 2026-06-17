@@ -10,6 +10,7 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
+import { useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
 import { parseAsString, useQueryState } from 'nuqs';
 import { useMemo, useState } from 'react';
@@ -17,6 +18,7 @@ import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import {
     type TutorialChecklistGroup,
     type TutorialChecklistTask,
+    tutorialChecklistKeys,
     useClaimTutorialChecklistTask,
     useMarkTutorialChecklistTaskReady,
     useTutorialChecklist,
@@ -164,6 +166,12 @@ function openExternalTaskTarget(task: TutorialChecklistTask) {
     }
 }
 
+function shouldCloseChecklistBeforeOpen(task: TutorialChecklistTask) {
+    return (
+        task.actionTarget !== 'contact' && task.actionTarget !== 'plantDatabase'
+    );
+}
+
 function useOpenTaskTarget(onChecklistOpenChange: (open: boolean) => void) {
     const [, setBackpackOpen] = useBackpackOpenParam();
     const [, setCartOpen] = useShoppingCartOpenParam();
@@ -179,14 +187,7 @@ function useOpenTaskTarget(onChecklistOpenChange: (open: boolean) => void) {
             return;
         }
 
-        if (
-            target === 'field' ||
-            target === 'diary' ||
-            target === 'operations' ||
-            target === 'raisedBedOnboarding' ||
-            target === 'weather' ||
-            target === 'forecast'
-        ) {
+        if (shouldCloseChecklistBeforeOpen(task)) {
             onChecklistOpenChange(false);
             await waitForChecklistClose();
         }
@@ -541,6 +542,7 @@ function TutorialChecklistContent({
 
 export function TutorialChecklistHud() {
     const [isOpen, setIsOpen] = useState(false);
+    const queryClient = useQueryClient();
     const { data } = useTutorialChecklist();
     const { track } = useGameAnalytics();
     const claimableCount = data?.totals.claimableCount ?? 0;
@@ -570,6 +572,9 @@ export function TutorialChecklistHud() {
                     if (open) {
                         track('game_tutorial_checklist_opened', {
                             claimable_count: claimableCount,
+                        });
+                        void queryClient.invalidateQueries({
+                            queryKey: tutorialChecklistKeys,
                         });
                     }
                     setIsOpen(open);

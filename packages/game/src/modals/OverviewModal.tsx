@@ -5,8 +5,9 @@ import { Modal } from '@gredice/ui/Modal';
 import { SelectItems } from '@gredice/ui/SelectItems';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import { Fragment, useEffect } from 'react';
+import { Fragment, useEffect, useRef } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
+import { useMarkTutorialChecklistTaskReady } from '../hooks/useTutorialChecklist';
 import {
     isNotificationsFilter,
     isNotificationsView,
@@ -127,6 +128,28 @@ export function OverviewModal() {
     const notificationsView = isNotificationsView(notificationsViewParam)
         ? notificationsViewParam
         : 'notifications';
+    const { mutate: markNotificationsTaskReady } =
+        useMarkTutorialChecklistTaskReady();
+    const { mutate: markConfigureNotificationsTaskReady } =
+        useMarkTutorialChecklistTaskReady();
+    const markedNotificationChecklistTasksRef = useRef(false);
+
+    useEffect(() => {
+        if (
+            settingsMode !== 'obavijesti' ||
+            markedNotificationChecklistTasksRef.current
+        ) {
+            return;
+        }
+
+        markedNotificationChecklistTasksRef.current = true;
+        markNotificationsTaskReady('open-notifications');
+        markConfigureNotificationsTaskReady('configure-notifications');
+    }, [
+        markConfigureNotificationsTaskReady,
+        markNotificationsTaskReady,
+        settingsMode,
+    ]);
 
     useEffect(() => {
         if (!settingsMode) {

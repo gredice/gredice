@@ -5,6 +5,7 @@ import { handleOptimisticUpdate } from '../helpers/queryHelpers';
 import { useGameState } from '../useGameState';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
 import { inventoryQueryKey } from './useInventory';
+import { tutorialChecklistKeys } from './useTutorialChecklist';
 
 const mutationKey = ['gardens', 'current', 'gardenBoxStoreBlock'];
 
@@ -207,6 +208,9 @@ export function useGardenBoxStoreBlock() {
                 });
                 await queryClient.invalidateQueries({
                     queryKey: inventoryQueryKey,
+                });
+                await queryClient.invalidateQueries({
+                    queryKey: tutorialChecklistKeys,
                 });
             }
         },

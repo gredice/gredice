@@ -1,5 +1,6 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { tutorialChecklistKeys } from './useTutorialChecklist';
 
 type ApiClient = ReturnType<typeof clientAuthenticated>;
 
@@ -34,10 +35,12 @@ export function useSaveNotificationPreferences() {
             if (!response.ok)
                 throw new Error('Postavke obavijesti nisu spremljene');
         },
-        onSuccess: () =>
+        onSuccess: () => {
             queryClient.invalidateQueries({
                 queryKey: notificationPreferencesKey,
-            }),
+            });
+            queryClient.invalidateQueries({ queryKey: tutorialChecklistKeys });
+        },
     });
 }
 

@@ -1,6 +1,7 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKey, useCurrentUser } from './useCurrentUser';
+import { tutorialChecklistKeys } from './useTutorialChecklist';
 
 export type UpdateUserVariables = {
     displayName?: string;
@@ -74,6 +75,7 @@ export function useUpdateUser({ enabled = true }: { enabled?: boolean } = {}) {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKey.currentUser });
+            queryClient.invalidateQueries({ queryKey: tutorialChecklistKeys });
         },
     });
 }

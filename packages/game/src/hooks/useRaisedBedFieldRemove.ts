@@ -7,6 +7,7 @@ import {
     isRaisedBedFieldOccupied,
 } from '../utils/raisedBedFields';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
+import { tutorialChecklistKeys } from './useTutorialChecklist';
 
 const mutationKey = ['gardens', 'current', 'raisedBedFieldRemove'];
 
@@ -124,6 +125,9 @@ export function useRaisedBedFieldRemove() {
             if (queryClient.isMutating({ mutationKey }) === 1) {
                 await queryClient.invalidateQueries({
                     queryKey: gardenQueryKey,
+                });
+                await queryClient.invalidateQueries({
+                    queryKey: tutorialChecklistKeys,
                 });
             }
         },

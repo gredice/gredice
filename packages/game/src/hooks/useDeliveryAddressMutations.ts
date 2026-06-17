@@ -1,6 +1,7 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { deliveryAddressesQueryKey } from './useDeliveryAddresses';
+import { tutorialChecklistKeys } from './useTutorialChecklist';
 
 export function useCreateDeliveryAddress() {
     const queryClient = useQueryClient();
@@ -30,6 +31,7 @@ export function useCreateDeliveryAddress() {
             queryClient.invalidateQueries({
                 queryKey: deliveryAddressesQueryKey,
             });
+            queryClient.invalidateQueries({ queryKey: tutorialChecklistKeys });
         },
     });
 }
@@ -66,6 +68,7 @@ export function useUpdateDeliveryAddress() {
             queryClient.invalidateQueries({
                 queryKey: deliveryAddressesQueryKey,
             });
+            queryClient.invalidateQueries({ queryKey: tutorialChecklistKeys });
         },
     });
 }
@@ -89,6 +92,7 @@ export function useDeleteDeliveryAddress() {
             queryClient.invalidateQueries({
                 queryKey: deliveryAddressesQueryKey,
             });
+            queryClient.invalidateQueries({ queryKey: tutorialChecklistKeys });
         },
     });
 }

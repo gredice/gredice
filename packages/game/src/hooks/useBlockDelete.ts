@@ -5,6 +5,7 @@ import { persistLocalSandboxGarden } from '../localSandboxGarden';
 import { useGameState } from '../useGameState';
 import { currentAccountKeys } from './useCurrentAccount';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
+import { tutorialChecklistKeys } from './useTutorialChecklist';
 
 const mutationKey = ['gardens', 'current', 'blockDelete'];
 
@@ -116,6 +117,9 @@ export function useBlockDelete() {
                 });
                 await queryClient.invalidateQueries({
                     queryKey: currentAccountKeys,
+                });
+                await queryClient.invalidateQueries({
+                    queryKey: tutorialChecklistKeys,
                 });
             }
         },

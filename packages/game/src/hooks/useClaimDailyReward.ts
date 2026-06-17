@@ -2,6 +2,7 @@ import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { currentAccountKeys } from './useCurrentAccount';
 import { dailyRewardKeys } from './useDailyReward';
+import { tutorialChecklistKeys } from './useTutorialChecklist';
 
 export function useClaimDailyReward() {
     const queryClient = useQueryClient();
@@ -12,6 +13,7 @@ export function useClaimDailyReward() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: currentAccountKeys });
             queryClient.invalidateQueries({ queryKey: dailyRewardKeys });
+            queryClient.invalidateQueries({ queryKey: tutorialChecklistKeys });
         },
     });
 }

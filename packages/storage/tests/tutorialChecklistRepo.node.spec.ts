@@ -3,13 +3,18 @@ import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
     claimTutorialChecklistTask,
+    createAccountInvitation,
+    createEntity,
+    createRaisedBed,
     createUserWithPassword,
     getOrCreateShoppingCart,
     getSunflowers,
     getTutorialChecklistState,
     getUser,
     markTutorialChecklistTaskReady,
+    setUserFavorite,
     TutorialChecklistTaskNotClaimableError,
+    upsertEntityType,
     upsertOrRemoveCartItem,
 } from '@gredice/storage';
 import {
@@ -32,6 +37,15 @@ async function createChecklistTestUser() {
     return { accountId, userId };
 }
 
+function findChecklistTask(
+    state: Awaited<ReturnType<typeof getTutorialChecklistState>>,
+    taskKey: string,
+) {
+    return state.groups
+        .flatMap((group) => group.tasks)
+        .find((task) => task.key === taskKey);
+}
+
 test('tutorial checklist returns day groups and open tasks', async () => {
     createTestDb();
     const { accountId, userId } = await createChecklistTestUser();
@@ -49,8 +63,9 @@ test('tutorial checklist returns day groups and open tasks', async () => {
             .some((task) => task.key === 'order-watering'),
     );
     const allTasks = state.groups.flatMap((group) => group.tasks);
-    const onboardingTask = allTasks.find(
-        (task) => task.key === 'complete-first-raised-bed-onboarding',
+    const onboardingTask = findChecklistTask(
+        state,
+        'complete-first-raised-bed-onboarding',
     );
     assert.ok(onboardingTask);
     assert.strictEqual(onboardingTask.status, 'available');
@@ -66,6 +81,87 @@ test('tutorial checklist returns day groups and open tasks', async () => {
             ?.tasks.some((task) => task.key === 'enter-referral-code'),
     );
     assert.strictEqual(state.totals.claimableCount, 0);
+});
+
+test('tutorial checklist treats an active raised bed as first plan progress', async () => {
+    createTestDb();
+    const { accountId, userId } = await createChecklistTestUser();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const blockId = await createTestBlock(gardenId, 'checklist-active-bed');
+
+    await createRaisedBed({
+        accountId,
+        gardenId,
+        blockId,
+        status: 'active',
+    });
+
+    const state = await getTutorialChecklistState({ accountId, userId });
+    const task = findChecklistTask(
+        state,
+        'complete-first-raised-bed-onboarding',
+    );
+
+    assert.ok(task);
+    assert.strictEqual(task.status, 'ready');
+    assert.strictEqual(task.claimable, true);
+    assert.strictEqual(task.completed, false);
+});
+
+test('tutorial checklist notification settings task becomes claimable after visiting settings', async () => {
+    createTestDb();
+    const { accountId, userId } = await createChecklistTestUser();
+
+    const state = await markTutorialChecklistTaskReady({
+        accountId,
+        userId,
+        taskKey: 'configure-notifications',
+    });
+    const task = findChecklistTask(state, 'configure-notifications');
+
+    assert.ok(task);
+    assert.strictEqual(task.status, 'ready');
+    assert.strictEqual(task.claimable, true);
+});
+
+test('tutorial checklist treats pending account invitations as invite progress', async () => {
+    createTestDb();
+    const { accountId, userId } = await createChecklistTestUser();
+
+    await createAccountInvitation(
+        accountId,
+        `invite-${randomUUID()}@example.test`,
+        userId,
+    );
+
+    const state = await getTutorialChecklistState({ accountId, userId });
+    const task = findChecklistTask(state, 'invite-account-user');
+
+    assert.ok(task);
+    assert.strictEqual(task.status, 'ready');
+    assert.strictEqual(task.claimable, true);
+});
+
+test('tutorial checklist treats saved favorites as favorite progress', async () => {
+    createTestDb();
+    const { accountId, userId } = await createChecklistTestUser();
+    await upsertEntityType({ name: 'plant', label: 'Plant' });
+    const plantId = await createEntity('plant');
+
+    await setUserFavorite({
+        userId,
+        entityType: 'plant',
+        entityId: plantId,
+        favorited: true,
+    });
+
+    const state = await getTutorialChecklistState({ accountId, userId });
+    const task = findChecklistTask(state, 'favorite-one-item');
+
+    assert.ok(task);
+    assert.strictEqual(task.status, 'ready');
+    assert.strictEqual(task.claimable, true);
 });
 
 test('tutorial checklist manual task becomes claimable before reward claim', async () => {

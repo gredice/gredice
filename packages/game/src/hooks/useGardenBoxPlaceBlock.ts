@@ -8,6 +8,7 @@ import {
 import { useBlockData } from './useBlockData';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
 import { inventoryQueryKey } from './useInventory';
+import { tutorialChecklistKeys } from './useTutorialChecklist';
 
 const mutationKey = ['inventory', 'gardenBoxPlaceBlock'];
 const optimisticBlockIdPrefix = 'optimistic-garden-box-block';
@@ -221,6 +222,9 @@ export function useGardenBoxPlaceBlock() {
                 });
                 await queryClient.invalidateQueries({
                     queryKey: gardenQueryKey,
+                });
+                await queryClient.invalidateQueries({
+                    queryKey: tutorialChecklistKeys,
                 });
             }
         },

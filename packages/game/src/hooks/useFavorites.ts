@@ -8,6 +8,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { useCurrentUser } from './useCurrentUser';
+import { tutorialChecklistKeys } from './useTutorialChecklist';
 
 export const favoritesQueryKey = ['favorites'];
 
@@ -110,6 +111,7 @@ export function useSetFavorite() {
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: favoritesQueryKey });
+            queryClient.invalidateQueries({ queryKey: tutorialChecklistKeys });
         },
     });
 }

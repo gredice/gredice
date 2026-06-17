@@ -1,10 +1,7 @@
 import 'server-only';
 
 import { and, eq } from 'drizzle-orm';
-import {
-    tutorialChecklistTaskClaims,
-    userNotificationSettings,
-} from '../schema';
+import { tutorialChecklistTaskClaims } from '../schema';
 import { storage } from '../storage';
 import { getAccountInvitations } from './accountInvitationsRepo';
 import {
@@ -57,6 +54,7 @@ export type TutorialChecklistActionTarget =
 
 type TutorialChecklistSignal =
     | 'accountUserInvited'
+    | 'activeRaisedBed'
     | 'cartItemAdded'
     | 'dailyRewardClaimedDay2'
     | 'dailyRewardClaimedDay3'
@@ -65,7 +63,6 @@ type TutorialChecklistSignal =
     | 'futureOperationScheduled'
     | 'gardenRenamed'
     | 'hasOperationHistory'
-    | 'notificationSettingsCreated'
     | 'paidOrder'
     | 'plantingAchievement10'
     | 'plantedField'
@@ -165,6 +162,7 @@ const taskDefinitions = [
         description: 'Odaberi prijedlog i dodaj plan sadnje u košaru.',
         rewardSunflowers: 100,
         completion: 'manual',
+        signal: 'activeRaisedBed',
         actionTarget: 'raisedBedOnboarding',
     },
     {
@@ -348,11 +346,12 @@ const taskDefinitions = [
         key: 'favorite-one-item',
         groupId: 'day-2',
         title: 'Spremi favorit',
-        description: 'Označi barem jednu biljku, sortu ili radnju kao favorit.',
+        description:
+            'U gredici ili popisu radnji označi biljku, sortu ili radnju kao favorit.',
         rewardSunflowers: 25,
         completion: 'derived',
         signal: 'favoriteAdded',
-        actionTarget: 'plantDatabase',
+        actionTarget: 'operations',
     },
     {
         key: 'claim-daily-reward-day-3',
@@ -397,10 +396,9 @@ const taskDefinitions = [
         key: 'configure-notifications',
         groupId: 'day-3',
         title: 'Podesi obavijesti',
-        description: 'Spremi postavke obavijesti za svoj korisnički račun.',
+        description: 'Otvori postavke obavijesti za svoj korisnički račun.',
         rewardSunflowers: 50,
-        completion: 'derived',
-        signal: 'notificationSettingsCreated',
+        completion: 'manual',
         actionTarget: 'notifications',
     },
     {
@@ -564,6 +562,7 @@ export class TutorialChecklistTaskNotClaimableError extends Error {
 function emptySignals(): TutorialChecklistSignals {
     return {
         accountUserInvited: false,
+        activeRaisedBed: false,
         cartItemAdded: false,
         dailyRewardClaimedDay2: false,
         dailyRewardClaimedDay3: false,
@@ -573,7 +572,6 @@ function emptySignals(): TutorialChecklistSignals {
         gardenRenamed: false,
         harvestAchievement1: false,
         hasOperationHistory: false,
-        notificationSettingsCreated: false,
         paidOrder: false,
         plantingAchievement10: false,
         plantedField: false,
@@ -679,7 +677,6 @@ async function getTutorialChecklistSignals({
         gardens,
         history,
         invitations,
-        notificationSettings,
         operations,
         referralState,
         user,
@@ -692,9 +689,6 @@ async function getTutorialChecklistSignals({
         getAccountGardens(accountId),
         getSunflowersHistory(accountId, 0, 10000),
         getAccountInvitations(accountId),
-        storage().query.userNotificationSettings.findFirst({
-            where: eq(userNotificationSettings.userId, userId),
-        }),
         getOperations(accountId),
         getAccountReferralState(accountId, { createDefaultCode: false }),
         getUser(userId),
@@ -709,6 +703,9 @@ async function getTutorialChecklistSignals({
                 gardens.filter((candidate) => !candidate.isSandbox).length >= 2;
         }
         for (const raisedBed of garden.raisedBeds) {
+            signals.activeRaisedBed ||=
+                !garden.isSandbox && raisedBed.status === 'active';
+
             for (const field of raisedBed.fields) {
                 if (!hasPlant(field)) {
                     continue;
@@ -820,7 +817,6 @@ async function getTutorialChecklistSignals({
                 user.avatarUrl),
     );
     signals.favoriteAdded = favorites.length > 0;
-    signals.notificationSettingsCreated = Boolean(notificationSettings);
     signals.deliveryAddressAdded = deliveryAddresses.length > 0;
     signals.accountUserInvited =
         accountUsers.length > 1 || invitations.length > 0;

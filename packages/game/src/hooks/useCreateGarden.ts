@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useGameState } from '../useGameState';
 import { currentGardenKeys } from './useCurrentGarden';
 import { useGardensKeys } from './useGardens';
+import { tutorialChecklistKeys } from './useTutorialChecklist';
 
 type CreateGardenVariables = {
     name?: string;
@@ -31,6 +32,9 @@ export function useCreateGarden() {
         onSuccess: async () => {
             await queryClient.invalidateQueries({ queryKey: useGardensKeys });
             await queryClient.invalidateQueries({ queryKey: gardenQueryKey });
+            await queryClient.invalidateQueries({
+                queryKey: tutorialChecklistKeys,
+            });
         },
         onError: (error) => {
             console.error('Failed to create garden:', error);
