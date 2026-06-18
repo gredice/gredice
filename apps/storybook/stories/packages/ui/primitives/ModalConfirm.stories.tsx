@@ -48,6 +48,8 @@ export const WithPrompt: Story = {
 
 export const RichContent: Story = {
     args: {
+        description:
+            'Brisanjem se uklanjaju povezani podaci iz aktivnog prikaza.',
         children: (
             <Typography level="body2">
                 Brisanjem se uklanjaju povezani podaci iz aktivnog prikaza.
