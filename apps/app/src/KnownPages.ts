@@ -70,7 +70,7 @@ export const KnownPages = {
     Feedback: '/admin/feedback',
     Notifications: '/admin/communication/notifications',
     Surveys: '/admin/surveys',
-    Logout: '/admin/logout',
+    Logout: '/logout',
     RaisedBeds: '/admin/raised-beds',
     RaisedBed: (raisedBedId: number) =>
         `/admin/raised-beds/${raisedBedId}` as Route,
