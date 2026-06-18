@@ -28,6 +28,7 @@ import {
     type ShoppingCartItemData,
     useShoppingCartQueryKey,
 } from '../../../hooks/useShoppingCart';
+import { RaisedBedWateringCalendar } from '../../raisedBed/RaisedBedWateringCalendar';
 import { ButtonPricePickPaymentMethod } from './ButtonPricePickPaymentMethod';
 
 const outletReservationCountdownIntervalMs = 1000;
@@ -189,6 +190,16 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const removeShoppingCartItem = useSetShoppingCartItem();
     const changeScheduledDateShoppingCartItem = useSetShoppingCartItem();
     const canChangeScheduledDate = !isProcessed && !hasOutletReservation;
+    const parsedOperationId = Number(item.entityId);
+    const operationId =
+        Number.isInteger(parsedOperationId) && parsedOperationId > 0
+            ? parsedOperationId
+            : undefined;
+    const showWateringCalendar =
+        item.entityTypeName === 'operation' &&
+        operationId !== undefined &&
+        typeof item.gardenId === 'number' &&
+        typeof item.raisedBedId === 'number';
 
     useEffect(() => {
         if (
@@ -564,6 +575,16 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                                             >
                                                 {datePickerError}
                                             </Typography>
+                                        ) : null}
+                                        {showWateringCalendar &&
+                                        typeof item.gardenId === 'number' &&
+                                        typeof item.raisedBedId === 'number' ? (
+                                            <RaisedBedWateringCalendar
+                                                className="shadow-none"
+                                                gardenId={item.gardenId}
+                                                operationId={operationId}
+                                                raisedBedId={item.raisedBedId}
+                                            />
                                         ) : null}
                                     </Stack>
                                 </Popper>

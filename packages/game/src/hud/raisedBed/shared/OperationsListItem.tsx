@@ -122,10 +122,12 @@ export function OperationsListItem({
             <div className="flex flex-wrap gap-y-1 gap-x-2 pr-4 items-center justify-between">
                 <Row>
                     <OperationScheduleModal
+                        gardenId={gardenId}
                         operation={operation}
                         onConfirm={async (date) => {
                             await handleOperationPicked(operation, date);
                         }}
+                        raisedBedId={raisedBedId}
                         trigger={
                             <Button
                                 title="Zakaži radnju"

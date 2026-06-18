@@ -13,25 +13,33 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 import { formatLocalDate } from '../RaisedBedPlantPicker';
+import { RaisedBedWateringCalendar } from '../RaisedBedWateringCalendar';
 
 export function OperationScheduleModal({
+    gardenId,
     operation,
     onConfirm,
+    raisedBedId,
     trigger,
 }: {
+    gardenId?: number;
     operation: OperationData;
     onConfirm: (date: Date) => Promise<void>;
+    raisedBedId?: number;
     trigger: React.ReactElement;
 }) {
     const [open, setOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [scheduledDateInput, setScheduledDateInput] = useState<string | null>(
+        null,
+    );
 
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
-        const date = formData.get('scheduledDate') as string;
-        if (date) {
+        const date = formData.get('scheduledDate');
+        if (typeof date === 'string' && date) {
             const scheduledDate = new Date(date);
             setErrorMessage(null);
             setIsLoading(true);
@@ -58,6 +66,8 @@ export function OperationScheduleModal({
         tomorrow.getDate(),
     );
     const operationDefaultDate = formatLocalDate(tomorrow);
+    const selectedDateInput = scheduledDateInput ?? operationDefaultDate;
+    const selectedDate = selectedDateInput ? new Date(selectedDateInput) : null;
     const min = formatLocalDate(tomorrow);
     const max = formatLocalDate(threeMonthsFromTomorrow);
     const isHarvestOperation =
@@ -79,6 +89,7 @@ export function OperationScheduleModal({
                 setOpen(nextOpen);
                 if (!nextOpen) {
                     setErrorMessage(null);
+                    setScheduledDateInput(null);
                 }
             }}
         >
@@ -134,11 +145,23 @@ export function OperationScheduleModal({
                         name="scheduledDate"
                         className="w-full bg-card"
                         disabled={isLoading}
-                        defaultValue={operationDefaultDate}
+                        value={selectedDateInput}
                         min={min}
                         max={max}
+                        onChange={(event) =>
+                            setScheduledDateInput(event.target.value)
+                        }
                         required
                     />
+                    {gardenId != null && raisedBedId != null ? (
+                        <RaisedBedWateringCalendar
+                            className="shadow-none"
+                            gardenId={gardenId}
+                            previewDate={selectedDate}
+                            previewOperation={operation}
+                            raisedBedId={raisedBedId}
+                        />
+                    ) : null}
                     <Row spacing={2}>
                         <Button
                             variant="plain"
