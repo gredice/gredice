@@ -1,7 +1,6 @@
 import 'server-only';
 import { getUser as storageGetUser } from '@gredice/storage';
 import { cookies } from 'next/headers';
-import { forbidden, unauthorized } from 'next/navigation';
 import {
     baseAuth,
     baseWithAuth,
@@ -71,16 +70,19 @@ function isUnauthenticatedError(error: unknown) {
     );
 }
 
-function interruptExpectedAuthError(error: unknown): never {
+async function interruptExpectedAuthError(error: unknown): Promise<never> {
     if (isAuthError(error, 'Unauthorized')) {
+        const { forbidden } = await import('next/navigation');
         forbidden();
     }
 
     if (isAuthError(error, 'Account not found')) {
+        const { forbidden } = await import('next/navigation');
         forbidden();
     }
 
     if (isUnauthenticatedError(error)) {
+        const { unauthorized } = await import('next/navigation');
         unauthorized();
     }
 
@@ -147,7 +149,7 @@ export async function auth(...args: Parameters<typeof baseAuth>) {
 
         return await baseAuth(...args);
     } catch (error) {
-        interruptExpectedAuthError(error);
+        return await interruptExpectedAuthError(error);
     }
 }
 
