@@ -195,6 +195,20 @@ function checklistTaskProperties(task: TutorialChecklistTask) {
     };
 }
 
+function findChecklistTask(
+    state: TutorialChecklistState,
+    taskKey: string,
+): TutorialChecklistTask | undefined {
+    for (const group of state.groups) {
+        const task = group.tasks.find((item) => item.key === taskKey);
+        if (task) {
+            return task;
+        }
+    }
+
+    return undefined;
+}
+
 function isTaskReadyAfterOpen(task: TutorialChecklistTask) {
     return (
         task.completion === 'manual' &&
@@ -545,9 +559,10 @@ function TutorialChecklistContent({
 
         if (task.claimable) {
             const nextState = await claimTask.mutateAsync(task.key);
+            const claimedTask = findChecklistTask(nextState, task.key) ?? task;
             track('game_tutorial_checklist_task_claimed', {
                 ...checklistProgressProperties(nextState),
-                ...checklistTaskProperties(task),
+                ...checklistTaskProperties(claimedTask),
             });
         }
     }
@@ -562,9 +577,10 @@ function TutorialChecklistContent({
 
         if (isTaskReadyAfterOpen(task)) {
             const nextState = await markTaskReady.mutateAsync(task.key);
+            const readyTask = findChecklistTask(nextState, task.key) ?? task;
             track('game_tutorial_checklist_task_ready_marked', {
                 ...checklistProgressProperties(nextState),
-                ...checklistTaskProperties(task),
+                ...checklistTaskProperties(readyTask),
             });
         }
     }
