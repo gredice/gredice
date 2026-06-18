@@ -18,6 +18,8 @@ const meta = {
     },
     args: {
         title: 'Potvrdi radnju',
+        description:
+            'Kratka potvrda prije spremanja promjene u aktivnom prikazu.',
     },
     render: (args) => (
         <Modal {...args} trigger={<Button>Otvori modal</Button>}>
@@ -25,7 +27,8 @@ const meta = {
                 <Stack spacing={1}>
                     <Typography level="h5">Potvrdi radnju</Typography>
                     <Typography level="body2" secondary>
-                        Koristi se za kratke tokove koji traze jasnu potvrdu.
+                        Kratka potvrda prije spremanja promjene u aktivnom
+                        prikazu.
                     </Typography>
                 </Stack>
                 <div className="flex justify-end gap-2">
@@ -58,6 +61,8 @@ export const NotDismissible: Story = {
 export const LongContent: Story = {
     args: {
         title: 'Dugacki modal',
+        description:
+            'Modal s visim sadrzajem koji se skrola unutar dostupnog viewporta.',
         className: 'max-w-5xl',
     },
     render: (args) => (

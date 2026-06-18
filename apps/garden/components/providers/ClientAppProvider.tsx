@@ -22,6 +22,10 @@ async function currentUserFactory() {
     const response = await fetch('/api/gredice/api/auth/current-claims', {
         cache: 'no-store',
     });
+    if (response.status === 401) {
+        return null;
+    }
+
     if (!response.ok) {
         console.warn('Failed to fetch current user claims:', response.status);
         return null;
