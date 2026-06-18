@@ -400,7 +400,7 @@ test('getFarmerBalance includes farm sowing cycles regardless assignment', async
     assert.equal(balance.totalDurationMinutes, 5);
 });
 
-test('getFarmerBalance counts payable work after the last paid farm payout', async () => {
+test('getFarmerBalance counts payable work after the last paid farm payout request', async () => {
     createTestDb();
 
     const userId = randomUUID();
@@ -464,9 +464,9 @@ test('getFarmerBalance counts payable work after the last paid farm payout', asy
             requestedAmount: '0.50',
             currency: 'eur',
             status: 'paid',
-            paidAt: new Date('2026-01-02T10:00:00.000Z'),
+            paidAt: new Date('2026-01-04T10:00:00.000Z'),
             createdAt: new Date('2026-01-02T09:00:00.000Z'),
-            updatedAt: new Date('2026-01-02T10:00:00.000Z'),
+            updatedAt: new Date('2026-01-04T10:00:00.000Z'),
         });
 
     await createVerifiedAcceptedOperation({
