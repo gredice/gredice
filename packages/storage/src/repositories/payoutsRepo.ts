@@ -1,11 +1,13 @@
 import 'server-only';
 import type { OperationData } from '@gredice/directory-types';
-import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import {
     farmerPayoutRequestAdjustments,
+    farmerPayoutRequestItems,
     farmerPayoutRequests,
     farmUsers,
     gardens,
+    type InsertFarmerPayoutRequestItem,
     type InsertOperationPrice,
     operationPrices,
     operations,
@@ -13,6 +15,7 @@ import {
     raisedBeds,
     type SelectFarmerPayoutRequest,
     type SelectFarmerPayoutRequestAdjustment,
+    type SelectFarmerPayoutRequestItem,
     type SelectOperationPrice,
 } from '../schema';
 import { storage } from '../storage';
@@ -113,6 +116,7 @@ function getOperationDurationMinutes(operationData: OperationData | undefined) {
 async function getVerifiedSowingsForFarm(
     farmId: number,
     verifiedFrom?: Date,
+    verifiedUntil?: Date,
 ): Promise<{ farmId: number; sowingLocation: string }[]> {
     const raisedBedRows = await storage()
         .select({
@@ -157,7 +161,9 @@ async function getVerifiedSowingsForFarm(
                 c.plantStatus !== undefined &&
                 VERIFIED_SOWING_STATUSES.has(c.plantStatus) &&
                 (!verifiedFrom ||
-                    (c.verifiedAt && c.verifiedAt > verifiedFrom)),
+                    (c.verifiedAt && c.verifiedAt > verifiedFrom)) &&
+                (!verifiedUntil ||
+                    (c.verifiedAt && c.verifiedAt <= verifiedUntil)),
         );
 }
 
@@ -238,6 +244,19 @@ export type FarmerEarning = {
     currency: string;
 };
 
+const earningTypeLabel: Record<string, string> = {
+    sowing: 'Sijanje (direktno)',
+    sowingGreenhouse: 'Sijanje (staklenički rasad)',
+};
+
+function getFarmerEarningLabel(earning: FarmerEarning) {
+    return (
+        earningTypeLabel[earning.entityTypeName] ??
+        earning.entityLabel ??
+        earning.entityTypeName
+    );
+}
+
 export type FarmerBalance = {
     totalEarned: number;
     totalOperationEarned: number;
@@ -264,6 +283,13 @@ type NormalizedPayoutAdjustment = {
     createdByUserId: string;
 };
 
+type EarningSnapshot = {
+    totalOperationEarned: number;
+    totalDurationMinutes: number;
+    currency: string;
+    earningsByType: FarmerEarning[];
+};
+
 const MAX_PAYOUT_ADJUSTMENT_LABEL_LENGTH = 160;
 
 function moneyToCents(value: number | string) {
@@ -278,6 +304,10 @@ function moneyToCents(value: number | string) {
 
 function centsToMoney(cents: number) {
     return (cents / 100).toFixed(2);
+}
+
+function decimalString(value: number) {
+    return value.toFixed(2);
 }
 
 function getAdjustmentTotalCents(
@@ -343,27 +373,25 @@ function normalizePayoutAdjustments(
     });
 }
 
-export async function getFarmerBalance(
-    _userId: string,
+async function getFarmerEarningSnapshot(
     farmId: number,
-): Promise<FarmerBalance> {
-    const [prices, payouts, operationsData] = await Promise.all([
+    earnedFrom?: Date,
+    earnedUntil?: Date,
+): Promise<EarningSnapshot> {
+    const [prices, operationsData] = await Promise.all([
         getOperationPrices(farmId),
-        getFarmPayoutRequestsWithAdjustments(farmId),
         getEntitiesFormatted<OperationData>('operation'),
     ]);
-    const lastPaidPayoutRequestedAt = getLastPaidPayoutRequestedAt(payouts);
     const [completedOperations, verifiedSowings] = await Promise.all([
         getFarmAcceptedOperations(farmId, { status: 'completed' }),
-        getVerifiedSowingsForFarm(farmId, lastPaidPayoutRequestedAt),
+        getVerifiedSowingsForFarm(farmId, earnedFrom, earnedUntil),
     ]);
     const payableOperations = completedOperations.filter((operation) => {
-        if (!lastPaidPayoutRequestedAt) {
-            return true;
-        }
+        const eligibleAt = getOperationPayoutEligibleAt(operation);
 
         return (
-            getOperationPayoutEligibleAt(operation) > lastPaidPayoutRequestedAt
+            (!earnedFrom || eligibleAt > earnedFrom) &&
+            (!earnedUntil || eligibleAt <= earnedUntil)
         );
     });
     const completedOperationFarmIds = await getOperationEffectiveFarmIds(
@@ -466,13 +494,53 @@ export async function getFarmerBalance(
         }
     }
 
-    const totalOperationEarned = Array.from(earningsByKey.values()).reduce(
+    const earningsByType = Array.from(earningsByKey.values());
+    const totalOperationEarned = earningsByType.reduce(
         (acc, e) => acc + e.totalEarned,
         0,
     );
-    const totalDurationMinutes = Array.from(earningsByKey.values()).reduce(
+    const totalDurationMinutes = earningsByType.reduce(
         (acc, e) => acc + e.totalDurationMinutes,
         0,
+    );
+
+    return {
+        totalOperationEarned,
+        totalDurationMinutes,
+        currency,
+        earningsByType,
+    };
+}
+
+function getPayoutRequestItemValues(
+    payoutRequestId: number,
+    earnings: FarmerEarning[],
+): InsertFarmerPayoutRequestItem[] {
+    return earnings
+        .filter((earning) => earning.operationCount > 0)
+        .map((earning) => ({
+            payoutRequestId,
+            entityTypeName: earning.entityTypeName,
+            entityId: earning.entityId,
+            label: getFarmerEarningLabel(earning),
+            operationCount: earning.operationCount,
+            durationMinutes: decimalString(earning.durationMinutes),
+            totalDurationMinutes: decimalString(earning.totalDurationMinutes),
+            pricePerUnit: decimalString(earning.pricePerUnit),
+            totalAmount: decimalString(earning.totalEarned),
+            currency: earning.currency,
+        }));
+}
+
+export async function getFarmerBalance(
+    _userId: string,
+    farmId: number,
+): Promise<FarmerBalance> {
+    const payouts = await getFarmPayoutRequestsWithAdjustments(farmId);
+    const lastPaidPayoutRequestedAt = getLastPaidPayoutRequestedAt(payouts);
+    const earningSnapshot = await getFarmerEarningSnapshot(
+        farmId,
+        lastPaidPayoutRequestedAt,
     );
 
     const totalPaidCents = payouts
@@ -484,7 +552,9 @@ export async function getFarmerBalance(
         .reduce((acc, p) => acc + moneyToCents(p.requestedAmount), 0);
 
     const activeAdjustments = getActivePayoutAdjustmentTotal(payouts);
-    const totalOperationEarnedCents = moneyToCents(totalOperationEarned);
+    const totalOperationEarnedCents = moneyToCents(
+        earningSnapshot.totalOperationEarned,
+    );
     const totalEarnedCents =
         totalOperationEarnedCents + activeAdjustments.amountCents;
     const availableBalanceCents = Math.max(
@@ -500,9 +570,9 @@ export async function getFarmerBalance(
         totalPaid: totalPaidCents / 100,
         totalPending: totalPendingCents / 100,
         availableBalance: availableBalanceCents / 100,
-        totalDurationMinutes,
-        currency,
-        earningsByType: Array.from(earningsByKey.values()),
+        totalDurationMinutes: earningSnapshot.totalDurationMinutes,
+        currency: earningSnapshot.currency,
+        earningsByType: earningSnapshot.earningsByType,
     };
 }
 
@@ -542,6 +612,14 @@ export async function createPayoutRequest(
                 status: 'pending',
             })
             .returning();
+
+        const itemValues = getPayoutRequestItemValues(
+            row.id,
+            balance.earningsByType,
+        );
+        if (itemValues.length > 0) {
+            await tx.insert(farmerPayoutRequestItems).values(itemValues);
+        }
 
         await createEvent(
             knownEvents.payouts.requestedV1(row.id.toString(), {
@@ -614,9 +692,43 @@ export type PayoutRequestWithDetails = SelectFarmerPayoutRequest & {
     avatarUrl: string | null;
     farmName: string;
     adjustments: SelectFarmerPayoutRequestAdjustment[];
+    items: SelectFarmerPayoutRequestItem[];
     adjustmentTotal: string;
     originalRequestedAmount: string;
 };
+
+type PayoutRequestDetailsRow = SelectFarmerPayoutRequest & {
+    user: {
+        id: string;
+        userName: string;
+        displayName: string | null;
+        avatarUrl: string | null;
+    } | null;
+    farm: {
+        id: number;
+        name: string;
+    } | null;
+    adjustments: SelectFarmerPayoutRequestAdjustment[];
+    items: SelectFarmerPayoutRequestItem[];
+};
+
+function mapPayoutRequestWithDetails(
+    row: PayoutRequestDetailsRow,
+): PayoutRequestWithDetails {
+    const adjustmentTotalCents = getAdjustmentTotalCents(row.adjustments);
+    const originalRequestedAmountCents =
+        moneyToCents(row.requestedAmount) - adjustmentTotalCents;
+
+    return {
+        ...row,
+        userName: row.user?.userName ?? '',
+        displayName: row.user?.displayName ?? null,
+        avatarUrl: row.user?.avatarUrl ?? null,
+        farmName: row.farm?.name ?? '',
+        adjustmentTotal: centsToMoney(adjustmentTotalCents),
+        originalRequestedAmount: centsToMoney(originalRequestedAmountCents),
+    };
+}
 
 export async function getAllPayoutRequests(filter?: {
     status?: PayoutStatus;
@@ -650,24 +762,131 @@ export async function getAllPayoutRequests(filter?: {
             adjustments: {
                 orderBy: (table, { asc }) => [asc(table.id)],
             },
+            items: {
+                orderBy: (table, { asc }) => [asc(table.id)],
+            },
         },
     });
 
-    return rows.map((row) => {
-        const adjustmentTotalCents = getAdjustmentTotalCents(row.adjustments);
-        const originalRequestedAmountCents =
-            moneyToCents(row.requestedAmount) - adjustmentTotalCents;
+    return rows.map(mapPayoutRequestWithDetails);
+}
 
-        return {
-            ...row,
-            userName: row.user?.userName ?? '',
-            displayName: row.user?.displayName ?? null,
-            avatarUrl: row.user?.avatarUrl ?? null,
-            farmName: row.farm?.name ?? '',
-            adjustmentTotal: centsToMoney(adjustmentTotalCents),
-            originalRequestedAmount: centsToMoney(originalRequestedAmountCents),
-        };
+export async function getPayoutRequestWithDetails(
+    id: number,
+): Promise<PayoutRequestWithDetails | null> {
+    const row = await storage().query.farmerPayoutRequests.findFirst({
+        where: eq(farmerPayoutRequests.id, id),
+        with: {
+            user: {
+                columns: {
+                    id: true,
+                    userName: true,
+                    displayName: true,
+                    avatarUrl: true,
+                },
+            },
+            farm: {
+                columns: {
+                    id: true,
+                    name: true,
+                },
+            },
+            adjustments: {
+                orderBy: (table, { asc }) => [asc(table.id)],
+            },
+            items: {
+                orderBy: (table, { asc }) => [asc(table.id)],
+            },
+        },
     });
+
+    return row ? mapPayoutRequestWithDetails(row) : null;
+}
+
+export type BackfillPayoutRequestItemsResult = {
+    scannedRequestCount: number;
+    skippedRequestCount: number;
+    populatedRequestCount: number;
+    emptyRequestCount: number;
+    insertedItemCount: number;
+    dryRun: boolean;
+};
+
+function reservesPayoutEarningWindow(status: string) {
+    return status === 'pending' || status === 'approved' || status === 'paid';
+}
+
+export async function backfillPayoutRequestItems({
+    dryRun = false,
+}: {
+    dryRun?: boolean;
+} = {}): Promise<BackfillPayoutRequestItemsResult> {
+    const payouts = await storage().query.farmerPayoutRequests.findMany({
+        orderBy: [
+            asc(farmerPayoutRequests.farmId),
+            asc(farmerPayoutRequests.createdAt),
+            asc(farmerPayoutRequests.id),
+        ],
+        with: {
+            items: {
+                columns: {
+                    id: true,
+                },
+            },
+        },
+    });
+
+    const reservedFromByFarmId = new Map<number, Date>();
+    const result: BackfillPayoutRequestItemsResult = {
+        scannedRequestCount: payouts.length,
+        skippedRequestCount: 0,
+        populatedRequestCount: 0,
+        emptyRequestCount: 0,
+        insertedItemCount: 0,
+        dryRun,
+    };
+
+    for (const payout of payouts) {
+        const reserveWindow = reservesPayoutEarningWindow(payout.status);
+        const earnedFrom = reservedFromByFarmId.get(payout.farmId);
+
+        if (payout.items.length > 0) {
+            result.skippedRequestCount += 1;
+            if (reserveWindow) {
+                reservedFromByFarmId.set(payout.farmId, payout.createdAt);
+            }
+            continue;
+        }
+
+        const snapshot = await getFarmerEarningSnapshot(
+            payout.farmId,
+            earnedFrom,
+            payout.createdAt,
+        );
+        const itemValues = getPayoutRequestItemValues(
+            payout.id,
+            snapshot.earningsByType,
+        );
+
+        if (itemValues.length === 0) {
+            result.emptyRequestCount += 1;
+        } else {
+            result.populatedRequestCount += 1;
+            result.insertedItemCount += itemValues.length;
+
+            if (!dryRun) {
+                await storage()
+                    .insert(farmerPayoutRequestItems)
+                    .values(itemValues);
+            }
+        }
+
+        if (reserveWindow) {
+            reservedFromByFarmId.set(payout.farmId, payout.createdAt);
+        }
+    }
+
+    return result;
 }
 
 export async function getPendingPayoutRequestsCount(): Promise<number> {

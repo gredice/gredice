@@ -3,6 +3,7 @@ import {
     getAllPayoutRequests,
     type PayoutRequestWithDetails,
 } from '@gredice/storage';
+import { Button } from '@gredice/ui/Button';
 import {
     Card,
     CardContent,
@@ -10,6 +11,7 @@ import {
     CardOverflow,
     CardTitle,
 } from '@gredice/ui/Card';
+import { ArrowDownToLine } from '@gredice/ui/icons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -32,6 +34,24 @@ function parseMoney(value: string) {
 function formatSignedPrice(value: string) {
     const amount = parseMoney(value);
     return amount > 0 ? `+${formatPrice(amount)}` : formatPrice(amount);
+}
+
+function payoutExportHref(payoutId: number) {
+    return `/admin/farmers/payouts/${payoutId}/export`;
+}
+
+function PayoutCsvExportButton({ payoutId }: { payoutId: number }) {
+    return (
+        <Button
+            href={payoutExportHref(payoutId)}
+            download={`farmer-payout-${payoutId}.csv`}
+            size="sm"
+            variant="outlined"
+            startDecorator={<ArrowDownToLine className="size-4" />}
+        >
+            CSV
+        </Button>
+    );
 }
 
 function PayoutAmountDetails({ payout }: { payout: PayoutRequestWithDetails }) {
@@ -158,6 +178,7 @@ export default async function AdminFarmerPayoutsPage() {
                                                 Napomena farmera
                                             </Table.Head>
                                             <Table.Head>Zatraženo</Table.Head>
+                                            <Table.Head>Izvoz</Table.Head>
                                             <Table.Head>Odobri</Table.Head>
                                             <Table.Head>Odbij</Table.Head>
                                         </Table.Row>
@@ -195,6 +216,11 @@ export default async function AdminFarmerPayoutsPage() {
                                                     <LocalDateTime>
                                                         {payout.createdAt}
                                                     </LocalDateTime>
+                                                </Table.Cell>
+                                                <Table.Cell>
+                                                    <PayoutCsvExportButton
+                                                        payoutId={payout.id}
+                                                    />
                                                 </Table.Cell>
                                                 <Table.Cell>
                                                     <ApprovePayoutForm
@@ -238,6 +264,7 @@ export default async function AdminFarmerPayoutsPage() {
                                         <Table.Head>Iznos</Table.Head>
                                         <Table.Head>Bilješka admina</Table.Head>
                                         <Table.Head>Odobreno</Table.Head>
+                                        <Table.Head>Izvoz</Table.Head>
                                         <Table.Head>
                                             Označi kao plaćeno
                                         </Table.Head>
@@ -275,6 +302,11 @@ export default async function AdminFarmerPayoutsPage() {
                                                 <LocalDateTime>
                                                     {payout.approvedAt}
                                                 </LocalDateTime>
+                                            </Table.Cell>
+                                            <Table.Cell>
+                                                <PayoutCsvExportButton
+                                                    payoutId={payout.id}
+                                                />
                                             </Table.Cell>
                                             <Table.Cell>
                                                 <MarkAsPaidForm
@@ -320,6 +352,7 @@ export default async function AdminFarmerPayoutsPage() {
                                                 Referenca / razlog
                                             </Table.Head>
                                             <Table.Head>Datum</Table.Head>
+                                            <Table.Head>Izvoz</Table.Head>
                                         </Table.Row>
                                     </Table.Header>
                                     <Table.Body>
@@ -358,6 +391,11 @@ export default async function AdminFarmerPayoutsPage() {
                                                             payout.rejectedAt ??
                                                             payout.createdAt}
                                                     </LocalDateTime>
+                                                </Table.Cell>
+                                                <Table.Cell>
+                                                    <PayoutCsvExportButton
+                                                        payoutId={payout.id}
+                                                    />
                                                 </Table.Cell>
                                             </Table.Row>
                                         ))}
