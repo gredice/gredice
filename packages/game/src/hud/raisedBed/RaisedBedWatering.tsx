@@ -4,6 +4,7 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 import { ButtonGreen } from '../../shared-ui/ButtonGreen';
+import { RaisedBedWateringCalendar } from './RaisedBedWateringCalendar';
 import { OperationsList } from './shared/OperationsList';
 
 export function RaisedBedWatering({
@@ -44,6 +45,10 @@ export function RaisedBedWatering({
                 <Typography>
                     Odaberite radnju zalijevanja za ovu gredicu.
                 </Typography>
+                <RaisedBedWateringCalendar
+                    gardenId={gardenId}
+                    raisedBedId={raisedBedId}
+                />
                 <OperationsList
                     gardenId={gardenId}
                     raisedBedId={raisedBedId}
