@@ -5,15 +5,18 @@ import {
     acceptOperation,
     approvePayoutRequest,
     assignUserToFarm,
+    backfillPayoutRequestItems,
     createAccount,
     createAttributeDefinition,
     createEntity,
     createEvent,
     createFarm,
     createOperation,
+    createPayoutRequest,
     farmerPayoutRequests,
     getAllPayoutRequests,
     getFarmerBalance,
+    getPayoutRequestWithDetails,
     knownEvents,
     storage,
     updateEntity,
@@ -247,6 +250,194 @@ test('getFarmerBalance groups completed operations by CMS operation name', async
     assert.equal(hoeing?.totalDurationMinutes, 20);
     assert.equal(balance.totalEarned, 1.75);
     assert.equal(balance.totalDurationMinutes, 40);
+});
+
+test('createPayoutRequest stores immutable earning item snapshots', async () => {
+    createTestDb();
+
+    const userId = randomUUID();
+    await storage()
+        .insert(users)
+        .values({
+            id: userId,
+            userName: `payout-snapshot-${userId}@example.com`,
+            displayName: 'Payout Snapshot Farmer',
+            role: 'farmer',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        });
+
+    const farmId = await createFarm({
+        name: `Snapshot Payout Farm ${randomUUID()}`,
+        longitude: 0,
+        latitude: 0,
+    });
+    await assignUserToFarm(farmId, userId);
+
+    const operationEntityId = await createPublishedOperationEntity(
+        'Berba za isplatu',
+        25,
+    );
+    await upsertOperationPrice({
+        farmId,
+        entityTypeName: 'operation',
+        entityId: operationEntityId,
+        pricePerUnit: '0.50',
+        currency: 'eur',
+    });
+    await createVerifiedAcceptedOperation({
+        farmId,
+        entityId: operationEntityId,
+        completedBy: userId,
+    });
+
+    const request = await createPayoutRequest(userId, farmId, 0.5, 'eur');
+    const payout = await getPayoutRequestWithDetails(request.id);
+
+    assert.ok(payout);
+    assert.equal(payout.items.length, 1);
+    assert.equal(payout.items[0]?.label, 'Berba za isplatu');
+    assert.equal(payout.items[0]?.operationCount, 1);
+    assert.equal(Number(payout.items[0]?.durationMinutes), 25);
+    assert.equal(Number(payout.items[0]?.totalDurationMinutes), 25);
+    assert.equal(Number(payout.items[0]?.pricePerUnit), 0.5);
+    assert.equal(Number(payout.items[0]?.totalAmount), 0.5);
+
+    await upsertOperationPrice({
+        farmId,
+        entityTypeName: 'operation',
+        entityId: operationEntityId,
+        pricePerUnit: '1.25',
+        currency: 'eur',
+    });
+
+    const unchangedPayout = await getPayoutRequestWithDetails(request.id);
+
+    assert.ok(unchangedPayout);
+    assert.equal(Number(unchangedPayout.items[0]?.pricePerUnit), 0.5);
+    assert.equal(Number(unchangedPayout.items[0]?.totalAmount), 0.5);
+});
+
+test('createPayoutRequest rejects partial payout snapshots', async () => {
+    createTestDb();
+
+    const userId = randomUUID();
+    await storage()
+        .insert(users)
+        .values({
+            id: userId,
+            userName: `payout-partial-${userId}@example.com`,
+            displayName: 'Payout Partial Farmer',
+            role: 'farmer',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        });
+
+    const farmId = await createFarm({
+        name: `Partial Payout Farm ${randomUUID()}`,
+        longitude: 0,
+        latitude: 0,
+    });
+    await assignUserToFarm(farmId, userId);
+
+    const operationEntityId = await createPublishedOperationEntity(
+        'Berba za djelomicnu isplatu',
+        10,
+    );
+    await upsertOperationPrice({
+        farmId,
+        entityTypeName: 'operation',
+        entityId: operationEntityId,
+        pricePerUnit: '0.50',
+        currency: 'eur',
+    });
+    await createVerifiedAcceptedOperation({
+        farmId,
+        entityId: operationEntityId,
+        completedBy: userId,
+    });
+    await createVerifiedAcceptedOperation({
+        farmId,
+        entityId: operationEntityId,
+        completedBy: userId,
+    });
+
+    await assert.rejects(
+        () => createPayoutRequest(userId, farmId, 0.5, 'eur'),
+        /cijeli raspoloživi iznos/,
+    );
+
+    const payouts = await getAllPayoutRequests({ farmId });
+
+    assert.equal(payouts.length, 0);
+});
+
+test('backfillPayoutRequestItems populates existing payout item snapshots', async () => {
+    createTestDb();
+
+    const userId = randomUUID();
+    await storage()
+        .insert(users)
+        .values({
+            id: userId,
+            userName: `payout-backfill-${userId}@example.com`,
+            displayName: 'Payout Backfill Farmer',
+            role: 'farmer',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        });
+
+    const farmId = await createFarm({
+        name: `Backfill Payout Farm ${randomUUID()}`,
+        longitude: 0,
+        latitude: 0,
+    });
+    await assignUserToFarm(farmId, userId);
+
+    const operationEntityId = await createPublishedOperationEntity(
+        'Pakiranje za isplatu',
+        30,
+    );
+    await upsertOperationPrice({
+        farmId,
+        entityTypeName: 'operation',
+        entityId: operationEntityId,
+        pricePerUnit: '0.80',
+        currency: 'eur',
+    });
+    await createVerifiedAcceptedOperation({
+        farmId,
+        entityId: operationEntityId,
+        completedBy: userId,
+        completedAt: new Date('2026-02-01T10:00:00.000Z'),
+        verifiedAt: new Date('2026-02-01T10:05:00.000Z'),
+    });
+
+    const [request] = await storage()
+        .insert(farmerPayoutRequests)
+        .values({
+            farmId,
+            userId,
+            requestedAmount: '0.80',
+            currency: 'eur',
+            status: 'paid',
+            paidAt: new Date('2026-02-03T10:00:00.000Z'),
+            createdAt: new Date('2026-02-02T09:00:00.000Z'),
+            updatedAt: new Date('2026-02-03T10:00:00.000Z'),
+        })
+        .returning();
+    assert.ok(request);
+
+    const result = await backfillPayoutRequestItems();
+    const payout = await getPayoutRequestWithDetails(request.id);
+
+    assert.ok(result.insertedItemCount >= 1);
+    assert.ok(payout);
+    assert.equal(payout.items.length, 1);
+    assert.equal(payout.items[0]?.label, 'Pakiranje za isplatu');
+    assert.equal(payout.items[0]?.operationCount, 1);
+    assert.equal(Number(payout.items[0]?.pricePerUnit), 0.8);
+    assert.equal(Number(payout.items[0]?.totalAmount), 0.8);
 });
 
 test('getFarmerBalance includes farm raised-bed operations by effective farm', async () => {
