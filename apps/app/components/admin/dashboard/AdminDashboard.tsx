@@ -20,7 +20,7 @@ type AdminDashboardProps = {
 };
 
 export async function AdminDashboard({ searchParams }: AdminDashboardProps) {
-    auth(['admin']);
+    await auth(['admin']);
     const params = await searchParams;
     const selectedPeriod = params?.period || '7';
 
