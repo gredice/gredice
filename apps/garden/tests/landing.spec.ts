@@ -9,7 +9,39 @@ const currentUser = {
     displayName: 'Test User',
     email: 'test@example.com',
     id: 'test-user',
+    isTemporary: false,
     userName: 'test-user',
+};
+
+const temporaryUser = {
+    ...currentUser,
+    displayName: 'Mali Suncokret 4821',
+    id: 'temporary-user',
+    isTemporary: true,
+    userName: 'Mali Suncokret 4821',
+};
+
+const sandboxGarden = {
+    backgroundPalette: null,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    farmId: 1,
+    id: 1,
+    isSandbox: true,
+    latitude: 45.739,
+    longitude: 16.572,
+    name: 'Vrt za igru',
+    raisedBeds: [],
+    stacks: {
+        '0': {
+            '0': [
+                {
+                    id: 'block-1',
+                    name: 'Block_Grass',
+                    rotation: 0,
+                },
+            ],
+        },
+    },
 };
 
 const adventCalendar = {
@@ -66,20 +98,33 @@ function collectRuntimeFailures(page: Page) {
 }
 
 async function mockGardenApi(page: Page, signedIn: boolean) {
+    let sessionUser: typeof currentUser | typeof temporaryUser | null = signedIn
+        ? currentUser
+        : null;
+
     await page.route('**/api/gredice/**', async (route) => {
         const { pathname } = new URL(route.request().url());
         let body: unknown;
+        let status = 200;
 
-        if (pathname.endsWith('/api/auth/current-claims')) {
-            body = signedIn ? currentUser : null;
+        if (pathname.endsWith('/api/auth/temporary')) {
+            sessionUser = temporaryUser;
+            body = temporaryUser;
+            status = 201;
+        } else if (pathname.endsWith('/api/auth/current-claims')) {
+            body = sessionUser;
         } else if (pathname.endsWith('/api/auth/last-login')) {
             body = {};
         } else if (pathname.endsWith('/api/users/current')) {
-            body = signedIn ? currentUser : null;
+            body = sessionUser;
         } else if (pathname.endsWith('/api/gardens')) {
-            body = signedIn ? [] : null;
+            body = sessionUser ? [sandboxGarden] : null;
+        } else if (pathname.endsWith('/api/gardens/1')) {
+            body = sandboxGarden;
+        } else if (pathname.endsWith('/api/gardens/1/operations')) {
+            body = { items: [], nextCursor: null, total: 0 };
         } else if (pathname.endsWith('/api/accounts/gardens')) {
-            body = signedIn
+            body = sessionUser
                 ? [
                       {
                           accountId: 'test-account',
@@ -164,7 +209,7 @@ async function mockGardenApi(page: Page, signedIn: boolean) {
         await route.fulfill({
             body: JSON.stringify(body),
             contentType: 'application/json',
-            status: 200,
+            status,
         });
     });
 }
@@ -177,7 +222,7 @@ async function expectNoImmediateRuntimeFailures(
     expect(failures).toEqual([]);
 }
 
-test('loads signed-out landing page without immediate runtime failures', async ({
+test('signed-out landing creates a temporary account and shows the playable HUD', async ({
     page,
 }) => {
     const failures = collectRuntimeFailures(page);
@@ -187,9 +232,10 @@ test('loads signed-out landing page without immediate runtime failures', async (
 
     expect(response?.ok()).toBe(true);
     await expect(page).toHaveTitle(/Gredice/);
+    await expect(page.getByTitle(/zvuk/u)).toBeVisible({ timeout: 15_000 });
     await expect(
         page.getByRole('button', { name: 'Prijava' }).first(),
-    ).toBeVisible();
+    ).toBeHidden();
     await expectNoImmediateRuntimeFailures(page, failures);
 });
 

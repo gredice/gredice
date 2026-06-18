@@ -6,6 +6,7 @@ import { cx } from '@gredice/ui/utils';
 import { useState } from 'react';
 import type { GameSceneProps } from './GameScene';
 import { useCurrentGarden } from './hooks/useCurrentGarden';
+import { useCurrentUser } from './hooks/useCurrentUser';
 import { useMarkTutorialChecklistTaskReady } from './hooks/useTutorialChecklist';
 import { AccountHud } from './hud/AccountHud';
 import { AdventHud } from './hud/AdventHud';
@@ -83,9 +84,10 @@ export function GameHud({
     }>({ confirmed: false, gardenId: null });
     const isCloseup = useGameState((state) => state.view) === 'closeup';
     const { data: currentGarden } = useCurrentGarden();
+    const { data: currentUser } = useCurrentUser();
     const markTutorialChecklistTaskReady = useMarkTutorialChecklistTaskReady();
-    // Sandbox ("play") gardens are decoration only: no economy or inventory.
     const isSandbox = Boolean(currentGarden?.isSandbox);
+    const showAccountEconomy = !isSandbox || Boolean(currentUser?.isTemporary);
     const isLocalSandbox = useGameState(
         (state) => state.localSandboxStorageKey !== null,
     );
@@ -156,18 +158,18 @@ export function GameHud({
                 {!isLocalSandbox && !isSandbox && enableTutorialChecklist && (
                     <TutorialChecklistHud />
                 )}
-                {!isSandbox && <ShoppingCartHud />}
-                {!isSandbox && (
+                {!isLocalSandbox && showAccountEconomy && <ShoppingCartHud />}
+                {showAccountEconomy && (
                     <div className={closeupHiddenHudClassName}>
                         <AdventHud />
                     </div>
                 )}
-                {!isSandbox && (
+                {!isLocalSandbox && showAccountEconomy && (
                     <div className={closeupHiddenHudClassName}>
                         <InventoryHud />
                     </div>
                 )}
-                {!isSandbox && (
+                {!isLocalSandbox && showAccountEconomy && (
                     <div className={closeupHiddenHudClassName}>
                         <OutletHud />
                     </div>
@@ -187,7 +189,7 @@ export function GameHud({
                         <WeatherHud noWeather={noWeather} />
                     )}
                 </div>
-                {!isSandbox && <SunflowersHud />}
+                {!isLocalSandbox && showAccountEconomy && <SunflowersHud />}
             </div>
             <div className={gameHudBottomBarClassName}>
                 <div

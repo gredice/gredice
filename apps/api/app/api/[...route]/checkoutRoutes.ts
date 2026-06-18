@@ -67,8 +67,21 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }),
         ),
         async (context) => {
-            const { accountId, userId } = context.get('authContext');
+            const {
+                accountId,
+                user: authUser,
+                userId,
+            } = context.get('authContext');
             const { cartId, deliveryInfo } = context.req.valid('json');
+            if (authUser.isTemporary) {
+                return context.json(
+                    {
+                        error: 'Upgrade required before checkout',
+                        errorCode: 'upgrade_required',
+                    },
+                    403,
+                );
+            }
 
             // Retrieve data
             const [account, user, initialCart] = await Promise.all([

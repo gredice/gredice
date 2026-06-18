@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { bustScheduleCache } from '../cache/scheduleCache';
+import { accountAchievements } from '../schema/achievementsSchema';
 import { events } from '../schema/eventsSchema';
 import {
     gardens as dbGardens,
@@ -19,6 +20,7 @@ import {
     getNotificationsByAccount,
     getNotificationsByUser,
 } from './notificationsRepo';
+import { deleteUserAuthenticationData } from './usersRepo';
 
 /**
  * Deletes an account and all related entities in the required order.
@@ -188,6 +190,13 @@ export async function deleteAccountWithDependencies(
         );
         await storage().delete(events).where(eq(events.aggregateId, accountId));
 
+        console.info(
+            `[AccountDelete] Deleting achievements for accountId=${accountId}`,
+        );
+        await storage()
+            .delete(accountAchievements)
+            .where(eq(accountAchievements.accountId, accountId));
+
         // Delete user-account association
         console.info(
             `[AccountDelete] Deleting user-account association for accountId=${accountId}, userId=${userId}`,
@@ -220,6 +229,11 @@ export async function deleteAccountWithDependencies(
             await storage()
                 .delete(events)
                 .where(eq(events.aggregateId, userId));
+
+            console.info(
+                `[AccountDelete] Deleting authentication data for userId=${userId}`,
+            );
+            await deleteUserAuthenticationData(userId);
 
             console.info(`[AccountDelete] Deleting user userId=${userId}`);
             await storage().delete(users).where(eq(users.id, userId));

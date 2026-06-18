@@ -12,27 +12,61 @@ import { Mail } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
 import { Stack } from '@gredice/ui/Stack';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
+import { Typography } from '@gredice/ui/Typography';
 import { usePostHog } from '@posthog/next';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { useCallback, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { EmailPasswordForm } from './EmailPasswordForm';
 import LoginBanner from './LoginBanner';
 
 type AuthTab = 'login' | 'register';
+type RegistrationSuccessHref =
+    | '/prijava/registracija-uspijesna'
+    | '/prijava/registracija-uspijesna?upgrade=1';
 
-export default function LoginModal() {
+type LoginModalProps = {
+    defaultTab?: AuthTab;
+    description?: ReactNode;
+    dismissible?: boolean;
+    onOpenChange?: (open: boolean) => void;
+    open?: boolean;
+    registrationSuccessHref?: RegistrationSuccessHref;
+    showBanner?: boolean;
+    title?: string;
+};
+
+export default function LoginModal({
+    defaultTab = 'login',
+    description,
+    dismissible = false,
+    onOpenChange,
+    open = true,
+    registrationSuccessHref = '/prijava/registracija-uspijesna',
+    showBanner = true,
+    title = 'Prijava',
+}: LoginModalProps = {}) {
     const posthog = usePostHog();
     const router = useRouter();
     const queryClient = useQueryClient();
     const [error, setError] = useState<string>();
-    const [activeTab, setActiveTab] = useState<AuthTab>('login');
+    const [activeTab, setActiveTab] = useState<AuthTab>(defaultTab);
     const [emailExpanded, setEmailExpanded] = useState(false);
     const fetchLastLogin = useCallback(
         () => clientPublic().api.auth['last-login'].$get(),
         [],
     );
     const lastLoginProvider = useLastLoginProvider(fetchLastLogin);
+
+    useEffect(() => {
+        if (!open) {
+            return;
+        }
+
+        setActiveTab(defaultTab);
+        setEmailExpanded(false);
+        setError(undefined);
+    }, [defaultTab, open]);
 
     const handleLogin = async (email: string, password: string) => {
         setError(undefined);
@@ -50,6 +84,8 @@ export default function LoginModal() {
         if (response.status === 200) {
             await response.json();
             await queryClient.invalidateQueries();
+            router.refresh();
+            onOpenChange?.(false);
             return;
         } else {
             const json = await response.json();
@@ -135,7 +171,7 @@ export default function LoginModal() {
             return;
         }
 
-        router.push('/prijava/registracija-uspijesna');
+        router.push(registrationSuccessHref);
     };
 
     const handleOAuthLogin = (provider: 'google' | 'facebook') => {
@@ -160,14 +196,19 @@ export default function LoginModal() {
 
     const authActionLabel = activeTab === 'login' ? 'prijava' : 'registracija';
 
+    if (!open) {
+        return null;
+    }
+
     return (
         <>
-            <LoginBanner />
+            {showBanner && <LoginBanner />}
             <Modal
-                open
-                title="Prijava"
+                open={open}
+                title={title}
                 className="bg-card z-[60] border-tertiary border-b-4 rounded-lg shadow-2xl"
-                dismissible={false}
+                dismissible={dismissible}
+                onOpenChange={onOpenChange}
             >
                 <Tabs
                     value={activeTab}
@@ -182,6 +223,14 @@ export default function LoginModal() {
                             </TabsTrigger>
                         </TabsList>
                     </div>
+                    {description && (
+                        <Typography
+                            level="body2"
+                            className="mt-4 text-center text-muted-foreground"
+                        >
+                            {description}
+                        </Typography>
+                    )}
                     <Stack spacing={4} className="mt-4">
                         {!emailExpanded && (
                             <Stack spacing={2}>

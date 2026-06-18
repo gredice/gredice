@@ -1,18 +1,24 @@
 import { pbkdf2Sync, randomUUID } from 'node:crypto';
 import { notifyNewUserRegistered } from '@gredice/notifications';
 import {
+    attachTemporaryAccountsToUser,
     blockLogin,
     changePassword,
     clearLoginFailedAttempts,
+    createOrUpdateUserPasswordLogin,
     createOrUpdateUserWithOauth,
+    createTemporaryUserAndAccount,
     createUserPasswordLogin,
     createUserWithPassword,
     doUseRefreshToken,
     getLastUserLogin,
     getUser,
     getUserWithLogins,
+    getUserWithLoginsByLogin,
     incLoginFailedAttempts,
     loginSuccessful,
+    promoteTemporaryUser,
+    touchTemporaryUserActivity,
     updateLoginData,
 } from '@gredice/storage';
 import { type Context, Hono } from 'hono';
@@ -44,6 +50,8 @@ import {
 } from '../../../lib/auth/refreshCookies';
 import {
     accessTokenExpiry,
+    accountCookieName,
+    cookieDomain,
     refreshTokenCookieName,
     sessionCookieName,
 } from '../../../lib/auth/sessionConfig';
@@ -78,6 +86,7 @@ type CurrentSessionClaims = {
 type CurrentClaims = CurrentSessionClaims & {
     displayName: string;
     avatarUrl: string | null;
+    isTemporary: boolean;
 };
 
 function currentClaimsFromPayload(
@@ -119,6 +128,7 @@ function currentClaimsFromUser(
         avatarUrl: user.avatarUrl,
         role: user.role,
         accountIds: user.accounts.map((account) => account.accountId),
+        isTemporary: user.isTemporary,
     };
 }
 
@@ -164,6 +174,10 @@ async function currentClaimsFromRefreshToken(context: Context) {
         setRefreshCookie(context, refreshToken),
     ]);
 
+    if (user.isTemporary) {
+        await touchTemporaryUserActivity(user.id);
+    }
+
     return currentClaimsFromUser(user);
 }
 
@@ -171,10 +185,21 @@ async function getCurrentClaims(context: Context) {
     const sessionClaims = await currentClaimsFromSessionCookie(context);
     if (sessionClaims) {
         const user = await getUser(sessionClaims.id);
-        return user ? currentClaimsFromUser(user) : null;
+        if (!user) {
+            return null;
+        }
+        if (user.isTemporary) {
+            await touchTemporaryUserActivity(user.id);
+        }
+        return currentClaimsFromUser(user);
     }
 
     return await currentClaimsFromRefreshToken(context);
+}
+
+async function getCurrentTemporaryClaims(context: Context) {
+    const claims = await getCurrentClaims(context);
+    return claims?.isTemporary ? claims : null;
 }
 
 /**
@@ -325,6 +350,27 @@ function normalizeEmail(email?: string) {
     return email?.trim().toLowerCase();
 }
 
+async function findPasswordUser(email: string) {
+    return (
+        (await getUserWithLogins(email)) ??
+        (await getUserWithLoginsByLogin('password', email))
+    );
+}
+
+function setActiveAccountCookie(context: Context, accountId?: string) {
+    if (!accountId) {
+        return;
+    }
+
+    setContextCookie(context, accountCookieName, accountId, {
+        secure: true,
+        httpOnly: true,
+        sameSite: 'Lax',
+        domain: cookieDomain,
+        maxAge: 365 * 24 * 60 * 60,
+    });
+}
+
 function getEmailDomain(email?: string) {
     const normalizedEmail = normalizeEmail(email);
     if (!normalizedEmail) {
@@ -390,6 +436,47 @@ async function trackAuthEvent({
 
 const app = new Hono()
     .post(
+        '/temporary',
+        describeRoute({
+            description:
+                'Create or reuse a temporary user session for signed-out garden visitors.',
+        }),
+        async (context) => {
+            const existingClaims = await getCurrentClaims(context);
+            if (existingClaims) {
+                if (existingClaims.isTemporary) {
+                    await touchTemporaryUserActivity(existingClaims.id, {
+                        force: true,
+                    });
+                }
+                return context.json(existingClaims);
+            }
+
+            const temporary = await createTemporaryUserAndAccount();
+            const { accessToken, refreshToken } = await issueSessionTokens(
+                temporary.userId,
+            );
+            await Promise.all([
+                setCookie(context, accessToken),
+                setRefreshCookie(context, refreshToken),
+            ]);
+            setActiveAccountCookie(context, temporary.accountId);
+
+            return context.json(
+                {
+                    id: temporary.userId,
+                    userName: temporary.userName,
+                    displayName: temporary.displayName,
+                    avatarUrl: null,
+                    role: 'user',
+                    accountIds: [temporary.accountId],
+                    isTemporary: true,
+                },
+                201,
+            );
+        },
+    )
+    .post(
         '/login',
         describeRoute({
             description: 'Login with email and password',
@@ -403,9 +490,21 @@ const app = new Hono()
         ),
         async (context) => {
             const { email, password } = context.req.valid('json');
-            const user = await getUserWithLogins(email);
+            const normalizedEmail = normalizeEmail(email);
+            if (!normalizedEmail) {
+                return context.json(
+                    {
+                        error: 'User not found',
+                        errorCode: 'user_not_found',
+                    },
+                    { status: 404 },
+                );
+            }
+
+            const temporaryClaims = await getCurrentTemporaryClaims(context);
+            const user = await findPasswordUser(normalizedEmail);
             if (!user) {
-                console.debug('User not found', email);
+                console.debug('User not found', normalizedEmail);
                 return context.json(
                     {
                         error: 'User not found',
@@ -416,10 +515,12 @@ const app = new Hono()
             }
 
             const login = user.usersLogins.find(
-                (login) => login.loginType === 'password',
+                (login) =>
+                    login.loginType === 'password' &&
+                    login.loginId === normalizedEmail,
             );
             if (!login) {
-                console.debug('User login not found', email);
+                console.debug('User login not found', normalizedEmail);
                 return context.json(
                     {
                         error: 'User not found',
@@ -435,7 +536,7 @@ const app = new Hono()
                 login.blockedUntil &&
                 login.blockedUntil.getTime() > Date.now()
             ) {
-                console.debug('User blocked', email);
+                console.debug('User blocked', normalizedEmail);
                 return context.json(
                     {
                         error: 'User blocked',
@@ -451,7 +552,7 @@ const app = new Hono()
             if (!salt || !storedHash) {
                 console.debug(
                     'User password login data corrupted',
-                    email,
+                    normalizedEmail,
                     login.id,
                 );
                 return context.json(
@@ -472,7 +573,7 @@ const app = new Hono()
                 'sha512',
             ).toString('hex');
             if (checkHash !== storedHash) {
-                console.debug('User password not matching', email);
+                console.debug('User password not matching', normalizedEmail);
 
                 // TODO: Move to Auth library
                 // Clear failed attempts after some time or block user
@@ -528,17 +629,31 @@ const app = new Hono()
             const { accessToken, refreshToken } = await issueSessionTokens(
                 user.id,
             );
+            let attachedTemporaryAccountId: string | undefined;
+            if (temporaryClaims && temporaryClaims.id !== user.id) {
+                const attached = await attachTemporaryAccountsToUser({
+                    temporaryUserId: temporaryClaims.id,
+                    targetUserId: user.id,
+                });
+                attachedTemporaryAccountId = attached.accountIds[0];
+            }
             await Promise.all([
                 setCookie(context, accessToken),
                 loginSuccessful(login.id),
                 setRefreshCookie(context, refreshToken),
             ]);
+            setActiveAccountCookie(context, attachedTemporaryAccountId);
 
             await trackAuthEvent({
                 distinctId: user.id,
-                email: user.userName,
+                email: normalizedEmail,
                 event: 'user_logged_in',
                 provider: 'password',
+                properties: {
+                    attached_temporary_account: Boolean(
+                        attachedTemporaryAccountId,
+                    ),
+                },
             });
 
             return context.json({
@@ -619,17 +734,22 @@ const app = new Hono()
                     tokenData.access_token,
                 );
                 const timeZone = getTimeZoneCookie(context);
-                const { userId, loginId, isNewUser } =
-                    await createOrUpdateUserWithOauth(
-                        {
-                            name: userInfo.name,
-                            email: userInfo.email,
-                            providerUserId: userInfo.id,
-                            provider: 'google',
-                        },
-                        currentUserId,
-                        timeZone,
-                    );
+                const oauthResult = await createOrUpdateUserWithOauth(
+                    {
+                        name: userInfo.name,
+                        email: userInfo.email,
+                        providerUserId: userInfo.id,
+                        provider: 'google',
+                    },
+                    currentUserId,
+                    timeZone,
+                );
+                const {
+                    userId,
+                    loginId,
+                    isNewUser,
+                    attachedTemporaryAccountIds,
+                } = oauthResult;
 
                 if (isNewUser) {
                     await notifyNewUserRegistered(userId);
@@ -642,6 +762,10 @@ const app = new Hono()
                     loginSuccessful(loginId),
                     setRefreshCookie(context, refreshToken),
                 ]);
+                setActiveAccountCookie(
+                    context,
+                    attachedTemporaryAccountIds?.[0],
+                );
 
                 await trackAuthEvent({
                     distinctId: userId,
@@ -770,17 +894,22 @@ const app = new Hono()
                     tokenData.access_token,
                 );
                 const timeZone = getTimeZoneCookie(context);
-                const { userId, loginId, isNewUser } =
-                    await createOrUpdateUserWithOauth(
-                        {
-                            name: userInfo.name,
-                            email: userInfo.email,
-                            providerUserId: userInfo.id,
-                            provider: 'facebook',
-                        },
-                        currentUserId,
-                        timeZone,
-                    );
+                const oauthResult = await createOrUpdateUserWithOauth(
+                    {
+                        name: userInfo.name,
+                        email: userInfo.email,
+                        providerUserId: userInfo.id,
+                        provider: 'facebook',
+                    },
+                    currentUserId,
+                    timeZone,
+                );
+                const {
+                    userId,
+                    loginId,
+                    isNewUser,
+                    attachedTemporaryAccountIds,
+                } = oauthResult;
 
                 if (isNewUser) {
                     await notifyNewUserRegistered(userId);
@@ -793,6 +922,10 @@ const app = new Hono()
                     loginSuccessful(loginId),
                     setRefreshCookie(context, refreshToken),
                 ]);
+                setActiveAccountCookie(
+                    context,
+                    attachedTemporaryAccountIds?.[0],
+                );
 
                 await trackAuthEvent({
                     distinctId: userId,
@@ -1034,9 +1167,20 @@ const app = new Hono()
         ),
         async (context) => {
             const { email, password } = context.req.valid('json');
-            const user = await getUserWithLogins(email);
-            if (user) {
-                console.debug('User already exists', email);
+            const normalizedEmail = normalizeEmail(email);
+            if (!normalizedEmail) {
+                return context.json(
+                    {
+                        error: 'Email is required',
+                    },
+                    { status: 400 },
+                );
+            }
+
+            const temporaryClaims = await getCurrentTemporaryClaims(context);
+            const user = await findPasswordUser(normalizedEmail);
+            if (user && (!temporaryClaims || user.id !== temporaryClaims.id)) {
+                console.debug('User already exists', normalizedEmail);
                 await trackAuthEvent({
                     distinctId: user.id,
                     email: user.userName,
@@ -1055,14 +1199,25 @@ const app = new Hono()
                 );
             }
 
-            // Create user with password
-            const userId = await createUserWithPassword(email, password);
+            const userId = temporaryClaims
+                ? temporaryClaims.id
+                : await createUserWithPassword(normalizedEmail, password);
+            if (temporaryClaims) {
+                await createOrUpdateUserPasswordLogin(
+                    temporaryClaims.id,
+                    normalizedEmail,
+                    password,
+                );
+            }
 
             await trackAuthEvent({
                 distinctId: userId,
-                email,
+                email: normalizedEmail,
                 event: 'user_signed_up',
                 provider: 'password',
+                properties: {
+                    upgraded_temporary_account: Boolean(temporaryClaims),
+                },
                 setOnceProperties: {
                     signed_up_at: new Date().toISOString(),
                     signup_provider: 'password',
@@ -1071,11 +1226,11 @@ const app = new Hono()
 
             await notifyNewUserRegistered(userId);
 
-            await sendEmailVerification(email);
+            await sendEmailVerification(normalizedEmail);
 
             await trackAuthEvent({
                 distinctId: userId,
-                email,
+                email: normalizedEmail,
                 event: 'user_verification_email_sent',
                 provider: 'password',
                 properties: {
@@ -1104,9 +1259,19 @@ const app = new Hono()
         ),
         async (context) => {
             const { email } = context.req.valid('json');
-            const user = await getUserWithLogins(email);
+            const normalizedEmail = normalizeEmail(email);
+            if (!normalizedEmail) {
+                return context.json(
+                    {
+                        error: 'User not found',
+                    },
+                    { status: 404 },
+                );
+            }
+
+            const user = await findPasswordUser(normalizedEmail);
             if (!user) {
-                console.debug('User does not exist', email);
+                console.debug('User does not exist', normalizedEmail);
                 return context.json(
                     {
                         error: 'User not found',
@@ -1116,7 +1281,7 @@ const app = new Hono()
             }
 
             // Send email
-            await sendChangePassword(email);
+            await sendChangePassword(normalizedEmail);
 
             await trackAuthEvent({
                 distinctId: user.id,
@@ -1143,9 +1308,19 @@ const app = new Hono()
         ),
         async (context) => {
             const { email } = context.req.valid('json');
-            const user = await getUserWithLogins(email);
+            const normalizedEmail = normalizeEmail(email);
+            if (!normalizedEmail) {
+                return context.json(
+                    {
+                        error: 'User not found',
+                    },
+                    { status: 404 },
+                );
+            }
+
+            const user = await findPasswordUser(normalizedEmail);
             if (!user) {
-                console.debug('User does not exist', email);
+                console.debug('User does not exist', normalizedEmail);
                 return context.json(
                     {
                         error: 'User not found',
@@ -1155,11 +1330,11 @@ const app = new Hono()
             }
 
             // Send email
-            await sendEmailVerification(email);
+            await sendEmailVerification(normalizedEmail);
 
             await trackAuthEvent({
                 distinctId: user.id,
-                email: user.userName,
+                email: normalizedEmail,
                 event: 'user_verification_email_sent',
                 provider: 'password',
                 properties: {
@@ -1202,7 +1377,7 @@ const app = new Hono()
             }
 
             // Get user with logins
-            const user = await getUserWithLogins(email);
+            const user = await findPasswordUser(email);
             if (!user) {
                 console.debug('User does not exist', email);
                 return context.json(
@@ -1252,6 +1427,12 @@ const app = new Hono()
             }
 
             if (loginData.isVerified === true) {
+                if (user.isTemporary) {
+                    await promoteTemporaryUser({
+                        userId: user.id,
+                        userName: email,
+                    });
+                }
                 // Already verified
                 return await loginAndRespond(true);
             }
@@ -1259,10 +1440,16 @@ const app = new Hono()
                 ...loginData,
                 isVerified: true,
             });
+            if (user.isTemporary) {
+                await promoteTemporaryUser({
+                    userId: user.id,
+                    userName: email,
+                });
+            }
 
             await trackAuthEvent({
                 distinctId: user.id,
-                email: user.userName,
+                email,
                 event: 'user_email_verified',
                 provider: 'password',
                 properties: {

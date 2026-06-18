@@ -15,6 +15,7 @@ function DayNightThemeSync() {
 
 export type User = {
     id: string;
+    isTemporary: boolean;
     userName: string;
 };
 

@@ -16,8 +16,13 @@ import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import { useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
-import { isCompleteDeliverySelection, useCheckout } from '../hooks/useCheckout';
+import {
+    isCompleteDeliverySelection,
+    requestTemporaryAccountUpgrade,
+    useCheckout,
+} from '../hooks/useCheckout';
 import { useCurrentAccount } from '../hooks/useCurrentAccount';
+import { useCurrentUser } from '../hooks/useCurrentUser';
 import { useShoppingCart } from '../hooks/useShoppingCart';
 import { useShoppingCartDelete } from '../hooks/useShoppingCartDelete';
 import { useShoppingCartTransientHub } from '../hooks/useShoppingCartTransientHub';
@@ -36,10 +41,12 @@ import { ShoppingCartItem } from './components/shopping-cart/ShoppingCartItem';
 
 export function ShoppingCart() {
     const { data: account } = useCurrentAccount();
+    const { data: currentUser } = useCurrentUser();
     const { data: cart, isLoading, isError } = useShoppingCart();
     const { track } = useGameAnalytics();
     const deleteCart = useShoppingCartDelete();
     const checkout = useCheckout();
+    const isTemporaryUser = Boolean(currentUser?.isTemporary);
 
     // State for delivery flow
     const [showDeliveryStep, setShowDeliveryStep] = useState(false);
@@ -57,9 +64,23 @@ export function ShoppingCart() {
                 }),
         );
 
+    function requestCheckoutUpgrade(source: 'checkout' | 'delivery') {
+        track('game_cart_upgrade_required_opened', {
+            source,
+            item_count: cart?.items.length ?? 0,
+            total: cart?.total ?? 0,
+        });
+        requestTemporaryAccountUpgrade();
+    }
+
     function handleCheckout() {
         if (!cart?.id) {
             console.error('No cart available for checkout');
+            return;
+        }
+
+        if (isTemporaryUser) {
+            requestCheckoutUpgrade('checkout');
             return;
         }
 
@@ -104,6 +125,11 @@ export function ShoppingCart() {
     }
 
     function handleDelivery() {
+        if (isTemporaryUser) {
+            requestCheckoutUpgrade('delivery');
+            return;
+        }
+
         track('game_cart_delivery_opened', {
             item_count: cart?.items.length,
             total: cart?.total,
@@ -268,13 +294,16 @@ export function ShoppingCart() {
                                         }
                                         onClick={handleDelivery}
                                     >
-                                        Dostava
+                                        {isTemporaryUser
+                                            ? 'Spremi račun za dostavu'
+                                            : 'Dostava'}
                                     </Button>
                                 ) : (
                                     <ButtonConfirmPayment
                                         cart={cart}
                                         checkout={checkout}
                                         onConfirm={handleCheckout}
+                                        requiresAccountUpgrade={isTemporaryUser}
                                     />
                                 )}
                             </div>
