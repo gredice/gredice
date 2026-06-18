@@ -45,6 +45,7 @@ export type TutorialChecklistActionTarget =
     | 'inventory'
     | 'notifications'
     | 'operations'
+    | 'plantPicker'
     | 'plantDatabase'
     | 'profile'
     | 'raisedBedOnboarding'
@@ -351,7 +352,7 @@ const taskDefinitions = [
         rewardSunflowers: 25,
         completion: 'derived',
         signal: 'favoriteAdded',
-        actionTarget: 'operations',
+        actionTarget: 'plantPicker',
     },
     {
         key: 'claim-daily-reward-day-3',

@@ -9,6 +9,10 @@ import {
     tutorialChecklistKeys,
 } from '../../../packages/game/src/hooks/useTutorialChecklist';
 import { TutorialChecklistHud } from '../../../packages/game/src/hud/TutorialChecklistHud';
+import {
+    createGameState,
+    GameStateContext,
+} from '../../../packages/game/src/useGameState';
 
 function createTask({
     claimable = false,
@@ -129,15 +133,27 @@ function createTutorialChecklistQueryClient() {
 
 export function TutorialChecklistHudStory() {
     const queryClient = useMemo(() => createTutorialChecklistQueryClient(), []);
+    const gameStore = useMemo(
+        () =>
+            createGameState({
+                appBaseUrl: 'http://localhost',
+                freezeTime: new Date('2026-05-13T12:00:00.000Z'),
+                isMock: true,
+                winterMode: 'summer',
+            }),
+        [],
+    );
 
     return (
         <NuqsTestingAdapter>
             <ReactQuery.QueryClientProvider client={queryClient}>
-                <GameAnalyticsProvider capture={() => undefined}>
-                    <div className="min-h-48 bg-green-950/20 p-8">
-                        <TutorialChecklistHud />
-                    </div>
-                </GameAnalyticsProvider>
+                <GameStateContext.Provider value={gameStore}>
+                    <GameAnalyticsProvider capture={() => undefined}>
+                        <div className="min-h-48 bg-green-950/20 p-8">
+                            <TutorialChecklistHud />
+                        </div>
+                    </GameAnalyticsProvider>
+                </GameStateContext.Provider>
             </ReactQuery.QueryClientProvider>
         </NuqsTestingAdapter>
     );

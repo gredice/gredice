@@ -101,6 +101,9 @@ export function RaisedBedFieldItemEmpty({
                             isDragging &&
                                 'opacity-50 ring-2 ring-lime-500 scale-105',
                         )}
+                        data-position-index={positionIndex}
+                        data-raised-bed-id={raisedBedId}
+                        data-raised-bed-plant-picker-trigger="true"
                     >
                         {(isLoading || !cartPlantItem) && (
                             <PlantingSeedIcon className="size-8 text-green-800" />

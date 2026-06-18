@@ -15,6 +15,7 @@ import Image from 'next/image';
 import { parseAsString, useQueryState } from 'nuqs';
 import { useMemo, useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
+import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import {
     type TutorialChecklistGroup,
     type TutorialChecklistTask,
@@ -24,13 +25,26 @@ import {
     useTutorialChecklist,
 } from '../hooks/useTutorialChecklist';
 import { KnownPages } from '../knownPages';
+import { useSetRaisedBedCloseupParam } from '../useRaisedBedCloseup';
 import { useBackpackOpenParam, useShoppingCartOpenParam } from '../useUrlState';
+import { getRaisedBedBlockIds } from '../utils/raisedBedBlocks';
+import { isRaisedBedFieldOccupied } from '../utils/raisedBedFields';
 import { formatSunflowers } from '../utils/sunflowerPricing';
 import { HudCard } from './components/HudCard';
 import { RAISED_BED_ONBOARDING_OPEN_EVENT } from './RaisedBedOnboardingModal';
 import styles from './TutorialChecklistHud.module.css';
 
 const tutorialTaskListIconSrc = '/assets/hud/tutorial-task-list.png';
+
+type CurrentGardenData = NonNullable<
+    ReturnType<typeof useCurrentGarden>['data']
+>;
+
+type EmptyRaisedBedFieldTarget = {
+    positionIndex: number;
+    raisedBedId: number;
+    raisedBedName: string;
+};
 
 function RewardText({ task }: { task: TutorialChecklistTask }) {
     if (task.rewardLabel) {
@@ -145,6 +159,87 @@ function waitForChecklistClose() {
     });
 }
 
+function waitForPlantPickerTrigger({
+    positionIndex,
+    raisedBedId,
+}: EmptyRaisedBedFieldTarget) {
+    if (typeof document === 'undefined') {
+        return Promise.resolve(null);
+    }
+
+    const selector = [
+        'button[data-raised-bed-plant-picker-trigger="true"]',
+        `[data-raised-bed-id="${raisedBedId.toString()}"]`,
+        `[data-position-index="${positionIndex.toString()}"]`,
+    ].join('');
+
+    return new Promise<HTMLButtonElement | null>((resolve) => {
+        const deadline = Date.now() + 2500;
+
+        function check() {
+            const button = document.querySelector<HTMLButtonElement>(selector);
+            if (button) {
+                resolve(button);
+                return;
+            }
+
+            if (Date.now() >= deadline) {
+                resolve(null);
+                return;
+            }
+
+            window.requestAnimationFrame(check);
+        }
+
+        check();
+    });
+}
+
+function findFirstEmptyRaisedBedField(
+    garden: CurrentGardenData | null | undefined,
+): EmptyRaisedBedFieldTarget | null {
+    if (!garden || garden.isSandbox) {
+        return null;
+    }
+
+    for (const raisedBed of garden.raisedBeds) {
+        const raisedBedName = raisedBed.name?.trim();
+        if (
+            !raisedBedName ||
+            raisedBed.status !== 'active' ||
+            !raisedBed.isValid
+        ) {
+            continue;
+        }
+
+        const blockCount = Math.max(
+            getRaisedBedBlockIds(garden, raisedBed.id).length,
+            1,
+        );
+        const occupiedPositionIndices = new Set(
+            raisedBed.fields
+                .filter(isRaisedBedFieldOccupied)
+                .map((field) => field.positionIndex),
+        );
+
+        for (
+            let positionIndex = 0;
+            positionIndex < blockCount * 9;
+            positionIndex += 1
+        ) {
+            if (!occupiedPositionIndices.has(positionIndex)) {
+                return {
+                    positionIndex,
+                    raisedBedId: raisedBed.id,
+                    raisedBedName,
+                };
+            }
+        }
+    }
+
+    return null;
+}
+
 function openExternalTaskTarget(task: TutorialChecklistTask) {
     switch (task.actionTarget) {
         case 'contact':
@@ -173,9 +268,28 @@ function shouldCloseChecklistBeforeOpen(task: TutorialChecklistTask) {
 }
 
 function useOpenTaskTarget(onChecklistOpenChange: (open: boolean) => void) {
+    const { data: currentGarden } = useCurrentGarden();
     const [, setBackpackOpen] = useBackpackOpenParam();
     const [, setCartOpen] = useShoppingCartOpenParam();
     const [, setOverviewTab] = useQueryState('pregled', parseAsString);
+    const { mutate: setRaisedBedCloseupParam } = useSetRaisedBedCloseupParam();
+
+    async function openFirstEmptyRaisedBedPlantPicker() {
+        const target = findFirstEmptyRaisedBedField(currentGarden);
+        if (!target) {
+            return false;
+        }
+
+        await Promise.resolve(
+            setRaisedBedCloseupParam(
+                target.raisedBedName,
+                target.positionIndex,
+            ),
+        );
+        const trigger = await waitForPlantPickerTrigger(target);
+        trigger?.click();
+        return Boolean(trigger);
+    }
 
     return async (task: TutorialChecklistTask) => {
         const target = task.actionTarget;
@@ -219,6 +333,11 @@ function useOpenTaskTarget(onChecklistOpenChange: (open: boolean) => void) {
                 break;
             case 'operations':
                 clickHudButton('Status radnji');
+                break;
+            case 'plantPicker':
+                if (!(await openFirstEmptyRaisedBedPlantPicker())) {
+                    clickHudButton('Status radnji');
+                }
                 break;
             case 'profile':
                 await setOverviewTab('generalno');
