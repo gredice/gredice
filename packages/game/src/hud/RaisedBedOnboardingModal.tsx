@@ -260,6 +260,20 @@ function onboardingStepIndex(step: RaisedBedOnboardingStep) {
     return onboardingSteps.findIndex((item) => item.id === step);
 }
 
+function onboardingStepAnalyticsProperties(step: RaisedBedOnboardingStep) {
+    const stepIndex = onboardingStepIndex(step);
+
+    return {
+        step_id: step,
+        step_index: stepIndex + 1,
+        step_count: onboardingSteps.length,
+        step_label: onboardingSteps[stepIndex]?.label,
+        progress_percent: Math.round(
+            ((stepIndex + 1) / onboardingSteps.length) * 100,
+        ),
+    };
+}
+
 function LayoutSuggestionCard({
     active,
     direction,
@@ -581,6 +595,7 @@ export function RaisedBedOnboardingModal({
     const [isApplying, setIsApplying] = useState(false);
     const resolvedRef = useRef(false);
     const openedRef = useRef(false);
+    const lastTrackedStepViewRef = useRef<string | null>(null);
     const currentGarden = gardenQuery.data;
     const dismissedKey = currentGarden?.id
         ? dismissedStorageKey(currentGarden.id)
@@ -649,6 +664,37 @@ export function RaisedBedOnboardingModal({
         );
     }, [currentGarden, targetRaisedBed]);
 
+    const onboardingAnalyticsProperties = useCallback(
+        (analyticsStep: RaisedBedOnboardingStep = step) => {
+            const layoutIndex =
+                selectedLayout && layouts.length > 0
+                    ? layouts.findIndex(
+                          (layout) => layout.id === selectedLayout.id,
+                      )
+                    : -1;
+
+            return {
+                garden_id: currentGarden?.id,
+                raised_bed_id: targetRaisedBed?.id,
+                goal,
+                care,
+                layout_id: selectedLayout?.id,
+                layout_index: layoutIndex >= 0 ? layoutIndex + 1 : undefined,
+                layout_count: layouts.length || undefined,
+                ...onboardingStepAnalyticsProperties(analyticsStep),
+            };
+        },
+        [
+            care,
+            currentGarden?.id,
+            goal,
+            layouts,
+            selectedLayout,
+            step,
+            targetRaisedBed?.id,
+        ],
+    );
+
     const dataReady =
         gardenQuery.isFetched &&
         sortsQuery.isFetched &&
@@ -688,23 +734,30 @@ export function RaisedBedOnboardingModal({
 
     const dismiss = useCallback(
         (source: 'applied' | 'closed') => {
+            const analyticsProperties = onboardingAnalyticsProperties();
             writeDismissed(dismissedKey);
             setDismissedSnapshot({ dismissed: true, key: dismissedKey });
             setOpen(false);
             focusRaisedBed();
             track('game_raised_bed_onboarding_dismissed', {
-                garden_id: currentGarden?.id,
-                raised_bed_id: targetRaisedBed?.id,
+                ...analyticsProperties,
                 source,
             });
+            if (source === 'closed') {
+                track('game_raised_bed_onboarding_closed', {
+                    ...analyticsProperties,
+                    abandoned_step_id: analyticsProperties.step_id,
+                    abandoned_step_index: analyticsProperties.step_index,
+                    abandoned_step_label: analyticsProperties.step_label,
+                });
+            }
             reportResolved();
         },
         [
-            currentGarden?.id,
             dismissedKey,
             focusRaisedBed,
+            onboardingAnalyticsProperties,
             reportResolved,
-            targetRaisedBed?.id,
             track,
         ],
     );
@@ -722,6 +775,7 @@ export function RaisedBedOnboardingModal({
         setApplyError(null);
         setLayoutCarouselDirection('next');
         setSelectedLayoutId(null);
+        lastTrackedStepViewRef.current = null;
     }, [dismissedKey]);
 
     useEffect(() => {
@@ -742,18 +796,17 @@ export function RaisedBedOnboardingModal({
         if (!openedRef.current) {
             openedRef.current = true;
             track('game_raised_bed_onboarding_opened', {
-                garden_id: currentGarden?.id,
-                raised_bed_id: targetRaisedBed?.id,
+                ...onboardingAnalyticsProperties('goal'),
+                source: 'auto',
             });
         }
     }, [
         canAutoOpenOnboarding,
-        currentGarden?.id,
         dataReady,
         enabled,
+        onboardingAnalyticsProperties,
         reportResolved,
         shouldAutoOpen,
-        targetRaisedBed?.id,
         track,
     ]);
 
@@ -761,6 +814,30 @@ export function RaisedBedOnboardingModal({
         setLayoutCarouselDirection('next');
         setSelectedLayoutId(layouts[0]?.id ?? null);
     }, [layouts]);
+
+    useEffect(() => {
+        if (!open || !canRenderOnboarding) {
+            lastTrackedStepViewRef.current = null;
+            return;
+        }
+
+        const stepViewKey = `${dismissedKey ?? 'onboarding'}:${step}`;
+        if (lastTrackedStepViewRef.current === stepViewKey) {
+            return;
+        }
+
+        lastTrackedStepViewRef.current = stepViewKey;
+        track('game_raised_bed_onboarding_step_viewed', {
+            ...onboardingAnalyticsProperties(),
+        });
+    }, [
+        canRenderOnboarding,
+        dismissedKey,
+        onboardingAnalyticsProperties,
+        open,
+        step,
+        track,
+    ]);
 
     useEffect(() => {
         if (typeof window === 'undefined') {
@@ -777,8 +854,7 @@ export function RaisedBedOnboardingModal({
             setApplyError(null);
             setOpen(true);
             track('game_raised_bed_onboarding_opened', {
-                garden_id: currentGarden?.id,
-                raised_bed_id: targetRaisedBed?.id,
+                ...onboardingAnalyticsProperties('goal'),
                 source: 'tutorial',
             });
         }
@@ -792,13 +868,7 @@ export function RaisedBedOnboardingModal({
                 RAISED_BED_ONBOARDING_OPEN_EVENT,
                 openFromTutorial,
             );
-    }, [
-        canRenderOnboarding,
-        currentGarden?.id,
-        enabled,
-        targetRaisedBed?.id,
-        track,
-    ]);
+    }, [canRenderOnboarding, enabled, onboardingAnalyticsProperties, track]);
 
     function selectLayoutAtIndex(
         nextIndex: number,
@@ -809,16 +879,33 @@ export function RaisedBedOnboardingModal({
         }
 
         const normalizedIndex = (nextIndex + layouts.length) % layouts.length;
+        const nextLayout = layouts[normalizedIndex];
         setLayoutCarouselDirection(direction);
-        setSelectedLayoutId(layouts[normalizedIndex]?.id ?? null);
+        setSelectedLayoutId(nextLayout?.id ?? null);
+        track('game_raised_bed_onboarding_layout_viewed', {
+            ...onboardingAnalyticsProperties('layouts'),
+            direction,
+            layout_id: nextLayout?.id,
+            layout_index: normalizedIndex + 1,
+            layout_count: layouts.length,
+        });
     }
 
     function goToStep(nextStep: RaisedBedOnboardingStep) {
-        setStepDirection(
+        const direction =
             onboardingStepIndex(nextStep) < onboardingStepIndex(step)
                 ? 'backward'
-                : 'forward',
-        );
+                : 'forward';
+        track('game_raised_bed_onboarding_step_changed', {
+            ...onboardingAnalyticsProperties(step),
+            direction,
+            from_step_id: step,
+            from_step_index: onboardingStepAnalyticsProperties(step).step_index,
+            to_step_id: nextStep,
+            to_step_index:
+                onboardingStepAnalyticsProperties(nextStep).step_index,
+        });
+        setStepDirection(direction);
         setStep(nextStep);
     }
 
@@ -876,6 +963,7 @@ export function RaisedBedOnboardingModal({
             }
 
             track('game_raised_bed_onboarding_applied', {
+                ...onboardingAnalyticsProperties('tasks'),
                 garden_id: currentGarden.id,
                 layout_id: selectedLayout.id,
                 raised_bed_id: targetRaisedBed.id,
@@ -991,8 +1079,7 @@ export function RaisedBedOnboardingModal({
                 if (nextOpen) {
                     setOpen(true);
                     track('game_raised_bed_onboarding_opened', {
-                        garden_id: currentGarden?.id,
-                        raised_bed_id: targetRaisedBed?.id,
+                        ...onboardingAnalyticsProperties(),
                         source: 'trigger',
                     });
                     return;
@@ -1081,9 +1168,20 @@ export function RaisedBedOnboardingModal({
                                                             'border-green-500 bg-green-50/80 ring-1 ring-green-500 dark:bg-green-950/40',
                                                     )}
                                                     key={option.value}
-                                                    onClick={() =>
-                                                        setGoal(option.value)
-                                                    }
+                                                    onClick={() => {
+                                                        track(
+                                                            'game_raised_bed_onboarding_goal_selected',
+                                                            {
+                                                                ...onboardingAnalyticsProperties(
+                                                                    'goal',
+                                                                ),
+                                                                previous_goal:
+                                                                    goal,
+                                                                goal: option.value,
+                                                            },
+                                                        );
+                                                        setGoal(option.value);
+                                                    }}
                                                     type="button"
                                                 >
                                                     <Row
@@ -1139,9 +1237,20 @@ export function RaisedBedOnboardingModal({
                                                             'border-green-500 bg-green-50/80 ring-1 ring-green-500 dark:bg-green-950/40',
                                                     )}
                                                     key={option.value}
-                                                    onClick={() =>
-                                                        setCare(option.value)
-                                                    }
+                                                    onClick={() => {
+                                                        track(
+                                                            'game_raised_bed_onboarding_care_selected',
+                                                            {
+                                                                ...onboardingAnalyticsProperties(
+                                                                    'care',
+                                                                ),
+                                                                previous_care:
+                                                                    care,
+                                                                care: option.value,
+                                                            },
+                                                        );
+                                                        setCare(option.value);
+                                                    }}
                                                     type="button"
                                                 >
                                                     <Stack spacing={1}>
@@ -1368,6 +1477,14 @@ export function RaisedBedOnboardingModal({
                                     className="w-fit px-0 text-sm"
                                     color="success"
                                     href={KnownPages.GrediceFirstRaisedBedGuide}
+                                    onClick={() =>
+                                        track(
+                                            'game_raised_bed_onboarding_guide_opened',
+                                            {
+                                                ...onboardingAnalyticsProperties(),
+                                            },
+                                        )
+                                    }
                                     rel="noreferrer"
                                     size="sm"
                                     target="_blank"

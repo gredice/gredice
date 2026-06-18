@@ -18,6 +18,7 @@ import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import {
     type TutorialChecklistGroup,
+    type TutorialChecklistState,
     type TutorialChecklistTask,
     tutorialChecklistKeys,
     useClaimTutorialChecklistTask,
@@ -134,6 +135,78 @@ function sortChecklistTasks(tasks: TutorialChecklistTask[]) {
             return a.index - b.index;
         })
         .map(({ task }) => task);
+}
+
+function checklistProgressProperties(
+    state: TutorialChecklistState | null | undefined,
+) {
+    const groups = state?.groups ?? [];
+    const activeGroupIndex = groups.findIndex(
+        (group) => !isGroupComplete(group),
+    );
+    const activeGroup =
+        activeGroupIndex >= 0 ? groups[activeGroupIndex] : undefined;
+    const completedCount = state?.totals.completedCount;
+    const totalCount = state?.totals.totalCount;
+
+    return {
+        completed_count: completedCount,
+        total_count: totalCount,
+        claimable_count: state?.totals.claimableCount,
+        available_sunflowers: state?.totals.availableSunflowers,
+        earned_sunflowers: state?.totals.earnedSunflowers,
+        completion_percent:
+            totalCount && completedCount !== undefined
+                ? Math.round((completedCount / totalCount) * 100)
+                : undefined,
+        group_count: groups.length || undefined,
+        active_group_id: activeGroup?.id,
+        active_group_index:
+            activeGroupIndex >= 0 ? activeGroupIndex + 1 : undefined,
+        active_group_completed_count: activeGroup?.completedCount,
+        active_group_total_count: activeGroup?.totalCount,
+    };
+}
+
+function checklistGroupProperties(
+    group: TutorialChecklistGroup,
+    groupIndex: number,
+) {
+    return {
+        group_id: group.id,
+        group_index: groupIndex + 1,
+        group_completed: isGroupComplete(group),
+        group_completed_count: group.completedCount,
+        group_total_count: group.totalCount,
+        group_claimable_count: group.claimableCount,
+    };
+}
+
+function checklistTaskProperties(task: TutorialChecklistTask) {
+    return {
+        task_key: task.key,
+        group_id: task.groupId,
+        status: task.status,
+        claimable: task.claimable,
+        completed: task.completed,
+        action_target: task.actionTarget,
+        completion_type: task.completion,
+        reward_sunflowers: task.rewardSunflowers,
+    };
+}
+
+function findChecklistTask(
+    state: TutorialChecklistState,
+    taskKey: string,
+): TutorialChecklistTask | undefined {
+    for (const group of state.groups) {
+        const task = group.tasks.find((item) => item.key === taskKey);
+        if (task) {
+            return task;
+        }
+    }
+
+    return undefined;
 }
 
 function isTaskReadyAfterOpen(task: TutorialChecklistTask) {
@@ -480,27 +553,35 @@ function TutorialChecklistContent({
 
     async function handleTaskAction(task: TutorialChecklistTask) {
         track('game_tutorial_checklist_task_clicked', {
-            task_key: task.key,
-            status: task.status,
-            claimable: task.claimable,
+            ...checklistProgressProperties(checklistQuery.data),
+            ...checklistTaskProperties(task),
         });
 
         if (task.claimable) {
-            await claimTask.mutateAsync(task.key);
+            const nextState = await claimTask.mutateAsync(task.key);
+            const claimedTask = findChecklistTask(nextState, task.key) ?? task;
+            track('game_tutorial_checklist_task_claimed', {
+                ...checklistProgressProperties(nextState),
+                ...checklistTaskProperties(claimedTask),
+            });
         }
     }
 
     async function handleTaskOpen(task: TutorialChecklistTask) {
         track('game_tutorial_checklist_task_opened', {
-            task_key: task.key,
-            status: task.status,
-            claimable: task.claimable,
+            ...checklistProgressProperties(checklistQuery.data),
+            ...checklistTaskProperties(task),
         });
 
         await openTarget(task);
 
         if (isTaskReadyAfterOpen(task)) {
-            await markTaskReady.mutateAsync(task.key);
+            const nextState = await markTaskReady.mutateAsync(task.key);
+            const readyTask = findChecklistTask(nextState, task.key) ?? task;
+            track('game_tutorial_checklist_task_ready_marked', {
+                ...checklistProgressProperties(nextState),
+                ...checklistTaskProperties(readyTask),
+            });
         }
     }
 
@@ -561,7 +642,7 @@ function TutorialChecklistContent({
                 </Typography>
             </Stack>
             <Stack spacing={4}>
-                {sortedGroups.map((group) => {
+                {sortedGroups.map((group, groupIndex) => {
                     const complete = isGroupComplete(group);
                     const expanded = expandedGroups[group.id] ?? !complete;
                     const sortedTasks = sortChecklistTasks(group.tasks);
@@ -577,12 +658,26 @@ function TutorialChecklistContent({
                             <button
                                 aria-expanded={expanded}
                                 className="-mx-px flex w-[calc(100%+2px)] items-start justify-between gap-4 px-4 py-3 text-left outline-hidden transition-colors hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-                                onClick={() =>
+                                onClick={() => {
+                                    const nextExpanded = !expanded;
                                     setExpandedGroups((current) => ({
                                         ...current,
-                                        [group.id]: !expanded,
-                                    }))
-                                }
+                                        [group.id]: nextExpanded,
+                                    }));
+                                    track(
+                                        'game_tutorial_checklist_group_toggled',
+                                        {
+                                            ...checklistProgressProperties(
+                                                checklistQuery.data,
+                                            ),
+                                            ...checklistGroupProperties(
+                                                group,
+                                                groupIndex,
+                                            ),
+                                            expanded: nextExpanded,
+                                        },
+                                    );
+                                }}
                                 type="button"
                             >
                                 <Stack spacing={0.5} className="min-w-0">
@@ -674,6 +769,23 @@ export function TutorialChecklistHud() {
         return `${firstActiveGroup.completedCount}/${firstActiveGroup.totalCount}`;
     }, [data]);
 
+    function handleOpenChange(open: boolean) {
+        if (open) {
+            track('game_tutorial_checklist_opened', {
+                ...checklistProgressProperties(data),
+            });
+            void queryClient.invalidateQueries({
+                queryKey: tutorialChecklistKeys,
+            });
+        } else if (isOpen) {
+            track('game_tutorial_checklist_closed', {
+                ...checklistProgressProperties(data),
+            });
+        }
+
+        setIsOpen(open);
+    }
+
     return (
         <HudCard open position="floating" className="relative grid">
             {claimableCount > 0 && (
@@ -687,17 +799,7 @@ export function TutorialChecklistHud() {
             )}
             <Modal
                 className="z-[46] border-tertiary border-b-4 md:max-w-3xl"
-                onOpenChange={(open) => {
-                    if (open) {
-                        track('game_tutorial_checklist_opened', {
-                            claimable_count: claimableCount,
-                        });
-                        void queryClient.invalidateQueries({
-                            queryKey: tutorialChecklistKeys,
-                        });
-                    }
-                    setIsOpen(open);
-                }}
+                onOpenChange={handleOpenChange}
                 open={isOpen}
                 overlayClassName="z-[46]"
                 title="Zadaci za novi vrt"
@@ -734,7 +836,7 @@ export function TutorialChecklistHud() {
                     </IconButton>
                 }
             >
-                <TutorialChecklistContent onOpenChange={setIsOpen} />
+                <TutorialChecklistContent onOpenChange={handleOpenChange} />
             </Modal>
         </HudCard>
     );
