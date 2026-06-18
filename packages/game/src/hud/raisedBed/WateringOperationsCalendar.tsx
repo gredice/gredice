@@ -2,7 +2,7 @@
 
 import { Alert } from '@gredice/ui/Alert';
 import { IconButton } from '@gredice/ui/IconButton';
-import { ArrowLeft, ArrowRight, Calendar, Droplets } from '@gredice/ui/icons';
+import { ArrowLeft, ArrowRight, Calendar } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Spinner } from '@gredice/ui/Spinner';
 import { Stack } from '@gredice/ui/Stack';
@@ -12,6 +12,7 @@ import { cx } from '@gredice/ui/utils';
 import { useEffect, useMemo, useState } from 'react';
 import {
     buildWateringCalendarMonths,
+    formatLocalDayKey,
     type WateringCalendarDay,
     type WateringCalendarEntry,
     type WateringCalendarMonth,
@@ -73,11 +74,30 @@ function entryMeta(entry: WateringCalendarEntry) {
         .join(' · ');
 }
 
-function WateringCalendarDayView({ day }: { day: WateringCalendarDay }) {
+function TodayMarker() {
+    return (
+        <span
+            aria-hidden
+            className="absolute size-9 rounded-full bg-white shadow-sm ring-2 ring-sky-600/40 dark:bg-neutral-950 dark:ring-sky-300/50"
+            data-watering-calendar-today-marker
+        />
+    );
+}
+
+function WateringCalendarDayView({
+    day,
+    todayKey,
+}: {
+    day: WateringCalendarDay;
+    todayKey: string;
+}) {
+    const isToday = day.key === todayKey;
+
     if (day.entries.length === 0) {
         return (
-            <div className="grid size-8 place-items-center text-xs tabular-nums">
-                {day.dayOfMonth}
+            <div className="relative grid size-8 place-items-center text-xs tabular-nums">
+                {isToday ? <TodayMarker /> : null}
+                <span className="relative z-10">{day.dayOfMonth}</span>
             </div>
         );
     }
@@ -91,6 +111,7 @@ function WateringCalendarDayView({ day }: { day: WateringCalendarDay }) {
             )}
             aria-label={dayTitle(day)}
         >
+            {isToday ? <TodayMarker /> : null}
             <span
                 aria-hidden
                 className={cx(
@@ -136,8 +157,10 @@ function WateringCalendarDayView({ day }: { day: WateringCalendarDay }) {
 
 function WateringCalendarMonthView({
     month,
+    todayKey,
 }: {
     month: WateringCalendarMonth;
+    todayKey: string;
 }) {
     return (
         <section className="space-y-2" data-watering-calendar-month={month.key}>
@@ -165,7 +188,12 @@ function WateringCalendarMonthView({
                             }
                             className="grid h-8 place-items-center"
                         >
-                            {day ? <WateringCalendarDayView day={day} /> : null}
+                            {day ? (
+                                <WateringCalendarDayView
+                                    day={day}
+                                    todayKey={todayKey}
+                                />
+                            ) : null}
                         </div>
                     )),
                 )}
@@ -191,6 +219,7 @@ export function WateringOperationsCalendar({
         () => buildWateringCalendarMonths(entries, referenceDate),
         [entries, referenceDate],
     );
+    const todayKey = formatLocalDayKey(referenceDate ?? new Date());
     const [selectedMonthKey, setSelectedMonthKey] = useState<string | null>(
         null,
     );
@@ -237,55 +266,44 @@ export function WateringOperationsCalendar({
             )}
             data-watering-calendar
         >
-            <Row spacing={2} justifyContent="space-between">
-                <Row spacing={2}>
-                    <Droplets className="size-4 shrink-0 text-sky-600" />
-                    <Typography level="body1" semiBold>
-                        Kalendar zalijevanja
-                    </Typography>
+            {entries.length > 0 ? (
+                <Row spacing={1} justifyContent="end">
+                    <IconButton
+                        aria-label="Prethodni mjesec"
+                        disabled={!canGoBack}
+                        size="xs"
+                        title="Prethodni mjesec"
+                        type="button"
+                        variant="plain"
+                        onClick={() => {
+                            if (canGoBack) {
+                                setSelectedMonthKey(
+                                    months[selectedMonthIndex - 1].key,
+                                );
+                            }
+                        }}
+                    >
+                        <ArrowLeft className="size-3.5" />
+                    </IconButton>
+                    <IconButton
+                        aria-label="Sljedeći mjesec"
+                        disabled={!canGoForward}
+                        size="xs"
+                        title="Sljedeći mjesec"
+                        type="button"
+                        variant="plain"
+                        onClick={() => {
+                            if (canGoForward) {
+                                setSelectedMonthKey(
+                                    months[selectedMonthIndex + 1].key,
+                                );
+                            }
+                        }}
+                    >
+                        <ArrowRight className="size-3.5" />
+                    </IconButton>
                 </Row>
-                {entries.length > 0 ? (
-                    <Row spacing={1}>
-                        <Typography level="body3" className="text-sky-700">
-                            {entries.length}
-                        </Typography>
-                        <IconButton
-                            aria-label="Prethodni mjesec"
-                            disabled={!canGoBack}
-                            size="xs"
-                            title="Prethodni mjesec"
-                            type="button"
-                            variant="plain"
-                            onClick={() => {
-                                if (canGoBack) {
-                                    setSelectedMonthKey(
-                                        months[selectedMonthIndex - 1].key,
-                                    );
-                                }
-                            }}
-                        >
-                            <ArrowLeft className="size-3.5" />
-                        </IconButton>
-                        <IconButton
-                            aria-label="Sljedeći mjesec"
-                            disabled={!canGoForward}
-                            size="xs"
-                            title="Sljedeći mjesec"
-                            type="button"
-                            variant="plain"
-                            onClick={() => {
-                                if (canGoForward) {
-                                    setSelectedMonthKey(
-                                        months[selectedMonthIndex + 1].key,
-                                    );
-                                }
-                            }}
-                        >
-                            <ArrowRight className="size-3.5" />
-                        </IconButton>
-                    </Row>
-                ) : null}
-            </Row>
+            ) : null}
             {error ? (
                 <Alert color="danger">
                     Kalendar zalijevanja nije dostupan.
@@ -308,6 +326,7 @@ export function WateringOperationsCalendar({
                 <WateringCalendarMonthView
                     key={selectedMonth.key}
                     month={selectedMonth}
+                    todayKey={todayKey}
                 />
             ) : null}
         </Stack>
