@@ -1343,14 +1343,13 @@ function GardenBoxTooltip({ instances }: { instances: EntityBlockInstance[] }) {
     return (
         <Html
             center
-            distanceFactor={8}
             position={position}
             style={{ pointerEvents: 'none' }}
             zIndexRange={[60, 0]}
         >
             <div
                 aria-live="polite"
-                className="relative max-w-[min(18rem,70vw)] rounded-md border border-red-200 bg-white/95 px-3 py-2 text-center text-xs font-semibold leading-snug text-red-800 shadow-lg backdrop-blur-sm dark:border-red-800/80 dark:bg-neutral-950/95 dark:text-red-100"
+                className="relative max-w-[min(14rem,70vw)] rounded-md border border-red-200 bg-white/95 px-2.5 py-1.5 text-center text-[11px] font-semibold leading-snug text-red-800 shadow-md backdrop-blur-sm dark:border-red-800/80 dark:bg-neutral-950/95 dark:text-red-100"
                 role="status"
             >
                 {tooltip.message}
