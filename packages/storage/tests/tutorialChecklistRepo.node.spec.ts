@@ -160,6 +160,7 @@ test('tutorial checklist treats saved favorites as favorite progress', async () 
     const task = findChecklistTask(state, 'favorite-one-item');
 
     assert.ok(task);
+    assert.strictEqual(task.actionTarget, 'plantPicker');
     assert.strictEqual(task.status, 'ready');
     assert.strictEqual(task.claimable, true);
 });
