@@ -67,6 +67,13 @@ export type ActiveDragPreview = {
     isOverRecycler: boolean;
 };
 
+export type GardenBoxTooltip = {
+    blockId: string;
+    createdAt: number;
+    message: string;
+    sequence: number;
+};
+
 export type PlacedBlockEffect = {
     kind: 'sunflowers';
     amount: number;
@@ -217,6 +224,11 @@ export type GameState = {
     setActiveDragPreview: (dragPreview: ActiveDragPreview | null) => void;
     openGardenBoxBlockId: string | null;
     setOpenGardenBoxBlockId: (blockId: string | null) => void;
+    gardenBoxTooltip: GardenBoxTooltip | null;
+    showGardenBoxTooltip: (
+        tooltip: Omit<GardenBoxTooltip, 'createdAt' | 'sequence'>,
+    ) => void;
+    clearGardenBoxTooltip: () => void;
     placedBlockEffects: Record<string, PlacedBlockEffect>;
     queuePlacedBlockEffect: (
         blockId: string,
@@ -445,6 +457,16 @@ export function createGameState({
         openGardenBoxBlockId: null,
         setOpenGardenBoxBlockId: (openGardenBoxBlockId) =>
             set({ openGardenBoxBlockId }),
+        gardenBoxTooltip: null,
+        showGardenBoxTooltip: (tooltip) =>
+            set((state) => ({
+                gardenBoxTooltip: {
+                    ...tooltip,
+                    createdAt: Date.now(),
+                    sequence: (state.gardenBoxTooltip?.sequence ?? 0) + 1,
+                },
+            })),
+        clearGardenBoxTooltip: () => set({ gardenBoxTooltip: null }),
         placedBlockEffects: {},
         queuePlacedBlockEffect: (blockId, effect) =>
             set((state) => ({

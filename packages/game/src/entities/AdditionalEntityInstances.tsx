@@ -1,3 +1,4 @@
+import { Html } from '@react-three/drei';
 import { type ReactNode, Suspense, useEffect, useMemo } from 'react';
 import {
     Color,
@@ -96,6 +97,9 @@ type LoadedAssetBlockMaterialProps = Omit<
 type WaterBlockInstance = EntityBlockInstance & {
     waterHeight: number;
 };
+
+const gardenBoxTooltipDurationMs = 3600;
+const gardenBoxTooltipYOffset = 1.25;
 
 const potBlockNames = [
     'PotLowBowl',
@@ -1293,7 +1297,66 @@ function GardenBoxInstances({
                 openGardenBoxBlockId={openGardenBoxBlockId}
                 hoveredGardenBoxBlockId={hoveredGardenBoxBlockId}
             />
+            <GardenBoxTooltip instances={bodyInstances} />
         </>
+    );
+}
+
+function GardenBoxTooltip({ instances }: { instances: EntityBlockInstance[] }) {
+    const tooltip = useGameState((state) => state.gardenBoxTooltip);
+    const clearGardenBoxTooltip = useGameState(
+        (state) => state.clearGardenBoxTooltip,
+    );
+    const tooltipSequence = tooltip?.sequence;
+
+    useEffect(() => {
+        if (tooltipSequence === undefined) {
+            return;
+        }
+
+        const timeout = window.setTimeout(
+            clearGardenBoxTooltip,
+            gardenBoxTooltipDurationMs,
+        );
+
+        return () => window.clearTimeout(timeout);
+    }, [clearGardenBoxTooltip, tooltipSequence]);
+
+    if (!tooltip) {
+        return null;
+    }
+
+    const tooltipInstance = instances.find(
+        (instance) => instance.block.id === tooltip.blockId,
+    );
+
+    if (!tooltipInstance) {
+        return null;
+    }
+
+    const position: [number, number, number] = [
+        tooltipInstance.position[0],
+        tooltipInstance.position[1] + gardenBoxTooltipYOffset,
+        tooltipInstance.position[2],
+    ];
+
+    return (
+        <Html
+            center
+            distanceFactor={8}
+            position={position}
+            style={{ pointerEvents: 'none' }}
+            zIndexRange={[60, 0]}
+        >
+            <div
+                aria-live="polite"
+                className="relative max-w-[min(18rem,70vw)] rounded-md border border-red-200 bg-white/95 px-3 py-2 text-center text-xs font-semibold leading-snug text-red-800 shadow-lg backdrop-blur-sm dark:border-red-800/80 dark:bg-neutral-950/95 dark:text-red-100"
+                role="status"
+            >
+                {tooltip.message}
+                <span className="absolute top-full left-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rotate-45 border-r border-b border-red-200 bg-white/95 dark:border-red-800/80 dark:bg-neutral-950/95" />
+            </div>
+        </Html>
     );
 }
 
