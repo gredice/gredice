@@ -16,7 +16,7 @@ import type {
     WateringCalendarEntrySource,
 } from './wateringCalendarModel';
 
-const wateringCalendarPageSize = 100;
+const wateringCalendarPageSize = 50;
 const fallbackOperationWeight = 30;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
