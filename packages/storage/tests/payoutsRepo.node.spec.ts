@@ -318,6 +318,60 @@ test('createPayoutRequest stores immutable earning item snapshots', async () => 
     assert.equal(Number(unchangedPayout.items[0]?.totalAmount), 0.5);
 });
 
+test('createPayoutRequest rejects partial payout snapshots', async () => {
+    createTestDb();
+
+    const userId = randomUUID();
+    await storage()
+        .insert(users)
+        .values({
+            id: userId,
+            userName: `payout-partial-${userId}@example.com`,
+            displayName: 'Payout Partial Farmer',
+            role: 'farmer',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        });
+
+    const farmId = await createFarm({
+        name: `Partial Payout Farm ${randomUUID()}`,
+        longitude: 0,
+        latitude: 0,
+    });
+    await assignUserToFarm(farmId, userId);
+
+    const operationEntityId = await createPublishedOperationEntity(
+        'Berba za djelomicnu isplatu',
+        10,
+    );
+    await upsertOperationPrice({
+        farmId,
+        entityTypeName: 'operation',
+        entityId: operationEntityId,
+        pricePerUnit: '0.50',
+        currency: 'eur',
+    });
+    await createVerifiedAcceptedOperation({
+        farmId,
+        entityId: operationEntityId,
+        completedBy: userId,
+    });
+    await createVerifiedAcceptedOperation({
+        farmId,
+        entityId: operationEntityId,
+        completedBy: userId,
+    });
+
+    await assert.rejects(
+        () => createPayoutRequest(userId, farmId, 0.5, 'eur'),
+        /cijeli raspoloživi iznos/,
+    );
+
+    const payouts = await getAllPayoutRequests({ farmId });
+
+    assert.equal(payouts.length, 0);
+});
+
 test('backfillPayoutRequestItems populates existing payout item snapshots', async () => {
     createTestDb();
 

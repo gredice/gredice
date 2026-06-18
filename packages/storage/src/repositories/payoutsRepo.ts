@@ -591,13 +591,21 @@ export async function createPayoutRequest(
     if (!(await isUserAssignedToFarm(userId, farmId))) {
         throw new Error('Nemaš pristup odabranoj farmi.');
     }
+    const requestedAmountCents = moneyToCents(requestedAmount);
 
     return storage().transaction(async (tx) => {
         // Lock and re-verify balance inside the transaction
         const balance = await getFarmerBalance(userId, farmId);
-        if (requestedAmount > balance.availableBalance + 0.001) {
+        const availableBalanceCents = moneyToCents(balance.availableBalance);
+
+        if (requestedAmountCents > availableBalanceCents) {
             throw new Error(
                 `Zatraženi iznos (${requestedAmount} ${currency.toUpperCase()}) premašuje raspoloživo stanje (${balance.availableBalance.toFixed(2)} ${balance.currency.toUpperCase()}).`,
+            );
+        }
+        if (requestedAmountCents !== availableBalanceCents) {
+            throw new Error(
+                'Zahtjev za isplatu mora biti za cijeli raspoloživi iznos.',
             );
         }
 
@@ -606,7 +614,7 @@ export async function createPayoutRequest(
             .values({
                 userId,
                 farmId,
-                requestedAmount: requestedAmount.toFixed(2),
+                requestedAmount: centsToMoney(requestedAmountCents),
                 currency,
                 farmerNote: farmerNote ?? null,
                 status: 'pending',
@@ -625,7 +633,7 @@ export async function createPayoutRequest(
             knownEvents.payouts.requestedV1(row.id.toString(), {
                 userId,
                 farmId,
-                amount: requestedAmount,
+                amount: requestedAmountCents / 100,
                 currency,
             }),
         );
