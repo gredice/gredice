@@ -4,7 +4,6 @@ import * as ReactQuery from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { type PropsWithChildren, useMemo, useState } from 'react';
 import { GameAnalyticsProvider } from '../../../packages/game/src/analytics/GameAnalyticsContext';
-import { GameFlagsContext } from '../../../packages/game/src/GameFlagsContext';
 import { useCurrentGarden } from '../../../packages/game/src/hooks/useCurrentGarden';
 import { favoritesQueryKey } from '../../../packages/game/src/hooks/useFavorites';
 import { gardenOperationsQueryKey } from '../../../packages/game/src/hooks/useGardenOperations';
@@ -159,16 +158,12 @@ function createScenarioQueryClient(
 
 type ProvidersProps = PropsWithChildren<{
     scenario: RaisedBedScenario;
-    enablePlantHistory?: boolean;
-    enableRaisedBedImageAI?: boolean;
     favorites?: FavoriteItem[];
 }>;
 
 function RaisedBedHudTestProviders({
     children,
     scenario,
-    enablePlantHistory = true,
-    enableRaisedBedImageAI = false,
     favorites = [],
 }: ProvidersProps) {
     const queryClient = useMemo(
@@ -190,16 +185,9 @@ function RaisedBedHudTestProviders({
         <NuqsTestingAdapter>
             <ReactQuery.QueryClientProvider client={queryClient}>
                 <GameStateContext.Provider value={gameStore}>
-                    <GameFlagsContext.Provider
-                        value={{
-                            enablePlantHistoryFlag: enablePlantHistory,
-                            raisedBedImageAI: enableRaisedBedImageAI,
-                        }}
-                    >
-                        <GameAnalyticsProvider capture={() => undefined}>
-                            {children}
-                        </GameAnalyticsProvider>
-                    </GameFlagsContext.Provider>
+                    <GameAnalyticsProvider capture={() => undefined}>
+                        {children}
+                    </GameAnalyticsProvider>
                 </GameStateContext.Provider>
             </ReactQuery.QueryClientProvider>
         </NuqsTestingAdapter>
@@ -209,15 +197,11 @@ function RaisedBedHudTestProviders({
 export function RaisedBedFieldHudStory({
     scenario,
     positionIndex,
-    enablePlantHistory = true,
-    enableRaisedBedImageAI = false,
     favorites = [],
     cellSize = 80,
 }: {
     scenario: RaisedBedScenario;
     positionIndex: number;
-    enablePlantHistory?: boolean;
-    enableRaisedBedImageAI?: boolean;
     favorites?: FavoriteItem[];
     cellSize?: number;
 }) {
@@ -226,12 +210,7 @@ export function RaisedBedFieldHudStory({
             (item) => item.positionIndex === positionIndex,
         ) ?? null;
     return (
-        <RaisedBedHudTestProviders
-            scenario={scenario}
-            enablePlantHistory={enablePlantHistory}
-            enableRaisedBedImageAI={enableRaisedBedImageAI}
-            favorites={favorites}
-        >
+        <RaisedBedHudTestProviders scenario={scenario} favorites={favorites}>
             <div
                 data-testid="hud-cell"
                 className="relative"
@@ -255,16 +234,11 @@ export function RaisedBedFieldHudStory({
 
 export function RaisedBedInfoModalStory({
     scenario,
-    enableRaisedBedImageAI = false,
 }: {
     scenario: RaisedBedScenario;
-    enableRaisedBedImageAI?: boolean;
 }) {
     return (
-        <RaisedBedHudTestProviders
-            scenario={scenario}
-            enableRaisedBedImageAI={enableRaisedBedImageAI}
-        >
+        <RaisedBedHudTestProviders scenario={scenario}>
             <RaisedBedInfoModalStoryContent />
         </RaisedBedHudTestProviders>
     );

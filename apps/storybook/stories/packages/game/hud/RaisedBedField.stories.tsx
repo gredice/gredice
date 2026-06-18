@@ -1,6 +1,5 @@
 import { GameAnalyticsProvider } from '@gredice/game';
 import { NuqsAdapter } from '@gredice/ui/nuqs';
-import { GameFlagsContext } from '@packages/game/GameFlagsContext';
 import { currentGardenKeys } from '@packages/game/hooks/useCurrentGarden';
 import { queryKey as currentUserQueryKey } from '@packages/game/hooks/useCurrentUser';
 import { useShoppingCartQueryKey } from '@packages/game/hooks/useShoppingCart';
@@ -431,13 +430,7 @@ function RaisedBedStoryProviders({ children }: { children: ReactNode }) {
             <QueryClientProvider client={queryClientRef.current}>
                 <GameStateContext.Provider value={gameStateRef.current}>
                     <GameAnalyticsProvider capture={() => undefined}>
-                        <GameFlagsContext.Provider
-                            value={{
-                                enablePlantHistoryFlag: true,
-                            }}
-                        >
-                            {children}
-                        </GameFlagsContext.Provider>
+                        {children}
                     </GameAnalyticsProvider>
                 </GameStateContext.Provider>
             </QueryClientProvider>

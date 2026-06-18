@@ -38,16 +38,7 @@ function centerOffset(offset: number) {
     return `calc(50% ${operator} ${Math.abs(offset)}px)`;
 }
 
-export function RaisedBedFieldHud(_props: {
-    flags?: {
-        enableRaisedBedWateringFlag?: boolean;
-        enableRaisedBedDiaryFlag?: boolean;
-        enableRaisedBedOperationsFlag?: boolean;
-        enableRaisedBedFieldOperationsFlag?: boolean;
-        enableRaisedBedFieldWateringFlag?: boolean;
-        enableRaisedBedFieldDiaryFlag?: boolean;
-    };
-}) {
+export function RaisedBedFieldHud() {
     const { data: currentGarden } = useCurrentGarden();
     const isSandbox = useIsSandboxGarden();
     const { track } = useGameAnalytics();
