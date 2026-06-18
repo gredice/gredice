@@ -194,12 +194,18 @@ async function getOperationEffectiveFarmIds(operationIds: number[]) {
     );
 }
 
-function getLastPaidPayoutAt(payouts: SelectFarmerPayoutRequest[]) {
-    return payouts
-        .filter((payout) => payout.status === 'paid')
-        .map((payout) => payout.paidAt ?? payout.updatedAt ?? payout.createdAt)
-        .filter((paidAt): paidAt is Date => paidAt instanceof Date)
-        .sort((left, right) => right.getTime() - left.getTime())[0];
+function getLastPaidPayoutRequestedAt(payouts: SelectFarmerPayoutRequest[]) {
+    return (
+        payouts
+            .filter((payout) => payout.status === 'paid')
+            // A completed payout closes the earning window at request time, not payment time.
+            .map((payout) => payout.createdAt)
+            .filter(
+                (requestedAt): requestedAt is Date =>
+                    requestedAt instanceof Date,
+            )
+            .sort((left, right) => right.getTime() - left.getTime())[0]
+    );
 }
 
 function getOperationPayoutEligibleAt(operation: {
@@ -346,17 +352,19 @@ export async function getFarmerBalance(
         getFarmPayoutRequestsWithAdjustments(farmId),
         getEntitiesFormatted<OperationData>('operation'),
     ]);
-    const lastPaidPayoutAt = getLastPaidPayoutAt(payouts);
+    const lastPaidPayoutRequestedAt = getLastPaidPayoutRequestedAt(payouts);
     const [completedOperations, verifiedSowings] = await Promise.all([
         getFarmAcceptedOperations(farmId, { status: 'completed' }),
-        getVerifiedSowingsForFarm(farmId, lastPaidPayoutAt),
+        getVerifiedSowingsForFarm(farmId, lastPaidPayoutRequestedAt),
     ]);
     const payableOperations = completedOperations.filter((operation) => {
-        if (!lastPaidPayoutAt) {
+        if (!lastPaidPayoutRequestedAt) {
             return true;
         }
 
-        return getOperationPayoutEligibleAt(operation) > lastPaidPayoutAt;
+        return (
+            getOperationPayoutEligibleAt(operation) > lastPaidPayoutRequestedAt
+        );
     });
     const completedOperationFarmIds = await getOperationEffectiveFarmIds(
         payableOperations.map((operation) => operation.id),
