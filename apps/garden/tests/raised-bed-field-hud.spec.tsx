@@ -1,4 +1,8 @@
-import type { FavoriteEntityType, FavoriteItem } from '@gredice/client';
+import type {
+    FavoriteEntityType,
+    FavoriteItem,
+    PlantData,
+} from '@gredice/client';
 import { expect, test } from '@playwright/experimental-ct-react';
 import type { Page } from '@playwright/test';
 import {
@@ -201,6 +205,51 @@ function plantedGrowingWithRecommendedOperationsScenario(): RaisedBedScenario {
         ...plantedGrowingScenario(),
         operations,
         sorts: [tomatoSortWithOperations],
+    };
+}
+
+function plantedGrowingWithHealthRecommendedOperationsScenario(): RaisedBedScenario {
+    const scenario = plantedGrowingWithRecommendedOperationsScenario();
+    const healthOperation = buildOperation({
+        id: 203,
+        name: 'mock-pest-rinse',
+        label: 'Ispiranje biljke od štetnika',
+        stageName: 'maintenance',
+        stageLabel: 'Održavanje',
+        relativeDays: 3,
+    });
+    const tomatoPlantWithHealth = {
+        ...testSorts.tomato.information.plant,
+        health: {
+            pests: [
+                {
+                    id: 501,
+                    slug: 'mock-aphids',
+                    name: 'Lisne uši',
+                    kind: 'pest',
+                    operations: {
+                        reduction: [
+                            {
+                                id: healthOperation.id,
+                                slug: healthOperation.slug,
+                                name: healthOperation.information.name,
+                                label: healthOperation.information.label,
+                            },
+                        ],
+                    },
+                },
+            ],
+        },
+    } satisfies PlantData;
+
+    return {
+        ...scenario,
+        operations: [...(scenario.operations ?? []), healthOperation],
+        plants: [
+            tomatoPlantWithHealth,
+            testSorts.basil.information.plant,
+            testSorts.lettuce.information.plant,
+        ],
     };
 }
 
@@ -839,12 +888,34 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await page.getByRole('button').first().click();
 
         const dialog = page.getByRole('dialog');
+        await expect(
+            dialog.getByRole('heading', { name: 'Preporuke' }),
+        ).toBeVisible();
+        await expect(dialog.getByText('Preporučene radnje')).toHaveCount(0);
+
+        const operationsSection = dialog.locator(
+            '[data-recommendation-section="operations"]',
+        );
+        await expect(operationsSection).toBeVisible();
+        await expect(
+            operationsSection.locator('svg.lucide-hammer'),
+        ).toBeVisible();
+
         const recommendationsList = dialog.locator(
             '[data-recommended-operation-list]',
         );
         await expect(recommendationsList).toBeVisible();
         await expect(recommendationsList).toContainText('Okopavanje');
         await expect(recommendationsList).toContainText('Uklanjanje korova');
+
+        const operationsHeader = operationsSection.getByRole('button', {
+            name: /Radnje/,
+        });
+        await operationsHeader.click();
+        await expect(operationsSection.getByTitle('2 preporuka')).toBeVisible();
+        await expect(recommendationsList).toHaveCount(0);
+        await operationsHeader.click();
+        await expect(recommendationsList).toBeVisible();
 
         const listItems = recommendationsList.locator(':scope > *');
         await expect(listItems).toHaveCount(3);
@@ -867,6 +938,42 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
                 .locator('[role="tabpanel"]:not([hidden])')
                 .locator('[data-scroll-view]'),
         ).toBeVisible();
+    });
+
+    test('recommendations group plant health operations with collapsed counts', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldHudStory
+                scenario={plantedGrowingWithHealthRecommendedOperationsScenario()}
+                positionIndex={0}
+            />,
+        );
+
+        await page.getByRole('button').first().click();
+
+        const dialog = page.getByRole('dialog');
+        const healthSection = dialog.locator(
+            '[data-recommendation-section="health"]',
+        );
+        await expect(healthSection).toBeVisible();
+        await expect(healthSection.locator('svg.lucide-plus')).toBeVisible();
+        await expect(healthSection.getByText('Lisne uši')).toBeVisible();
+
+        const healthList = healthSection.locator(
+            '[data-plant-health-operation-list]',
+        );
+        await expect(healthList).toBeVisible();
+        await expect(healthList).toContainText('Ispiranje biljke od štetnika');
+
+        const healthHeader = healthSection.getByRole('button', {
+            name: /Zdravlje biljke/,
+        });
+        await healthHeader.click();
+
+        await expect(healthSection.getByTitle('1 preporuka')).toBeVisible();
+        await expect(healthList).toHaveCount(0);
     });
 
     test('favorite operations are ranked first in recommendations and operation choices', async ({

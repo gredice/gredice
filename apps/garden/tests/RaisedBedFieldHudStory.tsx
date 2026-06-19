@@ -80,7 +80,7 @@ function createScenarioQueryClient(
     });
     queryClient.setQueryData(['inventory'], { items: [] });
     queryClient.setQueryData(favoritesQueryKey, favorites);
-    queryClient.setQueryData(['plants'], allPlants);
+    queryClient.setQueryData(['plants'], scenario.plants ?? allPlants);
     queryClient.setQueryData(['sorts'], scenario.sorts ?? allSorts);
     queryClient.setQueryData(['operations'], scenario.operations ?? []);
     const operationHistoryItems = scenario.operationHistoryItems ?? [];
