@@ -48,7 +48,7 @@ export function VerifyOperationModal({
         <Button
             variant="solid"
             color="success"
-            size="sm"
+            size="xs"
             title="Verificiraj radnju"
             loading={isSubmitting}
             onClick={onClick}

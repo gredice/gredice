@@ -4,6 +4,7 @@ import { Button } from '@gredice/ui/Button';
 import { Checkbox } from '@gredice/ui/Checkbox';
 import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
+import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useCallback, useRef, useState } from 'react';
@@ -23,6 +24,7 @@ const MAX_COMPLETION_NOTES_LENGTH = 2000;
 type CompleteOperationModalProps = {
     operationId: number;
     label: string;
+    raisedBedPhysicalId?: string;
     conditions?: EntityStandardized['conditions'];
     onConfirm?: (
         imageUrls: string[] | undefined,
@@ -33,6 +35,7 @@ type CompleteOperationModalProps = {
 export function CompleteOperationModal({
     operationId,
     label,
+    raisedBedPhysicalId,
     conditions,
     onConfirm,
 }: CompleteOperationModalProps) {
@@ -177,7 +180,6 @@ export function CompleteOperationModal({
             onOpenChange={handleOpenChange}
             trigger={
                 <Checkbox
-                    className="size-5 mx-2"
                     checked={isOpen}
                     onCheckedChange={(checked: boolean) =>
                         handleOpenChange(checked)
@@ -186,6 +188,12 @@ export function CompleteOperationModal({
             }
         >
             <Stack spacing={4}>
+                {raisedBedPhysicalId && (
+                    <RaisedBedLabel
+                        physicalId={raisedBedPhysicalId}
+                        size="compact"
+                    />
+                )}
                 <Typography>
                     Jeste li sigurni da želite označiti operaciju kao završenu:{' '}
                     <strong>{label}</strong>?

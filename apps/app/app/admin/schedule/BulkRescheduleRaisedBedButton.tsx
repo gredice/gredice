@@ -116,6 +116,7 @@ export function BulkRescheduleRaisedBedButton({
             trigger={
                 <IconButton
                     variant="plain"
+                    size="xs"
                     title="Zakaži sve nepotvrđene zadatke gredice"
                     disabled={disabled}
                     aria-disabled={disabled}

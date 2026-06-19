@@ -50,7 +50,7 @@ export function OperationRequirementIcons({
                     key={key}
                     title={title}
                     className={cx(
-                        'inline-flex size-7 items-center justify-center rounded-md',
+                        'inline-flex size-6 items-center justify-center rounded-md',
                         required
                             ? 'text-amber-700 dark:text-amber-300'
                             : 'text-muted-foreground',

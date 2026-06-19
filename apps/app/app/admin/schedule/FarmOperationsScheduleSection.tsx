@@ -135,7 +135,7 @@ export function FarmOperationsScheduleSection({
                     </Typography>
                 )}
             </Row>
-            <Stack spacing={2}>
+            <Stack spacing={0}>
                 {dayOperations.map((operation) => {
                     const operationData = operationDataById.get(
                         operation.entityId,
@@ -204,19 +204,18 @@ export function FarmOperationsScheduleSection({
                     return (
                         <Row
                             key={operation.id}
-                            spacing={2}
+                            spacing={1}
                             className={getScheduleTaskRowClassName({
                                 accepted: operationApproved,
                                 pendingAcceptance: operationPendingAcceptance,
                             })}
                         >
-                            <Row spacing={2} className="min-w-0 grow flex-wrap">
+                            <Row
+                                spacing={1}
+                                className="min-w-0 flex-1 flex-nowrap"
+                            >
                                 {isOperationCompleted(operation.status) ? (
-                                    <Checkbox
-                                        className="size-5 mx-2"
-                                        checked
-                                        disabled
-                                    />
+                                    <Checkbox checked disabled />
                                 ) : operationPendingVerification ? (
                                     <VerifyOperationModal
                                         operationId={operation.id}
@@ -243,10 +242,7 @@ export function FarmOperationsScheduleSection({
                                         }
                                     />
                                 ) : operationLocked ? (
-                                    <Checkbox
-                                        className="size-5 mx-2"
-                                        disabled
-                                    />
+                                    <Checkbox disabled />
                                 ) : operation.isAccepted ? (
                                     <CompleteOperationModal
                                         operationId={operation.id}
@@ -312,6 +308,7 @@ export function FarmOperationsScheduleSection({
                                     />
                                 )}
                                 <a
+                                    className="min-w-0 flex-1"
                                     href={
                                         operationData?.information?.label
                                             ? KnownPages.GrediceOperation(
@@ -324,10 +321,12 @@ export function FarmOperationsScheduleSection({
                                     rel="noopener noreferrer"
                                 >
                                     <Typography
+                                        level="body2"
+                                        noWrap
                                         className={
                                             operationTextInactive
                                                 ? 'line-through text-muted-foreground'
-                                                : undefined
+                                                : ''
                                         }
                                     >
                                         {operationLabel}
@@ -336,7 +335,7 @@ export function FarmOperationsScheduleSection({
                                 {operationStatusText && (
                                     <Typography
                                         level="body2"
-                                        className={`ml-1 italic ${operationStatusClassName}`}
+                                        className={`shrink-0 italic ${operationStatusClassName}`}
                                     >
                                         {operationStatusText}
                                     </Typography>
@@ -346,7 +345,7 @@ export function FarmOperationsScheduleSection({
                                     <Typography
                                         level="body2"
                                         component="div"
-                                        className="select-none"
+                                        className="shrink-0 select-none"
                                     >
                                         {showScheduledDate ? (
                                             <LocalDateTime time={false}>
@@ -364,7 +363,7 @@ export function FarmOperationsScheduleSection({
                                     </Typography>
                                 )}
                             </Row>
-                            <Row spacing={1} className="ml-auto shrink-0">
+                            <Row spacing={0} className="ml-auto shrink-0">
                                 {!isOperationCompleted(operation.status) &&
                                     !operationPendingVerification && (
                                         <OperationRequirementIcons
@@ -473,6 +472,7 @@ export function FarmOperationsScheduleSection({
                                     trigger={
                                         <IconButton
                                             variant="plain"
+                                            size="xs"
                                             title={
                                                 operation.scheduledDate
                                                     ? 'Prerasporedi radnju'
@@ -513,6 +513,7 @@ export function FarmOperationsScheduleSection({
                                     trigger={
                                         <IconButton
                                             variant="plain"
+                                            size="xs"
                                             title="Otkaži operaciju"
                                             disabled={operationLocked}
                                         >
