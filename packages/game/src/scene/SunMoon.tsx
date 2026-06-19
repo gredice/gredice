@@ -3,7 +3,7 @@
 import { useThree } from '@react-three/fiber';
 import chroma from 'chroma-js';
 import { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
-import { getMoonIllumination, getMoonPosition, getPosition } from 'suncalc';
+import SunCalc from 'suncalc';
 import {
     AdditiveBlending,
     Color,
@@ -284,9 +284,9 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
         moonMesh.current.scale.setScalar(screenScale);
 
         const date = timeOfDayToDate(currentTime, timeOfDay);
-        const sun = getPosition(date, location.lat, location.lon);
-        const moon = getMoonPosition(date, location.lat, location.lon);
-        const illumination = getMoonIllumination(date);
+        const sun = SunCalc.getPosition(date, location.lat, location.lon);
+        const moon = SunCalc.getMoonPosition(date, location.lat, location.lon);
+        const illumination = SunCalc.getMoonIllumination(date);
 
         const sunOpacity =
             smoothstep(HORIZON_FADE_START, HORIZON_FADE_END, sun.altitude) *

@@ -4,7 +4,6 @@ import { IconButton } from '@gredice/ui/IconButton';
 import { Megaphone } from '@gredice/ui/icons';
 import { cx } from '@gredice/ui/utils';
 import { useState } from 'react';
-import type { GameSceneProps } from './GameScene';
 import { useCurrentGarden } from './hooks/useCurrentGarden';
 import { useMarkTutorialChecklistTaskReady } from './hooks/useTutorialChecklist';
 import { AccountHud } from './hud/AccountHud';
@@ -59,12 +58,10 @@ export function getGameHudBottomCloseupClassName(isCloseup: boolean) {
 
 export function GameHud({
     debugHud,
-    flags,
     noWeather,
     suppressOpeningHud,
 }: {
     debugHud?: boolean;
-    flags: GameSceneProps['flags'];
     noWeather?: boolean;
     suppressOpeningHud?: boolean;
 }) {
@@ -89,22 +86,18 @@ export function GameHud({
     const isLocalSandbox = useGameState(
         (state) => state.localSandboxStorageKey !== null,
     );
-    const enableTutorialChecklist = Boolean(flags?.enableTutorialChecklistFlag);
     const closeupHiddenHudClassName = cx(
         'empty:hidden',
         isCloseup && 'hidden md:block',
     );
     const currentGardenId = currentGarden?.id ?? null;
-    const raisedBedOnboardingChecklistEnabled = enableTutorialChecklist;
-    const raisedBedOnboardingAvailable =
-        raisedBedOnboardingChecklistEnabled && !isSandbox;
+    const raisedBedOnboardingAvailable = !isSandbox;
     const visitSummaryConfirmed =
         visitSummaryConfirmation.confirmed &&
         visitSummaryConfirmation.gardenId === currentGardenId;
     const raisedBedOnboardingChecklistResolved =
-        !raisedBedOnboardingChecklistEnabled ||
-        (raisedBedOnboardingConfirmation.confirmed &&
-            raisedBedOnboardingConfirmation.gardenId === currentGardenId);
+        raisedBedOnboardingConfirmation.confirmed &&
+        raisedBedOnboardingConfirmation.gardenId === currentGardenId;
     const visitSummaryEnabled =
         !suppressOpeningHud &&
         welcomeConfirmed &&
@@ -115,7 +108,6 @@ export function GameHud({
         welcomeConfirmed &&
         (isSandbox || visitSummaryConfirmed);
     const raisedBedOnboardingEnabled =
-        raisedBedOnboardingChecklistEnabled &&
         visitSummaryStageComplete &&
         !raisedBedOnboardingChecklistResolved &&
         !isSandbox;
@@ -153,9 +145,7 @@ export function GameHud({
                         }
                     />
                 )}
-                {!isLocalSandbox && !isSandbox && enableTutorialChecklist && (
-                    <TutorialChecklistHud />
-                )}
+                {!isLocalSandbox && !isSandbox && <TutorialChecklistHud />}
                 {!isSandbox && <ShoppingCartHud />}
                 {!isSandbox && (
                     <div className={closeupHiddenHudClassName}>
@@ -230,7 +220,7 @@ export function GameHud({
                     <ItemsHud />
                 </div>
             </div>
-            {!isLocalSandbox && <RaisedBedFieldHud flags={flags} />}
+            {!isLocalSandbox && <RaisedBedFieldHud />}
             {!isLocalSandbox && <OverviewModal />}
             {!isLocalSandbox && <AdventModal />}
             {!isLocalSandbox && <GiftBoxModal />}

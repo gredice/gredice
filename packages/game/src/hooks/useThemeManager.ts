@@ -1,6 +1,6 @@
 import { useTheme } from 'next-themes';
 import { useEffect } from 'react';
-import { getTimes } from 'suncalc';
+import SunCalc from 'suncalc';
 import {
     DAY_NIGHT_CYCLE_DISABLED_CHANGE_EVENT,
     isDayNightCycleDisabled,
@@ -11,7 +11,7 @@ import { resolveDayNightTheme } from './dayNightTheme';
 const defaultLocation = { lat: 45.739, lon: 16.572 };
 
 function isDaytime(now: Date): boolean {
-    const { sunrise, sunset } = getTimes(
+    const { sunrise, sunset } = SunCalc.getTimes(
         now,
         defaultLocation.lat,
         defaultLocation.lon,

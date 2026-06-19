@@ -63,7 +63,6 @@ import {
     authValidator,
 } from '../../../lib/hono/authValidator';
 import { getPostHogClient } from '../../../lib/posthog-server';
-import { isTutorialChecklistEnabled } from '../../../lib/tutorialChecklist/featureFlag';
 import { getBjelovarForecast } from '../../../lib/weather/forecast';
 import { populateWeatherFromSymbol } from '../../../lib/weather/populateWeatherFromSymbol';
 import { findClosestForecastEntry } from '../../../lib/weather/weatherNowContract';
@@ -340,10 +339,6 @@ const app = new Hono<{ Variables: AuthVariables }>()
         }),
         authValidator(['user', 'admin']),
         async (context) => {
-            if (!(await isTutorialChecklistEnabled(context.req.raw))) {
-                return context.json({ error: 'Not found' }, 404);
-            }
-
             const { accountId, userId } = context.get('authContext');
             return context.json(
                 await getTutorialChecklistState({ accountId, userId }),
@@ -364,10 +359,6 @@ const app = new Hono<{ Variables: AuthVariables }>()
         ),
         authValidator(['user', 'admin']),
         async (context) => {
-            if (!(await isTutorialChecklistEnabled(context.req.raw))) {
-                return context.json({ error: 'Not found' }, 404);
-            }
-
             const { accountId, userId } = context.get('authContext');
             const { taskKey } = context.req.valid('param');
 
@@ -410,10 +401,6 @@ const app = new Hono<{ Variables: AuthVariables }>()
         ),
         authValidator(['user', 'admin']),
         async (context) => {
-            if (!(await isTutorialChecklistEnabled(context.req.raw))) {
-                return context.json({ error: 'Not found' }, 404);
-            }
-
             const { accountId, userId } = context.get('authContext');
             const { taskKey } = context.req.valid('param');
 

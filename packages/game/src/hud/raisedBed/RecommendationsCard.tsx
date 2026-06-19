@@ -16,9 +16,10 @@ import { usePlants } from '../../hooks/usePlants';
 import {
     DEFAULT_FEATURED_OPERATION_LIMIT,
     FEATURED_OPERATIONS_BY_STAGE,
-    PLANT_STATUS_STAGE_SEQUENCE,
+    getPlantOperationRecommendationStages,
     type PlantFieldStatus,
     type PlantStageName,
+    shouldShowPlantOperationRecommendations,
 } from './featuredOperations';
 import { OperationsListItem } from './shared/OperationsListItem';
 
@@ -66,9 +67,10 @@ export function RecommendationsCard({
         return operationNames.length ? new Set(operationNames) : null;
     }, [plantSort]);
 
-    const stageSequence: PlantStageName[] | undefined = plantStatus
-        ? PLANT_STATUS_STAGE_SEQUENCE[plantStatus as PlantFieldStatus]
-        : undefined;
+    const showPlantOperationRecommendations =
+        shouldShowPlantOperationRecommendations(plantStatus);
+    const stageSequence: PlantStageName[] | undefined =
+        getPlantOperationRecommendationStages(plantStatus);
 
     const { selectedStage, stageOperations } = useMemo<{
         selectedStage: PlantStageName | undefined;
@@ -172,12 +174,16 @@ export function RecommendationsCard({
     }, [favoriteOperationIds, selectedStage, stageOperations]);
 
     const plantHealthIssues = useMemo(() => {
+        if (!showPlantOperationRecommendations) {
+            return [];
+        }
+
         const plantHealth = plant?.health;
         return [
             ...(plantHealth?.diseases ?? []),
             ...(plantHealth?.pests ?? []),
         ];
-    }, [plant]);
+    }, [plant, showPlantOperationRecommendations]);
 
     const healthOperationIds = useMemo(() => {
         const operationIds = new Set<number>();
