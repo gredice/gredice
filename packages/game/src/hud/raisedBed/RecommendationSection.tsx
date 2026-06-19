@@ -33,7 +33,10 @@ export function RecommendationSection({
             >
                 <Row spacing={2} justifyContent="space-between">
                     <Row spacing={2} alignItems="center" className="min-w-0">
-                        <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-200">
+                        <span
+                            className="flex size-5 shrink-0 items-center justify-center text-muted-foreground"
+                            data-recommendation-section-icon
+                        >
                             {icon}
                         </span>
                         <Typography level="body2" semiBold noWrap>
@@ -41,7 +44,8 @@ export function RecommendationSection({
                         </Typography>
                         {!open && (
                             <span
-                                className="inline-flex min-w-6 items-center justify-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold leading-none text-green-700 dark:bg-green-900/50 dark:text-green-200"
+                                className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-green-100 text-[11px] font-semibold leading-none text-green-700 dark:bg-green-900/50 dark:text-green-200"
+                                data-recommendation-section-count
                                 title={`${count} preporuka`}
                             >
                                 {count}

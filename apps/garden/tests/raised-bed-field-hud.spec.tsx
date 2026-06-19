@@ -705,6 +705,10 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await expect(
             dialog.getByRole('tab', { name: /Dnevnik/ }),
         ).toBeVisible();
+        await dialog
+            .locator('[data-recommendation-section="operations"]')
+            .getByRole('button', { name: /Radnje/ })
+            .click();
         await expect(
             dialog.getByRole('button', { name: /Kontrola sadnice/ }),
         ).toBeVisible();
@@ -914,17 +918,28 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await expect(
             operationsSection.locator('svg.lucide-hammer'),
         ).toBeVisible();
+        await expect(
+            operationsSection.locator('[data-recommendation-section-icon]'),
+        ).not.toHaveClass(/green/);
+        await expect(
+            operationsSection.locator('[data-recommendation-section-count]'),
+        ).toHaveClass(/size-5/);
+        await expect(operationsSection.getByTitle('2 preporuka')).toBeVisible();
 
         const recommendationsList = dialog.locator(
             '[data-recommended-operation-list]',
         );
-        await expect(recommendationsList).toBeVisible();
-        await expect(recommendationsList).toContainText('Okopavanje');
-        await expect(recommendationsList).toContainText('Uklanjanje korova');
+        await expect(recommendationsList).toHaveCount(0);
 
         const operationsHeader = operationsSection.getByRole('button', {
             name: /Radnje/,
         });
+        await operationsHeader.click();
+
+        await expect(recommendationsList).toBeVisible();
+        await expect(recommendationsList).toContainText('Okopavanje');
+        await expect(recommendationsList).toContainText('Uklanjanje korova');
+
         await operationsHeader.click();
         await expect(operationsSection.getByTitle('2 preporuka')).toBeVisible();
         await expect(recommendationsList).toHaveCount(0);
@@ -973,19 +988,29 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         );
         await expect(healthSection).toBeVisible();
         await expect(healthSection.locator('svg.lucide-plus')).toBeVisible();
-        await expect(healthSection.getByText('Lisne uši')).toBeVisible();
+        await expect(
+            healthSection.locator('[data-recommendation-section-icon]'),
+        ).not.toHaveClass(/green/);
+        await expect(
+            healthSection.locator('[data-recommendation-section-count]'),
+        ).toHaveClass(/size-5/);
+        await expect(healthSection.getByTitle('1 preporuka')).toBeVisible();
 
         const healthList = healthSection.locator(
             '[data-plant-health-operation-list]',
         );
-        await expect(healthList).toBeVisible();
-        await expect(healthList).toContainText('Ispiranje biljke od štetnika');
+        await expect(healthList).toHaveCount(0);
 
         const healthHeader = healthSection.getByRole('button', {
             name: /Zdravlje biljke/,
         });
         await healthHeader.click();
 
+        await expect(healthSection.getByText('Lisne uši')).toBeVisible();
+        await expect(healthList).toBeVisible();
+        await expect(healthList).toContainText('Ispiranje biljke od štetnika');
+
+        await healthHeader.click();
         await expect(healthSection.getByTitle('1 preporuka')).toBeVisible();
         await expect(healthList).toHaveCount(0);
     });
@@ -1010,6 +1035,10 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await page.getByRole('button').first().click();
 
         const dialog = page.getByRole('dialog');
+        await dialog
+            .locator('[data-recommendation-section="operations"]')
+            .getByRole('button', { name: /Radnje/ })
+            .click();
         const recommendationsList = dialog.locator(
             '[data-recommended-operation-list]',
         );
