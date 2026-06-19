@@ -10,7 +10,7 @@ import { Spinner } from '@gredice/ui/Spinner';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useGardenOperations } from '../../hooks/useGardenOperations';
 import { useOperations } from '../../hooks/useOperations';
@@ -125,6 +125,21 @@ export function RaisedBedPhotosModal({
     const modalTitle = isFieldScoped
         ? 'Fotografije biljke'
         : 'Fotografije gredice';
+    const shouldFetchOlderPhotos =
+        hideWhenEmpty &&
+        photoCount === 0 &&
+        !history.isLoading &&
+        !history.isError &&
+        !history.isFetchingNextPage &&
+        Boolean(history.hasNextPage);
+
+    useEffect(() => {
+        if (!shouldFetchOlderPhotos) {
+            return;
+        }
+
+        void history.fetchNextPage();
+    }, [history.fetchNextPage, shouldFetchOlderPhotos]);
 
     if (hideWhenEmpty && (history.isError || photoCount === 0)) {
         return null;
@@ -270,6 +285,7 @@ export function RaisedBedPhotosModal({
                     const operationDateLabel = getDateLabel(
                         getOperationReferenceDate(operation),
                     );
+                    const completionNotes = operation.completionNotes?.trim();
 
                     return (
                         <div
@@ -315,6 +331,14 @@ export function RaisedBedPhotosModal({
                                     previewWidth={240}
                                     previewLimitBeforeStack={5}
                                 />
+                                {completionNotes && (
+                                    <Typography
+                                        level="body2"
+                                        className="break-words"
+                                    >
+                                        {completionNotes}
+                                    </Typography>
+                                )}
                                 <Row
                                     spacing={2}
                                     className="items-center justify-between gap-y-2"

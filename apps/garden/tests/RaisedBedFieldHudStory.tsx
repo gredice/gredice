@@ -108,7 +108,7 @@ function createScenarioQueryClient(
             pages: [
                 {
                     items: operationHistoryItems,
-                    nextCursor: null,
+                    nextCursor: scenario.operationHistoryNextCursor ?? null,
                     total: operationHistoryItems.length,
                 },
             ],
