@@ -265,11 +265,17 @@ function copyDogSettledPosition(
     return result;
 }
 
-function isDogSettledAtTarget(runtime: DogRuntimeState, target: DogTarget) {
+function isDogSettledAtNightDogHouse(
+    runtime: DogRuntimeState,
+    target: DogTarget,
+    timeOfDay: number,
+) {
     return (
         runtime.phase === 'settled' &&
+        isDogNight(timeOfDay) &&
         runtime.target.id === target.id &&
-        runtime.target.behavior === target.behavior
+        runtime.target.behavior === 'doghouse' &&
+        target.behavior === 'doghouse'
     );
 }
 
@@ -1632,7 +1638,7 @@ function Dog({
         });
 
         if (
-            isDogSettledAtTarget(runtime, target) ||
+            isDogSettledAtNightDogHouse(runtime, target, timeOfDay) ||
             group.position.distanceTo(target.position) < 0.08
         ) {
             runtimeRef.current = makeSettledState({
@@ -1723,8 +1729,11 @@ function Dog({
 
                 if (target) {
                     runtime =
-                        isDogSettledAtTarget(runtime, target) ||
-                        group.position.distanceTo(target.position) < 0.08
+                        isDogSettledAtNightDogHouse(
+                            runtime,
+                            target,
+                            timeOfDay,
+                        ) || group.position.distanceTo(target.position) < 0.08
                             ? makeSettledState({
                                   now,
                                   random,
@@ -1842,7 +1851,7 @@ function Dog({
             weather,
         });
         if (
-            isDogSettledAtTarget(runtime, target) ||
+            isDogSettledAtNightDogHouse(runtime, target, timeOfDay) ||
             group.position.distanceTo(target.position) < 0.08
         ) {
             runtimeRef.current = makeSettledState({
