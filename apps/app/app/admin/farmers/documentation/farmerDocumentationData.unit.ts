@@ -250,13 +250,22 @@ test('generates a guide-first PDF without page numbering text', () => {
     assert.match(content, /OP-0008/);
     assert.match(content, /PS-0014/);
     assert.match(content, /Zalijevanje/);
-    assert.match(content, /abecedno prije PS-0014 - Cherry rajcica/);
+    assertPdfText(content, 'abecedno prije PS-0014 - Cherry rajčica');
+    assertPdfText(
+        content,
+        'abecedno između OP-0008 - Berba i OP-0006 - Okopavanje',
+    );
+    assertPdfText(content, 'abecedno poslije OP-0006 - Okopavanje');
+    assertPdfText(content, 'Cherry rajčica');
+    assertPdfText(content, 'Rajčica');
+    assertPdfText(content, 'Vlažno tlo');
     assert.match(
         content,
-        /abecedno izmedju OP-0008 - Berba i OP-0006 - Okopavanje/,
+        /\/Differences \[128 \/Ccaron \/ccaron \/Cacute \/cacute \/Dcroat \/dcroat \/Scaron \/scaron \/Zcaron \/zcaron\]/,
     );
-    assert.match(content, /abecedno poslije OP-0006 - Okopavanje/);
-    assert.match(content, /Cherry rajcica/);
+    assert.match(content, /<81> <010D>/);
+    assert.match(content, /<85> <0111>/);
+    assert.match(content, /<89> <017E>/);
     assert.match(content, /CIJENA/);
     assert.match(content, /2,50 EUR/);
     assert.match(content, /2 Tr \(Gredice\)/);
@@ -321,6 +330,55 @@ test('generates filtered PDF packages for updates', () => {
     assert.match(plantSortsContent, /Kratak opis sorte/);
     assert.doesNotMatch(plantSortsContent, /Kratak opis radnje/);
 });
+
+const pdfTextGlyphCodes = new Map([
+    ['Č', 0x80],
+    ['č', 0x81],
+    ['Ć', 0x82],
+    ['ć', 0x83],
+    ['Đ', 0x84],
+    ['đ', 0x85],
+    ['Š', 0x86],
+    ['š', 0x87],
+    ['Ž', 0x88],
+    ['ž', 0x89],
+]);
+
+function assertPdfText(content: string, value: string) {
+    assert.match(content, new RegExp(escapeRegExp(encodedPdfText(value))));
+}
+
+function encodedPdfText(value: string) {
+    let encoded = '';
+    for (const character of value) {
+        const code = pdfTextGlyphCodes.get(character);
+        if (code) {
+            encoded += `\\${code.toString(8).padStart(3, '0')}`;
+            continue;
+        }
+
+        if (character === '\\') {
+            encoded += '\\\\';
+            continue;
+        }
+        if (character === '(') {
+            encoded += '\\(';
+            continue;
+        }
+        if (character === ')') {
+            encoded += '\\)';
+            continue;
+        }
+
+        encoded += character;
+    }
+
+    return encoded;
+}
+
+function escapeRegExp(value: string) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 function operationFixture(
     id: number,

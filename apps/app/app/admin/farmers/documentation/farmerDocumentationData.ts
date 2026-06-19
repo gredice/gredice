@@ -123,7 +123,7 @@ const documentationEntityConfig: Record<
 const operationAttributeLabels: Record<string, string> = {
     application: 'Primjena',
     deliverable: 'Isporuka',
-    frequency: 'Ucestalost',
+    frequency: 'Učestalost',
     internal: 'Interno',
     printLabel: 'Ispis etikete',
     relativeDays: 'Relativni dani',
@@ -139,7 +139,7 @@ const operationAttributeValueLabels: Record<string, Record<string, string>> = {
     frequency: {
         once: 'Jednom',
         optional: 'Po potrebi',
-        recurring: 'Ponavljajuce',
+        recurring: 'Ponavljajuće',
         required: 'Obavezno',
     },
 };
@@ -150,9 +150,9 @@ const reproductionTypeLabels: Record<string, string> = {
 };
 
 const monthNames = [
-    'sijecanj',
-    'veljaca',
-    'ozujak',
+    'siječanj',
+    'veljača',
+    'ožujak',
     'travanj',
     'svibanj',
     'lipanj',
@@ -170,18 +170,18 @@ const plantSortTextFields = [
     { key: 'sowing', title: 'Sjetva' },
     { key: 'planting', title: 'Sadnja' },
     { key: 'growth', title: 'Rast' },
-    { key: 'maintenance', title: 'Odrzavanje' },
+    { key: 'maintenance', title: 'Održavanje' },
     { key: 'watering', title: 'Zalijevanje' },
     { key: 'flowering', title: 'Cvatnja' },
     { key: 'harvest', title: 'Berba' },
-    { key: 'storage', title: 'Cuvanje' },
+    { key: 'storage', title: 'Čuvanje' },
     { key: 'origin', title: 'Podrijetlo' },
 ];
 
 const calendarDetails = [
     { key: 'propagating', title: 'Sjetva u zatvorenom' },
     { key: 'sowing', title: 'Sjetva na otvorenom' },
-    { key: 'planting', title: 'Presadivanje' },
+    { key: 'planting', title: 'Presađivanje' },
     { key: 'harvest', title: 'Berba' },
 ];
 
@@ -631,7 +631,7 @@ function toDocumentationOperation(
                 'Promjena',
                 changedAt
                     ? formatDocumentationDateTime(changedAt)
-                    : 'Cijeli prirucnik',
+                    : 'Cijeli priručnik',
             ],
         ]),
         sections: [
@@ -688,7 +688,7 @@ function toDocumentationPlantSort(
                 'Promjena',
                 changedAt
                     ? formatDocumentationDateTime(changedAt)
-                    : 'Cijeli prirucnik',
+                    : 'Cijeli priručnik',
             ],
         ]),
         sections: plantSortSections(plantSort),
@@ -765,8 +765,8 @@ function operationPhotoProofLabel(operation: EntityStandardized) {
     }
 
     return operation.conditions.completionAttachImagesRequired
-        ? 'Obavezno priloziti fotografije'
-        : 'Preporuceno priloziti fotografije';
+        ? 'Obavezno priložiti fotografije'
+        : 'Preporučeno priložiti fotografije';
 }
 
 function operationAttributes(operation: EntityStandardized) {
