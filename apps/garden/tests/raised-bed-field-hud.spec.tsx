@@ -21,6 +21,19 @@ import {
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
 const DESKTOP_VIEWPORT = { width: 1280, height: 800 };
 const favoriteTimestamp = '2026-06-01T00:00:00.000Z';
+const healthRecommendationsViewedEvent =
+    'game_plant_health_recommendations_viewed';
+
+type AnalyticsEvent = {
+    eventName: string;
+    properties?: Record<string, unknown>;
+};
+
+declare global {
+    interface Window {
+        recordGameAnalyticsEvent?: (event: unknown) => void;
+    }
+}
 
 function favoriteItem({
     entityId,
@@ -113,6 +126,41 @@ async function mockFavoriteRequests(
             status: 200,
         });
     });
+}
+
+async function captureGameAnalyticsEvents(page: Page) {
+    const analyticsEvents: AnalyticsEvent[] = [];
+
+    await page.exposeFunction('recordGameAnalyticsEvent', (event: unknown) => {
+        if (!isRecord(event) || typeof event.eventName !== 'string') {
+            return;
+        }
+
+        analyticsEvents.push({
+            eventName: event.eventName,
+            properties: isRecord(event.properties)
+                ? event.properties
+                : undefined,
+        });
+    });
+
+    await page.evaluate(() => {
+        window.addEventListener('gredice:game-analytics', (event) => {
+            if (event instanceof CustomEvent) {
+                window.recordGameAnalyticsEvent?.(event.detail);
+            }
+        });
+    });
+
+    return analyticsEvents;
+}
+
+function countAnalyticsEvents(
+    analyticsEvents: AnalyticsEvent[],
+    eventName: string,
+) {
+    return analyticsEvents.filter((event) => event.eventName === eventName)
+        .length;
 }
 
 function emptyScenario(): RaisedBedScenario {
@@ -973,6 +1021,8 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         mount,
         page,
     }) => {
+        const analyticsEvents = await captureGameAnalyticsEvents(page);
+
         await mount(
             <RaisedBedFieldHudStory
                 scenario={plantedGrowingWithHealthRecommendedOperationsScenario()}
@@ -1000,6 +1050,14 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
             '[data-plant-health-operation-list]',
         );
         await expect(healthList).toHaveCount(0);
+        await expect
+            .poll(() =>
+                countAnalyticsEvents(
+                    analyticsEvents,
+                    healthRecommendationsViewedEvent,
+                ),
+            )
+            .toBe(0);
 
         const healthHeader = healthSection.getByRole('button', {
             name: /Zdravlje biljke/,
@@ -1009,10 +1067,27 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await expect(healthSection.getByText('Lisne uši')).toBeVisible();
         await expect(healthList).toBeVisible();
         await expect(healthList).toContainText('Ispiranje biljke od štetnika');
+        await expect
+            .poll(() =>
+                countAnalyticsEvents(
+                    analyticsEvents,
+                    healthRecommendationsViewedEvent,
+                ),
+            )
+            .toBe(1);
 
         await healthHeader.click();
         await expect(healthSection.getByTitle('1 preporuka')).toBeVisible();
         await expect(healthList).toHaveCount(0);
+        await healthHeader.click();
+        await expect
+            .poll(() =>
+                countAnalyticsEvents(
+                    analyticsEvents,
+                    healthRecommendationsViewedEvent,
+                ),
+            )
+            .toBe(1);
     });
 
     test('favorite operations are ranked first in recommendations and operation choices', async ({

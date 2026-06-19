@@ -237,6 +237,7 @@ export function RecommendationsCard({
 
     useEffect(() => {
         if (
+            !healthOpen ||
             !healthRecommendationViewKey ||
             lastTrackedHealthRecommendationViewKey.current ===
                 healthRecommendationViewKey
@@ -256,6 +257,7 @@ export function RecommendationsCard({
         });
     }, [
         gardenId,
+        healthOpen,
         healthRecommendationViewKey,
         healthRecommendedOperations.length,
         plantHealthIssues.length,
