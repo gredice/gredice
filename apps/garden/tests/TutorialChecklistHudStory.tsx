@@ -1,6 +1,6 @@
 import * as ReactQuery from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { GameAnalyticsProvider } from '../../../packages/game/src/analytics/GameAnalyticsContext';
 import {
     type TutorialChecklistGroup,
@@ -119,20 +119,119 @@ const checklistState: TutorialChecklistState = {
     },
 };
 
-function createTutorialChecklistQueryClient() {
+function settleTask(task: TutorialChecklistTask): TutorialChecklistTask {
+    return {
+        ...task,
+        claimable: false,
+        claimedAt: '2026-06-12T08:00:00.000Z',
+        completed: true,
+        status: task.rewardSunflowers > 0 ? 'claimed' : 'completed',
+    };
+}
+
+function settleGroup(group: TutorialChecklistGroup): TutorialChecklistGroup {
+    const tasks = group.tasks.map(settleTask);
+
+    return {
+        ...group,
+        claimableCount: 0,
+        completedCount: tasks.length,
+        tasks,
+        totalCount: tasks.length,
+    };
+}
+
+function getTotals(
+    groups: TutorialChecklistGroup[],
+): TutorialChecklistState['totals'] {
+    const tasks = groups.flatMap((group) => group.tasks);
+
+    return {
+        availableSunflowers: tasks
+            .filter((task) => task.claimable)
+            .reduce((total, task) => total + task.rewardSunflowers, 0),
+        claimableCount: tasks.filter((task) => task.claimable).length,
+        completedCount: tasks.filter((task) => task.completed).length,
+        earnedSunflowers: tasks
+            .filter((task) => task.completed)
+            .reduce((total, task) => total + task.rewardSunflowers, 0),
+        totalCount: tasks.length,
+    };
+}
+
+const completedGroups = checklistState.groups.map(settleGroup);
+
+const completedChecklistState: TutorialChecklistState = {
+    groups: completedGroups,
+    totals: getTotals(completedGroups),
+};
+
+const completedGroupsWithNewTask = completedChecklistState.groups.map(
+    (group) => {
+        if (group.id !== 'day-2') {
+            return group;
+        }
+
+        return settleGroup({
+            ...group,
+            tasks: [
+                ...group.tasks,
+                createTask({
+                    completed: true,
+                    groupId: 'day-2',
+                    index: 3,
+                    title: 'Novi zadatak',
+                }),
+            ],
+        });
+    },
+);
+
+const completedChecklistStateWithNewTask: TutorialChecklistState = {
+    groups: completedGroupsWithNewTask,
+    totals: getTotals(completedGroupsWithNewTask),
+};
+
+function createTutorialChecklistQueryClient(state: TutorialChecklistState) {
     const queryClient = new ReactQuery.QueryClient({
         defaultOptions: {
             queries: { retry: false, staleTime: Infinity },
         },
     });
 
-    queryClient.setQueryData(tutorialChecklistKeys, checklistState);
+    queryClient.setQueryData(tutorialChecklistKeys, state);
 
     return queryClient;
 }
 
-export function TutorialChecklistHudStory() {
-    const queryClient = useMemo(() => createTutorialChecklistQueryClient(), []);
+type TutorialChecklistHudStoryVariant =
+    | 'completed'
+    | 'completed-with-new-task'
+    | 'default';
+
+function stateForVariant(
+    variant: TutorialChecklistHudStoryVariant,
+): TutorialChecklistState {
+    if (variant === 'completed') {
+        return completedChecklistState;
+    }
+
+    if (variant === 'completed-with-new-task') {
+        return completedChecklistStateWithNewTask;
+    }
+
+    return checklistState;
+}
+
+export function TutorialChecklistHudStory({
+    variant = 'default',
+}: {
+    variant?: TutorialChecklistHudStoryVariant;
+}) {
+    const state = stateForVariant(variant);
+    const [queryClient] = useState(() =>
+        createTutorialChecklistQueryClient(state),
+    );
     const gameStore = useMemo(
         () =>
             createGameState({
@@ -143,6 +242,10 @@ export function TutorialChecklistHudStory() {
             }),
         [],
     );
+
+    useEffect(() => {
+        queryClient.setQueryData(tutorialChecklistKeys, state);
+    }, [queryClient, state]);
 
     return (
         <NuqsTestingAdapter>
