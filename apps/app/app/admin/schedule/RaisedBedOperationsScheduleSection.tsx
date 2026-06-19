@@ -31,6 +31,7 @@ import { CancelOperationModal } from './CancelOperationModal';
 import { CompleteOperationModal } from './CompleteOperationModal';
 import { CopyTasksButton } from './CopyTasksButton';
 import { OperationCompletionAttachments } from './OperationCompletionAttachments';
+import { OperationRequirementIcons } from './OperationRequirementIcons';
 import { RescheduleOperationModal } from './RescheduleOperationModal';
 import {
     createOperationAssignedUsers,
@@ -43,12 +44,14 @@ import {
     isOperationCancelled,
     isOperationCompleted,
     isOperationPendingVerification,
+    isSameScheduleDay,
 } from './scheduleShared';
 import type { Operation, RaisedBed } from './types';
 import { useOptimisticScheduleActions } from './useOptimisticScheduleActions';
 import { VerifyOperationModal } from './VerifyOperationModal';
 
 interface RaisedBedOperationsScheduleSectionProps {
+    date: Date;
     physicalId: string;
     raisedBeds: RaisedBed[];
     scheduledOperations: Operation[];
@@ -61,6 +64,7 @@ interface RaisedBedOperationsScheduleSectionProps {
 }
 
 export function RaisedBedOperationsScheduleSection({
+    date,
     physicalId,
     raisedBeds,
     scheduledOperations,
@@ -220,31 +224,6 @@ export function RaisedBedOperationsScheduleSection({
     return (
         <Stack key={physicalId} spacing={2}>
             <Row spacing={2} className="w-full items-center flex-wrap gap-y-1">
-                <BulkApproveRaisedBedButton
-                    physicalId={physicalId.toString()}
-                    fields={[]}
-                    operations={operationsToApprove}
-                    onConfirm={() =>
-                        runOptimisticAction({
-                            operationPatches: operationsToApprove.map(
-                                (operation) => ({
-                                    id: operation.id,
-                                    patch: { isAccepted: true },
-                                }),
-                            ),
-                            action: () =>
-                                Promise.all(
-                                    operationsToApprove.map((operation) =>
-                                        acceptOperationAction(operation.id),
-                                    ),
-                                ),
-                            errorLogMessage:
-                                'Failed to approve all raised bed operation items:',
-                            errorAlertMessage:
-                                'Skupna potvrda radnji nije uspjela. Promjena je vraćena.',
-                        })
-                    }
-                />
                 <Row
                     spacing={1}
                     className="min-w-0 grow items-center flex-wrap gap-y-1"
@@ -257,16 +236,41 @@ export function RaisedBedOperationsScheduleSection({
                         <RaisedBedLabel physicalId={physicalId} />
                     )}
                     <Typography level="body2" className="text-muted-foreground">
-                        Vrijeme: {formatMinutes(durations.completed, true)} /{' '}
+                        {formatMinutes(durations.completed, true)} /{' '}
                         {formatMinutes(durations.approved)} (
                         {formatMinutes(durations.total)})
                     </Typography>
+                </Row>
+                <Row spacing={1} className="ml-auto shrink-0 items-center">
+                    <BulkApproveRaisedBedButton
+                        physicalId={physicalId.toString()}
+                        fields={[]}
+                        operations={operationsToApprove}
+                        onConfirm={() =>
+                            runOptimisticAction({
+                                operationPatches: operationsToApprove.map(
+                                    (operation) => ({
+                                        id: operation.id,
+                                        patch: { isAccepted: true },
+                                    }),
+                                ),
+                                action: () =>
+                                    Promise.all(
+                                        operationsToApprove.map((operation) =>
+                                            acceptOperationAction(operation.id),
+                                        ),
+                                    ),
+                                errorLogMessage:
+                                    'Failed to approve all raised bed operation items:',
+                                errorAlertMessage:
+                                    'Skupna potvrda radnji nije uspjela. Promjena je vraćena.',
+                            })
+                        }
+                    />
                     <CopyTasksButton
                         physicalId={physicalId.toString()}
                         tasks={copyTasks}
                     />
-                </Row>
-                <Row spacing={1} className="ml-auto shrink-0 items-center">
                     <BulkAssignRaisedBedButton
                         physicalId={physicalId.toString()}
                         fields={[]}
@@ -398,7 +402,7 @@ export function RaisedBedOperationsScheduleSection({
                           : isOperationCompleted(operation.status)
                             ? 'Završeno'
                             : operation.isAccepted
-                              ? 'Potvrđeno'
+                              ? null
                               : 'Nije potvrđeno';
                     const operationStatusClassName = isOperationCancelled(
                         operation.status,
@@ -429,18 +433,9 @@ export function RaisedBedOperationsScheduleSection({
                         operationData?.conditions
                             ?.completionAttachNotesRequired,
                     );
-                    const completionRequirementTexts = [
-                        attachImages
-                            ? attachRequired
-                                ? 'Slike obavezne'
-                                : 'Slike opcionalne'
-                            : null,
-                        attachNotes
-                            ? attachNotesRequired
-                                ? 'Napomena obavezna'
-                                : 'Napomena opcionalna'
-                            : null,
-                    ].filter((text): text is string => Boolean(text));
+                    const showScheduledDate =
+                        !!operation.scheduledDate &&
+                        !isSameScheduleDay(operation.scheduledDate, date);
 
                     return (
                         <div key={operation.id}>
@@ -452,7 +447,10 @@ export function RaisedBedOperationsScheduleSection({
                                         operationPendingAcceptance,
                                 })}
                             >
-                                <Row spacing={2} className="grow">
+                                <Row
+                                    spacing={2}
+                                    className="min-w-0 grow flex-wrap"
+                                >
                                     {isOperationCompleted(operation.status) ? (
                                         <Checkbox
                                             className="size-5 mx-2"
@@ -577,47 +575,51 @@ export function RaisedBedOperationsScheduleSection({
                                             {operationLabel}
                                         </Typography>
                                     </a>
-                                    <Typography
-                                        level="body2"
-                                        className={`ml-1 italic ${operationStatusClassName}`}
-                                    >
-                                        {operationStatusText}
-                                    </Typography>
-                                    {completionRequirementTexts.length > 0 &&
-                                        !isOperationCompleted(
-                                            operation.status,
-                                        ) &&
-                                        !operationPendingVerification && (
-                                            <Typography
-                                                level="body2"
-                                                className="ml-1 text-xs text-muted-foreground"
-                                            >
-                                                {completionRequirementTexts.join(
-                                                    ' · ',
-                                                )}
-                                            </Typography>
-                                        )}
-                                    <Typography
-                                        level="body2"
-                                        component="div"
-                                        className="select-none"
-                                    >
-                                        {operation.scheduledDate ? (
-                                            <LocalDateTime time={false}>
-                                                {operation.scheduledDate}
-                                            </LocalDateTime>
-                                        ) : (
-                                            <Chip
-                                                size="sm"
-                                                color="warning"
-                                                className="w-fit"
-                                            >
-                                                Nije planirano
-                                            </Chip>
-                                        )}
-                                    </Typography>
+                                    {operationStatusText && (
+                                        <Typography
+                                            level="body2"
+                                            className={`ml-1 italic ${operationStatusClassName}`}
+                                        >
+                                            {operationStatusText}
+                                        </Typography>
+                                    )}
+                                    {(showScheduledDate ||
+                                        !operation.scheduledDate) && (
+                                        <Typography
+                                            level="body2"
+                                            component="div"
+                                            className="select-none"
+                                        >
+                                            {showScheduledDate ? (
+                                                <LocalDateTime time={false}>
+                                                    {operation.scheduledDate}
+                                                </LocalDateTime>
+                                            ) : (
+                                                <Chip
+                                                    size="sm"
+                                                    color="warning"
+                                                    className="w-fit"
+                                                >
+                                                    Nije planirano
+                                                </Chip>
+                                            )}
+                                        </Typography>
+                                    )}
                                 </Row>
-                                <Row>
+                                <Row spacing={1} className="ml-auto shrink-0">
+                                    {!isOperationCompleted(operation.status) &&
+                                        !operationPendingVerification && (
+                                            <OperationRequirementIcons
+                                                attachImages={attachImages}
+                                                attachImagesRequired={
+                                                    attachRequired
+                                                }
+                                                attachNotes={attachNotes}
+                                                attachNotesRequired={
+                                                    attachNotesRequired
+                                                }
+                                            />
+                                        )}
                                     {(isOperationCompleted(operation.status) ||
                                         operationPendingVerification) && (
                                         <OperationCompletionAttachments

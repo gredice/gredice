@@ -43,7 +43,7 @@ export function AdminPageHeader({
                 {breadcrumbs ?? <AdminPageBreadcrumbs />}
             </div>
             {actions && (
-                <div className="flex min-w-0 items-center gap-2 overflow-x-auto">
+                <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
                     {actions}
                 </div>
             )}

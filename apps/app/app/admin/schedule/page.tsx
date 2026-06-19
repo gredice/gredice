@@ -2,9 +2,11 @@ import { DailySchedule } from '@gredice/ui/DailySchedule';
 import { ScheduleDateNavigation } from '@gredice/ui/ScheduleDateNavigation';
 import { Stack } from '@gredice/ui/Stack';
 import { Suspense } from 'react';
+import { AdminPageHeader } from '../../../components/admin/navigation';
 import { auth } from '../../../lib/auth/auth';
 import { ScheduleDay } from './ScheduleDay';
 import { ScheduleDayDeliveriesSkeleton } from './ScheduleDayDeliveriesSkeleton';
+import { ScheduleDayHeaderSection } from './ScheduleDayHeaderSection';
 import { ScheduleDayHeaderSkeleton } from './ScheduleDayHeaderSkeleton';
 import { ScheduleDayOperationsSkeleton } from './ScheduleDayOperationsSkeleton';
 import { ScheduleDayPlantingsSkeleton } from './ScheduleDayPlantingsSkeleton';
@@ -52,12 +54,32 @@ export default async function AdminSchedulePage({
 
     const navigationDate = startDate ?? new Date();
     navigationDate.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const isNavigationToday =
+        navigationDate.toDateString() === today.toDateString();
 
     return (
         <Stack spacing={4}>
-            <ScheduleDateNavigation
-                date={navigationDate}
-                basePath="/admin/schedule"
+            <AdminPageHeader
+                heading="Raspored"
+                actions={
+                    <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
+                        <ScheduleDateNavigation
+                            date={navigationDate}
+                            basePath="/admin/schedule"
+                            compact
+                        />
+                        <Suspense
+                            fallback={<ScheduleDayHeaderSkeleton compact />}
+                        >
+                            <ScheduleDayHeaderSection
+                                date={navigationDate}
+                                isToday={isNavigationToday}
+                            />
+                        </Suspense>
+                    </div>
+                }
             />
             <DailySchedule
                 startDate={startDate}
