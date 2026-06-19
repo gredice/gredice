@@ -387,6 +387,53 @@ function plantedGrowingWithOperationHistoryScenario(): RaisedBedScenario {
     };
 }
 
+function plantedGrowingWithPendingOperationHistoryScenario(): RaisedBedScenario {
+    const scenario = plantedGrowingWithOperationHistoryScenario();
+    const operation = scenario.operations?.[0];
+
+    if (!operation) {
+        return scenario;
+    }
+
+    return {
+        ...scenario,
+        operationHistoryItems: [
+            ...(scenario.operationHistoryItems ?? []),
+            {
+                id: 903,
+                entityId: operation.id,
+                entityTypeName: 'operation',
+                raisedBedId: 1,
+                raisedBedFieldId: 1,
+                status: 'confirmed',
+                createdAt: '2026-06-23T00:00:00.000Z',
+                scheduledDate: '2026-06-24T00:00:00.000Z',
+                scheduledAt: '2026-06-23T00:00:00.000Z',
+                completedAt: null,
+                verifiedAt: null,
+                canceledAt: null,
+                imageUrls: [],
+                completionNotes: null,
+                targetLabel: 'Raised Bed 1 › Polje 1',
+                statusHistory: [
+                    {
+                        status: 'planned',
+                        changedAt: '2026-06-23T00:00:00.000Z',
+                    },
+                    {
+                        status: 'assigned',
+                        changedAt: '2026-06-23T08:00:00.000Z',
+                    },
+                    {
+                        status: 'confirmed',
+                        changedAt: '2026-06-23T09:00:00.000Z',
+                    },
+                ],
+            },
+        ],
+    };
+}
+
 function raisedBedScrollableOperationHistoryScenario(): RaisedBedScenario {
     const scenario = plantedGrowingWithOperationHistoryScenario();
     const baseOperationHistoryItem = scenario.operationHistoryItems?.[0];
@@ -1087,7 +1134,7 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
     }) => {
         await mount(
             <RaisedBedFieldHudStory
-                scenario={plantedGrowingWithOperationHistoryScenario()}
+                scenario={plantedGrowingWithPendingOperationHistoryScenario()}
                 positionIndex={0}
             />,
         );
@@ -1140,6 +1187,22 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
             page.getByText('Obavljeno · Raised Bed 1 › Polje 1'),
         ).toBeVisible();
         await expect(page.getByText(/30 min/)).toHaveCount(0);
+
+        await page.keyboard.press('Escape');
+        await scheduleDialog
+            .getByRole('button', { name: 'Sljedeći mjesec' })
+            .click();
+        await expect(
+            scheduleDialog.locator('[data-event-calendar-month="2026-06"]'),
+        ).toBeVisible();
+        await scheduleDialog
+            .getByRole('button', {
+                name: /24\. 06\. 2026.*Površinsko zalijevanje/u,
+            })
+            .click();
+        await expect(
+            page.getByText('Zakazano · Raised Bed 1 › Polje 1'),
+        ).toBeVisible();
     });
 
     test('diary tab shows filtered operation history with photos and notes', async ({
