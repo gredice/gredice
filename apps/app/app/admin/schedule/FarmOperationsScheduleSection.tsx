@@ -28,6 +28,7 @@ import { CompleteOperationModal } from './CompleteOperationModal';
 import { OperationCompletionAttachments } from './OperationCompletionAttachments';
 import { OperationRequirementIcons } from './OperationRequirementIcons';
 import { RescheduleOperationModal } from './RescheduleOperationModal';
+import { ScheduleOperationVisual } from './ScheduleTaskVisual';
 import {
     createOperationAssignedUsers,
     parseScheduledDateInput,
@@ -182,7 +183,7 @@ export function FarmOperationsScheduleSection({
                         : operationPendingVerification
                           ? 'Čeka verifikaciju'
                           : isOperationCompleted(operation.status)
-                            ? 'Završeno'
+                            ? null
                             : operation.isAccepted
                               ? null
                               : 'Nije potvrđeno';
@@ -304,6 +305,10 @@ export function FarmOperationsScheduleSection({
                                         }
                                     />
                                 )}
+                                <ScheduleOperationVisual
+                                    operation={operationData}
+                                    label={operationLabel}
+                                />
                                 <a
                                     className="min-w-0 flex-1"
                                     href={

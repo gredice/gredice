@@ -6,8 +6,8 @@ import { Chip } from '@gredice/ui/Chip';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Calendar, Close } from '@gredice/ui/icons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Row } from '@gredice/ui/Row';
-import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
@@ -26,6 +26,10 @@ import { AcceptOperationModal } from './AcceptOperationModal';
 import { AssignOperationModal } from './AssignOperationModal';
 import { BulkApproveRaisedBedButton } from './BulkApproveRaisedBedButton';
 import { BulkAssignRaisedBedButton } from './BulkAssignRaisedBedButton';
+import {
+    BulkCancelRaisedBedButton,
+    buildOperationCancelFormData,
+} from './BulkCancelRaisedBedButton';
 import { BulkRescheduleRaisedBedButton } from './BulkRescheduleRaisedBedButton';
 import { CancelOperationModal } from './CancelOperationModal';
 import { CompleteOperationModal } from './CompleteOperationModal';
@@ -33,6 +37,7 @@ import { CopyTasksButton } from './CopyTasksButton';
 import { OperationCompletionAttachments } from './OperationCompletionAttachments';
 import { OperationRequirementIcons } from './OperationRequirementIcons';
 import { RescheduleOperationModal } from './RescheduleOperationModal';
+import { ScheduleOperationVisual } from './ScheduleTaskVisual';
 import {
     createOperationAssignedUsers,
     parseScheduledDateInput,
@@ -198,6 +203,25 @@ export function RaisedBedOperationsScheduleSection({
             id: operation.id,
             farmUsers: assignableFarmUsersByOperationId[operation.id] ?? [],
         }));
+    const operationsToCancel = dayOperations
+        .filter(
+            (operation) =>
+                !isOperationCompleted(operation.status) &&
+                !isOperationPendingVerification(operation.status) &&
+                !isOperationCancelled(operation.status) &&
+                operation.status !== 'failed',
+        )
+        .map((operation) => {
+            const operationData = operationDataById.get(operation.entityId);
+            const label =
+                operationData?.information?.label ??
+                operation.entityId.toString();
+
+            return {
+                id: operation.id,
+                label,
+            };
+        });
 
     const durations = dayOperations.reduce(
         (acc, operation) => {
@@ -229,16 +253,21 @@ export function RaisedBedOperationsScheduleSection({
                     className="min-w-0 grow items-center flex-wrap gap-y-1"
                 >
                     {raisedBedDetailsLink ? (
-                        <Link href={raisedBedDetailsLink}>
-                            <RaisedBedLabel
+                        <Link
+                            href={raisedBedDetailsLink}
+                            aria-label={`Gredica ${physicalId}`}
+                        >
+                            <RaisedBedIcon
                                 physicalId={physicalId}
-                                size="compact"
+                                className="size-5"
+                                containerClassName="h-5"
                             />
                         </Link>
                     ) : (
-                        <RaisedBedLabel
+                        <RaisedBedIcon
                             physicalId={physicalId}
-                            size="compact"
+                            className="size-5"
+                            containerClassName="h-5"
                         />
                     )}
                     <Typography level="body2" className="text-muted-foreground">
@@ -366,6 +395,36 @@ export function RaisedBedOperationsScheduleSection({
                             })
                         }
                     />
+                    <BulkCancelRaisedBedButton
+                        physicalId={physicalId.toString()}
+                        fields={[]}
+                        operations={operationsToCancel}
+                        onSubmit={(formData) =>
+                            runOptimisticAction({
+                                operationPatches: operationsToCancel.map(
+                                    (operation) => ({
+                                        id: operation.id,
+                                        patch: { status: 'canceled' },
+                                    }),
+                                ),
+                                action: () =>
+                                    Promise.all(
+                                        operationsToCancel.map((operation) =>
+                                            cancelOperationAction(
+                                                buildOperationCancelFormData(
+                                                    operation,
+                                                    formData,
+                                                ),
+                                            ),
+                                        ),
+                                    ),
+                                errorLogMessage:
+                                    'Failed to cancel all raised bed operation items:',
+                                errorAlertMessage:
+                                    'Skupno otkazivanje radnji nije uspjelo. Promjena je vraćena.',
+                            })
+                        }
+                    />
                 </Row>
             </Row>
             <Stack spacing={0}>
@@ -406,7 +465,7 @@ export function RaisedBedOperationsScheduleSection({
                         : operationPendingVerification
                           ? 'Čeka verifikaciju'
                           : isOperationCompleted(operation.status)
-                            ? 'Završeno'
+                            ? null
                             : operation.isAccepted
                               ? null
                               : 'Nije potvrđeno';
@@ -551,6 +610,10 @@ export function RaisedBedOperationsScheduleSection({
                                             }
                                         />
                                     )}
+                                    <ScheduleOperationVisual
+                                        operation={operationData}
+                                        label={operationLabel}
+                                    />
                                     <a
                                         className="min-w-0 flex-1"
                                         href={
