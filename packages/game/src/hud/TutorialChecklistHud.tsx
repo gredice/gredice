@@ -13,7 +13,7 @@ import { cx } from '@gredice/ui/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
 import { parseAsString, useQueryState } from 'nuqs';
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import {
@@ -36,6 +36,8 @@ import { RAISED_BED_ONBOARDING_OPEN_EVENT } from './RaisedBedOnboardingModal';
 import styles from './TutorialChecklistHud.module.css';
 
 const tutorialTaskListIconSrc = '/assets/hud/tutorial-task-list.png';
+const completedChecklistDismissedStorageKey =
+    'game:tutorial-checklist:completed-dismissed-v1';
 
 type CurrentGardenData = NonNullable<
     ReturnType<typeof useCurrentGarden>['data']
@@ -80,6 +82,105 @@ function isGroupComplete(group: TutorialChecklistGroup) {
         group.completedCount >= group.totalCount &&
         group.claimableCount === 0
     );
+}
+
+function isChecklistComplete(
+    checklist: TutorialChecklistState | null | undefined,
+) {
+    return Boolean(
+        checklist &&
+            checklist.totals.totalCount > 0 &&
+            checklist.totals.completedCount >= checklist.totals.totalCount &&
+            checklist.totals.claimableCount === 0,
+    );
+}
+
+function getChecklistTaskFingerprint(checklist: TutorialChecklistState) {
+    return checklist.groups
+        .flatMap((group) =>
+            group.tasks.map((task) => `${group.id}:${task.key}`),
+        )
+        .sort()
+        .join('|');
+}
+
+function readCompletedChecklistDismissedFingerprint() {
+    if (typeof window === 'undefined') {
+        return null;
+    }
+
+    try {
+        return window.localStorage.getItem(
+            completedChecklistDismissedStorageKey,
+        );
+    } catch {
+        return null;
+    }
+}
+
+function writeCompletedChecklistDismissedFingerprint(fingerprint: string) {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    try {
+        window.localStorage.setItem(
+            completedChecklistDismissedStorageKey,
+            fingerprint,
+        );
+    } catch {
+        // Ignore storage failures; the current session state still dismisses it.
+    }
+}
+
+function useCompletedChecklistDismissal(
+    checklist: TutorialChecklistState | null | undefined,
+) {
+    const allTasksFinished = isChecklistComplete(checklist);
+    const taskFingerprint = useMemo(
+        () => (checklist ? getChecklistTaskFingerprint(checklist) : null),
+        [checklist],
+    );
+    const [dismissedFingerprint, setDismissedFingerprint] = useState<
+        string | null
+    >(null);
+    const [readyFingerprint, setReadyFingerprint] = useState<string | null>(
+        null,
+    );
+
+    useEffect(() => {
+        if (!taskFingerprint) {
+            setDismissedFingerprint(null);
+            setReadyFingerprint(null);
+            return;
+        }
+
+        setDismissedFingerprint(readCompletedChecklistDismissedFingerprint());
+        setReadyFingerprint(taskFingerprint);
+    }, [taskFingerprint]);
+
+    const dismissalReady =
+        taskFingerprint !== null && readyFingerprint === taskFingerprint;
+    const isDismissed =
+        allTasksFinished &&
+        dismissalReady &&
+        dismissedFingerprint === taskFingerprint;
+    const dismiss = useCallback(() => {
+        if (!allTasksFinished || !taskFingerprint) {
+            return;
+        }
+
+        writeCompletedChecklistDismissedFingerprint(taskFingerprint);
+        setDismissedFingerprint(taskFingerprint);
+        setReadyFingerprint(taskFingerprint);
+    }, [allTasksFinished, taskFingerprint]);
+
+    return {
+        allTasksFinished,
+        dismissalReady,
+        dismiss,
+        isDismissed,
+    };
 }
 
 function ClaimButtonContent({ task }: { task: TutorialChecklistTask }) {
@@ -538,8 +639,12 @@ function TutorialChecklistTaskRow({
 }
 
 function TutorialChecklistContent({
+    allTasksFinished,
+    onDismissCompleted,
     onOpenChange,
 }: {
+    allTasksFinished: boolean;
+    onDismissCompleted: () => void;
     onOpenChange: (open: boolean) => void;
 }) {
     const checklistQuery = useTutorialChecklist();
@@ -615,22 +720,44 @@ function TutorialChecklistContent({
             <Stack
                 alignItems="center"
                 spacing={2}
-                className="mt-4 rounded-md border bg-card px-5 py-5 text-center text-card-foreground shadow-sm sm:mx-8"
+                className={cx(
+                    'mt-4 rounded-md border px-5 py-5 text-center shadow-sm sm:mx-8',
+                    allTasksFinished
+                        ? 'border-green-700 bg-green-600 text-white dark:border-green-500/70 dark:bg-green-700'
+                        : 'bg-card text-card-foreground',
+                )}
+                data-tutorial-checklist-complete-banner={
+                    allTasksFinished ? 'true' : 'false'
+                }
             >
-                <span className="grid size-12 place-items-center rounded-full border bg-background text-foreground shadow-sm">
-                    <Image
-                        alt=""
-                        aria-hidden="true"
-                        className="size-11 object-contain drop-shadow-[0_2px_4px_rgb(15_23_42_/_0.25)]"
-                        height={48}
-                        loading="eager"
-                        src={tutorialTaskListIconSrc}
-                        unoptimized
-                        width={48}
-                    />
+                <span
+                    className={cx(
+                        'grid size-12 place-items-center rounded-full border shadow-sm',
+                        allTasksFinished
+                            ? 'border-white/30 bg-white/15 text-white'
+                            : 'bg-background text-foreground',
+                    )}
+                >
+                    {allTasksFinished ? (
+                        <Check className="size-7" />
+                    ) : (
+                        <Image
+                            alt=""
+                            aria-hidden="true"
+                            className="size-11 object-contain drop-shadow-[0_2px_4px_rgb(15_23_42_/_0.25)]"
+                            height={48}
+                            loading="eager"
+                            src={tutorialTaskListIconSrc}
+                            unoptimized
+                            width={48}
+                        />
+                    )}
                 </span>
                 <Typography
-                    className="text-2xl leading-tight font-semibold tracking-tight text-foreground"
+                    className={cx(
+                        'text-2xl leading-tight font-semibold tracking-tight',
+                        allTasksFinished ? 'text-white' : 'text-foreground',
+                    )}
                     component="h2"
                     data-tutorial-checklist-modal-title="true"
                     level="h3"
@@ -640,6 +767,28 @@ function TutorialChecklistContent({
                 >
                     Zadaci za novi vrt
                 </Typography>
+                {allTasksFinished ? (
+                    <>
+                        <Typography
+                            className="max-w-lg text-green-50"
+                            data-tutorial-checklist-complete-text="true"
+                            level="body2"
+                        >
+                            Svi zadaci su dovršeni.
+                        </Typography>
+                        <Button
+                            className="bg-white px-4 font-bold text-green-800 hover:bg-green-50 dark:bg-white dark:text-green-900 dark:hover:bg-green-50"
+                            color="success"
+                            data-tutorial-checklist-hide-completed="true"
+                            onClick={onDismissCompleted}
+                            size="sm"
+                            type="button"
+                            variant="solid"
+                        >
+                            Sakrij popis
+                        </Button>
+                    </>
+                ) : null}
             </Stack>
             <Stack spacing={4}>
                 {sortedGroups.map((group, groupIndex) => {
@@ -760,14 +909,32 @@ export function TutorialChecklistHud() {
     const { data } = useTutorialChecklist();
     const { track } = useGameAnalytics();
     const claimableCount = data?.totals.claimableCount ?? 0;
+    const {
+        allTasksFinished,
+        dismissalReady,
+        dismiss: dismissCompletedChecklist,
+        isDismissed,
+    } = useCompletedChecklistDismissal(data);
     const progressLabel = useMemo(() => {
-        if (!data) return null;
+        if (!data || allTasksFinished) return null;
         const firstActiveGroup = data.groups.find(
             (group) => !isGroupComplete(group),
         );
         if (!firstActiveGroup) return null;
         return `${firstActiveGroup.completedCount}/${firstActiveGroup.totalCount}`;
-    }, [data]);
+    }, [allTasksFinished, data]);
+
+    const handleDismissCompleted = useCallback(() => {
+        dismissCompletedChecklist();
+        setIsOpen(false);
+        track('game_tutorial_checklist_completed_dismissed', {
+            total_count: data?.totals.totalCount ?? 0,
+        });
+    }, [data?.totals.totalCount, dismissCompletedChecklist, track]);
+
+    if ((allTasksFinished && !dismissalReady) || isDismissed) {
+        return null;
+    }
 
     function handleOpenChange(open: boolean) {
         if (open) {
@@ -806,37 +973,62 @@ export function TutorialChecklistHud() {
                 trigger={
                     <IconButton
                         aria-label={
-                            progressLabel ? `Zadaci ${progressLabel}` : 'Zadaci'
+                            allTasksFinished
+                                ? 'Svi zadaci su dovršeni'
+                                : progressLabel
+                                  ? `Zadaci ${progressLabel}`
+                                  : 'Zadaci'
                         }
-                        className="relative rounded-full w-10 h-10"
+                        className={cx(
+                            'relative rounded-full w-10 h-10',
+                            allTasksFinished &&
+                                'bg-green-600 text-white hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600',
+                        )}
+                        data-tutorial-checklist-complete={
+                            allTasksFinished ? 'true' : 'false'
+                        }
                         data-tutorial-checklist-trigger="true"
                         title="Zadaci"
                         variant="plain"
                     >
-                        <Image
-                            alt=""
-                            aria-hidden="true"
-                            className="pointer-events-none absolute left-1/2 top-0 size-9 shrink-0 -translate-x-1/2 -translate-y-3.5 object-contain drop-shadow-[0_2px_3px_rgb(15_23_42_/_0.35)]"
-                            data-tutorial-checklist-trigger-icon="true"
-                            height={36}
-                            loading="eager"
-                            src={tutorialTaskListIconSrc}
-                            unoptimized
-                            width={36}
-                        />
-                        <Typography
-                            aria-hidden="true"
-                            bold
-                            className="pointer-events-none text-foreground mt-5"
-                            data-tutorial-checklist-progress="true"
-                            level="body3"
-                        >
-                            {progressLabel ?? '0/0'}
-                        </Typography>
+                        {allTasksFinished ? (
+                            <Check
+                                aria-hidden="true"
+                                className="pointer-events-none size-6"
+                                data-tutorial-checklist-complete-icon="true"
+                            />
+                        ) : (
+                            <>
+                                <Image
+                                    alt=""
+                                    aria-hidden="true"
+                                    className="pointer-events-none absolute left-1/2 top-0 size-9 shrink-0 -translate-x-1/2 -translate-y-3.5 object-contain drop-shadow-[0_2px_3px_rgb(15_23_42_/_0.35)]"
+                                    data-tutorial-checklist-trigger-icon="true"
+                                    height={36}
+                                    loading="eager"
+                                    src={tutorialTaskListIconSrc}
+                                    unoptimized
+                                    width={36}
+                                />
+                                <Typography
+                                    aria-hidden="true"
+                                    bold
+                                    className="pointer-events-none text-foreground mt-5"
+                                    data-tutorial-checklist-progress="true"
+                                    level="body3"
+                                >
+                                    {progressLabel ?? '0/0'}
+                                </Typography>
+                            </>
+                        )}
                     </IconButton>
                 }
             >
-                <TutorialChecklistContent onOpenChange={handleOpenChange} />
+                <TutorialChecklistContent
+                    allTasksFinished={allTasksFinished}
+                    onDismissCompleted={handleDismissCompleted}
+                    onOpenChange={handleOpenChange}
+                />
             </Modal>
         </HudCard>
     );

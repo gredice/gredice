@@ -3,7 +3,7 @@
 import { useFrame, useThree } from '@react-three/fiber';
 import chroma from 'chroma-js';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { getPosition } from 'suncalc';
+import SunCalc from 'suncalc';
 import { Color, Quaternion, Vector3 } from 'three';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useSnapshotTime } from '../hooks/useSnapshotTime';
@@ -313,7 +313,7 @@ function getSunPosition(
     timeOfDay: number,
 ) {
     const date = timeOfDayToDate(currentTime, timeOfDay);
-    const { altitude, azimuth } = getPosition(date, lat, lon);
+    const { altitude, azimuth } = SunCalc.getPosition(date, lat, lon);
     return altAzToScenePosition(altitude, azimuth);
 }
 

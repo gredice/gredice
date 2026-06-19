@@ -1,4 +1,4 @@
-import { getTimes } from 'suncalc';
+import SunCalc from 'suncalc';
 import { ALWAYS_DAY_TIME } from './dayNightCycle';
 
 const sunriseValue = 0.2;
@@ -24,7 +24,7 @@ export function getGameSunriseSunset(
     { lat, lon }: GameLocation,
     currentTime: Date,
 ) {
-    const { sunrise, sunset } = getTimes(currentTime, lat, lon);
+    const { sunrise, sunset } = SunCalc.getTimes(currentTime, lat, lon);
     return { sunrise, sunset };
 }
 

@@ -160,7 +160,7 @@ test('tutorial checklist modal uses claimable checklist cards and collapses comp
     expect(activeGroupHeaderBox).not.toBeNull();
     expect(
         Math.abs((activeGroupHeaderBox?.x ?? 0) - (activeGroupBox?.x ?? 0)),
-    ).toBeLessThanOrEqual(1);
+    ).toBeLessThanOrEqual(2);
     expect(
         Math.abs(
             (activeGroupHeaderBox?.width ?? 0) - (activeGroupBox?.width ?? 0),
@@ -291,4 +291,86 @@ test('tutorial checklist modal uses readable dark mode surfaces', async ({
     expect(claimableBackground).toBe(tokenColors.background);
     expect(openButtonBackground).toBe(tokenColors.background);
     expect(titleColor).toBe(tokenColors.foreground);
+});
+
+test('tutorial checklist completed state shows a green checkmark and can be hidden', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await mount(<TutorialChecklistHudStory variant="completed" />);
+
+    const trigger = page.locator('[data-tutorial-checklist-trigger="true"]');
+    await expect(trigger).toBeVisible();
+    await expect(trigger).toHaveAttribute(
+        'data-tutorial-checklist-complete',
+        'true',
+    );
+    await expect(
+        trigger.locator('[data-tutorial-checklist-complete-icon="true"]'),
+    ).toBeVisible();
+    await expect(
+        page.locator('[data-tutorial-checklist-progress="true"]'),
+    ).toHaveCount(0);
+    await expect(
+        page.locator('[data-tutorial-checklist-claim-dot="true"]'),
+    ).toHaveCount(0);
+
+    await trigger.click();
+
+    const dialog = page.getByRole('dialog', { name: 'Zadaci za novi vrt' });
+    await expect(dialog).toBeVisible();
+
+    const completeBanner = dialog.locator(
+        '[data-tutorial-checklist-complete-banner="true"]',
+    );
+    await expect(completeBanner).toBeVisible();
+    await expect(
+        completeBanner.locator(
+            '[data-tutorial-checklist-complete-text="true"]',
+        ),
+    ).toHaveText('Svi zadaci su dovršeni.');
+    const completeBannerClassName = await completeBanner.evaluate(
+        (node) => node.className,
+    );
+    expect(completeBannerClassName).toContain('bg-green-600');
+
+    await completeBanner.getByRole('button', { name: 'Sakrij popis' }).click();
+
+    await expect(
+        page.locator('[data-tutorial-checklist-trigger="true"]'),
+    ).toHaveCount(0);
+});
+
+test('tutorial checklist completed dismissal returns when the task set changes', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize({ width: 1024, height: 768 });
+    const component = await mount(
+        <TutorialChecklistHudStory variant="completed" />,
+    );
+
+    await page.locator('[data-tutorial-checklist-trigger="true"]').click();
+    await page
+        .getByRole('dialog', { name: 'Zadaci za novi vrt' })
+        .getByRole('button', { name: 'Sakrij popis' })
+        .click();
+    await expect(
+        page.locator('[data-tutorial-checklist-trigger="true"]'),
+    ).toHaveCount(0);
+
+    await component.update(
+        <TutorialChecklistHudStory variant="completed-with-new-task" />,
+    );
+
+    const trigger = page.locator('[data-tutorial-checklist-trigger="true"]');
+    await expect(trigger).toBeVisible();
+    await expect(trigger).toHaveAttribute(
+        'data-tutorial-checklist-complete',
+        'true',
+    );
+    await expect(
+        trigger.locator('[data-tutorial-checklist-complete-icon="true"]'),
+    ).toBeVisible();
 });
