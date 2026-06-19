@@ -136,6 +136,7 @@ const clearDogWeather = {
 const dogScale = 0.46;
 const dogGroundLift = 0.02;
 const dogHouseDoorOffset = 0.46;
+const dogHouseNightRestInset = 0.42;
 const dogGroundSurfaceHalfSize = 0.5;
 const dogGroundSurfaceEpsilon = 0.001;
 const dogWalkSpeedBlocksPerSecond = 0.9;
@@ -243,6 +244,33 @@ function getDogWalkYAt(
 
 function getTargetWalkPosition(target: DogTarget) {
     return (target.walkPosition ?? target.position).clone();
+}
+
+function copyDogSettledPosition(
+    result: Vector3,
+    target: DogTarget,
+    timeOfDay: number,
+) {
+    result.copy(target.position);
+
+    if (
+        target.behavior === 'doghouse' &&
+        isDogNight(timeOfDay) &&
+        target.facingYaw !== undefined
+    ) {
+        result.x -= Math.sin(target.facingYaw) * dogHouseNightRestInset;
+        result.z -= Math.cos(target.facingYaw) * dogHouseNightRestInset;
+    }
+
+    return result;
+}
+
+function isDogSettledAtTarget(runtime: DogRuntimeState, target: DogTarget) {
+    return (
+        runtime.phase === 'settled' &&
+        runtime.target.id === target.id &&
+        runtime.target.behavior === target.behavior
+    );
 }
 
 function candidatesInRange<T extends { position: Vector3 }>(
@@ -1603,7 +1631,10 @@ function Dog({
             weather,
         });
 
-        if (group.position.distanceTo(target.position) < 0.08) {
+        if (
+            isDogSettledAtTarget(runtime, target) ||
+            group.position.distanceTo(target.position) < 0.08
+        ) {
             runtimeRef.current = makeSettledState({
                 now,
                 random,
@@ -1692,6 +1723,7 @@ function Dog({
 
                 if (target) {
                     runtime =
+                        isDogSettledAtTarget(runtime, target) ||
                         group.position.distanceTo(target.position) < 0.08
                             ? makeSettledState({
                                   now,
@@ -1772,7 +1804,7 @@ function Dog({
             rig: dogModel.rig,
             walkDistance: 0,
         });
-        group.position.copy(runtime.target.position);
+        copyDogSettledPosition(group.position, runtime.target, timeOfDay);
         if (
             runtime.target.behavior === 'doghouse' ||
             runtime.target.behavior === 'cover'
@@ -1809,7 +1841,10 @@ function Dog({
             timeOfDay,
             weather,
         });
-        if (group.position.distanceTo(target.position) < 0.08) {
+        if (
+            isDogSettledAtTarget(runtime, target) ||
+            group.position.distanceTo(target.position) < 0.08
+        ) {
             runtimeRef.current = makeSettledState({
                 now,
                 random,
