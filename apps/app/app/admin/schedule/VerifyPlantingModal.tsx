@@ -1,8 +1,6 @@
 'use client';
 
 import { Button } from '@gredice/ui/Button';
-import { IconButton } from '@gredice/ui/IconButton';
-import { Check } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -49,13 +47,15 @@ export function VerifyPlantingModal({
             open={open}
             onOpenChange={setOpen}
             trigger={
-                <IconButton
-                    variant="plain"
+                <Button
+                    variant="solid"
+                    color="success"
+                    size="sm"
                     title="Verificiraj sijanje"
                     loading={isSubmitting}
                 >
-                    <Check className="size-4 shrink-0" />
-                </IconButton>
+                    Potvrdi
+                </Button>
             }
         >
             <Stack spacing={4}>

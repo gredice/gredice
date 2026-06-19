@@ -122,6 +122,24 @@ export function formatMinutes(minutes: number, hideUnit = false) {
     return hideUnit ? `${rounded}` : `${rounded} min`;
 }
 
+export function getScheduleTaskRowClassName({
+    accepted,
+    pendingAcceptance,
+}: {
+    accepted: boolean;
+    pendingAcceptance: boolean;
+}) {
+    if (accepted) {
+        return 'rounded bg-muted/60 text-foreground hover:bg-muted/80';
+    }
+
+    if (pendingAcceptance) {
+        return 'rounded bg-amber-50/80 text-foreground ring-1 ring-inset ring-amber-200/70 hover:bg-amber-100/80 dark:bg-amber-950/40 dark:ring-amber-900/70 dark:hover:bg-amber-950/60';
+    }
+
+    return 'rounded hover:bg-muted';
+}
+
 export function isTaskDateBeforeToday(date: Date | undefined) {
     if (!date) {
         return false;

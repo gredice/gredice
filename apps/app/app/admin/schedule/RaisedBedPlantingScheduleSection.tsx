@@ -36,6 +36,7 @@ import { RescheduleRaisedBedFieldModal } from './RescheduleRaisedBedFieldModal';
 import { parseScheduledDateInput } from './scheduleOptimisticHelpers';
 import {
     formatMinutes,
+    getScheduleTaskRowClassName,
     isFieldApproved,
     isFieldCompleted,
     isFieldPendingVerification,
@@ -414,16 +415,17 @@ export function RaisedBedPlantingScheduleSection({
                     const fieldLocked =
                         fieldCompleted || fieldPendingVerification;
                     const fieldApprovedActive = fieldApproved && !fieldLocked;
+                    const fieldPendingAcceptance =
+                        !fieldApproved && !fieldLocked;
 
                     return (
                         <div key={field.id}>
                             <Row
                                 spacing={2}
-                                className={
-                                    fieldApprovedActive
-                                        ? 'rounded bg-muted/60 text-foreground hover:bg-muted/80'
-                                        : 'rounded hover:bg-muted'
-                                }
+                                className={getScheduleTaskRowClassName({
+                                    accepted: fieldApprovedActive,
+                                    pendingAcceptance: fieldPendingAcceptance,
+                                })}
                             >
                                 <Row spacing={2} className="grow">
                                     {fieldCompleted ? (
