@@ -1,6 +1,8 @@
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
-import { Book, Printer } from '@gredice/ui/icons';
+import { Book, Hammer, Printer, Sprout } from '@gredice/ui/icons';
+import { DropdownMenuItem } from '@gredice/ui/Menu';
+import { SplitButton } from '@gredice/ui/SplitButton';
 import { Stack } from '@gredice/ui/Stack';
 import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
@@ -11,7 +13,9 @@ import { DocumentationChangeTypeBadge } from './DocumentationChangeTypeBadge';
 import { DocumentationSummaryCard } from './DocumentationSummaryCard';
 import {
     discardedDocumentationPages,
+    documentationPackageContentQueryValue,
     type FarmerDocumentationChangeType,
+    type FarmerDocumentationPackageContent,
     formatDocumentationDateTime,
     getFarmerDocumentationPackage,
     includedDocumentationPages,
@@ -43,20 +47,58 @@ export default async function FarmerDocumentationPage({
         since,
     });
     const packageRows = packageTableRows(documentationPackage);
-    const changesHref = printoutHref(sinceInput);
+    const changesHref = printoutHref({ sinceInput });
+    const operationsChangesHref = printoutHref({
+        sinceInput,
+        content: 'operations',
+    });
+    const plantSortsChangesHref = printoutHref({
+        sinceInput,
+        content: 'plantSorts',
+    });
     const invalidSince = Boolean(sinceInput) && !since;
+    const menuAllLabel = since ? 'Sve promjene' : 'Cijeli paket';
 
     return (
         <Stack spacing={4}>
             <AdminPageHeader
                 actions={
                     <>
-                        <Button
+                        <SplitButton
                             href={changesHref}
                             startDecorator={<Printer className="size-4" />}
+                            dropdownLabel="Odaberi sadržaj paketa"
+                            menuContent={
+                                <>
+                                    <DropdownMenuItem
+                                        href={changesHref}
+                                        startDecorator={
+                                            <Printer className="size-4" />
+                                        }
+                                    >
+                                        {menuAllLabel}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        href={operationsChangesHref}
+                                        startDecorator={
+                                            <Hammer className="size-4" />
+                                        }
+                                    >
+                                        Samo radnje
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        href={plantSortsChangesHref}
+                                        startDecorator={
+                                            <Sprout className="size-4" />
+                                        }
+                                    >
+                                        Samo biljke/sorte
+                                    </DropdownMenuItem>
+                                </>
+                            }
                         >
                             Preuzmi paket
-                        </Button>
+                        </SplitButton>
                         <Button
                             href={`${KnownPages.FarmerDocumentationPrintout}?scope=all`}
                             variant="outlined"
@@ -226,10 +268,19 @@ function singleSearchParam(value: string | string[] | undefined) {
     return Array.isArray(value) ? value[0] : value;
 }
 
-function printoutHref(sinceInput: string | undefined) {
+function printoutHref({
+    content = 'all',
+    sinceInput,
+}: {
+    content?: FarmerDocumentationPackageContent;
+    sinceInput: string | undefined;
+}) {
     const params = new URLSearchParams();
     if (sinceInput) {
         params.set('since', sinceInput);
+    }
+    if (content !== 'all') {
+        params.set('content', documentationPackageContentQueryValue(content));
     }
 
     const query = params.toString();

@@ -1,6 +1,7 @@
 import { auth } from '../../../../../lib/auth/auth';
 import {
     getFarmerDocumentationPackage,
+    parseDocumentationPackageContent,
     parseDocumentationSince,
 } from '../farmerDocumentationData';
 import {
@@ -15,6 +16,9 @@ export async function GET(request: Request) {
 
     const url = new URL(request.url);
     const scope = url.searchParams.get('scope');
+    const content = parseDocumentationPackageContent(
+        url.searchParams.get('content'),
+    );
     const since =
         scope === 'all'
             ? null
@@ -22,13 +26,16 @@ export async function GET(request: Request) {
     const documentationPackage = await getFarmerDocumentationPackage({
         since,
     });
-    const pdf = generateFarmerDocumentationPdf(documentationPackage);
+    const pdf = generateFarmerDocumentationPdf(documentationPackage, {
+        content,
+    });
 
     return new Response(pdf, {
         headers: {
             'Cache-Control': 'no-store',
             'Content-Disposition': `attachment; filename="${farmerDocumentationFilename(
                 documentationPackage,
+                content,
             )}"`,
             'Content-Length': String(pdf.byteLength),
             'Content-Type': 'application/pdf',

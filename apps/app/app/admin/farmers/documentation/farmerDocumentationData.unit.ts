@@ -4,6 +4,7 @@ import type { EntityStandardized } from '@gredice/storage';
 import {
     buildFarmerDocumentationPackage,
     currentDocumentationPages,
+    discardedDocumentationPages,
     type FarmerDocumentationRevision,
     includedDocumentationPages,
 } from './farmerDocumentationData';
@@ -140,6 +141,18 @@ test('builds insert, replace, and discard instructions from manual revisions', (
         ['PS-0014', 'OP-0008', 'OP-0004'],
     );
     assert.deepEqual(
+        includedDocumentationPages(documentationPackage, 'operations').map(
+            (page) => page.code,
+        ),
+        ['OP-0008', 'OP-0004'],
+    );
+    assert.deepEqual(
+        includedDocumentationPages(documentationPackage, 'plantSorts').map(
+            (page) => page.code,
+        ),
+        ['PS-0014'],
+    );
+    assert.deepEqual(
         documentationPackage.includedOperations[0]?.summaryRows.find(
             (row) => row.label === 'Cijena',
         ),
@@ -153,10 +166,22 @@ test('builds insert, replace, and discard instructions from manual revisions', (
         [['OP-0011', 'Stara radnja']],
     );
     assert.deepEqual(
+        discardedDocumentationPages(documentationPackage, 'operations').map(
+            (operation) => [operation.code, operation.label],
+        ),
+        [['OP-0011', 'Stara radnja']],
+    );
+    assert.deepEqual(
         documentationPackage.discardedPlantSorts.map((plantSort) => [
             plantSort.code,
             plantSort.label,
         ]),
+        [['PS-0016', 'Stara sorta']],
+    );
+    assert.deepEqual(
+        discardedDocumentationPages(documentationPackage, 'plantSorts').map(
+            (plantSort) => [plantSort.code, plantSort.label],
+        ),
         [['PS-0016', 'Stara sorta']],
     );
 });
@@ -236,6 +261,65 @@ test('generates a guide-first PDF without page numbering text', () => {
     assert.match(content, /2,50 EUR/);
     assert.match(content, /2 Tr \(Gredice\)/);
     assert.doesNotMatch(content, /Stranica \d/);
+});
+
+test('generates filtered PDF packages for updates', () => {
+    const documentationPackage = buildFarmerDocumentationPackage({
+        generatedAt,
+        since,
+        labelAttributeDefinitionIds: {
+            operation: new Set(),
+            plantSort: new Set(),
+        },
+        operations: [
+            operationFixture(4, 'Zalijevanje', {
+                duration: 25,
+                application: 'raisedBedFull',
+            }),
+        ],
+        plantSorts: [
+            plantSortFixture(14, 'Cherry rajčica', {
+                reproductionType: 'seed',
+            }),
+        ],
+        revisions: [
+            revisionFixture({
+                id: 1,
+                entityId: 4,
+                action: 'attribute.updated',
+                createdAt: new Date('2026-06-08T12:00:00.000Z'),
+            }),
+            revisionFixture({
+                id: 2,
+                entityId: 14,
+                entityTypeName: 'plantSort',
+                action: 'attribute.updated',
+                createdAt: new Date('2026-06-08T13:00:00.000Z'),
+            }),
+        ],
+    });
+
+    const pdf = generateFarmerDocumentationPdf(documentationPackage, {
+        content: 'operations',
+    });
+    const content = new TextDecoder().decode(pdf);
+
+    assert.match(content, /ORG-GUIDE/);
+    assert.match(content, /Radnje/);
+    assert.match(content, /OP-0004/);
+    assert.match(content, /Kratak opis radnje/);
+    assert.doesNotMatch(content, /Kratak opis sorte/);
+
+    const plantSortsPdf = generateFarmerDocumentationPdf(documentationPackage, {
+        content: 'plantSorts',
+    });
+    const plantSortsContent = new TextDecoder().decode(plantSortsPdf);
+
+    assert.match(plantSortsContent, /ORG-GUIDE/);
+    assert.match(plantSortsContent, /Biljke i sorte/);
+    assert.match(plantSortsContent, /PS-0014/);
+    assert.match(plantSortsContent, /Kratak opis sorte/);
+    assert.doesNotMatch(plantSortsContent, /Kratak opis radnje/);
 });
 
 function operationFixture(

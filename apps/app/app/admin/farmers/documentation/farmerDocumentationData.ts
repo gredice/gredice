@@ -17,6 +17,10 @@ import { and, desc, gte, inArray } from 'drizzle-orm';
 
 export type FarmerDocumentationChangeType = 'insert' | 'replace' | 'discard';
 export type FarmerDocumentationEntityTypeName = 'operation' | 'plantSort';
+export type FarmerDocumentationPackageContent =
+    | 'all'
+    | 'operations'
+    | 'plantSorts';
 
 export type FarmerDocumentationAttribute = {
     label: string;
@@ -243,31 +247,70 @@ export function documentationChangeLabel(type: FarmerDocumentationChangeType) {
     }
 }
 
+export function parseDocumentationPackageContent(
+    value: string | null | undefined,
+): FarmerDocumentationPackageContent {
+    switch (value?.trim()) {
+        case 'operations':
+            return 'operations';
+        case 'plant-sorts':
+        case 'plantSorts':
+            return 'plantSorts';
+        default:
+            return 'all';
+    }
+}
+
+export function documentationPackageContentQueryValue(
+    content: FarmerDocumentationPackageContent,
+) {
+    switch (content) {
+        case 'all':
+            return 'all';
+        case 'operations':
+            return 'operations';
+        case 'plantSorts':
+            return 'plant-sorts';
+    }
+}
+
 export function includedDocumentationPages(
     documentationPackage: FarmerDocumentationPackage,
+    content: FarmerDocumentationPackageContent = 'all',
 ) {
-    return [
-        ...documentationPackage.includedOperations,
-        ...documentationPackage.includedPlantSorts,
-    ].sort(compareDocumentationPage);
+    return filterDocumentationPagesByContent(
+        [
+            ...documentationPackage.includedOperations,
+            ...documentationPackage.includedPlantSorts,
+        ],
+        content,
+    ).sort(compareDocumentationPage);
 }
 
 export function currentDocumentationPages(
     documentationPackage: FarmerDocumentationPackage,
+    content: FarmerDocumentationPackageContent = 'all',
 ) {
-    return [
-        ...documentationPackage.currentOperations,
-        ...documentationPackage.currentPlantSorts,
-    ].sort(compareDocumentationPage);
+    return filterDocumentationPagesByContent(
+        [
+            ...documentationPackage.currentOperations,
+            ...documentationPackage.currentPlantSorts,
+        ],
+        content,
+    ).sort(compareDocumentationPage);
 }
 
 export function discardedDocumentationPages(
     documentationPackage: FarmerDocumentationPackage,
+    content: FarmerDocumentationPackageContent = 'all',
 ) {
-    return [
-        ...documentationPackage.discardedOperations,
-        ...documentationPackage.discardedPlantSorts,
-    ].sort(compareDocumentationPage);
+    return filterDocumentationPagesByContent(
+        [
+            ...documentationPackage.discardedOperations,
+            ...documentationPackage.discardedPlantSorts,
+        ],
+        content,
+    ).sort(compareDocumentationPage);
 }
 
 export async function getFarmerDocumentationPackage({
@@ -496,6 +539,19 @@ function shouldIncludeCurrentEntity(
             documentationEntityKey(entityTypeName, entity.id),
         )
     );
+}
+
+function filterDocumentationPagesByContent<
+    T extends { entityTypeName: FarmerDocumentationEntityTypeName },
+>(pages: T[], content: FarmerDocumentationPackageContent) {
+    switch (content) {
+        case 'all':
+            return pages;
+        case 'operations':
+            return pages.filter((page) => page.entityTypeName === 'operation');
+        case 'plantSorts':
+            return pages.filter((page) => page.entityTypeName === 'plantSort');
+    }
 }
 
 function discardedPagesForType({
