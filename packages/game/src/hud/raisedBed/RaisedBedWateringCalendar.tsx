@@ -78,10 +78,13 @@ function operationDate(operation: GardenOperationItem) {
         return null;
     }
 
+    const completionDate =
+        dateFromUnknown(operation.verifiedAt) ??
+        dateFromUnknown(operation.completedAt);
+
     if (operation.status === 'completed') {
         return (
-            dateFromUnknown(operation.verifiedAt) ??
-            dateFromUnknown(operation.completedAt) ??
+            completionDate ??
             dateFromUnknown(operation.scheduledDate) ??
             dateFromUnknown(operation.createdAt)
         );
@@ -89,8 +92,9 @@ function operationDate(operation: GardenOperationItem) {
 
     if (operation.status === 'confirmed') {
         return (
-            dateFromUnknown(operation.completedAt) ??
+            completionDate ??
             dateFromUnknown(operation.scheduledDate) ??
+            dateFromUnknown(operation.scheduledAt) ??
             dateFromUnknown(operation.createdAt)
         );
     }
@@ -104,9 +108,19 @@ function operationDate(operation: GardenOperationItem) {
 function operationSource(
     operation: GardenOperationItem,
 ): WateringCalendarEntrySource {
-    return operation.status === 'completed' || operation.status === 'confirmed'
-        ? 'completed'
-        : 'scheduled';
+    if (operation.status === 'completed') {
+        return 'completed';
+    }
+
+    if (
+        operation.status === 'confirmed' &&
+        (dateFromUnknown(operation.verifiedAt) ??
+            dateFromUnknown(operation.completedAt))
+    ) {
+        return 'completed';
+    }
+
+    return 'scheduled';
 }
 
 function cartItemMatchesRaisedBed({
