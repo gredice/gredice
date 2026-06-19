@@ -4,6 +4,7 @@ import {
     discardedDocumentationPages,
     documentationChangeLabel,
     type FarmerDocumentationPackage,
+    type FarmerDocumentationPackageContent,
     type FarmerDocumentationPage,
     formatDocumentationDateTime,
     getFarmerAppOrigin,
@@ -231,21 +232,29 @@ class PdfCanvas {
 
 export function generateFarmerDocumentationPdf(
     data: FarmerDocumentationPackage,
+    {
+        content = 'all',
+    }: {
+        content?: FarmerDocumentationPackageContent;
+    } = {},
 ): ArrayBuffer {
     const farmOrigin = getFarmerAppOrigin();
     const version = farmerDocumentationVersion(data.generatedAt);
     const pages: PdfCanvas[] = [];
 
-    drawOrganizationGuide({ data, farmOrigin, pages, version });
+    drawOrganizationGuide({ content, data, farmOrigin, pages, version });
 
-    for (const page of includedDocumentationPages(data)) {
+    for (const page of includedDocumentationPages(data, content)) {
         drawDocumentationPage({ data, farmOrigin, pages, version, page });
     }
 
     return writePdf(pages.map((page) => page.toString()));
 }
 
-export function farmerDocumentationFilename(data: FarmerDocumentationPackage) {
+export function farmerDocumentationFilename(
+    data: FarmerDocumentationPackage,
+    content: FarmerDocumentationPackageContent = 'all',
+) {
     const datePart = new Intl.DateTimeFormat('en-CA', {
         timeZone: 'Europe/Zagreb',
         year: 'numeric',
@@ -253,8 +262,9 @@ export function farmerDocumentationFilename(data: FarmerDocumentationPackage) {
         day: '2-digit',
     }).format(data.generatedAt);
     const scopePart = data.since ? 'promjene' : 'sve-stranice';
+    const contentPart = farmerDocumentationFilenameContentPart(content);
 
-    return `farmeri-dokumentacija-${scopePart}-${datePart}.pdf`;
+    return `farmeri-dokumentacija-${scopePart}${contentPart}-${datePart}.pdf`;
 }
 
 export function farmerDocumentationVersion(date: Date) {
@@ -277,32 +287,36 @@ export function farmerDocumentationVersion(date: Date) {
 }
 
 function drawOrganizationGuide({
+    content,
     data,
     farmOrigin,
     pages,
     version,
 }: {
+    content: FarmerDocumentationPackageContent;
     data: FarmerDocumentationPackage;
     farmOrigin: string;
     pages: PdfCanvas[];
     version: string;
 }) {
+    const subtitleScope = data.since
+        ? `Promjene od ${formatDocumentationDateTime(data.since)}`
+        : 'Cijeli prirucnik';
+    const subtitleContent = organizationGuideContentSubtitle(content);
     let context = startPage(pages, {
         code: 'ORG-GUIDE',
         title: 'Vodic za organizaciju',
-        subtitle: data.since
-            ? `Promjene od ${formatDocumentationDateTime(data.since)}`
-            : 'Cijeli prirucnik',
+        subtitle: subtitleContent
+            ? `${subtitleScope} - ${subtitleContent}`
+            : subtitleScope,
         qrUrl: farmOrigin,
         version,
         generatedAt: data.generatedAt,
     });
-    const packageType = data.since
-        ? 'Paket sadrzi organizacijski vodic i sve prirucnike promijenjene od zadnjeg ispisa.'
-        : 'Paket sadrzi organizacijski vodic i sve trenutno objavljene prirucnike.';
-    const includedPages = includedDocumentationPages(data);
+    const packageType = organizationGuidePackageDescription(data, content);
+    const includedPages = includedDocumentationPages(data, content);
     const allCurrentPages = currentDocumentationPages(data);
-    const discardedPages = discardedDocumentationPages(data);
+    const discardedPages = discardedDocumentationPages(data, content);
 
     context = drawSection(context, 'Svrha paketa', [
         packageType,
@@ -332,6 +346,58 @@ function drawOrganizationGuide({
     ]);
 
     drawFooter(context.page);
+}
+
+function farmerDocumentationFilenameContentPart(
+    content: FarmerDocumentationPackageContent,
+) {
+    switch (content) {
+        case 'all':
+            return '';
+        case 'operations':
+            return '-radnje';
+        case 'plantSorts':
+            return '-biljke-sorte';
+    }
+}
+
+function organizationGuideContentSubtitle(
+    content: FarmerDocumentationPackageContent,
+) {
+    switch (content) {
+        case 'all':
+            return null;
+        case 'operations':
+            return 'Radnje';
+        case 'plantSorts':
+            return 'Biljke i sorte';
+    }
+}
+
+function organizationGuidePackageDescription(
+    data: FarmerDocumentationPackage,
+    content: FarmerDocumentationPackageContent,
+) {
+    const contentLabel = organizationGuidePackageContentLabel(content);
+
+    if (data.since) {
+        return `Paket sadrzi organizacijski vodic i ${contentLabel} promijenjene od zadnjeg ispisa.`;
+    }
+
+    return `Paket sadrzi organizacijski vodic i ${contentLabel} trenutno objavljene u farmer aplikaciji.`;
+}
+
+function organizationGuidePackageContentLabel(
+    content: FarmerDocumentationPackageContent,
+) {
+    switch (content) {
+        case 'all':
+            return 'sve prirucnike';
+        case 'operations':
+            return 'prirucnike radnji';
+        case 'plantSorts':
+            return 'prirucnike biljaka i sorti';
+    }
 }
 
 function drawActionList(
