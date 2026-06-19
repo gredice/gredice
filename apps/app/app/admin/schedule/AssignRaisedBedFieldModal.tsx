@@ -138,7 +138,7 @@ export function AssignRaisedBedFieldModal({
         selectedUsers.length > 0 ? (
             <button
                 type="button"
-                className="inline-flex size-7 items-center justify-center rounded-full transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex h-7 min-w-7 items-center justify-center rounded-full transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
                 title={`Dodijeljeno korisnika: ${selectedUsers.length}`}
                 aria-label={`Dodijeljeno korisnika: ${selectedUsers.length}`}
                 disabled={!canOpen}

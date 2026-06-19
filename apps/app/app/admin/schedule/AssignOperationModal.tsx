@@ -120,7 +120,7 @@ export function AssignOperationModal({
         (assignedUsers?.length ?? 0) > 0 ? (
             <button
                 type="button"
-                className="inline-flex size-7 items-center justify-center rounded-full transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex h-7 min-w-7 items-center justify-center rounded-full transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
                 title={`Dodijeljeno korisnika: ${assignedUsers?.length ?? 0}`}
                 aria-label={`Dodijeljeno korisnika: ${assignedUsers?.length ?? 0}`}
                 disabled={!canOpen}
