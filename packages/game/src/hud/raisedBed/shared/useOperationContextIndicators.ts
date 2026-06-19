@@ -38,7 +38,6 @@ export function useOperationContextIndicators({
     const { data: cart } = useShoppingCart();
     const scheduledOperations = useGardenOperations({
         includeCompleted: true,
-        pageSize: 50,
         raisedBedId,
         positionIndex,
     });
