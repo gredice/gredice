@@ -5,9 +5,9 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useMemo } from 'react';
 import { useOperations } from '../../hooks/useOperations';
-import { useShoppingCart } from '../../hooks/useShoppingCart';
 import { isSeedlingTransplantingOperation } from './greenhouseSeedlings';
 import { OperationsListItem } from './shared/OperationsListItem';
+import { useOperationContextIndicators } from './shared/useOperationContextIndicators';
 
 export function GreenhouseSeedlingTransplantAction({
     gardenId,
@@ -19,22 +19,23 @@ export function GreenhouseSeedlingTransplantAction({
     positionIndex: number;
 }) {
     const { data: operations, isError, isLoading } = useOperations();
-    const { data: cart } = useShoppingCart();
+    const { shoppingCartOperationIds, scheduledOperationIds } =
+        useOperationContextIndicators({
+            gardenId,
+            raisedBedId,
+            positionIndex,
+        });
     const transplantOperation = useMemo(
         () => operations?.find(isSeedlingTransplantingOperation),
         [operations],
     );
     const inShoppingCart = Boolean(
         transplantOperation &&
-            cart?.items.some(
-                (item) =>
-                    item.entityTypeName === 'operation' &&
-                    item.status === 'new' &&
-                    item.gardenId === gardenId &&
-                    item.raisedBedId === raisedBedId &&
-                    item.positionIndex === positionIndex &&
-                    Number(item.entityId) === transplantOperation.id,
-            ),
+            shoppingCartOperationIds.has(transplantOperation.id),
+    );
+    const isScheduled = Boolean(
+        transplantOperation &&
+            scheduledOperationIds.has(transplantOperation.id),
     );
 
     if (isLoading) {
@@ -81,6 +82,7 @@ export function GreenhouseSeedlingTransplantAction({
                         raisedBedId={raisedBedId}
                         positionIndex={positionIndex}
                         inShoppingCart={inShoppingCart}
+                        isScheduled={isScheduled}
                     />
                 </CardOverflow>
             </Card>

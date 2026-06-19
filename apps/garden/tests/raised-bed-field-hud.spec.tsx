@@ -201,6 +201,39 @@ function plantedGrowingWithRecommendedOperationsScenario(): RaisedBedScenario {
         ...plantedGrowingScenario(),
         operations,
         sorts: [tomatoSortWithOperations],
+        operationHistoryItems: [
+            {
+                id: 801,
+                entityId: 201,
+                entityTypeName: 'operation',
+                raisedBedId: 1,
+                raisedBedFieldId: 1,
+                status: 'completed',
+                createdAt: '2026-05-09T00:00:00.000Z',
+                scheduledDate: '2026-05-10T00:00:00.000Z',
+                scheduledAt: '2026-05-09T00:00:00.000Z',
+                completedAt: '2026-05-10T08:00:00.000Z',
+                verifiedAt: '2026-05-10T09:00:00.000Z',
+                canceledAt: null,
+                imageUrls: [],
+                completionNotes: null,
+                targetLabel: 'Raised Bed 1 › Polje 1',
+                statusHistory: [
+                    {
+                        status: 'new',
+                        changedAt: '2026-05-09T00:00:00.000Z',
+                    },
+                    {
+                        status: 'planned',
+                        changedAt: '2026-05-09T00:00:00.000Z',
+                    },
+                    {
+                        status: 'completed',
+                        changedAt: '2026-05-10T09:00:00.000Z',
+                    },
+                ],
+            },
+        ],
     };
 }
 
@@ -845,6 +878,12 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await expect(recommendationsList).toBeVisible();
         await expect(recommendationsList).toContainText('Okopavanje');
         await expect(recommendationsList).toContainText('Uklanjanje korova');
+        await expect(
+            recommendationsList.locator('[data-operation-id="201"]'),
+        ).toContainText('Zakazano');
+        await expect(
+            recommendationsList.locator('[data-operation-id="202"]'),
+        ).not.toContainText('Zakazano');
 
         const listItems = recommendationsList.locator(':scope > *');
         await expect(listItems).toHaveCount(3);
@@ -867,6 +906,11 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
                 .locator('[role="tabpanel"]:not([hidden])')
                 .locator('[data-scroll-view]'),
         ).toBeVisible();
+        await expect(
+            dialog
+                .getByRole('tabpanel', { name: 'Radnje' })
+                .locator('[data-operation-id="201"]'),
+        ).toContainText('Zakazano');
     });
 
     test('favorite operations are ranked first in recommendations and operation choices', async ({

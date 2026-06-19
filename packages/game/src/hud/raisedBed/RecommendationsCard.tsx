@@ -22,6 +22,7 @@ import {
     shouldShowPlantOperationRecommendations,
 } from './featuredOperations';
 import { OperationsListItem } from './shared/OperationsListItem';
+import { useOperationContextIndicators } from './shared/useOperationContextIndicators';
 
 type PlantHealthIssueSummary = NonNullable<
     NonNullable<PlantData['health']>['diseases']
@@ -55,6 +56,12 @@ export function RecommendationsCard({
     } = useOperations();
     const { data: plantSort } = usePlantSort(plantSortId);
     const { data: plants } = usePlants();
+    const { shoppingCartOperationIds, scheduledOperationIds } =
+        useOperationContextIndicators({
+            gardenId,
+            raisedBedId,
+            positionIndex,
+        });
     const plant = plants?.find(
         (candidate) => candidate.id === plantSort?.information.plant.id,
     );
@@ -324,6 +331,12 @@ export function RecommendationsCard({
                                             gardenId={gardenId}
                                             raisedBedId={raisedBedId}
                                             positionIndex={positionIndex}
+                                            inShoppingCart={shoppingCartOperationIds.has(
+                                                operation.id,
+                                            )}
+                                            isScheduled={scheduledOperationIds.has(
+                                                operation.id,
+                                            )}
                                         />
                                     ))}
                                     {onShowOperations && (
@@ -383,6 +396,12 @@ export function RecommendationsCard({
                                                 gardenId={gardenId}
                                                 raisedBedId={raisedBedId}
                                                 positionIndex={positionIndex}
+                                                inShoppingCart={shoppingCartOperationIds.has(
+                                                    operation.id,
+                                                )}
+                                                isScheduled={scheduledOperationIds.has(
+                                                    operation.id,
+                                                )}
                                                 onOperationPicked={() => {
                                                     track(
                                                         'game_plant_health_recommendation_selected',
