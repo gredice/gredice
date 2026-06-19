@@ -129,10 +129,10 @@ export function getScheduleTaskRowClassName({
     pendingAcceptance: boolean;
 }) {
     if (pendingAcceptance) {
-        return 'rounded bg-amber-50/80 text-foreground ring-1 ring-inset ring-amber-200/70 hover:bg-amber-100/80 dark:bg-amber-950/40 dark:ring-amber-900/70 dark:hover:bg-amber-950/60';
+        return 'min-w-0 flex-nowrap rounded bg-amber-50/80 text-foreground ring-1 ring-inset ring-amber-200/70 hover:bg-amber-100/80 dark:bg-amber-950/40 dark:ring-amber-900/70 dark:hover:bg-amber-950/60';
     }
 
-    return 'rounded hover:bg-muted';
+    return 'min-w-0 flex-nowrap rounded hover:bg-muted';
 }
 
 export function isSameScheduleDay(

@@ -225,10 +225,16 @@ export function RaisedBedPlantingScheduleSection({
                 >
                     {raisedBedDetailsLink ? (
                         <Link href={raisedBedDetailsLink}>
-                            <RaisedBedLabel physicalId={physicalId} />
+                            <RaisedBedLabel
+                                physicalId={physicalId}
+                                size="compact"
+                            />
                         </Link>
                     ) : (
-                        <RaisedBedLabel physicalId={physicalId} />
+                        <RaisedBedLabel
+                            physicalId={physicalId}
+                            size="compact"
+                        />
                     )}
                     <Typography level="body2" className="text-muted-foreground">
                         {formatMinutes(durations.completed, true)} /{' '}
@@ -344,7 +350,7 @@ export function RaisedBedPlantingScheduleSection({
                     />
                 </Row>
             </Row>
-            <Stack spacing={2}>
+            <Stack spacing={0}>
                 {!dayFields.length && (
                     <Typography level="body2">
                         Trenutno nema sijanja za ovu gredicu.
@@ -427,22 +433,18 @@ export function RaisedBedPlantingScheduleSection({
                     return (
                         <div key={field.id}>
                             <Row
-                                spacing={2}
+                                spacing={1}
                                 className={getScheduleTaskRowClassName({
                                     accepted: fieldApprovedActive,
                                     pendingAcceptance: fieldPendingAcceptance,
                                 })}
                             >
                                 <Row
-                                    spacing={2}
-                                    className="min-w-0 grow flex-wrap"
+                                    spacing={1}
+                                    className="min-w-0 flex-1 flex-nowrap"
                                 >
                                     {fieldCompleted ? (
-                                        <Checkbox
-                                            className="size-5 mx-2"
-                                            checked
-                                            disabled
-                                        />
+                                        <Checkbox checked disabled />
                                     ) : fieldPendingVerification ? (
                                         <VerifyPlantingModal
                                             raisedBedId={field.raisedBedId}
@@ -476,6 +478,7 @@ export function RaisedBedPlantingScheduleSection({
                                             raisedBedId={field.raisedBedId}
                                             positionIndex={field.positionIndex}
                                             label={fieldLabel}
+                                            raisedBedPhysicalId={physicalId}
                                             disabled={!field.assignedUserId}
                                             onConfirm={() =>
                                                 runOptimisticAction({
@@ -503,14 +506,17 @@ export function RaisedBedPlantingScheduleSection({
                                     ) : (
                                         <CompletePlantingModal
                                             label={fieldLabel}
+                                            raisedBedPhysicalId={physicalId}
                                             onConfirm={handlePlantConfirm}
                                         />
                                     )}
                                     <Typography
+                                        level="body2"
+                                        noWrap
                                         className={
                                             fieldCompleted
-                                                ? 'line-through text-muted-foreground'
-                                                : undefined
+                                                ? 'min-w-0 flex-1 line-through text-muted-foreground'
+                                                : 'min-w-0 flex-1'
                                         }
                                     >
                                         {fieldLabel}
@@ -518,7 +524,7 @@ export function RaisedBedPlantingScheduleSection({
                                     {fieldStatusText && (
                                         <Typography
                                             level="body2"
-                                            className={`ml-1 italic ${fieldStatusClassName}`}
+                                            className={`shrink-0 italic ${fieldStatusClassName}`}
                                         >
                                             {fieldStatusText}
                                         </Typography>
@@ -528,7 +534,7 @@ export function RaisedBedPlantingScheduleSection({
                                         <Typography
                                             level="body2"
                                             component="div"
-                                            className="select-none"
+                                            className="shrink-0 select-none"
                                         >
                                             {showScheduledDate ? (
                                                 <LocalDateTime time={false}>
@@ -556,7 +562,8 @@ export function RaisedBedPlantingScheduleSection({
                                                 ? 'success'
                                                 : 'neutral'
                                         }
-                                        size="sm"
+                                        size="xs"
+                                        className="shrink-0"
                                         title={
                                             greenhouseSowing
                                                 ? 'Označeno za sijanje u stakleniku'
@@ -598,7 +605,7 @@ export function RaisedBedPlantingScheduleSection({
                                             : 'Direktno'}
                                     </Button>
                                 </Row>
-                                <Row spacing={1} className="ml-auto shrink-0">
+                                <Row spacing={0} className="ml-auto shrink-0">
                                     <AssignRaisedBedFieldModal
                                         raisedBedFieldId={field.id}
                                         label={fieldLabel}
@@ -677,6 +684,7 @@ export function RaisedBedPlantingScheduleSection({
                                         trigger={
                                             <IconButton
                                                 variant="plain"
+                                                size="xs"
                                                 title={
                                                     field.plantScheduledDate
                                                         ? 'Prerasporedi sijanje'
@@ -717,6 +725,7 @@ export function RaisedBedPlantingScheduleSection({
                                         trigger={
                                             <IconButton
                                                 variant="plain"
+                                                size="xs"
                                                 title="Otkaži sijanje"
                                                 disabled={fieldLocked}
                                             >

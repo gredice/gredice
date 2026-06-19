@@ -154,6 +154,7 @@ export function BulkAssignRaisedBedButton({
             trigger={
                 <IconButton
                     variant="plain"
+                    size="xs"
                     title="Dodijeli korisnika svim nepotvrđenim zadacima gredice"
                     disabled={disabled}
                     aria-disabled={disabled}

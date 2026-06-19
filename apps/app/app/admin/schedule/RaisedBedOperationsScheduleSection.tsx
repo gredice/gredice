@@ -230,10 +230,16 @@ export function RaisedBedOperationsScheduleSection({
                 >
                     {raisedBedDetailsLink ? (
                         <Link href={raisedBedDetailsLink}>
-                            <RaisedBedLabel physicalId={physicalId} />
+                            <RaisedBedLabel
+                                physicalId={physicalId}
+                                size="compact"
+                            />
                         </Link>
                     ) : (
-                        <RaisedBedLabel physicalId={physicalId} />
+                        <RaisedBedLabel
+                            physicalId={physicalId}
+                            size="compact"
+                        />
                     )}
                     <Typography level="body2" className="text-muted-foreground">
                         {formatMinutes(durations.completed, true)} /{' '}
@@ -362,7 +368,7 @@ export function RaisedBedOperationsScheduleSection({
                     />
                 </Row>
             </Row>
-            <Stack spacing={2}>
+            <Stack spacing={0}>
                 {!dayOperations.length && (
                     <Typography level="body2">
                         Trenutno nema radnji za ovu gredicu.
@@ -440,7 +446,7 @@ export function RaisedBedOperationsScheduleSection({
                     return (
                         <div key={operation.id}>
                             <Row
-                                spacing={2}
+                                spacing={1}
                                 className={getScheduleTaskRowClassName({
                                     accepted: operationApproved,
                                     pendingAcceptance:
@@ -448,15 +454,11 @@ export function RaisedBedOperationsScheduleSection({
                                 })}
                             >
                                 <Row
-                                    spacing={2}
-                                    className="min-w-0 grow flex-wrap"
+                                    spacing={1}
+                                    className="min-w-0 flex-1 flex-nowrap"
                                 >
                                     {isOperationCompleted(operation.status) ? (
-                                        <Checkbox
-                                            className="size-5 mx-2"
-                                            checked
-                                            disabled
-                                        />
+                                        <Checkbox checked disabled />
                                     ) : operationPendingVerification ? (
                                         <VerifyOperationModal
                                             operationId={operation.id}
@@ -483,14 +485,12 @@ export function RaisedBedOperationsScheduleSection({
                                             }
                                         />
                                     ) : operationLocked ? (
-                                        <Checkbox
-                                            className="size-5 mx-2"
-                                            disabled
-                                        />
+                                        <Checkbox disabled />
                                     ) : operation.isAccepted ? (
                                         <CompleteOperationModal
                                             operationId={operation.id}
                                             label={operationLabel}
+                                            raisedBedPhysicalId={physicalId}
                                             conditions={
                                                 operationData?.conditions
                                             }
@@ -530,6 +530,7 @@ export function RaisedBedOperationsScheduleSection({
                                         <AcceptOperationModal
                                             operationId={operation.id}
                                             label={operationLabel}
+                                            raisedBedPhysicalId={physicalId}
                                             disabled={!operation.assignedUserId}
                                             onConfirm={() =>
                                                 runOptimisticAction({
@@ -554,6 +555,7 @@ export function RaisedBedOperationsScheduleSection({
                                         />
                                     )}
                                     <a
+                                        className="min-w-0 flex-1"
                                         href={
                                             operationData?.information?.label
                                                 ? KnownPages.GrediceOperation(
@@ -566,10 +568,12 @@ export function RaisedBedOperationsScheduleSection({
                                         rel="noopener noreferrer"
                                     >
                                         <Typography
+                                            level="body2"
+                                            noWrap
                                             className={
                                                 operationTextInactive
                                                     ? 'line-through text-muted-foreground'
-                                                    : undefined
+                                                    : ''
                                             }
                                         >
                                             {operationLabel}
@@ -578,7 +582,7 @@ export function RaisedBedOperationsScheduleSection({
                                     {operationStatusText && (
                                         <Typography
                                             level="body2"
-                                            className={`ml-1 italic ${operationStatusClassName}`}
+                                            className={`shrink-0 italic ${operationStatusClassName}`}
                                         >
                                             {operationStatusText}
                                         </Typography>
@@ -588,7 +592,7 @@ export function RaisedBedOperationsScheduleSection({
                                         <Typography
                                             level="body2"
                                             component="div"
-                                            className="select-none"
+                                            className="shrink-0 select-none"
                                         >
                                             {showScheduledDate ? (
                                                 <LocalDateTime time={false}>
@@ -606,7 +610,7 @@ export function RaisedBedOperationsScheduleSection({
                                         </Typography>
                                     )}
                                 </Row>
-                                <Row spacing={1} className="ml-auto shrink-0">
+                                <Row spacing={0} className="ml-auto shrink-0">
                                     {!isOperationCompleted(operation.status) &&
                                         !operationPendingVerification && (
                                             <OperationRequirementIcons
@@ -719,6 +723,7 @@ export function RaisedBedOperationsScheduleSection({
                                         trigger={
                                             <IconButton
                                                 variant="plain"
+                                                size="xs"
                                                 title={
                                                     operation.scheduledDate
                                                         ? 'Prerasporedi radnju'
@@ -765,6 +770,7 @@ export function RaisedBedOperationsScheduleSection({
                                         trigger={
                                             <IconButton
                                                 variant="plain"
+                                                size="xs"
                                                 title="Otkaži operaciju"
                                                 disabled={operationLocked}
                                             >
