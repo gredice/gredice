@@ -44,18 +44,19 @@ export function VerifyOperationModal({
     const [open, setOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const openModal = () => setOpen(true);
-    const defaultTrigger = (
+    const renderDefaultTrigger = (onClick?: () => void) => (
         <Button
             variant="solid"
             color="success"
             size="sm"
             title="Verificiraj radnju"
             loading={isSubmitting}
-            onClick={openModal}
+            onClick={onClick}
         >
             Potvrdi
         </Button>
     );
+    const defaultTrigger = renderDefaultTrigger();
 
     const handleConfirm = async () => {
         try {
@@ -79,7 +80,7 @@ export function VerifyOperationModal({
             {renderTrigger?.({
                 isSubmitting,
                 openModal,
-                defaultTrigger,
+                defaultTrigger: renderDefaultTrigger(openModal),
             })}
             <Modal
                 title="Verifikacija radnje"
