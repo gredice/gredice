@@ -4,6 +4,7 @@ import {
     EventCalendar,
     type EventCalendarEntry,
 } from '@gredice/ui/EventCalendar';
+import { OperationCategoryIcon } from '@gredice/ui/OperationImage';
 import {
     toWateringEventCalendarEntry,
     type WateringCalendarEntry,
@@ -17,17 +18,7 @@ const sourceLabels = {
 } satisfies Record<WateringCalendarEntry['source'], string>;
 
 function entryMeta(entry: WateringCalendarEntry) {
-    const roundedWeight =
-        typeof entry.weight === 'number' && entry.weight > 0
-            ? Math.round(entry.weight)
-            : null;
-
-    return [
-        sourceLabels[entry.source],
-        roundedWeight == null ? null : `${roundedWeight} min`,
-    ]
-        .filter(Boolean)
-        .join(' · ');
+    return sourceLabels[entry.source];
 }
 
 function toEventCalendarEntry(
@@ -39,6 +30,12 @@ function toEventCalendarEntry(
     return {
         ...calendarEntry,
         meta: entryMeta(entry),
+        visual: (
+            <OperationCategoryIcon
+                categoryName="watering"
+                className="size-4 shrink-0"
+            />
+        ),
     };
 }
 
@@ -71,6 +68,7 @@ export function WateringOperationsCalendar({
 
     return (
         <EventCalendar
+            accent="blue"
             className={className}
             data-watering-calendar
             emptyLabel="Još nema zabilježenih zalijevanja."

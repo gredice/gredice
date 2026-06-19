@@ -29,6 +29,7 @@ export type EventCalendarEntry = {
     label: string;
     meta?: ReactNode;
     tone?: EventCalendarEntryTone;
+    visual?: ReactNode;
     weight?: number | null;
 };
 
@@ -54,6 +55,7 @@ type EventCalendarProps = Omit<
     HTMLAttributes<HTMLDivElement>,
     'children' | 'onSelect'
 > & {
+    accent?: 'default' | 'blue';
     entries: EventCalendarEntry[];
     emptyLabel?: ReactNode;
     error?: boolean;
@@ -71,7 +73,7 @@ type EventCalendarProps = Omit<
 };
 
 const weekDays = ['Pon', 'Uto', 'Sri', 'Čet', 'Pet', 'Sub', 'Ned'];
-const minimumMarkerSize = 16;
+const minimumMarkerSize = 18;
 const defaultMarkerSize = 22;
 const maximumMarkerSize = 30;
 const fallbackEntryWeight = 1;
@@ -106,22 +108,48 @@ const markerClassNames = {
     warning: 'bg-amber-400 text-amber-950 shadow-sm shadow-amber-200/50',
     danger: 'bg-red-600 text-white shadow-sm shadow-red-300/40',
     completed: 'bg-sky-600 text-white shadow-sm shadow-sky-300/40',
-    scheduled: 'bg-sky-500 text-white shadow-sm shadow-sky-300/40',
+    scheduled: 'bg-sky-600 text-white shadow-sm shadow-sky-300/40',
     cart: 'bg-cyan-700 text-white shadow-sm shadow-cyan-300/40',
-    preview: 'bg-blue-700 text-white shadow-sm shadow-blue-300/40',
+    preview: 'bg-sky-600 text-white shadow-sm shadow-sky-300/40',
 } satisfies Record<EventCalendarEntryTone, string>;
 
-const markerTextClassNames = {
-    neutral: 'text-background dark:text-white',
-    info: 'text-white',
-    success: 'text-white',
-    warning: 'text-amber-950',
-    danger: 'text-white',
-    completed: 'text-white',
-    scheduled: 'text-white',
-    cart: 'text-white',
-    preview: 'text-white',
-} satisfies Record<EventCalendarEntryTone, string>;
+const accentClassNames = {
+    default: {
+        icon: 'text-primary',
+        marker: 'bg-primary',
+        selected:
+            'bg-primary text-primary-foreground ring-primary ring-offset-card',
+    },
+    blue: {
+        icon: 'text-sky-600',
+        marker: 'bg-sky-600',
+        selected:
+            'bg-sky-600 text-white ring-sky-600 ring-offset-card dark:ring-sky-300',
+    },
+} satisfies Record<
+    NonNullable<EventCalendarProps['accent']>,
+    {
+        icon: string;
+        marker: string;
+        selected: string;
+    }
+>;
+
+const accentedTones = new Set<EventCalendarEntryTone>([
+    'completed',
+    'info',
+    'preview',
+    'scheduled',
+]);
+
+function markerClassName(
+    tone: EventCalendarEntryTone,
+    accent: NonNullable<EventCalendarProps['accent']>,
+) {
+    return accentedTones.has(tone)
+        ? accentClassNames[accent].marker
+        : markerClassNames[tone];
+}
 
 function parseEventDate(value: Date | string | undefined) {
     if (value === undefined) {
@@ -358,16 +386,6 @@ function dayTitle(day: EventCalendarDay, isSelected: boolean) {
     return `${dateLabel}${suffix}: ${labels}`;
 }
 
-function TodayMarker() {
-    return (
-        <span
-            aria-hidden
-            className="absolute size-9 rounded-full ring-2 ring-sky-600/40 dark:ring-sky-300/50"
-            data-event-calendar-today-marker
-        />
-    );
-}
-
 function EventCalendarDayDetails({ day }: { day: EventCalendarDay }) {
     return (
         <Stack spacing={2}>
@@ -376,16 +394,30 @@ function EventCalendarDayDetails({ day }: { day: EventCalendarDay }) {
             </Typography>
             <Stack spacing={1}>
                 {day.entries.map((entry) => (
-                    <Stack key={entry.id} spacing={0}>
-                        <Typography level="body3" semiBold>
-                            {entry.label}
-                        </Typography>
-                        {entry.meta ? (
-                            <Typography level="body3" secondary>
-                                {entry.meta}
-                            </Typography>
+                    <Row key={entry.id} spacing={2} alignItems="start">
+                        {entry.visual ? (
+                            <span
+                                className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground"
+                                data-event-calendar-entry-visual
+                            >
+                                {entry.visual}
+                            </span>
                         ) : null}
-                    </Stack>
+                        <Stack spacing={0} className="min-w-0">
+                            <Typography
+                                level="body3"
+                                semiBold
+                                className="min-w-0"
+                            >
+                                {entry.label}
+                            </Typography>
+                            {entry.meta ? (
+                                <Typography level="body3" secondary>
+                                    {entry.meta}
+                                </Typography>
+                            ) : null}
+                        </Stack>
+                    </Row>
                 ))}
             </Stack>
         </Stack>
@@ -400,7 +432,9 @@ function EventCalendarDayView({
     onDateSelect,
     selectedDate,
     todayKey,
+    accent,
 }: {
+    accent: NonNullable<EventCalendarProps['accent']>;
     day: EventCalendarDay;
     isDateDisabled?: (date: Date) => boolean;
     maxSelectableDate?: Date;
@@ -421,34 +455,31 @@ function EventCalendarDayView({
     if (!hasEntries && !onDateSelect) {
         return (
             <div className="relative grid size-8 place-items-center text-xs tabular-nums">
-                {isToday ? <TodayMarker /> : null}
-                <span className="relative z-10">{day.dayOfMonth}</span>
+                <span
+                    className={cx(
+                        'relative grid size-6 place-items-center rounded-full',
+                        isToday && 'bg-muted',
+                    )}
+                    data-event-calendar-today-marker={
+                        isToday ? true : undefined
+                    }
+                >
+                    {day.dayOfMonth}
+                </span>
             </div>
         );
     }
 
-    const tone = hasEntries && day.tone !== 'none' ? day.tone : null;
+    const visibleEntries = day.entries.slice(0, 3);
     const content = (
         <button
             type="button"
             className={cx(
                 'relative grid size-8 place-items-center rounded-full text-xs tabular-nums transition-colors',
                 'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                tone && 'font-semibold',
-                tone && markerTextClassNames[tone],
-                !tone &&
-                    isSelected &&
-                    'bg-primary font-semibold text-primary-foreground',
-                !tone &&
-                    !isSelected &&
-                    isSelectable &&
-                    'text-foreground hover:bg-muted',
-                !tone &&
-                    !isSelected &&
-                    !isSelectable &&
-                    'text-muted-foreground/40',
-                isSelected &&
-                    'ring-2 ring-primary ring-offset-2 ring-offset-card',
+                isSelected && 'font-semibold',
+                !isSelected && isSelectable && 'text-foreground hover:bg-muted',
+                !isSelected && !isSelectable && 'text-muted-foreground/60',
             )}
             aria-label={dayTitle(day, isSelected)}
             aria-pressed={onDateSelect ? isSelected : undefined}
@@ -460,23 +491,41 @@ function EventCalendarDayView({
                 }
             }}
         >
-            {isToday ? <TodayMarker /> : null}
-            {tone ? (
+            {visibleEntries.length > 0 ? (
                 <span
                     aria-hidden
-                    className={cx(
-                        'absolute rounded-full',
-                        markerClassNames[tone],
-                    )}
-                    data-event-calendar-marker
-                    data-event-calendar-tone={tone}
-                    style={{
-                        height: day.markerSize,
-                        width: day.markerSize,
-                    }}
-                />
+                    className="absolute top-0.5 left-1/2 flex -translate-x-1/2 gap-0.5"
+                    data-event-calendar-markers
+                >
+                    {visibleEntries.map((entry) => {
+                        const entryTone = entry.tone ?? 'info';
+                        return (
+                            <span
+                                key={entry.id}
+                                className={cx(
+                                    'size-1.5 rounded-full',
+                                    markerClassName(entryTone, accent),
+                                )}
+                                data-event-calendar-marker
+                                data-event-calendar-tone={entryTone}
+                            />
+                        );
+                    })}
+                </span>
             ) : null}
-            <span className="relative z-10">{day.dayOfMonth}</span>
+            <span
+                className={cx(
+                    'relative z-10 grid size-6 place-items-center rounded-full',
+                    isToday && !isSelected && 'bg-muted',
+                    isSelected && [
+                        'ring-2 ring-offset-2',
+                        accentClassNames[accent].selected,
+                    ],
+                )}
+                data-event-calendar-today-marker={isToday ? true : undefined}
+            >
+                {day.dayOfMonth}
+            </span>
         </button>
     );
 
@@ -497,6 +546,7 @@ function EventCalendarDayView({
 }
 
 function EventCalendarMonthView({
+    accent,
     canGoBack,
     canGoForward,
     isDateDisabled,
@@ -509,6 +559,7 @@ function EventCalendarMonthView({
     selectedDate,
     todayKey,
 }: {
+    accent: NonNullable<EventCalendarProps['accent']>;
     canGoBack: boolean;
     canGoForward: boolean;
     isDateDisabled?: (date: Date) => boolean;
@@ -529,7 +580,12 @@ function EventCalendarMonthView({
                 justifyContent="space-between"
             >
                 <Row spacing={2} className="min-w-0">
-                    <Calendar className="size-4 shrink-0 text-sky-600" />
+                    <Calendar
+                        className={cx(
+                            'size-4 shrink-0',
+                            accentClassNames[accent].icon,
+                        )}
+                    />
                     <Typography
                         level="body2"
                         semiBold
@@ -583,6 +639,7 @@ function EventCalendarMonthView({
                         >
                             {day ? (
                                 <EventCalendarDayView
+                                    accent={accent}
                                     day={day}
                                     isDateDisabled={isDateDisabled}
                                     maxSelectableDate={maxSelectableDate}
@@ -601,6 +658,7 @@ function EventCalendarMonthView({
 }
 
 export function EventCalendar({
+    accent = 'default',
     className,
     emptyLabel = 'Nema zabilježenih događaja.',
     entries,
@@ -702,6 +760,7 @@ export function EventCalendar({
             {selectedMonth ? (
                 <EventCalendarMonthView
                     key={selectedMonth.key}
+                    accent={accent}
                     canGoBack={canGoBack}
                     canGoForward={canGoForward}
                     isDateDisabled={isDateDisabled}

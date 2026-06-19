@@ -17,6 +17,7 @@ import {
     isWateringOperation,
     RaisedBedWateringCalendar,
 } from '../RaisedBedWateringCalendar';
+import { OperationScheduleCalendar } from './OperationScheduleCalendar';
 
 function parseLocalDateInput(value: string) {
     const [year, month, day] = value.split('-').map(Number);
@@ -32,13 +33,17 @@ export function OperationScheduleModal({
     gardenId,
     operation,
     onConfirm,
+    positionIndex,
     raisedBedId,
+    showHistory = true,
     trigger,
 }: {
-    gardenId?: number;
+    gardenId: number;
     operation: OperationData;
     onConfirm: (date: Date) => Promise<void>;
+    positionIndex?: number;
     raisedBedId?: number;
+    showHistory?: boolean;
     trigger: React.ReactElement;
 }) {
     const [open, setOpen] = useState(false);
@@ -63,9 +68,7 @@ export function OperationScheduleModal({
     const selectedDateInput = scheduledDateInput ?? operationDefaultDate;
     const selectedDate = parseLocalDateInput(selectedDateInput);
     const showWateringCalendar =
-        gardenId != null &&
-        raisedBedId != null &&
-        isWateringOperation(operation);
+        raisedBedId != null && isWateringOperation(operation);
     const isHarvestOperation =
         operation.attributes.stage.information?.name === 'harvest';
     const harvestPlantRemovalDescription = isHarvestOperation
@@ -161,7 +164,7 @@ export function OperationScheduleModal({
                             </Typography>
                         </Alert>
                     ) : null}
-                    {showWateringCalendar ? (
+                    {open && showWateringCalendar ? (
                         <RaisedBedWateringCalendar
                             className="shadow-none"
                             gardenId={gardenId}
@@ -175,7 +178,24 @@ export function OperationScheduleModal({
                             visibleFrom={tomorrow}
                             visibleTo={threeMonthsFromTomorrow}
                         />
-                    ) : (
+                    ) : null}
+                    {open && !showWateringCalendar && showHistory ? (
+                        <OperationScheduleCalendar
+                            className="shadow-none"
+                            gardenId={gardenId}
+                            maxSelectableDate={threeMonthsFromTomorrow}
+                            minSelectableDate={tomorrow}
+                            onDateSelect={handleDateSelect}
+                            operation={operation}
+                            positionIndex={positionIndex}
+                            previewDate={selectedDate}
+                            raisedBedId={raisedBedId}
+                            selectedDate={selectedDate}
+                            visibleFrom={tomorrow}
+                            visibleTo={threeMonthsFromTomorrow}
+                        />
+                    ) : null}
+                    {open && !showWateringCalendar && !showHistory ? (
                         <EventCalendar
                             className="shadow-none"
                             emptyLabel={null}
@@ -187,7 +207,7 @@ export function OperationScheduleModal({
                             visibleFrom={tomorrow}
                             visibleTo={threeMonthsFromTomorrow}
                         />
-                    )}
+                    ) : null}
                     <Row spacing={2}>
                         <Button
                             variant="plain"
