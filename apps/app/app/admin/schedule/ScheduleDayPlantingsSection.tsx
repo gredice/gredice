@@ -72,18 +72,23 @@ export async function ScheduleDayPlantingsSection({
     return (
         <OptimisticScheduleActionsProvider>
             <Stack spacing={4}>
-                <Row spacing={2} alignItems="center">
-                    <Typography level="h6">Sijanje</Typography>
-                    <ScheduleDayPlantingsBulkActions
-                        fieldsToApprove={dayFieldsToApprove}
-                        fieldsToAssign={dayFieldsToAssign}
-                    />
+                <Row spacing={2} alignItems="center" className="w-full">
+                    <Typography level="h6" className="grow">
+                        Sijanje
+                    </Typography>
+                    <Row spacing={1} className="ml-auto shrink-0">
+                        <ScheduleDayPlantingsBulkActions
+                            fieldsToApprove={dayFieldsToApprove}
+                            fieldsToAssign={dayFieldsToAssign}
+                        />
+                    </Row>
                 </Row>
                 {raisedBedGroups.map(
                     ({ key, physicalId, raisedBeds: beds }) => {
                         return (
                             <RaisedBedPlantingScheduleSection
                                 key={key}
+                                date={date}
                                 physicalId={physicalId}
                                 raisedBeds={beds}
                                 scheduledFields={scheduledFields}

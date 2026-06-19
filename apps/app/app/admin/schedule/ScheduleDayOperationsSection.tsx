@@ -101,18 +101,23 @@ export async function ScheduleDayOperationsSection({
     return (
         <OptimisticScheduleActionsProvider>
             <Stack spacing={4}>
-                <Row spacing={2} alignItems="center">
-                    <Typography level="h6">Radnje</Typography>
-                    <ScheduleDayOperationsBulkActions
-                        operationsToApprove={dayOperationsToApprove}
-                        operationsToAssign={dayOperationsToAssign}
-                    />
+                <Row spacing={2} alignItems="center" className="w-full">
+                    <Typography level="h6" className="grow">
+                        Radnje
+                    </Typography>
+                    <Row spacing={1} className="ml-auto shrink-0">
+                        <ScheduleDayOperationsBulkActions
+                            operationsToApprove={dayOperationsToApprove}
+                            operationsToAssign={dayOperationsToAssign}
+                        />
+                    </Row>
                 </Row>
                 {raisedBedGroups.map(
                     ({ key, physicalId, raisedBeds: beds }) => {
                         return (
                             <RaisedBedOperationsScheduleSection
                                 key={key}
+                                date={date}
                                 physicalId={physicalId}
                                 raisedBeds={beds}
                                 scheduledOperations={scheduledOperations}
@@ -128,6 +133,7 @@ export async function ScheduleDayOperationsSection({
                 {operationFarms.map((farm) => (
                     <FarmOperationsScheduleSection
                         key={farm.id}
+                        date={date}
                         farm={farm}
                         scheduledOperations={scheduledOperations}
                         operationsData={operationsData}
