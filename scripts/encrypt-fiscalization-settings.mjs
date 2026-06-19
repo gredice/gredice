@@ -88,7 +88,7 @@ let changedCount = 0;
 try {
     while (true) {
         const result = await pool.query(
-            'select id, cert_base64, cert_password from fiscalization_user_settings where id > $1 order by id limit $2',
+            'SELECT id, cert_base64, cert_password FROM fiscalization_user_settings WHERE id > $1 ORDER BY id LIMIT $2',
             [lastSeenId, batchSize],
         );
         if (result.rows.length === 0) {
@@ -113,10 +113,10 @@ try {
 
         const client = await pool.connect();
         try {
-            await client.query('start transaction');
+            await client.query('START TRANSACTION');
             for (const row of rowsToMigrate) {
                 await client.query(
-                    'update fiscalization_user_settings set cert_base64 = $1, cert_password = $2 where id = $3',
+                    'UPDATE fiscalization_user_settings SET cert_base64 = $1, cert_password = $2 WHERE id = $3',
                     [
                         encryptIfNeeded(row.cert_base64),
                         encryptIfNeeded(row.cert_password),
@@ -127,9 +127,9 @@ try {
                     `Encrypted fiscalization_user_settings row ${row.id}.`,
                 );
             }
-            await client.query('commit');
+            await client.query('COMMIT');
         } catch (error) {
-            await client.query('rollback');
+            await client.query('ROLLBACK');
             throw error;
         } finally {
             client.release();

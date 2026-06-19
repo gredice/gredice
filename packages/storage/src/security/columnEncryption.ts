@@ -11,20 +11,20 @@ function readColumnEncryptionKey() {
     const encodedKey = process.env[columnEncryptionKeyEnv];
     if (!encodedKey) {
         throw new Error(
-            `${columnEncryptionKeyEnv} must be set to a base64-encoded 32-byte key to encrypt or decrypt column values.`,
+            `${columnEncryptionKeyEnv} must be set to a standard base64-encoded 32-byte key to encrypt or decrypt column values.`,
         );
     }
 
     if (!base64EncodedKeyPattern.test(encodedKey)) {
         throw new Error(
-            `${columnEncryptionKeyEnv} must be a base64-encoded 32-byte key to encrypt or decrypt column values.`,
+            `${columnEncryptionKeyEnv} must be a standard base64-encoded 32-byte key to encrypt or decrypt column values.`,
         );
     }
 
     const key = Buffer.from(encodedKey, 'base64');
     if (key.length !== keyLengthBytes) {
         throw new Error(
-            `${columnEncryptionKeyEnv} must be a base64-encoded 32-byte key to encrypt or decrypt column values.`,
+            `${columnEncryptionKeyEnv} must be a standard base64-encoded 32-byte key to encrypt or decrypt column values.`,
         );
     }
 
