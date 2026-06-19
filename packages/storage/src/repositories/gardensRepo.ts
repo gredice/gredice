@@ -138,7 +138,7 @@ export async function accountHasActiveRaisedBed(accountId: string) {
         .innerJoin(gardens, eq(raisedBeds.gardenId, gardens.id))
         .where(
             and(
-                eq(raisedBeds.accountId, accountId),
+                eq(gardens.accountId, accountId),
                 eq(gardens.isDeleted, false),
                 eq(raisedBeds.status, 'active'),
                 eq(raisedBeds.isDeleted, false),
