@@ -52,6 +52,24 @@ for (const arg of args) {
     }
 }
 
+function hasPlaintextCredentials(row) {
+    if (
+        typeof row.cert_base64 !== 'string' ||
+        typeof row.cert_password !== 'string'
+    ) {
+        return false;
+    }
+
+    return (
+        !isEncryptedColumnValue(row.cert_base64) ||
+        !isEncryptedColumnValue(row.cert_password)
+    );
+}
+
+function encryptIfNeeded(value) {
+    return isEncryptedColumnValue(value) ? value : encryptColumnValue(value);
+}
+
 const connectionString = requireEnv('POSTGRES_URL');
 requireEnv('GREDICE_COLUMN_ENCRYPTION_KEY');
 
@@ -77,12 +95,8 @@ try {
             break;
         }
 
-        lastSeenId = result.rows.at(-1).id;
-        const rowsToMigrate = result.rows.filter(
-            (row) =>
-                !isEncryptedColumnValue(row.cert_base64) ||
-                !isEncryptedColumnValue(row.cert_password),
-        );
+        lastSeenId = result.rows[result.rows.length - 1].id;
+        const rowsToMigrate = result.rows.filter(hasPlaintextCredentials);
 
         if (rowsToMigrate.length === 0) {
             continue;
@@ -97,19 +111,28 @@ try {
             continue;
         }
 
-        for (const row of rowsToMigrate) {
-            const certBase64 = isEncryptedColumnValue(row.cert_base64)
-                ? row.cert_base64
-                : encryptColumnValue(row.cert_base64);
-            const certPassword = isEncryptedColumnValue(row.cert_password)
-                ? row.cert_password
-                : encryptColumnValue(row.cert_password);
-
-            await pool.query(
-                'update fiscalization_user_settings set cert_base64 = $1, cert_password = $2 where id = $3',
-                [certBase64, certPassword, row.id],
-            );
-            console.log(`Encrypted fiscalization_user_settings row ${row.id}.`);
+        const client = await pool.connect();
+        try {
+            await client.query('start transaction');
+            for (const row of rowsToMigrate) {
+                await client.query(
+                    'update fiscalization_user_settings set cert_base64 = $1, cert_password = $2 where id = $3',
+                    [
+                        encryptIfNeeded(row.cert_base64),
+                        encryptIfNeeded(row.cert_password),
+                        row.id,
+                    ],
+                );
+                console.log(
+                    `Encrypted fiscalization_user_settings row ${row.id}.`,
+                );
+            }
+            await client.query('commit');
+        } catch (error) {
+            await client.query('rollback');
+            throw error;
+        } finally {
+            client.release();
         }
     }
 
@@ -120,7 +143,9 @@ try {
             `Would encrypt ${changedCount} fiscalization_user_settings row(s).`,
         );
     } else {
-        console.log(`Encrypted ${changedCount} fiscalization_user_settings row(s).`);
+        console.log(
+            `Encrypted ${changedCount} fiscalization_user_settings row(s).`,
+        );
     }
 } finally {
     await pool.end();
