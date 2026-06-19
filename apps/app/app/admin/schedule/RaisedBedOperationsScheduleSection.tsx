@@ -1,7 +1,6 @@
 'use client';
 
 import type { OperationAssignableFarmUser } from '@gredice/storage';
-import { Button } from '@gredice/ui/Button';
 import { Checkbox } from '@gredice/ui/Checkbox';
 import { Chip } from '@gredice/ui/Chip';
 import { IconButton } from '@gredice/ui/IconButton';
@@ -40,6 +39,7 @@ import {
 import {
     formatMinutes,
     getOperationDurationMinutes,
+    getScheduleTaskRowClassName,
     isOperationCancelled,
     isOperationCompleted,
     isOperationPendingVerification,
@@ -386,6 +386,8 @@ export function RaisedBedOperationsScheduleSection({
                         operation.isAccepted &&
                         !operationLocked &&
                         !operationTextInactive;
+                    const operationPendingAcceptance =
+                        !operation.isAccepted && !operationLocked;
 
                     const operationStatusText = isOperationCancelled(
                         operation.status,
@@ -444,11 +446,11 @@ export function RaisedBedOperationsScheduleSection({
                         <div key={operation.id}>
                             <Row
                                 spacing={2}
-                                className={
-                                    operationApproved
-                                        ? 'rounded bg-muted/60 text-foreground hover:bg-muted/80'
-                                        : 'rounded hover:bg-muted'
-                                }
+                                className={getScheduleTaskRowClassName({
+                                    accepted: operationApproved,
+                                    pendingAcceptance:
+                                        operationPendingAcceptance,
+                                })}
                             >
                                 <Row spacing={2} className="grow">
                                     {isOperationCompleted(operation.status) ? (
@@ -481,27 +483,6 @@ export function RaisedBedOperationsScheduleSection({
                                                         'Verifikacija radnje nije uspjela. Promjena je vraćena.',
                                                 })
                                             }
-                                            renderTrigger={({
-                                                isSubmitting,
-                                                openModal,
-                                                defaultTrigger,
-                                            }) => (
-                                                <Row
-                                                    spacing={1}
-                                                    className="items-center"
-                                                >
-                                                    {defaultTrigger}
-                                                    <Button
-                                                        variant="solid"
-                                                        size="sm"
-                                                        className="bg-green-600 hover:bg-green-700 text-white"
-                                                        onClick={openModal}
-                                                        disabled={isSubmitting}
-                                                    >
-                                                        Potvrdi
-                                                    </Button>
-                                                </Row>
-                                            )}
                                         />
                                     ) : operationLocked ? (
                                         <Checkbox

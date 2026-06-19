@@ -1,7 +1,6 @@
 'use client';
 
 import type { OperationAssignableFarmUser } from '@gredice/storage';
-import { Button } from '@gredice/ui/Button';
 import { Checkbox } from '@gredice/ui/Checkbox';
 import { Chip } from '@gredice/ui/Chip';
 import { IconButton } from '@gredice/ui/IconButton';
@@ -35,6 +34,7 @@ import {
 import {
     formatMinutes,
     getOperationDurationMinutes,
+    getScheduleTaskRowClassName,
     isOperationCancelled,
     isOperationCompleted,
     isOperationPendingVerification,
@@ -149,6 +149,10 @@ export function FarmOperationsScheduleSection({
                     const operationTextInactive =
                         isOperationCancelled(operation.status) ||
                         isOperationCompleted(operation.status);
+                    const operationApproved =
+                        operation.isAccepted && !operationLocked;
+                    const operationPendingAcceptance =
+                        !operation.isAccepted && !operationLocked;
                     const attachImages = Boolean(
                         operationData?.conditions?.completionAttachImages ||
                             operationData?.conditions
@@ -207,11 +211,10 @@ export function FarmOperationsScheduleSection({
                         <Row
                             key={operation.id}
                             spacing={2}
-                            className={
-                                operation.isAccepted && !operationLocked
-                                    ? 'rounded bg-muted/60 text-foreground hover:bg-muted/80'
-                                    : 'rounded hover:bg-muted'
-                            }
+                            className={getScheduleTaskRowClassName({
+                                accepted: operationApproved,
+                                pendingAcceptance: operationPendingAcceptance,
+                            })}
                         >
                             <Row spacing={2} className="grow">
                                 {isOperationCompleted(operation.status) ? (
@@ -244,27 +247,6 @@ export function FarmOperationsScheduleSection({
                                                     'Verifikacija radnje nije uspjela. Promjena je vraćena.',
                                             })
                                         }
-                                        renderTrigger={({
-                                            isSubmitting,
-                                            openModal,
-                                            defaultTrigger,
-                                        }) => (
-                                            <Row
-                                                spacing={1}
-                                                className="items-center"
-                                            >
-                                                {defaultTrigger}
-                                                <Button
-                                                    variant="solid"
-                                                    size="sm"
-                                                    className="bg-green-600 hover:bg-green-700 text-white"
-                                                    onClick={openModal}
-                                                    disabled={isSubmitting}
-                                                >
-                                                    Potvrdi
-                                                </Button>
-                                            </Row>
-                                        )}
                                     />
                                 ) : operationLocked ? (
                                     <Checkbox

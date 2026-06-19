@@ -164,7 +164,8 @@ export function AssignRaisedBedFieldModal({
             </button>
         ) : (
             <IconButton
-                variant="plain"
+                variant="soft"
+                color="warning"
                 title={
                     canOpen
                         ? 'Dodijeli korisnika'
