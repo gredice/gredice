@@ -210,10 +210,7 @@ export function FarmOperationsScheduleSection({
                                 pendingAcceptance: operationPendingAcceptance,
                             })}
                         >
-                            <Row
-                                spacing={1}
-                                className="min-w-0 flex-1 flex-nowrap"
-                            >
+                            <Row className="min-w-0 flex-1 flex-nowrap gap-1 md:gap-2">
                                 {isOperationCompleted(operation.status) ? (
                                     <Checkbox checked disabled />
                                 ) : operationPendingVerification ? (
@@ -321,7 +318,7 @@ export function FarmOperationsScheduleSection({
                                     rel="noopener noreferrer"
                                 >
                                     <Typography
-                                        level="body2"
+                                        level="body1"
                                         noWrap
                                         className={
                                             operationTextInactive

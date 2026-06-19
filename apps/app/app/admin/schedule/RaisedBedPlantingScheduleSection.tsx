@@ -439,10 +439,7 @@ export function RaisedBedPlantingScheduleSection({
                                     pendingAcceptance: fieldPendingAcceptance,
                                 })}
                             >
-                                <Row
-                                    spacing={1}
-                                    className="min-w-0 flex-1 flex-nowrap"
-                                >
+                                <Row className="min-w-0 flex-1 flex-nowrap gap-1 md:gap-2">
                                     {fieldCompleted ? (
                                         <Checkbox checked disabled />
                                     ) : fieldPendingVerification ? (
@@ -511,7 +508,7 @@ export function RaisedBedPlantingScheduleSection({
                                         />
                                     )}
                                     <Typography
-                                        level="body2"
+                                        level="body1"
                                         noWrap
                                         className={
                                             fieldCompleted
