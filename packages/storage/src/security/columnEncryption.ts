@@ -5,7 +5,7 @@ const encryptedValuePrefix = 'enc:v1:';
 const ivLengthBytes = 12;
 const authTagLengthBytes = 16;
 const keyLengthBytes = 32;
-const base64EncodedKeyPattern = /^(?:[A-Za-z0-9+/]{4}){10}[A-Za-z0-9+/]{3}=$/;
+const base64EncodedKeyPattern = /^[A-Za-z0-9+/]{43}=$/;
 
 function readColumnEncryptionKey() {
     const encodedKey = process.env[columnEncryptionKeyEnv];
