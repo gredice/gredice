@@ -3,7 +3,6 @@ import { formatPrice } from '@gredice/js/currency';
 import { getHarvestOperationRemovalDisclaimer } from '@gredice/js/plants';
 import { BackpackIcon } from '@gredice/ui/BackpackIcon';
 import { Button } from '@gredice/ui/Button';
-import { Calendar } from '@gredice/ui/icons';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -80,7 +79,7 @@ export function OperationsListItem({
         <Button
             variant="plain"
             className="justify-start text-start p-0 h-auto py-1 gap-3 px-4 rounded-none font-normal"
-            onClick={() => handleOperationPicked(operation)}
+            disabled={setShoppingCartItem.isPending}
         >
             <AnimateFlyToItem {...animateFlyToShoppingCart.props}>
                 <OperationImage operation={operation} size={32} />
@@ -118,43 +117,56 @@ export function OperationsListItem({
 
     return (
         <Stack key={operation.id} data-operation-id={operation.id}>
-            {operationButton}
+            <OperationScheduleModal
+                gardenId={gardenId}
+                operation={operation}
+                onConfirm={async (date) => {
+                    await handleOperationPicked(operation, date);
+                }}
+                positionIndex={positionIndex}
+                raisedBedId={raisedBedId}
+                trigger={operationButton}
+            />
             <div className="flex flex-wrap gap-y-1 gap-x-2 pr-4 items-center justify-between">
                 <Row>
-                    <OperationScheduleModal
-                        gardenId={gardenId}
-                        operation={operation}
-                        onConfirm={async (date) => {
-                            await handleOperationPicked(operation, date);
-                        }}
-                        raisedBedId={raisedBedId}
-                        trigger={
-                            <Button
-                                title="Zakaži radnju"
-                                variant="plain"
-                                size="sm"
-                                startDecorator={
-                                    <Calendar className="size-4 shrink-0" />
-                                }
-                                disabled={setShoppingCartItem.isPending}
-                            >
-                                Zakaži
-                            </Button>
-                        }
-                    />
-                    <Button
-                        variant="plain"
-                        size="sm"
-                        disabled={!availableFromInventory}
-                        startDecorator={
-                            <BackpackIcon className="size-5 shrink-0" />
-                        }
-                        onClick={() =>
-                            handleOperationPicked(operation, undefined, true)
-                        }
-                    >
-                        {`U ruksaku (${availableFromInventory ?? 0})`}
-                    </Button>
+                    {availableFromInventory ? (
+                        <OperationScheduleModal
+                            gardenId={gardenId}
+                            operation={operation}
+                            onConfirm={async (date) => {
+                                await handleOperationPicked(
+                                    operation,
+                                    date,
+                                    true,
+                                );
+                            }}
+                            positionIndex={positionIndex}
+                            raisedBedId={raisedBedId}
+                            trigger={
+                                <Button
+                                    variant="plain"
+                                    size="sm"
+                                    disabled={setShoppingCartItem.isPending}
+                                    startDecorator={
+                                        <BackpackIcon className="size-5 shrink-0" />
+                                    }
+                                >
+                                    {`U ruksaku (${availableFromInventory})`}
+                                </Button>
+                            }
+                        />
+                    ) : (
+                        <Button
+                            variant="plain"
+                            size="sm"
+                            disabled
+                            startDecorator={
+                                <BackpackIcon className="size-5 shrink-0" />
+                            }
+                        >
+                            {`U ruksaku (${availableFromInventory ?? 0})`}
+                        </Button>
+                    )}
                 </Row>
                 <Row>
                     <Button

@@ -245,10 +245,24 @@ function plantedGrowingWithOperationHistoryScenario(): RaisedBedScenario {
         stageName: 'maintenance',
         stageLabel: 'Održavanje',
     });
+    const tomatoSortWithOperation = {
+        ...testSorts.tomato,
+        information: {
+            ...testSorts.tomato.information,
+            plant: {
+                ...testSorts.tomato.information.plant,
+                information: {
+                    ...testSorts.tomato.information.plant.information,
+                    operations: [wateringOperation],
+                },
+            },
+        },
+    };
 
     return {
         ...plantedGrowingScenario(),
         operations: [wateringOperation],
+        sorts: [tomatoSortWithOperation],
         operationDiaryEntries: [
             {
                 id: 991,
@@ -919,6 +933,106 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
                 name: 'Ukloni radnju iz omiljenih',
             }),
         ).toBeVisible();
+    });
+
+    test('operation item click opens scheduling without a separate schedule action', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldHudStory
+                scenario={plantedGrowingWithRecommendedOperationsScenario()}
+                positionIndex={0}
+            />,
+        );
+
+        await page.getByRole('button').first().click();
+
+        const dialog = page.getByRole('dialog');
+        await dialog.getByRole('tab', { name: /Radnje/ }).click();
+
+        const operationsPanel = dialog.getByRole('tabpanel', {
+            name: 'Radnje',
+        });
+        await expect(
+            operationsPanel.getByRole('button', { name: 'Zakaži' }),
+        ).toHaveCount(0);
+
+        const operationRow = operationsPanel.locator(
+            '[data-operation-id="201"]',
+        );
+        await operationRow.getByRole('button', { name: /Okopavanje/ }).click();
+
+        const scheduleDialog = page.getByRole('dialog', {
+            name: 'Zakaži radnju: Okopavanje',
+        });
+        await expect(
+            scheduleDialog.locator('[data-event-calendar]'),
+        ).toBeVisible();
+        await expect(
+            scheduleDialog.getByText('Zakazivanje radnje'),
+        ).toBeVisible();
+    });
+
+    test('operation scheduling calendar shows previous history with icon details', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldHudStory
+                scenario={plantedGrowingWithOperationHistoryScenario()}
+                positionIndex={0}
+            />,
+        );
+
+        await page.getByRole('button').first().click();
+
+        const dialog = page.getByRole('dialog');
+        await dialog.getByRole('tab', { name: /Radnje/ }).click();
+
+        const operationRow = dialog.locator('[data-operation-id="301"]');
+        await operationRow
+            .getByRole('button', {
+                name: /Površinsko zalijevanje gredice/,
+            })
+            .click();
+
+        const scheduleDialog = page.getByRole('dialog', {
+            name: 'Zakaži radnju: Površinsko zalijevanje gredice (20L)',
+        });
+        await expect(
+            scheduleDialog.locator('[data-event-calendar]'),
+        ).toBeVisible();
+
+        await expect(
+            scheduleDialog.getByRole('button', {
+                name: 'Prethodni mjesec',
+            }),
+        ).toBeEnabled();
+        await scheduleDialog
+            .getByRole('button', { name: 'Prethodni mjesec' })
+            .click();
+
+        await expect(
+            scheduleDialog.locator('[data-event-calendar-month="2026-05"]'),
+        ).toBeVisible();
+        await expect(
+            scheduleDialog.locator('[data-event-calendar-tone="completed"]'),
+        ).toHaveClass(/bg-primary/);
+
+        await scheduleDialog
+            .getByRole('button', {
+                name: /10\. 05\. 2026.*Površinsko zalijevanje/u,
+            })
+            .click();
+
+        await expect(
+            page.locator('[data-event-calendar-entry-visual]'),
+        ).toBeVisible();
+        await expect(
+            page.getByText('Obavljeno · Raised Bed 1 › Polje 1'),
+        ).toBeVisible();
+        await expect(page.getByText(/30 min/)).toHaveCount(0);
     });
 
     test('diary tab shows filtered operation history with photos and notes', async ({
