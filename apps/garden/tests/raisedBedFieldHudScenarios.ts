@@ -155,6 +155,7 @@ export type RaisedBedScenario = {
     sorts?: PlantSortData[];
     operations?: OperationData[];
     operationHistoryItems?: GardenOperationItem[];
+    operationHistoryNextCursor?: number | null;
     raisedBedOperationDiaryEntries?: Array<{
         id: number;
         name: string;

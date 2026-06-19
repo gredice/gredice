@@ -23,6 +23,7 @@ import { RaisedBedField } from './raisedBed/RaisedBedField';
 import { RaisedBedFieldSuggestions } from './raisedBed/RaisedBedFieldSuggestions';
 import { RaisedBedGreenhouseSuggestion } from './raisedBed/RaisedBedGreenhouseSuggestion';
 import { RaisedBedInfo } from './raisedBed/RaisedBedInfo';
+import { RaisedBedPhotosModal } from './raisedBed/RaisedBedPhotosModal';
 import { RaisedBedSensorInfo } from './raisedBed/RaisedBedSensorInfo';
 import { RaisedBedWatering } from './raisedBed/RaisedBedWatering';
 
@@ -126,6 +127,17 @@ export function RaisedBedFieldHud() {
                             raisedBed={raisedBed}
                         />
                     </Modal>
+                </div>
+            )}
+            {currentGarden && raisedBed && !isSandbox && (
+                <div className="absolute z-40 top-[calc(var(--raised-bed-ui-top)+48px)] left-[var(--raised-bed-title-left)]">
+                    <RaisedBedPhotosModal
+                        gardenId={currentGarden.id}
+                        raisedBedId={raisedBed.id}
+                        subjectName={raisedBed.name}
+                        triggerPlacement="hud"
+                        hideWhenEmpty
+                    />
                 </div>
             )}
             <div className="absolute z-0 top-[calc(50%-1px)] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[var(--raised-bed-grid-size)] h-[var(--raised-bed-grid-height)]">
