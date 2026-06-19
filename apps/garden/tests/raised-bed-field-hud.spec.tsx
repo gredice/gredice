@@ -929,7 +929,6 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
             <RaisedBedFieldHudStory
                 scenario={plantedGrowingWithOperationHistoryScenario()}
                 positionIndex={0}
-                enableRaisedBedImageAI
             />,
         );
 
@@ -1168,7 +1167,6 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await mount(
             <RaisedBedInfoModalStory
                 scenario={plantedGrowingWithOperationHistoryScenario()}
-                enableRaisedBedImageAI
             />,
         );
 
@@ -1200,7 +1198,6 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await mount(
             <RaisedBedInfoModalStory
                 scenario={raisedBedScrollableOperationHistoryScenario()}
-                enableRaisedBedImageAI
             />,
         );
 
@@ -1488,7 +1485,6 @@ test.describe('RaisedBedFieldItem HUD (mobile)', () => {
         await mount(
             <RaisedBedInfoModalStory
                 scenario={plantedGrowingWithOperationHistoryScenario()}
-                enableRaisedBedImageAI
             />,
         );
 

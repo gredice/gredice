@@ -3,14 +3,7 @@ import { cookies } from 'next/headers';
 import type { ComponentProps } from 'react';
 import LoginModal from '../components/auth/LoginModal';
 import { GameSceneWithAnalytics } from '../components/game/GameSceneWithAnalytics';
-import {
-    enableDebugHudFlag,
-    lsystemPlantsFlag,
-    plantHistoryFlag,
-    rainWetOverlayFlag,
-    raisedBedImageAIFlag,
-    tutorialChecklistFlag,
-} from './flags';
+import { enableDebugHudFlag, rainWetOverlayFlag } from './flags';
 
 const impersonationFlagCookieName = 'gredice_impersonating';
 
@@ -20,11 +13,7 @@ export default async function Home() {
         cookieStore.get(impersonationFlagCookieName)?.value === '1';
     const flags: ComponentProps<typeof GameSceneWithAnalytics>['flags'] = {
         enableDebugHudFlag: await enableDebugHudFlag(),
-        enablePlantGeneratorFlag: await lsystemPlantsFlag(),
         enableRainWetOverlayFlag: await rainWetOverlayFlag(),
-        raisedBedImageAI: await raisedBedImageAIFlag(),
-        enablePlantHistoryFlag: await plantHistoryFlag(),
-        enableTutorialChecklistFlag: await tutorialChecklistFlag(),
     };
 
     return (

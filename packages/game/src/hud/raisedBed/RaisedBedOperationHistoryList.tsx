@@ -5,7 +5,6 @@ import { Row } from '@gredice/ui/Row';
 import { Spinner } from '@gredice/ui/Spinner';
 import { Stack } from '@gredice/ui/Stack';
 import { useMemo } from 'react';
-import { useGameFlags } from '../../GameFlagsContext';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import {
     type GardenOperationItem,
@@ -154,12 +153,9 @@ export function RaisedBedOperationHistoryList({
     disableActions?: boolean;
 }) {
     const referenceDate = useLiveTime();
-    const flags = useGameFlags();
     const { data: currentGarden } = useCurrentGarden();
     const { data: operationsData } = useOperations();
-    const shouldLoadAiHistory = Boolean(
-        flags.raisedBedImageAI && currentGarden?.id && raisedBedId,
-    );
+    const shouldLoadAiHistory = Boolean(currentGarden?.id && raisedBedId);
     const { data: aiHistoryEntries } = useRaisedBedAiHistory(
         currentGarden?.id ?? 0,
         raisedBedId ?? 0,
@@ -326,7 +322,6 @@ export function RaisedBedOperationHistoryList({
                     />
                 ) : undefined;
                 const aiAction =
-                    flags.raisedBedImageAI &&
                     !disableActions &&
                     currentGarden &&
                     actionRaisedBedId &&

@@ -2,7 +2,6 @@ import { calculatePlantsPerField } from '@gredice/js/plants';
 import { animated, useSpring } from '@react-spring/three';
 import { useMemo, useRef } from 'react';
 import type { Group } from 'three';
-import { useGameFlags } from '../../GameFlagsContext';
 import { usePlantLodState } from '../../generators/plant/hooks/usePlantLod';
 import { getApproximatePlantHeight } from '../../generators/plant/lib/buildPlantRenderData';
 import {
@@ -50,7 +49,6 @@ export function RaisedBedPlantField({
     const { harvestedVisual, positionIndex, plantSortId, plantSowDate } = field;
     const fieldGroupRef = useRef<Group | null>(null);
     const { data: sortData } = usePlantSort(plantSortId);
-    const flags = useGameFlags();
     const isMock = useGameState((state) => state.isMock);
     const isSandbox = useIsSandboxGarden();
     const currentTime = useSnapshotTime();
@@ -128,7 +126,6 @@ export function RaisedBedPlantField({
         ? Math.max(0.8, plantGeneration * 0.7)
         : plantGeneration;
     const shouldRenderGeneratedPlants =
-        Boolean(flags.enablePlantGeneratorFlag || isMock || isSandbox) &&
         Boolean(resolvedPlantPreset) &&
         Boolean(plantSowDate) &&
         (field.plantStatus === 'sprouted' ||

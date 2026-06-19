@@ -76,7 +76,7 @@ jobs:
       - name: 🔎 Lint app
         run: pnpm lint --filter=${{ inputs.name }}
   test:
-    timeout-minutes: 10
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     name: "test${{ matrix.shard.name && format(' ({0})', matrix.shard.name) || (matrix.shard.total != 1 && format(' ({0}/{1})', matrix.shard.index, matrix.shard.total) || '') }}"

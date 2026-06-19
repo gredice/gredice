@@ -1,5 +1,4 @@
 import { animated, useSpring } from '@react-spring/three';
-import { useGameFlags } from '../../GameFlagsContext';
 import { useGameSceneDetails } from '../../GameSceneDetailContext';
 import { resolveInGamePlantPreset } from '../../generators/plant/lib/inGamePlantPresets';
 import {
@@ -528,7 +527,6 @@ export function RaisedBedFields({
     generatedPlantsHandledExternally?: boolean;
 }) {
     const { renderDetails } = useGameSceneDetails();
-    const flags = useGameFlags();
     const { data: currentGarden } = useCurrentGarden();
     const { data: sortData } = useAllSorts();
     const isMock = useGameState((state) => state.isMock);
@@ -581,8 +579,6 @@ export function RaisedBedFields({
             return field;
         }) || []),
     ];
-    const generatedPlantsEnabled =
-        Boolean(flags.enablePlantGeneratorFlag) || isMock || isSandbox;
 
     if (!renderDetails) {
         return null;
@@ -720,7 +716,6 @@ export function RaisedBedFields({
 
                 if (
                     generatedPlantsHandledExternally &&
-                    generatedPlantsEnabled &&
                     field.plantSortId &&
                     shouldRenderGeneratedPlantField(field)
                 ) {

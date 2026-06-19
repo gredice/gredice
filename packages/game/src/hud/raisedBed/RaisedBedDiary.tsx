@@ -11,7 +11,6 @@ import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import Image from 'next/image';
 import type { ReactNode } from 'react';
-import { useGameFlags } from '../../GameFlagsContext';
 import { isDiaryCancelTargetEligible } from '../../hooks/useCancelDiaryEntry';
 import { useRaisedBedDiaryEntries } from '../../hooks/useRaisedBedDiaryEntries';
 import { useRaisedBedFieldDiaryEntries } from '../../hooks/useRaisedBedFieldDiaryEntries';
@@ -419,36 +418,28 @@ export function RaisedBedFieldDiary({
         isLoading,
         error,
     } = useRaisedBedFieldDiaryEntries(gardenId, raisedBedId, positionIndex);
-    const flags = useGameFlags();
-    const renderEntryAction =
-        flags.raisedBedImageAI && !disableActions
-            ? (entry: DiaryEntry, aiHistory?: DiaryEntryAiHistory) => {
-                  const aiAction =
-                      entry.imageUrls?.length && !entry.isMarkdown ? (
-                          <RaisedBedDiaryAiAction
-                              gardenId={gardenId}
-                              raisedBedId={raisedBedId}
-                              positionIndex={positionIndex}
-                              entryName={entry.name}
-                              imageUrls={entry.imageUrls}
-                              referenceDate={entry.timestamp}
-                              historyEntries={aiHistory?.entries}
-                          />
-                      ) : undefined;
+    const renderEntryAction = !disableActions
+        ? (entry: DiaryEntry, aiHistory?: DiaryEntryAiHistory) => {
+              const aiAction =
+                  entry.imageUrls?.length && !entry.isMarkdown ? (
+                      <RaisedBedDiaryAiAction
+                          gardenId={gardenId}
+                          raisedBedId={raisedBedId}
+                          positionIndex={positionIndex}
+                          entryName={entry.name}
+                          imageUrls={entry.imageUrls}
+                          referenceDate={entry.timestamp}
+                          historyEntries={aiHistory?.entries}
+                      />
+                  ) : undefined;
 
-                  return diaryEntryActions({
-                      aiAction,
-                      entry,
-                      gardenId,
-                  });
-              }
-            : !disableActions
-              ? (entry: DiaryEntry) =>
-                    diaryEntryActions({
-                        entry,
-                        gardenId,
-                    })
-              : undefined;
+              return diaryEntryActions({
+                  aiAction,
+                  entry,
+                  gardenId,
+              });
+          }
+        : undefined;
 
     return (
         <DiaryList
@@ -473,32 +464,28 @@ export function RaisedBedDiary({
         isLoading,
         error,
     } = useRaisedBedDiaryEntries(gardenId, raisedBedId);
-    const flags = useGameFlags();
-    const renderEntryAction = flags.raisedBedImageAI
-        ? (entry: DiaryEntry, aiHistory?: DiaryEntryAiHistory) => {
-              const aiAction =
-                  entry.imageUrls?.length && !entry.isMarkdown ? (
-                      <RaisedBedDiaryAiAction
-                          gardenId={gardenId}
-                          raisedBedId={raisedBedId}
-                          entryName={entry.name}
-                          imageUrls={entry.imageUrls}
-                          referenceDate={entry.timestamp}
-                          historyEntries={aiHistory?.entries}
-                      />
-                  ) : undefined;
+    const renderEntryAction = (
+        entry: DiaryEntry,
+        aiHistory?: DiaryEntryAiHistory,
+    ) => {
+        const aiAction =
+            entry.imageUrls?.length && !entry.isMarkdown ? (
+                <RaisedBedDiaryAiAction
+                    gardenId={gardenId}
+                    raisedBedId={raisedBedId}
+                    entryName={entry.name}
+                    imageUrls={entry.imageUrls}
+                    referenceDate={entry.timestamp}
+                    historyEntries={aiHistory?.entries}
+                />
+            ) : undefined;
 
-              return diaryEntryActions({
-                  aiAction,
-                  entry,
-                  gardenId,
-              });
-          }
-        : (entry: DiaryEntry) =>
-              diaryEntryActions({
-                  entry,
-                  gardenId,
-              });
+        return diaryEntryActions({
+            aiAction,
+            entry,
+            gardenId,
+        });
+    };
 
     return (
         <DiaryList
