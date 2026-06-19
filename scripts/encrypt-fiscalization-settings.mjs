@@ -13,6 +13,7 @@ const storageRequire = createRequire(
 const { Pool } = storageRequire('pg');
 const args = new Set(process.argv.slice(2));
 const isDryRun = args.has('--dry-run');
+const batchSize = 100;
 
 function printUsage() {
     console.log(`Usage: node scripts/encrypt-fiscalization-settings.mjs [--dry-run]
@@ -63,23 +64,39 @@ if (!isColumnEncryptionConfigured()) {
 
 const pool = new Pool({ connectionString });
 
-try {
-    const result = await pool.query(
-        'select id, cert_base64, cert_password from fiscalization_user_settings order by id',
-    );
-    const rowsToMigrate = result.rows.filter(
-        (row) =>
-            !isEncryptedColumnValue(row.cert_base64) ||
-            !isEncryptedColumnValue(row.cert_password),
-    );
+let lastSeenId = 0;
+let changedCount = 0;
 
-    if (rowsToMigrate.length === 0) {
-        console.log('No fiscalization_user_settings rows require encryption.');
-    } else if (isDryRun) {
-        console.log(
-            `Would encrypt ${rowsToMigrate.length} fiscalization_user_settings row(s): ${rowsToMigrate.map((row) => row.id).join(', ')}`,
+try {
+    while (true) {
+        const result = await pool.query(
+            'select id, cert_base64, cert_password from fiscalization_user_settings where id > $1 order by id limit $2',
+            [lastSeenId, batchSize],
         );
-    } else {
+        if (result.rows.length === 0) {
+            break;
+        }
+
+        lastSeenId = result.rows.at(-1).id;
+        const rowsToMigrate = result.rows.filter(
+            (row) =>
+                !isEncryptedColumnValue(row.cert_base64) ||
+                !isEncryptedColumnValue(row.cert_password),
+        );
+
+        if (rowsToMigrate.length === 0) {
+            continue;
+        }
+
+        changedCount += rowsToMigrate.length;
+
+        if (isDryRun) {
+            console.log(
+                `Would encrypt fiscalization_user_settings row(s): ${rowsToMigrate.map((row) => row.id).join(', ')}`,
+            );
+            continue;
+        }
+
         for (const row of rowsToMigrate) {
             const certBase64 = isEncryptedColumnValue(row.cert_base64)
                 ? row.cert_base64
@@ -94,10 +111,16 @@ try {
             );
             console.log(`Encrypted fiscalization_user_settings row ${row.id}.`);
         }
+    }
 
+    if (changedCount === 0) {
+        console.log('No fiscalization_user_settings rows require encryption.');
+    } else if (isDryRun) {
         console.log(
-            `Encrypted ${rowsToMigrate.length} fiscalization_user_settings row(s).`,
+            `Would encrypt ${changedCount} fiscalization_user_settings row(s).`,
         );
+    } else {
+        console.log(`Encrypted ${changedCount} fiscalization_user_settings row(s).`);
     }
 } finally {
     await pool.end();

@@ -80,6 +80,19 @@ test('throws when encrypted values are tampered with', () => {
     });
 });
 
+test('rejects invalid encryption keys', () => {
+    withColumnEncryptionKey(
+        'not base64 but long enough to fail validation',
+        () => {
+            assert.equal(isColumnEncryptionConfigured(), false);
+            assert.throws(
+                () => encryptColumnValue('synthetic credential'),
+                /GREDICE_COLUMN_ENCRYPTION_KEY/,
+            );
+        },
+    );
+});
+
 test('requires a key for encryption and encrypted-value decryption', () => {
     const encrypted = withColumnEncryptionKey(syntheticKey(), () =>
         encryptColumnValue('synthetic credential'),

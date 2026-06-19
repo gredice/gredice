@@ -5,12 +5,19 @@ const encryptedValuePrefix = 'enc:v1:';
 const ivLengthBytes = 12;
 const authTagLengthBytes = 16;
 const keyLengthBytes = 32;
+const base64EncodedKeyPattern = /^(?:[A-Za-z0-9+/]{4}){10}[A-Za-z0-9+/]{3}=$/;
 
 function readColumnEncryptionKey() {
     const encodedKey = process.env[columnEncryptionKeyEnv];
     if (!encodedKey) {
         throw new Error(
             `${columnEncryptionKeyEnv} must be set to a base64-encoded 32-byte key to encrypt or decrypt column values.`,
+        );
+    }
+
+    if (!base64EncodedKeyPattern.test(encodedKey)) {
+        throw new Error(
+            `${columnEncryptionKeyEnv} must be a base64-encoded 32-byte key to encrypt or decrypt column values.`,
         );
     }
 
