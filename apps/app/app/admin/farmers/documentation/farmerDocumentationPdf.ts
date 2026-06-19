@@ -88,18 +88,22 @@ const logoMarkPaths = [
     '20.486 13.455 m 20.334 14.108 l 20.179 14.77 20.013 15.309 19.743 15.75 c 19.46 16.213 19.087 16.529 18.591 16.797 c 18.567 16.811 l 18.542 16.821 l 18.063 17.025 17.627 17.181 17.122 17.235 c 16.617 17.288 16.087 17.234 15.414 17.081 c 14.827 16.948 l 14.976 16.364 l 15.136 15.742 15.329 15.26 15.63 14.842 c 15.93 14.426 16.309 14.113 16.771 13.792 c 16.798 13.773 l 16.827 13.758 l 17.716 13.277 18.491 13.266 19.818 13.392 c 20.486 13.455 l h 19.015 14.506 m 18.241 14.467 17.85 14.542 17.412 14.774 c 17.007 15.057 16.762 15.276 16.581 15.527 c 16.477 15.671 16.386 15.838 16.301 16.053 c 16.578 16.088 16.8 16.091 16.999 16.07 c 17.322 16.035 17.625 15.936 18.057 15.754 c 18.4 15.565 18.594 15.382 18.744 15.138 c 18.842 14.977 18.929 14.776 19.015 14.506 c h',
 ] as const;
 
-const croatianReplacements: Record<string, string> = {
-    '\u010c': 'C',
-    '\u010d': 'c',
-    '\u0106': 'C',
-    '\u0107': 'c',
-    '\u0110': 'Dj',
-    '\u0111': 'dj',
-    '\u0160': 'S',
-    '\u0161': 's',
-    '\u017d': 'Z',
-    '\u017e': 'z',
-};
+const latinExtendedGlyphs = [
+    { character: 'Č', code: 0x80, glyph: 'Ccaron', unicode: '010C' },
+    { character: 'č', code: 0x81, glyph: 'ccaron', unicode: '010D' },
+    { character: 'Ć', code: 0x82, glyph: 'Cacute', unicode: '0106' },
+    { character: 'ć', code: 0x83, glyph: 'cacute', unicode: '0107' },
+    { character: 'Đ', code: 0x84, glyph: 'Dcroat', unicode: '0110' },
+    { character: 'đ', code: 0x85, glyph: 'dcroat', unicode: '0111' },
+    { character: 'Š', code: 0x86, glyph: 'Scaron', unicode: '0160' },
+    { character: 'š', code: 0x87, glyph: 'scaron', unicode: '0161' },
+    { character: 'Ž', code: 0x88, glyph: 'Zcaron', unicode: '017D' },
+    { character: 'ž', code: 0x89, glyph: 'zcaron', unicode: '017E' },
+] as const;
+
+const latinExtendedGlyphByCharacter = new Map(
+    latinExtendedGlyphs.map((glyph) => [glyph.character, glyph]),
+);
 
 class PdfCanvas {
     private readonly operations: string[] = [];
@@ -301,11 +305,11 @@ function drawOrganizationGuide({
 }) {
     const subtitleScope = data.since
         ? `Promjene od ${formatDocumentationDateTime(data.since)}`
-        : 'Cijeli prirucnik';
+        : 'Cijeli priručnik';
     const subtitleContent = organizationGuideContentSubtitle(content);
     let context = startPage(pages, {
         code: 'ORG-GUIDE',
-        title: 'Vodic za organizaciju',
+        title: 'Vodič za organizaciju',
         subtitle: subtitleContent
             ? `${subtitleScope} - ${subtitleContent}`
             : subtitleScope,
@@ -320,8 +324,8 @@ function drawOrganizationGuide({
 
     context = drawSection(context, 'Svrha paketa', [
         packageType,
-        'Stranice nisu numerirane. U registratoru ih drzi abecedno prema naslovu stranice, odnosno velikom naslovu u zaglavlju.',
-        'Ako dvije stranice imaju isti naslov, zadrzi redoslijed prema kodu.',
+        'Stranice nisu numerirane. U registratoru ih drži abecedno prema naslovu stranice, odnosno velikom naslovu u zaglavlju.',
+        'Ako dvije stranice imaju isti naslov, zadrži redoslijed prema kodu.',
         'Kod dodavanja ili zamjene stranica novu verziju umetni na mjesto navedeno u uputama ispod.',
     ]);
 
@@ -333,16 +337,16 @@ function drawOrganizationGuide({
     );
     context = drawActionList(
         context,
-        'Zamijeni postojece stranice',
+        'Zamijeni postojeće stranice',
         includedPages.filter((page) => page.changeType === 'replace'),
         allCurrentPages,
     );
     context = drawDiscardList(context, discardedPages);
     context = drawSection(context, 'Kontrola nakon umetanja', [
-        '1. Provjeri da je svaka nova ili zamijenjena stranica umetnuta na navedeno abecedno mjesto i da kod odgovara kodu u ovom vodicu.',
-        '2. Stare stranice iz odjeljka za zamjenu izdvoji i odbaci nakon sto nova verzija stoji u registratoru.',
+        '1. Provjeri da je svaka nova ili zamijenjena stranica umetnuta na navedeno abecedno mjesto i da kod odgovara kodu u ovom vodiču.',
+        '2. Stare stranice iz odjeljka za zamjenu izdvoji i odbaci nakon što nova verzija stoji u registratoru.',
         '3. Stranice iz odjeljka za uklanjanje izvadi iz registratora bez zamjenske stranice.',
-        '4. QR kod na svakoj stranici vodi na farmer aplikaciju za aktualnu digitalnu verziju prirucnika.',
+        '4. QR kod na svakoj stranici vodi na farmer aplikaciju za aktualnu digitalnu verziju priručnika.',
     ]);
 
     drawFooter(context.page);
@@ -381,10 +385,10 @@ function organizationGuidePackageDescription(
     const contentLabel = organizationGuidePackageContentLabel(content);
 
     if (data.since) {
-        return `Paket sadrzi organizacijski vodic i ${contentLabel} promijenjene od zadnjeg ispisa.`;
+        return `Paket sadrži organizacijski vodič i ${contentLabel} promijenjene od zadnjeg ispisa.`;
     }
 
-    return `Paket sadrzi organizacijski vodic i ${contentLabel} trenutno objavljene u farmer aplikaciji.`;
+    return `Paket sadrži organizacijski vodič i ${contentLabel} trenutno objavljene u farmer aplikaciji.`;
 }
 
 function organizationGuidePackageContentLabel(
@@ -392,11 +396,11 @@ function organizationGuidePackageContentLabel(
 ) {
     switch (content) {
         case 'all':
-            return 'sve prirucnike';
+            return 'sve priručnike';
         case 'operations':
-            return 'prirucnike radnji';
+            return 'priručnike radnji';
         case 'plantSorts':
-            return 'prirucnike biljaka i sorti';
+            return 'priručnike biljaka i sorti';
     }
 }
 
@@ -436,7 +440,7 @@ function pagePlacementInstruction(
             : null;
 
     if (previousPage && nextPage) {
-        return `abecedno izmedju ${pageReference(previousPage)} i ${pageReference(nextPage)}`;
+        return `abecedno između ${pageReference(previousPage)} i ${pageReference(nextPage)}`;
     }
     if (nextPage) {
         return `abecedno prije ${pageReference(nextPage)}`;
@@ -862,23 +866,58 @@ function fitSingleLine(value: string, maxWidth: number, fontSize: number) {
 }
 
 function escapePdfText(value: string) {
-    return sanitizePdfText(value)
-        .replace(/\\/g, '\\\\')
-        .replace(/\(/g, '\\(')
-        .replace(/\)/g, '\\)');
+    let escaped = '';
+
+    for (const character of sanitizePdfText(value)) {
+        const glyph = latinExtendedGlyphByCharacter.get(character);
+        if (glyph) {
+            escaped += `\\${glyph.code.toString(8).padStart(3, '0')}`;
+            continue;
+        }
+
+        if (character === '\\') {
+            escaped += '\\\\';
+            continue;
+        }
+        if (character === '(') {
+            escaped += '\\(';
+            continue;
+        }
+        if (character === ')') {
+            escaped += '\\)';
+            continue;
+        }
+
+        escaped += character;
+    }
+
+    return escaped;
 }
 
 function sanitizePdfText(value: string) {
-    return value
-        .replace(
-            /[\u010c\u010d\u0106\u0107\u0110\u0111\u0160\u0161\u017d\u017e]/g,
-            (character) => croatianReplacements[character] ?? character,
-        )
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
+    let sanitized = '';
+
+    for (const character of value
+        .normalize('NFC')
         .replace(/[–—]/g, '-')
-        .replace(/→/g, '->')
-        .replace(/[^\x20-\x7e]/g, '?');
+        .replace(/→/g, '->')) {
+        if (/^[\x20-\x7e]$/.test(character)) {
+            sanitized += character;
+            continue;
+        }
+
+        if (latinExtendedGlyphByCharacter.has(character)) {
+            sanitized += character;
+            continue;
+        }
+
+        const withoutMarks = character
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '');
+        sanitized += /^[\x20-\x7e]+$/.test(withoutMarks) ? withoutMarks : '?';
+    }
+
+    return sanitized;
 }
 
 function formatNumber(value: number) {
@@ -893,7 +932,9 @@ function writePdf(pageContentStreams: string[]) {
     const objects: string[] = [];
     const fontId = 3;
     const boldFontId = 4;
-    const firstPageObjectId = 5;
+    const fontEncodingId = 5;
+    const fontToUnicodeMapId = 6;
+    const firstPageObjectId = 7;
     const kids = pageContentStreams
         .map((_, index) => `${firstPageObjectId + index * 2} 0 R`)
         .join(' ');
@@ -902,8 +943,14 @@ function writePdf(pageContentStreams: string[]) {
     objects.push(
         `<< /Type /Pages /Kids [${kids}] /Count ${pageContentStreams.length} >>`,
     );
-    objects.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
-    objects.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>');
+    objects.push(
+        `<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding ${fontEncodingId} 0 R /ToUnicode ${fontToUnicodeMapId} 0 R >>`,
+    );
+    objects.push(
+        `<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding ${fontEncodingId} 0 R /ToUnicode ${fontToUnicodeMapId} 0 R >>`,
+    );
+    objects.push(pdfLatinExtendedEncodingObject());
+    objects.push(pdfLatinExtendedToUnicodeMapObject());
 
     pageContentStreams.forEach((content, index) => {
         const pageObjectId = firstPageObjectId + index * 2;
@@ -945,4 +992,45 @@ function writePdf(pageContentStreams: string[]) {
     new Uint8Array(buffer).set(bytes);
 
     return buffer;
+}
+
+function pdfLatinExtendedEncodingObject() {
+    const firstCode = latinExtendedGlyphs[0]?.code ?? 0x80;
+    const glyphNames = latinExtendedGlyphs
+        .map((glyph) => `/${glyph.glyph}`)
+        .join(' ');
+
+    return `<< /Type /Encoding /BaseEncoding /WinAnsiEncoding /Differences [${firstCode} ${glyphNames}] >>`;
+}
+
+function pdfLatinExtendedToUnicodeMapObject() {
+    const mappings = latinExtendedGlyphs
+        .map(
+            (glyph) =>
+                `<${glyph.code.toString(16).padStart(2, '0').toUpperCase()}> <${glyph.unicode}>`,
+        )
+        .join('\n');
+    const stream = [
+        '/CIDInit /ProcSet findresource begin',
+        '12 dict begin',
+        'begincmap',
+        '/CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def',
+        '/CMapName /GrediceLatinExtended def',
+        '/CMapType 2 def',
+        '1 begincodespacerange',
+        '<00> <FF>',
+        'endcodespacerange',
+        '1 beginbfrange',
+        '<20> <7E> <0020>',
+        'endbfrange',
+        `${latinExtendedGlyphs.length} beginbfchar`,
+        mappings,
+        'endbfchar',
+        'endcmap',
+        'CMapName currentdict /CMap defineresource pop',
+        'end',
+        'end',
+    ].join('\n');
+
+    return `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`;
 }

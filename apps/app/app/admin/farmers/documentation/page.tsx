@@ -110,16 +110,6 @@ export default async function FarmerDocumentationPage({
                 }
             />
 
-            <Stack spacing={1}>
-                <Typography level="h4" component="h1">
-                    Dokumentacija farmera
-                </Typography>
-                <Typography level="body2" className="text-muted-foreground">
-                    Ispis priručnika radnji i sorti iz farmer aplikacije,
-                    organiziran po stabilnim OP i PS kodovima.
-                </Typography>
-            </Stack>
-
             <Card>
                 <CardContent>
                     <form
