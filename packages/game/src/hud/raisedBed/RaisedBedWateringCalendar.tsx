@@ -226,17 +226,29 @@ function buildPreviewEntry({
 export function RaisedBedWateringCalendar({
     className,
     gardenId,
+    maxSelectableDate,
+    minSelectableDate,
+    onDateSelect,
     operationId,
     previewDate,
     previewOperation,
     raisedBedId,
+    selectedDate,
+    visibleFrom,
+    visibleTo,
 }: {
     className?: string;
     gardenId: number;
+    maxSelectableDate?: Date;
+    minSelectableDate?: Date;
+    onDateSelect?: (date: Date) => void;
     operationId?: number;
     previewDate?: Date | null;
     previewOperation?: OperationData;
     raisedBedId: number;
+    selectedDate?: Date | null;
+    visibleFrom?: Date;
+    visibleTo?: Date;
 }) {
     const referenceDate = useLiveTime();
     const { data: operations, isError: isOperationsError } = useOperations();
@@ -323,7 +335,13 @@ export function RaisedBedWateringCalendar({
                 history.isFetchingNextPage ||
                 operations === undefined
             }
+            maxSelectableDate={maxSelectableDate}
+            minSelectableDate={minSelectableDate}
+            onDateSelect={onDateSelect}
             referenceDate={referenceDate}
+            selectedDate={selectedDate}
+            visibleFrom={visibleFrom}
+            visibleTo={visibleTo}
         />
     );
 }
