@@ -2,7 +2,7 @@ import {
     closeStorage,
     createAttributeDefinition,
     getAttributeDefinitions,
-    getEntitiesFormatted,
+    getEntitiesRaw,
     getEntityRaw,
     type SelectAttributeDefinition,
     upsertAttributeValue,
@@ -28,6 +28,7 @@ type ExistingCoverValue = {
     id?: number;
     value?: string | null;
 };
+type OperationRawEntity = Awaited<ReturnType<typeof getEntitiesRaw>>[number];
 
 const actor = {
     id: 'codex',
@@ -153,6 +154,61 @@ function operationName(operation: OperationDirectoryEntity) {
     return operation.information?.name?.trim() ?? '';
 }
 
+function rawAttributeValue(
+    operation: OperationRawEntity,
+    category: string,
+    name: string,
+) {
+    return (
+        operation.attributes.find(
+            (attribute) =>
+                attribute.attributeDefinition.category === category &&
+                attribute.attributeDefinition.name === name,
+        )?.value ?? null
+    );
+}
+
+function imageCoverUrl(value: string | null) {
+    if (!value) {
+        return undefined;
+    }
+
+    try {
+        const parsed = JSON.parse(value) as unknown;
+        if (
+            parsed &&
+            typeof parsed === 'object' &&
+            'url' in parsed &&
+            typeof parsed.url === 'string'
+        ) {
+            return parsed.url;
+        }
+    } catch {
+        return value;
+    }
+
+    return undefined;
+}
+
+function toOperationDirectoryEntity(
+    operation: OperationRawEntity,
+): OperationDirectoryEntity {
+    const name = rawAttributeValue(operation, 'information', 'name');
+    const cover = rawAttributeValue(operation, 'image', 'cover');
+
+    return {
+        id: operation.id,
+        information: {
+            name: name ?? undefined,
+        },
+        image: {
+            cover: {
+                url: imageCoverUrl(cover),
+            },
+        },
+    };
+}
+
 function coverUrl(baseUrl: string, outputFileName: string) {
     return `${baseUrl}/${encodeURIComponent(outputFileName)}`;
 }
@@ -192,8 +248,9 @@ async function main() {
     const coverDefinitionResult = await ensureCoverDefinition({
         apply: options.apply,
     });
-    const operations =
-        await getEntitiesFormatted<OperationDirectoryEntity>(entityTypeName);
+    const operations = (await getEntitiesRaw(entityTypeName)).map(
+        toOperationDirectoryEntity,
+    );
     const operationsByName = new Map<string, OperationDirectoryEntity>();
 
     for (const operation of operations) {
@@ -266,7 +323,7 @@ async function main() {
 
     if (missingOperations.length > 0) {
         throw new Error(
-            `Missing published operations for recipes: ${missingOperations.join(', ')}`,
+            `Missing operations for recipes: ${missingOperations.join(', ')}`,
         );
     }
 
