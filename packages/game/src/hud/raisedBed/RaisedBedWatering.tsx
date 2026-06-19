@@ -41,14 +41,12 @@ export function RaisedBedWatering({
             }
         >
             <Stack spacing={4}>
-                <Typography level="h5">Radnje zalijevanja</Typography>
-                <Typography>
+                <Typography level="body2" semiBold>
+                    Radnje zalijevanja
+                </Typography>
+                <Typography level="body2" secondary>
                     Odaberite radnju zalijevanja za ovu gredicu.
                 </Typography>
-                <RaisedBedWateringCalendar
-                    gardenId={gardenId}
-                    raisedBedId={raisedBedId}
-                />
                 <OperationsList
                     gardenId={gardenId}
                     raisedBedId={raisedBedId}
@@ -57,6 +55,10 @@ export function RaisedBedWatering({
                             'watering' &&
                         operation.attributes.application === 'raisedBedFull'
                     }
+                />
+                <RaisedBedWateringCalendar
+                    gardenId={gardenId}
+                    raisedBedId={raisedBedId}
                 />
             </Stack>
         </Modal>

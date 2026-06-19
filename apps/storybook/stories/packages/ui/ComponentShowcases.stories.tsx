@@ -49,6 +49,10 @@ import { Divider } from '@gredice/ui/Divider';
 import { DotIndicator } from '@gredice/ui/DotIndicator';
 import { EditableInput } from '@gredice/ui/EditableInput';
 import { ErrorFallback } from '@gredice/ui/ErrorFallback';
+import {
+    EventCalendar,
+    type EventCalendarEntry,
+} from '@gredice/ui/EventCalendar';
 import { ExpandableSearchInput } from '@gredice/ui/ExpandableSearchInput';
 import { FilterInput } from '@gredice/ui/FilterInput';
 import { Gallery } from '@gredice/ui/Gallery';
@@ -241,6 +245,33 @@ const operationRows = [
         status: 'Ceka sadnju',
         owner: 'Petra',
         dueAt: new Date('2026-05-23T08:00:00+02:00'),
+    },
+];
+
+const gardenCalendarEntries: EventCalendarEntry[] = [
+    {
+        id: 'garden-watering-completed',
+        date: '2026-06-18T08:00:00.000Z',
+        label: 'Površinsko zalijevanje',
+        meta: 'Obavljeno · 20 min',
+        tone: 'completed',
+        weight: 20,
+    },
+    {
+        id: 'garden-watering-scheduled',
+        date: '2026-06-20T08:00:00.000Z',
+        label: 'Zalijevanje gredice',
+        meta: 'Zakazano · 50 min',
+        tone: 'scheduled',
+        weight: 50,
+    },
+    {
+        id: 'garden-cart',
+        date: '2026-06-21T08:00:00.000Z',
+        label: 'Sustav navodnjavanja',
+        meta: 'U košari',
+        tone: 'cart',
+        weight: 90,
     },
 ];
 
@@ -1464,6 +1495,13 @@ function GardenWorkspaceShowcase() {
                                     </Row>
                                 </CardContent>
                             </Card>
+
+                            <EventCalendar
+                                entries={gardenCalendarEntries}
+                                referenceDate={
+                                    new Date('2026-06-18T12:00:00.000Z')
+                                }
+                            />
                         </Stack>
 
                         <div className="relative h-full overflow-hidden bg-emerald-50 p-6 dark:bg-emerald-950/20">
