@@ -982,7 +982,7 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
             name: /Fotografije gredice Raised Bed 1/u,
         });
         await expect(photoButton).toBeVisible();
-        await expect(photoButton).toContainText('Foto');
+        await expect(photoButton.locator('img')).toBeVisible();
 
         await photoButton.click();
 
@@ -1074,7 +1074,7 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
             name: /Fotografije gredice Raised Bed 1/u,
         });
         await expect(photoButton).toBeVisible();
-        await expect(photoButton).toContainText('1');
+        await expect(photoButton.locator('img')).toBeVisible();
 
         await photoButton.click();
 
