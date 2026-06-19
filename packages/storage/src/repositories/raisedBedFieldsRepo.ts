@@ -37,6 +37,16 @@ const PLANT_CYCLE_EVENT_TYPES = [
     knownEventTypes.raisedBedFields.plantUpdate,
     knownEventTypes.raisedBedFields.plantReplaceSort,
 ] as const;
+const PLANT_CYCLE_EVENT_TYPE_SET = new Set<string>(PLANT_CYCLE_EVENT_TYPES);
+const RAISED_BED_FIELD_EVENT_TYPES = [
+    knownEventTypes.raisedBedFields.create,
+    knownEventTypes.raisedBedFields.delete,
+    knownEventTypes.raisedBedFields.plantPlace,
+    knownEventTypes.raisedBedFields.plantSchedule,
+    knownEventTypes.raisedBedFields.plantUpdate,
+    knownEventTypes.raisedBedFields.plantReplaceSort,
+    knownEventTypes.raisedBedFields.weedStateSet,
+] as const;
 
 type CanonicalRaisedBedField = {
     id: number;
@@ -1236,16 +1246,299 @@ export async function getRaisedBedFieldPlantCycles(raisedBedId: number) {
     });
 }
 
-// New: Retrieve all raised bed fields for a single raised bed, with event-sourced info
-export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
+function reduceRaisedBedFieldWithEvents(
+    field: SelectRaisedBedField,
+    eventsForAggregate: RaisedBedFieldPlantCycleEvent[],
+) {
+    const aggregateId = `${field.raisedBedId}|${field.positionIndex}`;
+    const events = eventsForAggregate;
+
+    // Reduce events to get latest status, plant info, etc.
+    let plantStatus: string | undefined;
+    let plantSortId: number | undefined;
+    let plantScheduledDate: Date | undefined;
+    let sowingLocation: RaisedBedFieldSowingLocation = 'direct';
+    let plantSowDate: Date | undefined;
+    let plantGrowthDate: Date | undefined;
+    let plantReadyDate: Date | undefined;
+    let plantDeadDate: Date | undefined;
+    let plantHarvestedDate: Date | undefined;
+    let plantRemovedDate: Date | undefined;
+    let active = true;
+    let toBeRemoved = false;
+    let stoppedDate: Date | undefined;
+    let assignedUserId: string | null | undefined;
+    let assignedUserIds: string[] | undefined;
+    let assignedBy: string | null | undefined;
+    let assignedAt: Date | undefined;
+    let weedState: RaisedBedWeedState | null = null;
+
+    for (const event of events) {
+        const data = event.data as Record<string, unknown> | undefined;
+        // Handle plant placement event
+        if (event.type === knownEventTypes.raisedBedFields.plantPlace) {
+            // A field can be replanted after it was removed, so a new placement
+            // must restart the lifecycle instead of inheriting the previous one.
+            active = true;
+            toBeRemoved = false;
+            stoppedDate = undefined;
+            plantStatus = 'new';
+            plantSortId = undefined;
+            sowingLocation = 'direct';
+            plantScheduledDate = undefined;
+            plantSowDate = undefined;
+            plantGrowthDate = undefined;
+            plantReadyDate = undefined;
+            plantDeadDate = undefined;
+            plantHarvestedDate = undefined;
+            plantRemovedDate = undefined;
+            assignedUserId = undefined;
+            assignedUserIds = undefined;
+            assignedBy = undefined;
+            assignedAt = undefined;
+
+            // Parse plant sort ID if provided
+            if (typeof data?.plantSortId === 'number') {
+                plantSortId = data.plantSortId;
+            } else if (typeof data?.plantSortId === 'string') {
+                plantSortId = parseInt(data.plantSortId, 10);
+            } else {
+                console.error('Invalid raised bed field plant sort ID', {
+                    eventId: event.id,
+                    fieldId: field.id,
+                    plantSortId: data?.plantSortId,
+                    positionIndex: field.positionIndex,
+                    raisedBedId: field.raisedBedId,
+                });
+            }
+            sowingLocation =
+                parseSowingLocation(data?.sowingLocation) ?? 'direct';
+
+            // Parse scheduled date if provided
+            if (data?.scheduledDate && typeof data.scheduledDate === 'string') {
+                plantScheduledDate = new Date(data.scheduledDate);
+            } else if (
+                data?.scheduledDate &&
+                typeof data.scheduledDate === 'object' &&
+                data?.scheduledDate instanceof Date
+            ) {
+                plantScheduledDate = data?.scheduledDate;
+            }
+        }
+        // Handle plant schedule update event
+        else if (event.type === knownEventTypes.raisedBedFields.plantSchedule) {
+            if (data?.scheduledDate && typeof data.scheduledDate === 'string') {
+                plantScheduledDate = new Date(data.scheduledDate);
+            } else if (
+                data?.scheduledDate &&
+                typeof data.scheduledDate === 'object' &&
+                data?.scheduledDate instanceof Date
+            ) {
+                plantScheduledDate = data?.scheduledDate;
+            } else if (data?.scheduledDate == null) {
+                plantScheduledDate = undefined;
+            }
+            sowingLocation =
+                parseSowingLocation(data?.sowingLocation) ?? sowingLocation;
+        }
+        // Handle plant status update event
+        else if (event.type === knownEventTypes.raisedBedFields.plantUpdate) {
+            const statusEventDate = effectiveEventDate(
+                data ?? {},
+                event.createdAt,
+            );
+            let shouldApplyAssignedBy = true;
+            const shouldApplyAssignedUsers = isAssignmentEvent(data ?? {});
+            const hasAssignedUserIdUpdate =
+                shouldApplyAssignedUsers &&
+                extractAssignedUserId(data?.assignedUserId) !== undefined;
+            plantStatus =
+                typeof data?.status === 'string' ? data?.status : plantStatus;
+            if (hasAssignedUserIdUpdate) {
+                const nextAssignedUserId = extractAssignedUserId(
+                    data?.assignedUserId,
+                );
+                assignedUserId = nextAssignedUserId;
+                assignedUserIds = undefined;
+                if (nextAssignedUserId === null) {
+                    assignedBy = null;
+                    assignedAt = undefined;
+                    shouldApplyAssignedBy = false;
+                } else {
+                    assignedAt = event.createdAt;
+                }
+            }
+            if (
+                shouldApplyAssignedUsers &&
+                Array.isArray(data?.assignedUserIds)
+            ) {
+                const eventAssignedUserId = extractAssignedUserId(
+                    data?.assignedUserId,
+                );
+                assignedUserIds = normalizeAssignedUserIds(
+                    data.assignedUserIds.filter(
+                        (value): value is string => typeof value === 'string',
+                    ),
+                    eventAssignedUserId,
+                );
+                assignedUserId = assignedUserIds[0] ?? null;
+                if (assignedUserIds.length === 0) {
+                    assignedBy = null;
+                    assignedAt = undefined;
+                    shouldApplyAssignedBy = false;
+                } else {
+                    assignedAt = event.createdAt;
+                }
+            }
+            if (shouldApplyAssignedBy && typeof data?.assignedBy === 'string') {
+                assignedBy = data.assignedBy;
+            }
+            if (plantStatus === 'new' || plantStatus === 'planned') {
+                active = true;
+                toBeRemoved = false;
+                stoppedDate = undefined;
+                plantSowDate = undefined;
+                plantGrowthDate = undefined;
+                plantReadyDate = undefined;
+                plantDeadDate = undefined;
+                plantHarvestedDate = undefined;
+                plantRemovedDate = undefined;
+            } else if (
+                plantStatus === 'pendingVerification' ||
+                plantStatus === 'sowed'
+            ) {
+                plantSowDate = plantSowDate ?? statusEventDate;
+            } else if (plantStatus === 'sprouted') {
+                plantGrowthDate = statusEventDate;
+            } else if (plantStatus === 'notSprouted') {
+                plantDeadDate = statusEventDate;
+                stoppedDate = statusEventDate;
+                toBeRemoved = true;
+            } else if (plantStatus === 'died') {
+                plantDeadDate = statusEventDate;
+                stoppedDate = statusEventDate;
+            } else if (plantStatus === 'firstFlowers') {
+                plantGrowthDate = plantGrowthDate ?? statusEventDate;
+            } else if (plantStatus === 'firstFruitSet') {
+                plantGrowthDate = plantGrowthDate ?? statusEventDate;
+            } else if (plantStatus === 'ready') {
+                plantReadyDate = statusEventDate;
+            } else if (plantStatus === 'harvested') {
+                plantHarvestedDate = statusEventDate;
+                stoppedDate = statusEventDate;
+            } else if (plantStatus === 'removed') {
+                plantRemovedDate = statusEventDate;
+                active = false;
+                stoppedDate = statusEventDate;
+            }
+        }
+        // Handle plant sort replace event
+        else if (
+            event.type === knownEventTypes.raisedBedFields.plantReplaceSort
+        ) {
+            if (data?.plantSortId && typeof data.plantSortId === 'string') {
+                plantSortId = parseInt(data.plantSortId, 10);
+            }
+        }
+        // Handle weed state updates
+        else if (event.type === knownEventTypes.raisedBedFields.weedStateSet) {
+            weedState = weedStateFromEvent(event) ?? weedState;
+        }
+        // Handle field deletion event
+        else if (event.type === knownEventTypes.raisedBedFields.delete) {
+            plantStatus = 'deleted';
+            plantSowDate = undefined;
+            plantSortId = undefined;
+            plantScheduledDate = undefined;
+        } else {
+            console.warn('Unhandled raised bed field event type', {
+                eventId: event.id,
+                eventType: event.type,
+                fieldId: field.id,
+                positionIndex: field.positionIndex,
+                raisedBedId: field.raisedBedId,
+            });
+        }
+    }
+
+    return {
+        ...field,
+        plantCycles: summarizePlantCycles(
+            aggregateId,
+            field.positionIndex,
+            events.filter((event) =>
+                PLANT_CYCLE_EVENT_TYPE_SET.has(event.type),
+            ),
+        ),
+        plantStatus,
+        plantSortId,
+        plantScheduledDate,
+        sowingLocation,
+        plantSowDate,
+        plantGrowthDate,
+        plantReadyDate,
+        plantDeadDate,
+        plantHarvestedDate,
+        plantRemovedDate,
+        active,
+        toBeRemoved,
+        stoppedDate,
+        assignedUserIds: normalizeAssignedUserIds(
+            assignedUserIds,
+            assignedUserId,
+        ),
+        assignedUserId,
+        assignedBy,
+        assignedAt,
+        weedState,
+    };
+}
+
+export type RaisedBedFieldWithEvents = ReturnType<
+    typeof reduceRaisedBedFieldWithEvents
+>;
+
+function groupRaisedBedFieldEventsByAggregateId(
+    fieldEvents: RaisedBedFieldPlantCycleEvent[],
+) {
+    const fieldEventsByAggregateId = new Map<
+        string,
+        RaisedBedFieldPlantCycleEvent[]
+    >();
+
+    for (const event of fieldEvents) {
+        const aggregateEvents = fieldEventsByAggregateId.get(event.aggregateId);
+        if (aggregateEvents) {
+            aggregateEvents.push(event);
+        } else {
+            fieldEventsByAggregateId.set(event.aggregateId, [event]);
+        }
+    }
+
+    return fieldEventsByAggregateId;
+}
+
+export async function getRaisedBedFieldsWithEventsForBeds(
+    raisedBedIds: number[],
+): Promise<Map<number, RaisedBedFieldWithEvents[]>> {
+    const uniqueRaisedBedIds = Array.from(new Set(raisedBedIds));
+    const fieldsByRaisedBedId = new Map<number, RaisedBedFieldWithEvents[]>();
+
+    for (const raisedBedId of uniqueRaisedBedIds) {
+        fieldsByRaisedBedId.set(raisedBedId, []);
+    }
+
+    if (uniqueRaisedBedIds.length === 0) {
+        return fieldsByRaisedBedId;
+    }
+
     const fields = await storage().query.raisedBedFields.findMany({
         where: and(
-            eq(raisedBedFields.raisedBedId, raisedBedId),
+            inArray(raisedBedFields.raisedBedId, uniqueRaisedBedIds),
             eq(raisedBedFields.isDeleted, false),
         ),
     });
 
-    // Retrieve all events in bulk
     const fieldAggregateIds = Array.from(
         new Set(
             fields.map(
@@ -1253,313 +1546,43 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
             ),
         ),
     );
-    const fieldsEvents = await getEvents(
-        [
-            knownEventTypes.raisedBedFields.create,
-            knownEventTypes.raisedBedFields.delete,
-            knownEventTypes.raisedBedFields.plantPlace,
-            knownEventTypes.raisedBedFields.plantSchedule,
-            knownEventTypes.raisedBedFields.plantUpdate,
-            knownEventTypes.raisedBedFields.plantReplaceSort,
-            knownEventTypes.raisedBedFields.weedStateSet,
-        ],
-        fieldAggregateIds,
-        0,
-        100000,
-    );
-    const plantCycleEventsByAggregateId = new Map<
-        string,
-        RaisedBedFieldPlantCycleEvent[]
-    >();
-    const plantCycleEventTypes = new Set<string>(PLANT_CYCLE_EVENT_TYPES);
-    for (const event of fieldsEvents) {
-        if (!plantCycleEventTypes.has(event.type)) {
-            continue;
-        }
-
-        const aggregateEvents = plantCycleEventsByAggregateId.get(
-            event.aggregateId,
+    let fieldsEvents: RaisedBedFieldPlantCycleEvent[] = [];
+    if (fieldAggregateIds.length > 0) {
+        fieldsEvents = await getEvents(
+            [...RAISED_BED_FIELD_EVENT_TYPES],
+            fieldAggregateIds,
+            0,
+            100000,
         );
-        if (aggregateEvents) {
-            aggregateEvents.push(event);
-        } else {
-            plantCycleEventsByAggregateId.set(event.aggregateId, [event]);
-        }
     }
 
-    const fieldsEventsByAggregateId = new Map<string, typeof fieldsEvents>();
-    for (const event of fieldsEvents) {
-        const aggregateEvents = fieldsEventsByAggregateId.get(
-            event.aggregateId,
-        );
-        if (aggregateEvents) {
-            aggregateEvents.push(event);
-        } else {
-            fieldsEventsByAggregateId.set(event.aggregateId, [event]);
-        }
-    }
+    const fieldsEventsByAggregateId =
+        groupRaisedBedFieldEventsByAggregateId(fieldsEvents);
 
-    // For each field, fetch and apply events
-    return fields.map((field) => {
+    for (const field of fields) {
         const aggregateId = `${field.raisedBedId}|${field.positionIndex}`;
-        const events = fieldsEventsByAggregateId.get(aggregateId) ?? [];
-
-        // Reduce events to get latest status, plant info, etc.
-        let plantStatus: string | undefined;
-        let plantSortId: number | undefined;
-        let plantScheduledDate: Date | undefined;
-        let sowingLocation: RaisedBedFieldSowingLocation = 'direct';
-        let plantSowDate: Date | undefined;
-        let plantGrowthDate: Date | undefined;
-        let plantReadyDate: Date | undefined;
-        let plantDeadDate: Date | undefined;
-        let plantHarvestedDate: Date | undefined;
-        let plantRemovedDate: Date | undefined;
-        let active = true;
-        let toBeRemoved = false;
-        let stoppedDate: Date | undefined;
-        let assignedUserId: string | null | undefined;
-        let assignedUserIds: string[] | undefined;
-        let assignedBy: string | null | undefined;
-        let assignedAt: Date | undefined;
-        let weedState: RaisedBedWeedState | null = null;
-
-        for (const event of events) {
-            const data = event.data as Record<string, unknown> | undefined;
-            // Handle plant placement event
-            if (event.type === knownEventTypes.raisedBedFields.plantPlace) {
-                // A field can be replanted after it was removed, so a new placement
-                // must restart the lifecycle instead of inheriting the previous one.
-                active = true;
-                toBeRemoved = false;
-                stoppedDate = undefined;
-                plantStatus = 'new';
-                plantSortId = undefined;
-                sowingLocation = 'direct';
-                plantScheduledDate = undefined;
-                plantSowDate = undefined;
-                plantGrowthDate = undefined;
-                plantReadyDate = undefined;
-                plantDeadDate = undefined;
-                plantHarvestedDate = undefined;
-                plantRemovedDate = undefined;
-                assignedUserId = undefined;
-                assignedUserIds = undefined;
-                assignedBy = undefined;
-                assignedAt = undefined;
-
-                // Parse plant sort ID if provided
-                if (typeof data?.plantSortId === 'number') {
-                    plantSortId = data.plantSortId;
-                } else if (typeof data?.plantSortId === 'string') {
-                    plantSortId = parseInt(data.plantSortId, 10);
-                } else {
-                    console.error('Invalid raised bed field plant sort ID', {
-                        eventId: event.id,
-                        fieldId: field.id,
-                        plantSortId: data?.plantSortId,
-                        positionIndex: field.positionIndex,
-                        raisedBedId: field.raisedBedId,
-                    });
-                }
-                sowingLocation =
-                    parseSowingLocation(data?.sowingLocation) ?? 'direct';
-
-                // Parse scheduled date if provided
-                if (
-                    data?.scheduledDate &&
-                    typeof data.scheduledDate === 'string'
-                ) {
-                    plantScheduledDate = new Date(data.scheduledDate);
-                } else if (
-                    data?.scheduledDate &&
-                    typeof data.scheduledDate === 'object' &&
-                    data?.scheduledDate instanceof Date
-                ) {
-                    plantScheduledDate = data?.scheduledDate;
-                }
-            }
-            // Handle plant schedule update event
-            else if (
-                event.type === knownEventTypes.raisedBedFields.plantSchedule
-            ) {
-                if (
-                    data?.scheduledDate &&
-                    typeof data.scheduledDate === 'string'
-                ) {
-                    plantScheduledDate = new Date(data.scheduledDate);
-                } else if (
-                    data?.scheduledDate &&
-                    typeof data.scheduledDate === 'object' &&
-                    data?.scheduledDate instanceof Date
-                ) {
-                    plantScheduledDate = data?.scheduledDate;
-                } else if (data?.scheduledDate == null) {
-                    plantScheduledDate = undefined;
-                }
-                sowingLocation =
-                    parseSowingLocation(data?.sowingLocation) ?? sowingLocation;
-            }
-            // Handle plant status update event
-            else if (
-                event.type === knownEventTypes.raisedBedFields.plantUpdate
-            ) {
-                const statusEventDate = effectiveEventDate(
-                    data ?? {},
-                    event.createdAt,
-                );
-                let shouldApplyAssignedBy = true;
-                const shouldApplyAssignedUsers = isAssignmentEvent(data ?? {});
-                const hasAssignedUserIdUpdate =
-                    shouldApplyAssignedUsers &&
-                    extractAssignedUserId(data?.assignedUserId) !== undefined;
-                plantStatus =
-                    typeof data?.status === 'string'
-                        ? data?.status
-                        : plantStatus;
-                if (hasAssignedUserIdUpdate) {
-                    const nextAssignedUserId = extractAssignedUserId(
-                        data?.assignedUserId,
-                    );
-                    assignedUserId = nextAssignedUserId;
-                    assignedUserIds = undefined;
-                    if (nextAssignedUserId === null) {
-                        assignedBy = null;
-                        assignedAt = undefined;
-                        shouldApplyAssignedBy = false;
-                    } else {
-                        assignedAt = event.createdAt;
-                    }
-                }
-                if (
-                    shouldApplyAssignedUsers &&
-                    Array.isArray(data?.assignedUserIds)
-                ) {
-                    const eventAssignedUserId = extractAssignedUserId(
-                        data?.assignedUserId,
-                    );
-                    assignedUserIds = normalizeAssignedUserIds(
-                        data.assignedUserIds.filter(
-                            (value): value is string =>
-                                typeof value === 'string',
-                        ),
-                        eventAssignedUserId,
-                    );
-                    assignedUserId = assignedUserIds[0] ?? null;
-                    if (assignedUserIds.length === 0) {
-                        assignedBy = null;
-                        assignedAt = undefined;
-                        shouldApplyAssignedBy = false;
-                    } else {
-                        assignedAt = event.createdAt;
-                    }
-                }
-                if (
-                    shouldApplyAssignedBy &&
-                    typeof data?.assignedBy === 'string'
-                ) {
-                    assignedBy = data.assignedBy;
-                }
-                if (plantStatus === 'new' || plantStatus === 'planned') {
-                    active = true;
-                    toBeRemoved = false;
-                    stoppedDate = undefined;
-                    plantSowDate = undefined;
-                    plantGrowthDate = undefined;
-                    plantReadyDate = undefined;
-                    plantDeadDate = undefined;
-                    plantHarvestedDate = undefined;
-                    plantRemovedDate = undefined;
-                } else if (
-                    plantStatus === 'pendingVerification' ||
-                    plantStatus === 'sowed'
-                ) {
-                    plantSowDate = plantSowDate ?? statusEventDate;
-                } else if (plantStatus === 'sprouted') {
-                    plantGrowthDate = statusEventDate;
-                } else if (plantStatus === 'notSprouted') {
-                    plantDeadDate = statusEventDate;
-                    stoppedDate = statusEventDate;
-                    toBeRemoved = true;
-                } else if (plantStatus === 'died') {
-                    plantDeadDate = statusEventDate;
-                    stoppedDate = statusEventDate;
-                } else if (plantStatus === 'firstFlowers') {
-                    plantGrowthDate = plantGrowthDate ?? statusEventDate;
-                } else if (plantStatus === 'firstFruitSet') {
-                    plantGrowthDate = plantGrowthDate ?? statusEventDate;
-                } else if (plantStatus === 'ready') {
-                    plantReadyDate = statusEventDate;
-                } else if (plantStatus === 'harvested') {
-                    plantHarvestedDate = statusEventDate;
-                    stoppedDate = statusEventDate;
-                } else if (plantStatus === 'removed') {
-                    plantRemovedDate = statusEventDate;
-                    active = false;
-                    stoppedDate = statusEventDate;
-                }
-            }
-            // Handle plant sort replace event
-            else if (
-                event.type === knownEventTypes.raisedBedFields.plantReplaceSort
-            ) {
-                if (data?.plantSortId && typeof data.plantSortId === 'string') {
-                    plantSortId = parseInt(data.plantSortId, 10);
-                }
-            }
-            // Handle weed state updates
-            else if (
-                event.type === knownEventTypes.raisedBedFields.weedStateSet
-            ) {
-                weedState = weedStateFromEvent(event) ?? weedState;
-            }
-            // Handle field deletion event
-            else if (event.type === knownEventTypes.raisedBedFields.delete) {
-                plantStatus = 'deleted';
-                plantSowDate = undefined;
-                plantSortId = undefined;
-                plantScheduledDate = undefined;
-            } else {
-                console.warn('Unhandled raised bed field event type', {
-                    eventId: event.id,
-                    eventType: event.type,
-                    fieldId: field.id,
-                    positionIndex: field.positionIndex,
-                    raisedBedId: field.raisedBedId,
-                });
-            }
+        const reducedField = reduceRaisedBedFieldWithEvents(
+            field,
+            fieldsEventsByAggregateId.get(aggregateId) ?? [],
+        );
+        const raisedBedFields = fieldsByRaisedBedId.get(field.raisedBedId);
+        if (raisedBedFields) {
+            raisedBedFields.push(reducedField);
+        } else {
+            fieldsByRaisedBedId.set(field.raisedBedId, [reducedField]);
         }
+    }
 
-        return {
-            ...field,
-            plantCycles: summarizePlantCycles(
-                aggregateId,
-                field.positionIndex,
-                plantCycleEventsByAggregateId.get(aggregateId) ?? [],
-            ),
-            plantStatus,
-            plantSortId,
-            plantScheduledDate,
-            sowingLocation,
-            plantSowDate,
-            plantGrowthDate,
-            plantReadyDate,
-            plantDeadDate,
-            plantHarvestedDate,
-            plantRemovedDate,
-            active,
-            toBeRemoved,
-            stoppedDate,
-            assignedUserIds: normalizeAssignedUserIds(
-                assignedUserIds,
-                assignedUserId,
-            ),
-            assignedUserId,
-            assignedBy,
-            assignedAt,
-            weedState,
-        };
-    });
+    return fieldsByRaisedBedId;
+}
+
+// New: Retrieve all raised bed fields for a single raised bed, with event-sourced info
+export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
+    return (
+        (await getRaisedBedFieldsWithEventsForBeds([raisedBedId])).get(
+            raisedBedId,
+        ) ?? []
+    );
 }
 
 export async function upsertRaisedBedField(
