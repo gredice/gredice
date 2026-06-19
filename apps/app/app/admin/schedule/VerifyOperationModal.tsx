@@ -1,8 +1,6 @@
 'use client';
 
 import { Button } from '@gredice/ui/Button';
-import { IconButton } from '@gredice/ui/IconButton';
-import { Check } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -46,16 +44,19 @@ export function VerifyOperationModal({
     const [open, setOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const openModal = () => setOpen(true);
-    const defaultTrigger = (
-        <IconButton
-            variant="plain"
+    const renderDefaultTrigger = (onClick?: () => void) => (
+        <Button
+            variant="solid"
+            color="success"
+            size="xs"
             title="Verificiraj radnju"
             loading={isSubmitting}
-            onClick={openModal}
+            onClick={onClick}
         >
-            <Check className="size-4 shrink-0" />
-        </IconButton>
+            Potvrdi
+        </Button>
     );
+    const defaultTrigger = renderDefaultTrigger();
 
     const handleConfirm = async () => {
         try {
@@ -79,7 +80,7 @@ export function VerifyOperationModal({
             {renderTrigger?.({
                 isSubmitting,
                 openModal,
-                defaultTrigger,
+                defaultTrigger: renderDefaultTrigger(openModal),
             })}
             <Modal
                 title="Verifikacija radnje"

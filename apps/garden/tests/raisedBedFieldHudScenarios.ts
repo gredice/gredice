@@ -151,6 +151,7 @@ export type FieldConfig = {
 export type RaisedBedScenario = {
     fields: FieldConfig[];
     cartItems?: ShoppingCartItemData[];
+    plants?: PlantData[];
     sorts?: PlantSortData[];
     operations?: OperationData[];
     operationHistoryItems?: GardenOperationItem[];

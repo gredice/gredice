@@ -80,7 +80,7 @@ function createScenarioQueryClient(
     });
     queryClient.setQueryData(['inventory'], { items: [] });
     queryClient.setQueryData(favoritesQueryKey, favorites);
-    queryClient.setQueryData(['plants'], allPlants);
+    queryClient.setQueryData(['plants'], scenario.plants ?? allPlants);
     queryClient.setQueryData(['sorts'], scenario.sorts ?? allSorts);
     queryClient.setQueryData(['operations'], scenario.operations ?? []);
     const operationHistoryItems = scenario.operationHistoryItems ?? [];
@@ -185,7 +185,15 @@ function RaisedBedHudTestProviders({
         <NuqsTestingAdapter>
             <ReactQuery.QueryClientProvider client={queryClient}>
                 <GameStateContext.Provider value={gameStore}>
-                    <GameAnalyticsProvider capture={() => undefined}>
+                    <GameAnalyticsProvider
+                        capture={(eventName, properties) => {
+                            window.dispatchEvent(
+                                new CustomEvent('gredice:game-analytics', {
+                                    detail: { eventName, properties },
+                                }),
+                            );
+                        }}
+                    >
                         {children}
                     </GameAnalyticsProvider>
                 </GameStateContext.Provider>

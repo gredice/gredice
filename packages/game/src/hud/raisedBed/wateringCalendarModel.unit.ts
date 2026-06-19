@@ -109,3 +109,31 @@ test('watering calendar prioritizes preview and cart markers for shared dates', 
         'preview',
     );
 });
+
+test('watering calendar renders future completed entries as scheduled', () => {
+    const days = markedDays([
+        {
+            id: 'past-completed',
+            date: '2026-06-10T08:00:00.000Z',
+            label: 'Gotovo zalijevanje',
+            source: 'completed',
+            weight: 30,
+        },
+        {
+            id: 'future-confirmed',
+            date: '2026-06-22T08:00:00.000Z',
+            label: 'Potvrđeno buduće zalijevanje',
+            source: 'completed',
+            weight: 30,
+        },
+    ]);
+
+    assert.equal(
+        days.find((day) => day?.key === '2026-06-10')?.tone,
+        'completed',
+    );
+    assert.equal(
+        days.find((day) => day?.key === '2026-06-22')?.tone,
+        'scheduled',
+    );
+});

@@ -168,6 +168,7 @@ function RaisedBedAiOperationChip({
 
     return (
         <OperationScheduleModal
+            gardenId={gardenId}
             operation={operation}
             onConfirm={async (scheduledDate) => {
                 await setShoppingCartItem.mutateAsync({
@@ -183,6 +184,9 @@ function RaisedBedAiOperationChip({
                     currency: 'eur',
                 });
             }}
+            positionIndex={targetPositionIndex}
+            raisedBedId={target.raisedBedId}
+            showHistory={false}
             trigger={
                 <Chip
                     color={

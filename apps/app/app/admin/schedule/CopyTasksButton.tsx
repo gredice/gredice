@@ -1,8 +1,7 @@
 'use client';
 
-import { Button } from '@gredice/ui/Button';
+import { IconButton } from '@gredice/ui/IconButton';
 import { Duplicate } from '@gredice/ui/icons';
-import { Row } from '@gredice/ui/Row';
 import { useState } from 'react';
 
 type TaskItem = {
@@ -52,19 +51,20 @@ export function CopyTasksButton({ physicalId, tasks }: CopyTasksButtonProps) {
     };
 
     return (
-        <Row spacing={2}>
-            <Button
-                title="Kopiraj zadatke u međuspremnik"
+        <>
+            <IconButton
+                title={copied ? 'Zadaci kopirani' : 'Kopiraj zadatke'}
                 onClick={handleCopy}
                 variant="plain"
+                size="xs"
+                color={copied ? 'success' : 'neutral'}
                 disabled={approvedTasks.length === 0}
-                startDecorator={<Duplicate className="size-4 shrink-0" />}
             >
-                Kopiraj zadatke
-            </Button>
-            {copied && (
-                <span className="text-sm text-green-500">Kopirano!</span>
-            )}
-        </Row>
+                <Duplicate className="size-4 shrink-0" />
+            </IconButton>
+            <span className="sr-only" aria-live="polite">
+                {copied ? 'Kopirano!' : ''}
+            </span>
+        </>
     );
 }

@@ -75,6 +75,7 @@ export function BulkApproveRaisedBedButton({
             trigger={
                 <IconButton
                     variant="plain"
+                    size="xs"
                     title="Potvrdi sve zadatke gredice"
                     disabled={disabled}
                     aria-disabled={disabled}
