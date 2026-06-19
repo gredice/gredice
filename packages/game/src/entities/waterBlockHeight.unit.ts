@@ -128,4 +128,27 @@ describe('getWaterBlockVisualHeight', () => {
 
         assert.deepEqual(range, { min: 0.34, max: 0.74 });
     });
+
+    it('stacks water above collapsed shaped terrain water', () => {
+        const lowerWater = block('water-lower', 'Block_Water');
+        const upperWater = block('water-upper', 'Block_Water');
+        const currentStack = stack([
+            block('angle-a', 'Block_Sand_Angle'),
+            lowerWater,
+            upperWater,
+        ]);
+        const lowerRange = getWaterBlockVerticalRange({
+            block: lowerWater,
+            blockData: getLocalSandboxBlockData(),
+            stack: currentStack,
+        });
+        const upperRange = getWaterBlockVerticalRange({
+            block: upperWater,
+            blockData: getLocalSandboxBlockData(),
+            stack: currentStack,
+        });
+
+        assert.deepEqual(lowerRange, { min: 0, max: 0.34 });
+        assert.deepEqual(upperRange, { min: 0.34, max: 0.74 });
+    });
 });

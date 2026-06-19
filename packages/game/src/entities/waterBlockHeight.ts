@@ -1,7 +1,11 @@
 import type { BlockData } from '@gredice/client';
 import type { Block } from '../types/Block';
 import type { Stack } from '../types/Stack';
-import { getBlockDataByName, getStackHeight } from '../utils/stackHeightCore';
+import {
+    getBlockDataByName,
+    getStackHeight,
+    isEdgeOrCornerTerrainBlockName,
+} from '../utils/stackHeightCore';
 import {
     defaultWaterBlockVisualHeight,
     waterBlockBottomOverlap,
@@ -14,13 +18,6 @@ export type WaterBlockVerticalRange = {
     min: number;
 };
 
-function isEdgeOrCornerTerrainBlock(blockName: string) {
-    return (
-        blockName.startsWith('Block_') &&
-        (blockName.endsWith('_Angle') || blockName.endsWith('_Corner'))
-    );
-}
-
 function getWaterBlockIndex(stack: Stack, block: Block) {
     return stack.blocks.indexOf(block);
 }
@@ -32,7 +29,9 @@ function getWaterSupportBlock(stack: Stack, block: Block) {
 
 function isWaterFillSupportBlock(stack: Stack, block: Block) {
     const supportBlock = getWaterSupportBlock(stack, block);
-    return supportBlock ? isEdgeOrCornerTerrainBlock(supportBlock.name) : false;
+    return supportBlock
+        ? isEdgeOrCornerTerrainBlockName(supportBlock.name)
+        : false;
 }
 
 export function getWaterBlockVisualHeight({
@@ -46,7 +45,7 @@ export function getWaterBlockVisualHeight({
 }) {
     const supportBlock = getWaterSupportBlock(stack, block);
 
-    if (!supportBlock || !isEdgeOrCornerTerrainBlock(supportBlock.name)) {
+    if (!supportBlock || !isEdgeOrCornerTerrainBlockName(supportBlock.name)) {
         return defaultWaterBlockVisualHeight;
     }
 
