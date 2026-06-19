@@ -10,7 +10,11 @@ import {
 } from '../dragPreviewIdentity';
 import type { Block } from '../types/Block';
 import type { Stack } from '../types/Stack';
-import { getBlockDataByName, getStackHeight } from '../utils/stackHeightCore';
+import {
+    getBlockDataByName,
+    getStackBlockHeight,
+    getStackHeight,
+} from '../utils/stackHeightCore';
 import { isRecyclerPlacementTarget } from './recyclerPlacement';
 
 export type MovingSegment = {
@@ -83,7 +87,12 @@ function createOccupiedCells({
         let stackHeight = 0;
         stack.blocks.forEach((block, blockIndex) => {
             const blockEntity = getBlockDataByName(blockData, block.name);
-            const blockHeight = blockEntity?.attributes?.height ?? 0;
+            const blockHeight = getStackBlockHeight(
+                blockData,
+                stack,
+                block,
+                blockIndex,
+            );
 
             if (!movingBlockIds.has(block.id)) {
                 for (const offset of getGardenBlockFootprintOffsets(
