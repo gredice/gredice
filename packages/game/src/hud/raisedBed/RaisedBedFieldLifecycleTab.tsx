@@ -16,7 +16,10 @@ import {
     findRaisedBedOccupiedField,
     type RaisedBedFieldPlantHistoryEntry,
 } from '../../utils/raisedBedFields';
-import type { PlantFieldStatus } from './featuredOperations';
+import {
+    isPlantFieldStatus,
+    shouldShowPlantOperationRecommendations,
+} from './featuredOperations';
 import { plantFieldStatusEmoji } from './PlantFieldStatusEmoji';
 import {
     getPlantLifecycleProgressData,
@@ -111,6 +114,11 @@ export function RaisedBedFieldLifecycleTab({
             plantSort.information.name,
         plantSort.information.name,
     );
+    const plantStatus = isPlantFieldStatus(field.plantStatus)
+        ? field.plantStatus
+        : undefined;
+    const showPlantOperationRecommendations =
+        shouldShowPlantOperationRecommendations(plantStatus);
     const statusContent = (
         <>
             <span className="text-2xl leading-none" aria-hidden="true">
@@ -163,16 +171,18 @@ export function RaisedBedFieldLifecycleTab({
                 }
             />
 
-            {field.active && typeof field.plantSortId === 'number' && (
-                <RecommendationsCard
-                    onShowOperations={onShowOperations}
-                    gardenId={garden.id}
-                    raisedBedId={raisedBedId}
-                    positionIndex={positionIndex}
-                    plantStatus={field.plantStatus as PlantFieldStatus}
-                    plantSortId={field.plantSortId}
-                />
-            )}
+            {field.active &&
+                typeof field.plantSortId === 'number' &&
+                showPlantOperationRecommendations && (
+                    <RecommendationsCard
+                        onShowOperations={onShowOperations}
+                        gardenId={garden.id}
+                        raisedBedId={raisedBedId}
+                        positionIndex={positionIndex}
+                        plantStatus={plantStatus}
+                        plantSortId={field.plantSortId}
+                    />
+                )}
 
             {field.active && field.toBeRemoved && (
                 <Row>
