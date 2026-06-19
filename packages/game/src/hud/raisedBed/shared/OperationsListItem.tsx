@@ -3,6 +3,7 @@ import { formatPrice } from '@gredice/js/currency';
 import { getHarvestOperationRemovalDisclaimer } from '@gredice/js/plants';
 import { BackpackIcon } from '@gredice/ui/BackpackIcon';
 import { Button } from '@gredice/ui/Button';
+import { Calendar, ShoppingCart } from '@gredice/ui/icons';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -23,6 +24,7 @@ export function OperationsListItem({
     raisedBedId,
     positionIndex,
     inShoppingCart,
+    isScheduled,
     onOperationPicked,
 }: {
     gardenId: number;
@@ -30,6 +32,7 @@ export function OperationsListItem({
     positionIndex?: number;
     operation: OperationData;
     inShoppingCart?: boolean;
+    isScheduled?: boolean;
     onOperationPicked?: (operation: OperationData) => void;
 }) {
     const setShoppingCartItem = useSetShoppingCartItem();
@@ -85,15 +88,50 @@ export function OperationsListItem({
                 <OperationImage operation={operation} size={32} />
             </AnimateFlyToItem>
             <Stack className="w-full">
-                <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
-                    <Typography level="body1" semiBold noWrap>
-                        {operation.information.label}
-                    </Typography>
-                    {inShoppingCart && (
-                        <Typography level="body3" className="text-amber-600">
-                            U košari (nije kupljeno)
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 items-start">
+                    <Stack spacing={0.5} className="min-w-0">
+                        <Typography level="body1" semiBold noWrap>
+                            {operation.information.label}
                         </Typography>
-                    )}
+                        {(inShoppingCart || isScheduled) && (
+                            <Row spacing={1.5} className="flex-wrap min-w-0">
+                                {inShoppingCart && (
+                                    <Row
+                                        spacing={0.75}
+                                        className="min-w-0 text-amber-600"
+                                        title="Radnja je u košari i još nije kupljena"
+                                    >
+                                        <ShoppingCart className="size-3.5 shrink-0" />
+                                        <Typography
+                                            level="body3"
+                                            semiBold
+                                            noWrap
+                                            className="min-w-0"
+                                        >
+                                            U košari (nije kupljeno)
+                                        </Typography>
+                                    </Row>
+                                )}
+                                {isScheduled && (
+                                    <Row
+                                        spacing={0.75}
+                                        className="min-w-0 text-indigo-600"
+                                        title="Radnja je zakazana"
+                                    >
+                                        <Calendar className="size-3.5 shrink-0" />
+                                        <Typography
+                                            level="body3"
+                                            semiBold
+                                            noWrap
+                                            className="min-w-0"
+                                        >
+                                            Zakazano
+                                        </Typography>
+                                    </Row>
+                                )}
+                            </Row>
+                        )}
+                    </Stack>
                     <Typography level="body1" semiBold>
                         {price}
                     </Typography>
