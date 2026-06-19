@@ -65,6 +65,10 @@ function getPhotoCountLabel(photoCount: number) {
     return `${photoCount} fotografija`;
 }
 
+function isGenericPhotoOperationName(name: string) {
+    return /^fotografiranje\b/iu.test(name.trim());
+}
+
 export function RaisedBedPhotosModal({
     gardenId,
     raisedBedId,
@@ -187,25 +191,15 @@ export function RaisedBedPhotosModal({
             <ButtonGreen
                 variant="plain"
                 className={cx(
-                    'h-12 w-24 rounded-2xl p-1 shadow-lg ring-1 ring-black/10',
+                    'size-10 rounded-xl p-1 shadow-lg ring-1 ring-black/10',
                     className,
                 )}
                 aria-label={triggerLabel}
                 title={triggerLabel}
             >
-                <span className="relative flex h-full w-full items-center justify-start">
-                    <span className="relative size-10 shrink-0 rounded-xl">
-                        {thumbnail}
-                        {photoCountBadge}
-                    </span>
-                    <span className="ml-2 flex min-w-0 flex-col items-start">
-                        <span className="text-xs font-semibold leading-tight">
-                            Foto
-                        </span>
-                        <span className="text-[11px] leading-tight text-primary/70">
-                            {photoCount > 0 ? photoCount : '...'}
-                        </span>
-                    </span>
+                <span className="relative block size-full rounded-[inherit]">
+                    {thumbnail}
+                    {photoCountBadge}
                 </span>
             </ButtonGreen>
         ) : (
@@ -269,104 +263,130 @@ export function RaisedBedPhotosModal({
                         Nema zabilježenih fotografija.
                     </NoDataPlaceholder>
                 )}
-                {photoOperations.map((operation) => {
-                    const operationData =
-                        operation.entityTypeName === 'operation'
-                            ? operationDataById.get(operation.entityId)
-                            : undefined;
-                    const entryName =
-                        operationData?.information.label ??
-                        operation.targetLabel;
-                    const operationPositionIndex =
-                        positionIndex ??
-                        (operation.raisedBedFieldId
-                            ? fieldPositionById.get(operation.raisedBedFieldId)
-                            : undefined);
-                    const operationDateLabel = getDateLabel(
-                        getOperationReferenceDate(operation),
-                    );
-                    const completionNotes = operation.completionNotes?.trim();
+                {photoOperations.length > 0 && (
+                    <div className="grid gap-3 md:grid-cols-2">
+                        {photoOperations.map((operation) => {
+                            const operationData =
+                                operation.entityTypeName === 'operation'
+                                    ? operationDataById.get(operation.entityId)
+                                    : undefined;
+                            const entryName =
+                                operationData?.information.label ??
+                                operation.targetLabel;
+                            const showEntryName =
+                                !isGenericPhotoOperationName(entryName);
+                            const operationPositionIndex =
+                                positionIndex ??
+                                (operation.raisedBedFieldId
+                                    ? fieldPositionById.get(
+                                          operation.raisedBedFieldId,
+                                      )
+                                    : undefined);
+                            const referenceDate =
+                                getOperationReferenceDate(operation);
+                            const operationDateLabel =
+                                getDateLabel(referenceDate);
+                            const completionNotes =
+                                operation.completionNotes?.trim();
+                            const imageAltBase = showEntryName
+                                ? entryName
+                                : `${modalTitle} ${subjectName}`;
 
-                    return (
-                        <div
-                            key={`${operation.entityTypeName}-${operation.id}`}
-                            className="rounded-xl border bg-card p-3 shadow-xs"
-                            data-raised-bed-photo-entry
-                        >
-                            <Stack spacing={3}>
-                                <Row
-                                    spacing={2}
-                                    className="min-w-0 flex-wrap items-start justify-between gap-y-2"
+                            return (
+                                <div
+                                    key={`${operation.entityTypeName}-${operation.id}`}
+                                    className="rounded-xl border bg-card p-3 shadow-xs"
+                                    data-raised-bed-photo-entry
                                 >
-                                    <Stack spacing={0.5} className="min-w-0">
-                                        <Typography
-                                            level="body1"
-                                            semiBold
-                                            className="break-words"
+                                    <Stack spacing={3}>
+                                        <Row
+                                            spacing={2}
+                                            className="min-w-0 flex-wrap items-start justify-between gap-y-2"
                                         >
-                                            {entryName}
-                                        </Typography>
-                                        <Typography level="body3" secondary>
-                                            {operationDateLabel ??
-                                                operation.targetLabel}
-                                        </Typography>
+                                            <Stack
+                                                spacing={0.5}
+                                                className="min-w-0"
+                                            >
+                                                {showEntryName && (
+                                                    <Typography
+                                                        level="body1"
+                                                        semiBold
+                                                        className="break-words"
+                                                    >
+                                                        {entryName}
+                                                    </Typography>
+                                                )}
+                                                <Typography
+                                                    level={
+                                                        showEntryName
+                                                            ? 'body3'
+                                                            : 'body1'
+                                                    }
+                                                    semiBold={!showEntryName}
+                                                    secondary={showEntryName}
+                                                >
+                                                    {operationDateLabel ??
+                                                        'Fotografija'}
+                                                </Typography>
+                                            </Stack>
+                                            {operation.imageUrls.length > 1 && (
+                                                <Chip variant="soft">
+                                                    {getPhotoCountLabel(
+                                                        operation.imageUrls
+                                                            .length,
+                                                    )}
+                                                </Chip>
+                                            )}
+                                        </Row>
+                                        <ImageGallery
+                                            images={operation.imageUrls.map(
+                                                (imageUrl, imageIndex) => ({
+                                                    src: imageUrl,
+                                                    alt: `${imageAltBase} ${imageIndex + 1}`,
+                                                }),
+                                            )}
+                                            previewAs="div"
+                                            previewVariant="grid"
+                                            previewWidth={220}
+                                            previewLimitBeforeStack={5}
+                                        />
+                                        {completionNotes && (
+                                            <Typography
+                                                level="body2"
+                                                className="break-words"
+                                            >
+                                                {completionNotes}
+                                            </Typography>
+                                        )}
+                                        <Row
+                                            spacing={2}
+                                            className="items-center justify-end gap-y-2"
+                                        >
+                                            <RaisedBedDiaryAiAction
+                                                gardenId={gardenId}
+                                                raisedBedId={raisedBedId}
+                                                positionIndex={
+                                                    operationPositionIndex
+                                                }
+                                                entryName={entryName}
+                                                imageUrls={operation.imageUrls}
+                                                referenceDate={referenceDate}
+                                                historyEntries={getAiHistoryForOperation(
+                                                    {
+                                                        imageUrls:
+                                                            operation.imageUrls,
+                                                        entries:
+                                                            aiHistoryEntries,
+                                                    },
+                                                )}
+                                            />
+                                        </Row>
                                     </Stack>
-                                    <Chip variant="soft">
-                                        {getPhotoCountLabel(
-                                            operation.imageUrls.length,
-                                        )}
-                                    </Chip>
-                                </Row>
-                                <ImageGallery
-                                    images={operation.imageUrls.map(
-                                        (imageUrl, imageIndex) => ({
-                                            src: imageUrl,
-                                            alt: `${entryName} ${imageIndex + 1}`,
-                                            dateLabel:
-                                                operationDateLabel ?? undefined,
-                                        }),
-                                    )}
-                                    previewAs="div"
-                                    previewVariant="grid"
-                                    previewWidth={240}
-                                    previewLimitBeforeStack={5}
-                                />
-                                {completionNotes && (
-                                    <Typography
-                                        level="body2"
-                                        className="break-words"
-                                    >
-                                        {completionNotes}
-                                    </Typography>
-                                )}
-                                <Row
-                                    spacing={2}
-                                    className="items-center justify-between gap-y-2"
-                                >
-                                    <Typography level="body3" secondary>
-                                        {operation.targetLabel}
-                                    </Typography>
-                                    <RaisedBedDiaryAiAction
-                                        gardenId={gardenId}
-                                        raisedBedId={raisedBedId}
-                                        positionIndex={operationPositionIndex}
-                                        entryName={entryName}
-                                        imageUrls={operation.imageUrls}
-                                        referenceDate={getOperationReferenceDate(
-                                            operation,
-                                        )}
-                                        historyEntries={getAiHistoryForOperation(
-                                            {
-                                                imageUrls: operation.imageUrls,
-                                                entries: aiHistoryEntries,
-                                            },
-                                        )}
-                                    />
-                                </Row>
-                            </Stack>
-                        </div>
-                    );
-                })}
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
                 {history.hasNextPage && (
                     <Button
                         variant="plain"
