@@ -104,6 +104,17 @@ export function isDayBulkOperationAssignmentTargetVisible(
     );
 }
 
+export function isDayBulkOperationCancelTargetVisible(
+    patch: DayBulkOperationPatch | undefined,
+) {
+    return (
+        !isOperationCompleted(patch?.status) &&
+        !isOperationPendingVerification(patch?.status) &&
+        !isOperationCancelled(patch?.status) &&
+        patch?.status !== 'failed'
+    );
+}
+
 export function isDayBulkFieldApprovalTargetVisible(
     patch: DayBulkFieldPatch | undefined,
 ) {
@@ -111,6 +122,16 @@ export function isDayBulkFieldApprovalTargetVisible(
         !patch?.isDeleted &&
         !hasOptimisticUnassignment(patch) &&
         !isFieldApproved(patch?.plantStatus) &&
+        !isFieldPendingVerification(patch?.plantStatus) &&
+        !isFieldCompleted(patch?.plantStatus)
+    );
+}
+
+export function isDayBulkFieldCancelTargetVisible(
+    patch: DayBulkFieldPatch | undefined,
+) {
+    return (
+        !patch?.isDeleted &&
         !isFieldPendingVerification(patch?.plantStatus) &&
         !isFieldCompleted(patch?.plantStatus)
     );

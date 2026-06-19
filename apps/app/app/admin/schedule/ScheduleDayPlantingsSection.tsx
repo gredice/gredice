@@ -68,6 +68,18 @@ export async function ScheduleDayPlantingsSection({
             id: field.id,
             farmUsers: assignableFarmUsersByRaisedBedFieldId[field.id] ?? [],
         }));
+    const dayFieldsToCancel = scheduledFields
+        .filter(
+            (field) =>
+                !isFieldCompleted(field.plantStatus) &&
+                !isFieldPendingVerification(field.plantStatus),
+        )
+        .map((field) => ({
+            id: field.id,
+            raisedBedId: field.raisedBedId,
+            positionIndex: field.positionIndex,
+            label: `${field.positionIndex + 1}`,
+        }));
 
     return (
         <OptimisticScheduleActionsProvider>
@@ -80,6 +92,7 @@ export async function ScheduleDayPlantingsSection({
                         <ScheduleDayPlantingsBulkActions
                             fieldsToApprove={dayFieldsToApprove}
                             fieldsToAssign={dayFieldsToAssign}
+                            fieldsToCancel={dayFieldsToCancel}
                         />
                     </Row>
                 </Row>

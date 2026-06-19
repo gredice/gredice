@@ -4,13 +4,19 @@ import type { OperationAssignableFarmUser } from '@gredice/storage';
 import {
     acceptOperationAction,
     assignOperationUserAction,
+    cancelOperationAction,
 } from '../../(actions)/operationActions';
 import { BulkApproveRaisedBedButton } from './BulkApproveRaisedBedButton';
 import { BulkAssignRaisedBedButton } from './BulkAssignRaisedBedButton';
 import {
+    BulkCancelRaisedBedButton,
+    buildOperationCancelFormData,
+} from './BulkCancelRaisedBedButton';
+import {
     createOperationAssignedUsers,
     isDayBulkOperationApprovalTargetVisible,
     isDayBulkOperationAssignmentTargetVisible,
+    isDayBulkOperationCancelTargetVisible,
 } from './scheduleOptimisticHelpers';
 import { useOptimisticScheduleActions } from './useOptimisticScheduleActions';
 
@@ -24,14 +30,21 @@ type OperationAssignmentTarget = {
     farmUsers: OperationAssignableFarmUser[];
 };
 
+type OperationCancelTarget = {
+    id: number;
+    label: string;
+};
+
 interface ScheduleDayOperationsBulkActionsProps {
     operationsToApprove: OperationApprovalTarget[];
     operationsToAssign: OperationAssignmentTarget[];
+    operationsToCancel: OperationCancelTarget[];
 }
 
 export function ScheduleDayOperationsBulkActions({
     operationsToApprove,
     operationsToAssign,
+    operationsToCancel,
 }: ScheduleDayOperationsBulkActionsProps) {
     const { getOperationPatch, runOptimisticAction } =
         useOptimisticScheduleActions();
@@ -44,6 +57,9 @@ export function ScheduleDayOperationsBulkActions({
         isDayBulkOperationAssignmentTargetVisible(
             getOperationPatch(operation.id),
         ),
+    );
+    const visibleOperationsToCancel = operationsToCancel.filter((operation) =>
+        isDayBulkOperationCancelTargetVisible(getOperationPatch(operation.id)),
     );
 
     return (
@@ -113,6 +129,36 @@ export function ScheduleDayOperationsBulkActions({
                             'Failed to assign users for all day operation items:',
                         errorAlertMessage:
                             'Skupna dodjela radnji nije uspjela. Promjena je vraćena.',
+                    })
+                }
+            />
+            <BulkCancelRaisedBedButton
+                physicalId="dan"
+                fields={[]}
+                operations={visibleOperationsToCancel}
+                onSubmit={(formData) =>
+                    runOptimisticAction({
+                        operationPatches: visibleOperationsToCancel.map(
+                            (operation) => ({
+                                id: operation.id,
+                                patch: { status: 'canceled' },
+                            }),
+                        ),
+                        action: () =>
+                            Promise.all(
+                                visibleOperationsToCancel.map((operation) =>
+                                    cancelOperationAction(
+                                        buildOperationCancelFormData(
+                                            operation,
+                                            formData,
+                                        ),
+                                    ),
+                                ),
+                            ),
+                        errorLogMessage:
+                            'Failed to cancel all day operation items:',
+                        errorAlertMessage:
+                            'Skupno otkazivanje radnji nije uspjelo. Promjena je vraćena.',
                     })
                 }
             />
