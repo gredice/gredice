@@ -3,8 +3,7 @@ import { Suspense } from 'react';
 import { ScheduleDayDeliveriesSection } from './ScheduleDayDeliveriesSection';
 import { ScheduleDayDeliveriesSkeleton } from './ScheduleDayDeliveriesSkeleton';
 import { ScheduleDayEmptyState } from './ScheduleDayEmptyState';
-import { ScheduleDayHeaderSection } from './ScheduleDayHeaderSection';
-import { ScheduleDayHeaderSkeleton } from './ScheduleDayHeaderSkeleton';
+import { ScheduleDayMarker } from './ScheduleDayMarker';
 import { ScheduleDayOperationsSection } from './ScheduleDayOperationsSection';
 import { ScheduleDayOperationsSkeleton } from './ScheduleDayOperationsSkeleton';
 import { ScheduleDayPlantingsSection } from './ScheduleDayPlantingsSection';
@@ -18,9 +17,7 @@ interface ScheduleDayProps {
 export function ScheduleDay({ isToday, date }: ScheduleDayProps) {
     return (
         <Stack className="grow" spacing={4}>
-            <Suspense fallback={<ScheduleDayHeaderSkeleton />}>
-                <ScheduleDayHeaderSection isToday={isToday} date={date} />
-            </Suspense>
+            <ScheduleDayMarker isToday={isToday} date={date} />
             <Suspense fallback={null}>
                 <ScheduleDayEmptyState isToday={isToday} date={date} />
             </Suspense>

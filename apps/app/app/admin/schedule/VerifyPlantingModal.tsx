@@ -50,7 +50,7 @@ export function VerifyPlantingModal({
                 <Button
                     variant="solid"
                     color="success"
-                    size="sm"
+                    size="xs"
                     title="Verificiraj sijanje"
                     loading={isSubmitting}
                 >

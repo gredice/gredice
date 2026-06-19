@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useGardenOperations } from '../../../hooks/useGardenOperations';
 import {
     type ShoppingCartItemData,
@@ -38,11 +38,24 @@ export function useOperationContextIndicators({
     const { data: cart } = useShoppingCart();
     const scheduledOperations = useGardenOperations({
         includeCompleted: true,
-        pageSize: 20,
+        pageSize: 50,
         raisedBedId,
         positionIndex,
     });
     const scheduledOperationPages = scheduledOperations.data?.pages;
+
+    useEffect(() => {
+        if (
+            scheduledOperations.hasNextPage &&
+            !scheduledOperations.isFetchingNextPage
+        ) {
+            scheduledOperations.fetchNextPage();
+        }
+    }, [
+        scheduledOperations.fetchNextPage,
+        scheduledOperations.hasNextPage,
+        scheduledOperations.isFetchingNextPage,
+    ]);
 
     const shoppingCartOperationIds = useMemo(
         () =>

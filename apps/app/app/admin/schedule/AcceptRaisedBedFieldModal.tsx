@@ -9,6 +9,7 @@ interface AcceptRaisedBedFieldModalProps {
     raisedBedId: number;
     positionIndex: number;
     label: string;
+    raisedBedPhysicalId?: string;
     disabled?: boolean;
     onConfirm?: () => unknown | Promise<unknown>;
 }
@@ -17,6 +18,7 @@ export function AcceptRaisedBedFieldModal({
     raisedBedId,
     positionIndex,
     label,
+    raisedBedPhysicalId,
     disabled = false,
     onConfirm,
 }: AcceptRaisedBedFieldModalProps) {
@@ -36,6 +38,7 @@ export function AcceptRaisedBedFieldModal({
             trigger={
                 <IconButton
                     variant="plain"
+                    size="xs"
                     title="Potvrdi sijanje"
                     disabled={disabled}
                 >
@@ -44,6 +47,7 @@ export function AcceptRaisedBedFieldModal({
             }
             title="Potvrda sijanja"
             header="Potvrda sijanja"
+            raisedBedPhysicalId={raisedBedPhysicalId}
         />
     );
 }

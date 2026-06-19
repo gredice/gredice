@@ -26,6 +26,7 @@ import { AssignOperationModal } from './AssignOperationModal';
 import { CancelOperationModal } from './CancelOperationModal';
 import { CompleteOperationModal } from './CompleteOperationModal';
 import { OperationCompletionAttachments } from './OperationCompletionAttachments';
+import { OperationRequirementIcons } from './OperationRequirementIcons';
 import { RescheduleOperationModal } from './RescheduleOperationModal';
 import {
     createOperationAssignedUsers,
@@ -38,6 +39,7 @@ import {
     isOperationCancelled,
     isOperationCompleted,
     isOperationPendingVerification,
+    isSameScheduleDay,
 } from './scheduleShared';
 import type { Operation } from './types';
 import { useOptimisticScheduleActions } from './useOptimisticScheduleActions';
@@ -49,6 +51,7 @@ type FarmSummary = {
 };
 
 interface FarmOperationsScheduleSectionProps {
+    date: Date;
     farm: FarmSummary;
     scheduledOperations: Operation[];
     operationsData: EntityStandardized[] | null | undefined;
@@ -71,6 +74,7 @@ function getOperationLabel(
 }
 
 export function FarmOperationsScheduleSection({
+    date,
     farm,
     scheduledOperations,
     operationsData,
@@ -131,7 +135,7 @@ export function FarmOperationsScheduleSection({
                     </Typography>
                 )}
             </Row>
-            <Stack spacing={2}>
+            <Stack spacing={0}>
                 {dayOperations.map((operation) => {
                     const operationData = operationDataById.get(
                         operation.entityId,
@@ -171,19 +175,6 @@ export function FarmOperationsScheduleSection({
                         operationData?.conditions
                             ?.completionAttachNotesRequired,
                     );
-                    const completionRequirementTexts = [
-                        attachImages
-                            ? attachImagesRequired
-                                ? 'Slike obavezne'
-                                : 'Slike opcionalne'
-                            : null,
-                        attachNotes
-                            ? attachNotesRequired
-                                ? 'Napomena obavezna'
-                                : 'Napomena opcionalna'
-                            : null,
-                    ].filter((text): text is string => Boolean(text));
-
                     const operationStatusText = isOperationCancelled(
                         operation.status,
                     )
@@ -193,7 +184,7 @@ export function FarmOperationsScheduleSection({
                           : isOperationCompleted(operation.status)
                             ? 'Završeno'
                             : operation.isAccepted
-                              ? 'Potvrđeno'
+                              ? null
                               : 'Nije potvrđeno';
                     const operationStatusClassName = isOperationCancelled(
                         operation.status,
@@ -206,23 +197,22 @@ export function FarmOperationsScheduleSection({
                             : operation.isAccepted
                               ? 'text-green-600'
                               : 'text-muted-foreground';
+                    const showScheduledDate =
+                        !!operation.scheduledDate &&
+                        !isSameScheduleDay(operation.scheduledDate, date);
 
                     return (
                         <Row
                             key={operation.id}
-                            spacing={2}
+                            spacing={1}
                             className={getScheduleTaskRowClassName({
                                 accepted: operationApproved,
                                 pendingAcceptance: operationPendingAcceptance,
                             })}
                         >
-                            <Row spacing={2} className="grow">
+                            <Row className="min-w-0 flex-1 flex-nowrap gap-1 md:gap-2">
                                 {isOperationCompleted(operation.status) ? (
-                                    <Checkbox
-                                        className="size-5 mx-2"
-                                        checked
-                                        disabled
-                                    />
+                                    <Checkbox checked disabled />
                                 ) : operationPendingVerification ? (
                                     <VerifyOperationModal
                                         operationId={operation.id}
@@ -249,10 +239,7 @@ export function FarmOperationsScheduleSection({
                                         }
                                     />
                                 ) : operationLocked ? (
-                                    <Checkbox
-                                        className="size-5 mx-2"
-                                        disabled
-                                    />
+                                    <Checkbox disabled />
                                 ) : operation.isAccepted ? (
                                     <CompleteOperationModal
                                         operationId={operation.id}
@@ -318,6 +305,7 @@ export function FarmOperationsScheduleSection({
                                     />
                                 )}
                                 <a
+                                    className="min-w-0 flex-1"
                                     href={
                                         operationData?.information?.label
                                             ? KnownPages.GrediceOperation(
@@ -330,54 +318,62 @@ export function FarmOperationsScheduleSection({
                                     rel="noopener noreferrer"
                                 >
                                     <Typography
+                                        level="body1"
+                                        noWrap
                                         className={
                                             operationTextInactive
                                                 ? 'line-through text-muted-foreground'
-                                                : undefined
+                                                : ''
                                         }
                                     >
                                         {operationLabel}
                                     </Typography>
                                 </a>
-                                <Typography
-                                    level="body2"
-                                    className={`ml-1 italic ${operationStatusClassName}`}
-                                >
-                                    {operationStatusText}
-                                </Typography>
-                                {completionRequirementTexts.length > 0 &&
-                                    !isOperationCompleted(operation.status) &&
-                                    !operationPendingVerification && (
-                                        <Typography
-                                            level="body2"
-                                            className="ml-1 text-xs text-muted-foreground"
-                                        >
-                                            {completionRequirementTexts.join(
-                                                ' · ',
-                                            )}
-                                        </Typography>
-                                    )}
-                                <Typography
-                                    level="body2"
-                                    component="div"
-                                    className="select-none"
-                                >
-                                    {operation.scheduledDate ? (
-                                        <LocalDateTime time={false}>
-                                            {operation.scheduledDate}
-                                        </LocalDateTime>
-                                    ) : (
-                                        <Chip
-                                            size="sm"
-                                            color="warning"
-                                            className="w-fit"
-                                        >
-                                            Nije planirano
-                                        </Chip>
-                                    )}
-                                </Typography>
+                                {operationStatusText && (
+                                    <Typography
+                                        level="body2"
+                                        className={`shrink-0 italic ${operationStatusClassName}`}
+                                    >
+                                        {operationStatusText}
+                                    </Typography>
+                                )}
+                                {(showScheduledDate ||
+                                    !operation.scheduledDate) && (
+                                    <Typography
+                                        level="body2"
+                                        component="div"
+                                        className="shrink-0 select-none"
+                                    >
+                                        {showScheduledDate ? (
+                                            <LocalDateTime time={false}>
+                                                {operation.scheduledDate}
+                                            </LocalDateTime>
+                                        ) : (
+                                            <Chip
+                                                size="sm"
+                                                color="warning"
+                                                className="w-fit"
+                                            >
+                                                Nije planirano
+                                            </Chip>
+                                        )}
+                                    </Typography>
+                                )}
                             </Row>
-                            <Row>
+                            <Row spacing={0} className="ml-auto shrink-0">
+                                {!isOperationCompleted(operation.status) &&
+                                    !operationPendingVerification && (
+                                        <OperationRequirementIcons
+                                            attachImages={attachImages}
+                                            attachImagesRequired={
+                                                attachImagesRequired
+                                            }
+                                            attachNotes={attachNotes}
+                                            attachNotesRequired={
+                                                attachNotesRequired
+                                            }
+                                        />
+                                    )}
                                 {(isOperationCompleted(operation.status) ||
                                     operationPendingVerification) && (
                                     <OperationCompletionAttachments
@@ -473,6 +469,7 @@ export function FarmOperationsScheduleSection({
                                     trigger={
                                         <IconButton
                                             variant="plain"
+                                            size="xs"
                                             title={
                                                 operation.scheduledDate
                                                     ? 'Prerasporedi radnju'
@@ -513,6 +510,7 @@ export function FarmOperationsScheduleSection({
                                     trigger={
                                         <IconButton
                                             variant="plain"
+                                            size="xs"
                                             title="Otkaži operaciju"
                                             disabled={operationLocked}
                                         >

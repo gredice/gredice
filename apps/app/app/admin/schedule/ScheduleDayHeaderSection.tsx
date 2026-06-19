@@ -84,8 +84,6 @@ export async function ScheduleDayHeaderSection({
 
     return (
         <ScheduleDayHeader
-            date={date}
-            isToday={isToday}
             approvedTasksCount={approvedTasksCount}
             completedTasksCount={completedTasksCount}
             totalTasksCount={totalTasksCount}
