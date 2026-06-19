@@ -8,8 +8,8 @@ import { Chip } from '@gredice/ui/Chip';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Calendar, Close, ToggleLeft, ToggleRight } from '@gredice/ui/icons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Row } from '@gredice/ui/Row';
-import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
@@ -28,11 +28,16 @@ import { AcceptRaisedBedFieldModal } from './AcceptRaisedBedFieldModal';
 import { AssignRaisedBedFieldModal } from './AssignRaisedBedFieldModal';
 import { BulkApproveRaisedBedButton } from './BulkApproveRaisedBedButton';
 import { BulkAssignRaisedBedButton } from './BulkAssignRaisedBedButton';
+import {
+    BulkCancelRaisedBedButton,
+    buildFieldCancelFormData,
+} from './BulkCancelRaisedBedButton';
 import { BulkRescheduleRaisedBedButton } from './BulkRescheduleRaisedBedButton';
 import { CancelRaisedBedFieldModal } from './CancelRaisedBedFieldModal';
 import { CompletePlantingModal } from './CompletePlantingModal';
 import { CopyTasksButton } from './CopyTasksButton';
 import { RescheduleRaisedBedFieldModal } from './RescheduleRaisedBedFieldModal';
+import { SchedulePlantVisual } from './ScheduleTaskVisual';
 import { parseScheduledDateInput } from './scheduleOptimisticHelpers';
 import {
     formatMinutes,
@@ -201,6 +206,18 @@ export function RaisedBedPlantingScheduleSection({
             id: field.id,
             farmUsers: assignableFarmUsersByRaisedBedFieldId[field.id] ?? [],
         }));
+    const fieldsToCancel = dayFields
+        .filter(
+            (field) =>
+                !isFieldCompleted(field.plantStatus) &&
+                !isFieldPendingVerification(field.plantStatus),
+        )
+        .map((field) => ({
+            id: field.id,
+            raisedBedId: field.raisedBedId,
+            positionIndex: field.positionIndex,
+            label: `${field.positionIndex + 1}`,
+        }));
 
     const durations = dayFields.reduce(
         (acc, field) => {
@@ -224,16 +241,21 @@ export function RaisedBedPlantingScheduleSection({
                     className="min-w-0 grow items-center flex-wrap gap-y-1"
                 >
                     {raisedBedDetailsLink ? (
-                        <Link href={raisedBedDetailsLink}>
-                            <RaisedBedLabel
+                        <Link
+                            href={raisedBedDetailsLink}
+                            aria-label={`Gredica ${physicalId}`}
+                        >
+                            <RaisedBedIcon
                                 physicalId={physicalId}
-                                size="compact"
+                                className="size-5"
+                                containerClassName="h-5"
                             />
                         </Link>
                     ) : (
-                        <RaisedBedLabel
+                        <RaisedBedIcon
                             physicalId={physicalId}
-                            size="compact"
+                            className="size-5"
+                            containerClassName="h-5"
                         />
                     )}
                     <Typography level="body2" className="text-muted-foreground">
@@ -348,6 +370,34 @@ export function RaisedBedPlantingScheduleSection({
                             })
                         }
                     />
+                    <BulkCancelRaisedBedButton
+                        physicalId={physicalId.toString()}
+                        fields={fieldsToCancel}
+                        operations={[]}
+                        onSubmit={(formData) =>
+                            runOptimisticAction({
+                                fieldPatches: fieldsToCancel.map((field) => ({
+                                    id: field.id,
+                                    patch: { isDeleted: true },
+                                })),
+                                action: () =>
+                                    Promise.all(
+                                        fieldsToCancel.map((field) =>
+                                            cancelRaisedBedFieldAction(
+                                                buildFieldCancelFormData(
+                                                    field,
+                                                    formData,
+                                                ),
+                                            ),
+                                        ),
+                                    ),
+                                errorLogMessage:
+                                    'Failed to cancel all raised bed planting items:',
+                                errorAlertMessage:
+                                    'Skupno otkazivanje sijanja nije uspjelo. Promjena je vraćena.',
+                            })
+                        }
+                    />
                 </Row>
             </Row>
             <Stack spacing={0}>
@@ -407,13 +457,11 @@ export function RaisedBedPlantingScheduleSection({
                     const nextSowingLocation = greenhouseSowing
                         ? 'direct'
                         : 'greenhouse';
-                    const fieldStatusText = fieldCompleted
-                        ? 'Završeno'
-                        : fieldPendingVerification
-                          ? 'Čeka verifikaciju'
-                          : fieldApproved
-                            ? null
-                            : 'Nije potvrđeno';
+                    const fieldStatusText = fieldPendingVerification
+                        ? 'Čeka verifikaciju'
+                        : fieldApproved || fieldCompleted
+                          ? null
+                          : 'Nije potvrđeno';
                     const fieldStatusClassName = fieldCompleted
                         ? 'text-green-600'
                         : fieldPendingVerification
@@ -507,6 +555,10 @@ export function RaisedBedPlantingScheduleSection({
                                             onConfirm={handlePlantConfirm}
                                         />
                                     )}
+                                    <SchedulePlantVisual
+                                        plantSort={sortData}
+                                        label={fieldLabel}
+                                    />
                                     <Typography
                                         level="body1"
                                         noWrap

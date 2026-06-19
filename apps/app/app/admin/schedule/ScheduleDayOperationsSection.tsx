@@ -97,6 +97,18 @@ export async function ScheduleDayOperationsSection({
             id: operation.id,
             farmUsers: assignableFarmUsersByOperationId[operation.id] ?? [],
         }));
+    const dayOperationsToCancel = scheduledOperations
+        .filter(
+            (operation) =>
+                !isOperationCompleted(operation.status) &&
+                !isOperationPendingVerification(operation.status) &&
+                !isOperationCancelled(operation.status) &&
+                operation.status !== 'failed',
+        )
+        .map((operation) => ({
+            id: operation.id,
+            label: operation.entityId.toString(),
+        }));
 
     return (
         <OptimisticScheduleActionsProvider>
@@ -109,6 +121,7 @@ export async function ScheduleDayOperationsSection({
                         <ScheduleDayOperationsBulkActions
                             operationsToApprove={dayOperationsToApprove}
                             operationsToAssign={dayOperationsToAssign}
+                            operationsToCancel={dayOperationsToCancel}
                         />
                     </Row>
                 </Row>

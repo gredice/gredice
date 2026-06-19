@@ -23,6 +23,7 @@ import { RaisedBedField } from './raisedBed/RaisedBedField';
 import { RaisedBedFieldSuggestions } from './raisedBed/RaisedBedFieldSuggestions';
 import { RaisedBedGreenhouseSuggestion } from './raisedBed/RaisedBedGreenhouseSuggestion';
 import { RaisedBedInfo } from './raisedBed/RaisedBedInfo';
+import { RaisedBedPhotosModal } from './raisedBed/RaisedBedPhotosModal';
 import { RaisedBedSensorInfo } from './raisedBed/RaisedBedSensorInfo';
 import { RaisedBedWatering } from './raisedBed/RaisedBedWatering';
 
@@ -86,46 +87,57 @@ export function RaisedBedFieldHud() {
             style={hudStyles}
         >
             {currentGarden && raisedBed && (
-                <div className="absolute z-40 max-w-64 md:max-w-[312px] top-[var(--raised-bed-ui-top)] left-[var(--raised-bed-title-left)]">
-                    <Modal
-                        open={isInfoOpen}
-                        onOpenChange={(open) => {
-                            if (open) {
-                                track('game_raised_bed_info_opened', {
-                                    garden_id: currentGarden.id,
-                                    raised_bed_id: raisedBed.id,
-                                    raised_bed_name: raisedBed.name,
-                                });
-                            }
-                            setIsInfoOpen(open);
-                        }}
-                        title="Informacije o gredici"
-                        modal={false}
-                        className="overflow-x-hidden md:border-tertiary md:border-b-4"
-                        trigger={
-                            <ButtonGreen
-                                fullWidth
-                                endDecorator={
-                                    <Navigate className="size-4 shrink-0" />
+                <div className="absolute z-40 top-[var(--raised-bed-ui-top)] left-[var(--raised-bed-title-left)]">
+                    <Row spacing={2} className="items-center">
+                        <Modal
+                            open={isInfoOpen}
+                            onOpenChange={(open) => {
+                                if (open) {
+                                    track('game_raised_bed_info_opened', {
+                                        garden_id: currentGarden.id,
+                                        raised_bed_id: raisedBed.id,
+                                        raised_bed_name: raisedBed.name,
+                                    });
                                 }
-                            >
-                                <Row spacing={2}>
-                                    <RaisedBedIcon
-                                        physicalId={raisedBed.physicalId}
-                                        className="size-6"
-                                    />
-                                    <Typography semiBold noWrap>
-                                        {raisedBed?.name}
-                                    </Typography>
-                                </Row>
-                            </ButtonGreen>
-                        }
-                    >
-                        <RaisedBedInfo
-                            gardenId={currentGarden.id}
-                            raisedBed={raisedBed}
-                        />
-                    </Modal>
+                                setIsInfoOpen(open);
+                            }}
+                            title="Informacije o gredici"
+                            modal={false}
+                            className="overflow-x-hidden md:border-tertiary md:border-b-4"
+                            trigger={
+                                <ButtonGreen
+                                    className="max-w-64 md:max-w-[312px]"
+                                    endDecorator={
+                                        <Navigate className="size-4 shrink-0" />
+                                    }
+                                >
+                                    <Row spacing={2} className="min-w-0">
+                                        <RaisedBedIcon
+                                            physicalId={raisedBed.physicalId}
+                                            className="size-6 shrink-0"
+                                        />
+                                        <Typography semiBold noWrap>
+                                            {raisedBed?.name}
+                                        </Typography>
+                                    </Row>
+                                </ButtonGreen>
+                            }
+                        >
+                            <RaisedBedInfo
+                                gardenId={currentGarden.id}
+                                raisedBed={raisedBed}
+                            />
+                        </Modal>
+                        {!isSandbox && (
+                            <RaisedBedPhotosModal
+                                gardenId={currentGarden.id}
+                                raisedBedId={raisedBed.id}
+                                subjectName={raisedBed.name}
+                                triggerPlacement="hud"
+                                hideWhenEmpty
+                            />
+                        )}
+                    </Row>
                 </div>
             )}
             <div className="absolute z-0 top-[calc(50%-1px)] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[var(--raised-bed-grid-size)] h-[var(--raised-bed-grid-height)]">

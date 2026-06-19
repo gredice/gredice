@@ -22,6 +22,7 @@ import { useGameState } from '../../useGameState';
 import { RaisedBedInfoTab } from './RaisedBedInfoTab';
 import { RaisedBedOperationHistoryList } from './RaisedBedOperationHistoryList';
 import { RaisedBedOperationsTab } from './RaisedBedOperationsTab';
+import { RaisedBedPhotosModal } from './RaisedBedPhotosModal';
 
 type RaisedBedTab = 'diary' | 'operations' | 'info' | 'more';
 
@@ -68,7 +69,7 @@ export function RaisedBedInfo({
 
     return (
         <Stack spacing={4} className="min-w-0 max-w-full">
-            <div className="grid min-w-0 max-w-full grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+            <div className="grid min-w-0 max-w-full grid-cols-[minmax(0,1fr)_auto] items-start gap-3 pr-8">
                 <Row spacing={4} className="min-w-0 flex-1 items-start">
                     <BlockImage
                         blockName="Raised_Bed"
@@ -85,21 +86,28 @@ export function RaisedBedInfo({
                         />
                     </Stack>
                 </Row>
-                <Button
-                    type="button"
-                    variant="plain"
-                    size="sm"
-                    aria-label="Prikaži dodatne opcije gredice"
-                    className={cx(
-                        'size-8 min-w-8 shrink-0 rounded-full p-0',
-                        activeTab === 'more'
-                            ? 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300'
-                            : undefined,
-                    )}
-                    onClick={() => setActiveTab('more')}
-                >
-                    <MoreHorizontal className="size-4" />
-                </Button>
+                <Row spacing={2} className="items-start">
+                    <RaisedBedPhotosModal
+                        gardenId={gardenId}
+                        raisedBedId={raisedBed.id}
+                        subjectName={raisedBed.name}
+                    />
+                    <Button
+                        type="button"
+                        variant="plain"
+                        size="sm"
+                        aria-label="Prikaži dodatne opcije gredice"
+                        className={cx(
+                            'size-8 min-w-8 shrink-0 rounded-full p-0',
+                            activeTab === 'more'
+                                ? 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300'
+                                : undefined,
+                        )}
+                        onClick={() => setActiveTab('more')}
+                    >
+                        <MoreHorizontal className="size-4" />
+                    </Button>
+                </Row>
             </div>
             <Tabs
                 value={activeTab}

@@ -6,6 +6,7 @@ import type {
 import { expect, test } from '@playwright/experimental-ct-react';
 import type { Page } from '@playwright/test';
 import {
+    RaisedBedCloseupHudStory,
     RaisedBedFieldDndDialogStory,
     RaisedBedFieldHudStory,
     RaisedBedFieldSuggestionsStory,
@@ -1399,6 +1400,164 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         ).toBeLessThanOrEqual(1);
     });
 
+    test('closeup HUD photo shortcut opens the raised bed photos modal', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedCloseupHudStory
+                scenario={plantedGrowingWithOperationHistoryScenario()}
+            />,
+        );
+
+        const photoButton = page.getByRole('button', {
+            name: /Fotografije gredice Raised Bed 1/u,
+        });
+        await expect(photoButton).toBeVisible();
+        await expect(photoButton.locator('img')).toBeVisible();
+
+        await photoButton.click();
+
+        const photosModal = page.locator('[data-raised-bed-photos-modal]');
+        await expect(
+            photosModal.getByRole('heading', { name: 'Fotografije gredice' }),
+        ).toBeVisible();
+        await expect(
+            photosModal.getByText('Površinsko zalijevanje gredice (20L)'),
+        ).toBeVisible();
+        await expect(
+            photosModal.locator('[data-raised-bed-photo-entry]'),
+        ).toHaveCount(1);
+        await expect(
+            photosModal.getByRole('button', {
+                name: /Pregledaj savjete suncokreta/u,
+            }),
+        ).toBeVisible();
+    });
+
+    test('closeup HUD photo shortcut searches older history pages before hiding', async ({
+        mount,
+        page,
+    }) => {
+        const scenario = plantedGrowingWithOperationHistoryScenario();
+        const baseOperation = scenario.operationHistoryItems?.[0];
+
+        if (!baseOperation) {
+            throw new Error('Expected operation history item.');
+        }
+
+        const firstPageWithoutPhotos = Array.from({ length: 20 }).map(
+            (_, index) => ({
+                ...baseOperation,
+                id: 800 + index,
+                imageUrls: [],
+                completionNotes: null,
+                statusHistory: [
+                    {
+                        status: 'completed' as const,
+                        changedAt: `2026-05-${String(12 - Math.floor(index / 2)).padStart(2, '0')}T09:00:00.000Z`,
+                    },
+                ],
+            }),
+        );
+        const olderOperationWithPhoto = {
+            ...baseOperation,
+            id: 999,
+            completedAt: '2026-04-20T08:00:00.000Z',
+            imageUrls: ['https://example.com/older-watering.jpg'],
+            completionNotes: 'Starija fotografija nakon pregleda tla.',
+            statusHistory: [
+                {
+                    status: 'completed' as const,
+                    changedAt: '2026-04-20T09:00:00.000Z',
+                },
+            ],
+        };
+
+        await page.route(
+            '**/api/gredice/api/gardens/*/operations**',
+            async (route) => {
+                const url = new URL(route.request().url());
+                const cursor = url.searchParams.get('cursor');
+
+                await route.fulfill({
+                    body: JSON.stringify({
+                        items: cursor === '20' ? [olderOperationWithPhoto] : [],
+                        nextCursor: null,
+                        total: 21,
+                    }),
+                    contentType: 'application/json',
+                    status: 200,
+                });
+            },
+        );
+
+        await mount(
+            <RaisedBedCloseupHudStory
+                scenario={{
+                    ...scenario,
+                    operationHistoryItems: firstPageWithoutPhotos,
+                    operationHistoryNextCursor: 20,
+                }}
+            />,
+        );
+
+        const photoButton = page.getByRole('button', {
+            name: /Fotografije gredice Raised Bed 1/u,
+        });
+        await expect(photoButton).toBeVisible();
+        await expect(photoButton.locator('img')).toBeVisible();
+
+        await photoButton.click();
+
+        const photosModal = page.locator('[data-raised-bed-photos-modal]');
+        await expect(
+            photosModal.getByText('Starija fotografija nakon pregleda tla.'),
+        ).toBeVisible();
+        await expect(
+            photosModal.locator('[data-raised-bed-photo-entry]'),
+        ).toHaveCount(1);
+    });
+
+    test('plant modal header opens field-scoped photos with AI actions', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldHudStory
+                scenario={plantedGrowingWithOperationHistoryScenario()}
+                positionIndex={0}
+            />,
+        );
+
+        await page.getByRole('button').first().click();
+
+        const plantDialog = page.getByRole('dialog');
+        const photoButton = plantDialog.getByRole('button', {
+            name: /Fotografije biljke Cherry rajčica/u,
+        });
+        await expect(photoButton).toBeVisible();
+
+        await photoButton.click();
+
+        const photosModal = page.locator('[data-raised-bed-photos-modal]');
+        await expect(
+            photosModal.getByRole('heading', { name: 'Fotografije biljke' }),
+        ).toBeVisible();
+        await expect(photosModal.getByText('Cherry rajčica')).toBeVisible();
+        await expect(
+            photosModal.getByText('Površinsko zalijevanje gredice (20L)'),
+        ).toBeVisible();
+        await expect(
+            photosModal.getByRole('button', {
+                name: /Pregledaj savjete suncokreta/u,
+            }),
+        ).toBeVisible();
+        await expect(
+            photosModal.getByText('Ovo je zapis za drugo polje.'),
+        ).toHaveCount(0);
+    });
+
     test('diary tab allows rescheduling future active operation cards', async ({
         mount,
         page,
@@ -1925,8 +2084,12 @@ test.describe('RaisedBedFieldItem HUD (mobile)', () => {
         const moreButton = dialog.getByRole('button', {
             name: 'Prikaži dodatne opcije gredice',
         });
+        const photoButton = dialog.getByRole('button', {
+            name: /Fotografije gredice Raised Bed 1/u,
+        });
         const tabList = dialog.getByRole('tablist');
         await expect(moreButton).toBeVisible();
+        await expect(photoButton).toBeVisible();
         await expect(tabList).toBeVisible();
 
         await expect
