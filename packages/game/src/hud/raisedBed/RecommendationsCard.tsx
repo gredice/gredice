@@ -47,8 +47,8 @@ export function RecommendationsCard({
     plantSortId?: number;
 }) {
     const { track } = useGameAnalytics();
-    const [operationsOpen, setOperationsOpen] = useState(true);
-    const [healthOpen, setHealthOpen] = useState(true);
+    const [operationsOpen, setOperationsOpen] = useState(false);
+    const [healthOpen, setHealthOpen] = useState(false);
     const favoriteOperationIds = useFavoriteIds('operation');
     // Fetch and prepare data for recommendations
     const {
@@ -237,6 +237,7 @@ export function RecommendationsCard({
 
     useEffect(() => {
         if (
+            !healthOpen ||
             !healthRecommendationViewKey ||
             lastTrackedHealthRecommendationViewKey.current ===
                 healthRecommendationViewKey
@@ -256,6 +257,7 @@ export function RecommendationsCard({
         });
     }, [
         gardenId,
+        healthOpen,
         healthRecommendationViewKey,
         healthRecommendedOperations.length,
         plantHealthIssues.length,

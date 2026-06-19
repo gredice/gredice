@@ -21,6 +21,19 @@ import {
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
 const DESKTOP_VIEWPORT = { width: 1280, height: 800 };
 const favoriteTimestamp = '2026-06-01T00:00:00.000Z';
+const healthRecommendationsViewedEvent =
+    'game_plant_health_recommendations_viewed';
+
+type AnalyticsEvent = {
+    eventName: string;
+    properties?: Record<string, unknown>;
+};
+
+declare global {
+    interface Window {
+        recordGameAnalyticsEvent?: (event: unknown) => void;
+    }
+}
 
 function favoriteItem({
     entityId,
@@ -113,6 +126,41 @@ async function mockFavoriteRequests(
             status: 200,
         });
     });
+}
+
+async function captureGameAnalyticsEvents(page: Page) {
+    const analyticsEvents: AnalyticsEvent[] = [];
+
+    await page.exposeFunction('recordGameAnalyticsEvent', (event: unknown) => {
+        if (!isRecord(event) || typeof event.eventName !== 'string') {
+            return;
+        }
+
+        analyticsEvents.push({
+            eventName: event.eventName,
+            properties: isRecord(event.properties)
+                ? event.properties
+                : undefined,
+        });
+    });
+
+    await page.evaluate(() => {
+        window.addEventListener('gredice:game-analytics', (event) => {
+            if (event instanceof CustomEvent) {
+                window.recordGameAnalyticsEvent?.(event.detail);
+            }
+        });
+    });
+
+    return analyticsEvents;
+}
+
+function countAnalyticsEvents(
+    analyticsEvents: AnalyticsEvent[],
+    eventName: string,
+) {
+    return analyticsEvents.filter((event) => event.eventName === eventName)
+        .length;
 }
 
 function emptyScenario(): RaisedBedScenario {
@@ -752,6 +800,10 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await expect(
             dialog.getByRole('tab', { name: /Dnevnik/ }),
         ).toBeVisible();
+        await dialog
+            .locator('[data-recommendation-section="operations"]')
+            .getByRole('button', { name: /Radnje/ })
+            .click();
         await expect(
             dialog.getByRole('button', { name: /Kontrola sadnice/ }),
         ).toBeVisible();
@@ -961,17 +1013,28 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await expect(
             operationsSection.locator('svg.lucide-hammer'),
         ).toBeVisible();
+        await expect(
+            operationsSection.locator('[data-recommendation-section-icon]'),
+        ).not.toHaveClass(/green/);
+        await expect(
+            operationsSection.locator('[data-recommendation-section-count]'),
+        ).toHaveClass(/size-5/);
+        await expect(operationsSection.getByTitle('2 preporuka')).toBeVisible();
 
         const recommendationsList = dialog.locator(
             '[data-recommended-operation-list]',
         );
-        await expect(recommendationsList).toBeVisible();
-        await expect(recommendationsList).toContainText('Okopavanje');
-        await expect(recommendationsList).toContainText('Uklanjanje korova');
+        await expect(recommendationsList).toHaveCount(0);
 
         const operationsHeader = operationsSection.getByRole('button', {
             name: /Radnje/,
         });
+        await operationsHeader.click();
+
+        await expect(recommendationsList).toBeVisible();
+        await expect(recommendationsList).toContainText('Okopavanje');
+        await expect(recommendationsList).toContainText('Uklanjanje korova');
+
         await operationsHeader.click();
         await expect(operationsSection.getByTitle('2 preporuka')).toBeVisible();
         await expect(recommendationsList).toHaveCount(0);
@@ -1005,6 +1068,8 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         mount,
         page,
     }) => {
+        const analyticsEvents = await captureGameAnalyticsEvents(page);
+
         await mount(
             <RaisedBedFieldHudStory
                 scenario={plantedGrowingWithHealthRecommendedOperationsScenario()}
@@ -1020,21 +1085,56 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         );
         await expect(healthSection).toBeVisible();
         await expect(healthSection.locator('svg.lucide-plus')).toBeVisible();
-        await expect(healthSection.getByText('Lisne uši')).toBeVisible();
+        await expect(
+            healthSection.locator('[data-recommendation-section-icon]'),
+        ).not.toHaveClass(/green/);
+        await expect(
+            healthSection.locator('[data-recommendation-section-count]'),
+        ).toHaveClass(/size-5/);
+        await expect(healthSection.getByTitle('1 preporuka')).toBeVisible();
 
         const healthList = healthSection.locator(
             '[data-plant-health-operation-list]',
         );
-        await expect(healthList).toBeVisible();
-        await expect(healthList).toContainText('Ispiranje biljke od štetnika');
+        await expect(healthList).toHaveCount(0);
+        await expect
+            .poll(() =>
+                countAnalyticsEvents(
+                    analyticsEvents,
+                    healthRecommendationsViewedEvent,
+                ),
+            )
+            .toBe(0);
 
         const healthHeader = healthSection.getByRole('button', {
             name: /Zdravlje biljke/,
         });
         await healthHeader.click();
 
+        await expect(healthSection.getByText('Lisne uši')).toBeVisible();
+        await expect(healthList).toBeVisible();
+        await expect(healthList).toContainText('Ispiranje biljke od štetnika');
+        await expect
+            .poll(() =>
+                countAnalyticsEvents(
+                    analyticsEvents,
+                    healthRecommendationsViewedEvent,
+                ),
+            )
+            .toBe(1);
+
+        await healthHeader.click();
         await expect(healthSection.getByTitle('1 preporuka')).toBeVisible();
         await expect(healthList).toHaveCount(0);
+        await healthHeader.click();
+        await expect
+            .poll(() =>
+                countAnalyticsEvents(
+                    analyticsEvents,
+                    healthRecommendationsViewedEvent,
+                ),
+            )
+            .toBe(1);
     });
 
     test('favorite operations are ranked first in recommendations and operation choices', async ({
@@ -1057,6 +1157,10 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await page.getByRole('button').first().click();
 
         const dialog = page.getByRole('dialog');
+        await dialog
+            .locator('[data-recommendation-section="operations"]')
+            .getByRole('button', { name: /Radnje/ })
+            .click();
         const recommendationsList = dialog.locator(
             '[data-recommended-operation-list]',
         );

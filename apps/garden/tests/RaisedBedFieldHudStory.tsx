@@ -185,7 +185,15 @@ function RaisedBedHudTestProviders({
         <NuqsTestingAdapter>
             <ReactQuery.QueryClientProvider client={queryClient}>
                 <GameStateContext.Provider value={gameStore}>
-                    <GameAnalyticsProvider capture={() => undefined}>
+                    <GameAnalyticsProvider
+                        capture={(eventName, properties) => {
+                            window.dispatchEvent(
+                                new CustomEvent('gredice:game-analytics', {
+                                    detail: { eventName, properties },
+                                }),
+                            );
+                        }}
+                    >
                         {children}
                     </GameAnalyticsProvider>
                 </GameStateContext.Provider>
