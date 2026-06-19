@@ -4,7 +4,10 @@ import {
     EventCalendar,
     type EventCalendarEntry,
 } from '@gredice/ui/EventCalendar';
-import type { WateringCalendarEntry } from './wateringCalendarModel';
+import {
+    toWateringEventCalendarEntry,
+    type WateringCalendarEntry,
+} from './wateringCalendarModel';
 
 const sourceLabels = {
     cart: 'U košari',
@@ -29,14 +32,13 @@ function entryMeta(entry: WateringCalendarEntry) {
 
 function toEventCalendarEntry(
     entry: WateringCalendarEntry,
+    referenceDate: Date,
 ): EventCalendarEntry {
+    const calendarEntry = toWateringEventCalendarEntry(entry, referenceDate);
+
     return {
-        id: entry.id,
-        date: entry.date,
-        label: entry.label,
+        ...calendarEntry,
         meta: entryMeta(entry),
-        tone: entry.source,
-        weight: entry.weight,
     };
 }
 
@@ -65,19 +67,23 @@ export function WateringOperationsCalendar({
     visibleFrom?: Date;
     visibleTo?: Date;
 }) {
+    const resolvedReferenceDate = referenceDate ?? new Date();
+
     return (
         <EventCalendar
             className={className}
             data-watering-calendar
             emptyLabel="Još nema zabilježenih zalijevanja."
-            entries={entries.map(toEventCalendarEntry)}
+            entries={entries.map((entry) =>
+                toEventCalendarEntry(entry, resolvedReferenceDate),
+            )}
             error={error}
             errorLabel="Kalendar zalijevanja nije dostupan."
             isLoading={isLoading}
             maxSelectableDate={maxSelectableDate}
             minSelectableDate={minSelectableDate}
             onDateSelect={onDateSelect}
-            referenceDate={referenceDate}
+            referenceDate={resolvedReferenceDate}
             selectedDate={selectedDate}
             visibleFrom={visibleFrom}
             visibleTo={visibleTo}
