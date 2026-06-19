@@ -2,7 +2,7 @@ import type { FavoriteItem } from '@gredice/client';
 import { Modal } from '@gredice/ui/Modal';
 import * as ReactQuery from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
-import { type PropsWithChildren, useMemo, useState } from 'react';
+import { type PropsWithChildren, useEffect, useMemo, useState } from 'react';
 import { GameAnalyticsProvider } from '../../../packages/game/src/analytics/GameAnalyticsContext';
 import { useCurrentGarden } from '../../../packages/game/src/hooks/useCurrentGarden';
 import { favoritesQueryKey } from '../../../packages/game/src/hooks/useFavorites';
@@ -10,6 +10,7 @@ import { gardenOperationsQueryKey } from '../../../packages/game/src/hooks/useGa
 import { queryKeys as raisedBedAiHistoryQueryKeys } from '../../../packages/game/src/hooks/useRaisedBedAiHistory';
 import { queryKeys as raisedBedDiaryQueryKeys } from '../../../packages/game/src/hooks/useRaisedBedDiaryEntries';
 import { queryKeys as raisedBedFieldDiaryQueryKeys } from '../../../packages/game/src/hooks/useRaisedBedFieldDiaryEntries';
+import { RaisedBedFieldHud } from '../../../packages/game/src/hud/RaisedBedFieldHud';
 import { RaisedBedField } from '../../../packages/game/src/hud/raisedBed/RaisedBedField';
 import { RaisedBedFieldItem } from '../../../packages/game/src/hud/raisedBed/RaisedBedFieldItem';
 import { RaisedBedFieldSuggestions } from '../../../packages/game/src/hud/raisedBed/RaisedBedFieldSuggestions';
@@ -17,6 +18,7 @@ import { RaisedBedInfo } from '../../../packages/game/src/hud/raisedBed/RaisedBe
 import {
     createGameState,
     GameStateContext,
+    useGameState,
 } from '../../../packages/game/src/useGameState';
 import {
     allPlants,
@@ -241,6 +243,39 @@ export function RaisedBedInfoModalStory({
         <RaisedBedHudTestProviders scenario={scenario}>
             <RaisedBedInfoModalStoryContent />
         </RaisedBedHudTestProviders>
+    );
+}
+
+export function RaisedBedCloseupHudStory({
+    scenario,
+}: {
+    scenario: RaisedBedScenario;
+}) {
+    return (
+        <RaisedBedHudTestProviders scenario={scenario}>
+            <RaisedBedCloseupHudStoryContent />
+        </RaisedBedHudTestProviders>
+    );
+}
+
+function RaisedBedCloseupHudStoryContent() {
+    const setView = useGameState((state) => state.setView);
+
+    useEffect(() => {
+        setView({
+            view: 'closeup',
+            block: {
+                id: 'raised-bed-1',
+                name: 'Raised_Bed',
+                rotation: 0,
+            },
+        });
+    }, [setView]);
+
+    return (
+        <div className="relative h-[620px] w-[720px]">
+            <RaisedBedFieldHud />
+        </div>
     );
 }
 

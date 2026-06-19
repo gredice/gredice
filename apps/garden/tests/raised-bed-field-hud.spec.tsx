@@ -2,6 +2,7 @@ import type { FavoriteEntityType, FavoriteItem } from '@gredice/client';
 import { expect, test } from '@playwright/experimental-ct-react';
 import type { Page } from '@playwright/test';
 import {
+    RaisedBedCloseupHudStory,
     RaisedBedFieldDndDialogStory,
     RaisedBedFieldHudStory,
     RaisedBedFieldSuggestionsStory,
@@ -967,6 +968,80 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         ).toBeLessThanOrEqual(1);
     });
 
+    test('closeup HUD photo shortcut opens the raised bed photos modal', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedCloseupHudStory
+                scenario={plantedGrowingWithOperationHistoryScenario()}
+            />,
+        );
+
+        const photoButton = page.getByRole('button', {
+            name: /Fotografije gredice Raised Bed 1/u,
+        });
+        await expect(photoButton).toBeVisible();
+        await expect(photoButton).toContainText('Foto');
+
+        await photoButton.click();
+
+        const photosModal = page.locator('[data-raised-bed-photos-modal]');
+        await expect(
+            photosModal.getByRole('heading', { name: 'Fotografije gredice' }),
+        ).toBeVisible();
+        await expect(
+            photosModal.getByText('Površinsko zalijevanje gredice (20L)'),
+        ).toBeVisible();
+        await expect(
+            photosModal.locator('[data-raised-bed-photo-entry]'),
+        ).toHaveCount(1);
+        await expect(
+            photosModal.getByRole('button', {
+                name: /Pregledaj savjete suncokreta/u,
+            }),
+        ).toBeVisible();
+    });
+
+    test('plant modal header opens field-scoped photos with AI actions', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldHudStory
+                scenario={plantedGrowingWithOperationHistoryScenario()}
+                positionIndex={0}
+            />,
+        );
+
+        await page.getByRole('button').first().click();
+
+        const plantDialog = page.getByRole('dialog');
+        const photoButton = plantDialog.getByRole('button', {
+            name: /Fotografije biljke Cherry rajčica/u,
+        });
+        await expect(photoButton).toBeVisible();
+
+        await photoButton.click();
+
+        const photosModal = page.locator('[data-raised-bed-photos-modal]');
+        await expect(
+            photosModal.getByRole('heading', { name: 'Fotografije biljke' }),
+        ).toBeVisible();
+        await expect(photosModal.getByText('Cherry rajčica')).toBeVisible();
+        await expect(
+            photosModal.getByText('Površinsko zalijevanje gredice (20L)'),
+        ).toBeVisible();
+        await expect(
+            photosModal.getByRole('button', {
+                name: /Pregledaj savjete suncokreta/u,
+            }),
+        ).toBeVisible();
+        await expect(
+            photosModal.getByText('Ovo je zapis za drugo polje.'),
+        ).toHaveCount(0);
+    });
+
     test('diary tab allows rescheduling future active operation cards', async ({
         mount,
         page,
@@ -1493,8 +1568,12 @@ test.describe('RaisedBedFieldItem HUD (mobile)', () => {
         const moreButton = dialog.getByRole('button', {
             name: 'Prikaži dodatne opcije gredice',
         });
+        const photoButton = dialog.getByRole('button', {
+            name: /Fotografije gredice Raised Bed 1/u,
+        });
         const tabList = dialog.getByRole('tablist');
         await expect(moreButton).toBeVisible();
+        await expect(photoButton).toBeVisible();
         await expect(tabList).toBeVisible();
 
         await expect

@@ -50,6 +50,7 @@ import { RaisedBedFieldOperationsTab } from './RaisedBedFieldOperationsTab';
 import { RaisedBedFieldPlantHistoryModal } from './RaisedBedFieldPlantHistoryModal';
 import { RaisedBedFieldStatusChange } from './RaisedBedFieldStatusChange';
 import { RaisedBedOperationHistoryList } from './RaisedBedOperationHistoryList';
+import { RaisedBedPhotosModal } from './RaisedBedPhotosModal';
 import { RecommendationsCard } from './RecommendationsCard';
 import {
     parseScheduledSowingDateValue,
@@ -450,7 +451,7 @@ export function RaisedBedFieldItemPlanted({
             trigger={trigger ?? undefined}
         >
             <Stack spacing={4} className="min-w-0 max-w-full">
-                <Row spacing={4}>
+                <Row spacing={4} className="items-start pr-8">
                     {isGreenhouseSeedling ? (
                         <GreenhouseSeedlingPlantVisual
                             plantSort={plantSort}
@@ -489,6 +490,14 @@ export function RaisedBedFieldItemPlanted({
                             <span>Detalji</span>
                         </Link>
                     </Stack>
+                    {garden && !isHistorical && (
+                        <RaisedBedPhotosModal
+                            gardenId={garden.id}
+                            raisedBedId={raisedBedId}
+                            subjectName={plantSort.information.name}
+                            positionIndex={positionIndex}
+                        />
+                    )}
                 </Row>
                 <Tabs
                     value={activeTab}
