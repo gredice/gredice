@@ -12,6 +12,10 @@ import { generateFarmerDocumentationPdf } from './farmerDocumentationPdf';
 
 const generatedAt = new Date('2026-06-13T10:00:00.000Z');
 const since = new Date('2026-06-01T00:00:00.000Z');
+const plantImageDataUrl =
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC';
+const sortImageDataUrl =
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR4nGNg+M8AAAICAQCOqX3YAAAAAElFTkSuQmCC';
 
 test('builds insert, replace, and discard instructions from manual revisions', () => {
     const documentationPackage = buildFarmerDocumentationPackage({
@@ -150,6 +154,16 @@ test('builds insert, replace, and discard instructions from manual revisions', (
         lines: ['Opis: Kratak opis sorte.'],
     });
     assert.deepEqual(
+        documentationPackage.includedPlants[0]?.images.map((image) => [
+            image.label,
+            image.url,
+        ]),
+        [
+            ['Biljka - Rajčica', plantImageDataUrl],
+            ['Sorta - Cherry rajčica', sortImageDataUrl],
+        ],
+    );
+    assert.deepEqual(
         pagesByHeader.map((page) => page.code),
         ['OP-0008', 'PL-1014', 'OP-0004'],
     );
@@ -276,7 +290,7 @@ test('regenerates the previous plant page when a sort moves plants', () => {
     });
 });
 
-test('generates a guide-first PDF without page numbering text', () => {
+test('generates a guide-first PDF without page numbering text', async () => {
     const documentationPackage = buildFarmerDocumentationPackage({
         generatedAt,
         since,
@@ -334,7 +348,7 @@ test('generates a guide-first PDF without page numbering text', () => {
         ],
     });
 
-    const pdf = generateFarmerDocumentationPdf(documentationPackage);
+    const pdf = await generateFarmerDocumentationPdf(documentationPackage);
     const content = new TextDecoder().decode(pdf);
 
     assert.match(content, /^%PDF-1\.4/);
@@ -351,6 +365,9 @@ test('generates a guide-first PDF without page numbering text', () => {
     );
     assertPdfText(content, 'abecedno poslije PL-1014 - Rajčica');
     assertPdfText(content, 'DOSTUPNE SORTE');
+    assertPdfText(content, 'SLIKE');
+    assertPdfText(content, 'Biljka - Rajčica');
+    assertPdfText(content, 'Sorta - Cherry rajčica');
     assertPdfText(content, 'DODATNE INFORMACIJE SORTE - CHERRY RAJČICA');
     assertPdfText(content, 'Cherry rajčica');
     assertPdfText(content, 'Rajčica');
@@ -364,11 +381,14 @@ test('generates a guide-first PDF without page numbering text', () => {
     assert.match(content, /<89> <017E>/);
     assert.match(content, /CIJENA/);
     assert.match(content, /2,50 EUR/);
+    assert.match(content, /\/Subtype \/Image/);
+    assert.match(content, /\/Im1 Do/);
+    assert.match(content, /\/Im2 Do/);
     assert.match(content, /2 Tr \(Gredice\)/);
     assert.doesNotMatch(content, /Stranica \d/);
 });
 
-test('generates filtered PDF packages for updates', () => {
+test('generates filtered PDF packages for updates', async () => {
     const documentationPackage = buildFarmerDocumentationPackage({
         generatedAt,
         since,
@@ -407,7 +427,7 @@ test('generates filtered PDF packages for updates', () => {
         ],
     });
 
-    const pdf = generateFarmerDocumentationPdf(documentationPackage, {
+    const pdf = await generateFarmerDocumentationPdf(documentationPackage, {
         content: 'operations',
     });
     const content = new TextDecoder().decode(pdf);
@@ -419,9 +439,12 @@ test('generates filtered PDF packages for updates', () => {
     assert.doesNotMatch(content, /Opis biljke/);
     assert.doesNotMatch(content, /Kratak opis sorte/);
 
-    const plantsPdf = generateFarmerDocumentationPdf(documentationPackage, {
-        content: 'plants',
-    });
+    const plantsPdf = await generateFarmerDocumentationPdf(
+        documentationPackage,
+        {
+            content: 'plants',
+        },
+    );
     const plantsContent = new TextDecoder().decode(plantsPdf);
 
     assert.match(plantsContent, /ORG-GUIDE/);
@@ -519,6 +542,7 @@ function plantSortFixture(
             description: 'Kratak opis sorte.',
             plant,
         },
+        image: { cover: { url: sortImageDataUrl } },
         attributes,
     };
 }
@@ -539,6 +563,7 @@ function plantFixture({
             name: label,
             description,
         },
+        image: { cover: { url: plantImageDataUrl } },
         attributes: {
             seedingDistance: 30,
             germinationWindowMin: 7,

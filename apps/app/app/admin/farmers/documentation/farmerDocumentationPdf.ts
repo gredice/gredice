@@ -1,8 +1,10 @@
 import { create as createQrCode } from 'qrcode';
+import sharp from 'sharp';
 import {
     currentDocumentationPages,
     discardedDocumentationPages,
     documentationChangeLabel,
+    type FarmerDocumentationImage,
     type FarmerDocumentationPackage,
     type FarmerDocumentationPackageContent,
     type FarmerDocumentationPage,
@@ -44,6 +46,14 @@ type FlowContext = {
     y: number;
 };
 
+type PdfImageAsset = {
+    name: string;
+    url: string;
+    width: number;
+    height: number;
+    dataHex: string;
+};
+
 const colors = {
     brand: { r: 0.18, g: 0.44, b: 0.25 },
     text: { r: 0.09, g: 0.1, b: 0.12 },
@@ -67,6 +77,16 @@ const smallFontSize = 7.8;
 const titleFontSize = 17;
 const logoWordmarkFontSize = 18.75;
 const logoWordmarkStrokeWidth = 0.16;
+const imageGalleryColumns = 4;
+const imageGalleryGap = 10;
+const imageGalleryLabelHeight = 20;
+const imageGalleryCardWidth =
+    (contentWidth - imageGalleryGap * (imageGalleryColumns - 1)) /
+    imageGalleryColumns;
+const imageGalleryImageHeight = 76;
+const imageGalleryCardHeight =
+    imageGalleryImageHeight + imageGalleryLabelHeight + 12;
+const maxPdfImageSourceBytes = 10 * 1024 * 1024;
 
 const logoMarkPaths = [
     '0 19 m 0 18.448 0.264 18 0.591 18 c 29.41 18 l 29.736 18 30 18.448 30 19 c 30 19.552 29.736 20 29.41 20 c 0.591 20 l 0.264 20 0 19.552 0 19 c h',
@@ -200,6 +220,31 @@ class PdfCanvas {
         );
     }
 
+    image({
+        height,
+        name,
+        width,
+        x,
+        y,
+    }: {
+        height: number;
+        name: string;
+        width: number;
+        x: number;
+        y: number;
+    }) {
+        this.operations.push(
+            [
+                'q',
+                `${formatNumber(width)} 0 0 ${formatNumber(
+                    height,
+                )} ${formatNumber(x)} ${formatNumber(y)} cm`,
+                `/${name} Do`,
+                'Q',
+            ].join(' '),
+        );
+    }
+
     path({
         commands,
         color,
@@ -235,25 +280,172 @@ class PdfCanvas {
     }
 }
 
-export function generateFarmerDocumentationPdf(
+export async function generateFarmerDocumentationPdf(
     data: FarmerDocumentationPackage,
     {
         content = 'all',
     }: {
         content?: FarmerDocumentationPackageContent;
     } = {},
-): ArrayBuffer {
+): Promise<ArrayBuffer> {
     const farmOrigin = getFarmerAppOrigin();
     const version = farmerDocumentationVersion(data.generatedAt);
+    const documentationPages = includedDocumentationPages(data, content);
+    const imageAssets = await loadDocumentationImageAssets(documentationPages);
+    const imageAssetsByUrl = new Map(
+        imageAssets.map((asset) => [asset.url, asset]),
+    );
     const pages: PdfCanvas[] = [];
 
     drawOrganizationGuide({ content, data, farmOrigin, pages, version });
 
-    for (const page of includedDocumentationPages(data, content)) {
-        drawDocumentationPage({ data, farmOrigin, pages, version, page });
+    for (const page of documentationPages) {
+        drawDocumentationPage({
+            data,
+            farmOrigin,
+            imageAssetsByUrl,
+            pages,
+            version,
+            page,
+        });
     }
 
-    return writePdf(pages.map((page) => page.toString()));
+    return writePdf(
+        pages.map((page) => page.toString()),
+        imageAssets,
+    );
+}
+
+async function loadDocumentationImageAssets(pages: FarmerDocumentationPage[]) {
+    const uniqueImages = uniquePageImages(pages);
+    const assetsByIndex: Array<PdfImageAsset | null> = new Array(
+        uniqueImages.length,
+    ).fill(null);
+    let nextIndex = 0;
+
+    async function worker() {
+        while (nextIndex < uniqueImages.length) {
+            const imageIndex = nextIndex;
+            nextIndex += 1;
+            const image = uniqueImages[imageIndex];
+            if (!image) {
+                continue;
+            }
+
+            assetsByIndex[imageIndex] = await loadDocumentationImageAsset({
+                image,
+                name: `Im${imageIndex + 1}`,
+            });
+        }
+    }
+
+    await Promise.all(
+        Array.from({ length: Math.min(6, uniqueImages.length) }, () =>
+            worker(),
+        ),
+    );
+
+    return assetsByIndex.filter(
+        (asset): asset is PdfImageAsset => asset !== null,
+    );
+}
+
+function uniquePageImages(pages: FarmerDocumentationPage[]) {
+    const images: FarmerDocumentationImage[] = [];
+    const seenUrls = new Set<string>();
+
+    for (const page of pages) {
+        for (const image of page.images) {
+            if (seenUrls.has(image.url)) {
+                continue;
+            }
+
+            images.push(image);
+            seenUrls.add(image.url);
+        }
+    }
+
+    return images;
+}
+
+async function loadDocumentationImageAsset({
+    image,
+    name,
+}: {
+    image: FarmerDocumentationImage;
+    name: string;
+}) {
+    try {
+        const bytes = await documentationImageBytes(image.url);
+        if (!bytes || bytes.byteLength > maxPdfImageSourceBytes) {
+            return null;
+        }
+
+        const { data, info } = await sharp(bytes, {
+            animated: false,
+            limitInputPixels: 36_000_000,
+        })
+            .rotate()
+            .flatten({ background: { r: 255, g: 255, b: 255 } })
+            .resize({
+                width: 900,
+                height: 700,
+                fit: 'inside',
+                withoutEnlargement: true,
+            })
+            .jpeg({ quality: 82, mozjpeg: true })
+            .toBuffer({ resolveWithObject: true });
+
+        if (!info.width || !info.height) {
+            return null;
+        }
+
+        return {
+            name,
+            url: image.url,
+            width: info.width,
+            height: info.height,
+            dataHex: data.toString('hex').toUpperCase(),
+        };
+    } catch {
+        return null;
+    }
+}
+
+async function documentationImageBytes(url: string) {
+    const dataUrlBytes = documentationImageDataUrlBytes(url);
+    if (dataUrlBytes) {
+        return dataUrlBytes;
+    }
+
+    if (!/^https?:\/\//u.test(url)) {
+        return null;
+    }
+
+    const response = await fetch(url, {
+        signal: AbortSignal.timeout(5000),
+    });
+    if (!response.ok) {
+        return null;
+    }
+
+    const contentType = response.headers.get('content-type');
+    if (contentType && !contentType.toLowerCase().startsWith('image/')) {
+        return null;
+    }
+
+    return new Uint8Array(await response.arrayBuffer());
+}
+
+function documentationImageDataUrlBytes(url: string) {
+    const match = /^data:image\/[-+.\w]+;base64,([A-Za-z0-9+/=]+)$/u.exec(
+        url.trim(),
+    );
+    if (!match?.[1]) {
+        return null;
+    }
+
+    return new Uint8Array(Buffer.from(match[1], 'base64'));
 }
 
 export function farmerDocumentationFilename(
@@ -480,12 +672,14 @@ function drawDiscardList(
 function drawDocumentationPage({
     data,
     farmOrigin,
+    imageAssetsByUrl,
     page,
     pages,
     version,
 }: {
     data: FarmerDocumentationPackage;
     farmOrigin: string;
+    imageAssetsByUrl: ReadonlyMap<string, PdfImageAsset>;
     page: FarmerDocumentationPage;
     pages: PdfCanvas[];
     version: string;
@@ -502,6 +696,7 @@ function drawDocumentationPage({
     });
 
     context = drawPageSummary(context, page);
+    context = drawImageGallery(context, page, imageAssetsByUrl);
 
     for (const section of page.sections) {
         context = drawSection(
@@ -549,6 +744,127 @@ function drawPageSummary(context: FlowContext, page: FarmerDocumentationPage) {
 
     context.y -= boxHeight + 16;
     return context;
+}
+
+function drawImageGallery(
+    initialContext: FlowContext,
+    page: FarmerDocumentationPage,
+    imageAssetsByUrl: ReadonlyMap<string, PdfImageAsset>,
+) {
+    const images = page.images
+        .map((image) => ({
+            image,
+            asset: imageAssetsByUrl.get(image.url) ?? null,
+        }))
+        .filter(
+            (
+                entry,
+            ): entry is {
+                image: FarmerDocumentationImage;
+                asset: PdfImageAsset;
+            } => entry.asset !== null,
+        );
+
+    if (images.length === 0) {
+        return initialContext;
+    }
+
+    let context = ensureSpace(initialContext, 34);
+    context.page.text({
+        x: margin,
+        y: context.y,
+        value: 'SLIKE',
+        size: 8,
+        font: 'F2',
+        color: colors.brand,
+    });
+    context.page.line({
+        x1: margin,
+        y1: context.y - 7,
+        x2: pageWidth - margin,
+        y2: context.y - 7,
+        color: colors.line,
+    });
+    context.y -= 24;
+
+    for (let index = 0; index < images.length; index += imageGalleryColumns) {
+        context = ensureSpace(context, imageGalleryCardHeight);
+        const rowImages = images.slice(index, index + imageGalleryColumns);
+
+        rowImages.forEach(({ asset, image }, columnIndex) => {
+            const x =
+                margin +
+                columnIndex * (imageGalleryCardWidth + imageGalleryGap);
+            drawImageCard(context.page, {
+                asset,
+                image,
+                x,
+                y: context.y,
+            });
+        });
+
+        context.y -= imageGalleryCardHeight;
+    }
+
+    context.y -= 4;
+    return context;
+}
+
+function drawImageCard(
+    page: PdfCanvas,
+    {
+        asset,
+        image,
+        x,
+        y,
+    }: {
+        asset: PdfImageAsset;
+        image: FarmerDocumentationImage;
+        x: number;
+        y: number;
+    },
+) {
+    const imageBoxY = y - imageGalleryImageHeight;
+    const fitted = fitImageInsideBox(
+        asset,
+        imageGalleryCardWidth,
+        imageGalleryImageHeight,
+    );
+
+    page.fillRect({
+        x,
+        y: imageBoxY,
+        width: imageGalleryCardWidth,
+        height: imageGalleryImageHeight,
+        color: colors.softGray,
+    });
+    page.image({
+        name: asset.name,
+        x: x + (imageGalleryCardWidth - fitted.width) / 2,
+        y: imageBoxY + (imageGalleryImageHeight - fitted.height) / 2,
+        width: fitted.width,
+        height: fitted.height,
+    });
+    page.text({
+        x,
+        y: imageBoxY - 14,
+        value: fitSingleLine(image.label, imageGalleryCardWidth, smallFontSize),
+        size: smallFontSize,
+        color: colors.muted,
+    });
+}
+
+function fitImageInsideBox(
+    image: Pick<PdfImageAsset, 'width' | 'height'>,
+    maxWidth: number,
+    maxHeight: number,
+) {
+    const scale = Math.min(maxWidth / image.width, maxHeight / image.height);
+
+    return {
+        width: image.width * scale,
+        height: image.height * scale,
+    };
 }
 
 function startPage(pages: PdfCanvas[], header: HeaderData): FlowContext {
@@ -929,16 +1245,29 @@ function formatColor(color: PdfColor) {
     return [color.r, color.g, color.b].map(formatNumber).join(' ');
 }
 
-function writePdf(pageContentStreams: string[]) {
+function writePdf(
+    pageContentStreams: string[],
+    imageAssets: readonly PdfImageAsset[],
+) {
     const objects: string[] = [];
     const fontId = 3;
     const boldFontId = 4;
     const fontEncodingId = 5;
     const fontToUnicodeMapId = 6;
-    const firstPageObjectId = 7;
+    const firstImageObjectId = 7;
+    const firstPageObjectId = firstImageObjectId + imageAssets.length;
     const kids = pageContentStreams
         .map((_, index) => `${firstPageObjectId + index * 2} 0 R`)
         .join(' ');
+    const xObjectResources =
+        imageAssets.length > 0
+            ? `/XObject << ${imageAssets
+                  .map(
+                      (image, index) =>
+                          `/${image.name} ${firstImageObjectId + index} 0 R`,
+                  )
+                  .join(' ')} >>`
+            : '';
 
     objects.push('<< /Type /Catalog /Pages 2 0 R >>');
     objects.push(
@@ -953,6 +1282,26 @@ function writePdf(pageContentStreams: string[]) {
     objects.push(pdfLatinExtendedEncodingObject());
     objects.push(pdfLatinExtendedToUnicodeMapObject());
 
+    imageAssets.forEach((image) => {
+        const stream = `${image.dataHex}>`;
+        objects.push(
+            [
+                '<< /Type /XObject',
+                '/Subtype /Image',
+                `/Width ${image.width}`,
+                `/Height ${image.height}`,
+                '/ColorSpace /DeviceRGB',
+                '/BitsPerComponent 8',
+                '/Filter [/ASCIIHexDecode /DCTDecode]',
+                `/Length ${stream.length}`,
+                '>>',
+                'stream',
+                stream,
+                'endstream',
+            ].join('\n'),
+        );
+    });
+
     pageContentStreams.forEach((content, index) => {
         const pageObjectId = firstPageObjectId + index * 2;
         const contentObjectId = pageObjectId + 1;
@@ -961,7 +1310,7 @@ function writePdf(pageContentStreams: string[]) {
                 '<< /Type /Page',
                 '/Parent 2 0 R',
                 `/MediaBox [0 0 ${formatNumber(pageWidth)} ${formatNumber(pageHeight)}]`,
-                `/Resources << /Font << /F1 ${fontId} 0 R /F2 ${boldFontId} 0 R >> >>`,
+                `/Resources << /Font << /F1 ${fontId} 0 R /F2 ${boldFontId} 0 R >> ${xObjectResources} >>`,
                 `/Contents ${contentObjectId} 0 R`,
                 '>>',
             ].join(' '),
