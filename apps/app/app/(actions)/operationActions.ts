@@ -524,6 +524,22 @@ export async function acceptOperationAction(operationId: number) {
     await revalidateOperationPaths(operation);
 }
 
+export async function unacceptOperationAction(operationId: number) {
+    await auth(['admin']);
+    const operation = await getOperationById(operationId);
+    if (!operation) {
+        throw new Error(`Operation with ID ${operationId} not found.`);
+    }
+    if (!operation.isAccepted) {
+        return { success: true };
+    }
+
+    await unacceptOperation(operationId);
+    await revalidateOperationPaths(operation);
+
+    return { success: true };
+}
+
 export async function assignOperationUserAction(
     operationId: number,
     assignedUserIds: string[],
@@ -829,16 +845,8 @@ export async function cancelOperationAction(formData: FormData) {
         throw new Error(`Operation with ID ${operationId} not found.`);
     }
 
-    // Only allow canceling new or planned operations
-    if (
-        operation.status === 'completed' ||
-        operation.status === 'pendingVerification' ||
-        operation.status === 'failed' ||
-        operation.status === 'canceled'
-    ) {
-        throw new Error(
-            `Cannot cancel operation with status ${operation.status}`,
-        );
+    if (operation.status === 'canceled') {
+        return { success: true };
     }
 
     // Get operation details for notification and refund calculation
@@ -921,4 +929,5 @@ export async function cancelOperationAction(formData: FormData) {
     ]);
 
     await revalidateOperationPaths(operation);
+    return { success: true };
 }

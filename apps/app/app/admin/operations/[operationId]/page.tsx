@@ -40,9 +40,11 @@ import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navig
 import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPageTitle';
 import { OperationCancelButton } from '../../../../components/operations/OperationCancelButton';
 import { OperationRescheduleButton } from '../../../../components/operations/OperationRescheduleButton';
+import { OperationUnacceptButton } from '../../../../components/operations/OperationUnacceptButton';
 import type { EntityStandardized } from '../../../../lib/@types/EntityStandardized';
 import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
+import { AcceptOperationModal } from '../../schedule/AcceptOperationModal';
 import { VerifyOperationModal } from '../../schedule/VerifyOperationModal';
 
 export const dynamic = 'force-dynamic';
@@ -540,6 +542,21 @@ export default async function OperationDetailsPage({
                                 <VerifyOperationModal
                                     operationId={operation.id}
                                     label={operationTitle}
+                                />
+                            )}
+                            {operation.isAccepted ? (
+                                <OperationUnacceptButton
+                                    operationId={operation.id}
+                                    operationLabel={operationTitle}
+                                />
+                            ) : (
+                                <AcceptOperationModal
+                                    operationId={operation.id}
+                                    label={operationTitle}
+                                    disabled={!operation.assignedUserId}
+                                    raisedBedPhysicalId={
+                                        raisedBed?.physicalId ?? undefined
+                                    }
                                 />
                             )}
                             <OperationRescheduleButton
