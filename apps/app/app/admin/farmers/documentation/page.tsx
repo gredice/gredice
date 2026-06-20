@@ -52,9 +52,9 @@ export default async function FarmerDocumentationPage({
         sinceInput,
         content: 'operations',
     });
-    const plantSortsChangesHref = printoutHref({
+    const plantsChangesHref = printoutHref({
         sinceInput,
-        content: 'plantSorts',
+        content: 'plants',
     });
     const invalidSince = Boolean(sinceInput) && !since;
     const menuAllLabel = since ? 'Sve promjene' : 'Cijeli paket';
@@ -87,7 +87,7 @@ export default async function FarmerDocumentationPage({
                                         Samo radnje
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
-                                        href={plantSortsChangesHref}
+                                        href={plantsChangesHref}
                                         startDecorator={
                                             <Sprout className="size-4" />
                                         }
@@ -109,6 +109,16 @@ export default async function FarmerDocumentationPage({
                     </>
                 }
             />
+
+            <Stack spacing={1}>
+                <Typography level="h4" component="h1">
+                    Dokumentacija farmera
+                </Typography>
+                <Typography level="body2" className="text-muted-foreground">
+                    Ispis priručnika radnji, biljaka i sorti iz farmer
+                    aplikacije, organiziran po stabilnim OP, PL i PS kodovima.
+                </Typography>
+            </Stack>
 
             <Card>
                 <CardContent>
@@ -149,17 +159,21 @@ export default async function FarmerDocumentationPage({
                 </CardContent>
             </Card>
 
-            <div className="grid gap-3 md:grid-cols-6">
+            <div className="grid gap-3 md:grid-cols-7">
                 <DocumentationSummaryCard
                     label="Trenutnih priručnika"
                     value={
                         documentationPackage.totalOperations +
-                        documentationPackage.totalPlantSorts
+                        documentationPackage.totalPlants
                     }
                 />
                 <DocumentationSummaryCard
                     label="Radnji"
                     value={documentationPackage.totalOperations}
+                />
+                <DocumentationSummaryCard
+                    label="Biljaka"
+                    value={documentationPackage.totalPlants}
                 />
                 <DocumentationSummaryCard
                     label="Sorti"
@@ -169,13 +183,14 @@ export default async function FarmerDocumentationPage({
                     label="Stranica u paketu"
                     value={
                         documentationPackage.includedOperations.length +
-                        documentationPackage.includedPlantSorts.length
+                        documentationPackage.includedPlants.length
                     }
                 />
                 <DocumentationSummaryCard
                     label="Za uklanjanje"
                     value={
                         documentationPackage.discardedOperations.length +
+                        documentationPackage.discardedPlants.length +
                         documentationPackage.discardedPlantSorts.length
                     }
                 />
