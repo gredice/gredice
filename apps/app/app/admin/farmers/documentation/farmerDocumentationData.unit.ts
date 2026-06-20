@@ -19,8 +19,10 @@ test('builds insert, replace, and discard instructions from manual revisions', (
         since,
         labelAttributeDefinitionIds: {
             operation: new Set([10]),
+            plant: new Set([30]),
             plantSort: new Set([20]),
         },
+        plantSortPlantAttributeDefinitionIds: new Set([21]),
         operations: [
             operationFixture(
                 4,
@@ -40,6 +42,7 @@ test('builds insert, replace, and discard instructions from manual revisions', (
                 frequency: 'required',
             }),
         ],
+        plants: [plantFixture()],
         plantSorts: [
             plantSortFixture(14, 'Cherry rajčica', {
                 reproductionType: 'seed',
@@ -106,6 +109,7 @@ test('builds insert, replace, and discard instructions from manual revisions', (
     const pagesByHeader = includedDocumentationPages(documentationPackage);
 
     assert.equal(documentationPackage.totalOperations, 3);
+    assert.equal(documentationPackage.totalPlants, 1);
     assert.equal(documentationPackage.totalPlantSorts, 1);
     assert.deepEqual(
         currentDocumentationPages(documentationPackage).map((page) => [
@@ -113,9 +117,9 @@ test('builds insert, replace, and discard instructions from manual revisions', (
             page.label,
         ]),
         [
-            ['PS-0014', 'Cherry rajčica'],
             ['OP-0008', 'Čišćenje gredice'],
             ['OP-0006', 'Okopavanje'],
+            ['PL-1014', 'Rajčica'],
             ['OP-0004', 'Zalijevanje'],
         ],
     );
@@ -130,15 +134,24 @@ test('builds insert, replace, and discard instructions from manual revisions', (
         ],
     );
     assert.deepEqual(
-        documentationPackage.includedPlantSorts.map((plantSort) => [
-            plantSort.code,
-            plantSort.changeType,
+        documentationPackage.includedPlants.map((plant) => [
+            plant.code,
+            plant.changeType,
+            plant.appPath,
         ]),
-        [['PS-0014', 'insert']],
+        [['PL-1014', 'replace', '/plants']],
     );
+    assert.equal(
+        documentationPackage.includedPlants[0]?.sections[0]?.title,
+        'Dostupne sorte',
+    );
+    assert.deepEqual(documentationPackage.includedPlants[0]?.sections.at(-1), {
+        title: 'Dodatne informacije sorte - Cherry rajčica',
+        lines: ['Opis: Kratak opis sorte.'],
+    });
     assert.deepEqual(
         pagesByHeader.map((page) => page.code),
-        ['PS-0014', 'OP-0008', 'OP-0004'],
+        ['OP-0008', 'PL-1014', 'OP-0004'],
     );
     assert.deepEqual(
         includedDocumentationPages(documentationPackage, 'operations').map(
@@ -147,10 +160,10 @@ test('builds insert, replace, and discard instructions from manual revisions', (
         ['OP-0008', 'OP-0004'],
     );
     assert.deepEqual(
-        includedDocumentationPages(documentationPackage, 'plantSorts').map(
+        includedDocumentationPages(documentationPackage, 'plants').map(
             (page) => page.code,
         ),
-        ['PS-0014'],
+        ['PL-1014'],
     );
     assert.deepEqual(
         documentationPackage.includedOperations[0]?.summaryRows.find(
@@ -179,11 +192,88 @@ test('builds insert, replace, and discard instructions from manual revisions', (
         [['PS-0016', 'Stara sorta']],
     );
     assert.deepEqual(
-        discardedDocumentationPages(documentationPackage, 'plantSorts').map(
+        documentationPackage.discardedPlants.map((plant) => [
+            plant.code,
+            plant.label,
+        ]),
+        [],
+    );
+    assert.deepEqual(
+        discardedDocumentationPages(documentationPackage, 'plants').map(
             (plantSort) => [plantSort.code, plantSort.label],
         ),
         [['PS-0016', 'Stara sorta']],
     );
+});
+
+test('regenerates the previous plant page when a sort moves plants', () => {
+    const tomato = plantFixture();
+    const pepper = plantFixture({
+        id: 2020,
+        label: 'Paprika',
+        description: 'Opis paprike.',
+    });
+    const documentationPackage = buildFarmerDocumentationPackage({
+        generatedAt,
+        since,
+        labelAttributeDefinitionIds: {
+            operation: new Set(),
+            plant: new Set(),
+            plantSort: new Set(),
+        },
+        plantSortPlantAttributeDefinitionIds: new Set([21]),
+        operations: [],
+        plants: [tomato, pepper],
+        plantSorts: [
+            plantSortFixture(
+                18,
+                'Žuta paprika',
+                { reproductionType: 'seed' },
+                tomato,
+            ),
+        ],
+        revisions: [
+            revisionFixture({
+                id: 1,
+                entityId: 18,
+                entityTypeName: 'plantSort',
+                action: 'attribute.updated',
+                attributeDefinitionId: 21,
+                previousValue: '2020',
+                nextValue: '1014',
+                createdAt: new Date('2026-06-08T13:00:00.000Z'),
+            }),
+        ],
+    });
+
+    assert.deepEqual(
+        documentationPackage.includedPlants.map((plant) => [
+            plant.code,
+            plant.label,
+            plant.appPath,
+            plant.revisionActions,
+        ]),
+        [
+            ['PL-2020', 'Paprika', '/plants', ['promijenjeni podaci']],
+            ['PL-1014', 'Rajčica', '/plants', ['promijenjeni podaci']],
+        ],
+    );
+
+    const previousPlantPage = documentationPackage.includedPlants.find(
+        (plant) => plant.code === 'PL-2020',
+    );
+    assert.deepEqual(previousPlantPage?.sections[0], {
+        title: 'Dostupne sorte',
+        lines: ['Nema dostupnih sorti.'],
+    });
+
+    const currentPlantPage = documentationPackage.includedPlants.find(
+        (plant) => plant.code === 'PL-1014',
+    );
+    assert.deepEqual(currentPlantPage?.sections[0], {
+        title: 'Dostupne sorte',
+        lines: ['PS-0018 - Žuta paprika, Sjeme'],
+    });
 });
 
 test('generates a guide-first PDF without page numbering text', () => {
@@ -192,8 +282,10 @@ test('generates a guide-first PDF without page numbering text', () => {
         since,
         labelAttributeDefinitionIds: {
             operation: new Set(),
+            plant: new Set(),
             plantSort: new Set(),
         },
+        plantSortPlantAttributeDefinitionIds: new Set(),
         operations: [
             operationFixture(
                 4,
@@ -213,6 +305,7 @@ test('generates a guide-first PDF without page numbering text', () => {
                 application: 'raisedBed',
             }),
         ],
+        plants: [plantFixture()],
         plantSorts: [
             plantSortFixture(14, 'Cherry rajčica', {
                 reproductionType: 'seed',
@@ -248,14 +341,17 @@ test('generates a guide-first PDF without page numbering text', () => {
     assert.match(content, /ORG-GUIDE/);
     assert.match(content, /OP-0004/);
     assert.match(content, /OP-0008/);
+    assert.match(content, /PL-1014/);
     assert.match(content, /PS-0014/);
     assert.match(content, /Zalijevanje/);
-    assertPdfText(content, 'abecedno prije PS-0014 - Cherry rajčica');
+    assertPdfText(content, 'abecedno prije OP-0006 - Okopavanje');
     assertPdfText(
         content,
-        'abecedno između OP-0008 - Berba i OP-0006 - Okopavanje',
+        'abecedno između OP-0006 - Okopavanje i OP-0004 - Zalijevanje',
     );
-    assertPdfText(content, 'abecedno poslije OP-0006 - Okopavanje');
+    assertPdfText(content, 'abecedno poslije PL-1014 - Rajčica');
+    assertPdfText(content, 'DOSTUPNE SORTE');
+    assertPdfText(content, 'DODATNE INFORMACIJE SORTE - CHERRY RAJČICA');
     assertPdfText(content, 'Cherry rajčica');
     assertPdfText(content, 'Rajčica');
     assertPdfText(content, 'Vlažno tlo');
@@ -278,14 +374,17 @@ test('generates filtered PDF packages for updates', () => {
         since,
         labelAttributeDefinitionIds: {
             operation: new Set(),
+            plant: new Set(),
             plantSort: new Set(),
         },
+        plantSortPlantAttributeDefinitionIds: new Set(),
         operations: [
             operationFixture(4, 'Zalijevanje', {
                 duration: 25,
                 application: 'raisedBedFull',
             }),
         ],
+        plants: [plantFixture()],
         plantSorts: [
             plantSortFixture(14, 'Cherry rajčica', {
                 reproductionType: 'seed',
@@ -317,18 +416,21 @@ test('generates filtered PDF packages for updates', () => {
     assert.match(content, /Radnje/);
     assert.match(content, /OP-0004/);
     assert.match(content, /Kratak opis radnje/);
+    assert.doesNotMatch(content, /Opis biljke/);
     assert.doesNotMatch(content, /Kratak opis sorte/);
 
-    const plantSortsPdf = generateFarmerDocumentationPdf(documentationPackage, {
-        content: 'plantSorts',
+    const plantsPdf = generateFarmerDocumentationPdf(documentationPackage, {
+        content: 'plants',
     });
-    const plantSortsContent = new TextDecoder().decode(plantSortsPdf);
+    const plantsContent = new TextDecoder().decode(plantsPdf);
 
-    assert.match(plantSortsContent, /ORG-GUIDE/);
-    assert.match(plantSortsContent, /Biljke i sorte/);
-    assert.match(plantSortsContent, /PS-0014/);
-    assert.match(plantSortsContent, /Kratak opis sorte/);
-    assert.doesNotMatch(plantSortsContent, /Kratak opis radnje/);
+    assert.match(plantsContent, /ORG-GUIDE/);
+    assert.match(plantsContent, /Biljke i sorte/);
+    assert.match(plantsContent, /PL-1014/);
+    assert.match(plantsContent, /PS-0014/);
+    assert.match(plantsContent, /Opis biljke/);
+    assert.match(plantsContent, /Kratak opis sorte/);
+    assert.doesNotMatch(plantsContent, /Kratak opis radnje/);
 });
 
 const pdfTextGlyphCodes = new Map([
@@ -407,6 +509,7 @@ function plantSortFixture(
     id: number,
     label: string,
     attributes: EntityStandardized['attributes'],
+    plant: EntityStandardized = plantFixture(),
 ): EntityStandardized {
     return {
         id,
@@ -414,28 +517,40 @@ function plantSortFixture(
             label,
             name: label,
             description: 'Kratak opis sorte.',
-            plant: {
-                id: 1000 + id,
-                information: {
-                    label: 'Rajčica',
-                    name: 'Rajčica',
-                    description: 'Opis biljke.',
-                },
-                attributes: {
-                    seedingDistance: 30,
-                    germinationWindowMin: 7,
-                    germinationWindowMax: 10,
-                    growthWindowMin: 60,
-                    growthWindowMax: 80,
-                    water: 'Vlažno tlo',
-                    yieldMin: 100,
-                    yieldMax: 200,
-                    yieldType: 'perPlant',
-                    cleanHarvest: false,
-                },
-            },
+            plant,
         },
         attributes,
+    };
+}
+
+function plantFixture({
+    description = 'Opis biljke.',
+    id = 1014,
+    label = 'Rajčica',
+}: {
+    description?: string;
+    id?: number;
+    label?: string;
+} = {}): EntityStandardized {
+    return {
+        id,
+        information: {
+            label,
+            name: label,
+            description,
+        },
+        attributes: {
+            seedingDistance: 30,
+            germinationWindowMin: 7,
+            germinationWindowMax: 10,
+            growthWindowMin: 60,
+            growthWindowMax: 80,
+            water: 'Vlažno tlo',
+            yieldMin: 100,
+            yieldMax: 200,
+            yieldType: 'perPlant',
+            cleanHarvest: false,
+        },
     };
 }
 
@@ -455,7 +570,7 @@ function revisionFixture({
     attributeDefinitionId?: number | null;
     createdAt: Date;
     entityId: number;
-    entityTypeName?: 'operation' | 'plantSort';
+    entityTypeName?: 'operation' | 'plant' | 'plantSort';
     id: number;
     nextState?: string | null;
     nextValue?: string | null;

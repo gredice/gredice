@@ -101,9 +101,10 @@ const latinExtendedGlyphs = [
     { character: 'ž', code: 0x89, glyph: 'zcaron', unicode: '017E' },
 ] as const;
 
-const latinExtendedGlyphByCharacter = new Map(
-    latinExtendedGlyphs.map((glyph) => [glyph.character, glyph]),
-);
+const latinExtendedGlyphByCharacter: ReadonlyMap<
+    string,
+    (typeof latinExtendedGlyphs)[number]
+> = new Map(latinExtendedGlyphs.map((glyph) => [glyph.character, glyph]));
 
 class PdfCanvas {
     private readonly operations: string[] = [];
@@ -360,7 +361,7 @@ function farmerDocumentationFilenameContentPart(
             return '';
         case 'operations':
             return '-radnje';
-        case 'plantSorts':
+        case 'plants':
             return '-biljke-sorte';
     }
 }
@@ -373,7 +374,7 @@ function organizationGuideContentSubtitle(
             return null;
         case 'operations':
             return 'Radnje';
-        case 'plantSorts':
+        case 'plants':
             return 'Biljke i sorte';
     }
 }
@@ -399,7 +400,7 @@ function organizationGuidePackageContentLabel(
             return 'sve priručnike';
         case 'operations':
             return 'priručnike radnji';
-        case 'plantSorts':
+        case 'plants':
             return 'priručnike biljaka i sorti';
     }
 }
