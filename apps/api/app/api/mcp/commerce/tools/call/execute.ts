@@ -1,9 +1,16 @@
 import {
+    isRaisedBedAbandoned,
+    RAISED_BED_ABANDONED_ACTIONS_DISABLED_MESSAGE,
+    RAISED_BED_ABANDONED_DUE_TO_INACTIVITY_MESSAGE,
+} from '@gredice/js/raisedBeds';
+import {
     type EntityStandardized,
     getEntitiesFormatted,
     getEntityFormatted,
     getEntityRaw,
+    getGarden,
     getOrCreateShoppingCart,
+    getRaisedBed,
     upsertOrRemoveCartItem,
 } from '@gredice/storage';
 import { z } from 'zod';
@@ -131,6 +138,73 @@ function formatCart(
     };
 }
 
+async function validateCartLocation({
+    accountId,
+    gardenId,
+    positionIndex,
+    raisedBedId,
+}: {
+    accountId: string;
+    gardenId?: number | null;
+    positionIndex?: number | null;
+    raisedBedId?: number | null;
+}) {
+    if (gardenId) {
+        const garden = await getGarden(gardenId);
+        if (!garden || garden.accountId !== accountId) {
+            throw new Error('Garden not found for authenticated account');
+        }
+    }
+
+    if (!raisedBedId) {
+        return {
+            gardenId: gardenId ?? undefined,
+            raisedBedId: undefined,
+            positionIndex: positionIndex ?? undefined,
+        };
+    }
+
+    const raisedBed = await getRaisedBed(raisedBedId);
+    if (!raisedBed || raisedBed.accountId !== accountId) {
+        throw new Error('Raised bed not found for authenticated account');
+    }
+
+    const finalGardenId = raisedBed.gardenId;
+    if (!finalGardenId) {
+        throw new Error('Raised bed is not assigned to a garden');
+    }
+
+    if (gardenId && finalGardenId !== gardenId) {
+        throw new Error('Raised bed does not belong to the provided garden');
+    }
+
+    if (!gardenId) {
+        const garden = await getGarden(finalGardenId);
+        if (!garden || garden.accountId !== accountId) {
+            throw new Error('Garden not found for authenticated account');
+        }
+    }
+
+    if (isRaisedBedAbandoned(raisedBed.status)) {
+        throw new Error(
+            `${RAISED_BED_ABANDONED_DUE_TO_INACTIVITY_MESSAGE} ${RAISED_BED_ABANDONED_ACTIONS_DISABLED_MESSAGE}`,
+        );
+    }
+
+    if (
+        typeof positionIndex === 'number' &&
+        !raisedBed.fields.some((field) => field.positionIndex === positionIndex)
+    ) {
+        throw new Error('Raised bed field not found');
+    }
+
+    return {
+        gardenId: finalGardenId,
+        raisedBedId: raisedBed.id,
+        positionIndex: positionIndex ?? undefined,
+    };
+}
+
 export async function executeCommerceTool(
     name: string,
     args: unknown,
@@ -184,6 +258,12 @@ export async function executeCommerceTool(
             if (!cart) {
                 throw new Error('Cart could not be created');
             }
+            const location = await validateCartLocation({
+                accountId: auth.accountId,
+                gardenId: input.gardenId,
+                raisedBedId: input.raisedBedId,
+                positionIndex: input.positionIndex,
+            });
             const additionalData = input.scheduledDate
                 ? JSON.stringify({ scheduledDate: input.scheduledDate })
                 : null;
@@ -193,9 +273,9 @@ export async function executeCommerceTool(
                 entityId.toString(),
                 'plantSort',
                 input.quantity,
-                input.gardenId,
-                input.raisedBedId,
-                input.positionIndex,
+                location.gardenId,
+                location.raisedBedId,
+                location.positionIndex,
                 additionalData,
             );
             const refreshedCart = await getOrCreateShoppingCart(auth.accountId);
@@ -220,15 +300,28 @@ export async function executeCommerceTool(
             if (!item) {
                 throw new Error('Cart item not found');
             }
+            const location =
+                input.quantity > 0
+                    ? await validateCartLocation({
+                          accountId: auth.accountId,
+                          gardenId: item.gardenId,
+                          raisedBedId: item.raisedBedId,
+                          positionIndex: item.positionIndex,
+                      })
+                    : {
+                          gardenId: item.gardenId ?? undefined,
+                          raisedBedId: item.raisedBedId ?? undefined,
+                          positionIndex: item.positionIndex ?? undefined,
+                      };
             const cartItemId = await upsertOrRemoveCartItem(
                 item.id,
                 cart.id,
                 item.entityId,
                 item.entityTypeName,
                 input.quantity,
-                item.gardenId ?? undefined,
-                item.raisedBedId ?? undefined,
-                item.positionIndex ?? undefined,
+                location.gardenId,
+                location.raisedBedId,
+                location.positionIndex,
                 item.additionalData,
             );
             const refreshedCart = await getOrCreateShoppingCart(auth.accountId);

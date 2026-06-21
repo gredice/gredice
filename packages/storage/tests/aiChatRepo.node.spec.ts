@@ -105,6 +105,43 @@ test('getAiChatAccountLimitState blocks trial accounts after five used chat days
     assert.strictEqual(state.blockedReason, 'trial_days_exhausted');
 });
 
+test('getAiChatAccountLimitState allows trial users to finish their final trial day', async () => {
+    createTestDb();
+    const { accountId, userId } = await createAiChatTestUser();
+    const usageDates = [
+        '2026-06-01',
+        '2026-06-02',
+        '2026-06-03',
+        '2026-06-04',
+        '2026-06-05',
+    ];
+
+    await storage()
+        .insert(aiUsageLedger)
+        .values(
+            usageDates.map((usageDate) => ({
+                id: randomUUID(),
+                accountId,
+                userId,
+                requestId: randomUUID(),
+                feature: SUNCOKRET_AI_FEATURE,
+                model: 'openai/gpt-5.5',
+                usageDate,
+                status: 'finalized',
+                totalMicroUsd: 1,
+            })),
+        );
+
+    const state = await getAiChatAccountLimitState(
+        accountId,
+        new Date('2026-06-05T10:00:00Z'),
+    );
+
+    assert.strictEqual(state.trialChatDaysUsed, SUNCOKRET_TRIAL_CHAT_DAYS);
+    assert.strictEqual(state.blockedReason, null);
+    assert.ok(state.remainingMicroUsd > 0);
+});
+
 test('reserveAiChatUsage serializes concurrent reservations for the daily cap', async () => {
     createTestDb();
     const { accountId, userId } = await createAiChatTestUser();
