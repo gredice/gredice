@@ -329,11 +329,15 @@ export async function getAiChatAccountLimitState(
                 : sum,
         0,
     );
-    const trialChatDaysUsed = new Set(
+    const finalizedUsageDates = new Set(
         ledgerRows
             .filter((row) => statusCountsAsFinalized(row.status))
             .map((row) => row.usageDate),
-    ).size;
+    );
+    const trialChatDaysUsed = finalizedUsageDates.size;
+    const priorTrialChatDaysUsed = Array.from(finalizedUsageDates).filter(
+        (dateKey) => dateKey < usageDate,
+    ).length;
     const trialChatDaysLimit =
         override?.trialChatDays ?? SUNCOKRET_TRIAL_CHAT_DAYS;
     const tier: AiChatLimitTier = activeRaisedBed
@@ -350,7 +354,7 @@ export async function getAiChatAccountLimitState(
     const disabled = Boolean(override?.disabled);
     const blockedReason = disabled
         ? 'disabled'
-        : !activeRaisedBed && trialChatDaysUsed >= trialChatDaysLimit
+        : !activeRaisedBed && priorTrialChatDaysUsed >= trialChatDaysLimit
           ? 'trial_days_exhausted'
           : null;
 
