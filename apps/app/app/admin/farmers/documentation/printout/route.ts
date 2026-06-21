@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     const documentationPackage = await getFarmerDocumentationPackage({
         since,
     });
-    const pdf = generateFarmerDocumentationPdf(documentationPackage, {
+    const pdf = await generateFarmerDocumentationPdf(documentationPackage, {
         content,
     });
 

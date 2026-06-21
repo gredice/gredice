@@ -33,6 +33,11 @@ export type FarmerDocumentationSection = {
     lines: string[];
 };
 
+export type FarmerDocumentationImage = {
+    label: string;
+    url: string;
+};
+
 export type FarmerDocumentationPage = {
     id: number;
     entityTypeName: FarmerDocumentationPageEntityTypeName;
@@ -40,6 +45,7 @@ export type FarmerDocumentationPage = {
     code: string;
     label: string;
     appPath: string;
+    images: FarmerDocumentationImage[];
     summaryRows: FarmerDocumentationAttribute[];
     sections: FarmerDocumentationSection[];
     changedAt: Date | null;
@@ -860,6 +866,7 @@ function toDocumentationOperation(
         code: getFarmerDocumentationCode('operation', operation.id),
         label: getOperationLabel(operation),
         appPath: `/operations/${operation.id}`,
+        images: [],
         summaryRows: compactRows([
             ['Kod', getFarmerDocumentationCode('operation', operation.id)],
             ['Vrsta', documentationEntityConfig.operation.documentTypeLabel],
@@ -927,6 +934,7 @@ function toDocumentationPlant({
         code: getFarmerDocumentationCode('plant', plant.id),
         label: plantLabel,
         appPath: '/plants',
+        images: plantDocumentationImages(plant, plantSorts),
         summaryRows: compactRows([
             ['Kod', getFarmerDocumentationCode('plant', plant.id)],
             ['Vrsta', documentationEntityConfig.plant.documentTypeLabel],
@@ -975,6 +983,50 @@ function getPlantLabel(plant: EntityStandardized) {
         plant?.information?.name?.trim() ||
         `${documentationEntityConfig.plant.fallbackLabel} #${plant.id}`
     );
+}
+
+function plantDocumentationImages(
+    plant: EntityStandardized,
+    plantSorts: EntityStandardized[],
+) {
+    const images: FarmerDocumentationImage[] = [];
+    const seenUrls = new Set<string>();
+    const plantCoverUrl = entityCoverUrl(plant);
+
+    if (plantCoverUrl) {
+        images.push({
+            label: `Biljka - ${getPlantLabel(plant)}`,
+            url: plantCoverUrl,
+        });
+        seenUrls.add(plantCoverUrl);
+    }
+
+    for (const plantSort of plantSorts) {
+        const sortCoverUrl = plantSortCoverUrl(plantSort);
+        if (!sortCoverUrl || seenUrls.has(sortCoverUrl)) {
+            continue;
+        }
+
+        images.push({
+            label: `Sorta - ${getPlantSortLabel(plantSort)}`,
+            url: sortCoverUrl,
+        });
+        seenUrls.add(sortCoverUrl);
+    }
+
+    return images;
+}
+
+function plantSortCoverUrl(plantSort: EntityStandardized) {
+    return (
+        entityCoverUrl(plantSort) ??
+        entityCoverUrl(getPlantSortPlant(plantSort))
+    );
+}
+
+function entityCoverUrl(entity: EntityStandardized | null | undefined) {
+    const url = entity?.image?.cover?.url ?? entity?.images?.cover?.url;
+    return typeof url === 'string' && url.trim().length > 0 ? url.trim() : null;
 }
 
 function operationDurationLabel(operation: EntityStandardized) {
