@@ -390,6 +390,63 @@ test('generates a guide-first PDF without page numbering text', async () => {
     assert.doesNotMatch(content, /Stranica \d/);
 });
 
+test('renders compact plant attributes and markdown content in PDFs', async () => {
+    const documentationPackage = buildFarmerDocumentationPackage({
+        generatedAt,
+        since: null,
+        labelAttributeDefinitionIds: {
+            operation: new Set(),
+            plant: new Set(),
+            plantSort: new Set(),
+        },
+        plantSortPlantAttributeDefinitionIds: new Set(),
+        operations: [],
+        plants: [
+            plantFixture({
+                storage: [
+                    '1. **Kratkoročno skladištenje**',
+                    '   - Hladnjak:',
+                    '     * Papriku čuvajte u ladici za povrće na temperaturi 7-10 C.',
+                    '     * Nemojte je prati prije skladištenja.',
+                    '2. Dugotrajno skladištenje',
+                    '   - **Sušenje**',
+                    '     * Najbolje za ljute ili tanke sorte.',
+                    '',
+                    '| Metoda | Temperatura |',
+                    '| --- | --- |',
+                    '| Hladnjak | 7-10 C |',
+                    '| Podrum | 10-12 C |',
+                    '',
+                    '> Čuvati suho.',
+                    '',
+                    'Detalji na [uputama](https://example.test/upute).',
+                ].join('\n'),
+            }),
+        ],
+        plantSorts: [],
+        revisions: [],
+    });
+
+    const pdf = await generateFarmerDocumentationPdf(documentationPackage, {
+        content: 'plants',
+    });
+    const content = decodePdfForAssertions(pdf);
+    const sowingPosition = pdfTextPosition(content, 'SJETVA');
+    const growthPosition = pdfTextPosition(content, 'RAST');
+
+    assert.equal(sowingPosition.y, growthPosition.y);
+    assert.ok(growthPosition.x > sowingPosition.x + 200);
+    assertPdfText(content, 'Kratkoročno skladištenje');
+    assertPdfText(content, 'Papriku čuvajte u ladici za povrće');
+    assertPdfText(content, 'Sušenje');
+    assertPdfText(content, 'Metoda');
+    assertPdfText(content, 'Temperatura');
+    assertPdfText(content, 'Čuvati suho.');
+    assertPdfText(content, 'https://example.test/upute');
+    assertPdfTextWithFont(content, 'F2', 'Sušenje');
+    assert.doesNotMatch(content, /\(\* Papriku/);
+});
+
 test('generates filtered PDF packages for updates', async () => {
     const documentationPackage = buildFarmerDocumentationPackage({
         generatedAt,
@@ -473,6 +530,37 @@ const pdfTextGlyphCodes = new Map([
 
 function assertPdfText(content: string, value: string) {
     assert.match(content, new RegExp(escapeRegExp(encodedPdfText(value))));
+}
+
+function assertPdfTextWithFont(
+    content: string,
+    font: 'F1' | 'F2' | 'F3' | 'F4',
+    value: string,
+) {
+    assert.match(
+        content,
+        new RegExp(
+            `/${font} [0-9.]+ Tf[\\s\\S]{0,160}\\(${escapeRegExp(
+                encodedPdfText(value),
+            )}\\) Tj`,
+        ),
+    );
+}
+
+function pdfTextPosition(content: string, value: string) {
+    const match = new RegExp(
+        `/F2 8 Tf 1 0 0 1 ([0-9.]+) ([0-9.]+) Tm\\s+\\(${escapeRegExp(
+            encodedPdfText(value),
+        )}\\) Tj`,
+    ).exec(content);
+
+    assert.ok(match?.[1]);
+    assert.ok(match[2]);
+
+    return {
+        x: Number.parseFloat(match[1]),
+        y: Number.parseFloat(match[2]),
+    };
 }
 
 function decodePdfForAssertions(pdf: ArrayBuffer) {
@@ -609,10 +697,12 @@ function plantFixture({
     description = 'Opis biljke.',
     id = 1014,
     label = 'Rajčica',
+    storage,
 }: {
     description?: string;
     id?: number;
     label?: string;
+    storage?: string;
 } = {}): EntityStandardized {
     return {
         id,
@@ -620,6 +710,7 @@ function plantFixture({
             label,
             name: label,
             description,
+            ...(storage ? { storage } : {}),
         },
         image: { cover: { url: plantImageDataUrl } },
         attributes: {
