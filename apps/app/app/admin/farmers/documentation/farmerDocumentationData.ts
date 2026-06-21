@@ -28,9 +28,13 @@ export type FarmerDocumentationAttribute = {
     value: string;
 };
 
+export type FarmerDocumentationSectionLayout = 'compactAttributes';
+
 export type FarmerDocumentationSection = {
     title: string;
     lines: string[];
+    layout?: FarmerDocumentationSectionLayout;
+    attributes?: FarmerDocumentationAttribute[];
 };
 
 export type FarmerDocumentationImage = {
@@ -1114,10 +1118,26 @@ function plantSections(
             .filter((section): section is FarmerDocumentationSection =>
                 Boolean(section),
             ),
-        detailSection('Sjetva', buildSowingRows(plantAttributes)),
-        detailSection('Rast', buildGrowthRows(plantAttributes)),
-        detailSection('Zalijevanje', buildWateringRows(plantAttributes)),
-        detailSection('Berba', buildHarvestRows(plantAttributes)),
+        detailSection(
+            'Sjetva',
+            buildSowingRows(plantAttributes),
+            'compactAttributes',
+        ),
+        detailSection(
+            'Rast',
+            buildGrowthRows(plantAttributes),
+            'compactAttributes',
+        ),
+        detailSection(
+            'Zalijevanje',
+            buildWateringRows(plantAttributes),
+            'compactAttributes',
+        ),
+        detailSection(
+            'Berba',
+            buildHarvestRows(plantAttributes),
+            'compactAttributes',
+        ),
         detailSection('Kalendar uzgoja', buildCalendarRows(plantCalendar)),
         ...plantSorts.map((plantSort) =>
             plantSortAdditionalSection(plantSort, plant),
@@ -1280,11 +1300,25 @@ function documentationSection(title: string, lines: string[]) {
     return visibleLines.length > 0 ? { title, lines: visibleLines } : null;
 }
 
-function detailSection(title: string, rows: FarmerDocumentationAttribute[]) {
-    return documentationSection(
-        title,
-        rows.map((row) => `${row.label}: ${row.value}`),
-    );
+function detailSection(
+    title: string,
+    rows: FarmerDocumentationAttribute[],
+    layout?: FarmerDocumentationSectionLayout,
+) {
+    if (rows.length === 0) {
+        return null;
+    }
+
+    const lines = rows.map((row) => `${row.label}: ${row.value}`);
+
+    return layout
+        ? {
+              title,
+              lines,
+              layout,
+              attributes: rows,
+          }
+        : documentationSection(title, lines);
 }
 
 function compactRows(

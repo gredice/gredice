@@ -5,16 +5,18 @@ import {
     currentDocumentationPages,
     discardedDocumentationPages,
     documentationChangeLabel,
+    type FarmerDocumentationAttribute,
     type FarmerDocumentationImage,
     type FarmerDocumentationPackage,
     type FarmerDocumentationPackageContent,
     type FarmerDocumentationPage,
+    type FarmerDocumentationSection,
     formatDocumentationDateTime,
     getFarmerAppOrigin,
     includedDocumentationPages,
 } from './farmerDocumentationData';
 
-type PdfFontKey = 'F1' | 'F2';
+type PdfFontKey = 'F1' | 'F2' | 'F3' | 'F4';
 
 type PdfColor = {
     r: number;
@@ -38,6 +40,57 @@ type HeaderData = {
     qrUrl: string;
     version: string;
     generatedAt: Date;
+};
+
+type MarkdownInlineStyle = {
+    bold?: boolean;
+    italic?: boolean;
+    code?: boolean;
+};
+
+type MarkdownTextRun = {
+    value: string;
+    font?: PdfFontKey;
+    color?: PdfColor;
+};
+
+type MarkdownBlock =
+    | {
+          type: 'paragraph';
+          runs: MarkdownTextRun[];
+      }
+    | {
+          type: 'heading';
+          level: number;
+          runs: MarkdownTextRun[];
+      }
+    | {
+          type: 'list';
+          items: MarkdownListItem[];
+      }
+    | {
+          type: 'table';
+          headers: MarkdownTextRun[][];
+          rows: MarkdownTextRun[][][];
+      }
+    | {
+          type: 'blockquote';
+          blocks: MarkdownBlock[];
+      }
+    | {
+          type: 'rule';
+      };
+
+type MarkdownListItem = {
+    level: number;
+    marker: string;
+    runs: MarkdownTextRun[];
+};
+
+type MarkdownRenderOptions = {
+    x: number;
+    width: number;
+    color?: PdfColor;
 };
 
 type FlowContext = {
@@ -76,6 +129,10 @@ const bodyFontSize = 9.4;
 const bodyLineHeight = 13.2;
 const smallFontSize = 7.8;
 const titleFontSize = 17;
+const markdownBlockSpacing = 5;
+const markdownListIndent = 13;
+const markdownListMarkerWidth = 15;
+const compactAttributeColumnGap = 18;
 const logoWordmarkFontSize = 18.75;
 const logoWordmarkStrokeWidth = 0.16;
 const imageGalleryColumns = 4;
@@ -699,12 +756,33 @@ function drawDocumentationPage({
     context = drawPageSummary(context, page);
     context = drawImageGallery(context, page, imageAssetsByUrl);
 
-    for (const section of page.sections) {
-        context = drawSection(
-            context,
-            section.title,
-            section.lines.flatMap((line) => markdownToPlainLines(line)),
-        );
+    for (let index = 0; index < page.sections.length; index += 1) {
+        const section = page.sections[index];
+        if (!section) {
+            continue;
+        }
+
+        if (section.layout === 'compactAttributes') {
+            const sections: FarmerDocumentationSection[] = [];
+            let cursor = index;
+
+            while (
+                cursor < page.sections.length &&
+                page.sections[cursor]?.layout === 'compactAttributes'
+            ) {
+                const compactSection = page.sections[cursor];
+                if (compactSection) {
+                    sections.push(compactSection);
+                }
+                cursor += 1;
+            }
+
+            context = drawCompactAttributeSections(context, sections);
+            index = cursor - 1;
+            continue;
+        }
+
+        context = drawMarkdownSection(context, section.title, section.lines);
     }
 
     drawFooter(context.page);
@@ -905,23 +983,12 @@ function drawSection(
     title: string,
     rawLines: string[],
 ) {
-    let context = ensureSpace(initialContext, 34);
-    context.page.text({
-        x: margin,
-        y: context.y,
-        value: title.toUpperCase(),
-        size: 8,
-        font: 'F2',
-        color: colors.brand,
-    });
-    context.page.line({
-        x1: margin,
-        y1: context.y - 7,
-        x2: pageWidth - margin,
-        y2: context.y - 7,
-        color: colors.line,
-    });
-    context.y -= 24;
+    let context = drawSectionHeader(
+        initialContext,
+        title,
+        margin,
+        contentWidth,
+    );
 
     for (const rawLine of rawLines) {
         const line = rawLine.trim();
@@ -946,6 +1013,544 @@ function drawSection(
 
     context.y -= 12;
     return context;
+}
+
+function drawSectionHeader(
+    initialContext: FlowContext,
+    title: string,
+    x: number,
+    width: number,
+) {
+    const context = ensureSpace(initialContext, 34);
+    context.page.text({
+        x,
+        y: context.y,
+        value: title.toUpperCase(),
+        size: 8,
+        font: 'F2',
+        color: colors.brand,
+    });
+    context.page.line({
+        x1: x,
+        y1: context.y - 7,
+        x2: x + width,
+        y2: context.y - 7,
+        color: colors.line,
+    });
+    context.y -= 24;
+
+    return context;
+}
+
+function drawMarkdownSection(
+    initialContext: FlowContext,
+    title: string,
+    rawLines: string[],
+) {
+    let context = drawSectionHeader(
+        initialContext,
+        title,
+        margin,
+        contentWidth,
+    );
+    context = drawMarkdownBlocks(
+        context,
+        parseMarkdownBlocks(rawLines.join('\n\n')),
+        {
+            x: margin,
+            width: contentWidth,
+        },
+    );
+    context.y -= 12;
+
+    return context;
+}
+
+function drawCompactAttributeSections(
+    initialContext: FlowContext,
+    sections: FarmerDocumentationSection[],
+) {
+    let context = initialContext;
+    const columnWidth = (contentWidth - compactAttributeColumnGap) / 2;
+
+    for (let index = 0; index < sections.length; index += 2) {
+        const firstSection = sections[index];
+        const secondSection = sections[index + 1];
+        if (!firstSection) {
+            continue;
+        }
+
+        const rowSections = secondSection
+            ? [firstSection, secondSection]
+            : [firstSection];
+        const rowHeight = Math.max(
+            ...rowSections.map((section) =>
+                compactAttributeSectionHeight(section, columnWidth),
+            ),
+        );
+
+        context = ensureSpace(context, rowHeight);
+        drawCompactAttributeSection(
+            context.page,
+            firstSection,
+            margin,
+            context.y,
+            columnWidth,
+        );
+
+        if (secondSection) {
+            drawCompactAttributeSection(
+                context.page,
+                secondSection,
+                margin + columnWidth + compactAttributeColumnGap,
+                context.y,
+                columnWidth,
+            );
+        }
+
+        context.y -= rowHeight;
+    }
+
+    context.y -= 8;
+    return context;
+}
+
+function drawCompactAttributeSection(
+    page: PdfCanvas,
+    section: FarmerDocumentationSection,
+    x: number,
+    y: number,
+    width: number,
+) {
+    page.text({
+        x,
+        y,
+        value: section.title.toUpperCase(),
+        size: 8,
+        font: 'F2',
+        color: colors.brand,
+    });
+    page.line({
+        x1: x,
+        y1: y - 7,
+        x2: x + width,
+        y2: y - 7,
+        color: colors.line,
+    });
+
+    let cursorY = y - 24;
+    for (const row of compactAttributeRows(section)) {
+        const runs: MarkdownTextRun[] = [
+            { value: `${row.label}: `, font: 'F2' },
+            { value: row.value },
+        ];
+        const wrappedLines = wrapInlineRuns(runs, width, bodyFontSize);
+        for (const wrappedLine of wrappedLines) {
+            drawInlineRunLine(
+                page,
+                x,
+                cursorY,
+                wrappedLine,
+                bodyFontSize,
+                colors.text,
+            );
+            cursorY -= bodyLineHeight;
+        }
+    }
+}
+
+function compactAttributeSectionHeight(
+    section: FarmerDocumentationSection,
+    width: number,
+) {
+    const rowHeight = compactAttributeRows(section).reduce((total, row) => {
+        const runs: MarkdownTextRun[] = [
+            { value: `${row.label}: `, font: 'F2' },
+            { value: row.value },
+        ];
+        return (
+            total +
+            Math.max(1, wrapInlineRuns(runs, width, bodyFontSize).length) *
+                bodyLineHeight
+        );
+    }, 0);
+
+    return 24 + rowHeight + 14;
+}
+
+function compactAttributeRows(section: FarmerDocumentationSection) {
+    if (section.attributes) {
+        return section.attributes;
+    }
+
+    return section.lines
+        .map((line): FarmerDocumentationAttribute | null => {
+            const separatorIndex = line.indexOf(':');
+            if (separatorIndex < 0) {
+                return { label: line, value: '' };
+            }
+
+            const label = line.slice(0, separatorIndex).trim();
+            const value = line.slice(separatorIndex + 1).trim();
+            return label && value ? { label, value } : null;
+        })
+        .filter((row): row is FarmerDocumentationAttribute => row !== null);
+}
+
+function drawMarkdownBlocks(
+    initialContext: FlowContext,
+    blocks: MarkdownBlock[],
+    options: MarkdownRenderOptions,
+) {
+    let context = initialContext;
+
+    for (const block of blocks) {
+        switch (block.type) {
+            case 'paragraph':
+                context = drawMarkdownParagraph(context, block.runs, options);
+                break;
+            case 'heading':
+                context = drawMarkdownHeading(
+                    context,
+                    block.level,
+                    block.runs,
+                    options,
+                );
+                break;
+            case 'list':
+                context = drawMarkdownList(context, block.items, options);
+                break;
+            case 'table':
+                context = drawMarkdownTable(context, block, options);
+                break;
+            case 'blockquote':
+                context = drawMarkdownBlockquote(
+                    context,
+                    block.blocks,
+                    options,
+                );
+                break;
+            case 'rule':
+                context = drawMarkdownRule(context, options);
+                break;
+        }
+    }
+
+    return context;
+}
+
+function drawMarkdownParagraph(
+    initialContext: FlowContext,
+    runs: MarkdownTextRun[],
+    options: MarkdownRenderOptions,
+) {
+    const context = drawWrappedInlineRuns(
+        initialContext,
+        runs,
+        options.x,
+        options.width,
+        bodyFontSize,
+        bodyLineHeight,
+        options.color ?? colors.text,
+    );
+    context.y -= markdownBlockSpacing;
+
+    return context;
+}
+
+function drawMarkdownHeading(
+    initialContext: FlowContext,
+    level: number,
+    runs: MarkdownTextRun[],
+    options: MarkdownRenderOptions,
+) {
+    const fontSize = level <= 1 ? 12 : level === 2 ? 10.8 : 9.8;
+    const lineHeight = fontSize + 4;
+    const headingRuns = runs.map((run) => ({
+        ...run,
+        font: boldFont(run.font),
+        color: run.color ?? options.color,
+    }));
+    const context = drawWrappedInlineRuns(
+        initialContext,
+        headingRuns,
+        options.x,
+        options.width,
+        fontSize,
+        lineHeight,
+        options.color ?? colors.text,
+    );
+    context.y -= markdownBlockSpacing;
+
+    return context;
+}
+
+function drawMarkdownList(
+    initialContext: FlowContext,
+    items: MarkdownListItem[],
+    options: MarkdownRenderOptions,
+) {
+    let context = initialContext;
+
+    for (const item of items) {
+        const levelIndent = Math.min(item.level, 6) * markdownListIndent;
+        const markerX = options.x + levelIndent;
+        const textX = markerX + markdownListMarkerWidth;
+        const textWidth = options.width - levelIndent - markdownListMarkerWidth;
+        const wrappedLines = wrapInlineRuns(
+            item.runs,
+            Math.max(36, textWidth),
+            bodyFontSize,
+        );
+
+        for (let index = 0; index < wrappedLines.length; index += 1) {
+            const line = wrappedLines[index];
+            if (!line) {
+                continue;
+            }
+
+            context = ensureSpace(context, bodyLineHeight);
+            if (index === 0) {
+                context.page.text({
+                    x: markerX,
+                    y: context.y,
+                    value: item.marker,
+                    size: bodyFontSize,
+                    color: options.color ?? colors.text,
+                });
+            }
+
+            drawInlineRunLine(
+                context.page,
+                textX,
+                context.y,
+                line,
+                bodyFontSize,
+                options.color ?? colors.text,
+            );
+            context.y -= bodyLineHeight;
+        }
+    }
+
+    context.y -= markdownBlockSpacing;
+    return context;
+}
+
+function drawMarkdownTable(
+    initialContext: FlowContext,
+    table: Extract<MarkdownBlock, { type: 'table' }>,
+    options: MarkdownRenderOptions,
+) {
+    const columnCount = Math.max(
+        table.headers.length,
+        ...table.rows.map((row) => row.length),
+        1,
+    );
+    const columnWidth = options.width / columnCount;
+    let context = initialContext;
+    const rows = [table.headers, ...table.rows];
+
+    for (let rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
+        const row = rows[rowIndex];
+        if (!row) {
+            continue;
+        }
+
+        const headerRow = rowIndex === 0;
+        const rowRuns = Array.from({ length: columnCount }, (_, index) => {
+            const cellRuns = row[index] ?? [];
+            return headerRow
+                ? cellRuns.map((run) => ({
+                      ...run,
+                      font: boldFont(run.font),
+                  }))
+                : cellRuns;
+        });
+        const wrappedCells = rowRuns.map((cellRuns) =>
+            wrapInlineRuns(cellRuns, columnWidth - 10, bodyFontSize),
+        );
+        const rowHeight =
+            Math.max(
+                1,
+                ...wrappedCells.map((cell) => Math.max(1, cell.length)),
+            ) *
+                bodyLineHeight +
+            10;
+
+        context = ensureSpace(context, rowHeight);
+        const rowTopY = context.y + 4;
+        const rowBottomY = rowTopY - rowHeight;
+
+        if (headerRow) {
+            context.page.fillRect({
+                x: options.x,
+                y: rowBottomY,
+                width: options.width,
+                height: rowHeight,
+                color: colors.softGray,
+            });
+        }
+
+        context.page.line({
+            x1: options.x,
+            y1: rowTopY,
+            x2: options.x + options.width,
+            y2: rowTopY,
+            color: colors.line,
+        });
+        context.page.line({
+            x1: options.x,
+            y1: rowBottomY,
+            x2: options.x + options.width,
+            y2: rowBottomY,
+            color: colors.line,
+        });
+
+        for (
+            let columnIndex = 0;
+            columnIndex <= columnCount;
+            columnIndex += 1
+        ) {
+            const x = options.x + columnIndex * columnWidth;
+            context.page.line({
+                x1: x,
+                y1: rowTopY,
+                x2: x,
+                y2: rowBottomY,
+                color: colors.line,
+                width: 0.4,
+            });
+        }
+
+        for (
+            let columnIndex = 0;
+            columnIndex < wrappedCells.length;
+            columnIndex += 1
+        ) {
+            const cellLines = wrappedCells[columnIndex] ?? [];
+            const cellX = options.x + columnIndex * columnWidth + 5;
+            for (
+                let lineIndex = 0;
+                lineIndex < cellLines.length;
+                lineIndex += 1
+            ) {
+                const line = cellLines[lineIndex];
+                if (!line) {
+                    continue;
+                }
+
+                drawInlineRunLine(
+                    context.page,
+                    cellX,
+                    context.y - lineIndex * bodyLineHeight,
+                    line,
+                    bodyFontSize,
+                    options.color ?? colors.text,
+                );
+            }
+        }
+
+        context.y -= rowHeight;
+    }
+
+    context.y -= markdownBlockSpacing + 2;
+    return context;
+}
+
+function drawMarkdownBlockquote(
+    initialContext: FlowContext,
+    blocks: MarkdownBlock[],
+    options: MarkdownRenderOptions,
+) {
+    let context = ensureSpace(initialContext, bodyLineHeight);
+    const topY = context.y + 4;
+    const lineX = options.x + 2;
+
+    context = drawMarkdownBlocks(context, blocks, {
+        x: options.x + 12,
+        width: options.width - 12,
+        color: colors.muted,
+    });
+    context.page.line({
+        x1: lineX,
+        y1: topY,
+        x2: lineX,
+        y2: context.y + 4,
+        color: colors.line,
+        width: 1.2,
+    });
+    context.y -= markdownBlockSpacing;
+
+    return context;
+}
+
+function drawMarkdownRule(
+    initialContext: FlowContext,
+    options: MarkdownRenderOptions,
+) {
+    const context = ensureSpace(initialContext, bodyLineHeight);
+    context.page.line({
+        x1: options.x,
+        y1: context.y - 2,
+        x2: options.x + options.width,
+        y2: context.y - 2,
+        color: colors.line,
+    });
+    context.y -= bodyLineHeight;
+
+    return context;
+}
+
+function drawWrappedInlineRuns(
+    initialContext: FlowContext,
+    runs: MarkdownTextRun[],
+    x: number,
+    width: number,
+    fontSize: number,
+    lineHeight: number,
+    color: PdfColor,
+) {
+    let context = initialContext;
+    const lines = wrapInlineRuns(runs, width, fontSize);
+
+    for (const line of lines) {
+        context = ensureSpace(context, lineHeight);
+        drawInlineRunLine(context.page, x, context.y, line, fontSize, color);
+        context.y -= lineHeight;
+    }
+
+    return context;
+}
+
+function drawInlineRunLine(
+    page: PdfCanvas,
+    x: number,
+    y: number,
+    runs: MarkdownTextRun[],
+    fontSize: number,
+    color: PdfColor,
+) {
+    let cursorX = x;
+
+    for (const run of runs) {
+        if (!run.value) {
+            continue;
+        }
+
+        page.text({
+            x: cursorX,
+            y,
+            value: run.value,
+            size: fontSize,
+            font: run.font ?? 'F1',
+            color: run.color ?? color,
+        });
+        cursorX += measureText(run.value, fontSize);
+    }
+}
+
+function boldFont(font: PdfFontKey | undefined): PdfFontKey {
+    return font === 'F3' || font === 'F4' ? 'F4' : 'F2';
 }
 
 function drawHeader(page: PdfCanvas, header: HeaderData) {
@@ -1085,20 +1690,590 @@ function drawFooter(page: PdfCanvas) {
     });
 }
 
-function markdownToPlainLines(value: string) {
-    return value
-        .replace(/\r\n/g, '\n')
-        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1 ($2)')
-        .split('\n')
-        .map((line) =>
-            line
-                .replace(/^#{1,6}\s+/, '')
-                .replace(/^[-*]\s+/, '- ')
-                .replace(/\*\*([^*]+)\*\*/g, '$1')
-                .replace(/\*([^*]+)\*/g, '$1')
-                .replace(/`([^`]+)`/g, '$1')
-                .trim(),
+function parseMarkdownBlocks(value: string): MarkdownBlock[] {
+    const lines = value.replace(/\r\n/g, '\n').split('\n');
+    const blocks: MarkdownBlock[] = [];
+    let index = 0;
+
+    while (index < lines.length) {
+        const line = lines[index] ?? '';
+        const trimmed = line.trim();
+
+        if (!trimmed) {
+            index += 1;
+            continue;
+        }
+
+        const table = parseMarkdownTableAt(lines, index);
+        if (table) {
+            blocks.push(table.block);
+            index = table.nextIndex;
+            continue;
+        }
+
+        const heading = /^(#{1,6})\s+(.+)$/u.exec(trimmed);
+        if (heading?.[1] && heading[2]) {
+            blocks.push({
+                type: 'heading',
+                level: heading[1].length,
+                runs: parseInlineMarkdown(heading[2]),
+            });
+            index += 1;
+            continue;
+        }
+
+        if (/^(?:-{3,}|\*{3,}|_{3,})$/u.test(trimmed)) {
+            blocks.push({ type: 'rule' });
+            index += 1;
+            continue;
+        }
+
+        if (trimmed.startsWith('>')) {
+            const quoteLines: string[] = [];
+            while (index < lines.length) {
+                const quoteLine = lines[index] ?? '';
+                const quoteTrimmed = quoteLine.trimStart();
+                if (!quoteTrimmed.startsWith('>')) {
+                    break;
+                }
+                quoteLines.push(quoteTrimmed.replace(/^>\s?/u, ''));
+                index += 1;
+            }
+            blocks.push({
+                type: 'blockquote',
+                blocks: parseMarkdownBlocks(quoteLines.join('\n')),
+            });
+            continue;
+        }
+
+        if (markdownListMatch(line)) {
+            const list = parseMarkdownList(lines, index);
+            blocks.push(list.block);
+            index = list.nextIndex;
+            continue;
+        }
+
+        const paragraphLines: string[] = [];
+        while (index < lines.length) {
+            const paragraphLine = lines[index] ?? '';
+            if (!paragraphLine.trim()) {
+                break;
+            }
+            if (
+                paragraphLines.length > 0 &&
+                isMarkdownBlockStart(lines, index)
+            ) {
+                break;
+            }
+            paragraphLines.push(paragraphLine.trim());
+            index += 1;
+        }
+
+        if (paragraphLines.length > 0) {
+            blocks.push({
+                type: 'paragraph',
+                runs: parseInlineMarkdown(paragraphLines.join(' ')),
+            });
+        }
+    }
+
+    return blocks;
+}
+
+function isMarkdownBlockStart(lines: string[], index: number) {
+    const line = lines[index] ?? '';
+    const trimmed = line.trim();
+
+    return (
+        Boolean(parseMarkdownTableAt(lines, index)) ||
+        /^(#{1,6})\s+.+$/u.test(trimmed) ||
+        /^(?:-{3,}|\*{3,}|_{3,})$/u.test(trimmed) ||
+        trimmed.startsWith('>') ||
+        Boolean(markdownListMatch(line))
+    );
+}
+
+function parseMarkdownList(
+    lines: string[],
+    startIndex: number,
+): {
+    block: Extract<MarkdownBlock, { type: 'list' }>;
+    nextIndex: number;
+} {
+    const items: MarkdownListItem[] = [];
+    let index = startIndex;
+
+    while (index < lines.length) {
+        const line = lines[index] ?? '';
+        const match = markdownListMatch(line);
+
+        if (match) {
+            items.push({
+                level: match.level,
+                marker: match.marker,
+                runs: parseInlineMarkdown(match.content),
+            });
+            index += 1;
+            continue;
+        }
+
+        if (!line.trim()) {
+            const nextLine = lines[index + 1] ?? '';
+            if (markdownListMatch(nextLine)) {
+                index += 1;
+                continue;
+            }
+            break;
+        }
+
+        const lastItem = items[items.length - 1];
+        if (lastItem && /^\s{2,}\S/u.test(line)) {
+            appendMarkdownRun(lastItem.runs, { value: ' ' });
+            for (const run of parseInlineMarkdown(line.trim())) {
+                appendMarkdownRun(lastItem.runs, run);
+            }
+            index += 1;
+            continue;
+        }
+
+        break;
+    }
+
+    return {
+        block: {
+            type: 'list',
+            items,
+        },
+        nextIndex: index,
+    };
+}
+
+function markdownListMatch(line: string) {
+    const normalized = line.replace(/\t/g, '    ');
+    const match = /^(\s*)(?:(\d+)[.)]|([-+*]))\s+(.*)$/u.exec(normalized);
+    if (!match) {
+        return null;
+    }
+
+    const indent = match[1]?.length ?? 0;
+    const numberMarker = match[2];
+    const content = match[4] ?? '';
+
+    return {
+        level: Math.floor(indent / 2),
+        marker: numberMarker ? `${numberMarker}.` : '-',
+        content,
+    };
+}
+
+function parseMarkdownTableAt(
+    lines: string[],
+    startIndex: number,
+): {
+    block: Extract<MarkdownBlock, { type: 'table' }>;
+    nextIndex: number;
+} | null {
+    const headerLine = lines[startIndex];
+    const separatorLine = lines[startIndex + 1];
+    if (!headerLine || !separatorLine || !headerLine.includes('|')) {
+        return null;
+    }
+
+    const separatorCells = parseMarkdownTableCells(separatorLine);
+    if (
+        separatorCells.length === 0 ||
+        !separatorCells.every((cell) => /^:?-{3,}:?$/u.test(cell.trim()))
+    ) {
+        return null;
+    }
+
+    const headers = parseMarkdownTableCells(headerLine).map((cell) =>
+        parseInlineMarkdown(cell),
+    );
+    const rows: MarkdownTextRun[][][] = [];
+    let index = startIndex + 2;
+
+    while (index < lines.length) {
+        const rowLine = lines[index] ?? '';
+        if (!rowLine.trim() || !rowLine.includes('|')) {
+            break;
+        }
+        rows.push(
+            parseMarkdownTableCells(rowLine).map((cell) =>
+                parseInlineMarkdown(cell),
+            ),
         );
+        index += 1;
+    }
+
+    return {
+        block: {
+            type: 'table',
+            headers,
+            rows,
+        },
+        nextIndex: index,
+    };
+}
+
+function parseMarkdownTableCells(line: string) {
+    const trimmed = line.trim();
+    const withoutOuterPipes = trimmed.replace(/^\|/u, '').replace(/\|$/u, '');
+
+    return withoutOuterPipes
+        .split(/(?<!\\)\|/u)
+        .map((cell) => cell.replace(/\\\|/g, '|').trim());
+}
+
+function parseInlineMarkdown(
+    value: string,
+    style: MarkdownInlineStyle = {},
+): MarkdownTextRun[] {
+    const runs: MarkdownTextRun[] = [];
+    let index = 0;
+    let plainText = '';
+
+    function flushPlainText() {
+        if (!plainText) {
+            return;
+        }
+
+        appendMarkdownRun(runs, {
+            value: decodeMarkdownEntities(plainText),
+            font: markdownInlineFont(style),
+            color: style.code ? colors.muted : undefined,
+        });
+        plainText = '';
+    }
+
+    while (index < value.length) {
+        const character = value[index];
+
+        if (character === '\\' && index + 1 < value.length) {
+            plainText += value[index + 1] ?? '';
+            index += 2;
+            continue;
+        }
+
+        if (value.startsWith('![', index)) {
+            const image = parseMarkdownLink(value, index + 1);
+            if (image) {
+                flushPlainText();
+                const imageLabel = inlineText(image.label) || 'Slika';
+                appendMarkdownRun(runs, {
+                    value: imageLabel,
+                    font: markdownInlineFont(style),
+                });
+                if (image.href) {
+                    appendMarkdownRun(runs, {
+                        value: ` (${image.href})`,
+                        color: colors.muted,
+                    });
+                }
+                index = image.nextIndex;
+                continue;
+            }
+        }
+
+        if (character === '[') {
+            const link = parseMarkdownLink(value, index);
+            if (link) {
+                flushPlainText();
+                for (const run of parseInlineMarkdown(link.label, style)) {
+                    appendMarkdownRun(runs, run);
+                }
+                if (link.href) {
+                    appendMarkdownRun(runs, {
+                        value: ` (${link.href})`,
+                        color: colors.muted,
+                    });
+                }
+                index = link.nextIndex;
+                continue;
+            }
+        }
+
+        if (value.startsWith('**', index)) {
+            const closeIndex = findClosingMarkdownMarker(
+                value,
+                '**',
+                index + 2,
+            );
+            if (closeIndex >= 0) {
+                flushPlainText();
+                for (const run of parseInlineMarkdown(
+                    value.slice(index + 2, closeIndex),
+                    { ...style, bold: true },
+                )) {
+                    appendMarkdownRun(runs, run);
+                }
+                index = closeIndex + 2;
+                continue;
+            }
+        }
+
+        if (value.startsWith('__', index)) {
+            const closeIndex = findClosingMarkdownMarker(
+                value,
+                '__',
+                index + 2,
+            );
+            if (closeIndex >= 0) {
+                flushPlainText();
+                for (const run of parseInlineMarkdown(
+                    value.slice(index + 2, closeIndex),
+                    { ...style, bold: true },
+                )) {
+                    appendMarkdownRun(runs, run);
+                }
+                index = closeIndex + 2;
+                continue;
+            }
+        }
+
+        if (value.startsWith('~~', index)) {
+            const closeIndex = findClosingMarkdownMarker(
+                value,
+                '~~',
+                index + 2,
+            );
+            if (closeIndex >= 0) {
+                flushPlainText();
+                for (const run of parseInlineMarkdown(
+                    value.slice(index + 2, closeIndex),
+                    style,
+                )) {
+                    appendMarkdownRun(runs, run);
+                }
+                index = closeIndex + 2;
+                continue;
+            }
+        }
+
+        if (character === '*' && !value.startsWith('**', index)) {
+            const closeIndex = findClosingMarkdownMarker(value, '*', index + 1);
+            if (closeIndex >= 0) {
+                flushPlainText();
+                for (const run of parseInlineMarkdown(
+                    value.slice(index + 1, closeIndex),
+                    { ...style, italic: true },
+                )) {
+                    appendMarkdownRun(runs, run);
+                }
+                index = closeIndex + 1;
+                continue;
+            }
+        }
+
+        if (character === '_' && !value.startsWith('__', index)) {
+            const closeIndex = findClosingMarkdownMarker(value, '_', index + 1);
+            if (closeIndex >= 0) {
+                flushPlainText();
+                for (const run of parseInlineMarkdown(
+                    value.slice(index + 1, closeIndex),
+                    { ...style, italic: true },
+                )) {
+                    appendMarkdownRun(runs, run);
+                }
+                index = closeIndex + 1;
+                continue;
+            }
+        }
+
+        if (character === '`') {
+            const closeIndex = findClosingMarkdownMarker(value, '`', index + 1);
+            if (closeIndex >= 0) {
+                flushPlainText();
+                appendMarkdownRun(runs, {
+                    value: value.slice(index + 1, closeIndex),
+                    font: markdownInlineFont({ ...style, code: true }),
+                    color: colors.muted,
+                });
+                index = closeIndex + 1;
+                continue;
+            }
+        }
+
+        const htmlBreak = value.slice(index).match(/^<br\s*\/?>/iu);
+        if (htmlBreak?.[0]) {
+            plainText += ' ';
+            index += htmlBreak[0].length;
+            continue;
+        }
+
+        const htmlTag = value.slice(index).match(/^<\/?[A-Za-z][^>]*>/u);
+        if (htmlTag?.[0]) {
+            index += htmlTag[0].length;
+            continue;
+        }
+
+        plainText += character;
+        index += 1;
+    }
+
+    flushPlainText();
+    return runs;
+}
+
+function parseMarkdownLink(value: string, startIndex: number) {
+    const labelEndIndex = findClosingMarkdownMarker(value, ']', startIndex + 1);
+    if (labelEndIndex < 0 || value[labelEndIndex + 1] !== '(') {
+        return null;
+    }
+
+    const hrefEndIndex = findClosingMarkdownMarker(
+        value,
+        ')',
+        labelEndIndex + 2,
+    );
+    if (hrefEndIndex < 0) {
+        return null;
+    }
+
+    return {
+        label: value.slice(startIndex + 1, labelEndIndex),
+        href: value.slice(labelEndIndex + 2, hrefEndIndex).trim(),
+        nextIndex: hrefEndIndex + 1,
+    };
+}
+
+function findClosingMarkdownMarker(
+    value: string,
+    marker: string,
+    startIndex: number,
+) {
+    let cursor = startIndex;
+
+    while (cursor < value.length) {
+        const markerIndex = value.indexOf(marker, cursor);
+        if (markerIndex < 0) {
+            return -1;
+        }
+        if (value[markerIndex - 1] !== '\\') {
+            return markerIndex;
+        }
+        cursor = markerIndex + marker.length;
+    }
+
+    return -1;
+}
+
+function markdownInlineFont(style: MarkdownInlineStyle): PdfFontKey {
+    if (style.bold && style.italic) {
+        return 'F4';
+    }
+    if (style.bold) {
+        return 'F2';
+    }
+    if (style.italic || style.code) {
+        return 'F3';
+    }
+
+    return 'F1';
+}
+
+function appendMarkdownRun(runs: MarkdownTextRun[], run: MarkdownTextRun) {
+    if (!run.value) {
+        return;
+    }
+
+    const previous = runs[runs.length - 1];
+    if (
+        previous &&
+        previous.font === run.font &&
+        previous.color === run.color
+    ) {
+        previous.value += run.value;
+        return;
+    }
+
+    runs.push({ ...run });
+}
+
+function inlineText(value: string) {
+    return parseInlineMarkdown(value)
+        .map((run) => run.value)
+        .join('')
+        .trim();
+}
+
+function decodeMarkdownEntities(value: string) {
+    return value
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&#(\d+);/g, (_, codePoint: string) =>
+            String.fromCodePoint(Number.parseInt(codePoint, 10)),
+        )
+        .replace(/&#x([0-9a-f]+);/giu, (_, codePoint: string) =>
+            String.fromCodePoint(Number.parseInt(codePoint, 16)),
+        );
+}
+
+function wrapInlineRuns(
+    runs: MarkdownTextRun[],
+    maxWidth: number,
+    fontSize: number,
+) {
+    const lines: MarkdownTextRun[][] = [];
+    let currentLine: MarkdownTextRun[] = [];
+    let currentWidth = 0;
+    let pendingSpace = false;
+
+    function pushCurrentLine() {
+        if (currentLine.length === 0) {
+            return;
+        }
+
+        lines.push(currentLine);
+        currentLine = [];
+        currentWidth = 0;
+        pendingSpace = false;
+    }
+
+    for (const run of runs) {
+        const tokens = run.value.match(/\s+|\S+/gu) ?? [];
+        for (const token of tokens) {
+            if (/^\s+$/u.test(token)) {
+                pendingSpace = true;
+                continue;
+            }
+
+            const wordParts =
+                measureText(token, fontSize) <= maxWidth
+                    ? [token]
+                    : splitLongWord(token, maxWidth, fontSize);
+
+            for (const wordPart of wordParts) {
+                const prefix =
+                    pendingSpace && currentLine.length > 0 ? ' ' : '';
+                const value = `${prefix}${wordPart}`;
+                const valueWidth = measureText(value, fontSize);
+
+                if (
+                    currentLine.length > 0 &&
+                    currentWidth + valueWidth > maxWidth
+                ) {
+                    pushCurrentLine();
+                }
+
+                const hasLinePrefix = currentLine.length > 0;
+                const outputValue = hasLinePrefix ? value : wordPart;
+                appendMarkdownRun(currentLine, {
+                    value: outputValue,
+                    font: run.font,
+                    color: run.color,
+                });
+                currentWidth += measureText(outputValue, fontSize);
+                pendingSpace = false;
+            }
+        }
+    }
+
+    pushCurrentLine();
+    return lines;
 }
 
 function wrapText(value: string, maxWidth: number, fontSize: number) {
@@ -1253,9 +2428,11 @@ function writePdf(
     const objects: Uint8Array[] = [];
     const fontId = 3;
     const boldFontId = 4;
-    const fontEncodingId = 5;
-    const fontToUnicodeMapId = 6;
-    const firstImageObjectId = 7;
+    const italicFontId = 5;
+    const boldItalicFontId = 6;
+    const fontEncodingId = 7;
+    const fontToUnicodeMapId = 8;
+    const firstImageObjectId = 9;
     const firstPageObjectId = firstImageObjectId + imageAssets.length;
     const encoder = new TextEncoder();
     const kids = pageContentStreams
@@ -1287,6 +2464,16 @@ function writePdf(
             `<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding ${fontEncodingId} 0 R /ToUnicode ${fontToUnicodeMapId} 0 R >>`,
         ),
     );
+    objects.push(
+        encodePdfObject(
+            `<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique /Encoding ${fontEncodingId} 0 R /ToUnicode ${fontToUnicodeMapId} 0 R >>`,
+        ),
+    );
+    objects.push(
+        encodePdfObject(
+            `<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-BoldOblique /Encoding ${fontEncodingId} 0 R /ToUnicode ${fontToUnicodeMapId} 0 R >>`,
+        ),
+    );
     objects.push(encodePdfObject(pdfLatinExtendedEncodingObject()));
     objects.push(encodePdfObject(pdfLatinExtendedToUnicodeMapObject()));
 
@@ -1303,7 +2490,7 @@ function writePdf(
                     '<< /Type /Page',
                     '/Parent 2 0 R',
                     `/MediaBox [0 0 ${formatNumber(pageWidth)} ${formatNumber(pageHeight)}]`,
-                    `/Resources << /Font << /F1 ${fontId} 0 R /F2 ${boldFontId} 0 R >> ${xObjectResources} >>`,
+                    `/Resources << /Font << /F1 ${fontId} 0 R /F2 ${boldFontId} 0 R /F3 ${italicFontId} 0 R /F4 ${boldItalicFontId} 0 R >> ${xObjectResources} >>`,
                     `/Contents ${contentObjectId} 0 R`,
                     '>>',
                 ].join(' '),
