@@ -23,6 +23,7 @@ import { RaisedBedOnboardingModal } from './hud/RaisedBedOnboardingModal';
 import { SandboxBlockTrashDropTarget } from './hud/SandboxBlockTrashDropTarget';
 import { SandboxEnvironmentHud } from './hud/SandboxEnvironmentHud';
 import { ShoppingCartHud } from './hud/ShoppingCartHud';
+import { SuncokretChatHud } from './hud/SuncokretChatHud';
 import { SunflowersHud } from './hud/SunflowersHud';
 import { TutorialChecklistHud } from './hud/TutorialChecklistHud';
 import { WeatherHud } from './hud/WeatherHud';
@@ -178,6 +179,7 @@ export function GameHud({
                     )}
                 </div>
                 {!isSandbox && <SunflowersHud />}
+                {!isSandbox && !isLocalSandbox && <SuncokretChatHud />}
             </div>
             <div className={gameHudBottomBarClassName}>
                 <div

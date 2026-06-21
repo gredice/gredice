@@ -1,4 +1,5 @@
 export * from './achievementsSchema';
+export * from './aiChatSchema';
 export * from './automationsSchema';
 export * from './cmsSchema';
 export * from './communityEditsSchema';
