@@ -29,6 +29,7 @@ type SuncokretLimit = {
 
 type SuncokretStatus = {
     enabled: boolean;
+    debugEnabled?: boolean;
     model: { id: string; label: string } | null;
     limit: SuncokretLimit;
 };
@@ -127,6 +128,20 @@ function formatRetryAt(value: string | null | undefined) {
         dateStyle: 'medium',
         timeStyle: 'short',
     }).format(date);
+}
+
+function suncokretFlagParams({
+    debug,
+    enabled,
+}: {
+    debug: boolean;
+    enabled: boolean;
+}) {
+    const params = new URLSearchParams({
+        enableSuncokretChatFlag: enabled ? 'true' : 'false',
+        enableSuncokretDebugFlag: debug ? 'true' : 'false',
+    });
+    return params.toString();
 }
 
 function MessageText({ children }: { children: string }) {
@@ -300,6 +315,17 @@ export function SuncokretChatHud() {
     const chatId = useMemo(randomChatId, []);
     const scrollRef = useRef<HTMLDivElement>(null);
     const apiOrigin = getBrowserGrediceAppOrigin('api');
+    const featureFlags = useMemo(
+        () => ({
+            enableSuncokretChatFlag: enabled,
+            enableSuncokretDebugFlag: debug,
+        }),
+        [debug, enabled],
+    );
+    const featureFlagQuery = useMemo(
+        () => suncokretFlagParams({ debug, enabled }),
+        [debug, enabled],
+    );
     const { data: currentGarden } = useCurrentGarden();
     const closeupBlock = useGameState((state) => state.closeupBlock);
     const raisedBed = closeupBlock
@@ -322,11 +348,12 @@ export function SuncokretChatHud() {
                         raisedBedId,
                         modelId,
                         debug,
+                        featureFlags,
                     },
                     credentials: 'include',
                 }),
             }),
-        [apiOrigin, debug, gardenId, modelId, raisedBedId],
+        [apiOrigin, debug, featureFlags, gardenId, modelId, raisedBedId],
     );
 
     const { addToolApprovalResponse, error, messages, sendMessage, status } =
@@ -345,10 +372,10 @@ export function SuncokretChatHud() {
 
         let cancelled = false;
         void Promise.all([
-            fetch(`${apiOrigin}/api/ai/suncokret/status`, {
+            fetch(`${apiOrigin}/api/ai/suncokret/status?${featureFlagQuery}`, {
                 credentials: 'include',
             }).then((response) => response.json() as Promise<SuncokretStatus>),
-            fetch(`${apiOrigin}/api/ai/suncokret/models`, {
+            fetch(`${apiOrigin}/api/ai/suncokret/models?${featureFlagQuery}`, {
                 credentials: 'include',
             }).then(
                 (response) =>
@@ -374,7 +401,7 @@ export function SuncokretChatHud() {
         return () => {
             cancelled = true;
         };
-    }, [apiOrigin, enabled, open]);
+    }, [apiOrigin, enabled, featureFlagQuery, open]);
 
     useEffect(() => {
         scrollRef.current?.scrollTo({

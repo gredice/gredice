@@ -42,6 +42,11 @@ const MAX_IMAGE_URLS_PER_ANALYSIS = 6;
 
 type ChatVariables = AuthVariables;
 
+const FeatureFlagsSchema = z.object({
+    enableSuncokretChatFlag: z.boolean().optional().default(false),
+    enableSuncokretDebugFlag: z.boolean().optional().default(false),
+});
+
 const ChatBodySchema = z.object({
     id: z.string().optional(),
     conversationId: z.string().optional(),
@@ -51,22 +56,27 @@ const ChatBodySchema = z.object({
     positionIndex: z.number().int().min(0).optional().nullable(),
     modelId: z.string().trim().min(1).optional().nullable(),
     debug: z.boolean().optional(),
+    featureFlags: FeatureFlagsSchema.optional().default({
+        enableSuncokretChatFlag: false,
+        enableSuncokretDebugFlag: false,
+    }),
 });
 
 const StatusQuerySchema = z.object({
     modelId: z.string().optional(),
+    enableSuncokretChatFlag: z.string().optional(),
+    enableSuncokretDebugFlag: z.string().optional(),
 });
 
-function booleanEnv(value: string | undefined) {
+function booleanFlag(value: string | undefined) {
     return ['1', 'true', 'yes', 'on'].includes(value?.toLowerCase() ?? '');
 }
 
-function suncokretChatEnabled() {
-    return booleanEnv(process.env.SUNCOKRET_CHAT_ENABLED);
-}
-
-function suncokretDebugEnabled() {
-    return booleanEnv(process.env.SUNCOKRET_CHAT_DEBUG_ENABLED);
+function queryFeatureFlags(query: z.infer<typeof StatusQuerySchema>) {
+    return {
+        enableSuncokretChatFlag: booleanFlag(query.enableSuncokretChatFlag),
+        enableSuncokretDebugFlag: booleanFlag(query.enableSuncokretDebugFlag),
+    };
 }
 
 function microUsdToUsd(value: number) {
@@ -89,8 +99,8 @@ function jsonError(
     };
 }
 
-function enabledOrResponse() {
-    if (suncokretChatEnabled()) {
+function enabledOrResponse(flags: z.infer<typeof FeatureFlagsSchema>) {
+    if (flags.enableSuncokretChatFlag) {
         return null;
     }
 
@@ -457,13 +467,16 @@ const app = new Hono<{ Variables: ChatVariables }>()
         zValidator('query', StatusQuerySchema),
         authValidator(['user', 'admin']),
         async (context) => {
-            const disabled = enabledOrResponse();
+            const query = context.req.valid('query');
+            const featureFlags = queryFeatureFlags(query);
+            const disabled = enabledOrResponse(featureFlags);
             const { accountId } = context.get('authContext');
-            const model = getSuncokretModel(context.req.valid('query').modelId);
+            const model = getSuncokretModel(query.modelId);
             const limitState = await getAiChatAccountLimitState(accountId);
 
             return context.json({
                 enabled: !disabled,
+                debugEnabled: featureFlags.enableSuncokretDebugFlag,
                 model: model
                     ? {
                           id: model.id,
@@ -486,9 +499,11 @@ const app = new Hono<{ Variables: ChatVariables }>()
             description: 'List enabled Suncokret AI Gateway models',
             security: authSecurity,
         }),
+        zValidator('query', StatusQuerySchema),
         authValidator(['user', 'admin']),
         async (context) => {
-            const disabled = enabledOrResponse();
+            const featureFlags = queryFeatureFlags(context.req.valid('query'));
+            const disabled = enabledOrResponse(featureFlags);
             if (disabled) {
                 return context.json(disabled.body, disabled.status);
             }
@@ -512,13 +527,15 @@ const app = new Hono<{ Variables: ChatVariables }>()
         zValidator('json', ChatBodySchema),
         authValidator(['user', 'admin']),
         async (context) => {
-            const disabled = enabledOrResponse();
+            const body = context.req.valid('json');
+            const disabled = enabledOrResponse(body.featureFlags);
             if (disabled) {
                 return context.json(disabled.body, disabled.status);
             }
 
-            const body = context.req.valid('json');
-            const debugAllowed = Boolean(body.debug && suncokretDebugEnabled());
+            const debugAllowed = Boolean(
+                body.debug && body.featureFlags.enableSuncokretDebugFlag,
+            );
             const auth = context.get('authContext');
             const model = getSuncokretModel(body.modelId);
             if (!model) {
