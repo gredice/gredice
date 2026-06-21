@@ -4,7 +4,15 @@ import { useChat } from '@ai-sdk/react';
 import { getBrowserGrediceAppOrigin } from '@gredice/client';
 import { Button } from '@gredice/ui/Button';
 import { IconButton } from '@gredice/ui/IconButton';
-import { AI, Check, Close, LoaderSpinner, Send, Sun } from '@gredice/ui/icons';
+import {
+    AI,
+    Check,
+    Close,
+    LoaderSpinner,
+    Send,
+    Sun,
+    Warning,
+} from '@gredice/ui/icons';
 import { Markdown } from '@gredice/ui/Markdown';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -84,6 +92,37 @@ function toolName(part: Record<string, unknown>) {
     return type.replace(/^tool-/, '');
 }
 
+function toolActivityLabel(name: string) {
+    switch (name) {
+        case 'listGardens':
+            return 'Provjeravam vrtove';
+        case 'listRaisedBeds':
+            return 'Provjeravam gredice';
+        case 'getRaisedBedFields':
+            return 'Provjeravam polja u gredici';
+        case 'listGardenOperations':
+            return 'Provjeravam radnje';
+        case 'getRaisedBedAiHistory':
+            return 'Provjeravam ranije savjete';
+        case 'searchDirectory':
+        case 'getOperationsDirectory':
+            return 'Pretražujem Gredice katalog';
+        case 'searchProducts':
+            return 'Provjeravam ponudu';
+        case 'getCart':
+            return 'Provjeravam košaricu';
+        case 'addProductToCart':
+        case 'updateCartItem':
+            return 'Pripremam košaricu';
+        case 'analyzeRaisedBedImages':
+            return 'Analiziram fotografije';
+        case 'prepareCheckout':
+            return 'Pripremam checkout';
+        default:
+            return 'Provjeravam podatke';
+    }
+}
+
 function approval(part: Record<string, unknown>) {
     return isRecord(part.approval) ? part.approval : null;
 }
@@ -99,6 +138,28 @@ function toolState(part: Record<string, unknown>) {
         return approvalData.state;
     }
     return typeof part.state === 'string' ? part.state : 'unknown';
+}
+
+function isToolApprovalRequested(part: Record<string, unknown>) {
+    return (
+        toolState(part) === 'approval-requested' && Boolean(approvalId(part))
+    );
+}
+
+function isToolCompleteState(state: string) {
+    return state === 'output-available' || state === 'result';
+}
+
+function isToolErrorState(state: string) {
+    return state === 'output-error' || state === 'error';
+}
+
+function isToolRunningState(state: string) {
+    return (
+        !isToolCompleteState(state) &&
+        !isToolErrorState(state) &&
+        state !== 'approval-requested'
+    );
 }
 
 function debugJson(value: unknown) {
@@ -149,18 +210,33 @@ function ToolPart({
     part: Record<string, unknown>;
 }) {
     const state = toolState(part);
-    const requestedApproval = state === 'approval-requested';
+    const requestedApproval = isToolApprovalRequested(part);
     const id = approvalId(part);
+    const name = toolName(part);
 
     return (
         <div className="rounded-md border bg-muted/30 p-2 text-xs">
             <Row justifyContent="space-between" className="gap-2">
-                <Typography level="body3" semiBold>
-                    {toolName(part)}
-                </Typography>
-                <span className="rounded-sm bg-background px-1.5 py-0.5 text-[10px] uppercase tracking-normal text-muted-foreground">
-                    {state}
-                </span>
+                <Stack spacing={0} className="min-w-0">
+                    <Typography level="body3" semiBold>
+                        {requestedApproval
+                            ? 'Suncokret treba potvrdu'
+                            : toolActivityLabel(name)}
+                    </Typography>
+                    {requestedApproval && (
+                        <Typography
+                            level="body3"
+                            className="text-muted-foreground"
+                        >
+                            Prije promjene u vrtu ili košarici potvrdi nastavak.
+                        </Typography>
+                    )}
+                </Stack>
+                {debug && (
+                    <span className="rounded-sm bg-background px-1.5 py-0.5 text-[10px] uppercase tracking-normal text-muted-foreground">
+                        {name} · {state}
+                    </span>
+                )}
             </Row>
             {requestedApproval && id && (
                 <Row spacing={1} className="mt-2">
@@ -207,19 +283,126 @@ function ToolPart({
     );
 }
 
+function formatActivityScopes(scopes: string[]) {
+    if (scopes.length === 0) {
+        return 'podatke';
+    }
+
+    if (scopes.length === 1) {
+        return scopes[0];
+    }
+
+    if (scopes.length === 2) {
+        return `${scopes[0]} i ${scopes[1]}`;
+    }
+
+    return `${scopes.slice(0, -1).join(', ')} i ${scopes[scopes.length - 1]}`;
+}
+
+function toolActivityScope(parts: Record<string, unknown>[]) {
+    const names = parts.map(toolName);
+    const scopes = [
+        names.some((name) => name === 'analyzeRaisedBedImages')
+            ? 'fotografije'
+            : null,
+        names.some((name) =>
+            [
+                'listGardens',
+                'listRaisedBeds',
+                'getRaisedBedFields',
+                'listGardenOperations',
+                'getRaisedBedAiHistory',
+            ].includes(name),
+        )
+            ? 'vrt'
+            : null,
+        names.some((name) =>
+            [
+                'searchDirectory',
+                'getOperationsDirectory',
+                'searchProducts',
+            ].includes(name),
+        )
+            ? 'katalog'
+            : null,
+        names.some((name) =>
+            [
+                'getCart',
+                'addProductToCart',
+                'updateCartItem',
+                'prepareCheckout',
+            ].includes(name),
+        )
+            ? 'košaricu'
+            : null,
+    ].filter((scope) => typeof scope === 'string');
+
+    return formatActivityScopes(scopes);
+}
+
+function toolActivitySummary({
+    isStreaming,
+    parts,
+}: {
+    isStreaming: boolean;
+    parts: Record<string, unknown>[];
+}) {
+    const errorPart = parts.find((part) => isToolErrorState(toolState(part)));
+    if (errorPart) {
+        return 'Dio podataka nije dostupan. Suncokret nastavlja s onim što ima.';
+    }
+
+    const runningPart = parts.find((part) =>
+        isToolRunningState(toolState(part)),
+    );
+    if (runningPart) {
+        return `${toolActivityLabel(toolName(runningPart))}...`;
+    }
+
+    if (isStreaming) {
+        return 'Suncokret slaže odgovor...';
+    }
+
+    return `Suncokret je provjerio ${toolActivityScope(parts)}.`;
+}
+
 function ChatMessage({
     addToolApprovalResponse,
     debug,
+    isStreaming,
     message,
 }: {
     addToolApprovalResponse: ReturnType<
         typeof useChat
     >['addToolApprovalResponse'];
     debug: boolean;
+    isStreaming: boolean;
     message: UIMessage;
 }) {
     const isUser = message.role === 'user';
     const partKeyCounts = new Map<string, number>();
+    const toolParts = message.parts
+        .map(toolPart)
+        .filter((part): part is Record<string, unknown> => Boolean(part));
+    const hasText = message.parts.some((part) => Boolean(textPart(part)));
+    const passiveToolParts = toolParts.filter(
+        (part) => !isToolApprovalRequested(part),
+    );
+    const showToolActivity =
+        !debug &&
+        passiveToolParts.length > 0 &&
+        (!hasText ||
+            isStreaming ||
+            passiveToolParts.some((part) => {
+                const state = toolState(part);
+                return isToolRunningState(state) || isToolErrorState(state);
+            }));
+    const hasToolError = passiveToolParts.some((part) =>
+        isToolErrorState(toolState(part)),
+    );
+    const hasRunningTool = passiveToolParts.some((part) =>
+        isToolRunningState(toolState(part)),
+    );
 
     return (
         <div
@@ -252,6 +435,10 @@ function ChatMessage({
 
                     const toolData = toolPart(part);
                     if (toolData) {
+                        if (!debug && !isToolApprovalRequested(toolData)) {
+                            return null;
+                        }
+
                         return (
                             <ToolPart
                                 key={key}
@@ -273,6 +460,31 @@ function ChatMessage({
                         </pre>
                     ) : null;
                 })}
+                {showToolActivity && (
+                    <Row
+                        spacing={2}
+                        className={cx(
+                            'rounded-md border border-dashed px-2 py-1.5 text-muted-foreground',
+                            hasToolError
+                                ? 'border-amber-300 bg-amber-50 text-amber-900'
+                                : 'bg-muted/30',
+                        )}
+                    >
+                        {hasToolError ? (
+                            <Warning className="size-3.5 shrink-0" />
+                        ) : hasRunningTool || isStreaming ? (
+                            <LoaderSpinner className="size-3.5 shrink-0 animate-spin" />
+                        ) : (
+                            <AI className="size-3.5 shrink-0" />
+                        )}
+                        <Typography level="body3">
+                            {toolActivitySummary({
+                                isStreaming,
+                                parts: passiveToolParts,
+                            })}
+                        </Typography>
+                    </Row>
+                )}
                 {debug && Boolean(message.metadata) && (
                     <details>
                         <summary className="cursor-pointer text-xs text-muted-foreground">
@@ -541,6 +753,12 @@ export function SuncokretChatHud() {
                                         addToolApprovalResponse
                                     }
                                     debug={debug}
+                                    isStreaming={
+                                        loading &&
+                                        message.role === 'assistant' &&
+                                        message.id ===
+                                            messages[messages.length - 1]?.id
+                                    }
                                     message={message}
                                 />
                             ))}
@@ -551,7 +769,7 @@ export function SuncokretChatHud() {
                                 >
                                     <LoaderSpinner className="size-4 animate-spin" />
                                     <Typography level="body3">
-                                        Suncokret piše...
+                                        Suncokret razmišlja...
                                     </Typography>
                                 </Row>
                             )}

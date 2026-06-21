@@ -9,7 +9,7 @@ export type SuncokretModelConfig = AiChatPricing & {
     enabled: boolean;
 };
 
-const DEFAULT_MODEL_ID = 'openai/gpt-5.5';
+const DEFAULT_MODEL_ID = 'deepseek/deepseek-v4-flash';
 
 const MODEL_REGISTRY: SuncokretModelConfig[] = [
     {
@@ -49,14 +49,25 @@ export function getSuncokretModelRegistry() {
 }
 
 export function getSuncokretModel(modelId?: string | null) {
-    const requestedModelId =
-        modelId?.trim() ||
-        process.env.SUNCOKRET_AI_DEFAULT_MODEL ||
-        DEFAULT_MODEL_ID;
+    const requestedModelId = modelId?.trim();
+    const registry = getSuncokretModelRegistry();
+
+    if (requestedModelId) {
+        return (
+            registry.find(
+                (model) => model.id === requestedModelId && model.enabled,
+            ) ?? null
+        );
+    }
+
+    const defaultModelId =
+        process.env.SUNCOKRET_AI_DEFAULT_MODEL || DEFAULT_MODEL_ID;
     return (
-        getSuncokretModelRegistry().find(
-            (model) => model.id === requestedModelId && model.enabled,
-        ) ?? null
+        registry.find(
+            (model) => model.id === defaultModelId && model.enabled,
+        ) ??
+        registry.find((model) => model.enabled) ??
+        null
     );
 }
 
