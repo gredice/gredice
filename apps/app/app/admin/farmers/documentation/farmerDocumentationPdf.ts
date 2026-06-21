@@ -1,3 +1,4 @@
+import { deflateSync } from 'node:zlib';
 import { create as createQrCode } from 'qrcode';
 import {
     currentDocumentationPages,
@@ -930,69 +931,118 @@ function formatColor(color: PdfColor) {
 }
 
 function writePdf(pageContentStreams: string[]) {
-    const objects: string[] = [];
+    const objects: Uint8Array[] = [];
     const fontId = 3;
     const boldFontId = 4;
     const fontEncodingId = 5;
     const fontToUnicodeMapId = 6;
     const firstPageObjectId = 7;
+    const encoder = new TextEncoder();
     const kids = pageContentStreams
         .map((_, index) => `${firstPageObjectId + index * 2} 0 R`)
         .join(' ');
 
-    objects.push('<< /Type /Catalog /Pages 2 0 R >>');
+    objects.push(encodePdfObject('<< /Type /Catalog /Pages 2 0 R >>'));
     objects.push(
-        `<< /Type /Pages /Kids [${kids}] /Count ${pageContentStreams.length} >>`,
+        encodePdfObject(
+            `<< /Type /Pages /Kids [${kids}] /Count ${pageContentStreams.length} >>`,
+        ),
     );
     objects.push(
-        `<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding ${fontEncodingId} 0 R /ToUnicode ${fontToUnicodeMapId} 0 R >>`,
+        encodePdfObject(
+            `<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding ${fontEncodingId} 0 R /ToUnicode ${fontToUnicodeMapId} 0 R >>`,
+        ),
     );
     objects.push(
-        `<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding ${fontEncodingId} 0 R /ToUnicode ${fontToUnicodeMapId} 0 R >>`,
+        encodePdfObject(
+            `<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding ${fontEncodingId} 0 R /ToUnicode ${fontToUnicodeMapId} 0 R >>`,
+        ),
     );
-    objects.push(pdfLatinExtendedEncodingObject());
-    objects.push(pdfLatinExtendedToUnicodeMapObject());
+    objects.push(encodePdfObject(pdfLatinExtendedEncodingObject()));
+    objects.push(encodePdfObject(pdfLatinExtendedToUnicodeMapObject()));
 
     pageContentStreams.forEach((content, index) => {
         const pageObjectId = firstPageObjectId + index * 2;
         const contentObjectId = pageObjectId + 1;
         objects.push(
-            [
-                '<< /Type /Page',
-                '/Parent 2 0 R',
-                `/MediaBox [0 0 ${formatNumber(pageWidth)} ${formatNumber(pageHeight)}]`,
-                `/Resources << /Font << /F1 ${fontId} 0 R /F2 ${boldFontId} 0 R >> >>`,
-                `/Contents ${contentObjectId} 0 R`,
-                '>>',
-            ].join(' '),
+            encodePdfObject(
+                [
+                    '<< /Type /Page',
+                    '/Parent 2 0 R',
+                    `/MediaBox [0 0 ${formatNumber(pageWidth)} ${formatNumber(pageHeight)}]`,
+                    `/Resources << /Font << /F1 ${fontId} 0 R /F2 ${boldFontId} 0 R >> >>`,
+                    `/Contents ${contentObjectId} 0 R`,
+                    '>>',
+                ].join(' '),
+            ),
         );
-        objects.push(
-            `<< /Length ${content.length} >>\nstream\n${content}\nendstream`,
-        );
+        objects.push(pdfStreamObject(deflateSync(encoder.encode(content))));
     });
 
-    let pdf = '%PDF-1.4\n';
+    const chunks: Uint8Array[] = [encoder.encode('%PDF-1.4\n')];
+    let pdfByteLength = chunks[0]?.byteLength ?? 0;
     const offsets = [0];
 
     objects.forEach((object, index) => {
-        offsets.push(pdf.length);
-        pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
+        offsets.push(pdfByteLength);
+        const objectHeader = encoder.encode(`${index + 1} 0 obj\n`);
+        const objectFooter = encoder.encode('\nendobj\n');
+        chunks.push(objectHeader, object, objectFooter);
+        pdfByteLength +=
+            objectHeader.byteLength +
+            object.byteLength +
+            objectFooter.byteLength;
     });
 
-    const xrefOffset = pdf.length;
-    pdf += `xref\n0 ${objects.length + 1}\n`;
-    pdf += '0000000000 65535 f \n';
+    const xrefOffset = pdfByteLength;
+    let xref = `xref\n0 ${objects.length + 1}\n`;
+    xref += '0000000000 65535 f \n';
     offsets.slice(1).forEach((offset) => {
-        pdf += `${offset.toString().padStart(10, '0')} 00000 n \n`;
+        xref += `${offset.toString().padStart(10, '0')} 00000 n \n`;
     });
-    pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\n`;
-    pdf += `startxref\n${xrefOffset}\n%%EOF\n`;
+    xref += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\n`;
+    xref += `startxref\n${xrefOffset}\n%%EOF\n`;
+    chunks.push(encoder.encode(xref));
 
-    const bytes = new TextEncoder().encode(pdf);
-    const buffer = new ArrayBuffer(bytes.byteLength);
-    new Uint8Array(buffer).set(bytes);
+    const buffer = new ArrayBuffer(
+        chunks.reduce((total, chunk) => total + chunk.byteLength, 0),
+    );
+    const bytes = new Uint8Array(buffer);
+    let offset = 0;
+    for (const chunk of chunks) {
+        bytes.set(chunk, offset);
+        offset += chunk.byteLength;
+    }
 
     return buffer;
+}
+
+function encodePdfObject(value: string) {
+    return new TextEncoder().encode(value);
+}
+
+function pdfStreamObject(content: Uint8Array) {
+    const encoder = new TextEncoder();
+    return concatBytes([
+        encoder.encode(
+            `<< /Length ${content.byteLength} /Filter /FlateDecode >>\nstream\n`,
+        ),
+        content,
+        encoder.encode('\nendstream'),
+    ]);
+}
+
+function concatBytes(chunks: Uint8Array[]) {
+    const result = new Uint8Array(
+        chunks.reduce((total, chunk) => total + chunk.byteLength, 0),
+    );
+    let offset = 0;
+    for (const chunk of chunks) {
+        result.set(chunk, offset);
+        offset += chunk.byteLength;
+    }
+
+    return result;
 }
 
 function pdfLatinExtendedEncodingObject() {

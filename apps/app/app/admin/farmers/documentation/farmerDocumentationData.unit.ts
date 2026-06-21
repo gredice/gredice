@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { inflateSync } from 'node:zlib';
 import type { EntityStandardized } from '@gredice/storage';
 import {
     buildFarmerDocumentationPackage,
@@ -335,9 +336,10 @@ test('generates a guide-first PDF without page numbering text', () => {
     });
 
     const pdf = generateFarmerDocumentationPdf(documentationPackage);
-    const content = new TextDecoder().decode(pdf);
+    const content = decodePdfForAssertions(pdf);
 
     assert.match(content, /^%PDF-1\.4/);
+    assert.match(content, /\/Filter \/FlateDecode/);
     assert.match(content, /ORG-GUIDE/);
     assert.match(content, /OP-0004/);
     assert.match(content, /OP-0008/);
@@ -410,7 +412,7 @@ test('generates filtered PDF packages for updates', () => {
     const pdf = generateFarmerDocumentationPdf(documentationPackage, {
         content: 'operations',
     });
-    const content = new TextDecoder().decode(pdf);
+    const content = decodePdfForAssertions(pdf);
 
     assert.match(content, /ORG-GUIDE/);
     assert.match(content, /Radnje/);
@@ -422,7 +424,7 @@ test('generates filtered PDF packages for updates', () => {
     const plantsPdf = generateFarmerDocumentationPdf(documentationPackage, {
         content: 'plants',
     });
-    const plantsContent = new TextDecoder().decode(plantsPdf);
+    const plantsContent = decodePdfForAssertions(plantsPdf);
 
     assert.match(plantsContent, /ORG-GUIDE/);
     assert.match(plantsContent, /Biljke i sorte/);
@@ -448,6 +450,60 @@ const pdfTextGlyphCodes = new Map([
 
 function assertPdfText(content: string, value: string) {
     assert.match(content, new RegExp(escapeRegExp(encodedPdfText(value))));
+}
+
+function decodePdfForAssertions(pdf: ArrayBuffer) {
+    const bytes = new Uint8Array(pdf);
+    const textDecoder = new TextDecoder();
+    const contentParts = [textDecoder.decode(bytes)];
+    const streamStart = new TextEncoder().encode('stream\n');
+    const streamEnd = new TextEncoder().encode('\nendstream');
+    let offset = 0;
+
+    while (offset < bytes.byteLength) {
+        const start = indexOfBytes(bytes, streamStart, offset);
+        if (start === -1) break;
+
+        const contentStart = start + streamStart.byteLength;
+        const end = indexOfBytes(bytes, streamEnd, contentStart);
+        if (end === -1) break;
+
+        const streamContent = bytes.subarray(contentStart, end);
+        const streamDictionary = textDecoder.decode(
+            bytes.subarray(Math.max(0, start - 128), start),
+        );
+        contentParts.push(
+            streamDictionary.includes('/Filter /FlateDecode')
+                ? textDecoder.decode(inflateSync(streamContent))
+                : textDecoder.decode(streamContent),
+        );
+        offset = end + streamEnd.byteLength;
+    }
+
+    return contentParts.join('\n');
+}
+
+function indexOfBytes(
+    bytes: Uint8Array,
+    needle: Uint8Array,
+    fromIndex: number,
+) {
+    for (
+        let index = fromIndex;
+        index <= bytes.byteLength - needle.byteLength;
+        index += 1
+    ) {
+        let matches = true;
+        for (let offset = 0; offset < needle.byteLength; offset += 1) {
+            if (bytes[index + offset] !== needle[offset]) {
+                matches = false;
+                break;
+            }
+        }
+        if (matches) return index;
+    }
+
+    return -1;
 }
 
 function encodedPdfText(value: string) {
