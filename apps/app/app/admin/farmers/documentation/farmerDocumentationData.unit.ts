@@ -165,6 +165,18 @@ test('builds insert, replace, and discard instructions from manual revisions', (
         ],
     );
     assert.deepEqual(
+        documentationPackage.includedPlants[0]?.summaryRows.find(
+            (row) => row.label === 'Podrijetlo',
+        ),
+        { label: 'Podrijetlo', value: 'Južna Amerika' },
+    );
+    assert.equal(
+        documentationPackage.includedPlants[0]?.sections.some(
+            (section) => section.title === 'Podrijetlo',
+        ),
+        false,
+    );
+    assert.deepEqual(
         pagesByHeader.map((page) => page.code),
         ['OP-0008', 'PL-1014', 'OP-0004'],
     );
@@ -403,6 +415,8 @@ test('renders compact plant attributes and markdown content in PDFs', async () =
         operations: [],
         plants: [
             plantFixture({
+                description:
+                    'Artičoke su “teški potrošači” hranjivih tvari i podnose 7–10°C skladištenje…',
                 storage: [
                     '1. **Kratkoročno skladištenje**',
                     '   - Hladnjak:',
@@ -436,6 +450,11 @@ test('renders compact plant attributes and markdown content in PDFs', async () =
 
     assert.equal(sowingPosition.y, growthPosition.y);
     assert.ok(growthPosition.x > sowingPosition.x + 200);
+    assertPdfText(
+        content,
+        'Artičoke su "teški potrošači" hranjivih tvari i podnose 7-10 C skladištenje...',
+    );
+    assert.doesNotMatch(content, /\?te/);
     assertPdfText(content, 'Kratkoročno skladištenje');
     assertPdfText(content, 'Papriku čuvajte u ladici za povrće');
     assertPdfText(content, 'Sušenje');
@@ -445,6 +464,39 @@ test('renders compact plant attributes and markdown content in PDFs', async () =
     assertPdfText(content, 'https://example.test/upute');
     assertPdfTextWithFont(content, 'F2', 'Sušenje');
     assert.doesNotMatch(content, /\(\* Papriku/);
+});
+
+test('inserts blank pages between documentation entries for duplex printing', async () => {
+    const documentationPackage = buildFarmerDocumentationPackage({
+        generatedAt,
+        since: null,
+        labelAttributeDefinitionIds: {
+            operation: new Set(),
+            plant: new Set(),
+            plantSort: new Set(),
+        },
+        plantSortPlantAttributeDefinitionIds: new Set(),
+        operations: [],
+        plants: [
+            plantFixture(),
+            plantFixture({
+                id: 2020,
+                label: 'Paprika',
+                origin: 'Srednja Amerika',
+            }),
+        ],
+        plantSorts: [],
+        revisions: [],
+    });
+
+    const pdf = await generateFarmerDocumentationPdf(documentationPackage, {
+        content: 'plants',
+    });
+    const content = decodePdfForAssertions(pdf);
+
+    assert.equal(pdfPageCount(content), 5);
+    assertPdfText(content, 'PL-1014');
+    assertPdfText(content, 'PL-2020');
 });
 
 test('generates filtered PDF packages for updates', async () => {
@@ -561,6 +613,15 @@ function pdfTextPosition(content: string, value: string) {
         x: Number.parseFloat(match[1]),
         y: Number.parseFloat(match[2]),
     };
+}
+
+function pdfPageCount(content: string) {
+    const match = /\/Type \/Pages \/Kids \[[^\]]+\] \/Count (\d+)/.exec(
+        content,
+    );
+
+    assert.ok(match?.[1]);
+    return Number.parseInt(match[1], 10);
 }
 
 function decodePdfForAssertions(pdf: ArrayBuffer) {
@@ -697,11 +758,13 @@ function plantFixture({
     description = 'Opis biljke.',
     id = 1014,
     label = 'Rajčica',
+    origin = 'Južna Amerika',
     storage,
 }: {
     description?: string;
     id?: number;
     label?: string;
+    origin?: string;
     storage?: string;
 } = {}): EntityStandardized {
     return {
@@ -710,6 +773,7 @@ function plantFixture({
             label,
             name: label,
             description,
+            origin,
             ...(storage ? { storage } : {}),
         },
         image: { cover: { url: plantImageDataUrl } },
