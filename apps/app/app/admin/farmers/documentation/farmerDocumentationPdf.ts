@@ -129,6 +129,9 @@ const bodyFontSize = 9.4;
 const bodyLineHeight = 13.2;
 const smallFontSize = 7.8;
 const titleFontSize = 17;
+const summaryLabelFontSize = 6.7;
+const summaryValueFontSize = 8.7;
+const summaryRowHeight = 16;
 const markdownBlockSpacing = 5;
 const markdownListIndent = 13;
 const markdownListMarkerWidth = 15;
@@ -355,9 +358,19 @@ export async function generateFarmerDocumentationPdf(
     );
     const pages: PdfCanvas[] = [];
 
+    const guideStartIndex = pages.length;
     drawOrganizationGuide({ content, data, farmOrigin, pages, version });
+    if (documentationPages.length > 0) {
+        appendDuplexBlankPageIfNeeded(pages, guideStartIndex);
+    }
 
-    for (const page of documentationPages) {
+    for (let index = 0; index < documentationPages.length; index += 1) {
+        const page = documentationPages[index];
+        if (!page) {
+            continue;
+        }
+
+        const pageStartIndex = pages.length;
         drawDocumentationPage({
             data,
             farmOrigin,
@@ -366,12 +379,34 @@ export async function generateFarmerDocumentationPdf(
             version,
             page,
         });
+        if (index < documentationPages.length - 1) {
+            appendDuplexBlankPageIfNeeded(pages, pageStartIndex);
+        }
     }
 
     return writePdf(
         pages.map((page) => page.toString()),
         imageAssets,
     );
+}
+
+function appendDuplexBlankPageIfNeeded(
+    pages: PdfCanvas[],
+    documentStartIndex: number,
+) {
+    if ((pages.length - documentStartIndex) % 2 === 0) {
+        return;
+    }
+
+    const page = new PdfCanvas();
+    page.fillRect({
+        x: 0,
+        y: 0,
+        width: pageWidth,
+        height: pageHeight,
+        color: colors.white,
+    });
+    pages.push(page);
 }
 
 async function loadDocumentationImageAssets(pages: FarmerDocumentationPage[]) {
@@ -790,7 +825,7 @@ function drawDocumentationPage({
 
 function drawPageSummary(context: FlowContext, page: FarmerDocumentationPage) {
     const rows = page.summaryRows;
-    const boxHeight = rows.length * 21 + 18;
+    const boxHeight = rows.length * summaryRowHeight + 16;
     context = ensureSpace(context, boxHeight);
     context.page.fillRect({
         x: margin,
@@ -800,28 +835,32 @@ function drawPageSummary(context: FlowContext, page: FarmerDocumentationPage) {
         color: colors.softGray,
     });
 
-    let y = context.y - 25;
+    let y = context.y - 22;
     for (const row of rows) {
         context.page.text({
             x: margin + 12,
             y,
             value: row.label.toUpperCase(),
-            size: 6.9,
+            size: summaryLabelFontSize,
             font: 'F2',
             color: colors.muted,
         });
         context.page.text({
             x: margin + 142,
             y,
-            value: row.value,
-            size: 9,
+            value: fitSingleLine(
+                row.value,
+                contentWidth - 154,
+                summaryValueFontSize,
+            ),
+            size: summaryValueFontSize,
             font: 'F2',
             color: colors.text,
         });
-        y -= 21;
+        y -= summaryRowHeight;
     }
 
-    context.y -= boxHeight + 16;
+    context.y -= boxHeight + 12;
     return context;
 }
 
@@ -2392,8 +2431,21 @@ function sanitizePdfText(value: string) {
 
     for (const character of value
         .normalize('NFC')
-        .replace(/[–—]/g, '-')
-        .replace(/→/g, '->')) {
+        .replace(/[\u00a0\u202f]/g, ' ')
+        .replace(/[\u00ad\u200b]/g, '')
+        .replace(/[‐‑‒–—―]/g, '-')
+        .replace(/[“”„‟]/g, '"')
+        .replace(/[‘’‚‛]/g, "'")
+        .replace(/[•·]/g, '-')
+        .replace(/…/g, '...')
+        .replace(/→/g, '->')
+        .replace(/←/g, '<-')
+        .replace(/×/g, 'x')
+        .replace(/≤/g, '<=')
+        .replace(/≥/g, '>=')
+        .replace(/±/g, '+/-')
+        .replace(/°\s*C/giu, ' C')
+        .replace(/°/g, '')) {
         if (/^[\x20-\x7e]$/.test(character)) {
             sanitized += character;
             continue;

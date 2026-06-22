@@ -198,6 +198,10 @@ const plantSortTextFields = [
     { key: 'origin', title: 'Podrijetlo' },
 ];
 
+const plantTextFields = plantSortTextFields.filter(
+    ({ key }) => key !== 'origin',
+);
+
 const calendarDetails = [
     { key: 'propagating', title: 'Sjetva u zatvorenom' },
     { key: 'sowing', title: 'Sjetva na otvorenom' },
@@ -923,6 +927,7 @@ function toDocumentationPlant({
 }): FarmerDocumentationPlant {
     const plantInformation = recordProperty(plant, 'information');
     const latinName = textProperty(plantInformation, 'latinName');
+    const origin = textProperty(plantInformation, 'origin');
     const revisions = [...plantRevisions, ...plantSortRevisions];
     const plantLabel = getPlantLabel(plant);
     const changedAt =
@@ -943,6 +948,7 @@ function toDocumentationPlant({
             ['Kod', getFarmerDocumentationCode('plant', plant.id)],
             ['Vrsta', documentationEntityConfig.plant.documentTypeLabel],
             ['Latinski naziv', latinName],
+            ['Podrijetlo', origin],
             ['Dostupnih sorti', formatInteger(plantSorts.length)],
             [
                 'Promjena',
@@ -1109,7 +1115,7 @@ function plantSections(
                 ? plantSorts.map(plantSortListLine)
                 : ['Nema dostupnih sorti.'],
         ),
-        ...plantSortTextFields
+        ...plantTextFields
             .map(({ key, title }) => {
                 const text = textProperty(plantInformation, key);
 
