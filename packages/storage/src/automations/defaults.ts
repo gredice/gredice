@@ -19,12 +19,15 @@ export const plantRemovalOperationStatusAutomationKey =
     'default.plant-removal-operation-status';
 export const farmRaisedBedWeedingAutomationKey =
     'default.farm-raised-bed-weeding';
+export const greenhouseSeedlingWateringAutomationKey =
+    'default.greenhouse-seedling-watering';
 
 const seedlingTransplantingOperationId = 593;
 const plantRemovalOperationId = 346;
 export const FARM_RAISED_BED_WEEDING_OPERATION_ID = 654;
 export const farmRaisedBedWeedingOperationKey = 'cleanWeedsAroundRaisedBeds';
 export const farmRaisedBedWeedingBiweeklyAnchorDate = '2026-01-05';
+const greenhouseSeedlingWateringOperationId = 655;
 
 export function seasonalSowedWateringAutomationGraph(): AutomationGraph {
     return {
@@ -305,6 +308,42 @@ export function farmRaisedBedWeedingAutomationGraph(): AutomationGraph {
     };
 }
 
+export function greenhouseSeedlingWateringAutomationGraph(): AutomationGraph {
+    return {
+        nodes: [
+            {
+                id: 'trigger',
+                kind: 'trigger',
+                moduleKey: automationModuleKeys.triggerSchedule,
+                position: { x: 0, y: 160 },
+                config: {
+                    frequency: 'daily',
+                    timeZone: 'Europe/Zagreb',
+                },
+            },
+            {
+                id: 'create-greenhouse-seedling-waterings',
+                kind: 'action',
+                moduleKey:
+                    automationModuleKeys.actionCreateGreenhouseSeedlingWateringOperations,
+                position: { x: 360, y: 160 },
+                config: {
+                    entityId: greenhouseSeedlingWateringOperationId,
+                    entityTypeName: 'operation',
+                    scheduledInDays: 0,
+                },
+            },
+        ],
+        edges: [
+            {
+                id: 'trigger-to-create-greenhouse-seedling-waterings',
+                source: 'trigger',
+                target: 'create-greenhouse-seedling-waterings',
+            },
+        ],
+    };
+}
+
 export async function ensureDefaultAutomationDefinitions() {
     await initializeAutomationEventCursorToLatest();
 
@@ -398,6 +437,23 @@ export async function ensureDefaultAutomationDefinitions() {
         },
     });
 
+    const greenhouseSeedlingWatering = await upsertAutomationDefinitionByKey({
+        key: greenhouseSeedlingWateringAutomationKey,
+        name: 'Dodaj dnevno zalijevanje presadnica u stakleniku',
+        description:
+            'Svaki dan dodaj jednu farmsku radnju zalijevanja presadnica u stakleniku za aktivne farme koje imaju presadnice u stakleniku ili aktivne outlet presadnice.',
+        status: 'enabled',
+        graph: greenhouseSeedlingWateringAutomationGraph(),
+        metadata: {
+            managedBy: 'gredice',
+            defaultAutomation: true,
+            operationEntityId: greenhouseSeedlingWateringOperationId,
+            operationInternalName: 'waterGreenhouseSeedlings',
+            operationName: 'Zalijevanje presadnica u stakleniku',
+            resolvedFromIssue: 3700,
+        },
+    });
+
     return {
         seasonalSowedWatering,
         operationImagePlantStatusReview,
@@ -405,5 +461,6 @@ export async function ensureDefaultAutomationDefinitions() {
         seedlingTransplantWatering,
         plantRemovalOperationStatus,
         farmRaisedBedWeeding,
+        greenhouseSeedlingWatering,
     };
 }
