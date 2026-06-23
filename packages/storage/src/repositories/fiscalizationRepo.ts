@@ -6,6 +6,7 @@ import {
     type SelectFiscalizationPosSettings,
     type SelectFiscalizationUserSettings,
 } from '../schema';
+import * as columnEncryption from '../security/columnEncryption';
 import { storage } from '../storage';
 
 // Get active fiscalization user settings for an account
@@ -21,7 +22,18 @@ export async function getFiscalizationUserSettings(): Promise<SelectFiscalizatio
         )
         .limit(1);
 
-    return results[0] || null;
+    const settings = results[0];
+    if (!settings) {
+        return null;
+    }
+
+    return {
+        ...settings,
+        certBase64: columnEncryption.decryptColumnValue(settings.certBase64),
+        certPassword: columnEncryption.decryptColumnValue(
+            settings.certPassword,
+        ),
+    };
 }
 
 // Get active fiscalization POS settings for an account
