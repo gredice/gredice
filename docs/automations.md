@@ -4,7 +4,8 @@ Automations are configurable, trusted server-side workflows that react to
 Gredice domain events or scheduled occurrences. The first workflows cover the
 existing planting flow where a `raisedBedField.plantUpdate` event with
 `data.status = "sowed"` queues seasonal watering operations asynchronously, and
-monthly schedules that can create recurring farm operations. Operation
+daily, weekly, biweekly, and monthly schedules that can create recurring
+operations. Operation
 completion images can also be reviewed asynchronously for high-confidence plant
 status changes that create pending admin approval requests. Verifying the
 seedling transplanting operation also switches the targeted plant from
@@ -41,9 +42,11 @@ The schema is defined in
   event polling runner.
 
 Event-triggered runs are idempotent through a partial unique index on
-`automation_definition_id` and `source_event_id` for `source = 'event'`. Manual,
-test, and replay runs can be repeated while still keeping their source event
-context.
+`automation_definition_id` and `source_event_id` for `source = 'event'`.
+Schedule-triggered runs are idempotent through a partial unique index on
+`automation_definition_id` and `source_aggregate_id` for schedule occurrence
+event types. Manual, test, and replay runs can be repeated while still keeping
+their source context.
 
 Matching event-triggered runs are enqueued as part of `createEvent()`, so live
 domain events do not need to wait for the polling cron before they appear in the
@@ -99,7 +102,12 @@ MVP modules:
 
 - `trigger.domainEvent`: starts from a stored domain event and filters by event
   type.
-- `trigger.scheduleMonthly`: starts once per month on the configured local day.
+- `trigger.schedule`: starts on a daily, weekly, biweekly, or monthly cadence.
+  Weekly and biweekly schedules can target one weekday or a JSON array of
+  selected weekdays. Biweekly schedules require an anchor date so alternating
+  week parity stays explicit.
+- `trigger.scheduleMonthly`: legacy monthly trigger that starts once per month
+  on the configured local day.
 - `condition.eventDataEquals`: compares a value in event data.
 - `condition.operationMatches`: checks operation status, entity id, or
   operation application.

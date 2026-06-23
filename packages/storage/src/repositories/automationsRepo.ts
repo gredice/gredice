@@ -371,7 +371,7 @@ export async function createAutomationRun(
                     automationRuns.automationDefinitionId,
                     automationRuns.sourceAggregateId,
                 ],
-                where: sql`${automationRuns.sourceEventType} = 'automation.schedule.monthly'`,
+                where: sql`${automationRuns.sourceEventType} in ('automation.schedule', 'automation.schedule.monthly')`,
             })
             .returning();
 
