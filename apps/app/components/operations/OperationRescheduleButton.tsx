@@ -18,16 +18,6 @@ export function OperationRescheduleButton({
     operation,
     operationLabel,
 }: OperationRescheduleButtonProps) {
-    // Only show reschedule button for new and planned operations
-    if (
-        operation.status === 'completed' ||
-        operation.status === 'pendingVerification' ||
-        operation.status === 'failed' ||
-        operation.status === 'canceled'
-    ) {
-        return null;
-    }
-
     return (
         <RescheduleOperationModal
             operation={operation}
@@ -37,8 +27,8 @@ export function OperationRescheduleButton({
                     variant="plain"
                     title={
                         operation.scheduledDate
-                            ? 'Prerasporedi operaciju'
-                            : 'Zakaži operaciju'
+                            ? 'Prerasporedi radnju'
+                            : 'Zakaži radnju'
                     }
                 >
                     <Calendar className="size-4 shrink-0" />

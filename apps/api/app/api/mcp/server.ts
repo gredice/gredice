@@ -10,11 +10,13 @@ import {
     getMcpResources,
     getMcpResourceTemplates,
     getMcpToolCatalogEntry,
-    getMcpToolNamesByDomain,
     getMcpTools,
     type McpExposure,
+    type McpToolCatalogEntry,
 } from './catalog';
+import { executeCommerceTool } from './commerce/tools/call/execute';
 import { executeDirectoryTool } from './directories/tools/call/execute';
+import { executeGardenTool } from './gardens/tools/call/execute';
 import { Logger } from './logger';
 
 const SUPPORTED_PROTOCOL_VERSIONS = ['2025-03-26', '2024-11-05'] as const;
@@ -179,6 +181,39 @@ function requiredScopeForExposure(exposure: McpExposure) {
         case 'admin-internal':
         case 'excluded':
             return MCP_SCOPES.admin;
+    }
+}
+
+async function executeMcpTool({
+    args,
+    authContext,
+    name,
+    signal,
+    tool,
+}: {
+    args: unknown;
+    authContext: {
+        accountId: string;
+        role: string;
+        userId: string;
+    } | null;
+    name: string;
+    signal: AbortSignal;
+    tool: McpToolCatalogEntry;
+}) {
+    switch (tool.domain) {
+        case 'directories':
+            return executeDirectoryTool(name, args, { signal });
+        case 'gardens':
+            if (!authContext) {
+                throw new Error('Garden tools require authentication');
+            }
+            return executeGardenTool(name, args, authContext);
+        case 'commerce':
+            if (!authContext) {
+                throw new Error('Commerce tools require authentication');
+            }
+            return executeCommerceTool(name, args, authContext);
     }
 }
 
@@ -475,10 +510,7 @@ export async function handleMcpRequest(request: NextRequest) {
             }
 
             const tool = getMcpToolCatalogEntry(name);
-            if (
-                !tool ||
-                !getMcpToolNamesByDomain('directories').includes(name)
-            ) {
+            if (!tool) {
                 return NextResponse.json(
                     {
                         jsonrpc: '2.0',
@@ -515,13 +547,13 @@ export async function handleMcpRequest(request: NextRequest) {
             try {
                 const result = await executeWithTimeout(
                     (signal) =>
-                        executeDirectoryTool(
+                        executeMcpTool({
                             name,
-                            body?.params?.arguments ?? {},
-                            {
-                                signal,
-                            },
-                        ),
+                            args: body?.params?.arguments ?? {},
+                            authContext,
+                            signal,
+                            tool,
+                        }),
                     MCP_TOOL_TIMEOUT_MS,
                 );
                 logger.info('mcp.request.success', {
