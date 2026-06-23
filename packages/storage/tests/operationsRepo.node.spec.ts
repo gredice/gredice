@@ -20,6 +20,7 @@ import {
     knownEventTypes,
     operations,
     storage,
+    switchOperationEntity,
     users,
 } from '@gredice/storage';
 import { and, eq } from 'drizzle-orm';
@@ -243,6 +244,54 @@ test('completed operations expose completion notes and image URLs', async () => 
         'https://cdn.gredice.com/operation-complete.jpg',
     ]);
     assert.strictEqual(operation.completionNotes, 'Zaliveno nakon berbe.');
+});
+
+test('switchOperationEntity changes only the selected operation entity', async () => {
+    createTestDb();
+
+    const accountId = randomUUID();
+    const assignedUserId = randomUUID();
+    const scheduledDate = '2030-01-05T08:00:00.000Z';
+    const operationId = await createOperation({
+        entityId: 1,
+        entityTypeName: 'operation',
+        accountId,
+        timestamp: new Date('2030-01-02T08:00:00.000Z'),
+    });
+    await acceptOperation(operationId);
+    await createEvent(
+        knownEvents.operations.scheduledV1(operationId.toString(), {
+            scheduledDate,
+        }),
+    );
+    await createEvent(
+        knownEvents.operations.assignedV1(operationId.toString(), {
+            assignedUserId,
+            assignedBy: randomUUID(),
+        }),
+    );
+
+    const originalOperation = await getOperationById(operationId);
+    await switchOperationEntity(operationId, {
+        entityId: 2,
+        entityTypeName: 'operation',
+    });
+
+    const switchedOperation = await getOperationById(operationId);
+    assert.strictEqual(switchedOperation.entityId, 2);
+    assert.strictEqual(switchedOperation.entityTypeName, 'operation');
+    assert.strictEqual(switchedOperation.accountId, accountId);
+    assert.strictEqual(
+        switchedOperation.timestamp.getTime(),
+        originalOperation.timestamp.getTime(),
+    );
+    assert.strictEqual(switchedOperation.isAccepted, true);
+    assert.strictEqual(switchedOperation.status, 'planned');
+    assert.strictEqual(
+        switchedOperation.scheduledDate?.toISOString(),
+        scheduledDate,
+    );
+    assert.strictEqual(switchedOperation.assignedUserId, assignedUserId);
 });
 
 test('all operations can be filtered by event-derived status', async () => {

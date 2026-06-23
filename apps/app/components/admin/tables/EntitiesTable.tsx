@@ -50,6 +50,7 @@ type EntitiesTableProps = {
     entities: Entities;
     attributeDefinitions: SelectAttributeDefinition[];
     inventoryItems: InventoryItem[];
+    showInventoryColumn?: boolean;
     inventoryLowCountThreshold?: number | null;
     completionFilter?: string;
     stateFilter?: string;
@@ -62,6 +63,7 @@ export function EntitiesTable({
     entities,
     attributeDefinitions,
     inventoryItems,
+    showInventoryColumn,
     inventoryLowCountThreshold = null,
     completionFilter = '',
     stateFilter = '',
@@ -91,7 +93,7 @@ export function EntitiesTable({
             )
             .map((item) => [item.entityId, item]),
     );
-    const hasInventory = inventoryByEntityId.size > 0;
+    const hasInventory = showInventoryColumn ?? inventoryByEntityId.size > 0;
     const sortedEntities = [...filteredEntities].sort((left, right) =>
         compareEntities(
             left,

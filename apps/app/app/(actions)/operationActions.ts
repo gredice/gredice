@@ -19,18 +19,21 @@ import {
     getAssignableFarmUsersByFarmIds,
     getAssignableFarmUsersByGardenIds,
     getAssignableFarmUsersByOperationIds,
+    getEntitiesFormatted,
     getEntityFormatted,
     getFarmUserAcceptedOperationById,
     getOperationById,
     getRaisedBed,
     type InsertOperation,
     knownEvents,
+    switchOperationEntity,
     unacceptOperation,
 } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
 import type { EntityStandardized } from '../../lib/@types/EntityStandardized';
 import { auth } from '../../lib/auth/auth';
 import { KnownPages } from '../../src/KnownPages';
+import { operationDefinitionMatchesTargetScope } from '../admin/operations/operationScope';
 
 const MAX_COMPLETION_NOTES_LENGTH = 2000;
 
@@ -473,6 +476,94 @@ export async function bulkCreateOperationsAction(
     }
 }
 
+export type SwitchOperationEntityActionState = {
+    success: boolean;
+    message: string;
+};
+
+function parseRequiredPositiveInteger(
+    formData: FormData,
+    name: string,
+    message: string,
+) {
+    const value = formData.get(name);
+    const parsed = typeof value === 'string' ? Number(value) : NaN;
+
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+        throw new Error(message);
+    }
+
+    return parsed;
+}
+
+export async function switchOperationEntityAction(
+    _previousState: SwitchOperationEntityActionState | null,
+    formData: FormData,
+): Promise<SwitchOperationEntityActionState> {
+    try {
+        await auth(['admin']);
+
+        const operationId = parseRequiredPositiveInteger(
+            formData,
+            'operationId',
+            'Operation ID is required.',
+        );
+        const entityId = parseRequiredPositiveInteger(
+            formData,
+            'entityId',
+            'Odaberite novu radnju.',
+        );
+
+        const operation = await getOperationById(operationId);
+        if (
+            operation.entityId === entityId &&
+            operation.entityTypeName === 'operation'
+        ) {
+            return {
+                success: true,
+                message: 'Odabrana radnja je već postavljena.',
+            };
+        }
+
+        const availableOperations =
+            await getEntitiesFormatted<EntityStandardized>('operation');
+        const replacementOperation = availableOperations.find(
+            (candidate) => candidate.id === entityId,
+        );
+
+        if (!replacementOperation) {
+            throw new Error('Odabrana radnja nije dostupna.');
+        }
+
+        if (
+            !operationDefinitionMatchesTargetScope(
+                operation,
+                replacementOperation,
+            )
+        ) {
+            throw new Error(
+                'Odabrana radnja nije kompatibilna s lokacijom postojeće radnje.',
+            );
+        }
+
+        await switchOperationEntity(operationId, {
+            entityId,
+            entityTypeName: 'operation',
+        });
+        await revalidateOperationPaths(operation);
+
+        return { success: true, message: 'Radnja je promijenjena.' };
+    } catch (error) {
+        return {
+            success: false,
+            message:
+                error instanceof Error
+                    ? error.message
+                    : 'Došlo je do greške pri promjeni radnje.',
+        };
+    }
+}
+
 export async function rescheduleOperationAction(formData: FormData) {
     await auth(['admin']);
     const operationId = formData.get('operationId')
@@ -522,6 +613,22 @@ export async function acceptOperationAction(operationId: number) {
     await acceptOperation(operationId);
     await notifyOperationUpdate(operationId, 'approved');
     await revalidateOperationPaths(operation);
+}
+
+export async function unacceptOperationAction(operationId: number) {
+    await auth(['admin']);
+    const operation = await getOperationById(operationId);
+    if (!operation) {
+        throw new Error(`Operation with ID ${operationId} not found.`);
+    }
+    if (!operation.isAccepted) {
+        return { success: true };
+    }
+
+    await unacceptOperation(operationId);
+    await revalidateOperationPaths(operation);
+
+    return { success: true };
 }
 
 export async function assignOperationUserAction(
@@ -829,16 +936,8 @@ export async function cancelOperationAction(formData: FormData) {
         throw new Error(`Operation with ID ${operationId} not found.`);
     }
 
-    // Only allow canceling new or planned operations
-    if (
-        operation.status === 'completed' ||
-        operation.status === 'pendingVerification' ||
-        operation.status === 'failed' ||
-        operation.status === 'canceled'
-    ) {
-        throw new Error(
-            `Cannot cancel operation with status ${operation.status}`,
-        );
+    if (operation.status === 'canceled') {
+        return { success: true };
     }
 
     // Get operation details for notification and refund calculation
@@ -921,4 +1020,5 @@ export async function cancelOperationAction(formData: FormData) {
     ]);
 
     await revalidateOperationPaths(operation);
+    return { success: true };
 }

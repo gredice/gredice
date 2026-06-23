@@ -1,5 +1,5 @@
 import {
-    getAllRaisedBeds,
+    getAllRaisedBedsFiltered,
     getFarms,
     getGardens,
     getUniqueAssignableFarmUsersByFarmIds,
@@ -26,7 +26,7 @@ export default async function OperationsPage({
     const [farms, gardens, raisedBeds] = await Promise.all([
         getFarms(),
         getGardens(),
-        getAllRaisedBeds(),
+        getAllRaisedBedsFiltered({ status: 'active' }),
     ]);
     const activeFarms = farms
         .filter((farm) => !farm.isDeleted)

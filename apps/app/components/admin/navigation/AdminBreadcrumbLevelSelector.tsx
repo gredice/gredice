@@ -5,6 +5,7 @@ import {
     Bank,
     Book,
     Calendar,
+    Cloud,
     Discount,
     Euro,
     Fence,
@@ -13,6 +14,7 @@ import {
     Home,
     Inbox,
     Lightning,
+    Link,
     Mail,
     Map as MapIcon,
     Megaphone,
@@ -104,10 +106,16 @@ const breadcrumbSections: {
         title: 'Administracija',
         pages: [
             { ...adminPages.Accounts, icon: <Bank className="size-4" /> },
+            { ...adminPages.Users, icon: <User className="size-4" /> },
             {
                 ...adminPages.Achievements,
                 icon: <Success className="size-4" />,
             },
+        ],
+    },
+    {
+        title: 'Financije',
+        pages: [
             {
                 ...adminPages.ShoppingCarts,
                 icon: <ShoppingCart className="size-4" />,
@@ -120,19 +128,38 @@ const breadcrumbSections: {
             { ...adminPages.Sunflowers, icon: <Success className="size-4" /> },
             { ...adminPages.Receipts, icon: <File className="size-4" /> },
             { ...adminPages.Outlet, icon: <Discount className="size-4" /> },
-            { ...adminPages.Users, icon: <User className="size-4" /> },
+        ],
+    },
+    {
+        title: 'Farme',
+        pages: [
             { ...adminPages.Farms, icon: <MapIcon className="size-4" /> },
+            { ...adminPages.Operations, icon: <Hammer className="size-4" /> },
+            {
+                ...adminPages.FarmerPrices,
+                icon: <Euro className="size-4" />,
+            },
+            {
+                ...adminPages.FarmerPayouts,
+                icon: <Euro className="size-4" />,
+            },
+            {
+                ...adminPages.FarmerDocumentation,
+                icon: <Book className="size-4" />,
+            },
+            { ...adminPages.HarvestTraces, icon: <Link className="size-4" /> },
+        ],
+    },
+    {
+        title: 'Vrtovi',
+        pages: [
+            { ...adminPages.Weather, icon: <Cloud className="size-4" /> },
             { ...adminPages.Gardens, icon: <Fence className="size-4" /> },
             {
                 ...adminPages.RaisedBeds,
                 icon: <RaisedBedIcon className="size-4" physicalId={null} />,
             },
             { ...adminPages.Greenhouse, icon: <Sprout className="size-4" /> },
-            { ...adminPages.Operations, icon: <Hammer className="size-4" /> },
-            {
-                ...adminPages.FarmerDocumentation,
-                icon: <Book className="size-4" />,
-            },
         ],
     },
     {

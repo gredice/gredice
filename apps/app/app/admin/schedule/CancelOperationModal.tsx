@@ -22,6 +22,10 @@ export function CancelOperationModal({
     trigger,
     onSubmit,
 }: CancelOperationModalProps) {
+    const hasCompletionState =
+        operation.status === 'completed' ||
+        operation.status === 'pendingVerification';
+
     return (
         <CancelRequestModal
             label={operationLabel}
@@ -33,6 +37,10 @@ export function CancelOperationModal({
             description={`Operacija će biti otkazana. Koristi opcije ispod za povrat suncokreta i slanje obavijesti korisniku.${
                 operation.status === 'planned'
                     ? ' Ako je operacija plaćena suncokretima, preporučujemo da ih vratiš.'
+                    : ''
+            }${
+                hasCompletionState
+                    ? ' Radnja ima zapis završetka; otkazivanje će postaviti najnoviji status na otkazano, ali neće obrisati povijest završetka.'
                     : ''
             }`}
             additionalFields={
