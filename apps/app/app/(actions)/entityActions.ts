@@ -7,6 +7,7 @@ import { slugify } from '@gredice/js/slug';
 import {
     deleteAttributeValue,
     deleteEntity,
+    getAttributeDefinition,
     getEntityIncomingLinks,
     getEntityRaw,
     type IncomingEntityLinkGroup,
@@ -91,6 +92,7 @@ export async function createEntityType(
     categoryId?: number,
     isRoot = true,
     icon?: string,
+    inventorySourceAttributeDefinitionId?: number | null,
 ) {
     await auth(['admin']);
 
@@ -100,6 +102,8 @@ export async function createEntityType(
         icon: icon || null,
         categoryId,
         isRoot,
+        inventorySourceAttributeDefinitionId:
+            inventorySourceAttributeDefinitionId ?? null,
     });
     revalidatePath(KnownPages.Directories);
     redirect(
@@ -114,6 +118,7 @@ export async function updateEntityType(
     categoryId?: number,
     isRoot = true,
     icon?: string,
+    inventorySourceAttributeDefinitionId?: number | null,
 ) {
     await auth(['admin']);
 
@@ -124,9 +129,31 @@ export async function updateEntityType(
         icon: icon || null,
         categoryId,
         isRoot,
+        inventorySourceAttributeDefinitionId:
+            inventorySourceAttributeDefinitionId ?? null,
     });
     revalidatePath(KnownPages.Directories);
     revalidatePath(KnownPages.DirectoryEntityType(entityTypeName));
+}
+
+async function assertInventorySourceAttributeDefinition(
+    attributeDefinitionId: number | null,
+    entityTypeName: string,
+) {
+    if (attributeDefinitionId === null) {
+        return;
+    }
+
+    const attributeDefinition = await getAttributeDefinition(
+        attributeDefinitionId,
+    );
+    if (
+        !attributeDefinition ||
+        attributeDefinition.dataType !== `ref:${entityTypeName}` ||
+        attributeDefinition.entityTypeName === entityTypeName
+    ) {
+        throw new Error('Odabrani izvor zalihe nije valjan.');
+    }
 }
 
 export async function deleteEntityType(id: number) {
@@ -154,6 +181,24 @@ export async function updateEntityTypeFromEditPage(formData: FormData) {
             : (formData.get('categoryId') as string);
     const originalName = formData.get('originalName') as string;
     const isRoot = (formData.get('isRoot') as string) !== 'false';
+    const inventorySourceAttributeDefinitionIdRaw = formData.get(
+        'inventorySourceAttributeDefinitionId',
+    ) as string | null;
+    const inventorySourceAttributeDefinitionId =
+        inventorySourceAttributeDefinitionIdRaw &&
+        inventorySourceAttributeDefinitionIdRaw !== 'none'
+            ? Number.parseInt(inventorySourceAttributeDefinitionIdRaw, 10)
+            : null;
+    if (
+        inventorySourceAttributeDefinitionId !== null &&
+        !Number.isFinite(inventorySourceAttributeDefinitionId)
+    ) {
+        throw new Error('Odabrani izvor zalihe nije valjan.');
+    }
+    await assertInventorySourceAttributeDefinition(
+        inventorySourceAttributeDefinitionId,
+        name,
+    );
 
     await updateEntityType(
         id,
@@ -162,6 +207,7 @@ export async function updateEntityTypeFromEditPage(formData: FormData) {
         categoryId ? parseInt(categoryId, 10) : undefined,
         isRoot,
         resolvedIcon,
+        inventorySourceAttributeDefinitionId,
     );
 
     revalidatePath(KnownPages.Directories);

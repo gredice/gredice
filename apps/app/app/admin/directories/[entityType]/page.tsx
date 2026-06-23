@@ -1,4 +1,5 @@
 import {
+    getAttributeDefinition,
     getAttributeDefinitions,
     getEntitiesRaw,
     getEntityTypeByName,
@@ -26,6 +27,7 @@ import {
     duplicateEntity,
 } from '../../../(actions)/entityActions';
 import { EntitiesFilters } from './EntitiesFilters';
+import { aggregateRelatedInventoryItems } from './inventoryDisplay';
 
 export const dynamic = 'force-dynamic';
 
@@ -73,9 +75,48 @@ export default async function EntitiesPage({
             getInventoryConfigByEntityTypeName(entityTypeName),
         ],
     );
-    const inventoryItems = inventoryConfig
+    const directInventoryItems = inventoryConfig
         ? await getInventoryItemsByConfig(inventoryConfig.id)
         : [];
+    const inventorySourceAttributeDefinition =
+        entityType?.inventorySourceAttributeDefinitionId && !inventoryConfig
+            ? await getAttributeDefinition(
+                  entityType.inventorySourceAttributeDefinitionId,
+              )
+            : undefined;
+    const shouldUseRelatedInventory =
+        !inventoryConfig &&
+        inventorySourceAttributeDefinition?.dataType ===
+            `ref:${entityTypeName}`;
+    const relatedInventoryConfig = shouldUseRelatedInventory
+        ? await getInventoryConfigByEntityTypeName(
+              inventorySourceAttributeDefinition.entityTypeName,
+          )
+        : undefined;
+    const relatedInventoryItems =
+        shouldUseRelatedInventory && relatedInventoryConfig
+            ? aggregateRelatedInventoryItems({
+                  defaultLowCountThreshold:
+                      relatedInventoryConfig.lowCountThreshold,
+                  sourceAttributeDefinitionId:
+                      inventorySourceAttributeDefinition.id,
+                  sourceEntities: await getEntitiesRaw(
+                      inventorySourceAttributeDefinition.entityTypeName,
+                  ),
+                  inventoryItems: await getInventoryItemsByConfig(
+                      relatedInventoryConfig.id,
+                  ),
+              })
+            : [];
+    const inventoryItems = inventoryConfig
+        ? directInventoryItems
+        : relatedInventoryItems;
+    const inventoryLowCountThreshold =
+        inventoryConfig?.lowCountThreshold ?? null;
+    const inventoryLinkConfig = inventoryConfig ?? relatedInventoryConfig;
+    const showInventoryColumn = Boolean(
+        inventoryConfig ?? relatedInventoryConfig,
+    );
     const refDefinitions = attributeDefinitions.filter((definition) =>
         definition.dataType.startsWith('ref:'),
     );
@@ -124,10 +165,10 @@ export default async function EntitiesPage({
                     }
                     actions={
                         <Row spacing={2}>
-                            {inventoryConfig && (
+                            {inventoryLinkConfig && (
                                 <Link
                                     href={KnownPages.InventoryConfig(
-                                        inventoryConfig.id,
+                                        inventoryLinkConfig.id,
                                     )}
                                 >
                                     <Row
@@ -164,8 +205,9 @@ export default async function EntitiesPage({
                             entities={entities}
                             attributeDefinitions={attributeDefinitions}
                             inventoryItems={inventoryItems}
+                            showInventoryColumn={showInventoryColumn}
                             inventoryLowCountThreshold={
-                                inventoryConfig?.lowCountThreshold
+                                inventoryLowCountThreshold
                             }
                             completionFilter={completionFilter}
                             stateFilter={stateFilter}
