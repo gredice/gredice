@@ -52,7 +52,7 @@ Per eventType, each channel gets one of:
 | `billing_order_delivery` | `order_confirmation` | high | ✅ | ❌ | ❌ | ❌ | required | required | default_on | never | never |
 | `garden` | `operation_scheduled`, `operation_rescheduled`, `operation_completed`, `operation_canceled` | high | ❌ | ✅ | ✅ | ✅ | default_on | default_on | default_on | default_on | never |
 | `garden` | `garden_health_alert` | high | ❌ | ✅ | ❌ | ❌ | default_on | default_on | default_on | never | never |
-| `weather_alerts` | `weather_risk_alert` | high | ❌ | ✅ | ❌ | ❌ | default_on | default_on | default_on | never | never |
+| `weather_alerts` | `weather_risk_alert` | high | ❌ | ✅ | ❌ | ❌ | default_off | default_off | default_off | never | never |
 | `garden` | `harvest_ready`, `harvest_window_ending` | normal | ❌ | ✅ | ✅ | ✅ | default_on | default_on | default_on | default_on | never |
 | `reminders` | `task_reminder`, `cart_abandonment_reminder`, `subscription_renewal_reminder` | normal | ❌ | ✅ | ✅ | ✅ | default_on | default_on | default_off | default_on | never |
 | `digests` | `daily_digest`, `weekly_digest`, `monthly_digest` | low | ❌ | ✅ | ❌ | ✅ | default_on | default_on | never | required | never |
@@ -87,6 +87,12 @@ shown as always-on explanatory rows instead of toggles. Event-level controls for
 mixed domains, such as delivery-status updates versus required billing/order
 messages, should be added only after the storage/API contract supports
 event-level overrides.
+
+Weather risk alerts are opt-in before notification creation. The weather alert
+producer must create user-scoped notification rows only for users with an enabled
+`weather_alerts` + `push` preference. Missing preferences default to off, and an
+account-scoped preference overrides the user's global weather-alert preference
+for that account.
 
 ## 5) Separation of required/security vs promotional
 

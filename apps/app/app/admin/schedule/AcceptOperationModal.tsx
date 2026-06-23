@@ -1,3 +1,5 @@
+'use client';
+
 import { IconButton } from '@gredice/ui/IconButton';
 import { Check } from '@gredice/ui/icons';
 import { acceptOperationAction } from '../../(actions)/operationActions';

@@ -231,6 +231,9 @@ export const entityTypes = pgTable(
         ),
         hierarchyOrder: integer('hierarchy_order').notNull().default(0),
         isRoot: boolean('is_root').notNull().default(true),
+        inventorySourceAttributeDefinitionId: integer(
+            'inventory_source_attribute_definition_id',
+        ).references(() => attributeDefinitions.id),
         createdAt: timestamp('created_at').notNull().defaultNow(),
         updatedAt: timestamp('updated_at')
             .notNull()
@@ -244,6 +247,9 @@ export const entityTypes = pgTable(
         index('cms_et_hierarchy_order_idx').on(table.hierarchyOrder),
         index('cms_et_is_deleted_idx').on(table.isDeleted),
         index('cms_et_is_root_idx').on(table.isRoot),
+        index('cms_et_inventory_source_attr_def_idx').on(
+            table.inventorySourceAttributeDefinitionId,
+        ),
     ],
 );
 
@@ -260,6 +266,11 @@ export const entityTypesRelation = relations(entityTypes, ({ one, many }) => ({
         fields: [entityTypes.parentId],
         references: [entityTypes.id],
         relationName: 'entityTypeHierarchy',
+    }),
+    inventorySourceAttributeDefinition: one(attributeDefinitions, {
+        fields: [entityTypes.inventorySourceAttributeDefinitionId],
+        references: [attributeDefinitions.id],
+        relationName: 'inventorySourceAttributeDefinition',
     }),
     children: many(entityTypes, {
         relationName: 'entityTypeHierarchy',
