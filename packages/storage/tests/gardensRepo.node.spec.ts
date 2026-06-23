@@ -217,7 +217,7 @@ test('accountHasActiveRaisedBed ignores active beds in soft-deleted gardens', as
     assert.strictEqual(await accountHasActiveRaisedBed(accountId), false);
 });
 
-test('accountHasActiveRaisedBed uses the raised-bed account instead of the garden owner', async () => {
+test('accountHasActiveRaisedBed uses the garden owner instead of the raised-bed account', async () => {
     createTestDb();
     const gardenOwnerAccountId = await createAccount();
     const raisedBedAccountId = await createAccount();
@@ -236,11 +236,11 @@ test('accountHasActiveRaisedBed uses the raised-bed account instead of the garde
     await updateRaisedBed({ id: raisedBedId, status: 'active' });
 
     assert.strictEqual(
-        await accountHasActiveRaisedBed(raisedBedAccountId),
+        await accountHasActiveRaisedBed(gardenOwnerAccountId),
         true,
     );
     assert.strictEqual(
-        await accountHasActiveRaisedBed(gardenOwnerAccountId),
+        await accountHasActiveRaisedBed(raisedBedAccountId),
         false,
     );
 });
