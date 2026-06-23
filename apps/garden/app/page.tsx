@@ -3,7 +3,12 @@ import { cookies } from 'next/headers';
 import type { ComponentProps } from 'react';
 import LoginModal from '../components/auth/LoginModal';
 import { GameSceneWithAnalytics } from '../components/game/GameSceneWithAnalytics';
-import { enableDebugHudFlag, rainWetOverlayFlag } from './flags';
+import {
+    enableDebugHudFlag,
+    enableSuncokretChatFlag,
+    enableSuncokretDebugFlag,
+    rainWetOverlayFlag,
+} from './flags';
 
 const impersonationFlagCookieName = 'gredice_impersonating';
 
@@ -14,6 +19,8 @@ export default async function Home() {
     const flags: ComponentProps<typeof GameSceneWithAnalytics>['flags'] = {
         enableDebugHudFlag: await enableDebugHudFlag(),
         enableRainWetOverlayFlag: await rainWetOverlayFlag(),
+        enableSuncokretChatFlag: await enableSuncokretChatFlag(),
+        enableSuncokretDebugFlag: await enableSuncokretDebugFlag(),
     };
 
     return (

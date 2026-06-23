@@ -23,6 +23,7 @@ export * from './repositories/accountDeletionRepo';
 export * from './repositories/accountInvitationsRepo';
 export * from './repositories/accountsRepo';
 export * from './repositories/achievementsRepo';
+export * from './repositories/aiChatRepo';
 export * from './repositories/analyticsRepo';
 export * from './repositories/approvalRequestsRepo';
 export * from './repositories/attributeDefinitionsRepo';

@@ -18,13 +18,7 @@ export function OperationCancelButton({
     operation,
     operationLabel,
 }: OperationCancelButtonProps) {
-    // Only show cancel button for new and planned operations
-    if (
-        operation.status === 'completed' ||
-        operation.status === 'pendingVerification' ||
-        operation.status === 'failed' ||
-        operation.status === 'canceled'
-    ) {
+    if (operation.status === 'canceled' || operation.status === 'cancelled') {
         return null;
     }
 

@@ -992,6 +992,26 @@ export async function createOperation({
     return result.id;
 }
 
+export async function switchOperationEntity(
+    id: number,
+    entity: Pick<InsertOperation, 'entityId' | 'entityTypeName'>,
+) {
+    const [result] = await storage()
+        .update(operations)
+        .set({
+            entityId: entity.entityId,
+            entityTypeName: entity.entityTypeName,
+        })
+        .where(and(eq(operations.id, id), eq(operations.isDeleted, false)))
+        .returning({ id: operations.id });
+
+    if (!result) {
+        throw new Error(`Operation with id ${id} not found`);
+    }
+
+    await bustScheduleCache();
+}
+
 export async function acceptOperation(id: number) {
     await storage()
         .update(operations)
