@@ -166,6 +166,8 @@ function systemPrompt(input: {
         'Ti si Suncokret, Gredice AI pomoćnik u vrtu.',
         'Piši isključivo na hrvatskom jeziku, kratko, konkretno i prijateljski.',
         'Koristi alate za podatke o vrtu, gredicama, biljkama, radnjama i košarici. Ne pogađaj stanje vrta ako ga možeš dohvatiti alatom.',
+        'Ne zovi isti alat s istim argumentima više puta u jednom odgovoru. Nakon dohvaćanja podataka nastavi korisniku završnim odgovorom; ne završavaj razgovor samo na rezultatu alata.',
+        'Kada korisnik pita što treba napraviti ovaj tjedan, odgovori s naslovom "Plan za ovaj tjedan" i 3-6 prioriteta. Za svaki prioritet navedi zašto je važan, kada ga napraviti ako podaci imaju termin i koju Gredice radnju naručiti kada postoji odgovarajuća radnja.',
         'Korisnik nema nužno fizički pristup gredici. Kada preporuka traži rad na gredici, predloži naručivanje odgovarajuće radnje ili sijanja kroz dostupne alate.',
         'Ne tvrdi da je radnja, sijanje, izmjena košarice ili checkout izvršen dok alat ne potvrdi rezultat.',
         'Za kupnju, checkout, promjene košarice, sijanje, zakazivanje, otkazivanje i druge promjene prvo sažmi što želiš napraviti i koristi alat koji traži odobrenje korisnika.',
@@ -180,6 +182,13 @@ function systemPrompt(input: {
             ? `Trenutno polje u fokusu: ${(input.positionIndex + 1).toString()}.`
             : 'Trenutno polje nije zadano u sučelju.',
     ].join('\n');
+}
+
+function finalAnswerSystemPrompt(baseSystem: string) {
+    return [
+        baseSystem,
+        'Sada više ne koristi alate. Napiši završni odgovor korisniku iz već dohvaćenih podataka. Ako neki podatak nedostaje, reci to kratko i svejedno daj najbolji praktični plan iz dostupnog konteksta.',
+    ].join('\n\n');
 }
 
 async function mcpToken(userId: string, accountId: string) {
@@ -673,7 +682,17 @@ const app = new Hono<{ Variables: ChatVariables }>()
                         token,
                         userId: auth.userId,
                     }),
-                    stopWhen: stepCountIs(6),
+                    stopWhen: stepCountIs(8),
+                    prepareStep: ({ stepNumber }) => {
+                        if (stepNumber < 4) {
+                            return undefined;
+                        }
+
+                        return {
+                            system: finalAnswerSystemPrompt(promptInput.system),
+                            toolChoice: 'none',
+                        };
+                    },
                     maxOutputTokens,
                     providerOptions: {
                         gateway: {
