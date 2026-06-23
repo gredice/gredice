@@ -178,6 +178,7 @@ const automationKindIcons = {
 
 const automationModuleIcons = new Map<string, IconComponent>([
     [automationModuleKeys.triggerDomainEvent, Channel],
+    [automationModuleKeys.triggerSchedule, Calendar],
     [automationModuleKeys.triggerScheduleMonthly, Calendar],
     [automationModuleKeys.conditionEventDataEquals, CircleEqual],
     [automationModuleKeys.conditionOperationMatches, ListTodo],

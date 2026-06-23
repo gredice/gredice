@@ -8,6 +8,7 @@ import {
     automationModuleKeys,
     automationRunSteps,
     automationRuns,
+    automationScheduleEventType,
     claimDueAutomationRuns,
     completeAutomationRun,
     createAccount,
@@ -192,6 +193,38 @@ function monthlyLogAutomationGraph(): AutomationGraph {
                 position: { x: 280, y: 0 },
                 config: {
                     message: 'Quick automation test reached the log action.',
+                },
+            },
+        ],
+        edges: [
+            {
+                id: 'trigger-to-log',
+                source: 'trigger',
+                target: 'log',
+            },
+        ],
+    };
+}
+
+function scheduleLogAutomationGraph(
+    config: Record<string, unknown>,
+): AutomationGraph {
+    return {
+        nodes: [
+            {
+                id: 'trigger',
+                kind: 'trigger',
+                moduleKey: automationModuleKeys.triggerSchedule,
+                position: { x: 0, y: 0 },
+                config,
+            },
+            {
+                id: 'log',
+                kind: 'action',
+                moduleKey: automationModuleKeys.actionLog,
+                position: { x: 280, y: 0 },
+                config: {
+                    message: 'Schedule reached log action.',
                 },
             },
         ],
@@ -829,6 +862,197 @@ test('monthly schedule automation enqueues once per configured period', async ()
         });
     }
     await updateAutomationDefinition(definition.id, { status: 'disabled' });
+});
+
+test('daily schedule automation enqueues once per local day and executes', async () => {
+    createTestDb();
+    const definition = await createAutomationDefinition({
+        key: 'test.daily-schedule',
+        name: 'Daily schedule',
+        status: 'enabled',
+        graph: scheduleLogAutomationGraph({
+            frequency: 'daily',
+            timeZone: 'Europe/Zagreb',
+        }),
+    });
+
+    const firstResult = await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-06-23T08:00:00.000Z'),
+    });
+    const duplicateResult = await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-06-23T21:00:00.000Z'),
+    });
+    const nextDayResult = await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-06-24T08:00:00.000Z'),
+    });
+
+    assert.strictEqual(firstResult.enqueuedRuns, 1);
+    assert.strictEqual(duplicateResult.enqueuedRuns, 0);
+    assert.strictEqual(nextDayResult.enqueuedRuns, 1);
+
+    const runs = await listAutomationRuns({
+        automationDefinitionId: definition.id,
+    });
+    assert.strictEqual(runs.length, 2);
+    assert.ok(
+        runs.every(
+            (run) => run.sourceEventType === automationScheduleEventType,
+        ),
+    );
+    assert.deepStrictEqual(runs.map((run) => run.input.scheduleType).sort(), [
+        'daily',
+        'daily',
+    ]);
+
+    const processResult = await processDueAutomationRuns({
+        limit: 10,
+        lockedBy: 'automations-test',
+    });
+    assert.strictEqual(processResult.succeeded, 2);
+});
+
+test('weekly schedule automation supports selected weekdays', async () => {
+    createTestDb();
+    const definition = await createAutomationDefinition({
+        key: 'test.weekday-schedule',
+        name: 'Weekday schedule',
+        status: 'enabled',
+        graph: scheduleLogAutomationGraph({
+            frequency: 'weekly',
+            daysOfWeek: ['tuesday', 'friday'],
+            timeZone: 'Europe/Zagreb',
+        }),
+    });
+
+    const offDayResult = await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-06-22T08:00:00.000Z'),
+    });
+    const tuesdayResult = await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-06-23T08:00:00.000Z'),
+    });
+    const duplicateTuesdayResult = await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-06-23T09:00:00.000Z'),
+    });
+    const fridayResult = await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-06-26T08:00:00.000Z'),
+    });
+
+    assert.strictEqual(offDayResult.enqueuedRuns, 0);
+    assert.strictEqual(tuesdayResult.enqueuedRuns, 1);
+    assert.strictEqual(duplicateTuesdayResult.enqueuedRuns, 0);
+    assert.strictEqual(fridayResult.enqueuedRuns, 1);
+
+    const runs = await listAutomationRuns({
+        automationDefinitionId: definition.id,
+    });
+    assert.strictEqual(runs.length, 2);
+    assert.deepStrictEqual(
+        runs
+            .map((run) => run.input.dayOfWeek)
+            .filter((dayOfWeek) => typeof dayOfWeek === 'string')
+            .sort(),
+        ['friday', 'tuesday'],
+    );
+});
+
+test('biweekly schedule automation respects anchor week', async () => {
+    createTestDb();
+    const definition = await createAutomationDefinition({
+        key: 'test.biweekly-schedule',
+        name: 'Biweekly schedule',
+        status: 'enabled',
+        graph: scheduleLogAutomationGraph({
+            frequency: 'biweekly',
+            dayOfWeek: 'tuesday',
+            anchorDate: '2026-06-01',
+            timeZone: 'Europe/Zagreb',
+        }),
+    });
+
+    const firstWeekResult = await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-06-02T08:00:00.000Z'),
+    });
+    const skippedWeekResult = await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-06-09T08:00:00.000Z'),
+    });
+    const secondOccurrenceResult = await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-06-16T08:00:00.000Z'),
+    });
+    const duplicateSecondOccurrenceResult =
+        await enqueueAutomationRunsFromSchedules({
+            now: new Date('2026-06-16T09:00:00.000Z'),
+        });
+
+    assert.strictEqual(firstWeekResult.enqueuedRuns, 1);
+    assert.strictEqual(skippedWeekResult.enqueuedRuns, 0);
+    assert.strictEqual(secondOccurrenceResult.enqueuedRuns, 1);
+    assert.strictEqual(duplicateSecondOccurrenceResult.enqueuedRuns, 0);
+
+    const runs = await listAutomationRuns({
+        automationDefinitionId: definition.id,
+    });
+    assert.strictEqual(runs.length, 2);
+    assert.deepStrictEqual(
+        runs
+            .map((run) => run.input.weekOffset)
+            .filter((weekOffset) => typeof weekOffset === 'number')
+            .sort(),
+        [0, 2],
+    );
+});
+
+test('schedule trigger validates cadence config', () => {
+    const invalidTimeZone = validateAutomationGraph(
+        scheduleLogAutomationGraph({
+            frequency: 'daily',
+            timeZone: 'Not/AZone',
+        }),
+    );
+    assert.strictEqual(invalidTimeZone.ok, false);
+    assert.ok(
+        invalidTimeZone.errors.includes(
+            'timeZone must be a valid IANA time zone.',
+        ),
+    );
+
+    const invalidMonthlyDay = validateAutomationGraph(
+        scheduleLogAutomationGraph({
+            frequency: 'monthly',
+            dayOfMonth: 32,
+        }),
+    );
+    assert.strictEqual(invalidMonthlyDay.ok, false);
+    assert.ok(
+        invalidMonthlyDay.errors.includes(
+            'dayOfMonth must be an integer from 1 to 31.',
+        ),
+    );
+
+    const invalidWeekday = validateAutomationGraph(
+        scheduleLogAutomationGraph({
+            frequency: 'weekly',
+            daysOfWeek: ['noday'],
+        }),
+    );
+    assert.strictEqual(invalidWeekday.ok, false);
+    assert.ok(
+        invalidWeekday.errors.includes(
+            'daysOfWeek must contain valid weekdays.',
+        ),
+    );
+
+    const missingBiweeklyAnchor = validateAutomationGraph(
+        scheduleLogAutomationGraph({
+            frequency: 'biweekly',
+            dayOfWeek: 'tuesday',
+        }),
+    );
+    assert.strictEqual(missingBiweeklyAnchor.ok, false);
+    assert.ok(
+        missingBiweeklyAnchor.errors.includes(
+            'anchorDate must be a valid YYYY-MM-DD date.',
+        ),
+    );
 });
 
 test('monthly farm inventory automation creates accepted scheduled farm tasks', async () => {

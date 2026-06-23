@@ -101,7 +101,7 @@ export function AutomationTestPanel({
             ) : null}
             {triggerMode === 'schedule' ? (
                 <Typography level="body3" className="text-muted-foreground">
-                    Pokretanje će koristiti sintetičko mjesečno izvođenje.
+                    Pokretanje će koristiti sintetičku pojavu rasporeda.
                 </Typography>
             ) : null}
             {triggerMode === 'unsupported' ? (

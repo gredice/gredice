@@ -14,6 +14,9 @@ import {
     getAutomationDefinitionByKey,
     getAutomationRunById,
     getDomainEventById,
+    getScheduleTestOccurrence,
+    isAutomationScheduleEventType,
+    isScheduleTriggerModuleKey,
     listAutomationRunSteps,
     maxAutomationMaxConcurrentRuns,
     retryFailedAutomationRun,
@@ -179,13 +182,17 @@ function isAutomationKeyUniqueConstraintError(error: unknown) {
 
 const requiredFieldLabels: Record<string, string> = {
     dayOfMonth: 'Dan u mjesecu',
+    dayOfWeek: 'Dan u tjednu',
+    daysOfWeek: 'Dani u tjednu',
     entityId: 'ID entiteta radnje',
     eventType: 'Tip eventa',
+    frequency: 'Učestalost',
     minConfidence: 'Minimalna pouzdanost',
     operator: 'Operator',
     operations: 'Radnje',
     path: 'Putanja podataka',
     status: 'Status',
+    anchorDate: 'Referentni datum',
     targetSowingLocation: 'Ciljana lokacija sijanja',
     targetStatus: 'Ciljani status',
     timeZone: 'Vremenska zona',
@@ -209,6 +216,18 @@ function localizeAutomationValidationError(error: string) {
     }
     if (error === 'timeZone must be a valid IANA time zone.') {
         return 'Vremenska zona mora biti valjana IANA vremenska zona.';
+    }
+    if (error === 'frequency must be daily, weekly, biweekly, or monthly.') {
+        return 'Učestalost mora biti daily, weekly, biweekly ili monthly.';
+    }
+    if (error === 'daysOfWeek must contain valid weekdays.') {
+        return 'Dani u tjednu moraju sadržavati valjane dane.';
+    }
+    if (error === 'dayOfWeek or daysOfWeek is required for weekly schedules.') {
+        return 'Za tjedne rasporede unesite dan ili dane u tjednu.';
+    }
+    if (error === 'anchorDate must be a valid YYYY-MM-DD date.') {
+        return 'Referentni datum mora biti valjan datum u obliku YYYY-MM-DD.';
     }
     if (error === 'operations must be a non-empty JSON array.') {
         return 'Radnje moraju biti neprazan JSON niz.';
@@ -446,8 +465,9 @@ export async function runAutomationTestAction(
     const eventType = getTriggerEventType(definition.graph);
     const isDomainEventTrigger =
         triggerModuleKey === automationModuleKeys.triggerDomainEvent;
-    const isMonthlyScheduleTrigger =
-        triggerModuleKey === automationModuleKeys.triggerScheduleMonthly;
+    const isScheduleTrigger = triggerModuleKey
+        ? isScheduleTriggerModuleKey(triggerModuleKey)
+        : false;
 
     if (isDomainEventTrigger && !eventType) {
         return {
@@ -470,30 +490,24 @@ export async function runAutomationTestAction(
         let sourceEventType: string | null = eventType;
         let sourceAggregateId: string | null = null;
 
-        if (isMonthlyScheduleTrigger) {
+        if (isScheduleTrigger) {
             const now = new Date();
             const trigger = definition.graph.nodes.find(
                 (node) => node.kind === 'trigger',
             );
-            const dayOfMonth = trigger?.config.dayOfMonth;
-            const timeZone = trigger?.config.timeZone;
-            const occurrenceKey = `test:${definition.id}:${now.getTime()}`;
+            const occurrence = trigger
+                ? getScheduleTestOccurrence(trigger, now)
+                : null;
+            if (!occurrence) {
+                return {
+                    ok: false,
+                    errors: ['Okidač rasporeda nema valjanu konfiguraciju.'],
+                };
+            }
 
-            sourceEventType = 'automation.schedule.monthly';
-            sourceAggregateId = occurrenceKey;
-            input = {
-                scheduleType: 'monthly',
-                triggerModuleKey: automationModuleKeys.triggerScheduleMonthly,
-                occurrenceKey,
-                period: now.toISOString().slice(0, 7),
-                occurrenceDate: now.toISOString().slice(0, 10),
-                dayOfMonth: typeof dayOfMonth === 'number' ? dayOfMonth : null,
-                timeZone:
-                    typeof timeZone === 'string' && timeZone.trim().length > 0
-                        ? timeZone.trim()
-                        : 'Europe/Zagreb',
-                enqueuedAt: now.toISOString(),
-            };
+            sourceEventType = occurrence.eventType;
+            sourceAggregateId = occurrence.aggregateId;
+            input = occurrence.input;
         } else if (isDomainEventTrigger) {
             input = sourceEvent
                 ? {
@@ -612,10 +626,11 @@ async function runAutomationRunAgain({
         source: dryRun ? 'replay' : 'manual',
         sourceEvent,
         sourceEventType: originalRun.sourceEventType,
-        sourceAggregateId:
-            originalRun.sourceEventType === 'automation.schedule.monthly'
-                ? null
-                : originalRun.sourceAggregateId,
+        sourceAggregateId: isAutomationScheduleEventType(
+            originalRun.sourceEventType,
+        )
+            ? null
+            : originalRun.sourceAggregateId,
         parentRunId: originalRun.id,
         input: originalRun.input,
         dryRun,

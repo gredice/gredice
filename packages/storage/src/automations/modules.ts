@@ -36,6 +36,7 @@ import {
 } from './types';
 
 const domainEventTriggerKey = 'trigger.domainEvent';
+const scheduleTriggerKey = 'trigger.schedule';
 const scheduleMonthlyTriggerKey = 'trigger.scheduleMonthly';
 const eventDataEqualsConditionKey = 'condition.eventDataEquals';
 const operationMatchesConditionKey = 'condition.operationMatches';
@@ -52,12 +53,74 @@ const updateRaisedBedFieldPlantAttributesActionKey =
 const createPlantStatusRequestsFromImageAnalysisActionKey =
     'action.createPlantStatusRequestsFromImageAnalysis';
 const logActionKey = 'action.log';
-const monthlyScheduleEventType = 'automation.schedule.monthly';
+export const automationScheduleEventType = 'automation.schedule';
+const legacyMonthlyScheduleEventType = 'automation.schedule.monthly';
 const defaultScheduleTimeZone = 'Europe/Zagreb';
 const defaultImagePlantStatusReviewMinConfidence = 0.9;
+const defaultBiweeklyAnchorDate = '2026-01-05';
+const millisecondsPerDay = 24 * 60 * 60 * 1000;
+const millisecondsPerWeek = 7 * millisecondsPerDay;
+
+const scheduleFrequencyValues = [
+    'daily',
+    'weekly',
+    'biweekly',
+    'monthly',
+] as const;
+type ScheduleFrequency = (typeof scheduleFrequencyValues)[number];
+
+const weekDayValues = [
+    'monday',
+    'tuesday',
+    'wednesday',
+    'thursday',
+    'friday',
+    'saturday',
+    'sunday',
+] as const;
+type WeekDay = (typeof weekDayValues)[number];
+
+const jsDayToWeekDay = [
+    'sunday',
+    'monday',
+    'tuesday',
+    'wednesday',
+    'thursday',
+    'friday',
+    'saturday',
+] as const satisfies readonly WeekDay[];
+
+const weekDayAliases = new Map<string, WeekDay>([
+    ['mon', 'monday'],
+    ['monday', 'monday'],
+    ['1', 'monday'],
+    ['tue', 'tuesday'],
+    ['tues', 'tuesday'],
+    ['tuesday', 'tuesday'],
+    ['2', 'tuesday'],
+    ['wed', 'wednesday'],
+    ['wednesday', 'wednesday'],
+    ['3', 'wednesday'],
+    ['thu', 'thursday'],
+    ['thur', 'thursday'],
+    ['thurs', 'thursday'],
+    ['thursday', 'thursday'],
+    ['4', 'thursday'],
+    ['fri', 'friday'],
+    ['friday', 'friday'],
+    ['5', 'friday'],
+    ['sat', 'saturday'],
+    ['saturday', 'saturday'],
+    ['6', 'saturday'],
+    ['sun', 'sunday'],
+    ['sunday', 'sunday'],
+    ['0', 'sunday'],
+    ['7', 'sunday'],
+]);
 
 export const automationModuleKeys = {
     triggerDomainEvent: domainEventTriggerKey,
+    triggerSchedule: scheduleTriggerKey,
     triggerScheduleMonthly: scheduleMonthlyTriggerKey,
     conditionEventDataEquals: eventDataEqualsConditionKey,
     conditionOperationMatches: operationMatchesConditionKey,
@@ -74,6 +137,22 @@ export const automationModuleKeys = {
         createPlantStatusRequestsFromImageAnalysisActionKey,
     actionLog: logActionKey,
 } as const;
+
+export function isScheduleTriggerModuleKey(moduleKey: string) {
+    return (
+        moduleKey === scheduleTriggerKey ||
+        moduleKey === scheduleMonthlyTriggerKey
+    );
+}
+
+export function isAutomationScheduleEventType(
+    eventType: string | null | undefined,
+) {
+    return (
+        eventType === automationScheduleEventType ||
+        eventType === legacyMonthlyScheduleEventType
+    );
+}
 
 function getRecord(value: unknown): AutomationJsonObject {
     return value && typeof value === 'object' && !Array.isArray(value)
@@ -138,76 +217,305 @@ function getTimeZoneDateParts(date: Date, timeZone: string) {
     ) {
         throw new Error(`Unable to resolve date parts for ${timeZone}.`);
     }
+    const localDate = new Date(Date.UTC(year, month - 1, day));
+    const dayOfWeek = jsDayToWeekDay[localDate.getUTCDay()];
+    if (!dayOfWeek) {
+        throw new Error(`Unable to resolve day of week for ${timeZone}.`);
+    }
 
     return {
         year,
         month,
         day,
+        dayOfWeek,
         dateKey: `${parts.year}-${parts.month}-${parts.day}`,
         periodKey: `${parts.year}-${parts.month}`,
     };
 }
 
-function validateMonthlyScheduleConfig(config: AutomationJsonObject) {
-    const errors: string[] = [];
-    const dayOfMonth = getNumber(config, 'dayOfMonth');
-    const timeZone = getString(config, 'timeZone') ?? defaultScheduleTimeZone;
+function getScheduleFrequency(
+    config: AutomationJsonObject,
+    moduleKey = scheduleTriggerKey,
+): ScheduleFrequency | null {
+    if (moduleKey === scheduleMonthlyTriggerKey) {
+        return 'monthly';
+    }
 
+    const frequency = getString(config, 'frequency');
+    return scheduleFrequencyValues.find((value) => value === frequency) ?? null;
+}
+
+function parseWeekDay(value: unknown): WeekDay | null {
+    const key =
+        typeof value === 'number' && Number.isInteger(value)
+            ? value.toString()
+            : typeof value === 'string'
+              ? value.trim().toLowerCase()
+              : '';
+
+    return weekDayAliases.get(key) ?? null;
+}
+
+function weekDayLabel(day: WeekDay) {
+    return day.charAt(0).toUpperCase() + day.slice(1);
+}
+
+function getConfiguredWeekDays(config: AutomationJsonObject) {
+    const candidates: unknown[] = [];
+    const dayOfWeek = config.dayOfWeek;
+    const daysOfWeek = config.daysOfWeek;
+
+    if (dayOfWeek !== undefined) {
+        candidates.push(dayOfWeek);
+    }
+    if (Array.isArray(daysOfWeek)) {
+        candidates.push(...daysOfWeek);
+    } else if (typeof daysOfWeek === 'string') {
+        candidates.push(...daysOfWeek.split(','));
+    } else if (typeof daysOfWeek === 'number') {
+        candidates.push(daysOfWeek);
+    }
+
+    const days: WeekDay[] = [];
+    const invalidValues: string[] = [];
+    for (const candidate of candidates) {
+        const day = parseWeekDay(candidate);
+        if (!day) {
+            invalidValues.push(String(candidate));
+            continue;
+        }
+        if (!days.includes(day)) {
+            days.push(day);
+        }
+    }
+
+    return {
+        days,
+        invalidValues,
+    };
+}
+
+function parseLocalDateKey(value: string) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+    if (!match) {
+        return null;
+    }
+
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const date = new Date(Date.UTC(year, month - 1, day));
     if (
-        !Number.isInteger(dayOfMonth) ||
-        dayOfMonth === undefined ||
-        dayOfMonth < 1 ||
-        dayOfMonth > 31
+        date.getUTCFullYear() !== year ||
+        date.getUTCMonth() !== month - 1 ||
+        date.getUTCDate() !== day
     ) {
-        errors.push('dayOfMonth must be an integer from 1 to 31.');
+        return null;
+    }
+
+    return {
+        year,
+        month,
+        day,
+        dateKey: value.trim(),
+    };
+}
+
+function localDateUtcMs({
+    day,
+    month,
+    year,
+}: {
+    day: number;
+    month: number;
+    year: number;
+}) {
+    return Date.UTC(year, month - 1, day);
+}
+
+function localIsoWeekStartUtcMs(parts: {
+    day: number;
+    month: number;
+    year: number;
+}) {
+    const dateMs = localDateUtcMs(parts);
+    const dayOfWeek = new Date(dateMs).getUTCDay();
+    const daysSinceMonday = (dayOfWeek + 6) % 7;
+    return dateMs - daysSinceMonday * millisecondsPerDay;
+}
+
+function getBiweeklyWeekOffset(
+    parts: ReturnType<typeof getTimeZoneDateParts>,
+    anchorDate: string,
+) {
+    const anchorParts = parseLocalDateKey(anchorDate);
+    if (!anchorParts) {
+        return null;
+    }
+
+    return Math.floor(
+        (localIsoWeekStartUtcMs(parts) - localIsoWeekStartUtcMs(anchorParts)) /
+            millisecondsPerWeek,
+    );
+}
+
+function validateScheduleConfigForModule(
+    config: AutomationJsonObject,
+    moduleKey = scheduleTriggerKey,
+) {
+    const errors: string[] = [];
+    const timeZone = getString(config, 'timeZone') ?? defaultScheduleTimeZone;
+    const frequency = getScheduleFrequency(config, moduleKey);
+
+    if (!frequency) {
+        errors.push('frequency must be daily, weekly, biweekly, or monthly.');
     }
 
     if (!isValidTimeZone(timeZone)) {
         errors.push('timeZone must be a valid IANA time zone.');
     }
 
+    if (frequency === 'monthly') {
+        const dayOfMonth = getNumber(config, 'dayOfMonth');
+        if (
+            !Number.isInteger(dayOfMonth) ||
+            dayOfMonth === undefined ||
+            dayOfMonth < 1 ||
+            dayOfMonth > 31
+        ) {
+            errors.push('dayOfMonth must be an integer from 1 to 31.');
+        }
+    }
+
+    if (frequency === 'weekly' || frequency === 'biweekly') {
+        const { days, invalidValues } = getConfiguredWeekDays(config);
+        if (invalidValues.length > 0) {
+            errors.push('daysOfWeek must contain valid weekdays.');
+        }
+        if (days.length === 0) {
+            errors.push(
+                'dayOfWeek or daysOfWeek is required for weekly schedules.',
+            );
+        }
+    }
+
+    if (frequency === 'biweekly') {
+        const anchorDate = getString(config, 'anchorDate');
+        if (!anchorDate || !parseLocalDateKey(anchorDate)) {
+            errors.push('anchorDate must be a valid YYYY-MM-DD date.');
+        }
+    }
+
     return errors;
+}
+
+function buildScheduleOccurrence(
+    node: AutomationGraphNode,
+    {
+        enforceDue,
+        now,
+    }: {
+        enforceDue: boolean;
+        now: Date;
+    },
+) {
+    const frequency = getScheduleFrequency(node.config, node.moduleKey);
+    const timeZone =
+        getString(node.config, 'timeZone') ?? defaultScheduleTimeZone;
+
+    if (
+        !frequency ||
+        validateScheduleConfigForModule(node.config, node.moduleKey).length > 0
+    ) {
+        return null;
+    }
+
+    const parts = getTimeZoneDateParts(now, timeZone);
+    const input: AutomationJsonObject = {
+        scheduleType: frequency,
+        frequency,
+        triggerModuleKey: node.moduleKey,
+        occurrenceDate: parts.dateKey,
+        timeZone,
+        enqueuedAt: now.toISOString(),
+    };
+    let occurrenceKey: string | null = null;
+
+    if (frequency === 'daily') {
+        occurrenceKey = `${node.moduleKey}:${timeZone}:daily:${parts.dateKey}`;
+    } else if (frequency === 'monthly') {
+        const dayOfMonth = getNumber(node.config, 'dayOfMonth');
+        if (!dayOfMonth || (enforceDue && parts.day !== dayOfMonth)) {
+            return null;
+        }
+        occurrenceKey =
+            node.moduleKey === scheduleMonthlyTriggerKey
+                ? `${scheduleMonthlyTriggerKey}:${timeZone}:${parts.periodKey}:day-${dayOfMonth}`
+                : `${node.moduleKey}:${timeZone}:monthly:${parts.periodKey}:day-${dayOfMonth}`;
+        input.period = parts.periodKey;
+        input.dayOfMonth = dayOfMonth;
+    } else {
+        const { days } = getConfiguredWeekDays(node.config);
+        if (enforceDue && !days.includes(parts.dayOfWeek)) {
+            return null;
+        }
+
+        if (frequency === 'biweekly') {
+            const anchorDate = getString(node.config, 'anchorDate');
+            if (!anchorDate) {
+                return null;
+            }
+            const weekOffset = getBiweeklyWeekOffset(parts, anchorDate);
+            if (
+                weekOffset === null ||
+                weekOffset < 0 ||
+                (enforceDue && weekOffset % 2 !== 0)
+            ) {
+                return null;
+            }
+            input.intervalWeeks = 2;
+            input.anchorDate = anchorDate;
+            input.weekOffset = weekOffset;
+        } else {
+            input.intervalWeeks = 1;
+        }
+
+        occurrenceKey = `${node.moduleKey}:${timeZone}:${frequency}:${parts.dateKey}:${parts.dayOfWeek}`;
+        input.dayOfWeek = parts.dayOfWeek;
+        input.daysOfWeek = days;
+    }
+
+    if (!occurrenceKey) {
+        return null;
+    }
+    input.occurrenceKey = occurrenceKey;
+
+    return {
+        eventType: automationScheduleEventType,
+        aggregateId: occurrenceKey,
+        input,
+    };
+}
+
+export function getScheduleOccurrence(
+    node: AutomationGraphNode,
+    now = new Date(),
+) {
+    return buildScheduleOccurrence(node, { enforceDue: true, now });
+}
+
+export function getScheduleTestOccurrence(
+    node: AutomationGraphNode,
+    now = new Date(),
+) {
+    return buildScheduleOccurrence(node, { enforceDue: false, now });
 }
 
 export function getMonthlyScheduleOccurrence(
     node: AutomationGraphNode,
     now = new Date(),
 ) {
-    const dayOfMonth = getNumber(node.config, 'dayOfMonth');
-    const timeZone =
-        getString(node.config, 'timeZone') ?? defaultScheduleTimeZone;
-
-    if (
-        !Number.isInteger(dayOfMonth) ||
-        dayOfMonth === undefined ||
-        dayOfMonth < 1 ||
-        dayOfMonth > 31 ||
-        !isValidTimeZone(timeZone)
-    ) {
-        return null;
-    }
-
-    const parts = getTimeZoneDateParts(now, timeZone);
-    if (parts.day !== dayOfMonth) {
-        return null;
-    }
-
-    const occurrenceKey = `${scheduleMonthlyTriggerKey}:${timeZone}:${parts.periodKey}:day-${dayOfMonth}`;
-
-    return {
-        eventType: monthlyScheduleEventType,
-        aggregateId: occurrenceKey,
-        input: {
-            scheduleType: 'monthly',
-            triggerModuleKey: scheduleMonthlyTriggerKey,
-            occurrenceKey,
-            period: parts.periodKey,
-            occurrenceDate: parts.dateKey,
-            dayOfMonth,
-            timeZone,
-            enqueuedAt: now.toISOString(),
-        } satisfies AutomationJsonObject,
-    };
+    return getScheduleOccurrence(node, now);
 }
 
 type FarmInventoryOperationConfig = {
@@ -529,6 +837,131 @@ const triggerDomainEventModule: AutomationModule = {
     },
 };
 
+function scheduleConfigFields() {
+    return [
+        {
+            key: 'frequency',
+            label: 'Frequency',
+            type: 'select',
+            required: true,
+            options: [
+                { value: 'daily', label: 'Daily' },
+                { value: 'weekly', label: 'Weekly' },
+                { value: 'biweekly', label: 'Biweekly' },
+                { value: 'monthly', label: 'Monthly' },
+            ],
+        },
+        {
+            key: 'dayOfWeek',
+            label: 'Day of week',
+            type: 'select',
+            required: false,
+            options: weekDayValues.map((day) => ({
+                value: day,
+                label: weekDayLabel(day),
+            })),
+            description:
+                'For weekly or biweekly schedules. Use daysOfWeek for multiple selected weekdays.',
+        },
+        {
+            key: 'daysOfWeek',
+            label: 'Days of week',
+            type: 'json',
+            required: false,
+            description:
+                'Optional JSON array for weekly or biweekly schedules, for example ["tuesday", "friday"].',
+        },
+        {
+            key: 'anchorDate',
+            label: 'Biweekly anchor date',
+            type: 'string',
+            required: false,
+            placeholder: defaultBiweeklyAnchorDate,
+            description:
+                'Required for biweekly schedules. Weeks are counted from this local YYYY-MM-DD date.',
+        },
+        {
+            key: 'dayOfMonth',
+            label: 'Day of month',
+            type: 'number',
+            required: false,
+            placeholder: '1',
+            description: 'Required for monthly schedules.',
+        },
+        {
+            key: 'timeZone',
+            label: 'Time zone',
+            type: 'string',
+            required: false,
+            placeholder: defaultScheduleTimeZone,
+        },
+    ] satisfies AutomationModuleMetadata['configFields'];
+}
+
+function executeScheduleTrigger(
+    context: Parameters<AutomationModule['execute']>[0],
+    node: AutomationGraphNode,
+) {
+    const input = context.run.input;
+    const frequency = getScheduleFrequency(node.config, node.moduleKey);
+    const scheduleType = input.scheduleType;
+    const triggerModuleKey = input.triggerModuleKey;
+    const occurrenceKey = input.occurrenceKey;
+
+    if (
+        !frequency ||
+        scheduleType !== frequency ||
+        triggerModuleKey !== node.moduleKey ||
+        typeof occurrenceKey !== 'string'
+    ) {
+        return skip('Automation run is not a matching schedule occurrence.');
+    }
+
+    return success({
+        occurrenceKey,
+        frequency,
+        scheduleType,
+        period: typeof input.period === 'string' ? input.period : null,
+        occurrenceDate:
+            typeof input.occurrenceDate === 'string'
+                ? input.occurrenceDate
+                : null,
+        dayOfMonth:
+            typeof input.dayOfMonth === 'number' ? input.dayOfMonth : null,
+        dayOfWeek: typeof input.dayOfWeek === 'string' ? input.dayOfWeek : null,
+        daysOfWeek: Array.isArray(input.daysOfWeek) ? input.daysOfWeek : [],
+        intervalWeeks:
+            typeof input.intervalWeeks === 'number'
+                ? input.intervalWeeks
+                : null,
+        anchorDate:
+            typeof input.anchorDate === 'string' ? input.anchorDate : null,
+        timeZone:
+            typeof input.timeZone === 'string'
+                ? input.timeZone
+                : defaultScheduleTimeZone,
+    });
+}
+
+const triggerScheduleModule: AutomationModule = {
+    key: scheduleTriggerKey,
+    kind: 'trigger',
+    title: 'Schedule',
+    description:
+        'Starts an automation from a daily, weekly, biweekly, or monthly schedule.',
+    category: 'Schedules',
+    configFields: scheduleConfigFields(),
+    inputDescription:
+        'A scheduled occurrence generated by the automation runner.',
+    outputDescription: 'The occurrence key and configured local date.',
+    dryRunSupported: true,
+    mutatesData: false,
+    retryable: false,
+    validateConfig: (config) =>
+        validateScheduleConfigForModule(config, scheduleTriggerKey),
+    execute: async (context, node) => executeScheduleTrigger(context, node),
+};
+
 const triggerScheduleMonthlyModule: AutomationModule = {
     key: scheduleMonthlyTriggerKey,
     kind: 'trigger',
@@ -558,36 +991,9 @@ const triggerScheduleMonthlyModule: AutomationModule = {
     dryRunSupported: true,
     mutatesData: false,
     retryable: false,
-    validateConfig: validateMonthlyScheduleConfig,
-    execute: async (context, node) => {
-        const input = context.run.input;
-        const scheduleType = input.scheduleType;
-        const triggerModuleKey = input.triggerModuleKey;
-        const occurrenceKey = input.occurrenceKey;
-
-        if (
-            scheduleType !== 'monthly' ||
-            triggerModuleKey !== scheduleMonthlyTriggerKey ||
-            typeof occurrenceKey !== 'string'
-        ) {
-            return skip('Automation run is not a monthly schedule occurrence.');
-        }
-
-        const dayOfMonth = getNumber(node.config, 'dayOfMonth');
-        const timeZone =
-            getString(node.config, 'timeZone') ?? defaultScheduleTimeZone;
-
-        return success({
-            occurrenceKey,
-            period: typeof input.period === 'string' ? input.period : null,
-            occurrenceDate:
-                typeof input.occurrenceDate === 'string'
-                    ? input.occurrenceDate
-                    : null,
-            dayOfMonth: dayOfMonth ?? null,
-            timeZone,
-        });
-    },
+    validateConfig: (config) =>
+        validateScheduleConfigForModule(config, scheduleMonthlyTriggerKey),
+    execute: async (context, node) => executeScheduleTrigger(context, node),
 };
 
 const eventDataEqualsConditionModule: AutomationModule = {
@@ -1525,6 +1931,7 @@ const logActionModule: AutomationModule = {
 
 export const automationModules = [
     triggerDomainEventModule,
+    triggerScheduleModule,
     triggerScheduleMonthlyModule,
     eventDataEqualsConditionModule,
     operationMatchesConditionModule,
