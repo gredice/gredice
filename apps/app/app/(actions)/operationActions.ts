@@ -33,6 +33,7 @@ import { revalidatePath } from 'next/cache';
 import type { EntityStandardized } from '../../lib/@types/EntityStandardized';
 import { auth } from '../../lib/auth/auth';
 import { KnownPages } from '../../src/KnownPages';
+import { operationDefinitionMatchesTargetScope } from '../admin/operations/operationScope';
 
 const MAX_COMPLETION_NOTES_LENGTH = 2000;
 
@@ -514,6 +515,16 @@ export async function switchOperationEntityAction(
         );
 
         const operation = await getOperationById(operationId);
+        if (
+            operation.entityId === entityId &&
+            operation.entityTypeName === 'operation'
+        ) {
+            return {
+                success: true,
+                message: 'Odabrana radnja je već postavljena.',
+            };
+        }
+
         const availableOperations =
             await getEntitiesFormatted<EntityStandardized>('operation');
         const replacementOperation = availableOperations.find(
@@ -525,13 +536,14 @@ export async function switchOperationEntityAction(
         }
 
         if (
-            operation.entityId === entityId &&
-            operation.entityTypeName === 'operation'
+            !operationDefinitionMatchesTargetScope(
+                operation,
+                replacementOperation,
+            )
         ) {
-            return {
-                success: true,
-                message: 'Odabrana radnja je već postavljena.',
-            };
+            throw new Error(
+                'Odabrana radnja nije kompatibilna s lokacijom postojeće radnje.',
+            );
         }
 
         await switchOperationEntity(operationId, {

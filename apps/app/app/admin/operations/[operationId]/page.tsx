@@ -47,6 +47,7 @@ import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
 import { AcceptOperationModal } from '../../schedule/AcceptOperationModal';
 import { VerifyOperationModal } from '../../schedule/VerifyOperationModal';
+import { operationDefinitionMatchesTargetScope } from '../operationScope';
 
 export const dynamic = 'force-dynamic';
 
@@ -181,13 +182,17 @@ export default async function OperationDetailsPage({
         (op) => op.id === operation.entityId,
     );
     const publishedOperationOptions =
-        operationsData?.map((op) => ({
-            id: op.id,
-            label:
-                op.information?.label ??
-                op.information?.name ??
-                `Radnja ${op.id}`,
-        })) ?? [];
+        operationsData
+            ?.filter((op) =>
+                operationDefinitionMatchesTargetScope(operation, op),
+            )
+            .map((op) => ({
+                id: op.id,
+                label:
+                    op.information?.label ??
+                    op.information?.name ??
+                    `Radnja ${op.id}`,
+            })) ?? [];
     const accountUsers = account?.accountUsers
         .map((au) => au.user.displayName ?? au.user.userName)
         .join(', ');
