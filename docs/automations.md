@@ -15,7 +15,10 @@ watering scheduled on those days. Verifying the `Uklanjanje biljke` operation
 marks the targeted raised-bed field plant status as `removed`, which closes the
 plant cycle and frees the field for future planting. Plant field changes are
 available as configurable action modules so new operation-driven plant-state
-automations can be created from the admin graph editor without adding code.
+automations can be created from the admin graph editor without adding code. A
+managed weekly schedule also creates `Fotografiranje gredice` operations every
+Tuesday and Friday for active raised beds, reusing the existing operation
+completion image flow and `photographyUpdate` visual reward handling.
 
 ## Ownership
 
@@ -129,6 +132,11 @@ MVP modules:
   has active published non-expired offers with remaining quantity. Outlet offers
   are not farm-scoped in storage, so active outlet stock makes every active farm
   eligible for the daily care operation.
+- `action.createRaisedBedOperations`: creates accepted, scheduled raised-bed
+  operations for every active, non-deleted raised bed from a single operation
+  entity config. It targets `raisedBedId` without `raisedBedFieldId`, skips
+  inactive, deleted, and abandoned raised beds, and reports `recipientCount`,
+  `projectedCreateCount`, and `skippedExistingCount` during dry runs.
 - `action.updateRaisedBedFieldPlantAttributes`: writes plant status and/or
   sowing location events for the operation target field. Use this for new
   no-code plant-state automations.
@@ -155,6 +163,14 @@ trigger can flow into one `condition.operationMatches` node and then fan out to
 separate plant-attribute, watering, notification, or operation-creation actions.
 The executor records those sibling actions as separate steps; actions should
 remain idempotent because replays and retries can run the same graph again.
+
+The managed raised-bed photo automation uses `trigger.schedule` with
+`daysOfWeek: ["tuesday", "friday"]` in the `Europe/Zagreb` time zone and
+`action.createRaisedBedOperations` with operation entity `301`
+(`raisedBedFullPhoto`, label `Fotografiranje gredice`). Duplicate prevention is
+scoped to the raised bed, operation entity, and weekday occurrence date; existing
+non-canceled/non-failed operations for the same day are counted as existing
+skips.
 
 ## Graph Validation
 

@@ -868,6 +868,66 @@ export async function getFarmAcceptedOperationsByScheduleRange({
     return getOperationsByIds(operationIds);
 }
 
+export async function getRaisedBedOperationsByScheduleRange({
+    raisedBedIds,
+    from,
+    to,
+}: {
+    raisedBedIds: number[];
+    from: Date;
+    to: Date;
+}) {
+    const uniqueRaisedBedIds = Array.from(new Set(raisedBedIds));
+    if (uniqueRaisedBedIds.length === 0) {
+        return [];
+    }
+
+    const scheduledDateExpression = sql<string>`${events.data} ->> 'scheduledDate'`;
+    const scheduledRows = await storage()
+        .selectDistinct({ id: operations.id })
+        .from(operations)
+        .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
+        .leftJoin(gardens, eq(gardens.id, operationGardenIdExpression()))
+        .innerJoin(
+            events,
+            and(
+                sql`${events.aggregateId} = cast(${operations.id} as text)`,
+                eq(events.type, knownEventTypes.operations.schedule),
+            ),
+        )
+        .where(
+            and(
+                inArray(operations.raisedBedId, uniqueRaisedBedIds),
+                eq(operations.isDeleted, false),
+                operationLocationIntegrityWhere(),
+                gte(scheduledDateExpression, from.toISOString()),
+                lte(scheduledDateExpression, to.toISOString()),
+            ),
+        );
+    const timestampRows = await storage()
+        .selectDistinct({ id: operations.id })
+        .from(operations)
+        .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
+        .leftJoin(gardens, eq(gardens.id, operationGardenIdExpression()))
+        .where(
+            and(
+                inArray(operations.raisedBedId, uniqueRaisedBedIds),
+                eq(operations.isDeleted, false),
+                operationLocationIntegrityWhere(),
+                gte(operations.timestamp, from),
+                lte(operations.timestamp, to),
+            ),
+        );
+    const operationIds = Array.from(
+        new Set([
+            ...scheduledRows.map((row) => row.id),
+            ...timestampRows.map((row) => row.id),
+        ]),
+    );
+
+    return getOperationsByIds(operationIds);
+}
+
 export async function getFarmUserAcceptedOperationById(
     userId: string,
     id: number,

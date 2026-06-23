@@ -1,5 +1,14 @@
 import 'server-only';
-import { and, asc, count, eq, inArray, isNull, or } from 'drizzle-orm';
+import {
+    and,
+    asc,
+    count,
+    eq,
+    inArray,
+    isNotNull,
+    isNull,
+    or,
+} from 'drizzle-orm';
 import { storage } from '..';
 import {
     bustScheduleCache,
@@ -190,6 +199,39 @@ export async function getRaisedBedMetadataByIds(raisedBedIds: number[]) {
             ),
         )
         .orderBy(asc(raisedBeds.id));
+}
+
+export async function listActiveRaisedBedOperationTargets() {
+    const rows = await storage()
+        .select({
+            id: raisedBeds.id,
+            accountId: raisedBeds.accountId,
+            gardenId: raisedBeds.gardenId,
+        })
+        .from(raisedBeds)
+        .innerJoin(gardens, eq(gardens.id, raisedBeds.gardenId))
+        .where(
+            and(
+                eq(raisedBeds.status, 'active'),
+                eq(raisedBeds.isDeleted, false),
+                eq(gardens.isDeleted, false),
+                isNotNull(raisedBeds.accountId),
+                isNotNull(raisedBeds.gardenId),
+            ),
+        )
+        .orderBy(asc(raisedBeds.id));
+
+    return rows.flatMap((row) =>
+        row.accountId && row.gardenId
+            ? [
+                  {
+                      id: row.id,
+                      accountId: row.accountId,
+                      gardenId: row.gardenId,
+                  },
+              ]
+            : [],
+    );
 }
 
 async function getRaisedBedWeedStatesByIds(raisedBedIds: number[]) {
