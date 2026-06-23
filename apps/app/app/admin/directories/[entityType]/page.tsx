@@ -96,6 +96,8 @@ export default async function EntitiesPage({
     const relatedInventoryItems =
         shouldUseRelatedInventory && relatedInventoryConfig
             ? aggregateRelatedInventoryItems({
+                  defaultLowCountThreshold:
+                      relatedInventoryConfig.lowCountThreshold,
                   sourceAttributeDefinitionId:
                       inventorySourceAttributeDefinition.id,
                   sourceEntities: await getEntitiesRaw(
@@ -110,9 +112,7 @@ export default async function EntitiesPage({
         ? directInventoryItems
         : relatedInventoryItems;
     const inventoryLowCountThreshold =
-        inventoryConfig?.lowCountThreshold ??
-        relatedInventoryConfig?.lowCountThreshold ??
-        null;
+        inventoryConfig?.lowCountThreshold ?? null;
     const inventoryLinkConfig = inventoryConfig ?? relatedInventoryConfig;
     const showInventoryColumn = Boolean(
         inventoryConfig ?? relatedInventoryConfig,

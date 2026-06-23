@@ -32,10 +32,12 @@ function addThreshold(current: number | null, next: number | null | undefined) {
 }
 
 export function aggregateRelatedInventoryItems({
+    defaultLowCountThreshold,
     sourceAttributeDefinitionId,
     sourceEntities,
     inventoryItems,
 }: {
+    defaultLowCountThreshold?: number | null;
     sourceAttributeDefinitionId: number;
     sourceEntities: Entity[];
     inventoryItems: Pick<
@@ -84,7 +86,7 @@ export function aggregateRelatedInventoryItems({
             quantity: current.quantity + item.quantity,
             lowCountThreshold: addThreshold(
                 current.lowCountThreshold,
-                item.lowCountThreshold,
+                item.lowCountThreshold ?? defaultLowCountThreshold,
             ),
         });
     }

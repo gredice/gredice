@@ -75,3 +75,40 @@ test('aggregateRelatedInventoryItems rolls child inventory up to parent entities
         ],
     );
 });
+
+test('aggregateRelatedInventoryItems applies the default threshold per child item', () => {
+    const aggregated = aggregateRelatedInventoryItems({
+        defaultLowCountThreshold: 5,
+        sourceAttributeDefinitionId: plantSortAttributeDefinitionId,
+        sourceEntities: [
+            sourceEntity(10, '100'),
+            sourceEntity(11, '100'),
+            sourceEntity(12, '100'),
+            sourceEntity(13, '200'),
+        ],
+        inventoryItems: [
+            inventoryItem(10, 4),
+            inventoryItem(11, 4, null),
+            inventoryItem(12, 3, 2),
+            inventoryItem(13, 7),
+        ],
+    });
+
+    assert.deepEqual(
+        aggregated.sort(
+            (left, right) => (left.entityId ?? 0) - (right.entityId ?? 0),
+        ),
+        [
+            {
+                entityId: 100,
+                quantity: 11,
+                lowCountThreshold: 12,
+            },
+            {
+                entityId: 200,
+                quantity: 7,
+                lowCountThreshold: 5,
+            },
+        ],
+    );
+});
