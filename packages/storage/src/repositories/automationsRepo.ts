@@ -44,10 +44,14 @@ export type AutomationDefinitionInput = {
     metadata?: AutomationJsonObject;
     createdByUserId?: string | null;
     updatedByUserId?: string | null;
+    preserveExistingStatus?: boolean;
 };
 
 export type AutomationDefinitionUpdate = Partial<
-    Omit<AutomationDefinitionInput, 'key' | 'createdByUserId'>
+    Omit<
+        AutomationDefinitionInput,
+        'key' | 'createdByUserId' | 'preserveExistingStatus'
+    >
 > & {
     key?: string;
 };
@@ -208,7 +212,9 @@ export async function upsertAutomationDefinitionByKey(
             set: {
                 name: values.name,
                 description: values.description,
-                status: values.status,
+                ...(input.preserveExistingStatus
+                    ? {}
+                    : { status: values.status }),
                 ...(input.maxConcurrentRuns !== undefined
                     ? { maxConcurrentRuns: values.maxConcurrentRuns }
                     : {}),
