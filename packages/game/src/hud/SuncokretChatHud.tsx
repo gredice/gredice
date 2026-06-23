@@ -147,11 +147,24 @@ function isToolApprovalRequested(part: Record<string, unknown>) {
 }
 
 function isToolCompleteState(state: string) {
-    return state === 'output-available' || state === 'result';
+    return (
+        state === 'output-available' ||
+        state === 'result' ||
+        state === 'approval-responded' ||
+        state === 'output-denied'
+    );
 }
 
 function isToolErrorState(state: string) {
     return state === 'output-error' || state === 'error';
+}
+
+function isToolDeniedState(state: string) {
+    return state === 'output-denied';
+}
+
+function isToolApprovalRespondedState(state: string) {
+    return state === 'approval-responded';
 }
 
 function isToolRunningState(state: string) {
@@ -352,6 +365,18 @@ function toolActivitySummary({
         return 'Dio podataka nije dostupan. Suncokret nastavlja s onim što ima.';
     }
 
+    const deniedPart = parts.find((part) => isToolDeniedState(toolState(part)));
+    if (deniedPart) {
+        return 'Radnja je otkazana.';
+    }
+
+    const approvalRespondedPart = parts.find((part) =>
+        isToolApprovalRespondedState(toolState(part)),
+    );
+    if (approvalRespondedPart) {
+        return 'Potvrda je zabilježena.';
+    }
+
     const runningPart = parts.find((part) =>
         isToolRunningState(toolState(part)),
     );
@@ -402,6 +427,12 @@ function ChatMessage({
     );
     const hasRunningTool = passiveToolParts.some((part) =>
         isToolRunningState(toolState(part)),
+    );
+    const hasDeniedTool = passiveToolParts.some((part) =>
+        isToolDeniedState(toolState(part)),
+    );
+    const hasApprovalRespondedTool = passiveToolParts.some((part) =>
+        isToolApprovalRespondedState(toolState(part)),
     );
 
     return (
@@ -472,7 +503,10 @@ function ChatMessage({
                     >
                         {hasToolError ? (
                             <Warning className="size-3.5 shrink-0" />
-                        ) : hasRunningTool || isStreaming ? (
+                        ) : hasDeniedTool ? (
+                            <Close className="size-3.5 shrink-0" />
+                        ) : hasRunningTool ||
+                          (isStreaming && !hasApprovalRespondedTool) ? (
                             <LoaderSpinner className="size-3.5 shrink-0 animate-spin" />
                         ) : (
                             <AI className="size-3.5 shrink-0" />
