@@ -16,25 +16,40 @@ import {
 import { and, desc, gte, inArray } from 'drizzle-orm';
 
 export type FarmerDocumentationChangeType = 'insert' | 'replace' | 'discard';
-export type FarmerDocumentationEntityTypeName = 'operation' | 'plantSort';
+export type FarmerDocumentationEntityTypeName =
+    | 'operation'
+    | 'plant'
+    | 'plantSort';
+export type FarmerDocumentationPageEntityTypeName = 'operation' | 'plant';
+export type FarmerDocumentationPackageContent = 'all' | 'operations' | 'plants';
 
 export type FarmerDocumentationAttribute = {
     label: string;
     value: string;
 };
 
+export type FarmerDocumentationSectionLayout = 'compactAttributes';
+
 export type FarmerDocumentationSection = {
     title: string;
     lines: string[];
+    layout?: FarmerDocumentationSectionLayout;
+    attributes?: FarmerDocumentationAttribute[];
+};
+
+export type FarmerDocumentationImage = {
+    label: string;
+    url: string;
 };
 
 export type FarmerDocumentationPage = {
     id: number;
-    entityTypeName: FarmerDocumentationEntityTypeName;
+    entityTypeName: FarmerDocumentationPageEntityTypeName;
     documentTypeLabel: string;
     code: string;
     label: string;
     appPath: string;
+    images: FarmerDocumentationImage[];
     summaryRows: FarmerDocumentationAttribute[];
     sections: FarmerDocumentationSection[];
     changedAt: Date | null;
@@ -46,8 +61,8 @@ export type FarmerDocumentationOperation = FarmerDocumentationPage & {
     entityTypeName: 'operation';
 };
 
-export type FarmerDocumentationPlantSort = FarmerDocumentationPage & {
-    entityTypeName: 'plantSort';
+export type FarmerDocumentationPlant = FarmerDocumentationPage & {
+    entityTypeName: 'plant';
 };
 
 export type FarmerDocumentationDiscard = {
@@ -64,12 +79,14 @@ export type FarmerDocumentationPackage = {
     since: Date | null;
     generatedAt: Date;
     totalOperations: number;
+    totalPlants: number;
     totalPlantSorts: number;
     currentOperations: FarmerDocumentationOperation[];
-    currentPlantSorts: FarmerDocumentationPlantSort[];
+    currentPlants: FarmerDocumentationPlant[];
     includedOperations: FarmerDocumentationOperation[];
-    includedPlantSorts: FarmerDocumentationPlantSort[];
+    includedPlants: FarmerDocumentationPlant[];
     discardedOperations: FarmerDocumentationDiscard[];
+    discardedPlants: FarmerDocumentationDiscard[];
     discardedPlantSorts: FarmerDocumentationDiscard[];
 };
 
@@ -90,6 +107,7 @@ export type FarmerDocumentationRevision = Pick<
 
 const documentationEntityTypeNames: FarmerDocumentationEntityTypeName[] = [
     'operation',
+    'plant',
     'plantSort',
 ];
 
@@ -108,6 +126,12 @@ const documentationEntityConfig: Record<
         fallbackLabel: 'Radnja',
         noun: 'radnja',
     },
+    plant: {
+        codePrefix: 'PL',
+        documentTypeLabel: 'Biljka',
+        fallbackLabel: 'Biljka',
+        noun: 'biljka',
+    },
     plantSort: {
         codePrefix: 'PS',
         documentTypeLabel: 'Sorta',
@@ -119,7 +143,7 @@ const documentationEntityConfig: Record<
 const operationAttributeLabels: Record<string, string> = {
     application: 'Primjena',
     deliverable: 'Isporuka',
-    frequency: 'Ucestalost',
+    frequency: 'Učestalost',
     internal: 'Interno',
     printLabel: 'Ispis etikete',
     relativeDays: 'Relativni dani',
@@ -135,7 +159,7 @@ const operationAttributeValueLabels: Record<string, Record<string, string>> = {
     frequency: {
         once: 'Jednom',
         optional: 'Po potrebi',
-        recurring: 'Ponavljajuce',
+        recurring: 'Ponavljajuće',
         required: 'Obavezno',
     },
 };
@@ -146,9 +170,9 @@ const reproductionTypeLabels: Record<string, string> = {
 };
 
 const monthNames = [
-    'sijecanj',
-    'veljaca',
-    'ozujak',
+    'siječanj',
+    'veljača',
+    'ožujak',
     'travanj',
     'svibanj',
     'lipanj',
@@ -166,18 +190,22 @@ const plantSortTextFields = [
     { key: 'sowing', title: 'Sjetva' },
     { key: 'planting', title: 'Sadnja' },
     { key: 'growth', title: 'Rast' },
-    { key: 'maintenance', title: 'Odrzavanje' },
+    { key: 'maintenance', title: 'Održavanje' },
     { key: 'watering', title: 'Zalijevanje' },
     { key: 'flowering', title: 'Cvatnja' },
     { key: 'harvest', title: 'Berba' },
-    { key: 'storage', title: 'Cuvanje' },
+    { key: 'storage', title: 'Čuvanje' },
     { key: 'origin', title: 'Podrijetlo' },
 ];
+
+const plantTextFields = plantSortTextFields.filter(
+    ({ key }) => key !== 'origin',
+);
 
 const calendarDetails = [
     { key: 'propagating', title: 'Sjetva u zatvorenom' },
     { key: 'sowing', title: 'Sjetva na otvorenom' },
-    { key: 'planting', title: 'Presadivanje' },
+    { key: 'planting', title: 'Presađivanje' },
     { key: 'harvest', title: 'Berba' },
 ];
 
@@ -243,31 +271,73 @@ export function documentationChangeLabel(type: FarmerDocumentationChangeType) {
     }
 }
 
+export function parseDocumentationPackageContent(
+    value: string | null | undefined,
+): FarmerDocumentationPackageContent {
+    switch (value?.trim()) {
+        case 'operations':
+            return 'operations';
+        case 'plants':
+        case 'plants-sorts':
+        case 'plant-sorts':
+        case 'plantSorts':
+            return 'plants';
+        default:
+            return 'all';
+    }
+}
+
+export function documentationPackageContentQueryValue(
+    content: FarmerDocumentationPackageContent,
+) {
+    switch (content) {
+        case 'all':
+            return 'all';
+        case 'operations':
+            return 'operations';
+        case 'plants':
+            return 'plants';
+    }
+}
+
 export function includedDocumentationPages(
     documentationPackage: FarmerDocumentationPackage,
+    content: FarmerDocumentationPackageContent = 'all',
 ) {
-    return [
-        ...documentationPackage.includedOperations,
-        ...documentationPackage.includedPlantSorts,
-    ].sort(compareDocumentationPage);
+    return filterDocumentationPagesByContent(
+        [
+            ...documentationPackage.includedOperations,
+            ...documentationPackage.includedPlants,
+        ],
+        content,
+    ).sort(compareDocumentationPage);
 }
 
 export function currentDocumentationPages(
     documentationPackage: FarmerDocumentationPackage,
+    content: FarmerDocumentationPackageContent = 'all',
 ) {
-    return [
-        ...documentationPackage.currentOperations,
-        ...documentationPackage.currentPlantSorts,
-    ].sort(compareDocumentationPage);
+    return filterDocumentationPagesByContent(
+        [
+            ...documentationPackage.currentOperations,
+            ...documentationPackage.currentPlants,
+        ],
+        content,
+    ).sort(compareDocumentationPage);
 }
 
 export function discardedDocumentationPages(
     documentationPackage: FarmerDocumentationPackage,
+    content: FarmerDocumentationPackageContent = 'all',
 ) {
-    return [
-        ...documentationPackage.discardedOperations,
-        ...documentationPackage.discardedPlantSorts,
-    ].sort(compareDocumentationPage);
+    return filterDocumentationPagesByContent(
+        [
+            ...documentationPackage.discardedOperations,
+            ...documentationPackage.discardedPlants,
+            ...documentationPackage.discardedPlantSorts,
+        ],
+        content,
+    ).sort(compareDocumentationPage);
 }
 
 export async function getFarmerDocumentationPackage({
@@ -277,12 +347,17 @@ export async function getFarmerDocumentationPackage({
 }): Promise<FarmerDocumentationPackage> {
     const [
         operations,
+        plants,
         plantSorts,
         revisions,
         operationAttributeDefinitions,
+        plantAttributeDefinitions,
         plantSortAttributeDefinitions,
     ] = await Promise.all([
         getEntitiesFormatted<EntityStandardized>('operation').catch(
+            (): EntityStandardized[] => [],
+        ),
+        getEntitiesFormatted<EntityStandardized>('plant').catch(
             (): EntityStandardized[] => [],
         ),
         getEntitiesFormatted<EntityStandardized>('plantSort').catch(
@@ -290,21 +365,26 @@ export async function getFarmerDocumentationPackage({
         ),
         getDocumentationRevisionsSince(since),
         getAttributeDefinitions('operation').catch(() => []),
+        getAttributeDefinitions('plant').catch(() => []),
         getAttributeDefinitions('plantSort').catch(() => []),
     ]);
 
     return buildFarmerDocumentationPackage({
         operations,
+        plants,
         plantSorts,
         revisions,
         labelAttributeDefinitionIds: {
             operation: labelAttributeDefinitionIds(
                 operationAttributeDefinitions,
             ),
+            plant: labelAttributeDefinitionIds(plantAttributeDefinitions),
             plantSort: labelAttributeDefinitionIds(
                 plantSortAttributeDefinitions,
             ),
         },
+        plantSortPlantAttributeDefinitionIds:
+            plantSortPlantAttributeDefinitionIds(plantSortAttributeDefinitions),
         generatedAt: new Date(),
         since,
     });
@@ -314,7 +394,9 @@ export function buildFarmerDocumentationPackage({
     generatedAt,
     labelAttributeDefinitionIds,
     operations,
+    plants,
     plantSorts,
+    plantSortPlantAttributeDefinitionIds,
     revisions,
     since,
 }: {
@@ -324,7 +406,9 @@ export function buildFarmerDocumentationPackage({
         ReadonlySet<number>
     >;
     operations: EntityStandardized[];
+    plants: EntityStandardized[];
     plantSorts: EntityStandardized[];
+    plantSortPlantAttributeDefinitionIds: ReadonlySet<number>;
     revisions: FarmerDocumentationRevision[];
     since: Date | null;
 }): FarmerDocumentationPackage {
@@ -336,7 +420,25 @@ export function buildFarmerDocumentationPackage({
             numeric: true,
         }),
     );
+    const sortedPlants = plantsWithReferencedSortPlants(
+        plants,
+        sortedPlantSorts,
+    ).sort((left, right) =>
+        getPlantLabel(left).localeCompare(getPlantLabel(right), 'hr', {
+            numeric: true,
+        }),
+    );
+    const plantSortsByPlantId = groupPlantSortsByPlantId(sortedPlantSorts);
+    const plantSortsById = new Map(
+        sortedPlantSorts.map((plantSort) => [plantSort.id, plantSort]),
+    );
     const revisionsByEntityKey = groupRevisionsByEntityKey(revisions);
+    const movedPlantSortsByPreviousPlantId =
+        groupMovedPlantSortsByPreviousPlantId({
+            plantSortsById,
+            plantSortPlantAttributeDefinitionIds,
+            revisions,
+        });
     const currentOperations = sortedOperations.map((operation) =>
         toDocumentationOperation(
             operation,
@@ -346,14 +448,22 @@ export function buildFarmerDocumentationPackage({
             since,
         ),
     );
-    const currentPlantSorts = sortedPlantSorts.map((plantSort) =>
-        toDocumentationPlantSort(
-            plantSort,
-            revisionsByEntityKey.get(
-                documentationEntityKey('plantSort', plantSort.id),
-            ) ?? [],
+    const currentPlants = sortedPlants.map((plant) =>
+        toDocumentationPlant({
+            plant,
+            plantSorts: plantSortsByPlantId.get(plant.id) ?? [],
+            plantRevisions:
+                revisionsByEntityKey.get(
+                    documentationEntityKey('plant', plant.id),
+                ) ?? [],
+            plantSortRevisions: plantSortRevisionsForPlant({
+                plantId: plant.id,
+                plantSorts: plantSortsByPlantId.get(plant.id) ?? [],
+                revisionsByEntityKey,
+                movedPlantSortsByPreviousPlantId,
+            }),
             since,
-        ),
+        }),
     );
     const includedOperations = currentOperations.filter((operation) =>
         shouldIncludeCurrentEntity(
@@ -363,12 +473,13 @@ export function buildFarmerDocumentationPackage({
             revisionsByEntityKey,
         ),
     );
-    const includedPlantSorts = currentPlantSorts.filter((plantSort) =>
-        shouldIncludeCurrentEntity(
-            plantSort,
-            'plantSort',
+    const includedPlants = currentPlants.filter((plant) =>
+        shouldIncludeCurrentPlant(
+            plant,
+            plantSortsByPlantId.get(plant.id) ?? [],
             since,
             revisionsByEntityKey,
+            movedPlantSortsByPreviousPlantId,
         ),
     );
 
@@ -376,15 +487,22 @@ export function buildFarmerDocumentationPackage({
         since,
         generatedAt,
         totalOperations: sortedOperations.length,
+        totalPlants: sortedPlants.length,
         totalPlantSorts: sortedPlantSorts.length,
         currentOperations,
-        currentPlantSorts,
+        currentPlants,
         includedOperations,
-        includedPlantSorts,
+        includedPlants,
         discardedOperations: discardedPagesForType({
             currentEntities: sortedOperations,
             entityTypeName: 'operation',
             labelAttributeDefinitionIds: labelAttributeDefinitionIds.operation,
+            revisionsByEntityKey,
+        }),
+        discardedPlants: discardedPagesForType({
+            currentEntities: sortedPlants,
+            entityTypeName: 'plant',
+            labelAttributeDefinitionIds: labelAttributeDefinitionIds.plant,
             revisionsByEntityKey,
         }),
         discardedPlantSorts: discardedPagesForType({
@@ -447,6 +565,24 @@ function labelAttributeDefinitionIds(
     );
 }
 
+function plantSortPlantAttributeDefinitionIds(
+    attributeDefinitions: Array<{
+        id: number;
+        category: string | null;
+        name: string;
+    }>,
+) {
+    return new Set(
+        attributeDefinitions
+            .filter(
+                (definition) =>
+                    definition.category === 'information' &&
+                    definition.name === 'plant',
+            )
+            .map((definition) => definition.id),
+    );
+}
+
 function groupRevisionsByEntityKey(revisions: FarmerDocumentationRevision[]) {
     const grouped = new Map<string, FarmerDocumentationRevision[]>();
 
@@ -470,7 +606,7 @@ function groupRevisionsByEntityKey(revisions: FarmerDocumentationRevision[]) {
 function normalizeDocumentationEntityTypeName(
     value: string,
 ): FarmerDocumentationEntityTypeName | null {
-    if (value === 'operation' || value === 'plantSort') {
+    if (value === 'operation' || value === 'plant' || value === 'plantSort') {
         return value;
     }
 
@@ -496,6 +632,179 @@ function shouldIncludeCurrentEntity(
             documentationEntityKey(entityTypeName, entity.id),
         )
     );
+}
+
+function shouldIncludeCurrentPlant(
+    plant: { id: number },
+    plantSorts: EntityStandardized[],
+    since: Date | null,
+    revisionsByEntityKey: ReadonlyMap<string, FarmerDocumentationRevision[]>,
+    movedPlantSortsByPreviousPlantId: ReadonlyMap<number, ReadonlySet<number>>,
+) {
+    return (
+        shouldIncludeCurrentEntity(
+            plant,
+            'plant',
+            since,
+            revisionsByEntityKey,
+        ) ||
+        movedPlantSortsByPreviousPlantId.has(plant.id) ||
+        plantSorts.some((plantSort) =>
+            revisionsByEntityKey.has(
+                documentationEntityKey('plantSort', plantSort.id),
+            ),
+        )
+    );
+}
+
+function filterDocumentationPagesByContent<
+    T extends { entityTypeName: FarmerDocumentationEntityTypeName },
+>(pages: T[], content: FarmerDocumentationPackageContent) {
+    switch (content) {
+        case 'all':
+            return pages;
+        case 'operations':
+            return pages.filter((page) => page.entityTypeName === 'operation');
+        case 'plants':
+            return pages.filter(
+                (page) =>
+                    page.entityTypeName === 'plant' ||
+                    page.entityTypeName === 'plantSort',
+            );
+    }
+}
+
+function plantsWithReferencedSortPlants(
+    plants: EntityStandardized[],
+    plantSorts: EntityStandardized[],
+) {
+    const plantsById = new Map(plants.map((plant) => [plant.id, plant]));
+
+    for (const plantSort of plantSorts) {
+        const plant = getPlantSortPlant(plantSort);
+        if (plant && !plantsById.has(plant.id)) {
+            plantsById.set(plant.id, plant);
+        }
+    }
+
+    return Array.from(plantsById.values());
+}
+
+function groupPlantSortsByPlantId(plantSorts: EntityStandardized[]) {
+    const plantSortsByPlantId = new Map<number, EntityStandardized[]>();
+
+    for (const plantSort of plantSorts) {
+        const plant = getPlantSortPlant(plantSort);
+        if (!plant) {
+            continue;
+        }
+
+        const plantSortsForPlant = plantSortsByPlantId.get(plant.id) ?? [];
+        plantSortsForPlant.push(plantSort);
+        plantSortsByPlantId.set(plant.id, plantSortsForPlant);
+    }
+
+    return plantSortsByPlantId;
+}
+
+function groupMovedPlantSortsByPreviousPlantId({
+    plantSortsById,
+    plantSortPlantAttributeDefinitionIds,
+    revisions,
+}: {
+    plantSortsById: ReadonlyMap<number, EntityStandardized>;
+    plantSortPlantAttributeDefinitionIds: ReadonlySet<number>;
+    revisions: FarmerDocumentationRevision[];
+}) {
+    const movedPlantSortsByPreviousPlantId = new Map<number, Set<number>>();
+
+    for (const revision of revisions) {
+        if (
+            revision.entityTypeName !== 'plantSort' ||
+            !revision.attributeDefinitionId ||
+            !plantSortPlantAttributeDefinitionIds.has(
+                revision.attributeDefinitionId,
+            ) ||
+            !(
+                revision.action === 'attribute.updated' ||
+                revision.action === 'attribute.deleted'
+            )
+        ) {
+            continue;
+        }
+
+        const previousPlantId = revisionEntityRefId(revision.previousValue);
+        if (!previousPlantId) {
+            continue;
+        }
+
+        const currentPlantSort = plantSortsById.get(revision.entityId);
+        const currentPlantId =
+            currentPlantSort && getPlantSortPlant(currentPlantSort)?.id;
+        const nextPlantId =
+            currentPlantId ?? revisionEntityRefId(revision.nextValue);
+        if (nextPlantId === previousPlantId) {
+            continue;
+        }
+
+        const movedSortIds =
+            movedPlantSortsByPreviousPlantId.get(previousPlantId) ??
+            new Set<number>();
+        movedSortIds.add(revision.entityId);
+        movedPlantSortsByPreviousPlantId.set(previousPlantId, movedSortIds);
+    }
+
+    return movedPlantSortsByPreviousPlantId;
+}
+
+function revisionEntityRefId(value: string | null) {
+    const normalized = value?.trim();
+    if (!normalized || !/^\d+$/.test(normalized)) {
+        return null;
+    }
+
+    const parsed = Number.parseInt(normalized, 10);
+    return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function plantSortRevisionsForPlant({
+    plantId,
+    plantSorts,
+    revisionsByEntityKey,
+    movedPlantSortsByPreviousPlantId,
+}: {
+    plantId: number;
+    plantSorts: EntityStandardized[];
+    revisionsByEntityKey: ReadonlyMap<string, FarmerDocumentationRevision[]>;
+    movedPlantSortsByPreviousPlantId: ReadonlyMap<number, ReadonlySet<number>>;
+}) {
+    const revisions = [
+        ...plantSorts.flatMap(
+            (plantSort) =>
+                revisionsByEntityKey.get(
+                    documentationEntityKey('plantSort', plantSort.id),
+                ) ?? [],
+        ),
+        ...Array.from(
+            movedPlantSortsByPreviousPlantId.get(plantId) ?? [],
+        ).flatMap(
+            (plantSortId) =>
+                revisionsByEntityKey.get(
+                    documentationEntityKey('plantSort', plantSortId),
+                ) ?? [],
+        ),
+    ];
+
+    return uniqueRevisions(revisions);
+}
+
+function uniqueRevisions(revisions: FarmerDocumentationRevision[]) {
+    const unique = new Map<number, FarmerDocumentationRevision>();
+    for (const revision of revisions) {
+        unique.set(revision.id, revision);
+    }
+
+    return Array.from(unique.values());
 }
 
 function discardedPagesForType({
@@ -565,6 +874,7 @@ function toDocumentationOperation(
         code: getFarmerDocumentationCode('operation', operation.id),
         label: getOperationLabel(operation),
         appPath: `/operations/${operation.id}`,
+        images: [],
         summaryRows: compactRows([
             ['Kod', getFarmerDocumentationCode('operation', operation.id)],
             ['Vrsta', documentationEntityConfig.operation.documentTypeLabel],
@@ -575,7 +885,7 @@ function toDocumentationOperation(
                 'Promjena',
                 changedAt
                     ? formatDocumentationDateTime(changedAt)
-                    : 'Cijeli prirucnik',
+                    : 'Cijeli priručnik',
             ],
         ]),
         sections: [
@@ -602,43 +912,58 @@ function toDocumentationOperation(
     };
 }
 
-function toDocumentationPlantSort(
-    plantSort: EntityStandardized,
-    revisions: FarmerDocumentationRevision[],
-    since: Date | null,
-): FarmerDocumentationPlantSort {
-    const plant = getPlantSortPlant(plantSort);
+function toDocumentationPlant({
+    plant,
+    plantRevisions,
+    plantSortRevisions,
+    plantSorts,
+    since,
+}: {
+    plant: EntityStandardized;
+    plantRevisions: FarmerDocumentationRevision[];
+    plantSortRevisions: FarmerDocumentationRevision[];
+    plantSorts: EntityStandardized[];
+    since: Date | null;
+}): FarmerDocumentationPlant {
     const plantInformation = recordProperty(plant, 'information');
     const latinName = textProperty(plantInformation, 'latinName');
+    const origin = textProperty(plantInformation, 'origin');
+    const revisions = [...plantRevisions, ...plantSortRevisions];
     const plantLabel = getPlantLabel(plant);
     const changedAt =
         revisions.length > 0 ? latestRevisionDate(revisions) : null;
-    const changeType = isInsertPage(revisions, since) ? 'insert' : 'replace';
+    const changeType = isInsertPage(plantRevisions, since)
+        ? 'insert'
+        : 'replace';
 
     return {
-        id: plantSort.id,
-        entityTypeName: 'plantSort',
-        documentTypeLabel:
-            documentationEntityConfig.plantSort.documentTypeLabel,
-        code: getFarmerDocumentationCode('plantSort', plantSort.id),
-        label: getPlantSortLabel(plantSort),
-        appPath: `/plants/${plantSort.id}`,
+        id: plant.id,
+        entityTypeName: 'plant',
+        documentTypeLabel: documentationEntityConfig.plant.documentTypeLabel,
+        code: getFarmerDocumentationCode('plant', plant.id),
+        label: plantLabel,
+        appPath: '/plants',
+        images: plantDocumentationImages(plant, plantSorts),
         summaryRows: compactRows([
-            ['Kod', getFarmerDocumentationCode('plantSort', plantSort.id)],
-            ['Vrsta', documentationEntityConfig.plantSort.documentTypeLabel],
-            ['Biljka', plantLabel],
+            ['Kod', getFarmerDocumentationCode('plant', plant.id)],
+            ['Vrsta', documentationEntityConfig.plant.documentTypeLabel],
             ['Latinski naziv', latinName],
+            ['Podrijetlo', origin],
+            ['Dostupnih sorti', formatInteger(plantSorts.length)],
             [
                 'Promjena',
                 changedAt
                     ? formatDocumentationDateTime(changedAt)
-                    : 'Cijeli prirucnik',
+                    : 'Cijeli priručnik',
             ],
         ]),
-        sections: plantSortSections(plantSort),
+        sections: plantSections(plant, plantSorts),
         changedAt,
         changeType,
-        revisionActions: revisionActionSummary(revisions, 'plantSort'),
+        revisionActions: uniqueStrings([
+            ...revisionActionSummary(plantRevisions, 'plant'),
+            ...revisionActionSummary(plantSortRevisions, 'plantSort'),
+        ]),
     };
 }
 
@@ -662,12 +987,56 @@ function getPlantSortPlant(plantSort: EntityStandardized) {
     return plantSort.information?.plant ?? null;
 }
 
-function getPlantLabel(plant: EntityStandardized | null) {
+function getPlantLabel(plant: EntityStandardized) {
     return (
         plant?.information?.label?.trim() ||
         plant?.information?.name?.trim() ||
-        null
+        `${documentationEntityConfig.plant.fallbackLabel} #${plant.id}`
     );
+}
+
+function plantDocumentationImages(
+    plant: EntityStandardized,
+    plantSorts: EntityStandardized[],
+) {
+    const images: FarmerDocumentationImage[] = [];
+    const seenUrls = new Set<string>();
+    const plantCoverUrl = entityCoverUrl(plant);
+
+    if (plantCoverUrl) {
+        images.push({
+            label: `Biljka - ${getPlantLabel(plant)}`,
+            url: plantCoverUrl,
+        });
+        seenUrls.add(plantCoverUrl);
+    }
+
+    for (const plantSort of plantSorts) {
+        const sortCoverUrl = plantSortCoverUrl(plantSort);
+        if (!sortCoverUrl || seenUrls.has(sortCoverUrl)) {
+            continue;
+        }
+
+        images.push({
+            label: `Sorta - ${getPlantSortLabel(plantSort)}`,
+            url: sortCoverUrl,
+        });
+        seenUrls.add(sortCoverUrl);
+    }
+
+    return images;
+}
+
+function plantSortCoverUrl(plantSort: EntityStandardized) {
+    return (
+        entityCoverUrl(plantSort) ??
+        entityCoverUrl(getPlantSortPlant(plantSort))
+    );
+}
+
+function entityCoverUrl(entity: EntityStandardized | null | undefined) {
+    const url = entity?.image?.cover?.url ?? entity?.images?.cover?.url;
+    return typeof url === 'string' && url.trim().length > 0 ? url.trim() : null;
 }
 
 function operationDurationLabel(operation: EntityStandardized) {
@@ -709,8 +1078,8 @@ function operationPhotoProofLabel(operation: EntityStandardized) {
     }
 
     return operation.conditions.completionAttachImagesRequired
-        ? 'Obavezno priloziti fotografije'
-        : 'Preporuceno priloziti fotografije';
+        ? 'Obavezno priložiti fotografije'
+        : 'Preporučeno priložiti fotografije';
 }
 
 function operationAttributes(operation: EntityStandardized) {
@@ -731,52 +1100,94 @@ function operationAttributes(operation: EntityStandardized) {
         );
 }
 
-function plantSortSections(plantSort: EntityStandardized) {
-    const plant = getPlantSortPlant(plantSort);
-    const sortInformation = isRecord(plantSort.information)
-        ? plantSort.information
-        : null;
+function plantSections(
+    plant: EntityStandardized,
+    plantSorts: EntityStandardized[],
+) {
     const plantInformation = recordProperty(plant, 'information');
     const plantAttributes = recordProperty(plant, 'attributes');
     const plantCalendar = recordProperty(plant, 'calendar');
-    const sortAttributes = isRecord(plantSort.attributes)
-        ? plantSort.attributes
-        : null;
 
     return [
-        ...plantSortTextFields
+        documentationSection(
+            'Dostupne sorte',
+            plantSorts.length > 0
+                ? plantSorts.map(plantSortListLine)
+                : ['Nema dostupnih sorti.'],
+        ),
+        ...plantTextFields
             .map(({ key, title }) => {
-                const text =
-                    textProperty(sortInformation, key) ??
-                    textProperty(plantInformation, key);
+                const text = textProperty(plantInformation, key);
 
                 return documentationSection(title, text ? [text] : []);
             })
             .filter((section): section is FarmerDocumentationSection =>
                 Boolean(section),
             ),
-        detailSection('Sorta', buildSortRows(sortAttributes)),
-        detailSection('Sjetva', buildSowingRows(plantAttributes)),
-        detailSection('Rast', buildGrowthRows(plantAttributes)),
-        detailSection('Zalijevanje', buildWateringRows(plantAttributes)),
-        detailSection('Berba', buildHarvestRows(plantAttributes)),
+        detailSection(
+            'Sjetva',
+            buildSowingRows(plantAttributes),
+            'compactAttributes',
+        ),
+        detailSection(
+            'Rast',
+            buildGrowthRows(plantAttributes),
+            'compactAttributes',
+        ),
+        detailSection(
+            'Zalijevanje',
+            buildWateringRows(plantAttributes),
+            'compactAttributes',
+        ),
+        detailSection(
+            'Berba',
+            buildHarvestRows(plantAttributes),
+            'compactAttributes',
+        ),
         detailSection('Kalendar uzgoja', buildCalendarRows(plantCalendar)),
+        ...plantSorts.map((plantSort) =>
+            plantSortAdditionalSection(plantSort, plant),
+        ),
     ].filter((section): section is FarmerDocumentationSection =>
         Boolean(section),
     );
 }
 
-function buildSortRows(attributes: Record<string, unknown> | null) {
-    const reproductionType = stringProperty(attributes, 'reproductionType');
+function plantSortListLine(plantSort: EntityStandardized) {
+    const sortAttributes = isRecord(plantSort.attributes)
+        ? plantSort.attributes
+        : null;
+    const reproductionType = stringProperty(sortAttributes, 'reproductionType');
+    const reproductionTypeLabel = reproductionType
+        ? (reproductionTypeLabels[reproductionType] ?? reproductionType)
+        : null;
+    const detail = reproductionTypeLabel ? `, ${reproductionTypeLabel}` : '';
 
-    return compactRows([
-        [
-            'Vrsta reprodukcije',
-            reproductionType
-                ? (reproductionTypeLabels[reproductionType] ?? reproductionType)
-                : null,
-        ],
-    ]);
+    return `${getFarmerDocumentationCode('plantSort', plantSort.id)} - ${getPlantSortLabel(plantSort)}${detail}`;
+}
+
+function plantSortAdditionalSection(
+    plantSort: EntityStandardized,
+    plant: EntityStandardized,
+) {
+    const sortInformation = isRecord(plantSort.information)
+        ? plantSort.information
+        : null;
+    const plantInformation = recordProperty(plant, 'information');
+    const lines = plantSortTextFields
+        .map(({ key, title }) => {
+            const sortText = textProperty(sortInformation, key);
+            const plantText = textProperty(plantInformation, key);
+            return sortText && sortText !== plantText
+                ? `${title}: ${sortText}`
+                : null;
+        })
+        .filter((line): line is string => Boolean(line));
+
+    return documentationSection(
+        `Dodatne informacije sorte - ${getPlantSortLabel(plantSort)}`,
+        lines,
+    );
 }
 
 function buildSowingRows(attributes: Record<string, unknown> | null) {
@@ -895,11 +1306,25 @@ function documentationSection(title: string, lines: string[]) {
     return visibleLines.length > 0 ? { title, lines: visibleLines } : null;
 }
 
-function detailSection(title: string, rows: FarmerDocumentationAttribute[]) {
-    return documentationSection(
-        title,
-        rows.map((row) => `${row.label}: ${row.value}`),
-    );
+function detailSection(
+    title: string,
+    rows: FarmerDocumentationAttribute[],
+    layout?: FarmerDocumentationSectionLayout,
+) {
+    if (rows.length === 0) {
+        return null;
+    }
+
+    const lines = rows.map((row) => `${row.label}: ${row.value}`);
+
+    return layout
+        ? {
+              title,
+              lines,
+              layout,
+              attributes: rows,
+          }
+        : documentationSection(title, lines);
 }
 
 function compactRows(
@@ -1190,6 +1615,10 @@ function revisionActionSummary(
             }),
         ),
     );
+}
+
+function uniqueStrings(values: string[]) {
+    return Array.from(new Set(values));
 }
 
 function compareDocumentationPage(

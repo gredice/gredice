@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-import { useGameFlags } from '../../GameFlagsContext';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import type { ShoppingCartItemData } from '../../hooks/useShoppingCart';
 import { useRaisedBedFieldDetailsParam } from '../../useUrlState';
@@ -29,7 +28,6 @@ export function RaisedBedFieldItem({
     isDragging?: boolean;
 }) {
     const { data: garden, isLoading: isGardenLoading } = useCurrentGarden();
-    const { enablePlantHistoryFlag } = useGameFlags();
     const [fieldDetailsParam, setFieldDetailsParam] =
         useRaisedBedFieldDetailsParam();
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
@@ -39,8 +37,7 @@ export function RaisedBedFieldItem({
         raisedBed?.fields,
         positionIndex,
     );
-    const visiblePlantHistory =
-        enablePlantHistoryFlag && showPlantHistoryBadges ? plantHistory : [];
+    const visiblePlantHistory = showPlantHistoryBadges ? plantHistory : [];
     const hasField = Boolean(field);
     const focusedPositionIndex =
         typeof fieldDetailsParam === 'number' && fieldDetailsParam > 0

@@ -5,7 +5,6 @@ import { Row } from '@gredice/ui/Row';
 import { Spinner } from '@gredice/ui/Spinner';
 import { Stack } from '@gredice/ui/Stack';
 import { useMemo } from 'react';
-import { useGameFlags } from '../../GameFlagsContext';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import {
     type GardenOperationItem,
@@ -25,40 +24,12 @@ import {
     sortNewestFirst,
 } from '../GardenOperationsHud';
 import { RaisedBedDiaryAiAction } from './RaisedBedDiaryAiAction';
-
-type AiHistoryEntry = {
-    id: number;
-    description: string | undefined;
-    timestamp: Date;
-    imageUrls?: string[] | null;
-    isMarkdown?: boolean;
-};
-
-function buildFieldPositionById(
-    garden: ReturnType<typeof useCurrentGarden>['data'],
-) {
-    return new Map(
-        (garden?.raisedBeds ?? []).flatMap((raisedBed) =>
-            raisedBed.fields.map(
-                (field) => [field.id, field.positionIndex] as const,
-            ),
-        ),
-    );
-}
-
-function buildFieldPlantSortIdById(
-    garden: ReturnType<typeof useCurrentGarden>['data'],
-) {
-    return new Map(
-        (garden?.raisedBeds ?? []).flatMap((raisedBed) =>
-            raisedBed.fields.flatMap((field) =>
-                typeof field.plantSortId === 'number'
-                    ? [[field.id, field.plantSortId] as const]
-                    : [],
-            ),
-        ),
-    );
-}
+import {
+    buildFieldPlantSortIdById,
+    buildFieldPositionById,
+    getAiHistoryForOperation,
+    getOperationReferenceDate,
+} from './raisedBedOperationHistory';
 
 function filterOperationsByTarget({
     operations,
@@ -103,45 +74,6 @@ function filterOperationsByTarget({
     });
 }
 
-function getAiHistoryForOperation({
-    imageUrls,
-    entries,
-}: {
-    imageUrls: string[];
-    entries: AiHistoryEntry[] | undefined;
-}) {
-    if (!imageUrls.length || !entries?.length) {
-        return undefined;
-    }
-
-    const relatedEntries = entries.filter((entry) => {
-        if (!entry.isMarkdown || !entry.imageUrls?.length) {
-            return false;
-        }
-
-        return imageUrls.some((imageUrl) =>
-            entry.imageUrls?.includes(imageUrl),
-        );
-    });
-
-    return relatedEntries.length
-        ? relatedEntries.sort(
-              (a, b) => b.timestamp.getTime() - a.timestamp.getTime(),
-          )
-        : undefined;
-}
-
-function getOperationReferenceDate(operation: GardenOperationItem) {
-    return (
-        operation.completedAt ??
-        operation.verifiedAt ??
-        operation.canceledAt ??
-        operation.scheduledAt ??
-        operation.scheduledDate ??
-        operation.createdAt
-    );
-}
-
 export function RaisedBedOperationHistoryList({
     raisedBedId,
     positionIndex,
@@ -154,12 +86,9 @@ export function RaisedBedOperationHistoryList({
     disableActions?: boolean;
 }) {
     const referenceDate = useLiveTime();
-    const flags = useGameFlags();
     const { data: currentGarden } = useCurrentGarden();
     const { data: operationsData } = useOperations();
-    const shouldLoadAiHistory = Boolean(
-        flags.raisedBedImageAI && currentGarden?.id && raisedBedId,
-    );
+    const shouldLoadAiHistory = Boolean(currentGarden?.id && raisedBedId);
     const { data: aiHistoryEntries } = useRaisedBedAiHistory(
         currentGarden?.id ?? 0,
         raisedBedId ?? 0,
@@ -326,7 +255,6 @@ export function RaisedBedOperationHistoryList({
                     />
                 ) : undefined;
                 const aiAction =
-                    flags.raisedBedImageAI &&
                     !disableActions &&
                     currentGarden &&
                     actionRaisedBedId &&

@@ -21,20 +21,6 @@ export const addressDistanceVerificationFlag = flag<boolean>({
     options: booleanOptions,
 });
 
-export const raisedBedImageAIFlag = flag<boolean>({
-    key: 'raisedBedImageAI',
-    description: 'Enable AI analysis of raised-bed images.',
-    decide: () => true,
-    options: booleanOptions,
-});
-
-export const lsystemPlantsFlag = flag<boolean>({
-    key: 'lsystemPlants',
-    description: 'Display L-System plants instead of only seeds.',
-    decide: () => true,
-    options: booleanOptions,
-});
-
 export const rainWetOverlayFlag = flag<boolean>({
     key: 'rainWetOverlay',
     description: 'Enable rain wetness overlays on exposed garden entities.',
@@ -54,16 +40,16 @@ export const enableDebugHudFlag = flag<boolean>({
     options: booleanOptions,
 });
 
-export const plantHistoryFlag = flag<boolean>({
-    key: 'plantHistory',
-    description: 'Show previous plant history on inactive raised-bed fields.',
-    decide: () => true,
+export const enableSuncokretChatFlag = flag<boolean>({
+    key: 'enableSuncokretChat',
+    description: 'Enable the in-game Suncokret AI chat HUD.',
+    decide: () => false,
     options: booleanOptions,
 });
 
-export const tutorialChecklistFlag = flag<boolean>({
-    key: 'tutorialChecklist',
-    description: 'Enable the tutorial checklist HUD and reward claims.',
-    decide: () => true,
+export const enableSuncokretDebugFlag = flag<boolean>({
+    key: 'enableSuncokretDebug',
+    description: 'Show Suncokret AI debug metadata in chat conversations.',
+    decide: () => false,
     options: booleanOptions,
 });

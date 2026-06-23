@@ -4,7 +4,6 @@ import { createContext, useContext } from 'react';
 
 export interface GameFeatureFlags {
     enableDebugHudFlag?: boolean;
-    enablePlantGeneratorFlag?: boolean;
     enableRaisedBedWateringFlag?: boolean;
     enableRaisedBedDiaryFlag?: boolean;
     enableRaisedBedOperationsFlag?: boolean;
@@ -12,9 +11,8 @@ export interface GameFeatureFlags {
     enableRaisedBedFieldWateringFlag?: boolean;
     enableRaisedBedFieldDiaryFlag?: boolean;
     enableRainWetOverlayFlag?: boolean;
-    raisedBedImageAI?: boolean;
-    enablePlantHistoryFlag?: boolean;
-    enableTutorialChecklistFlag?: boolean;
+    enableSuncokretChatFlag?: boolean;
+    enableSuncokretDebugFlag?: boolean;
 }
 
 export const GameFlagsContext = createContext<GameFeatureFlags>({});

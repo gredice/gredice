@@ -7,50 +7,20 @@ import { List } from '@gredice/ui/List';
 import { NoDataPlaceholder } from '@gredice/ui/NoDataPlaceholder';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
-import { memo, useMemo, useState } from 'react';
+import { memo, useState } from 'react';
 import {
     sortFavoritesFirst,
     useFavoriteIds,
 } from '../../../hooks/useFavorites';
 import { useOperations } from '../../../hooks/useOperations';
 import { usePlantSort } from '../../../hooks/usePlantSorts';
-import {
-    type ShoppingCartItemData,
-    useShoppingCart,
-} from '../../../hooks/useShoppingCart';
 import { ScrollView } from '../../../shared-ui/ScrollView';
 import { useShoppingCartOpenParam } from '../../../useUrlState';
 import { OperationListItemSkeleton } from '../OperationListItemSkeleton';
 import { OperationsListItem } from './OperationsListItem';
+import { useOperationContextIndicators } from './useOperationContextIndicators';
 
 const MemoizedOperationsListItem = memo(OperationsListItem);
-
-function isOperationInCurrentContext(
-    {
-        entityTypeName,
-        status,
-        gardenId: itemGardenId,
-        raisedBedId: itemRaisedBedId,
-        positionIndex: itemPositionIndex,
-    }: ShoppingCartItemData,
-    {
-        gardenId,
-        raisedBedId,
-        positionIndex,
-    }: {
-        gardenId: number;
-        raisedBedId?: number;
-        positionIndex?: number;
-    },
-) {
-    return (
-        entityTypeName === 'operation' &&
-        status === 'new' &&
-        itemGardenId === gardenId &&
-        (itemRaisedBedId ?? undefined) === raisedBedId &&
-        (itemPositionIndex ?? undefined) === positionIndex
-    );
-}
 
 const OperationsListContent = memo(function OperationsListContent({
     operations,
@@ -60,6 +30,7 @@ const OperationsListContent = memo(function OperationsListContent({
     raisedBedId,
     positionIndex,
     shoppingCartOperationIds,
+    scheduledOperationIds,
 }: {
     operations: OperationData[] | undefined;
     isLoading: boolean;
@@ -68,6 +39,7 @@ const OperationsListContent = memo(function OperationsListContent({
     raisedBedId?: number;
     positionIndex?: number;
     shoppingCartOperationIds: Set<number>;
+    scheduledOperationIds: Set<number>;
 }) {
     return (
         <ScrollView
@@ -94,6 +66,7 @@ const OperationsListContent = memo(function OperationsListContent({
                         inShoppingCart={shoppingCartOperationIds.has(
                             operation.id,
                         )}
+                        isScheduled={scheduledOperationIds.has(operation.id)}
                         key={operation.id}
                         operation={operation}
                         gardenId={gardenId}
@@ -126,28 +99,18 @@ export function OperationsList({
     } = useOperations();
     const { data: plantSort, isLoading: isPlantSortLoading } =
         usePlantSort(plantSortId);
-    const { data: cart } = useShoppingCart();
     const favoriteOperationIds = useFavoriteIds('operation');
     const [, setShoppingCartOpen] = useShoppingCartOpenParam();
     const isLoading =
         isLoadingOperations || (Boolean(plantSortId) && isPlantSortLoading);
     const [search, setSearch] = useState('');
 
-    const shoppingCartOperationIds = useMemo(
-        () =>
-            new Set(
-                (cart?.items ?? [])
-                    .filter((item) =>
-                        isOperationInCurrentContext(item, {
-                            gardenId,
-                            raisedBedId,
-                            positionIndex,
-                        }),
-                    )
-                    .map((item) => Number(item.entityId)),
-            ),
-        [cart?.items, gardenId, raisedBedId, positionIndex],
-    );
+    const { shoppingCartOperationIds, scheduledOperationIds } =
+        useOperationContextIndicators({
+            gardenId,
+            raisedBedId,
+            positionIndex,
+        });
 
     const filteredOperations = operations
         ?.filter(filterFunc)
@@ -234,6 +197,7 @@ export function OperationsList({
                 raisedBedId={raisedBedId}
                 positionIndex={positionIndex}
                 shoppingCartOperationIds={shoppingCartOperationIds}
+                scheduledOperationIds={scheduledOperationIds}
             />
         </Stack>
     );

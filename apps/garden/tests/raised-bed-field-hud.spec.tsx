@@ -1,7 +1,12 @@
-import type { FavoriteEntityType, FavoriteItem } from '@gredice/client';
+import type {
+    FavoriteEntityType,
+    FavoriteItem,
+    PlantData,
+} from '@gredice/client';
 import { expect, test } from '@playwright/experimental-ct-react';
 import type { Page } from '@playwright/test';
 import {
+    RaisedBedCloseupHudStory,
     RaisedBedFieldDndDialogStory,
     RaisedBedFieldHudStory,
     RaisedBedFieldSuggestionsStory,
@@ -17,6 +22,19 @@ import {
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
 const DESKTOP_VIEWPORT = { width: 1280, height: 800 };
 const favoriteTimestamp = '2026-06-01T00:00:00.000Z';
+const healthRecommendationsViewedEvent =
+    'game_plant_health_recommendations_viewed';
+
+type AnalyticsEvent = {
+    eventName: string;
+    properties?: Record<string, unknown>;
+};
+
+declare global {
+    interface Window {
+        recordGameAnalyticsEvent?: (event: unknown) => void;
+    }
+}
 
 function favoriteItem({
     entityId,
@@ -111,6 +129,41 @@ async function mockFavoriteRequests(
     });
 }
 
+async function captureGameAnalyticsEvents(page: Page) {
+    const analyticsEvents: AnalyticsEvent[] = [];
+
+    await page.exposeFunction('recordGameAnalyticsEvent', (event: unknown) => {
+        if (!isRecord(event) || typeof event.eventName !== 'string') {
+            return;
+        }
+
+        analyticsEvents.push({
+            eventName: event.eventName,
+            properties: isRecord(event.properties)
+                ? event.properties
+                : undefined,
+        });
+    });
+
+    await page.evaluate(() => {
+        window.addEventListener('gredice:game-analytics', (event) => {
+            if (event instanceof CustomEvent) {
+                window.recordGameAnalyticsEvent?.(event.detail);
+            }
+        });
+    });
+
+    return analyticsEvents;
+}
+
+function countAnalyticsEvents(
+    analyticsEvents: AnalyticsEvent[],
+    eventName: string,
+) {
+    return analyticsEvents.filter((event) => event.eventName === eventName)
+        .length;
+}
+
 function emptyScenario(): RaisedBedScenario {
     return { fields: [] };
 }
@@ -201,6 +254,84 @@ function plantedGrowingWithRecommendedOperationsScenario(): RaisedBedScenario {
         ...plantedGrowingScenario(),
         operations,
         sorts: [tomatoSortWithOperations],
+        operationHistoryItems: [
+            {
+                id: 801,
+                entityId: 201,
+                entityTypeName: 'operation',
+                raisedBedId: 1,
+                raisedBedFieldId: 1,
+                status: 'completed',
+                createdAt: '2026-05-09T00:00:00.000Z',
+                scheduledDate: '2026-05-10T00:00:00.000Z',
+                scheduledAt: '2026-05-09T00:00:00.000Z',
+                completedAt: '2026-05-10T08:00:00.000Z',
+                verifiedAt: '2026-05-10T09:00:00.000Z',
+                canceledAt: null,
+                imageUrls: [],
+                completionNotes: null,
+                targetLabel: 'Raised Bed 1 › Polje 1',
+                statusHistory: [
+                    {
+                        status: 'new',
+                        changedAt: '2026-05-09T00:00:00.000Z',
+                    },
+                    {
+                        status: 'planned',
+                        changedAt: '2026-05-09T00:00:00.000Z',
+                    },
+                    {
+                        status: 'completed',
+                        changedAt: '2026-05-10T09:00:00.000Z',
+                    },
+                ],
+            },
+        ],
+    };
+}
+
+function plantedGrowingWithHealthRecommendedOperationsScenario(): RaisedBedScenario {
+    const scenario = plantedGrowingWithRecommendedOperationsScenario();
+    const healthOperation = buildOperation({
+        id: 203,
+        name: 'mock-pest-rinse',
+        label: 'Ispiranje biljke od štetnika',
+        stageName: 'maintenance',
+        stageLabel: 'Održavanje',
+        relativeDays: 3,
+    });
+    const tomatoPlantWithHealth = {
+        ...testSorts.tomato.information.plant,
+        health: {
+            pests: [
+                {
+                    id: 501,
+                    slug: 'mock-aphids',
+                    name: 'Lisne uši',
+                    kind: 'pest',
+                    operations: {
+                        reduction: [
+                            {
+                                id: healthOperation.id,
+                                slug: healthOperation.slug,
+                                name: healthOperation.information.name,
+                                label: healthOperation.information.label,
+                            },
+                        ],
+                    },
+                },
+            ],
+        },
+    } satisfies PlantData;
+
+    return {
+        ...scenario,
+        operations: [...(scenario.operations ?? []), healthOperation],
+        plants: [
+            tomatoPlantWithHealth,
+            testSorts.basil.information.plant,
+            testSorts.lettuce.information.plant,
+        ],
     };
 }
 
@@ -245,10 +376,24 @@ function plantedGrowingWithOperationHistoryScenario(): RaisedBedScenario {
         stageName: 'maintenance',
         stageLabel: 'Održavanje',
     });
+    const tomatoSortWithOperation = {
+        ...testSorts.tomato,
+        information: {
+            ...testSorts.tomato.information,
+            plant: {
+                ...testSorts.tomato.information.plant,
+                information: {
+                    ...testSorts.tomato.information.plant.information,
+                    operations: [wateringOperation],
+                },
+            },
+        },
+    };
 
     return {
         ...plantedGrowingScenario(),
         operations: [wateringOperation],
+        sorts: [tomatoSortWithOperation],
         operationDiaryEntries: [
             {
                 id: 991,
@@ -317,6 +462,53 @@ function plantedGrowingWithOperationHistoryScenario(): RaisedBedScenario {
                     {
                         status: 'completed',
                         changedAt: '2026-05-10T09:00:00.000Z',
+                    },
+                ],
+            },
+        ],
+    };
+}
+
+function plantedGrowingWithPendingOperationHistoryScenario(): RaisedBedScenario {
+    const scenario = plantedGrowingWithOperationHistoryScenario();
+    const operation = scenario.operations?.[0];
+
+    if (!operation) {
+        return scenario;
+    }
+
+    return {
+        ...scenario,
+        operationHistoryItems: [
+            ...(scenario.operationHistoryItems ?? []),
+            {
+                id: 903,
+                entityId: operation.id,
+                entityTypeName: 'operation',
+                raisedBedId: 1,
+                raisedBedFieldId: 1,
+                status: 'confirmed',
+                createdAt: '2026-06-23T00:00:00.000Z',
+                scheduledDate: '2026-06-24T00:00:00.000Z',
+                scheduledAt: '2026-06-23T00:00:00.000Z',
+                completedAt: null,
+                verifiedAt: null,
+                canceledAt: null,
+                imageUrls: [],
+                completionNotes: null,
+                targetLabel: 'Raised Bed 1 › Polje 1',
+                statusHistory: [
+                    {
+                        status: 'planned',
+                        changedAt: '2026-06-23T00:00:00.000Z',
+                    },
+                    {
+                        status: 'assigned',
+                        changedAt: '2026-06-23T08:00:00.000Z',
+                    },
+                    {
+                        status: 'confirmed',
+                        changedAt: '2026-06-23T09:00:00.000Z',
                     },
                 ],
             },
@@ -642,6 +834,10 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await expect(
             dialog.getByRole('tab', { name: /Dnevnik/ }),
         ).toBeVisible();
+        await dialog
+            .locator('[data-recommendation-section="operations"]')
+            .getByRole('button', { name: /Radnje/ })
+            .click();
         await expect(
             dialog.getByRole('button', { name: /Kontrola sadnice/ }),
         ).toBeVisible();
@@ -839,12 +1035,51 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await page.getByRole('button').first().click();
 
         const dialog = page.getByRole('dialog');
+        await expect(
+            dialog.getByRole('heading', { name: 'Preporuke' }),
+        ).toBeVisible();
+        await expect(dialog.getByText('Preporučene radnje')).toHaveCount(0);
+
+        const operationsSection = dialog.locator(
+            '[data-recommendation-section="operations"]',
+        );
+        await expect(operationsSection).toBeVisible();
+        await expect(
+            operationsSection.locator('svg.lucide-hammer'),
+        ).toBeVisible();
+        await expect(
+            operationsSection.locator('[data-recommendation-section-icon]'),
+        ).not.toHaveClass(/green/);
+        await expect(
+            operationsSection.locator('[data-recommendation-section-count]'),
+        ).toHaveClass(/size-5/);
+        await expect(operationsSection.getByTitle('2 preporuka')).toBeVisible();
+
         const recommendationsList = dialog.locator(
             '[data-recommended-operation-list]',
         );
+        await expect(recommendationsList).toHaveCount(0);
+
+        const operationsHeader = operationsSection.getByRole('button', {
+            name: /Radnje/,
+        });
+        await operationsHeader.click();
+
         await expect(recommendationsList).toBeVisible();
         await expect(recommendationsList).toContainText('Okopavanje');
         await expect(recommendationsList).toContainText('Uklanjanje korova');
+        await expect(
+            recommendationsList.locator('[data-operation-id="201"]'),
+        ).toContainText('Zakazano');
+        await expect(
+            recommendationsList.locator('[data-operation-id="202"]'),
+        ).not.toContainText('Zakazano');
+
+        await operationsHeader.click();
+        await expect(operationsSection.getByTitle('2 preporuka')).toBeVisible();
+        await expect(recommendationsList).toHaveCount(0);
+        await operationsHeader.click();
+        await expect(recommendationsList).toBeVisible();
 
         const listItems = recommendationsList.locator(':scope > *');
         await expect(listItems).toHaveCount(3);
@@ -867,6 +1102,84 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
                 .locator('[role="tabpanel"]:not([hidden])')
                 .locator('[data-scroll-view]'),
         ).toBeVisible();
+        await expect(
+            dialog
+                .getByRole('tabpanel', { name: 'Radnje' })
+                .locator('[data-operation-id="201"]'),
+        ).toContainText('Zakazano');
+    });
+
+    test('recommendations group plant health operations with collapsed counts', async ({
+        mount,
+        page,
+    }) => {
+        const analyticsEvents = await captureGameAnalyticsEvents(page);
+
+        await mount(
+            <RaisedBedFieldHudStory
+                scenario={plantedGrowingWithHealthRecommendedOperationsScenario()}
+                positionIndex={0}
+            />,
+        );
+
+        await page.getByRole('button').first().click();
+
+        const dialog = page.getByRole('dialog');
+        const healthSection = dialog.locator(
+            '[data-recommendation-section="health"]',
+        );
+        await expect(healthSection).toBeVisible();
+        await expect(healthSection.locator('svg.lucide-plus')).toBeVisible();
+        await expect(
+            healthSection.locator('[data-recommendation-section-icon]'),
+        ).not.toHaveClass(/green/);
+        await expect(
+            healthSection.locator('[data-recommendation-section-count]'),
+        ).toHaveClass(/size-5/);
+        await expect(healthSection.getByTitle('1 preporuka')).toBeVisible();
+
+        const healthList = healthSection.locator(
+            '[data-plant-health-operation-list]',
+        );
+        await expect(healthList).toHaveCount(0);
+        await expect
+            .poll(() =>
+                countAnalyticsEvents(
+                    analyticsEvents,
+                    healthRecommendationsViewedEvent,
+                ),
+            )
+            .toBe(0);
+
+        const healthHeader = healthSection.getByRole('button', {
+            name: /Zdravlje biljke/,
+        });
+        await healthHeader.click();
+
+        await expect(healthSection.getByText('Lisne uši')).toBeVisible();
+        await expect(healthList).toBeVisible();
+        await expect(healthList).toContainText('Ispiranje biljke od štetnika');
+        await expect
+            .poll(() =>
+                countAnalyticsEvents(
+                    analyticsEvents,
+                    healthRecommendationsViewedEvent,
+                ),
+            )
+            .toBe(1);
+
+        await healthHeader.click();
+        await expect(healthSection.getByTitle('1 preporuka')).toBeVisible();
+        await expect(healthList).toHaveCount(0);
+        await healthHeader.click();
+        await expect
+            .poll(() =>
+                countAnalyticsEvents(
+                    analyticsEvents,
+                    healthRecommendationsViewedEvent,
+                ),
+            )
+            .toBe(1);
     });
 
     test('favorite operations are ranked first in recommendations and operation choices', async ({
@@ -889,6 +1202,10 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await page.getByRole('button').first().click();
 
         const dialog = page.getByRole('dialog');
+        await dialog
+            .locator('[data-recommendation-section="operations"]')
+            .getByRole('button', { name: /Radnje/ })
+            .click();
         const recommendationsList = dialog.locator(
             '[data-recommended-operation-list]',
         );
@@ -921,6 +1238,122 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         ).toBeVisible();
     });
 
+    test('operation item click opens scheduling without a separate schedule action', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldHudStory
+                scenario={plantedGrowingWithRecommendedOperationsScenario()}
+                positionIndex={0}
+            />,
+        );
+
+        await page.getByRole('button').first().click();
+
+        const dialog = page.getByRole('dialog');
+        await dialog.getByRole('tab', { name: /Radnje/ }).click();
+
+        const operationsPanel = dialog.getByRole('tabpanel', {
+            name: 'Radnje',
+        });
+        await expect(
+            operationsPanel.getByRole('button', { name: 'Zakaži' }),
+        ).toHaveCount(0);
+
+        const operationRow = operationsPanel.locator(
+            '[data-operation-id="201"]',
+        );
+        await operationRow.getByRole('button', { name: /Okopavanje/ }).click();
+
+        const scheduleDialog = page.getByRole('dialog', {
+            name: 'Zakaži radnju: Okopavanje',
+        });
+        await expect(
+            scheduleDialog.locator('[data-event-calendar]'),
+        ).toBeVisible();
+        await expect(
+            scheduleDialog.getByText('Zakazivanje radnje'),
+        ).toBeVisible();
+    });
+
+    test('operation scheduling calendar shows previous history with icon details', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldHudStory
+                scenario={plantedGrowingWithPendingOperationHistoryScenario()}
+                positionIndex={0}
+            />,
+        );
+
+        await page.getByRole('button').first().click();
+
+        const dialog = page.getByRole('dialog');
+        await dialog.getByRole('tab', { name: /Radnje/ }).click();
+
+        const operationRow = dialog.locator('[data-operation-id="301"]');
+        await operationRow
+            .getByRole('button', {
+                name: /Površinsko zalijevanje gredice/,
+            })
+            .click();
+
+        const scheduleDialog = page.getByRole('dialog', {
+            name: 'Zakaži radnju: Površinsko zalijevanje gredice (20L)',
+        });
+        await expect(
+            scheduleDialog.locator('[data-event-calendar]'),
+        ).toBeVisible();
+
+        await expect(
+            scheduleDialog.getByRole('button', {
+                name: 'Prethodni mjesec',
+            }),
+        ).toBeEnabled();
+        await scheduleDialog
+            .getByRole('button', { name: 'Prethodni mjesec' })
+            .click();
+
+        await expect(
+            scheduleDialog.locator('[data-event-calendar-month="2026-05"]'),
+        ).toBeVisible();
+        await expect(
+            scheduleDialog.locator('[data-event-calendar-tone="completed"]'),
+        ).toHaveClass(/bg-primary/);
+
+        await scheduleDialog
+            .getByRole('button', {
+                name: /10\. 05\. 2026.*Površinsko zalijevanje/u,
+            })
+            .click();
+
+        await expect(
+            page.locator('[data-event-calendar-entry-visual]'),
+        ).toBeVisible();
+        await expect(
+            page.getByText('Obavljeno · Raised Bed 1 › Polje 1'),
+        ).toBeVisible();
+        await expect(page.getByText(/30 min/)).toHaveCount(0);
+
+        await page.keyboard.press('Escape');
+        await scheduleDialog
+            .getByRole('button', { name: 'Sljedeći mjesec' })
+            .click();
+        await expect(
+            scheduleDialog.locator('[data-event-calendar-month="2026-06"]'),
+        ).toBeVisible();
+        await scheduleDialog
+            .getByRole('button', {
+                name: /24\. 06\. 2026.*Površinsko zalijevanje/u,
+            })
+            .click();
+        await expect(
+            page.getByText('Zakazano · Raised Bed 1 › Polje 1'),
+        ).toBeVisible();
+    });
+
     test('diary tab shows filtered operation history with photos and notes', async ({
         mount,
         page,
@@ -929,7 +1362,6 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
             <RaisedBedFieldHudStory
                 scenario={plantedGrowingWithOperationHistoryScenario()}
                 positionIndex={0}
-                enableRaisedBedImageAI
             />,
         );
 
@@ -966,6 +1398,164 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
                 (element) => element.scrollWidth - element.clientWidth,
             ),
         ).toBeLessThanOrEqual(1);
+    });
+
+    test('closeup HUD photo shortcut opens the raised bed photos modal', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedCloseupHudStory
+                scenario={plantedGrowingWithOperationHistoryScenario()}
+            />,
+        );
+
+        const photoButton = page.getByRole('button', {
+            name: /Fotografije gredice Raised Bed 1/u,
+        });
+        await expect(photoButton).toBeVisible();
+        await expect(photoButton.locator('img')).toBeVisible();
+
+        await photoButton.click();
+
+        const photosModal = page.locator('[data-raised-bed-photos-modal]');
+        await expect(
+            photosModal.getByRole('heading', { name: 'Fotografije gredice' }),
+        ).toBeVisible();
+        await expect(
+            photosModal.getByText('Površinsko zalijevanje gredice (20L)'),
+        ).toBeVisible();
+        await expect(
+            photosModal.locator('[data-raised-bed-photo-entry]'),
+        ).toHaveCount(1);
+        await expect(
+            photosModal.getByRole('button', {
+                name: /Pregledaj savjete suncokreta/u,
+            }),
+        ).toBeVisible();
+    });
+
+    test('closeup HUD photo shortcut searches older history pages before hiding', async ({
+        mount,
+        page,
+    }) => {
+        const scenario = plantedGrowingWithOperationHistoryScenario();
+        const baseOperation = scenario.operationHistoryItems?.[0];
+
+        if (!baseOperation) {
+            throw new Error('Expected operation history item.');
+        }
+
+        const firstPageWithoutPhotos = Array.from({ length: 20 }).map(
+            (_, index) => ({
+                ...baseOperation,
+                id: 800 + index,
+                imageUrls: [],
+                completionNotes: null,
+                statusHistory: [
+                    {
+                        status: 'completed' as const,
+                        changedAt: `2026-05-${String(12 - Math.floor(index / 2)).padStart(2, '0')}T09:00:00.000Z`,
+                    },
+                ],
+            }),
+        );
+        const olderOperationWithPhoto = {
+            ...baseOperation,
+            id: 999,
+            completedAt: '2026-04-20T08:00:00.000Z',
+            imageUrls: ['https://example.com/older-watering.jpg'],
+            completionNotes: 'Starija fotografija nakon pregleda tla.',
+            statusHistory: [
+                {
+                    status: 'completed' as const,
+                    changedAt: '2026-04-20T09:00:00.000Z',
+                },
+            ],
+        };
+
+        await page.route(
+            '**/api/gredice/api/gardens/*/operations**',
+            async (route) => {
+                const url = new URL(route.request().url());
+                const cursor = url.searchParams.get('cursor');
+
+                await route.fulfill({
+                    body: JSON.stringify({
+                        items: cursor === '20' ? [olderOperationWithPhoto] : [],
+                        nextCursor: null,
+                        total: 21,
+                    }),
+                    contentType: 'application/json',
+                    status: 200,
+                });
+            },
+        );
+
+        await mount(
+            <RaisedBedCloseupHudStory
+                scenario={{
+                    ...scenario,
+                    operationHistoryItems: firstPageWithoutPhotos,
+                    operationHistoryNextCursor: 20,
+                }}
+            />,
+        );
+
+        const photoButton = page.getByRole('button', {
+            name: /Fotografije gredice Raised Bed 1/u,
+        });
+        await expect(photoButton).toBeVisible();
+        await expect(photoButton.locator('img')).toBeVisible();
+
+        await photoButton.click();
+
+        const photosModal = page.locator('[data-raised-bed-photos-modal]');
+        await expect(
+            photosModal.getByText('Starija fotografija nakon pregleda tla.'),
+        ).toBeVisible();
+        await expect(
+            photosModal.locator('[data-raised-bed-photo-entry]'),
+        ).toHaveCount(1);
+    });
+
+    test('plant modal header opens field-scoped photos with AI actions', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldHudStory
+                scenario={plantedGrowingWithOperationHistoryScenario()}
+                positionIndex={0}
+            />,
+        );
+
+        await page.getByRole('button').first().click();
+
+        const plantDialog = page.getByRole('dialog');
+        const photoButton = plantDialog.getByRole('button', {
+            name: /Fotografije biljke Cherry rajčica/u,
+        });
+        await expect(photoButton).toBeVisible();
+
+        await photoButton.click();
+
+        const photosModal = page.locator('[data-raised-bed-photos-modal]');
+        await expect(
+            photosModal.getByRole('heading', { name: 'Fotografije biljke' }),
+        ).toBeVisible();
+        await expect(photosModal.getByText('Cherry rajčica')).toBeVisible();
+        await expect(
+            photosModal.getByText('Površinsko zalijevanje gredice (20L)'),
+        ).toBeVisible();
+        await expect(
+            photosModal.getByRole('button', {
+                name: /Pregledaj savjete suncokreta/u,
+            }),
+        ).toBeVisible();
+        await expect(
+            photosModal.getByText('Ovo je zapis za drugo polje.'),
+        ).toHaveCount(0);
     });
 
     test('diary tab allows rescheduling future active operation cards', async ({
@@ -1168,7 +1758,6 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await mount(
             <RaisedBedInfoModalStory
                 scenario={plantedGrowingWithOperationHistoryScenario()}
-                enableRaisedBedImageAI
             />,
         );
 
@@ -1200,7 +1789,6 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await mount(
             <RaisedBedInfoModalStory
                 scenario={raisedBedScrollableOperationHistoryScenario()}
-                enableRaisedBedImageAI
             />,
         );
 
@@ -1488,7 +2076,6 @@ test.describe('RaisedBedFieldItem HUD (mobile)', () => {
         await mount(
             <RaisedBedInfoModalStory
                 scenario={plantedGrowingWithOperationHistoryScenario()}
-                enableRaisedBedImageAI
             />,
         );
 
@@ -1497,8 +2084,12 @@ test.describe('RaisedBedFieldItem HUD (mobile)', () => {
         const moreButton = dialog.getByRole('button', {
             name: 'Prikaži dodatne opcije gredice',
         });
+        const photoButton = dialog.getByRole('button', {
+            name: /Fotografije gredice Raised Bed 1/u,
+        });
         const tabList = dialog.getByRole('tablist');
         await expect(moreButton).toBeVisible();
+        await expect(photoButton).toBeVisible();
         await expect(tabList).toBeVisible();
 
         await expect

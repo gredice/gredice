@@ -17,6 +17,7 @@ export type ModalProps = Omit<HTMLAttributes<HTMLDivElement>, 'title'> & {
     onOpenChange?: (open: boolean) => void;
     modal?: boolean;
     title: string;
+    description?: ReactNode;
     hideClose?: boolean;
     disableMobile?: boolean;
     mobileOverride?: boolean;
@@ -27,6 +28,7 @@ export type ModalProps = Omit<HTMLAttributes<HTMLDivElement>, 'title'> & {
 export function Modal({
     children,
     className,
+    description,
     dismissible = true,
     hideClose,
     modal,
@@ -46,6 +48,7 @@ export function Modal({
         return (
             <MobileModal
                 className={className}
+                description={description}
                 dismissible={dismissible}
                 modal={modal}
                 onOpenChange={onOpenChange}
@@ -63,6 +66,7 @@ export function Modal({
     return (
         <DesktopModal
             className={className}
+            description={description}
             dismissible={dismissible}
             hideClose={hideClose}
             modal={modal}
@@ -81,6 +85,7 @@ export function Modal({
 function DesktopModal({
     children,
     className,
+    description,
     dismissible = true,
     hideClose,
     modal,
@@ -91,6 +96,8 @@ function DesktopModal({
     trigger,
     ...rest
 }: Omit<ModalProps, 'disableMobile' | 'mobileOverride'>) {
+    const hasDescription = hasAccessibleDescription(description);
+
     function preventDismiss(event: Event) {
         if (!dismissible) {
             event.preventDefault();
@@ -116,7 +123,9 @@ function DesktopModal({
                     )}
                 />
                 <DialogPrimitive.Content
-                    aria-describedby={undefined}
+                    {...(hasDescription
+                        ? {}
+                        : { 'aria-describedby': undefined })}
                     className={cx(
                         'fixed left-1/2 top-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-lg min-w-0 -translate-x-1/2 -translate-y-1/2 gap-4 overflow-x-auto overflow-y-auto overscroll-contain border bg-background p-6 shadow-lg duration-200 [overflow-wrap:anywhere] data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:rounded-lg',
                         className,
@@ -128,6 +137,11 @@ function DesktopModal({
                     <DialogPrimitive.Title className="sr-only">
                         {title}
                     </DialogPrimitive.Title>
+                    {hasDescription ? (
+                        <DialogPrimitive.Description className="sr-only">
+                            {description}
+                        </DialogPrimitive.Description>
+                    ) : null}
                     {children}
                     {dismissible && !hideClose ? (
                         <DialogPrimitive.Close className="absolute right-4 top-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
@@ -144,6 +158,7 @@ function DesktopModal({
 function MobileModal({
     children,
     className,
+    description,
     dismissible = true,
     modal,
     onOpenChange,
@@ -153,6 +168,8 @@ function MobileModal({
     trigger,
     ...rest
 }: Omit<ModalProps, 'disableMobile' | 'hideClose' | 'mobileOverride'>) {
+    const hasDescription = hasAccessibleDescription(description);
+
     return (
         <Drawer.Root
             dismissible={dismissible}
@@ -172,6 +189,9 @@ function MobileModal({
                     )}
                 />
                 <Drawer.Content
+                    {...(hasDescription
+                        ? {}
+                        : { 'aria-describedby': undefined })}
                     className={cx(
                         'fixed inset-x-0 bottom-0 z-50 mt-4 flex max-h-[calc(100dvh-1rem)] w-full max-w-full min-w-0 flex-col overflow-hidden rounded-t-[10px] border bg-background',
                         className,
@@ -179,6 +199,11 @@ function MobileModal({
                     {...rest}
                 >
                     <Drawer.Title className="sr-only">{title}</Drawer.Title>
+                    {hasDescription ? (
+                        <Drawer.Description className="sr-only">
+                            {description}
+                        </Drawer.Description>
+                    ) : null}
                     <Drawer.Handle className="mx-auto mt-4 h-2 w-[100px] shrink-0 rounded-full bg-muted" />
                     <div className="min-h-0 min-w-0 max-w-full overflow-x-auto overflow-y-auto p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] [overflow-wrap:anywhere]">
                         {children}
@@ -208,4 +233,13 @@ function useViewport() {
     }, []);
 
     return viewport;
+}
+
+function hasAccessibleDescription(description: ReactNode) {
+    return (
+        description !== undefined &&
+        description !== null &&
+        description !== false &&
+        description !== ''
+    );
 }

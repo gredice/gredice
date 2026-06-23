@@ -9,7 +9,9 @@ import { and, desc, eq, lt, ne, sql } from 'drizzle-orm';
 import { createAccount, storage } from '..';
 import {
     accountUsers,
+    gardens,
     type UpdateUserInfo,
+    userFavorites,
     userLogins,
     users,
 } from '../schema';
@@ -282,6 +284,9 @@ export async function promoteTemporaryUser({
 }) {
     const user = await storage().query.users.findFirst({
         where: eq(users.id, userId),
+        with: {
+            accounts: true,
+        },
     });
     if (!user?.isTemporary) {
         throw new Error('Temporary user not found');
@@ -297,11 +302,73 @@ export async function promoteTemporaryUser({
             lastActiveAt: new Date(),
         })
         .where(eq(users.id, userId));
+    await convertTemporaryAccountGardensToAccountGardens(
+        user.accounts.map((accountUser) => accountUser.accountId),
+    );
 }
 
 export async function deleteUserAuthenticationData(userId: string) {
     await deleteRefreshTokensForUser(userId);
     await storage().delete(userLogins).where(eq(userLogins.userId, userId));
+}
+
+async function convertTemporaryAccountGardensToAccountGardens(
+    accountIds: string[],
+) {
+    for (const accountId of accountIds) {
+        await storage()
+            .update(gardens)
+            .set({ isSandbox: false })
+            .where(
+                and(
+                    eq(gardens.accountId, accountId),
+                    eq(gardens.isSandbox, true),
+                ),
+            );
+    }
+}
+
+async function reassignTemporaryFavoritesToUser({
+    targetUserId,
+    temporaryUserId,
+}: {
+    targetUserId: string;
+    temporaryUserId: string;
+}) {
+    const temporaryFavorites = await storage().query.userFavorites.findMany({
+        where: eq(userFavorites.userId, temporaryUserId),
+    });
+
+    for (const favorite of temporaryFavorites) {
+        const existingTargetFavorite =
+            await storage().query.userFavorites.findFirst({
+                where: and(
+                    eq(userFavorites.userId, targetUserId),
+                    eq(userFavorites.entityType, favorite.entityType),
+                    eq(userFavorites.entityId, favorite.entityId),
+                ),
+            });
+
+        if (existingTargetFavorite) {
+            const updatedAt =
+                existingTargetFavorite.updatedAt > favorite.updatedAt
+                    ? existingTargetFavorite.updatedAt
+                    : favorite.updatedAt;
+            await storage()
+                .update(userFavorites)
+                .set({ updatedAt })
+                .where(eq(userFavorites.id, existingTargetFavorite.id));
+            await storage()
+                .delete(userFavorites)
+                .where(eq(userFavorites.id, favorite.id));
+            continue;
+        }
+
+        await storage()
+            .update(userFavorites)
+            .set({ userId: targetUserId })
+            .where(eq(userFavorites.id, favorite.id));
+    }
 }
 
 export async function attachTemporaryAccountsToUser({
@@ -362,6 +429,8 @@ export async function attachTemporaryAccountsToUser({
         attachedAccountIds.push(accountUser.accountId);
     }
 
+    await reassignTemporaryFavoritesToUser({ targetUserId, temporaryUserId });
+    await convertTemporaryAccountGardensToAccountGardens(attachedAccountIds);
     await deleteUserAuthenticationData(temporaryUserId);
     await storage().delete(users).where(eq(users.id, temporaryUserId));
 

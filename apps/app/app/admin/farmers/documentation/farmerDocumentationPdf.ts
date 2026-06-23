@@ -1,16 +1,22 @@
+import { deflateSync } from 'node:zlib';
 import { create as createQrCode } from 'qrcode';
+import sharp from 'sharp';
 import {
     currentDocumentationPages,
     discardedDocumentationPages,
     documentationChangeLabel,
+    type FarmerDocumentationAttribute,
+    type FarmerDocumentationImage,
     type FarmerDocumentationPackage,
+    type FarmerDocumentationPackageContent,
     type FarmerDocumentationPage,
+    type FarmerDocumentationSection,
     formatDocumentationDateTime,
     getFarmerAppOrigin,
     includedDocumentationPages,
 } from './farmerDocumentationData';
 
-type PdfFontKey = 'F1' | 'F2';
+type PdfFontKey = 'F1' | 'F2' | 'F3' | 'F4';
 
 type PdfColor = {
     r: number;
@@ -36,11 +42,70 @@ type HeaderData = {
     generatedAt: Date;
 };
 
+type MarkdownInlineStyle = {
+    bold?: boolean;
+    italic?: boolean;
+    code?: boolean;
+};
+
+type MarkdownTextRun = {
+    value: string;
+    font?: PdfFontKey;
+    color?: PdfColor;
+};
+
+type MarkdownBlock =
+    | {
+          type: 'paragraph';
+          runs: MarkdownTextRun[];
+      }
+    | {
+          type: 'heading';
+          level: number;
+          runs: MarkdownTextRun[];
+      }
+    | {
+          type: 'list';
+          items: MarkdownListItem[];
+      }
+    | {
+          type: 'table';
+          headers: MarkdownTextRun[][];
+          rows: MarkdownTextRun[][][];
+      }
+    | {
+          type: 'blockquote';
+          blocks: MarkdownBlock[];
+      }
+    | {
+          type: 'rule';
+      };
+
+type MarkdownListItem = {
+    level: number;
+    marker: string;
+    runs: MarkdownTextRun[];
+};
+
+type MarkdownRenderOptions = {
+    x: number;
+    width: number;
+    color?: PdfColor;
+};
+
 type FlowContext = {
     page: PdfCanvas;
     pages: PdfCanvas[];
     header: HeaderData;
     y: number;
+};
+
+type PdfImageAsset = {
+    name: string;
+    url: string;
+    width: number;
+    height: number;
+    dataHex: string;
 };
 
 const colors = {
@@ -64,8 +129,25 @@ const bodyFontSize = 9.4;
 const bodyLineHeight = 13.2;
 const smallFontSize = 7.8;
 const titleFontSize = 17;
+const summaryLabelFontSize = 6.7;
+const summaryValueFontSize = 8.7;
+const summaryRowHeight = 16;
+const markdownBlockSpacing = 5;
+const markdownListIndent = 13;
+const markdownListMarkerWidth = 15;
+const compactAttributeColumnGap = 18;
 const logoWordmarkFontSize = 18.75;
 const logoWordmarkStrokeWidth = 0.16;
+const imageGalleryColumns = 4;
+const imageGalleryGap = 10;
+const imageGalleryLabelHeight = 20;
+const imageGalleryCardWidth =
+    (contentWidth - imageGalleryGap * (imageGalleryColumns - 1)) /
+    imageGalleryColumns;
+const imageGalleryImageHeight = 76;
+const imageGalleryCardHeight =
+    imageGalleryImageHeight + imageGalleryLabelHeight + 12;
+const maxPdfImageSourceBytes = 10 * 1024 * 1024;
 
 const logoMarkPaths = [
     '0 19 m 0 18.448 0.264 18 0.591 18 c 29.41 18 l 29.736 18 30 18.448 30 19 c 30 19.552 29.736 20 29.41 20 c 0.591 20 l 0.264 20 0 19.552 0 19 c h',
@@ -87,18 +169,23 @@ const logoMarkPaths = [
     '20.486 13.455 m 20.334 14.108 l 20.179 14.77 20.013 15.309 19.743 15.75 c 19.46 16.213 19.087 16.529 18.591 16.797 c 18.567 16.811 l 18.542 16.821 l 18.063 17.025 17.627 17.181 17.122 17.235 c 16.617 17.288 16.087 17.234 15.414 17.081 c 14.827 16.948 l 14.976 16.364 l 15.136 15.742 15.329 15.26 15.63 14.842 c 15.93 14.426 16.309 14.113 16.771 13.792 c 16.798 13.773 l 16.827 13.758 l 17.716 13.277 18.491 13.266 19.818 13.392 c 20.486 13.455 l h 19.015 14.506 m 18.241 14.467 17.85 14.542 17.412 14.774 c 17.007 15.057 16.762 15.276 16.581 15.527 c 16.477 15.671 16.386 15.838 16.301 16.053 c 16.578 16.088 16.8 16.091 16.999 16.07 c 17.322 16.035 17.625 15.936 18.057 15.754 c 18.4 15.565 18.594 15.382 18.744 15.138 c 18.842 14.977 18.929 14.776 19.015 14.506 c h',
 ] as const;
 
-const croatianReplacements: Record<string, string> = {
-    '\u010c': 'C',
-    '\u010d': 'c',
-    '\u0106': 'C',
-    '\u0107': 'c',
-    '\u0110': 'Dj',
-    '\u0111': 'dj',
-    '\u0160': 'S',
-    '\u0161': 's',
-    '\u017d': 'Z',
-    '\u017e': 'z',
-};
+const latinExtendedGlyphs = [
+    { character: 'Č', code: 0x80, glyph: 'Ccaron', unicode: '010C' },
+    { character: 'č', code: 0x81, glyph: 'ccaron', unicode: '010D' },
+    { character: 'Ć', code: 0x82, glyph: 'Cacute', unicode: '0106' },
+    { character: 'ć', code: 0x83, glyph: 'cacute', unicode: '0107' },
+    { character: 'Đ', code: 0x84, glyph: 'Dcroat', unicode: '0110' },
+    { character: 'đ', code: 0x85, glyph: 'dcroat', unicode: '0111' },
+    { character: 'Š', code: 0x86, glyph: 'Scaron', unicode: '0160' },
+    { character: 'š', code: 0x87, glyph: 'scaron', unicode: '0161' },
+    { character: 'Ž', code: 0x88, glyph: 'Zcaron', unicode: '017D' },
+    { character: 'ž', code: 0x89, glyph: 'zcaron', unicode: '017E' },
+] as const;
+
+const latinExtendedGlyphByCharacter: ReadonlyMap<
+    string,
+    (typeof latinExtendedGlyphs)[number]
+> = new Map(latinExtendedGlyphs.map((glyph) => [glyph.character, glyph]));
 
 class PdfCanvas {
     private readonly operations: string[] = [];
@@ -194,6 +281,31 @@ class PdfCanvas {
         );
     }
 
+    image({
+        height,
+        name,
+        width,
+        x,
+        y,
+    }: {
+        height: number;
+        name: string;
+        width: number;
+        x: number;
+        y: number;
+    }) {
+        this.operations.push(
+            [
+                'q',
+                `${formatNumber(width)} 0 0 ${formatNumber(
+                    height,
+                )} ${formatNumber(x)} ${formatNumber(y)} cm`,
+                `/${name} Do`,
+                'Q',
+            ].join(' '),
+        );
+    }
+
     path({
         commands,
         color,
@@ -229,23 +341,210 @@ class PdfCanvas {
     }
 }
 
-export function generateFarmerDocumentationPdf(
+export async function generateFarmerDocumentationPdf(
     data: FarmerDocumentationPackage,
-): ArrayBuffer {
+    {
+        content = 'all',
+    }: {
+        content?: FarmerDocumentationPackageContent;
+    } = {},
+): Promise<ArrayBuffer> {
     const farmOrigin = getFarmerAppOrigin();
     const version = farmerDocumentationVersion(data.generatedAt);
+    const documentationPages = includedDocumentationPages(data, content);
+    const imageAssets = await loadDocumentationImageAssets(documentationPages);
+    const imageAssetsByUrl = new Map(
+        imageAssets.map((asset) => [asset.url, asset]),
+    );
     const pages: PdfCanvas[] = [];
 
-    drawOrganizationGuide({ data, farmOrigin, pages, version });
-
-    for (const page of includedDocumentationPages(data)) {
-        drawDocumentationPage({ data, farmOrigin, pages, version, page });
+    const guideStartIndex = pages.length;
+    drawOrganizationGuide({ content, data, farmOrigin, pages, version });
+    if (documentationPages.length > 0) {
+        appendDuplexBlankPageIfNeeded(pages, guideStartIndex);
     }
 
-    return writePdf(pages.map((page) => page.toString()));
+    for (let index = 0; index < documentationPages.length; index += 1) {
+        const page = documentationPages[index];
+        if (!page) {
+            continue;
+        }
+
+        const pageStartIndex = pages.length;
+        drawDocumentationPage({
+            data,
+            farmOrigin,
+            imageAssetsByUrl,
+            pages,
+            version,
+            page,
+        });
+        if (index < documentationPages.length - 1) {
+            appendDuplexBlankPageIfNeeded(pages, pageStartIndex);
+        }
+    }
+
+    return writePdf(
+        pages.map((page) => page.toString()),
+        imageAssets,
+    );
 }
 
-export function farmerDocumentationFilename(data: FarmerDocumentationPackage) {
+function appendDuplexBlankPageIfNeeded(
+    pages: PdfCanvas[],
+    documentStartIndex: number,
+) {
+    if ((pages.length - documentStartIndex) % 2 === 0) {
+        return;
+    }
+
+    const page = new PdfCanvas();
+    page.fillRect({
+        x: 0,
+        y: 0,
+        width: pageWidth,
+        height: pageHeight,
+        color: colors.white,
+    });
+    pages.push(page);
+}
+
+async function loadDocumentationImageAssets(pages: FarmerDocumentationPage[]) {
+    const uniqueImages = uniquePageImages(pages);
+    const assetsByIndex: Array<PdfImageAsset | null> = new Array(
+        uniqueImages.length,
+    ).fill(null);
+    let nextIndex = 0;
+
+    async function worker() {
+        while (nextIndex < uniqueImages.length) {
+            const imageIndex = nextIndex;
+            nextIndex += 1;
+            const image = uniqueImages[imageIndex];
+            if (!image) {
+                continue;
+            }
+
+            assetsByIndex[imageIndex] = await loadDocumentationImageAsset({
+                image,
+                name: `Im${imageIndex + 1}`,
+            });
+        }
+    }
+
+    await Promise.all(
+        Array.from({ length: Math.min(6, uniqueImages.length) }, () =>
+            worker(),
+        ),
+    );
+
+    return assetsByIndex.filter(
+        (asset): asset is PdfImageAsset => asset !== null,
+    );
+}
+
+function uniquePageImages(pages: FarmerDocumentationPage[]) {
+    const images: FarmerDocumentationImage[] = [];
+    const seenUrls = new Set<string>();
+
+    for (const page of pages) {
+        for (const image of page.images) {
+            if (seenUrls.has(image.url)) {
+                continue;
+            }
+
+            images.push(image);
+            seenUrls.add(image.url);
+        }
+    }
+
+    return images;
+}
+
+async function loadDocumentationImageAsset({
+    image,
+    name,
+}: {
+    image: FarmerDocumentationImage;
+    name: string;
+}) {
+    try {
+        const bytes = await documentationImageBytes(image.url);
+        if (!bytes || bytes.byteLength > maxPdfImageSourceBytes) {
+            return null;
+        }
+
+        const { data, info } = await sharp(bytes, {
+            animated: false,
+            limitInputPixels: 36_000_000,
+        })
+            .rotate()
+            .flatten({ background: { r: 255, g: 255, b: 255 } })
+            .resize({
+                width: 900,
+                height: 700,
+                fit: 'inside',
+                withoutEnlargement: true,
+            })
+            .jpeg({ quality: 82, mozjpeg: true })
+            .toBuffer({ resolveWithObject: true });
+
+        if (!info.width || !info.height) {
+            return null;
+        }
+
+        return {
+            name,
+            url: image.url,
+            width: info.width,
+            height: info.height,
+            dataHex: data.toString('hex').toUpperCase(),
+        };
+    } catch {
+        return null;
+    }
+}
+
+async function documentationImageBytes(url: string) {
+    const dataUrlBytes = documentationImageDataUrlBytes(url);
+    if (dataUrlBytes) {
+        return dataUrlBytes;
+    }
+
+    if (!/^https?:\/\//u.test(url)) {
+        return null;
+    }
+
+    const response = await fetch(url, {
+        signal: AbortSignal.timeout(5000),
+    });
+    if (!response.ok) {
+        return null;
+    }
+
+    const contentType = response.headers.get('content-type');
+    if (contentType && !contentType.toLowerCase().startsWith('image/')) {
+        return null;
+    }
+
+    return new Uint8Array(await response.arrayBuffer());
+}
+
+function documentationImageDataUrlBytes(url: string) {
+    const match = /^data:image\/[-+.\w]+;base64,([A-Za-z0-9+/=]+)$/u.exec(
+        url.trim(),
+    );
+    if (!match?.[1]) {
+        return null;
+    }
+
+    return new Uint8Array(Buffer.from(match[1], 'base64'));
+}
+
+export function farmerDocumentationFilename(
+    data: FarmerDocumentationPackage,
+    content: FarmerDocumentationPackageContent = 'all',
+) {
     const datePart = new Intl.DateTimeFormat('en-CA', {
         timeZone: 'Europe/Zagreb',
         year: 'numeric',
@@ -253,8 +552,9 @@ export function farmerDocumentationFilename(data: FarmerDocumentationPackage) {
         day: '2-digit',
     }).format(data.generatedAt);
     const scopePart = data.since ? 'promjene' : 'sve-stranice';
+    const contentPart = farmerDocumentationFilenameContentPart(content);
 
-    return `farmeri-dokumentacija-${scopePart}-${datePart}.pdf`;
+    return `farmeri-dokumentacija-${scopePart}${contentPart}-${datePart}.pdf`;
 }
 
 export function farmerDocumentationVersion(date: Date) {
@@ -277,37 +577,41 @@ export function farmerDocumentationVersion(date: Date) {
 }
 
 function drawOrganizationGuide({
+    content,
     data,
     farmOrigin,
     pages,
     version,
 }: {
+    content: FarmerDocumentationPackageContent;
     data: FarmerDocumentationPackage;
     farmOrigin: string;
     pages: PdfCanvas[];
     version: string;
 }) {
+    const subtitleScope = data.since
+        ? `Promjene od ${formatDocumentationDateTime(data.since)}`
+        : 'Cijeli priručnik';
+    const subtitleContent = organizationGuideContentSubtitle(content);
     let context = startPage(pages, {
         code: 'ORG-GUIDE',
-        title: 'Vodic za organizaciju',
-        subtitle: data.since
-            ? `Promjene od ${formatDocumentationDateTime(data.since)}`
-            : 'Cijeli prirucnik',
+        title: 'Vodič za organizaciju',
+        subtitle: subtitleContent
+            ? `${subtitleScope} - ${subtitleContent}`
+            : subtitleScope,
         qrUrl: farmOrigin,
         version,
         generatedAt: data.generatedAt,
     });
-    const packageType = data.since
-        ? 'Paket sadrzi organizacijski vodic i sve prirucnike promijenjene od zadnjeg ispisa.'
-        : 'Paket sadrzi organizacijski vodic i sve trenutno objavljene prirucnike.';
-    const includedPages = includedDocumentationPages(data);
+    const packageType = organizationGuidePackageDescription(data, content);
+    const includedPages = includedDocumentationPages(data, content);
     const allCurrentPages = currentDocumentationPages(data);
-    const discardedPages = discardedDocumentationPages(data);
+    const discardedPages = discardedDocumentationPages(data, content);
 
     context = drawSection(context, 'Svrha paketa', [
         packageType,
-        'Stranice nisu numerirane. U registratoru ih drzi abecedno prema naslovu stranice, odnosno velikom naslovu u zaglavlju.',
-        'Ako dvije stranice imaju isti naslov, zadrzi redoslijed prema kodu.',
+        'Stranice nisu numerirane. U registratoru ih drži abecedno prema naslovu stranice, odnosno velikom naslovu u zaglavlju.',
+        'Ako dvije stranice imaju isti naslov, zadrži redoslijed prema kodu.',
         'Kod dodavanja ili zamjene stranica novu verziju umetni na mjesto navedeno u uputama ispod.',
     ]);
 
@@ -319,19 +623,71 @@ function drawOrganizationGuide({
     );
     context = drawActionList(
         context,
-        'Zamijeni postojece stranice',
+        'Zamijeni postojeće stranice',
         includedPages.filter((page) => page.changeType === 'replace'),
         allCurrentPages,
     );
     context = drawDiscardList(context, discardedPages);
     context = drawSection(context, 'Kontrola nakon umetanja', [
-        '1. Provjeri da je svaka nova ili zamijenjena stranica umetnuta na navedeno abecedno mjesto i da kod odgovara kodu u ovom vodicu.',
-        '2. Stare stranice iz odjeljka za zamjenu izdvoji i odbaci nakon sto nova verzija stoji u registratoru.',
+        '1. Provjeri da je svaka nova ili zamijenjena stranica umetnuta na navedeno abecedno mjesto i da kod odgovara kodu u ovom vodiču.',
+        '2. Stare stranice iz odjeljka za zamjenu izdvoji i odbaci nakon što nova verzija stoji u registratoru.',
         '3. Stranice iz odjeljka za uklanjanje izvadi iz registratora bez zamjenske stranice.',
-        '4. QR kod na svakoj stranici vodi na farmer aplikaciju za aktualnu digitalnu verziju prirucnika.',
+        '4. QR kod na svakoj stranici vodi na farmer aplikaciju za aktualnu digitalnu verziju priručnika.',
     ]);
 
     drawFooter(context.page);
+}
+
+function farmerDocumentationFilenameContentPart(
+    content: FarmerDocumentationPackageContent,
+) {
+    switch (content) {
+        case 'all':
+            return '';
+        case 'operations':
+            return '-radnje';
+        case 'plants':
+            return '-biljke-sorte';
+    }
+}
+
+function organizationGuideContentSubtitle(
+    content: FarmerDocumentationPackageContent,
+) {
+    switch (content) {
+        case 'all':
+            return null;
+        case 'operations':
+            return 'Radnje';
+        case 'plants':
+            return 'Biljke i sorte';
+    }
+}
+
+function organizationGuidePackageDescription(
+    data: FarmerDocumentationPackage,
+    content: FarmerDocumentationPackageContent,
+) {
+    const contentLabel = organizationGuidePackageContentLabel(content);
+
+    if (data.since) {
+        return `Paket sadrži organizacijski vodič i ${contentLabel} promijenjene od zadnjeg ispisa.`;
+    }
+
+    return `Paket sadrži organizacijski vodič i ${contentLabel} trenutno objavljene u farmer aplikaciji.`;
+}
+
+function organizationGuidePackageContentLabel(
+    content: FarmerDocumentationPackageContent,
+) {
+    switch (content) {
+        case 'all':
+            return 'sve priručnike';
+        case 'operations':
+            return 'priručnike radnji';
+        case 'plants':
+            return 'priručnike biljaka i sorti';
+    }
 }
 
 function drawActionList(
@@ -370,7 +726,7 @@ function pagePlacementInstruction(
             : null;
 
     if (previousPage && nextPage) {
-        return `abecedno izmedju ${pageReference(previousPage)} i ${pageReference(nextPage)}`;
+        return `abecedno između ${pageReference(previousPage)} i ${pageReference(nextPage)}`;
     }
     if (nextPage) {
         return `abecedno prije ${pageReference(nextPage)}`;
@@ -409,12 +765,14 @@ function drawDiscardList(
 function drawDocumentationPage({
     data,
     farmOrigin,
+    imageAssetsByUrl,
     page,
     pages,
     version,
 }: {
     data: FarmerDocumentationPackage;
     farmOrigin: string;
+    imageAssetsByUrl: ReadonlyMap<string, PdfImageAsset>;
     page: FarmerDocumentationPage;
     pages: PdfCanvas[];
     version: string;
@@ -431,13 +789,35 @@ function drawDocumentationPage({
     });
 
     context = drawPageSummary(context, page);
+    context = drawImageGallery(context, page, imageAssetsByUrl);
 
-    for (const section of page.sections) {
-        context = drawSection(
-            context,
-            section.title,
-            section.lines.flatMap((line) => markdownToPlainLines(line)),
-        );
+    for (let index = 0; index < page.sections.length; index += 1) {
+        const section = page.sections[index];
+        if (!section) {
+            continue;
+        }
+
+        if (section.layout === 'compactAttributes') {
+            const sections: FarmerDocumentationSection[] = [];
+            let cursor = index;
+
+            while (
+                cursor < page.sections.length &&
+                page.sections[cursor]?.layout === 'compactAttributes'
+            ) {
+                const compactSection = page.sections[cursor];
+                if (compactSection) {
+                    sections.push(compactSection);
+                }
+                cursor += 1;
+            }
+
+            context = drawCompactAttributeSections(context, sections);
+            index = cursor - 1;
+            continue;
+        }
+
+        context = drawMarkdownSection(context, section.title, section.lines);
     }
 
     drawFooter(context.page);
@@ -445,7 +825,7 @@ function drawDocumentationPage({
 
 function drawPageSummary(context: FlowContext, page: FarmerDocumentationPage) {
     const rows = page.summaryRows;
-    const boxHeight = rows.length * 21 + 18;
+    const boxHeight = rows.length * summaryRowHeight + 16;
     context = ensureSpace(context, boxHeight);
     context.page.fillRect({
         x: margin,
@@ -455,29 +835,154 @@ function drawPageSummary(context: FlowContext, page: FarmerDocumentationPage) {
         color: colors.softGray,
     });
 
-    let y = context.y - 25;
+    let y = context.y - 22;
     for (const row of rows) {
         context.page.text({
             x: margin + 12,
             y,
             value: row.label.toUpperCase(),
-            size: 6.9,
+            size: summaryLabelFontSize,
             font: 'F2',
             color: colors.muted,
         });
         context.page.text({
             x: margin + 142,
             y,
-            value: row.value,
-            size: 9,
+            value: fitSingleLine(
+                row.value,
+                contentWidth - 154,
+                summaryValueFontSize,
+            ),
+            size: summaryValueFontSize,
             font: 'F2',
             color: colors.text,
         });
-        y -= 21;
+        y -= summaryRowHeight;
     }
 
-    context.y -= boxHeight + 16;
+    context.y -= boxHeight + 12;
     return context;
+}
+
+function drawImageGallery(
+    initialContext: FlowContext,
+    page: FarmerDocumentationPage,
+    imageAssetsByUrl: ReadonlyMap<string, PdfImageAsset>,
+) {
+    const images = page.images
+        .map((image) => ({
+            image,
+            asset: imageAssetsByUrl.get(image.url) ?? null,
+        }))
+        .filter(
+            (
+                entry,
+            ): entry is {
+                image: FarmerDocumentationImage;
+                asset: PdfImageAsset;
+            } => entry.asset !== null,
+        );
+
+    if (images.length === 0) {
+        return initialContext;
+    }
+
+    let context = ensureSpace(initialContext, 34);
+    context.page.text({
+        x: margin,
+        y: context.y,
+        value: 'SLIKE',
+        size: 8,
+        font: 'F2',
+        color: colors.brand,
+    });
+    context.page.line({
+        x1: margin,
+        y1: context.y - 7,
+        x2: pageWidth - margin,
+        y2: context.y - 7,
+        color: colors.line,
+    });
+    context.y -= 24;
+
+    for (let index = 0; index < images.length; index += imageGalleryColumns) {
+        context = ensureSpace(context, imageGalleryCardHeight);
+        const rowImages = images.slice(index, index + imageGalleryColumns);
+
+        rowImages.forEach(({ asset, image }, columnIndex) => {
+            const x =
+                margin +
+                columnIndex * (imageGalleryCardWidth + imageGalleryGap);
+            drawImageCard(context.page, {
+                asset,
+                image,
+                x,
+                y: context.y,
+            });
+        });
+
+        context.y -= imageGalleryCardHeight;
+    }
+
+    context.y -= 4;
+    return context;
+}
+
+function drawImageCard(
+    page: PdfCanvas,
+    {
+        asset,
+        image,
+        x,
+        y,
+    }: {
+        asset: PdfImageAsset;
+        image: FarmerDocumentationImage;
+        x: number;
+        y: number;
+    },
+) {
+    const imageBoxY = y - imageGalleryImageHeight;
+    const fitted = fitImageInsideBox(
+        asset,
+        imageGalleryCardWidth,
+        imageGalleryImageHeight,
+    );
+
+    page.fillRect({
+        x,
+        y: imageBoxY,
+        width: imageGalleryCardWidth,
+        height: imageGalleryImageHeight,
+        color: colors.softGray,
+    });
+    page.image({
+        name: asset.name,
+        x: x + (imageGalleryCardWidth - fitted.width) / 2,
+        y: imageBoxY + (imageGalleryImageHeight - fitted.height) / 2,
+        width: fitted.width,
+        height: fitted.height,
+    });
+    page.text({
+        x,
+        y: imageBoxY - 14,
+        value: fitSingleLine(image.label, imageGalleryCardWidth, smallFontSize),
+        size: smallFontSize,
+        color: colors.muted,
+    });
+}
+
+function fitImageInsideBox(
+    image: Pick<PdfImageAsset, 'width' | 'height'>,
+    maxWidth: number,
+    maxHeight: number,
+) {
+    const scale = Math.min(maxWidth / image.width, maxHeight / image.height);
+
+    return {
+        width: image.width * scale,
+        height: image.height * scale,
+    };
 }
 
 function startPage(pages: PdfCanvas[], header: HeaderData): FlowContext {
@@ -517,23 +1022,12 @@ function drawSection(
     title: string,
     rawLines: string[],
 ) {
-    let context = ensureSpace(initialContext, 34);
-    context.page.text({
-        x: margin,
-        y: context.y,
-        value: title.toUpperCase(),
-        size: 8,
-        font: 'F2',
-        color: colors.brand,
-    });
-    context.page.line({
-        x1: margin,
-        y1: context.y - 7,
-        x2: pageWidth - margin,
-        y2: context.y - 7,
-        color: colors.line,
-    });
-    context.y -= 24;
+    let context = drawSectionHeader(
+        initialContext,
+        title,
+        margin,
+        contentWidth,
+    );
 
     for (const rawLine of rawLines) {
         const line = rawLine.trim();
@@ -558,6 +1052,544 @@ function drawSection(
 
     context.y -= 12;
     return context;
+}
+
+function drawSectionHeader(
+    initialContext: FlowContext,
+    title: string,
+    x: number,
+    width: number,
+) {
+    const context = ensureSpace(initialContext, 34);
+    context.page.text({
+        x,
+        y: context.y,
+        value: title.toUpperCase(),
+        size: 8,
+        font: 'F2',
+        color: colors.brand,
+    });
+    context.page.line({
+        x1: x,
+        y1: context.y - 7,
+        x2: x + width,
+        y2: context.y - 7,
+        color: colors.line,
+    });
+    context.y -= 24;
+
+    return context;
+}
+
+function drawMarkdownSection(
+    initialContext: FlowContext,
+    title: string,
+    rawLines: string[],
+) {
+    let context = drawSectionHeader(
+        initialContext,
+        title,
+        margin,
+        contentWidth,
+    );
+    context = drawMarkdownBlocks(
+        context,
+        parseMarkdownBlocks(rawLines.join('\n\n')),
+        {
+            x: margin,
+            width: contentWidth,
+        },
+    );
+    context.y -= 12;
+
+    return context;
+}
+
+function drawCompactAttributeSections(
+    initialContext: FlowContext,
+    sections: FarmerDocumentationSection[],
+) {
+    let context = initialContext;
+    const columnWidth = (contentWidth - compactAttributeColumnGap) / 2;
+
+    for (let index = 0; index < sections.length; index += 2) {
+        const firstSection = sections[index];
+        const secondSection = sections[index + 1];
+        if (!firstSection) {
+            continue;
+        }
+
+        const rowSections = secondSection
+            ? [firstSection, secondSection]
+            : [firstSection];
+        const rowHeight = Math.max(
+            ...rowSections.map((section) =>
+                compactAttributeSectionHeight(section, columnWidth),
+            ),
+        );
+
+        context = ensureSpace(context, rowHeight);
+        drawCompactAttributeSection(
+            context.page,
+            firstSection,
+            margin,
+            context.y,
+            columnWidth,
+        );
+
+        if (secondSection) {
+            drawCompactAttributeSection(
+                context.page,
+                secondSection,
+                margin + columnWidth + compactAttributeColumnGap,
+                context.y,
+                columnWidth,
+            );
+        }
+
+        context.y -= rowHeight;
+    }
+
+    context.y -= 8;
+    return context;
+}
+
+function drawCompactAttributeSection(
+    page: PdfCanvas,
+    section: FarmerDocumentationSection,
+    x: number,
+    y: number,
+    width: number,
+) {
+    page.text({
+        x,
+        y,
+        value: section.title.toUpperCase(),
+        size: 8,
+        font: 'F2',
+        color: colors.brand,
+    });
+    page.line({
+        x1: x,
+        y1: y - 7,
+        x2: x + width,
+        y2: y - 7,
+        color: colors.line,
+    });
+
+    let cursorY = y - 24;
+    for (const row of compactAttributeRows(section)) {
+        const runs: MarkdownTextRun[] = [
+            { value: `${row.label}: `, font: 'F2' },
+            { value: row.value },
+        ];
+        const wrappedLines = wrapInlineRuns(runs, width, bodyFontSize);
+        for (const wrappedLine of wrappedLines) {
+            drawInlineRunLine(
+                page,
+                x,
+                cursorY,
+                wrappedLine,
+                bodyFontSize,
+                colors.text,
+            );
+            cursorY -= bodyLineHeight;
+        }
+    }
+}
+
+function compactAttributeSectionHeight(
+    section: FarmerDocumentationSection,
+    width: number,
+) {
+    const rowHeight = compactAttributeRows(section).reduce((total, row) => {
+        const runs: MarkdownTextRun[] = [
+            { value: `${row.label}: `, font: 'F2' },
+            { value: row.value },
+        ];
+        return (
+            total +
+            Math.max(1, wrapInlineRuns(runs, width, bodyFontSize).length) *
+                bodyLineHeight
+        );
+    }, 0);
+
+    return 24 + rowHeight + 14;
+}
+
+function compactAttributeRows(section: FarmerDocumentationSection) {
+    if (section.attributes) {
+        return section.attributes;
+    }
+
+    return section.lines
+        .map((line): FarmerDocumentationAttribute | null => {
+            const separatorIndex = line.indexOf(':');
+            if (separatorIndex < 0) {
+                return { label: line, value: '' };
+            }
+
+            const label = line.slice(0, separatorIndex).trim();
+            const value = line.slice(separatorIndex + 1).trim();
+            return label && value ? { label, value } : null;
+        })
+        .filter((row): row is FarmerDocumentationAttribute => row !== null);
+}
+
+function drawMarkdownBlocks(
+    initialContext: FlowContext,
+    blocks: MarkdownBlock[],
+    options: MarkdownRenderOptions,
+) {
+    let context = initialContext;
+
+    for (const block of blocks) {
+        switch (block.type) {
+            case 'paragraph':
+                context = drawMarkdownParagraph(context, block.runs, options);
+                break;
+            case 'heading':
+                context = drawMarkdownHeading(
+                    context,
+                    block.level,
+                    block.runs,
+                    options,
+                );
+                break;
+            case 'list':
+                context = drawMarkdownList(context, block.items, options);
+                break;
+            case 'table':
+                context = drawMarkdownTable(context, block, options);
+                break;
+            case 'blockquote':
+                context = drawMarkdownBlockquote(
+                    context,
+                    block.blocks,
+                    options,
+                );
+                break;
+            case 'rule':
+                context = drawMarkdownRule(context, options);
+                break;
+        }
+    }
+
+    return context;
+}
+
+function drawMarkdownParagraph(
+    initialContext: FlowContext,
+    runs: MarkdownTextRun[],
+    options: MarkdownRenderOptions,
+) {
+    const context = drawWrappedInlineRuns(
+        initialContext,
+        runs,
+        options.x,
+        options.width,
+        bodyFontSize,
+        bodyLineHeight,
+        options.color ?? colors.text,
+    );
+    context.y -= markdownBlockSpacing;
+
+    return context;
+}
+
+function drawMarkdownHeading(
+    initialContext: FlowContext,
+    level: number,
+    runs: MarkdownTextRun[],
+    options: MarkdownRenderOptions,
+) {
+    const fontSize = level <= 1 ? 12 : level === 2 ? 10.8 : 9.8;
+    const lineHeight = fontSize + 4;
+    const headingRuns = runs.map((run) => ({
+        ...run,
+        font: boldFont(run.font),
+        color: run.color ?? options.color,
+    }));
+    const context = drawWrappedInlineRuns(
+        initialContext,
+        headingRuns,
+        options.x,
+        options.width,
+        fontSize,
+        lineHeight,
+        options.color ?? colors.text,
+    );
+    context.y -= markdownBlockSpacing;
+
+    return context;
+}
+
+function drawMarkdownList(
+    initialContext: FlowContext,
+    items: MarkdownListItem[],
+    options: MarkdownRenderOptions,
+) {
+    let context = initialContext;
+
+    for (const item of items) {
+        const levelIndent = Math.min(item.level, 6) * markdownListIndent;
+        const markerX = options.x + levelIndent;
+        const textX = markerX + markdownListMarkerWidth;
+        const textWidth = options.width - levelIndent - markdownListMarkerWidth;
+        const wrappedLines = wrapInlineRuns(
+            item.runs,
+            Math.max(36, textWidth),
+            bodyFontSize,
+        );
+
+        for (let index = 0; index < wrappedLines.length; index += 1) {
+            const line = wrappedLines[index];
+            if (!line) {
+                continue;
+            }
+
+            context = ensureSpace(context, bodyLineHeight);
+            if (index === 0) {
+                context.page.text({
+                    x: markerX,
+                    y: context.y,
+                    value: item.marker,
+                    size: bodyFontSize,
+                    color: options.color ?? colors.text,
+                });
+            }
+
+            drawInlineRunLine(
+                context.page,
+                textX,
+                context.y,
+                line,
+                bodyFontSize,
+                options.color ?? colors.text,
+            );
+            context.y -= bodyLineHeight;
+        }
+    }
+
+    context.y -= markdownBlockSpacing;
+    return context;
+}
+
+function drawMarkdownTable(
+    initialContext: FlowContext,
+    table: Extract<MarkdownBlock, { type: 'table' }>,
+    options: MarkdownRenderOptions,
+) {
+    const columnCount = Math.max(
+        table.headers.length,
+        ...table.rows.map((row) => row.length),
+        1,
+    );
+    const columnWidth = options.width / columnCount;
+    let context = initialContext;
+    const rows = [table.headers, ...table.rows];
+
+    for (let rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
+        const row = rows[rowIndex];
+        if (!row) {
+            continue;
+        }
+
+        const headerRow = rowIndex === 0;
+        const rowRuns = Array.from({ length: columnCount }, (_, index) => {
+            const cellRuns = row[index] ?? [];
+            return headerRow
+                ? cellRuns.map((run) => ({
+                      ...run,
+                      font: boldFont(run.font),
+                  }))
+                : cellRuns;
+        });
+        const wrappedCells = rowRuns.map((cellRuns) =>
+            wrapInlineRuns(cellRuns, columnWidth - 10, bodyFontSize),
+        );
+        const rowHeight =
+            Math.max(
+                1,
+                ...wrappedCells.map((cell) => Math.max(1, cell.length)),
+            ) *
+                bodyLineHeight +
+            10;
+
+        context = ensureSpace(context, rowHeight);
+        const rowTopY = context.y + 4;
+        const rowBottomY = rowTopY - rowHeight;
+
+        if (headerRow) {
+            context.page.fillRect({
+                x: options.x,
+                y: rowBottomY,
+                width: options.width,
+                height: rowHeight,
+                color: colors.softGray,
+            });
+        }
+
+        context.page.line({
+            x1: options.x,
+            y1: rowTopY,
+            x2: options.x + options.width,
+            y2: rowTopY,
+            color: colors.line,
+        });
+        context.page.line({
+            x1: options.x,
+            y1: rowBottomY,
+            x2: options.x + options.width,
+            y2: rowBottomY,
+            color: colors.line,
+        });
+
+        for (
+            let columnIndex = 0;
+            columnIndex <= columnCount;
+            columnIndex += 1
+        ) {
+            const x = options.x + columnIndex * columnWidth;
+            context.page.line({
+                x1: x,
+                y1: rowTopY,
+                x2: x,
+                y2: rowBottomY,
+                color: colors.line,
+                width: 0.4,
+            });
+        }
+
+        for (
+            let columnIndex = 0;
+            columnIndex < wrappedCells.length;
+            columnIndex += 1
+        ) {
+            const cellLines = wrappedCells[columnIndex] ?? [];
+            const cellX = options.x + columnIndex * columnWidth + 5;
+            for (
+                let lineIndex = 0;
+                lineIndex < cellLines.length;
+                lineIndex += 1
+            ) {
+                const line = cellLines[lineIndex];
+                if (!line) {
+                    continue;
+                }
+
+                drawInlineRunLine(
+                    context.page,
+                    cellX,
+                    context.y - lineIndex * bodyLineHeight,
+                    line,
+                    bodyFontSize,
+                    options.color ?? colors.text,
+                );
+            }
+        }
+
+        context.y -= rowHeight;
+    }
+
+    context.y -= markdownBlockSpacing + 2;
+    return context;
+}
+
+function drawMarkdownBlockquote(
+    initialContext: FlowContext,
+    blocks: MarkdownBlock[],
+    options: MarkdownRenderOptions,
+) {
+    let context = ensureSpace(initialContext, bodyLineHeight);
+    const topY = context.y + 4;
+    const lineX = options.x + 2;
+
+    context = drawMarkdownBlocks(context, blocks, {
+        x: options.x + 12,
+        width: options.width - 12,
+        color: colors.muted,
+    });
+    context.page.line({
+        x1: lineX,
+        y1: topY,
+        x2: lineX,
+        y2: context.y + 4,
+        color: colors.line,
+        width: 1.2,
+    });
+    context.y -= markdownBlockSpacing;
+
+    return context;
+}
+
+function drawMarkdownRule(
+    initialContext: FlowContext,
+    options: MarkdownRenderOptions,
+) {
+    const context = ensureSpace(initialContext, bodyLineHeight);
+    context.page.line({
+        x1: options.x,
+        y1: context.y - 2,
+        x2: options.x + options.width,
+        y2: context.y - 2,
+        color: colors.line,
+    });
+    context.y -= bodyLineHeight;
+
+    return context;
+}
+
+function drawWrappedInlineRuns(
+    initialContext: FlowContext,
+    runs: MarkdownTextRun[],
+    x: number,
+    width: number,
+    fontSize: number,
+    lineHeight: number,
+    color: PdfColor,
+) {
+    let context = initialContext;
+    const lines = wrapInlineRuns(runs, width, fontSize);
+
+    for (const line of lines) {
+        context = ensureSpace(context, lineHeight);
+        drawInlineRunLine(context.page, x, context.y, line, fontSize, color);
+        context.y -= lineHeight;
+    }
+
+    return context;
+}
+
+function drawInlineRunLine(
+    page: PdfCanvas,
+    x: number,
+    y: number,
+    runs: MarkdownTextRun[],
+    fontSize: number,
+    color: PdfColor,
+) {
+    let cursorX = x;
+
+    for (const run of runs) {
+        if (!run.value) {
+            continue;
+        }
+
+        page.text({
+            x: cursorX,
+            y,
+            value: run.value,
+            size: fontSize,
+            font: run.font ?? 'F1',
+            color: run.color ?? color,
+        });
+        cursorX += measureText(run.value, fontSize);
+    }
+}
+
+function boldFont(font: PdfFontKey | undefined): PdfFontKey {
+    return font === 'F3' || font === 'F4' ? 'F4' : 'F2';
 }
 
 function drawHeader(page: PdfCanvas, header: HeaderData) {
@@ -697,20 +1729,590 @@ function drawFooter(page: PdfCanvas) {
     });
 }
 
-function markdownToPlainLines(value: string) {
-    return value
-        .replace(/\r\n/g, '\n')
-        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1 ($2)')
-        .split('\n')
-        .map((line) =>
-            line
-                .replace(/^#{1,6}\s+/, '')
-                .replace(/^[-*]\s+/, '- ')
-                .replace(/\*\*([^*]+)\*\*/g, '$1')
-                .replace(/\*([^*]+)\*/g, '$1')
-                .replace(/`([^`]+)`/g, '$1')
-                .trim(),
+function parseMarkdownBlocks(value: string): MarkdownBlock[] {
+    const lines = value.replace(/\r\n/g, '\n').split('\n');
+    const blocks: MarkdownBlock[] = [];
+    let index = 0;
+
+    while (index < lines.length) {
+        const line = lines[index] ?? '';
+        const trimmed = line.trim();
+
+        if (!trimmed) {
+            index += 1;
+            continue;
+        }
+
+        const table = parseMarkdownTableAt(lines, index);
+        if (table) {
+            blocks.push(table.block);
+            index = table.nextIndex;
+            continue;
+        }
+
+        const heading = /^(#{1,6})\s+(.+)$/u.exec(trimmed);
+        if (heading?.[1] && heading[2]) {
+            blocks.push({
+                type: 'heading',
+                level: heading[1].length,
+                runs: parseInlineMarkdown(heading[2]),
+            });
+            index += 1;
+            continue;
+        }
+
+        if (/^(?:-{3,}|\*{3,}|_{3,})$/u.test(trimmed)) {
+            blocks.push({ type: 'rule' });
+            index += 1;
+            continue;
+        }
+
+        if (trimmed.startsWith('>')) {
+            const quoteLines: string[] = [];
+            while (index < lines.length) {
+                const quoteLine = lines[index] ?? '';
+                const quoteTrimmed = quoteLine.trimStart();
+                if (!quoteTrimmed.startsWith('>')) {
+                    break;
+                }
+                quoteLines.push(quoteTrimmed.replace(/^>\s?/u, ''));
+                index += 1;
+            }
+            blocks.push({
+                type: 'blockquote',
+                blocks: parseMarkdownBlocks(quoteLines.join('\n')),
+            });
+            continue;
+        }
+
+        if (markdownListMatch(line)) {
+            const list = parseMarkdownList(lines, index);
+            blocks.push(list.block);
+            index = list.nextIndex;
+            continue;
+        }
+
+        const paragraphLines: string[] = [];
+        while (index < lines.length) {
+            const paragraphLine = lines[index] ?? '';
+            if (!paragraphLine.trim()) {
+                break;
+            }
+            if (
+                paragraphLines.length > 0 &&
+                isMarkdownBlockStart(lines, index)
+            ) {
+                break;
+            }
+            paragraphLines.push(paragraphLine.trim());
+            index += 1;
+        }
+
+        if (paragraphLines.length > 0) {
+            blocks.push({
+                type: 'paragraph',
+                runs: parseInlineMarkdown(paragraphLines.join(' ')),
+            });
+        }
+    }
+
+    return blocks;
+}
+
+function isMarkdownBlockStart(lines: string[], index: number) {
+    const line = lines[index] ?? '';
+    const trimmed = line.trim();
+
+    return (
+        Boolean(parseMarkdownTableAt(lines, index)) ||
+        /^(#{1,6})\s+.+$/u.test(trimmed) ||
+        /^(?:-{3,}|\*{3,}|_{3,})$/u.test(trimmed) ||
+        trimmed.startsWith('>') ||
+        Boolean(markdownListMatch(line))
+    );
+}
+
+function parseMarkdownList(
+    lines: string[],
+    startIndex: number,
+): {
+    block: Extract<MarkdownBlock, { type: 'list' }>;
+    nextIndex: number;
+} {
+    const items: MarkdownListItem[] = [];
+    let index = startIndex;
+
+    while (index < lines.length) {
+        const line = lines[index] ?? '';
+        const match = markdownListMatch(line);
+
+        if (match) {
+            items.push({
+                level: match.level,
+                marker: match.marker,
+                runs: parseInlineMarkdown(match.content),
+            });
+            index += 1;
+            continue;
+        }
+
+        if (!line.trim()) {
+            const nextLine = lines[index + 1] ?? '';
+            if (markdownListMatch(nextLine)) {
+                index += 1;
+                continue;
+            }
+            break;
+        }
+
+        const lastItem = items[items.length - 1];
+        if (lastItem && /^\s{2,}\S/u.test(line)) {
+            appendMarkdownRun(lastItem.runs, { value: ' ' });
+            for (const run of parseInlineMarkdown(line.trim())) {
+                appendMarkdownRun(lastItem.runs, run);
+            }
+            index += 1;
+            continue;
+        }
+
+        break;
+    }
+
+    return {
+        block: {
+            type: 'list',
+            items,
+        },
+        nextIndex: index,
+    };
+}
+
+function markdownListMatch(line: string) {
+    const normalized = line.replace(/\t/g, '    ');
+    const match = /^(\s*)(?:(\d+)[.)]|([-+*]))\s+(.*)$/u.exec(normalized);
+    if (!match) {
+        return null;
+    }
+
+    const indent = match[1]?.length ?? 0;
+    const numberMarker = match[2];
+    const content = match[4] ?? '';
+
+    return {
+        level: Math.floor(indent / 2),
+        marker: numberMarker ? `${numberMarker}.` : '-',
+        content,
+    };
+}
+
+function parseMarkdownTableAt(
+    lines: string[],
+    startIndex: number,
+): {
+    block: Extract<MarkdownBlock, { type: 'table' }>;
+    nextIndex: number;
+} | null {
+    const headerLine = lines[startIndex];
+    const separatorLine = lines[startIndex + 1];
+    if (!headerLine || !separatorLine || !headerLine.includes('|')) {
+        return null;
+    }
+
+    const separatorCells = parseMarkdownTableCells(separatorLine);
+    if (
+        separatorCells.length === 0 ||
+        !separatorCells.every((cell) => /^:?-{3,}:?$/u.test(cell.trim()))
+    ) {
+        return null;
+    }
+
+    const headers = parseMarkdownTableCells(headerLine).map((cell) =>
+        parseInlineMarkdown(cell),
+    );
+    const rows: MarkdownTextRun[][][] = [];
+    let index = startIndex + 2;
+
+    while (index < lines.length) {
+        const rowLine = lines[index] ?? '';
+        if (!rowLine.trim() || !rowLine.includes('|')) {
+            break;
+        }
+        rows.push(
+            parseMarkdownTableCells(rowLine).map((cell) =>
+                parseInlineMarkdown(cell),
+            ),
         );
+        index += 1;
+    }
+
+    return {
+        block: {
+            type: 'table',
+            headers,
+            rows,
+        },
+        nextIndex: index,
+    };
+}
+
+function parseMarkdownTableCells(line: string) {
+    const trimmed = line.trim();
+    const withoutOuterPipes = trimmed.replace(/^\|/u, '').replace(/\|$/u, '');
+
+    return withoutOuterPipes
+        .split(/(?<!\\)\|/u)
+        .map((cell) => cell.replace(/\\\|/g, '|').trim());
+}
+
+function parseInlineMarkdown(
+    value: string,
+    style: MarkdownInlineStyle = {},
+): MarkdownTextRun[] {
+    const runs: MarkdownTextRun[] = [];
+    let index = 0;
+    let plainText = '';
+
+    function flushPlainText() {
+        if (!plainText) {
+            return;
+        }
+
+        appendMarkdownRun(runs, {
+            value: decodeMarkdownEntities(plainText),
+            font: markdownInlineFont(style),
+            color: style.code ? colors.muted : undefined,
+        });
+        plainText = '';
+    }
+
+    while (index < value.length) {
+        const character = value[index];
+
+        if (character === '\\' && index + 1 < value.length) {
+            plainText += value[index + 1] ?? '';
+            index += 2;
+            continue;
+        }
+
+        if (value.startsWith('![', index)) {
+            const image = parseMarkdownLink(value, index + 1);
+            if (image) {
+                flushPlainText();
+                const imageLabel = inlineText(image.label) || 'Slika';
+                appendMarkdownRun(runs, {
+                    value: imageLabel,
+                    font: markdownInlineFont(style),
+                });
+                if (image.href) {
+                    appendMarkdownRun(runs, {
+                        value: ` (${image.href})`,
+                        color: colors.muted,
+                    });
+                }
+                index = image.nextIndex;
+                continue;
+            }
+        }
+
+        if (character === '[') {
+            const link = parseMarkdownLink(value, index);
+            if (link) {
+                flushPlainText();
+                for (const run of parseInlineMarkdown(link.label, style)) {
+                    appendMarkdownRun(runs, run);
+                }
+                if (link.href) {
+                    appendMarkdownRun(runs, {
+                        value: ` (${link.href})`,
+                        color: colors.muted,
+                    });
+                }
+                index = link.nextIndex;
+                continue;
+            }
+        }
+
+        if (value.startsWith('**', index)) {
+            const closeIndex = findClosingMarkdownMarker(
+                value,
+                '**',
+                index + 2,
+            );
+            if (closeIndex >= 0) {
+                flushPlainText();
+                for (const run of parseInlineMarkdown(
+                    value.slice(index + 2, closeIndex),
+                    { ...style, bold: true },
+                )) {
+                    appendMarkdownRun(runs, run);
+                }
+                index = closeIndex + 2;
+                continue;
+            }
+        }
+
+        if (value.startsWith('__', index)) {
+            const closeIndex = findClosingMarkdownMarker(
+                value,
+                '__',
+                index + 2,
+            );
+            if (closeIndex >= 0) {
+                flushPlainText();
+                for (const run of parseInlineMarkdown(
+                    value.slice(index + 2, closeIndex),
+                    { ...style, bold: true },
+                )) {
+                    appendMarkdownRun(runs, run);
+                }
+                index = closeIndex + 2;
+                continue;
+            }
+        }
+
+        if (value.startsWith('~~', index)) {
+            const closeIndex = findClosingMarkdownMarker(
+                value,
+                '~~',
+                index + 2,
+            );
+            if (closeIndex >= 0) {
+                flushPlainText();
+                for (const run of parseInlineMarkdown(
+                    value.slice(index + 2, closeIndex),
+                    style,
+                )) {
+                    appendMarkdownRun(runs, run);
+                }
+                index = closeIndex + 2;
+                continue;
+            }
+        }
+
+        if (character === '*' && !value.startsWith('**', index)) {
+            const closeIndex = findClosingMarkdownMarker(value, '*', index + 1);
+            if (closeIndex >= 0) {
+                flushPlainText();
+                for (const run of parseInlineMarkdown(
+                    value.slice(index + 1, closeIndex),
+                    { ...style, italic: true },
+                )) {
+                    appendMarkdownRun(runs, run);
+                }
+                index = closeIndex + 1;
+                continue;
+            }
+        }
+
+        if (character === '_' && !value.startsWith('__', index)) {
+            const closeIndex = findClosingMarkdownMarker(value, '_', index + 1);
+            if (closeIndex >= 0) {
+                flushPlainText();
+                for (const run of parseInlineMarkdown(
+                    value.slice(index + 1, closeIndex),
+                    { ...style, italic: true },
+                )) {
+                    appendMarkdownRun(runs, run);
+                }
+                index = closeIndex + 1;
+                continue;
+            }
+        }
+
+        if (character === '`') {
+            const closeIndex = findClosingMarkdownMarker(value, '`', index + 1);
+            if (closeIndex >= 0) {
+                flushPlainText();
+                appendMarkdownRun(runs, {
+                    value: value.slice(index + 1, closeIndex),
+                    font: markdownInlineFont({ ...style, code: true }),
+                    color: colors.muted,
+                });
+                index = closeIndex + 1;
+                continue;
+            }
+        }
+
+        const htmlBreak = value.slice(index).match(/^<br\s*\/?>/iu);
+        if (htmlBreak?.[0]) {
+            plainText += ' ';
+            index += htmlBreak[0].length;
+            continue;
+        }
+
+        const htmlTag = value.slice(index).match(/^<\/?[A-Za-z][^>]*>/u);
+        if (htmlTag?.[0]) {
+            index += htmlTag[0].length;
+            continue;
+        }
+
+        plainText += character;
+        index += 1;
+    }
+
+    flushPlainText();
+    return runs;
+}
+
+function parseMarkdownLink(value: string, startIndex: number) {
+    const labelEndIndex = findClosingMarkdownMarker(value, ']', startIndex + 1);
+    if (labelEndIndex < 0 || value[labelEndIndex + 1] !== '(') {
+        return null;
+    }
+
+    const hrefEndIndex = findClosingMarkdownMarker(
+        value,
+        ')',
+        labelEndIndex + 2,
+    );
+    if (hrefEndIndex < 0) {
+        return null;
+    }
+
+    return {
+        label: value.slice(startIndex + 1, labelEndIndex),
+        href: value.slice(labelEndIndex + 2, hrefEndIndex).trim(),
+        nextIndex: hrefEndIndex + 1,
+    };
+}
+
+function findClosingMarkdownMarker(
+    value: string,
+    marker: string,
+    startIndex: number,
+) {
+    let cursor = startIndex;
+
+    while (cursor < value.length) {
+        const markerIndex = value.indexOf(marker, cursor);
+        if (markerIndex < 0) {
+            return -1;
+        }
+        if (value[markerIndex - 1] !== '\\') {
+            return markerIndex;
+        }
+        cursor = markerIndex + marker.length;
+    }
+
+    return -1;
+}
+
+function markdownInlineFont(style: MarkdownInlineStyle): PdfFontKey {
+    if (style.bold && style.italic) {
+        return 'F4';
+    }
+    if (style.bold) {
+        return 'F2';
+    }
+    if (style.italic || style.code) {
+        return 'F3';
+    }
+
+    return 'F1';
+}
+
+function appendMarkdownRun(runs: MarkdownTextRun[], run: MarkdownTextRun) {
+    if (!run.value) {
+        return;
+    }
+
+    const previous = runs[runs.length - 1];
+    if (
+        previous &&
+        previous.font === run.font &&
+        previous.color === run.color
+    ) {
+        previous.value += run.value;
+        return;
+    }
+
+    runs.push({ ...run });
+}
+
+function inlineText(value: string) {
+    return parseInlineMarkdown(value)
+        .map((run) => run.value)
+        .join('')
+        .trim();
+}
+
+function decodeMarkdownEntities(value: string) {
+    return value
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&#(\d+);/g, (_, codePoint: string) =>
+            String.fromCodePoint(Number.parseInt(codePoint, 10)),
+        )
+        .replace(/&#x([0-9a-f]+);/giu, (_, codePoint: string) =>
+            String.fromCodePoint(Number.parseInt(codePoint, 16)),
+        );
+}
+
+function wrapInlineRuns(
+    runs: MarkdownTextRun[],
+    maxWidth: number,
+    fontSize: number,
+) {
+    const lines: MarkdownTextRun[][] = [];
+    let currentLine: MarkdownTextRun[] = [];
+    let currentWidth = 0;
+    let pendingSpace = false;
+
+    function pushCurrentLine() {
+        if (currentLine.length === 0) {
+            return;
+        }
+
+        lines.push(currentLine);
+        currentLine = [];
+        currentWidth = 0;
+        pendingSpace = false;
+    }
+
+    for (const run of runs) {
+        const tokens = run.value.match(/\s+|\S+/gu) ?? [];
+        for (const token of tokens) {
+            if (/^\s+$/u.test(token)) {
+                pendingSpace = true;
+                continue;
+            }
+
+            const wordParts =
+                measureText(token, fontSize) <= maxWidth
+                    ? [token]
+                    : splitLongWord(token, maxWidth, fontSize);
+
+            for (const wordPart of wordParts) {
+                const prefix =
+                    pendingSpace && currentLine.length > 0 ? ' ' : '';
+                const value = `${prefix}${wordPart}`;
+                const valueWidth = measureText(value, fontSize);
+
+                if (
+                    currentLine.length > 0 &&
+                    currentWidth + valueWidth > maxWidth
+                ) {
+                    pushCurrentLine();
+                }
+
+                const hasLinePrefix = currentLine.length > 0;
+                const outputValue = hasLinePrefix ? value : wordPart;
+                appendMarkdownRun(currentLine, {
+                    value: outputValue,
+                    font: run.font,
+                    color: run.color,
+                });
+                currentWidth += measureText(outputValue, fontSize);
+                pendingSpace = false;
+            }
+        }
+    }
+
+    pushCurrentLine();
+    return lines;
 }
 
 function wrapText(value: string, maxWidth: number, fontSize: number) {
@@ -796,23 +2398,71 @@ function fitSingleLine(value: string, maxWidth: number, fontSize: number) {
 }
 
 function escapePdfText(value: string) {
-    return sanitizePdfText(value)
-        .replace(/\\/g, '\\\\')
-        .replace(/\(/g, '\\(')
-        .replace(/\)/g, '\\)');
+    let escaped = '';
+
+    for (const character of sanitizePdfText(value)) {
+        const glyph = latinExtendedGlyphByCharacter.get(character);
+        if (glyph) {
+            escaped += `\\${glyph.code.toString(8).padStart(3, '0')}`;
+            continue;
+        }
+
+        if (character === '\\') {
+            escaped += '\\\\';
+            continue;
+        }
+        if (character === '(') {
+            escaped += '\\(';
+            continue;
+        }
+        if (character === ')') {
+            escaped += '\\)';
+            continue;
+        }
+
+        escaped += character;
+    }
+
+    return escaped;
 }
 
 function sanitizePdfText(value: string) {
-    return value
-        .replace(
-            /[\u010c\u010d\u0106\u0107\u0110\u0111\u0160\u0161\u017d\u017e]/g,
-            (character) => croatianReplacements[character] ?? character,
-        )
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[–—]/g, '-')
+    let sanitized = '';
+
+    for (const character of value
+        .normalize('NFC')
+        .replace(/[\u00a0\u202f]/g, ' ')
+        .replace(/[\u00ad\u200b]/g, '')
+        .replace(/[‐‑‒–—―]/g, '-')
+        .replace(/[“”„‟]/g, '"')
+        .replace(/[‘’‚‛]/g, "'")
+        .replace(/[•·]/g, '-')
+        .replace(/…/g, '...')
         .replace(/→/g, '->')
-        .replace(/[^\x20-\x7e]/g, '?');
+        .replace(/←/g, '<-')
+        .replace(/×/g, 'x')
+        .replace(/≤/g, '<=')
+        .replace(/≥/g, '>=')
+        .replace(/±/g, '+/-')
+        .replace(/°\s*C/giu, ' C')
+        .replace(/°/g, '')) {
+        if (/^[\x20-\x7e]$/.test(character)) {
+            sanitized += character;
+            continue;
+        }
+
+        if (latinExtendedGlyphByCharacter.has(character)) {
+            sanitized += character;
+            continue;
+        }
+
+        const withoutMarks = character
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '');
+        sanitized += /^[\x20-\x7e]+$/.test(withoutMarks) ? withoutMarks : '?';
+    }
+
+    return sanitized;
 }
 
 function formatNumber(value: number) {
@@ -823,60 +2473,212 @@ function formatColor(color: PdfColor) {
     return [color.r, color.g, color.b].map(formatNumber).join(' ');
 }
 
-function writePdf(pageContentStreams: string[]) {
-    const objects: string[] = [];
+function writePdf(
+    pageContentStreams: string[],
+    imageAssets: readonly PdfImageAsset[],
+) {
+    const objects: Uint8Array[] = [];
     const fontId = 3;
     const boldFontId = 4;
-    const firstPageObjectId = 5;
+    const italicFontId = 5;
+    const boldItalicFontId = 6;
+    const fontEncodingId = 7;
+    const fontToUnicodeMapId = 8;
+    const firstImageObjectId = 9;
+    const firstPageObjectId = firstImageObjectId + imageAssets.length;
+    const encoder = new TextEncoder();
     const kids = pageContentStreams
         .map((_, index) => `${firstPageObjectId + index * 2} 0 R`)
         .join(' ');
+    const xObjectResources =
+        imageAssets.length > 0
+            ? `/XObject << ${imageAssets
+                  .map(
+                      (image, index) =>
+                          `/${image.name} ${firstImageObjectId + index} 0 R`,
+                  )
+                  .join(' ')} >>`
+            : '';
 
-    objects.push('<< /Type /Catalog /Pages 2 0 R >>');
+    objects.push(encodePdfObject('<< /Type /Catalog /Pages 2 0 R >>'));
     objects.push(
-        `<< /Type /Pages /Kids [${kids}] /Count ${pageContentStreams.length} >>`,
+        encodePdfObject(
+            `<< /Type /Pages /Kids [${kids}] /Count ${pageContentStreams.length} >>`,
+        ),
     );
-    objects.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
-    objects.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>');
+    objects.push(
+        encodePdfObject(
+            `<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding ${fontEncodingId} 0 R /ToUnicode ${fontToUnicodeMapId} 0 R >>`,
+        ),
+    );
+    objects.push(
+        encodePdfObject(
+            `<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding ${fontEncodingId} 0 R /ToUnicode ${fontToUnicodeMapId} 0 R >>`,
+        ),
+    );
+    objects.push(
+        encodePdfObject(
+            `<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique /Encoding ${fontEncodingId} 0 R /ToUnicode ${fontToUnicodeMapId} 0 R >>`,
+        ),
+    );
+    objects.push(
+        encodePdfObject(
+            `<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-BoldOblique /Encoding ${fontEncodingId} 0 R /ToUnicode ${fontToUnicodeMapId} 0 R >>`,
+        ),
+    );
+    objects.push(encodePdfObject(pdfLatinExtendedEncodingObject()));
+    objects.push(encodePdfObject(pdfLatinExtendedToUnicodeMapObject()));
+
+    imageAssets.forEach((image) => {
+        objects.push(pdfImageStreamObject(image));
+    });
 
     pageContentStreams.forEach((content, index) => {
         const pageObjectId = firstPageObjectId + index * 2;
         const contentObjectId = pageObjectId + 1;
         objects.push(
-            [
-                '<< /Type /Page',
-                '/Parent 2 0 R',
-                `/MediaBox [0 0 ${formatNumber(pageWidth)} ${formatNumber(pageHeight)}]`,
-                `/Resources << /Font << /F1 ${fontId} 0 R /F2 ${boldFontId} 0 R >> >>`,
-                `/Contents ${contentObjectId} 0 R`,
-                '>>',
-            ].join(' '),
+            encodePdfObject(
+                [
+                    '<< /Type /Page',
+                    '/Parent 2 0 R',
+                    `/MediaBox [0 0 ${formatNumber(pageWidth)} ${formatNumber(pageHeight)}]`,
+                    `/Resources << /Font << /F1 ${fontId} 0 R /F2 ${boldFontId} 0 R /F3 ${italicFontId} 0 R /F4 ${boldItalicFontId} 0 R >> ${xObjectResources} >>`,
+                    `/Contents ${contentObjectId} 0 R`,
+                    '>>',
+                ].join(' '),
+            ),
         );
-        objects.push(
-            `<< /Length ${content.length} >>\nstream\n${content}\nendstream`,
-        );
+        objects.push(pdfStreamObject(deflateSync(encoder.encode(content))));
     });
 
-    let pdf = '%PDF-1.4\n';
+    const chunks: Uint8Array[] = [encoder.encode('%PDF-1.4\n')];
+    let pdfByteLength = chunks[0]?.byteLength ?? 0;
     const offsets = [0];
 
     objects.forEach((object, index) => {
-        offsets.push(pdf.length);
-        pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
+        offsets.push(pdfByteLength);
+        const objectHeader = encoder.encode(`${index + 1} 0 obj\n`);
+        const objectFooter = encoder.encode('\nendobj\n');
+        chunks.push(objectHeader, object, objectFooter);
+        pdfByteLength +=
+            objectHeader.byteLength +
+            object.byteLength +
+            objectFooter.byteLength;
     });
 
-    const xrefOffset = pdf.length;
-    pdf += `xref\n0 ${objects.length + 1}\n`;
-    pdf += '0000000000 65535 f \n';
+    const xrefOffset = pdfByteLength;
+    let xref = `xref\n0 ${objects.length + 1}\n`;
+    xref += '0000000000 65535 f \n';
     offsets.slice(1).forEach((offset) => {
-        pdf += `${offset.toString().padStart(10, '0')} 00000 n \n`;
+        xref += `${offset.toString().padStart(10, '0')} 00000 n \n`;
     });
-    pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\n`;
-    pdf += `startxref\n${xrefOffset}\n%%EOF\n`;
+    xref += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\n`;
+    xref += `startxref\n${xrefOffset}\n%%EOF\n`;
+    chunks.push(encoder.encode(xref));
 
-    const bytes = new TextEncoder().encode(pdf);
-    const buffer = new ArrayBuffer(bytes.byteLength);
-    new Uint8Array(buffer).set(bytes);
+    const buffer = new ArrayBuffer(
+        chunks.reduce((total, chunk) => total + chunk.byteLength, 0),
+    );
+    const bytes = new Uint8Array(buffer);
+    let offset = 0;
+    for (const chunk of chunks) {
+        bytes.set(chunk, offset);
+        offset += chunk.byteLength;
+    }
 
     return buffer;
+}
+
+function encodePdfObject(value: string) {
+    return new TextEncoder().encode(value);
+}
+
+function pdfImageStreamObject(image: PdfImageAsset) {
+    const encoder = new TextEncoder();
+    const content = Buffer.from(image.dataHex, 'hex');
+
+    return concatBytes([
+        encoder.encode(
+            [
+                '<< /Type /XObject',
+                '/Subtype /Image',
+                `/Width ${image.width}`,
+                `/Height ${image.height}`,
+                '/ColorSpace /DeviceRGB',
+                '/BitsPerComponent 8',
+                '/Filter /DCTDecode',
+                `/Length ${content.byteLength}`,
+                '>>',
+                'stream',
+                '',
+            ].join('\n'),
+        ),
+        content,
+        encoder.encode('\nendstream'),
+    ]);
+}
+
+function pdfStreamObject(content: Uint8Array) {
+    const encoder = new TextEncoder();
+    return concatBytes([
+        encoder.encode(
+            `<< /Length ${content.byteLength} /Filter /FlateDecode >>\nstream\n`,
+        ),
+        content,
+        encoder.encode('\nendstream'),
+    ]);
+}
+
+function concatBytes(chunks: Uint8Array[]) {
+    const result = new Uint8Array(
+        chunks.reduce((total, chunk) => total + chunk.byteLength, 0),
+    );
+    let offset = 0;
+    for (const chunk of chunks) {
+        result.set(chunk, offset);
+        offset += chunk.byteLength;
+    }
+
+    return result;
+}
+
+function pdfLatinExtendedEncodingObject() {
+    const firstCode = latinExtendedGlyphs[0]?.code ?? 0x80;
+    const glyphNames = latinExtendedGlyphs
+        .map((glyph) => `/${glyph.glyph}`)
+        .join(' ');
+
+    return `<< /Type /Encoding /BaseEncoding /WinAnsiEncoding /Differences [${firstCode} ${glyphNames}] >>`;
+}
+
+function pdfLatinExtendedToUnicodeMapObject() {
+    const mappings = latinExtendedGlyphs
+        .map(
+            (glyph) =>
+                `<${glyph.code.toString(16).padStart(2, '0').toUpperCase()}> <${glyph.unicode}>`,
+        )
+        .join('\n');
+    const stream = [
+        '/CIDInit /ProcSet findresource begin',
+        '12 dict begin',
+        'begincmap',
+        '/CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def',
+        '/CMapName /GrediceLatinExtended def',
+        '/CMapType 2 def',
+        '1 begincodespacerange',
+        '<00> <FF>',
+        'endcodespacerange',
+        '1 beginbfrange',
+        '<20> <7E> <0020>',
+        'endbfrange',
+        `${latinExtendedGlyphs.length} beginbfchar`,
+        mappings,
+        'endbfchar',
+        'endcmap',
+        'CMapName currentdict /CMap defineresource pop',
+        'end',
+        'end',
+    ].join('\n');
+
+    return `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`;
 }

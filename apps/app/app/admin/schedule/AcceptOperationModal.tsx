@@ -1,3 +1,5 @@
+'use client';
+
 import { IconButton } from '@gredice/ui/IconButton';
 import { Check } from '@gredice/ui/icons';
 import { acceptOperationAction } from '../../(actions)/operationActions';
@@ -6,6 +8,7 @@ import { AcceptRequestModal } from './AcceptRequestModal';
 interface AcceptOperationModalProps {
     operationId: number;
     label: string;
+    raisedBedPhysicalId?: string;
     disabled?: boolean;
     onConfirm?: () => unknown | Promise<unknown>;
 }
@@ -13,6 +16,7 @@ interface AcceptOperationModalProps {
 export function AcceptOperationModal({
     operationId,
     label,
+    raisedBedPhysicalId,
     disabled = false,
     onConfirm,
 }: AcceptOperationModalProps) {
@@ -32,6 +36,7 @@ export function AcceptOperationModal({
             trigger={
                 <IconButton
                     variant="plain"
+                    size="xs"
                     title="Potvrdi operaciju"
                     disabled={disabled}
                 >
@@ -40,6 +45,7 @@ export function AcceptOperationModal({
             }
             title="Potvrda radnje"
             header="Potvrda radnje"
+            raisedBedPhysicalId={raisedBedPhysicalId}
         />
     );
 }

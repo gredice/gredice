@@ -6,11 +6,9 @@ import { TemporaryAccountUpgradeModal } from '../components/auth/TemporaryAccoun
 import { GameSceneWithAnalytics } from '../components/game/GameSceneWithAnalytics';
 import {
     enableDebugHudFlag,
-    lsystemPlantsFlag,
-    plantHistoryFlag,
+    enableSuncokretChatFlag,
+    enableSuncokretDebugFlag,
     rainWetOverlayFlag,
-    raisedBedImageAIFlag,
-    tutorialChecklistFlag,
 } from './flags';
 
 const impersonationFlagCookieName = 'gredice_impersonating';
@@ -21,11 +19,9 @@ export default async function Home() {
         cookieStore.get(impersonationFlagCookieName)?.value === '1';
     const flags: ComponentProps<typeof GameSceneWithAnalytics>['flags'] = {
         enableDebugHudFlag: await enableDebugHudFlag(),
-        enablePlantGeneratorFlag: await lsystemPlantsFlag(),
         enableRainWetOverlayFlag: await rainWetOverlayFlag(),
-        raisedBedImageAI: await raisedBedImageAIFlag(),
-        enablePlantHistoryFlag: await plantHistoryFlag(),
-        enableTutorialChecklistFlag: await tutorialChecklistFlag(),
+        enableSuncokretChatFlag: await enableSuncokretChatFlag(),
+        enableSuncokretDebugFlag: await enableSuncokretDebugFlag(),
     };
 
     return (

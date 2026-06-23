@@ -11,7 +11,9 @@
             ],
             "outputs": [
                 ".next/**",
-                "!.next/cache/**"
+                "!.next/cache/**",
+                "public/sitemap*.xml",
+                "public/robots.txt"
             ]
         },
         "clean": {

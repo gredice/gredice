@@ -97,22 +97,40 @@ export async function ScheduleDayOperationsSection({
             id: operation.id,
             farmUsers: assignableFarmUsersByOperationId[operation.id] ?? [],
         }));
+    const dayOperationsToCancel = scheduledOperations
+        .filter(
+            (operation) =>
+                !isOperationCompleted(operation.status) &&
+                !isOperationPendingVerification(operation.status) &&
+                !isOperationCancelled(operation.status) &&
+                operation.status !== 'failed',
+        )
+        .map((operation) => ({
+            id: operation.id,
+            label: operation.entityId.toString(),
+        }));
 
     return (
         <OptimisticScheduleActionsProvider>
             <Stack spacing={4}>
-                <Row spacing={2} alignItems="center">
-                    <Typography level="h6">Radnje</Typography>
-                    <ScheduleDayOperationsBulkActions
-                        operationsToApprove={dayOperationsToApprove}
-                        operationsToAssign={dayOperationsToAssign}
-                    />
+                <Row spacing={2} alignItems="center" className="w-full">
+                    <Typography level="h6" className="grow">
+                        Radnje
+                    </Typography>
+                    <Row spacing={1} className="ml-auto shrink-0">
+                        <ScheduleDayOperationsBulkActions
+                            operationsToApprove={dayOperationsToApprove}
+                            operationsToAssign={dayOperationsToAssign}
+                            operationsToCancel={dayOperationsToCancel}
+                        />
+                    </Row>
                 </Row>
                 {raisedBedGroups.map(
                     ({ key, physicalId, raisedBeds: beds }) => {
                         return (
                             <RaisedBedOperationsScheduleSection
                                 key={key}
+                                date={date}
                                 physicalId={physicalId}
                                 raisedBeds={beds}
                                 scheduledOperations={scheduledOperations}
@@ -128,6 +146,7 @@ export async function ScheduleDayOperationsSection({
                 {operationFarms.map((farm) => (
                     <FarmOperationsScheduleSection
                         key={farm.id}
+                        date={date}
                         farm={farm}
                         scheduledOperations={scheduledOperations}
                         operationsData={operationsData}

@@ -9,7 +9,6 @@ export interface PlantPerformanceViewerProps {
 
 const plantDebugFlags = {
     enableDebugHudFlag: true,
-    enablePlantGeneratorFlag: true,
     enableRainWetOverlayFlag: true,
 };
 
@@ -31,7 +30,6 @@ export function PlantPerformanceViewer({
     const flags = debugHud
         ? plantDebugFlags
         : {
-              enablePlantGeneratorFlag: true,
               enableRainWetOverlayFlag: true,
           };
 

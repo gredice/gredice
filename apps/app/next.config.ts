@@ -13,6 +13,7 @@ const nextConfig: NextConfig = {
         browserToTerminal: true,
     },
     experimental: {
+        authInterrupts: true,
         typedEnv: true,
         turbopackFileSystemCacheForDev: true,
         optimizePackageImports: [

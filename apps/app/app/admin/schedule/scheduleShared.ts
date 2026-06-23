@@ -122,6 +122,44 @@ export function formatMinutes(minutes: number, hideUnit = false) {
     return hideUnit ? `${rounded}` : `${rounded} min`;
 }
 
+export function getScheduleTaskRowClassName({
+    pendingAcceptance,
+}: {
+    accepted: boolean;
+    pendingAcceptance: boolean;
+}) {
+    if (pendingAcceptance) {
+        return 'min-w-0 flex-nowrap rounded bg-amber-50/80 text-foreground ring-1 ring-inset ring-amber-200/70 hover:bg-amber-100/80 md:px-2 md:py-1 dark:bg-amber-950/40 dark:ring-amber-900/70 dark:hover:bg-amber-950/60';
+    }
+
+    return 'min-w-0 flex-nowrap rounded hover:bg-muted md:px-2 md:py-1';
+}
+
+export function isSameScheduleDay(
+    left: Date | string | null | undefined,
+    right: Date | string | null | undefined,
+) {
+    if (!left || !right) {
+        return false;
+    }
+
+    const leftDate = typeof left === 'string' ? new Date(left) : left;
+    const rightDate = typeof right === 'string' ? new Date(right) : right;
+
+    if (
+        !Number.isFinite(leftDate.getTime()) ||
+        !Number.isFinite(rightDate.getTime())
+    ) {
+        return false;
+    }
+
+    return (
+        leftDate.getFullYear() === rightDate.getFullYear() &&
+        leftDate.getMonth() === rightDate.getMonth() &&
+        leftDate.getDate() === rightDate.getDate()
+    );
+}
+
 export function isTaskDateBeforeToday(date: Date | undefined) {
     if (!date) {
         return false;

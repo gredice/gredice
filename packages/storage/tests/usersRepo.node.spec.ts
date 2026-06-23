@@ -5,15 +5,19 @@ import {
     accountUsers,
     attachTemporaryAccountsToUser,
     cleanupInactiveTemporaryAccounts,
+    createEntity,
     createOrUpdateUserPasswordLogin,
     createRefreshToken,
     createTemporaryUserAndAccount,
     createUserWithPassword,
     getAccountGardensMetadata,
     getUsersWithBirthdayOn,
+    listUserFavorites,
     promoteTemporaryUser,
     refreshTokens,
+    setUserFavorite,
     storage,
+    upsertEntityType,
     userLogins,
     users,
 } from '@gredice/storage';
@@ -22,6 +26,15 @@ import { createTestAccount, ensureFarmId } from './helpers/testHelpers';
 import { createTestDb } from './testDb';
 
 const TEST_USER_EMAIL = 'birthday@example.com';
+
+async function createFavoriteTarget(entityTypeName: 'plant' | 'plantSort') {
+    await upsertEntityType({
+        name: entityTypeName,
+        label: entityTypeName,
+    });
+
+    return await createEntity(entityTypeName);
+}
 
 test('getUsersWithBirthdayOn returns users with matching birthdays', async () => {
     createTestDb();
@@ -110,9 +123,12 @@ test('promoteTemporaryUser converts a temporary user to email identity', async (
         where: eq(userLogins.userId, temporary.userId),
     });
     assert.equal(login?.loginId, 'promoted-temp@example.com');
+
+    const gardens = await getAccountGardensMetadata(temporary.accountId);
+    assert.equal(gardens[0].isSandbox, false);
 });
 
-test('attachTemporaryAccountsToUser moves accounts and deletes temporary auth rows', async () => {
+test('attachTemporaryAccountsToUser moves accounts, favorites, and deletes temporary auth rows', async () => {
     createTestDb();
     await ensureFarmId();
 
@@ -127,6 +143,26 @@ test('attachTemporaryAccountsToUser moves accounts and deletes temporary auth ro
         'secret-password',
     );
     await createRefreshToken(temporary.userId);
+    const plantId = await createFavoriteTarget('plant');
+    const plantSortId = await createFavoriteTarget('plantSort');
+    await setUserFavorite({
+        userId: temporary.userId,
+        entityType: 'plant',
+        entityId: plantId,
+        favorited: true,
+    });
+    await setUserFavorite({
+        userId: temporary.userId,
+        entityType: 'plantSort',
+        entityId: plantSortId,
+        favorited: true,
+    });
+    await setUserFavorite({
+        userId: targetUserId,
+        entityType: 'plantSort',
+        entityId: plantSortId,
+        favorited: true,
+    });
 
     const attached = await attachTemporaryAccountsToUser({
         temporaryUserId: temporary.userId,
@@ -139,6 +175,22 @@ test('attachTemporaryAccountsToUser moves accounts and deletes temporary auth ro
         where: eq(accountUsers.accountId, temporary.accountId),
     });
     assert.equal(movedLink?.userId, targetUserId);
+
+    const gardens = await getAccountGardensMetadata(temporary.accountId);
+    assert.equal(gardens[0].isSandbox, false);
+
+    const targetFavorites = await listUserFavorites({ userId: targetUserId });
+    assert.deepEqual(
+        targetFavorites
+            .map((favorite) => `${favorite.entityType}:${favorite.entityId}`)
+            .sort(),
+        [`plant:${plantId}`, `plantSort:${plantSortId}`].sort(),
+    );
+
+    const temporaryFavorites = await listUserFavorites({
+        userId: temporary.userId,
+    });
+    assert.deepEqual(temporaryFavorites, []);
 
     const deletedTemporaryUser = await storage().query.users.findFirst({
         where: eq(users.id, temporary.userId),

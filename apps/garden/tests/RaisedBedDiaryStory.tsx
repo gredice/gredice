@@ -1,6 +1,5 @@
 import * as ReactQuery from '@tanstack/react-query';
 import { type PropsWithChildren, useMemo } from 'react';
-import { GameFlagsContext } from '../../../packages/game/src/GameFlagsContext';
 import { RaisedBedDiary } from '../../../packages/game/src/hud/raisedBed/RaisedBedDiary';
 import { Card, CardOverflow } from '../../../packages/ui/src/Card';
 import { buildOperation } from './raisedBedFieldHudScenarios';
@@ -147,9 +146,7 @@ function RaisedBedDiaryTestProviders({ children }: PropsWithChildren) {
 
     return (
         <ReactQuery.QueryClientProvider client={queryClient}>
-            <GameFlagsContext.Provider value={{ raisedBedImageAI: false }}>
-                {children}
-            </GameFlagsContext.Provider>
+            {children}
         </ReactQuery.QueryClientProvider>
     );
 }

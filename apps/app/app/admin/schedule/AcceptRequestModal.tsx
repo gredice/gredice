@@ -5,6 +5,7 @@ import { IconButton } from '@gredice/ui/IconButton';
 import { Check } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
+import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
@@ -15,6 +16,7 @@ interface AcceptRequestModalProps {
     trigger?: React.ReactElement;
     title?: string;
     header?: string;
+    raisedBedPhysicalId?: string;
 }
 
 export function AcceptRequestModal({
@@ -23,6 +25,7 @@ export function AcceptRequestModal({
     trigger,
     title = 'Potvrda zadatka',
     header = 'Potvrda zadatka',
+    raisedBedPhysicalId,
 }: AcceptRequestModalProps) {
     const [open, setOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -49,6 +52,7 @@ export function AcceptRequestModal({
                 trigger ?? (
                     <IconButton
                         variant="plain"
+                        size="xs"
                         title="Potvrdi"
                         loading={isSubmitting}
                     >
@@ -59,6 +63,12 @@ export function AcceptRequestModal({
         >
             <Stack spacing={4}>
                 <Typography level="h5">{header}</Typography>
+                {raisedBedPhysicalId && (
+                    <RaisedBedLabel
+                        physicalId={raisedBedPhysicalId}
+                        size="compact"
+                    />
+                )}
                 <Typography>
                     Jeste li sigurni da želite potvrditi zadatak:{' '}
                     <strong>{label}</strong>?

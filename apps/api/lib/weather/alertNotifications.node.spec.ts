@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
     filterWeatherAlertsForNotifications,
+    resolveWeatherAlertOptInRecipients,
     weatherAlertNotificationCollapseKey,
     weatherAlertNotificationLookupCollapseKeys,
 } from './alertNotifications';
@@ -120,5 +121,75 @@ describe('weather alert notification collapse keys', () => {
                 `weather-risk:43:${yellowAlert.deduplicationKey}`,
             ],
         );
+    });
+});
+
+describe('resolveWeatherAlertOptInRecipients', () => {
+    it('defaults weather alert recipients off until a user opts in', () => {
+        const recipients = resolveWeatherAlertOptInRecipients(
+            [
+                { accountId: 'account-1', userId: 'enabled-user' },
+                { accountId: 'account-1', userId: 'missing-user' },
+                { accountId: 'account-2', userId: 'disabled-user' },
+            ],
+            [
+                {
+                    accountId: null,
+                    enabled: true,
+                    scope: 'global',
+                    userId: 'enabled-user',
+                },
+                {
+                    accountId: null,
+                    enabled: false,
+                    scope: 'global',
+                    userId: 'disabled-user',
+                },
+            ],
+        );
+
+        assert.deepEqual(Array.from(recipients.entries()), [
+            ['account-1', ['enabled-user']],
+        ]);
+    });
+
+    it('lets account-level preferences override global weather alert opt-ins', () => {
+        const recipients = resolveWeatherAlertOptInRecipients(
+            [
+                { accountId: 'account-1', userId: 'globally-enabled' },
+                { accountId: 'account-1', userId: 'account-enabled' },
+                { accountId: 'account-2', userId: 'account-enabled' },
+            ],
+            [
+                {
+                    accountId: null,
+                    enabled: true,
+                    scope: 'global',
+                    userId: 'globally-enabled',
+                },
+                {
+                    accountId: 'account-1',
+                    enabled: false,
+                    scope: 'account',
+                    userId: 'globally-enabled',
+                },
+                {
+                    accountId: null,
+                    enabled: false,
+                    scope: 'global',
+                    userId: 'account-enabled',
+                },
+                {
+                    accountId: 'account-2',
+                    enabled: true,
+                    scope: 'account',
+                    userId: 'account-enabled',
+                },
+            ],
+        );
+
+        assert.deepEqual(Array.from(recipients.entries()), [
+            ['account-2', ['account-enabled']],
+        ]);
     });
 });

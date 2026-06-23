@@ -120,7 +120,7 @@ export function AssignOperationModal({
         (assignedUsers?.length ?? 0) > 0 ? (
             <button
                 type="button"
-                className="rounded-full transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex h-7 min-w-7 items-center justify-center rounded-full transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
                 title={`Dodijeljeno korisnika: ${assignedUsers?.length ?? 0}`}
                 aria-label={`Dodijeljeno korisnika: ${assignedUsers?.length ?? 0}`}
                 disabled={!canOpen}
@@ -134,7 +134,7 @@ export function AssignOperationModal({
                                 assignedUser.displayName ??
                                 assignedUser.userName
                             }
-                            className="size-7 ring-2 ring-background"
+                            className="size-6 ring-1 ring-background"
                         />
                     ))}
                     {(assignedUsers?.length ?? 0) > 2 && (
@@ -146,7 +146,9 @@ export function AssignOperationModal({
             </button>
         ) : (
             <IconButton
-                variant="plain"
+                variant="soft"
+                color="warning"
+                size="xs"
                 title={
                     canOpen
                         ? 'Dodijeli korisnika'

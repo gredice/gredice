@@ -420,7 +420,6 @@ export function GameScene({
             {!hideHud && (
                 <GameHud
                     debugHud={showDebugHud}
-                    flags={flags}
                     noWeather={noWeather}
                     suppressOpeningHud={suppressOpeningHud}
                 />

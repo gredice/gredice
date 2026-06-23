@@ -94,6 +94,12 @@ export function useGardenBoxStoreBlock() {
     const queryClient = useQueryClient();
     const { data: garden } = useCurrentGarden();
     const winterMode = useGameState((state) => state.winterMode);
+    const showGardenBoxTooltip = useGameState(
+        (state) => state.showGardenBoxTooltip,
+    );
+    const clearGardenBoxTooltip = useGameState(
+        (state) => state.clearGardenBoxTooltip,
+    );
     const gardenQueryKey = currentGardenKeys(winterMode, garden?.id);
 
     return useMutation({
@@ -138,6 +144,8 @@ export function useGardenBoxStoreBlock() {
             if (!garden) {
                 return;
             }
+
+            clearGardenBoxTooltip();
 
             const updatedStacks = garden.stacks.map((stack) => {
                 const isSourceStack =
@@ -186,8 +194,15 @@ export function useGardenBoxStoreBlock() {
                 previousInventory,
             };
         },
-        onError: (error, _variables, context) => {
+        onError: (error, variables, context) => {
             console.error('Error storing block in garden box', error);
+            showGardenBoxTooltip({
+                blockId: variables.gardenBoxBlockId,
+                message:
+                    error instanceof Error
+                        ? error.message
+                        : 'Failed to store block in garden box',
+            });
             if (context?.previousGarden) {
                 queryClient.setQueryData(
                     gardenQueryKey,

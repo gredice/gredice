@@ -4,7 +4,6 @@ import { IconButton } from '@gredice/ui/IconButton';
 import { Megaphone } from '@gredice/ui/icons';
 import { cx } from '@gredice/ui/utils';
 import { useState } from 'react';
-import type { GameSceneProps } from './GameScene';
 import { useCurrentGarden } from './hooks/useCurrentGarden';
 import { useCurrentUser } from './hooks/useCurrentUser';
 import { useMarkTutorialChecklistTaskReady } from './hooks/useTutorialChecklist';
@@ -25,6 +24,7 @@ import { RaisedBedOnboardingModal } from './hud/RaisedBedOnboardingModal';
 import { SandboxBlockTrashDropTarget } from './hud/SandboxBlockTrashDropTarget';
 import { SandboxEnvironmentHud } from './hud/SandboxEnvironmentHud';
 import { ShoppingCartHud } from './hud/ShoppingCartHud';
+import { SuncokretChatHud } from './hud/SuncokretChatHud';
 import { SunflowersHud } from './hud/SunflowersHud';
 import { TutorialChecklistHud } from './hud/TutorialChecklistHud';
 import { WeatherHud } from './hud/WeatherHud';
@@ -60,12 +60,10 @@ export function getGameHudBottomCloseupClassName(isCloseup: boolean) {
 
 export function GameHud({
     debugHud,
-    flags,
     noWeather,
     suppressOpeningHud,
 }: {
     debugHud?: boolean;
-    flags: GameSceneProps['flags'];
     noWeather?: boolean;
     suppressOpeningHud?: boolean;
 }) {
@@ -87,26 +85,23 @@ export function GameHud({
     const { data: currentUser } = useCurrentUser();
     const markTutorialChecklistTaskReady = useMarkTutorialChecklistTaskReady();
     const isSandbox = Boolean(currentGarden?.isSandbox);
-    const showAccountEconomy = !isSandbox || Boolean(currentUser?.isTemporary);
     const isLocalSandbox = useGameState(
         (state) => state.localSandboxStorageKey !== null,
     );
-    const enableTutorialChecklist = Boolean(flags?.enableTutorialChecklistFlag);
+    const showAccountEconomy =
+        !isLocalSandbox && (!isSandbox || Boolean(currentUser?.isTemporary));
     const closeupHiddenHudClassName = cx(
         'empty:hidden',
         isCloseup && 'hidden md:block',
     );
     const currentGardenId = currentGarden?.id ?? null;
-    const raisedBedOnboardingChecklistEnabled = enableTutorialChecklist;
-    const raisedBedOnboardingAvailable =
-        raisedBedOnboardingChecklistEnabled && !isSandbox;
+    const raisedBedOnboardingAvailable = !isSandbox;
     const visitSummaryConfirmed =
         visitSummaryConfirmation.confirmed &&
         visitSummaryConfirmation.gardenId === currentGardenId;
     const raisedBedOnboardingChecklistResolved =
-        !raisedBedOnboardingChecklistEnabled ||
-        (raisedBedOnboardingConfirmation.confirmed &&
-            raisedBedOnboardingConfirmation.gardenId === currentGardenId);
+        raisedBedOnboardingConfirmation.confirmed &&
+        raisedBedOnboardingConfirmation.gardenId === currentGardenId;
     const visitSummaryEnabled =
         !suppressOpeningHud &&
         welcomeConfirmed &&
@@ -117,7 +112,6 @@ export function GameHud({
         welcomeConfirmed &&
         (isSandbox || visitSummaryConfirmed);
     const raisedBedOnboardingEnabled =
-        raisedBedOnboardingChecklistEnabled &&
         visitSummaryStageComplete &&
         !raisedBedOnboardingChecklistResolved &&
         !isSandbox;
@@ -155,21 +149,19 @@ export function GameHud({
                         }
                     />
                 )}
-                {!isLocalSandbox && !isSandbox && enableTutorialChecklist && (
-                    <TutorialChecklistHud />
-                )}
-                {!isLocalSandbox && showAccountEconomy && <ShoppingCartHud />}
+                {!isLocalSandbox && !isSandbox && <TutorialChecklistHud />}
+                {showAccountEconomy && <ShoppingCartHud />}
                 {showAccountEconomy && (
                     <div className={closeupHiddenHudClassName}>
                         <AdventHud />
                     </div>
                 )}
-                {!isLocalSandbox && showAccountEconomy && (
+                {showAccountEconomy && (
                     <div className={closeupHiddenHudClassName}>
                         <InventoryHud />
                     </div>
                 )}
-                {!isLocalSandbox && showAccountEconomy && (
+                {showAccountEconomy && (
                     <div className={closeupHiddenHudClassName}>
                         <OutletHud />
                     </div>
@@ -189,7 +181,8 @@ export function GameHud({
                         <WeatherHud noWeather={noWeather} />
                     )}
                 </div>
-                {!isLocalSandbox && showAccountEconomy && <SunflowersHud />}
+                {showAccountEconomy && <SunflowersHud />}
+                {!isSandbox && !isLocalSandbox && <SuncokretChatHud />}
             </div>
             <div className={gameHudBottomBarClassName}>
                 <div
@@ -232,7 +225,7 @@ export function GameHud({
                     <ItemsHud />
                 </div>
             </div>
-            {!isLocalSandbox && <RaisedBedFieldHud flags={flags} />}
+            {!isLocalSandbox && <RaisedBedFieldHud />}
             {!isLocalSandbox && <OverviewModal />}
             {!isLocalSandbox && <AdventModal />}
             {!isLocalSandbox && <GiftBoxModal />}

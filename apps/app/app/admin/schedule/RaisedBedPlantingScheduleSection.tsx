@@ -8,8 +8,8 @@ import { Chip } from '@gredice/ui/Chip';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Calendar, Close, ToggleLeft, ToggleRight } from '@gredice/ui/icons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Row } from '@gredice/ui/Row';
-import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
@@ -28,17 +28,24 @@ import { AcceptRaisedBedFieldModal } from './AcceptRaisedBedFieldModal';
 import { AssignRaisedBedFieldModal } from './AssignRaisedBedFieldModal';
 import { BulkApproveRaisedBedButton } from './BulkApproveRaisedBedButton';
 import { BulkAssignRaisedBedButton } from './BulkAssignRaisedBedButton';
+import {
+    BulkCancelRaisedBedButton,
+    buildFieldCancelFormData,
+} from './BulkCancelRaisedBedButton';
 import { BulkRescheduleRaisedBedButton } from './BulkRescheduleRaisedBedButton';
 import { CancelRaisedBedFieldModal } from './CancelRaisedBedFieldModal';
 import { CompletePlantingModal } from './CompletePlantingModal';
 import { CopyTasksButton } from './CopyTasksButton';
 import { RescheduleRaisedBedFieldModal } from './RescheduleRaisedBedFieldModal';
+import { SchedulePlantVisual } from './ScheduleTaskVisual';
 import { parseScheduledDateInput } from './scheduleOptimisticHelpers';
 import {
     formatMinutes,
+    getScheduleTaskRowClassName,
     isFieldApproved,
     isFieldCompleted,
     isFieldPendingVerification,
+    isSameScheduleDay,
     PLANTING_TASK_DURATION_MINUTES,
 } from './scheduleShared';
 import type { RaisedBed, RaisedBedField } from './types';
@@ -46,6 +53,7 @@ import { useOptimisticScheduleActions } from './useOptimisticScheduleActions';
 import { VerifyPlantingModal } from './VerifyPlantingModal';
 
 interface RaisedBedPlantingScheduleSectionProps {
+    date: Date;
     physicalId: string;
     raisedBeds: RaisedBed[];
     scheduledFields: RaisedBedField[];
@@ -75,6 +83,7 @@ function getSowingTaskLabel({
 }
 
 export function RaisedBedPlantingScheduleSection({
+    date,
     physicalId,
     raisedBeds,
     scheduledFields,
@@ -197,6 +206,18 @@ export function RaisedBedPlantingScheduleSection({
             id: field.id,
             farmUsers: assignableFarmUsersByRaisedBedFieldId[field.id] ?? [],
         }));
+    const fieldsToCancel = dayFields
+        .filter(
+            (field) =>
+                !isFieldCompleted(field.plantStatus) &&
+                !isFieldPendingVerification(field.plantStatus),
+        )
+        .map((field) => ({
+            id: field.id,
+            raisedBedId: field.raisedBedId,
+            positionIndex: field.positionIndex,
+            label: `${field.positionIndex + 1}`,
+        }));
 
     const durations = dayFields.reduce(
         (acc, field) => {
@@ -215,54 +236,65 @@ export function RaisedBedPlantingScheduleSection({
     return (
         <Stack key={physicalId} spacing={2}>
             <Row spacing={2} className="w-full items-center flex-wrap gap-y-1">
-                <BulkApproveRaisedBedButton
-                    physicalId={physicalId.toString()}
-                    fields={fieldsToApprove}
-                    operations={[]}
-                    onConfirm={() =>
-                        runOptimisticAction({
-                            fieldPatches: fieldsToApprove.map((field) => ({
-                                id: field.id,
-                                patch: { plantStatus: 'planned' },
-                            })),
-                            action: () =>
-                                Promise.all(
-                                    fieldsToApprove.map((field) =>
-                                        acceptRaisedBedFieldAction(
-                                            field.raisedBedId,
-                                            field.positionIndex,
-                                        ),
-                                    ),
-                                ),
-                            errorLogMessage:
-                                'Failed to approve all raised bed planting items:',
-                            errorAlertMessage:
-                                'Skupna potvrda sijanja nije uspjela. Promjena je vraćena.',
-                        })
-                    }
-                />
                 <Row
                     spacing={1}
                     className="min-w-0 grow items-center flex-wrap gap-y-1"
                 >
                     {raisedBedDetailsLink ? (
-                        <Link href={raisedBedDetailsLink}>
-                            <RaisedBedLabel physicalId={physicalId} />
+                        <Link
+                            href={raisedBedDetailsLink}
+                            aria-label={`Gredica ${physicalId}`}
+                        >
+                            <RaisedBedIcon
+                                physicalId={physicalId}
+                                className="size-5"
+                                containerClassName="h-5"
+                            />
                         </Link>
                     ) : (
-                        <RaisedBedLabel physicalId={physicalId} />
+                        <RaisedBedIcon
+                            physicalId={physicalId}
+                            className="size-5"
+                            containerClassName="h-5"
+                        />
                     )}
                     <Typography level="body2" className="text-muted-foreground">
-                        Vrijeme: {formatMinutes(durations.completed, true)} /{' '}
+                        {formatMinutes(durations.completed, true)} /{' '}
                         {formatMinutes(durations.approved)} (
                         {formatMinutes(durations.total)})
                     </Typography>
+                </Row>
+                <Row spacing={1} className="ml-auto shrink-0 items-center">
+                    <BulkApproveRaisedBedButton
+                        physicalId={physicalId.toString()}
+                        fields={fieldsToApprove}
+                        operations={[]}
+                        onConfirm={() =>
+                            runOptimisticAction({
+                                fieldPatches: fieldsToApprove.map((field) => ({
+                                    id: field.id,
+                                    patch: { plantStatus: 'planned' },
+                                })),
+                                action: () =>
+                                    Promise.all(
+                                        fieldsToApprove.map((field) =>
+                                            acceptRaisedBedFieldAction(
+                                                field.raisedBedId,
+                                                field.positionIndex,
+                                            ),
+                                        ),
+                                    ),
+                                errorLogMessage:
+                                    'Failed to approve all raised bed planting items:',
+                                errorAlertMessage:
+                                    'Skupna potvrda sijanja nije uspjela. Promjena je vraćena.',
+                            })
+                        }
+                    />
                     <CopyTasksButton
                         physicalId={physicalId.toString()}
                         tasks={copyTasks}
                     />
-                </Row>
-                <Row spacing={1} className="ml-auto shrink-0 items-center">
                     <BulkAssignRaisedBedButton
                         physicalId={physicalId.toString()}
                         fields={fieldsToAssign}
@@ -338,9 +370,37 @@ export function RaisedBedPlantingScheduleSection({
                             })
                         }
                     />
+                    <BulkCancelRaisedBedButton
+                        physicalId={physicalId.toString()}
+                        fields={fieldsToCancel}
+                        operations={[]}
+                        onSubmit={(formData) =>
+                            runOptimisticAction({
+                                fieldPatches: fieldsToCancel.map((field) => ({
+                                    id: field.id,
+                                    patch: { isDeleted: true },
+                                })),
+                                action: () =>
+                                    Promise.all(
+                                        fieldsToCancel.map((field) =>
+                                            cancelRaisedBedFieldAction(
+                                                buildFieldCancelFormData(
+                                                    field,
+                                                    formData,
+                                                ),
+                                            ),
+                                        ),
+                                    ),
+                                errorLogMessage:
+                                    'Failed to cancel all raised bed planting items:',
+                                errorAlertMessage:
+                                    'Skupno otkazivanje sijanja nije uspjelo. Promjena je vraćena.',
+                            })
+                        }
+                    />
                 </Row>
             </Row>
-            <Stack spacing={2}>
+            <Stack spacing={0}>
                 {!dayFields.length && (
                     <Typography level="body2">
                         Trenutno nema sijanja za ovu gredicu.
@@ -397,13 +457,11 @@ export function RaisedBedPlantingScheduleSection({
                     const nextSowingLocation = greenhouseSowing
                         ? 'direct'
                         : 'greenhouse';
-                    const fieldStatusText = fieldCompleted
-                        ? 'Završeno'
-                        : fieldPendingVerification
-                          ? 'Čeka verifikaciju'
-                          : fieldApproved
-                            ? 'Potvrđeno'
-                            : 'Nije potvrđeno';
+                    const fieldStatusText = fieldPendingVerification
+                        ? 'Čeka verifikaciju'
+                        : fieldApproved || fieldCompleted
+                          ? null
+                          : 'Nije potvrđeno';
                     const fieldStatusClassName = fieldCompleted
                         ? 'text-green-600'
                         : fieldPendingVerification
@@ -414,24 +472,24 @@ export function RaisedBedPlantingScheduleSection({
                     const fieldLocked =
                         fieldCompleted || fieldPendingVerification;
                     const fieldApprovedActive = fieldApproved && !fieldLocked;
+                    const fieldPendingAcceptance =
+                        !fieldApproved && !fieldLocked;
+                    const showScheduledDate =
+                        !!field.plantScheduledDate &&
+                        !isSameScheduleDay(field.plantScheduledDate, date);
 
                     return (
                         <div key={field.id}>
                             <Row
-                                spacing={2}
-                                className={
-                                    fieldApprovedActive
-                                        ? 'rounded bg-muted/60 text-foreground hover:bg-muted/80'
-                                        : 'rounded hover:bg-muted'
-                                }
+                                spacing={1}
+                                className={getScheduleTaskRowClassName({
+                                    accepted: fieldApprovedActive,
+                                    pendingAcceptance: fieldPendingAcceptance,
+                                })}
                             >
-                                <Row spacing={2} className="grow">
+                                <Row className="min-w-0 flex-1 flex-nowrap gap-1 md:gap-2">
                                     {fieldCompleted ? (
-                                        <Checkbox
-                                            className="size-5 mx-2"
-                                            checked
-                                            disabled
-                                        />
+                                        <Checkbox checked disabled />
                                     ) : fieldPendingVerification ? (
                                         <VerifyPlantingModal
                                             raisedBedId={field.raisedBedId}
@@ -465,6 +523,7 @@ export function RaisedBedPlantingScheduleSection({
                                             raisedBedId={field.raisedBedId}
                                             positionIndex={field.positionIndex}
                                             label={fieldLabel}
+                                            raisedBedPhysicalId={physicalId}
                                             disabled={!field.assignedUserId}
                                             onConfirm={() =>
                                                 runOptimisticAction({
@@ -492,43 +551,55 @@ export function RaisedBedPlantingScheduleSection({
                                     ) : (
                                         <CompletePlantingModal
                                             label={fieldLabel}
+                                            raisedBedPhysicalId={physicalId}
                                             onConfirm={handlePlantConfirm}
                                         />
                                     )}
+                                    <SchedulePlantVisual
+                                        plantSort={sortData}
+                                        label={fieldLabel}
+                                    />
                                     <Typography
+                                        level="body1"
+                                        noWrap
                                         className={
                                             fieldCompleted
-                                                ? 'line-through text-muted-foreground'
-                                                : undefined
+                                                ? 'min-w-0 flex-1 line-through text-muted-foreground'
+                                                : 'min-w-0 flex-1'
                                         }
                                     >
                                         {fieldLabel}
                                     </Typography>
-                                    <Typography
-                                        level="body2"
-                                        className={`ml-1 italic ${fieldStatusClassName}`}
-                                    >
-                                        {fieldStatusText}
-                                    </Typography>
-                                    <Typography
-                                        level="body2"
-                                        component="div"
-                                        className="select-none"
-                                    >
-                                        {field.plantScheduledDate ? (
-                                            <LocalDateTime time={false}>
-                                                {field.plantScheduledDate}
-                                            </LocalDateTime>
-                                        ) : (
-                                            <Chip
-                                                size="sm"
-                                                color="warning"
-                                                className="w-fit"
-                                            >
-                                                Nije planirano
-                                            </Chip>
-                                        )}
-                                    </Typography>
+                                    {fieldStatusText && (
+                                        <Typography
+                                            level="body2"
+                                            className={`shrink-0 italic ${fieldStatusClassName}`}
+                                        >
+                                            {fieldStatusText}
+                                        </Typography>
+                                    )}
+                                    {(showScheduledDate ||
+                                        !field.plantScheduledDate) && (
+                                        <Typography
+                                            level="body2"
+                                            component="div"
+                                            className="shrink-0 select-none"
+                                        >
+                                            {showScheduledDate ? (
+                                                <LocalDateTime time={false}>
+                                                    {field.plantScheduledDate}
+                                                </LocalDateTime>
+                                            ) : (
+                                                <Chip
+                                                    size="sm"
+                                                    color="warning"
+                                                    className="w-fit"
+                                                >
+                                                    Nije planirano
+                                                </Chip>
+                                            )}
+                                        </Typography>
+                                    )}
                                     <Button
                                         variant={
                                             greenhouseSowing
@@ -540,7 +611,8 @@ export function RaisedBedPlantingScheduleSection({
                                                 ? 'success'
                                                 : 'neutral'
                                         }
-                                        size="sm"
+                                        size="xs"
+                                        className="shrink-0"
                                         title={
                                             greenhouseSowing
                                                 ? 'Označeno za sijanje u stakleniku'
@@ -582,7 +654,7 @@ export function RaisedBedPlantingScheduleSection({
                                             : 'Direktno'}
                                     </Button>
                                 </Row>
-                                <Row>
+                                <Row spacing={0} className="ml-auto shrink-0">
                                     <AssignRaisedBedFieldModal
                                         raisedBedFieldId={field.id}
                                         label={fieldLabel}
@@ -661,6 +733,7 @@ export function RaisedBedPlantingScheduleSection({
                                         trigger={
                                             <IconButton
                                                 variant="plain"
+                                                size="xs"
                                                 title={
                                                     field.plantScheduledDate
                                                         ? 'Prerasporedi sijanje'
@@ -701,6 +774,7 @@ export function RaisedBedPlantingScheduleSection({
                                         trigger={
                                             <IconButton
                                                 variant="plain"
+                                                size="xs"
                                                 title="Otkaži sijanje"
                                                 disabled={fieldLocked}
                                             >

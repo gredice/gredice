@@ -140,6 +140,28 @@ export const PLANT_STATUS_STAGE_SEQUENCE: Record<
     removed: ['maintenance', 'maintenance'],
 } as const;
 
+export function isPlantFieldStatus(
+    status: string | null | undefined,
+): status is PlantFieldStatus {
+    return typeof status === 'string' && status in PLANT_STATUS_STAGE_SEQUENCE;
+}
+
+export function shouldShowPlantOperationRecommendations(
+    plantStatus: PlantFieldStatus | undefined,
+) {
+    return plantStatus !== 'notSprouted';
+}
+
+export function getPlantOperationRecommendationStages(
+    plantStatus: PlantFieldStatus | undefined,
+) {
+    if (!plantStatus || !shouldShowPlantOperationRecommendations(plantStatus)) {
+        return undefined;
+    }
+
+    return PLANT_STATUS_STAGE_SEQUENCE[plantStatus];
+}
+
 export const FEATURED_OPERATIONS_BY_STAGE: Partial<
     Record<PlantStageName, string[]>
 > = {

@@ -4,7 +4,6 @@ import { calculatePlantsPerField } from '@gredice/js/plants';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { useGameFlags } from '../../GameFlagsContext';
 import { useGameSceneDetails } from '../../GameSceneDetailContext';
 import { getApproximatePlantHeight } from '../../generators/plant/lib/buildPlantRenderData';
 import {
@@ -254,7 +253,6 @@ export function RaisedBedGeneratedPlantFieldBatches({
     blocks: RaisedBedGeneratedPlantFieldBatchBlock[];
 }) {
     const { renderDetails } = useGameSceneDetails();
-    const flags = useGameFlags();
     const { data: currentGarden } = useCurrentGarden();
     const { data: sortData } = useAllSorts();
     const isMock = useGameState((state) => state.isMock);
@@ -264,12 +262,10 @@ export function RaisedBedGeneratedPlantFieldBatches({
     );
     const currentTime = useSnapshotTime();
     const { data: cart } = useShoppingCart(renderDetails && !isLocalSandbox);
-    const generatedPlantsEnabled =
-        Boolean(flags.enablePlantGeneratorFlag) || isMock || isSandbox;
     const generatedFields = useMemo(() => {
         const fields: GeneratedPlantField[] = [];
 
-        if (!renderDetails || !generatedPlantsEnabled || !currentGarden) {
+        if (!renderDetails || !currentGarden) {
             return fields;
         }
 
@@ -427,7 +423,6 @@ export function RaisedBedGeneratedPlantFieldBatches({
         cart?.items,
         currentGarden,
         currentTime,
-        generatedPlantsEnabled,
         isMock,
         isSandbox,
         renderDetails,

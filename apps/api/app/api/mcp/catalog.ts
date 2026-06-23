@@ -17,7 +17,7 @@ type JsonSchemaObject = {
 type McpToolCatalogEntry = {
     name: string;
     description: string;
-    domain: 'directories';
+    domain: 'directories' | 'gardens' | 'commerce';
     exposure: McpExposure;
     inputSchema: JsonSchemaObject;
 };
@@ -125,6 +125,169 @@ const TOOL_CATALOG: readonly McpToolCatalogEntry[] = [
                 variety: { type: 'string' },
                 limit: { type: 'number' },
                 offset: { type: 'number' },
+            },
+        },
+    },
+    {
+        name: 'gardens/list-gardens',
+        description: 'List gardens for the authenticated account.',
+        domain: 'gardens',
+        exposure: 'auth-read',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                limit: { type: 'number' },
+                offset: { type: 'number' },
+            },
+        },
+    },
+    {
+        name: 'gardens/list-raised-beds',
+        description: 'List raised beds for an authenticated account garden.',
+        domain: 'gardens',
+        exposure: 'auth-read',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                gardenId: { type: 'number' },
+            },
+        },
+    },
+    {
+        name: 'gardens/get-raised-bed-fields',
+        description: 'Get field and plant lifecycle state for one raised bed.',
+        domain: 'gardens',
+        exposure: 'auth-read',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                gardenId: { type: 'number' },
+                raisedBedId: { type: 'number' },
+            },
+        },
+    },
+    {
+        name: 'gardens/list-operations',
+        description: 'List scheduled and completed operations for a garden.',
+        domain: 'gardens',
+        exposure: 'auth-read',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                gardenId: { type: 'number' },
+                raisedBedId: { type: 'number' },
+                limit: { type: 'number' },
+                offset: { type: 'number' },
+            },
+        },
+    },
+    {
+        name: 'gardens/get-lifecycle-context',
+        description: 'Summarize active plant lifecycle state for a garden.',
+        domain: 'gardens',
+        exposure: 'auth-read',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                gardenId: { type: 'number' },
+            },
+        },
+    },
+    {
+        name: 'gardens/get-raised-bed-ai-history',
+        description: 'Get previous AI suggestions saved for a raised bed.',
+        domain: 'gardens',
+        exposure: 'auth-read',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                gardenId: { type: 'number' },
+                raisedBedId: { type: 'number' },
+                limit: { type: 'number' },
+            },
+        },
+    },
+    {
+        name: 'commerce/get-products',
+        description: 'List plant-sort products available for cart actions.',
+        domain: 'commerce',
+        exposure: 'auth-read',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                query: { type: 'string' },
+                limit: { type: 'number' },
+                offset: { type: 'number' },
+            },
+        },
+    },
+    {
+        name: 'commerce/search-products',
+        description: 'Search plant-sort products available for cart actions.',
+        domain: 'commerce',
+        exposure: 'auth-read',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                query: { type: 'string' },
+                limit: { type: 'number' },
+                offset: { type: 'number' },
+            },
+        },
+    },
+    {
+        name: 'commerce/get-product',
+        description: 'Get one plant-sort product by product id.',
+        domain: 'commerce',
+        exposure: 'auth-read',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                productId: { type: 'string' },
+            },
+        },
+    },
+    {
+        name: 'commerce/get-cart',
+        description: 'Get the authenticated account shopping cart.',
+        domain: 'commerce',
+        exposure: 'auth-read',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                userId: { type: 'string' },
+            },
+        },
+    },
+    {
+        name: 'commerce/add-to-cart',
+        description: 'Add a product to the authenticated account cart.',
+        domain: 'commerce',
+        exposure: 'auth-mutation',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                userId: { type: 'string' },
+                productId: { type: 'string' },
+                quantity: { type: 'number' },
+                gardenId: { type: 'number' },
+                raisedBedId: { type: 'number' },
+                positionIndex: { type: 'number' },
+                scheduledDate: { type: 'string' },
+            },
+        },
+    },
+    {
+        name: 'commerce/update-cart-item',
+        description: 'Update or remove an authenticated account cart item.',
+        domain: 'commerce',
+        exposure: 'auth-mutation',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                userId: { type: 'string' },
+                cartItemId: { type: 'number' },
+                quantity: { type: 'number' },
             },
         },
     },
