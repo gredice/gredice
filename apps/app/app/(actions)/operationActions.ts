@@ -19,18 +19,21 @@ import {
     getAssignableFarmUsersByFarmIds,
     getAssignableFarmUsersByGardenIds,
     getAssignableFarmUsersByOperationIds,
+    getEntitiesFormatted,
     getEntityFormatted,
     getFarmUserAcceptedOperationById,
     getOperationById,
     getRaisedBed,
     type InsertOperation,
     knownEvents,
+    switchOperationEntity,
     unacceptOperation,
 } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
 import type { EntityStandardized } from '../../lib/@types/EntityStandardized';
 import { auth } from '../../lib/auth/auth';
 import { KnownPages } from '../../src/KnownPages';
+import { operationDefinitionMatchesTargetScope } from '../admin/operations/operationScope';
 
 const MAX_COMPLETION_NOTES_LENGTH = 2000;
 
@@ -469,6 +472,94 @@ export async function bulkCreateOperationsAction(
                 error instanceof Error
                     ? error.message
                     : 'Došlo je do greške pri kreiranju radnji.',
+        };
+    }
+}
+
+export type SwitchOperationEntityActionState = {
+    success: boolean;
+    message: string;
+};
+
+function parseRequiredPositiveInteger(
+    formData: FormData,
+    name: string,
+    message: string,
+) {
+    const value = formData.get(name);
+    const parsed = typeof value === 'string' ? Number(value) : NaN;
+
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+        throw new Error(message);
+    }
+
+    return parsed;
+}
+
+export async function switchOperationEntityAction(
+    _previousState: SwitchOperationEntityActionState | null,
+    formData: FormData,
+): Promise<SwitchOperationEntityActionState> {
+    try {
+        await auth(['admin']);
+
+        const operationId = parseRequiredPositiveInteger(
+            formData,
+            'operationId',
+            'Operation ID is required.',
+        );
+        const entityId = parseRequiredPositiveInteger(
+            formData,
+            'entityId',
+            'Odaberite novu radnju.',
+        );
+
+        const operation = await getOperationById(operationId);
+        if (
+            operation.entityId === entityId &&
+            operation.entityTypeName === 'operation'
+        ) {
+            return {
+                success: true,
+                message: 'Odabrana radnja je već postavljena.',
+            };
+        }
+
+        const availableOperations =
+            await getEntitiesFormatted<EntityStandardized>('operation');
+        const replacementOperation = availableOperations.find(
+            (candidate) => candidate.id === entityId,
+        );
+
+        if (!replacementOperation) {
+            throw new Error('Odabrana radnja nije dostupna.');
+        }
+
+        if (
+            !operationDefinitionMatchesTargetScope(
+                operation,
+                replacementOperation,
+            )
+        ) {
+            throw new Error(
+                'Odabrana radnja nije kompatibilna s lokacijom postojeće radnje.',
+            );
+        }
+
+        await switchOperationEntity(operationId, {
+            entityId,
+            entityTypeName: 'operation',
+        });
+        await revalidateOperationPaths(operation);
+
+        return { success: true, message: 'Radnja je promijenjena.' };
+    } catch (error) {
+        return {
+            success: false,
+            message:
+                error instanceof Error
+                    ? error.message
+                    : 'Došlo je do greške pri promjeni radnje.',
         };
     }
 }

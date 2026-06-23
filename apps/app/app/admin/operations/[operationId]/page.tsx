@@ -40,12 +40,14 @@ import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navig
 import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPageTitle';
 import { OperationCancelButton } from '../../../../components/operations/OperationCancelButton';
 import { OperationRescheduleButton } from '../../../../components/operations/OperationRescheduleButton';
+import { OperationSwitchButton } from '../../../../components/operations/OperationSwitchButton';
 import { OperationUnacceptButton } from '../../../../components/operations/OperationUnacceptButton';
 import type { EntityStandardized } from '../../../../lib/@types/EntityStandardized';
 import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
 import { AcceptOperationModal } from '../../schedule/AcceptOperationModal';
 import { VerifyOperationModal } from '../../schedule/VerifyOperationModal';
+import { operationDefinitionMatchesTargetScope } from '../operationScope';
 
 export const dynamic = 'force-dynamic';
 
@@ -179,6 +181,18 @@ export default async function OperationDetailsPage({
     const operationDetails = operationsData?.find(
         (op) => op.id === operation.entityId,
     );
+    const publishedOperationOptions =
+        operationsData
+            ?.filter((op) =>
+                operationDefinitionMatchesTargetScope(operation, op),
+            )
+            .map((op) => ({
+                id: op.id,
+                label:
+                    op.information?.label ??
+                    op.information?.name ??
+                    `Radnja ${op.id}`,
+            })) ?? [];
     const accountUsers = account?.accountUsers
         .map((au) => au.user.displayName ?? au.user.userName)
         .join(', ');
@@ -196,6 +210,17 @@ export default async function OperationDetailsPage({
     const publicOperationHref = operationDetails?.information?.label
         ? KnownPages.GrediceOperation(operationDetails.information.label)
         : KnownPages.GrediceOperations;
+    const operationSwitchOptions = publishedOperationOptions.some(
+        (option) => option.id === operation.entityId,
+    )
+        ? publishedOperationOptions
+        : [
+              {
+                  id: operation.entityId,
+                  label: operationTitle,
+              },
+              ...publishedOperationOptions,
+          ];
     const assignedUsers =
         operation.assignedUsers && operation.assignedUsers.length > 0 ? (
             <Stack spacing={1}>
@@ -559,6 +584,12 @@ export default async function OperationDetailsPage({
                                     }
                                 />
                             )}
+                            <OperationSwitchButton
+                                operationId={operation.id}
+                                currentEntityId={operation.entityId}
+                                operationLabel={operationTitle}
+                                operationOptions={operationSwitchOptions}
+                            />
                             <OperationRescheduleButton
                                 operation={operationAction}
                                 operationLabel={operationTitle}
