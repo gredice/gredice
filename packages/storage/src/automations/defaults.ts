@@ -17,9 +17,14 @@ export const seedlingTransplantWateringAutomationKey =
     'default.seedling-transplant-watering';
 export const plantRemovalOperationStatusAutomationKey =
     'default.plant-removal-operation-status';
+export const farmRaisedBedWeedingAutomationKey =
+    'default.farm-raised-bed-weeding';
 
 const seedlingTransplantingOperationId = 593;
 const plantRemovalOperationId = 346;
+export const FARM_RAISED_BED_WEEDING_OPERATION_ID = 654;
+export const farmRaisedBedWeedingOperationKey = 'cleanWeedsAroundRaisedBeds';
+export const farmRaisedBedWeedingBiweeklyAnchorDate = '2026-01-05';
 
 export function seasonalSowedWateringAutomationGraph(): AutomationGraph {
     return {
@@ -258,6 +263,48 @@ export function plantRemovalOperationStatusAutomationGraph(): AutomationGraph {
     };
 }
 
+export function farmRaisedBedWeedingAutomationGraph(): AutomationGraph {
+    return {
+        nodes: [
+            {
+                id: 'trigger',
+                kind: 'trigger',
+                moduleKey: automationModuleKeys.triggerSchedule,
+                position: { x: 0, y: 160 },
+                config: {
+                    frequency: 'biweekly',
+                    dayOfWeek: 'monday',
+                    anchorDate: farmRaisedBedWeedingBiweeklyAnchorDate,
+                    timeZone: 'Europe/Zagreb',
+                },
+            },
+            {
+                id: 'create-farm-weeding-operations',
+                kind: 'action',
+                moduleKey:
+                    automationModuleKeys.actionCreateFarmInventoryOperations,
+                position: { x: 360, y: 160 },
+                config: {
+                    operations: [
+                        {
+                            entityId: FARM_RAISED_BED_WEEDING_OPERATION_ID,
+                            entityTypeName: 'operation',
+                            scheduledInDays: 0,
+                        },
+                    ],
+                },
+            },
+        ],
+        edges: [
+            {
+                id: 'trigger-to-create-farm-weeding-operations',
+                source: 'trigger',
+                target: 'create-farm-weeding-operations',
+            },
+        ],
+    };
+}
+
 export async function ensureDefaultAutomationDefinitions() {
     await initializeAutomationEventCursorToLatest();
 
@@ -333,11 +380,30 @@ export async function ensureDefaultAutomationDefinitions() {
         },
     });
 
+    const farmRaisedBedWeeding = await upsertAutomationDefinitionByKey({
+        key: farmRaisedBedWeedingAutomationKey,
+        name: 'Dodaj čišćenje korova oko gredica za svaku farmu',
+        description:
+            'Svaki drugi ponedjeljak dodaj prihvaćenu radnju na razini farme Čišćenje korova oko gredica za svaku aktivnu farmu. Definicija je pripremljena za uključivanje nakon operativnog pregleda draft radnje.',
+        status: 'draft',
+        graph: farmRaisedBedWeedingAutomationGraph(),
+        preserveExistingStatus: true,
+        metadata: {
+            managedBy: 'gredice',
+            defaultAutomation: true,
+            operationEntityId: FARM_RAISED_BED_WEEDING_OPERATION_ID,
+            operationEntityKey: farmRaisedBedWeedingOperationKey,
+            biweeklyAnchorDate: farmRaisedBedWeedingBiweeklyAnchorDate,
+            resolvedFromIssue: 3700,
+        },
+    });
+
     return {
         seasonalSowedWatering,
         operationImagePlantStatusReview,
         seedlingTransplantDirectSowingLocation,
         seedlingTransplantWatering,
         plantRemovalOperationStatus,
+        farmRaisedBedWeeding,
     };
 }

@@ -1640,13 +1640,16 @@ const createFarmInventoryOperationsActionModule: AutomationModule = {
         }
 
         if (context.dryRun) {
+            const projectedCreateCount =
+                activeFarms.length * operationConfigs.length -
+                skippedExistingCount;
             return success({
                 dryRun: true,
                 farmCount: activeFarms.length,
                 operationCount: operationConfigs.length,
-                projectedCreateCount:
-                    activeFarms.length * operationConfigs.length -
-                    skippedExistingCount,
+                createdCount: projectedCreateCount,
+                projectedCreateCount,
+                skippedCount: skippedExistingCount,
                 skippedExistingCount,
             });
         }
@@ -1660,6 +1663,7 @@ const createFarmInventoryOperationsActionModule: AutomationModule = {
                 {
                     farmCount: activeFarms.length,
                     operationCount: operationConfigs.length,
+                    skippedCount: skippedExistingCount,
                     skippedExistingCount,
                 },
             );
@@ -1670,6 +1674,7 @@ const createFarmInventoryOperationsActionModule: AutomationModule = {
             createdCount: createdOperationIds.length,
             repairedScheduledOperationIds,
             repairedScheduledCount: repairedScheduledOperationIds.length,
+            skippedCount: skippedExistingCount,
             skippedExistingCount,
             farmCount: activeFarms.length,
             operationCount: operationConfigs.length,

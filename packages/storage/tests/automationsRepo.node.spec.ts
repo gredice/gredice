@@ -21,7 +21,11 @@ import {
     enqueueAutomationRunsFromSchedules,
     ensureDefaultAutomationDefinitions,
     executeAutomationRun,
+    FARM_RAISED_BED_WEEDING_OPERATION_ID,
     FREE_WATERING_OPERATION_ID,
+    farmRaisedBedWeedingAutomationKey,
+    farmRaisedBedWeedingBiweeklyAnchorDate,
+    farms,
     getAutomationDefinitionByKey,
     getAutomationEventCursor,
     getAutomationRunWithSteps,
@@ -53,6 +57,7 @@ import {
     upsertRaisedBedField,
     validateAutomationGraph,
 } from '@gredice/storage';
+import { eq } from 'drizzle-orm';
 import {
     createTestBlock,
     createTestGarden,
@@ -251,6 +256,31 @@ function monthlyScheduleRunInput(index: number) {
         occurrenceKey: `test.monthly-log:${index}`,
         period: '2026-06',
         occurrenceDate: '2026-06-01T08:00:00.000Z',
+    };
+}
+
+function biweeklyScheduleRunInput({
+    occurrenceDate,
+    occurrenceKey = `test.biweekly:${occurrenceDate}`,
+    weekOffset = 0,
+}: {
+    occurrenceDate: string;
+    occurrenceKey?: string;
+    weekOffset?: number;
+}) {
+    return {
+        scheduleType: 'biweekly',
+        frequency: 'biweekly',
+        triggerModuleKey: automationModuleKeys.triggerSchedule,
+        occurrenceKey,
+        occurrenceDate: occurrenceDate.slice(0, 10),
+        enqueuedAt: occurrenceDate,
+        timeZone: 'Europe/Zagreb',
+        intervalWeeks: 2,
+        anchorDate: farmRaisedBedWeedingBiweeklyAnchorDate,
+        weekOffset,
+        dayOfWeek: 'monday',
+        daysOfWeek: ['monday'],
     };
 }
 
@@ -1231,6 +1261,181 @@ test('monthly farm inventory automation creates accepted scheduled farm tasks', 
             ),
         );
         assert.strictEqual(inventoryOperations.length, operationConfigs.length);
+    }
+});
+
+test('default farm raised-bed weeding automation stays draft until enabled', async () => {
+    createTestDb();
+
+    await ensureDefaultAutomationDefinitions();
+    const draftDefinition = await getAutomationDefinitionByKey(
+        farmRaisedBedWeedingAutomationKey,
+    );
+    assert.ok(draftDefinition);
+    assert.strictEqual(draftDefinition.status, 'draft');
+    assert.strictEqual(
+        draftDefinition.triggerModuleKey,
+        automationModuleKeys.triggerSchedule,
+    );
+    assert.deepStrictEqual(
+        draftDefinition.metadata.operationEntityId,
+        FARM_RAISED_BED_WEEDING_OPERATION_ID,
+    );
+
+    const enabledDefinition = await updateAutomationDefinition(
+        draftDefinition.id,
+        { status: 'enabled' },
+    );
+    assert.ok(enabledDefinition);
+
+    await ensureDefaultAutomationDefinitions();
+    const preservedDefinition = await getAutomationDefinitionByKey(
+        farmRaisedBedWeedingAutomationKey,
+    );
+    assert.ok(preservedDefinition);
+    assert.strictEqual(preservedDefinition.status, 'enabled');
+});
+
+test('default farm raised-bed weeding automation filters farms and prevents duplicate occurrence operations', async () => {
+    createTestDb();
+    await createFarm({
+        name: 'Automation Weeding Farm A',
+        latitude: 45.7,
+        longitude: 16.1,
+    });
+    const deletedFarmId = await createFarm({
+        name: 'Automation Weeding Deleted Farm',
+        latitude: 45.6,
+        longitude: 16.0,
+    });
+    await storage()
+        .update(farms)
+        .set({ isDeleted: true })
+        .where(eq(farms.id, deletedFarmId));
+
+    const activeFarms = (await getFarms()).filter((farm) => !farm.isDeleted);
+    assert.ok(activeFarms.length > 0);
+
+    const { farmRaisedBedWeeding } = await ensureDefaultAutomationDefinitions();
+    const enabledDefinition = await updateAutomationDefinition(
+        farmRaisedBedWeeding.id,
+        { status: 'enabled' },
+    );
+    assert.ok(enabledDefinition);
+
+    const dryRun = await createAutomationRun({
+        automationDefinition: enabledDefinition,
+        source: 'test',
+        input: biweeklyScheduleRunInput({
+            occurrenceDate: '2026-01-05T08:00:00.000Z',
+        }),
+    });
+    assert.ok(dryRun);
+    const startedDryRun = await startAutomationRun(dryRun.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedDryRun);
+    const dryRunResult = await executeAutomationRun(startedDryRun);
+    assert.strictEqual(dryRunResult.status, 'succeeded');
+    const dryRunWithSteps = await getAutomationRunWithSteps(dryRun.id);
+    const dryRunActionStep = dryRunWithSteps?.steps.find(
+        (step) => step.nodeId === 'create-farm-weeding-operations',
+    );
+    assert.ok(dryRunActionStep);
+    assert.strictEqual(
+        dryRunActionStep.output.createdCount,
+        activeFarms.length,
+    );
+    assert.strictEqual(dryRunActionStep.output.skippedCount, 0);
+
+    const firstResult = await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-01-05T08:00:00.000Z'),
+    });
+    const duplicateResult = await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-01-05T09:00:00.000Z'),
+    });
+    const offWeekResult = await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-01-12T08:00:00.000Z'),
+    });
+
+    assert.strictEqual(firstResult.enqueuedRuns, 1);
+    assert.strictEqual(duplicateResult.enqueuedRuns, 0);
+    assert.strictEqual(offWeekResult.enqueuedRuns, 0);
+
+    const processResult = await processDueAutomationRuns({
+        limit: 10,
+        lockedBy: 'automations-test',
+    });
+    assert.strictEqual(processResult.succeeded, 1);
+
+    const occurrenceStart = new Date('2026-01-05T08:00:00.000Z');
+    const occurrenceEnd = addUtcDays(occurrenceStart, 1);
+    for (const farm of activeFarms) {
+        const farmOperations = await getFarmAcceptedOperationsByScheduleRange({
+            farmId: farm.id,
+            from: occurrenceStart,
+            to: occurrenceEnd,
+        });
+        const weedingOperations = farmOperations.filter(
+            (operation) =>
+                operation.entityId === FARM_RAISED_BED_WEEDING_OPERATION_ID,
+        );
+
+        assert.strictEqual(weedingOperations.length, 1);
+        assert.strictEqual(weedingOperations[0]?.farmId, farm.id);
+        assert.strictEqual(weedingOperations[0]?.gardenId, null);
+        assert.strictEqual(weedingOperations[0]?.raisedBedId, null);
+        assert.strictEqual(weedingOperations[0]?.raisedBedFieldId, null);
+    }
+
+    const deletedFarmOperations =
+        await getFarmAcceptedOperationsByScheduleRange({
+            farmId: deletedFarmId,
+            from: occurrenceStart,
+            to: occurrenceEnd,
+        });
+    assert.strictEqual(
+        deletedFarmOperations.filter(
+            (operation) =>
+                operation.entityId === FARM_RAISED_BED_WEEDING_OPERATION_ID,
+        ).length,
+        0,
+    );
+
+    const firstRun = (
+        await listAutomationRuns({
+            automationDefinitionId: enabledDefinition.id,
+        })
+    ).find((run) => run.source === 'schedule');
+    assert.ok(firstRun);
+    assert.strictEqual(firstRun.input.weekOffset, 0);
+
+    const replayRun = await createAutomationRun({
+        automationDefinition: enabledDefinition,
+        source: 'replay',
+        input: firstRun.input,
+    });
+    assert.ok(replayRun);
+    const startedReplay = await startAutomationRun(replayRun.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedReplay);
+    const replayResult = await executeAutomationRun(startedReplay);
+
+    assert.strictEqual(replayResult.status, 'skipped');
+    for (const farm of activeFarms) {
+        const farmOperations = await getFarmAcceptedOperationsByScheduleRange({
+            farmId: farm.id,
+            from: occurrenceStart,
+            to: occurrenceEnd,
+        });
+        assert.strictEqual(
+            farmOperations.filter(
+                (operation) =>
+                    operation.entityId === FARM_RAISED_BED_WEEDING_OPERATION_ID,
+            ).length,
+            1,
+        );
     }
 });
 
