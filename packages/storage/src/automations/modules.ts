@@ -12,12 +12,14 @@ import {
     getAllRaisedBeds,
     getGardens,
     getRaisedBed,
+    listActiveRaisedBedOperationTargets,
 } from '../repositories/gardensRepo';
 import {
     acceptOperation,
     createOperation,
     getFarmAcceptedOperationsByScheduleRange,
     getOperationById,
+    getRaisedBedOperationsByScheduleRange,
 } from '../repositories/operationsRepo';
 import { getOutletOffers } from '../repositories/outletOffersRepo';
 import {
@@ -55,6 +57,7 @@ const createFarmInventoryOperationsActionKey =
     'action.createFarmInventoryOperations';
 const createGreenhouseSeedlingWateringOperationsActionKey =
     'action.createGreenhouseSeedlingWateringOperations';
+const createRaisedBedOperationsActionKey = 'action.createRaisedBedOperations';
 const updateRaisedBedFieldPlantAttributesActionKey =
     'action.updateRaisedBedFieldPlantAttributes';
 const createPlantStatusRequestsFromImageAnalysisActionKey =
@@ -140,6 +143,7 @@ export const automationModuleKeys = {
     actionCreateFarmInventoryOperations: createFarmInventoryOperationsActionKey,
     actionCreateGreenhouseSeedlingWateringOperations:
         createGreenhouseSeedlingWateringOperationsActionKey,
+    actionCreateRaisedBedOperations: createRaisedBedOperationsActionKey,
     actionUpdateRaisedBedFieldPlantAttributes:
         updateRaisedBedFieldPlantAttributesActionKey,
     actionCreatePlantStatusRequestsFromImageAnalysis:
@@ -671,6 +675,22 @@ function validateGreenhouseSeedlingWateringConfig(
     return errors;
 }
 
+function validateRaisedBedOperationsConfig(config: AutomationJsonObject) {
+    const entityId = getNumber(config, 'entityId');
+    const scheduledInDays = getNumber(config, 'scheduledInDays') ?? 0;
+    const errors: string[] = [];
+
+    if (!entityId || !Number.isInteger(entityId) || entityId <= 0) {
+        errors.push('entityId must be a positive integer.');
+    }
+
+    if (!Number.isInteger(scheduledInDays)) {
+        errors.push('scheduledInDays must be an integer.');
+    }
+
+    return errors;
+}
+
 function validateImagePlantStatusReviewConfig(config: AutomationJsonObject) {
     const minConfidence =
         getNumber(config, 'minConfidence') ??
@@ -779,6 +799,22 @@ function farmOperationKey({
     scheduledDate: Date;
 }) {
     return `${entityTypeName}:${entityId}:${toUtcDayKey(scheduledDate)}`;
+}
+
+function raisedBedOperationKey({
+    entityId,
+    entityTypeName,
+    raisedBedId,
+    scheduledDate,
+}: {
+    entityId: number;
+    entityTypeName: string;
+    raisedBedId: number;
+    scheduledDate: Date;
+}) {
+    return `${raisedBedId}:${entityTypeName}:${entityId}:${toUtcDayKey(
+        scheduledDate,
+    )}`;
 }
 
 function isCurrentlyGreenhouseSeedling(field: RaisedBedFieldForGreenhouseCare) {
@@ -2078,6 +2114,210 @@ const createGreenhouseSeedlingWateringOperationsActionModule: AutomationModule =
         },
     };
 
+const createRaisedBedOperationsActionModule: AutomationModule = {
+    key: createRaisedBedOperationsActionKey,
+    kind: 'action',
+    title: 'Create raised-bed operations',
+    description:
+        'Creates a configured raised-bed-scoped operation for every active raised bed.',
+    category: 'Operations',
+    configFields: [
+        {
+            key: 'entityId',
+            label: 'Operation entity ID',
+            type: 'number',
+            required: true,
+        },
+        {
+            key: 'entityTypeName',
+            label: 'Entity type',
+            type: 'string',
+            placeholder: 'operation',
+        },
+        {
+            key: 'scheduledInDays',
+            label: 'Schedule after days',
+            type: 'number',
+        },
+        {
+            key: 'acceptOnCreate',
+            label: 'Accept on create',
+            type: 'boolean',
+        },
+    ],
+    inputDescription: 'A schedule occurrence.',
+    outputDescription:
+        'Created operation ids, recipient count, and skipped existing count.',
+    dryRunSupported: true,
+    mutatesData: true,
+    retryable: true,
+    validateConfig: validateRaisedBedOperationsConfig,
+    execute: async (context, node) => {
+        const entityId = getNumber(node.config, 'entityId');
+        if (!entityId) {
+            throw new AutomationModuleExecutionError(
+                'Raised-bed operation action is missing entityId.',
+                'invalid_config',
+            );
+        }
+
+        const entityTypeName =
+            getString(node.config, 'entityTypeName') ?? 'operation';
+        const scheduledInDays = getNumber(node.config, 'scheduledInDays') ?? 0;
+        const acceptOnCreate = node.config.acceptOnCreate !== false;
+        const referenceDate = getScheduleOccurrenceReferenceDate(
+            context.run.input,
+        );
+        const scheduledDate = addUtcDays(referenceDate, scheduledInDays);
+        const from = new Date(`${toUtcDayKey(scheduledDate)}T00:00:00.000Z`);
+        const to = addUtcDays(from, 1);
+        const activeRaisedBeds = await listActiveRaisedBedOperationTargets();
+
+        if (activeRaisedBeds.length === 0) {
+            return skip('No active raised beds were found.', {
+                recipientCount: 0,
+                skippedExistingCount: 0,
+            });
+        }
+
+        const existingOperations = await getRaisedBedOperationsByScheduleRange({
+            raisedBedIds: activeRaisedBeds.map((raisedBed) => raisedBed.id),
+            from,
+            to,
+        });
+        const existingOperationsByKey = new Map(
+            existingOperations.flatMap((operation) => {
+                if (
+                    !operation.raisedBedId ||
+                    operation.status === 'canceled' ||
+                    operation.status === 'failed'
+                ) {
+                    return [];
+                }
+
+                return [
+                    [
+                        raisedBedOperationKey({
+                            entityId: operation.entityId,
+                            entityTypeName: operation.entityTypeName,
+                            raisedBedId: operation.raisedBedId,
+                            scheduledDate:
+                                operation.scheduledDate ?? operation.timestamp,
+                        }),
+                        operation,
+                    ],
+                ];
+            }),
+        );
+        const existingOperationKeys = new Set(existingOperationsByKey.keys());
+        const createdOperationIds: number[] = [];
+        const repairedAcceptedOperationIds: number[] = [];
+        const repairedScheduledOperationIds: number[] = [];
+        let skippedExistingCount = 0;
+
+        for (const raisedBed of activeRaisedBeds) {
+            const operationKey = raisedBedOperationKey({
+                entityId,
+                entityTypeName,
+                raisedBedId: raisedBed.id,
+                scheduledDate,
+            });
+
+            const existingOperation = existingOperationsByKey.get(operationKey);
+            if (existingOperation || existingOperationKeys.has(operationKey)) {
+                skippedExistingCount += 1;
+                if (existingOperation && !context.dryRun) {
+                    if (acceptOnCreate && !existingOperation.isAccepted) {
+                        await acceptOperation(existingOperation.id);
+                        repairedAcceptedOperationIds.push(existingOperation.id);
+                    }
+                    if (!existingOperation.scheduledDate) {
+                        await createEvent(
+                            knownEvents.operations.scheduledV1(
+                                existingOperation.id.toString(),
+                                {
+                                    scheduledDate: scheduledDate.toISOString(),
+                                },
+                            ),
+                        );
+                        repairedScheduledOperationIds.push(
+                            existingOperation.id,
+                        );
+                    }
+                }
+                continue;
+            }
+
+            if (context.dryRun) {
+                continue;
+            }
+
+            const operationId = await createOperation({
+                entityId,
+                entityTypeName,
+                accountId: raisedBed.accountId,
+                gardenId: raisedBed.gardenId,
+                raisedBedId: raisedBed.id,
+                timestamp: scheduledDate,
+            });
+            if (acceptOnCreate) {
+                await acceptOperation(operationId);
+            }
+            await createEvent(
+                knownEvents.operations.scheduledV1(operationId.toString(), {
+                    scheduledDate: scheduledDate.toISOString(),
+                }),
+            );
+            createdOperationIds.push(operationId);
+            existingOperationKeys.add(operationKey);
+        }
+
+        const recipientCount = activeRaisedBeds.length;
+        const projectedCreateCount = recipientCount - skippedExistingCount;
+
+        if (context.dryRun) {
+            return success({
+                dryRun: true,
+                entityId,
+                entityTypeName,
+                scheduledDate: scheduledDate.toISOString(),
+                recipientCount,
+                projectedCreateCount,
+                skippedExistingCount,
+            });
+        }
+
+        if (
+            createdOperationIds.length === 0 &&
+            repairedAcceptedOperationIds.length === 0 &&
+            repairedScheduledOperationIds.length === 0
+        ) {
+            return skip('All raised-bed operations already exist.', {
+                entityId,
+                entityTypeName,
+                scheduledDate: scheduledDate.toISOString(),
+                recipientCount,
+                skippedExistingCount,
+            });
+        }
+
+        return success({
+            createdOperationIds,
+            createdCount: createdOperationIds.length,
+            repairedAcceptedOperationIds,
+            repairedAcceptedCount: repairedAcceptedOperationIds.length,
+            repairedScheduledOperationIds,
+            repairedScheduledCount: repairedScheduledOperationIds.length,
+            entityId,
+            entityTypeName,
+            scheduledDate: scheduledDate.toISOString(),
+            recipientCount,
+            skippedExistingCount,
+            acceptedCount: acceptOnCreate ? createdOperationIds.length : 0,
+        });
+    },
+};
+
 async function updateRaisedBedFieldPlantAttributes({
     context,
     node,
@@ -2342,6 +2582,7 @@ export const automationModules = [
     createOperationActionModule,
     createFarmInventoryOperationsActionModule,
     createGreenhouseSeedlingWateringOperationsActionModule,
+    createRaisedBedOperationsActionModule,
     updateRaisedBedFieldPlantAttributesActionModule,
     createPlantStatusRequestsFromImageAnalysisActionModule,
     logActionModule,

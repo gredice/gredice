@@ -22,6 +22,7 @@ export const automationModuleKeys = {
     actionCreateOperation: 'action.createOperation',
     actionCreatePlantStatusRequestsFromImageAnalysis:
         'action.createPlantStatusRequestsFromImageAnalysis',
+    actionCreateRaisedBedOperations: 'action.createRaisedBedOperations',
     actionLog: 'action.log',
     actionQueuePostTransplantWateringOperations:
         'action.queuePostTransplantWateringOperations',
@@ -204,6 +205,19 @@ const automationModulePresentations: Record<
                 description:
                     'JSON niz: [{"entityId": 123, "entityTypeName": "operation", "scheduledInDays": 0}]',
             },
+        },
+    },
+    [automationModuleKeys.actionCreateRaisedBedOperations]: {
+        title: 'Radnje aktivnih gredica',
+        description: 'Kreira konfiguriranu radnju za svaku aktivnu gredicu.',
+        inputDescription: 'Pojava rasporeda.',
+        outputDescription:
+            'ID-jevi kreiranih radnji, broj primatelja i broj preskočenih postojećih radnji.',
+        fields: {
+            entityId: { label: 'ID entiteta radnje' },
+            entityTypeName: { label: 'Tip entiteta' },
+            scheduledInDays: { label: 'Zakaži nakon dana' },
+            acceptOnCreate: { label: 'Potvrdi pri kreiranju' },
         },
     },
     [automationModuleKeys.actionUpdateRaisedBedFieldPlantAttributes]: {
