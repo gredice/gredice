@@ -22,6 +22,7 @@ import { knownEventTypes } from './knownEventTypes';
 import type { AiRequestKind, Event, UserBirthdayRewardPayload } from './types';
 
 type DatabaseClient = ReturnType<typeof storage>;
+const DEFAULT_ALL_EVENTS_PAGE_SIZE = 10000;
 
 export type AiAnalyticsOperationType =
     | 'raisedBedImageAnalysis'
@@ -252,6 +253,36 @@ export function getEvents(
         offset,
         limit,
     });
+}
+
+export async function getAllEvents(
+    type: string | string[],
+    aggregateIds: string[],
+    options: {
+        db?: DatabaseClient;
+        pageSize?: number;
+    } = {},
+) {
+    if (aggregateIds.length === 0) {
+        return [];
+    }
+
+    const pageSize = options.pageSize ?? DEFAULT_ALL_EVENTS_PAGE_SIZE;
+    if (!Number.isInteger(pageSize) || pageSize <= 0) {
+        throw new Error('Event page size must be a positive integer');
+    }
+
+    const allEvents: Awaited<ReturnType<typeof getEvents>> = [];
+    const db = options.db ?? storage();
+
+    for (let offset = 0; ; offset += pageSize) {
+        const page = await getEvents(type, aggregateIds, offset, pageSize, db);
+        allEvents.push(...page);
+
+        if (page.length < pageSize) {
+            return allEvents;
+        }
+    }
 }
 
 export function getLatestEvents(

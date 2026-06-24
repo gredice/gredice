@@ -8,6 +8,7 @@ import {
     createEvent,
     getAiAnalysisEvents,
     getAiAnalysisTotals,
+    getAllEvents,
     getEventAggregateIdsByAggregateIdPrefix,
     getEvents,
     getLatestEvents,
@@ -59,6 +60,50 @@ test('getEvents returns empty for unknown aggregate', async () => {
     ]);
     assert.ok(Array.isArray(events));
     assert.strictEqual(events.length, 0);
+});
+
+test('getAllEvents consumes every page for matching aggregate events', async () => {
+    createTestDb();
+    const firstAggregateId = 'agg-all-events-1';
+    const secondAggregateId = 'agg-all-events-2';
+    const eventSpecs = [
+        [firstAggregateId, 1, '2026-01-01T12:00:00.000Z'],
+        [firstAggregateId, 2, '2026-01-02T12:00:00.000Z'],
+        [secondAggregateId, 3, '2026-01-03T12:00:00.000Z'],
+        [secondAggregateId, 4, '2026-01-04T12:00:00.000Z'],
+        [firstAggregateId, 5, '2026-01-05T12:00:00.000Z'],
+    ] as const;
+
+    for (const [aggregateId, amount, createdAt] of eventSpecs) {
+        await createEvent({
+            ...knownEvents.accounts.sunflowersEarnedV1(aggregateId, {
+                amount,
+                reason: `page-${amount.toString()}`,
+            }),
+            createdAt: new Date(createdAt),
+        });
+    }
+
+    const events = await getAllEvents(
+        knownEventTypes.accounts.earnSunflowers,
+        [firstAggregateId, secondAggregateId],
+        { pageSize: 2 },
+    );
+
+    assert.deepStrictEqual(
+        events.map((event) => event.aggregateId),
+        [
+            firstAggregateId,
+            firstAggregateId,
+            secondAggregateId,
+            secondAggregateId,
+            firstAggregateId,
+        ],
+    );
+    assert.deepStrictEqual(
+        events.map((event) => event.createdAt.toISOString()),
+        eventSpecs.map(([, , createdAt]) => createdAt),
+    );
 });
 
 test('getLatestEvents returns newest events first and paginates', async () => {

@@ -18,6 +18,7 @@ import {
 import { normalizeAssignedUserIds } from './events/normalizeAssignedUserIds';
 import {
     createEvent,
+    getAllEvents,
     getEvents,
     knownEvents,
     knownEventTypes,
@@ -1214,11 +1215,9 @@ export async function getRaisedBedFieldPlantCycles(raisedBedId: number) {
         (positionIndex) =>
             `${raisedBedId.toString()}|${positionIndex.toString()}`,
     );
-    const plantEvents = await getEvents(
+    const plantEvents = await getAllEvents(
         [...PLANT_CYCLE_EVENT_TYPES],
         aggregateIds,
-        0,
-        100000,
     );
 
     const plantEventsByAggregateId = new Map<
@@ -1548,11 +1547,9 @@ export async function getRaisedBedFieldsWithEventsForBeds(
     );
     let fieldsEvents: RaisedBedFieldPlantCycleEvent[] = [];
     if (fieldAggregateIds.length > 0) {
-        fieldsEvents = await getEvents(
+        fieldsEvents = await getAllEvents(
             [...RAISED_BED_FIELD_EVENT_TYPES],
             fieldAggregateIds,
-            0,
-            100000,
         );
     }
 

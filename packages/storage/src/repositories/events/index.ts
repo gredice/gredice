@@ -19,6 +19,7 @@ export {
     deleteEventById,
     getAiAnalysisEvents,
     getAiAnalysisTotals,
+    getAllEvents,
     getEventAggregateIdsByAggregateIdPrefix,
     getEvents,
     getLastBirthdayRewardEvent,
