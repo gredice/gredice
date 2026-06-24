@@ -1,6 +1,6 @@
 import 'server-only';
 import { randomUUID } from 'node:crypto';
-import { asc, desc, eq } from 'drizzle-orm';
+import { asc, desc, eq, sql } from 'drizzle-orm';
 import { accounts, accountUsers, ensureAccountAchievement, storage } from '..';
 import {
     createEvent,
@@ -198,13 +198,22 @@ export async function spendSunflowers(
     reason: string,
     db: ReturnType<typeof storage> = storage(),
 ) {
-    const currentSunflowers = await getSunflowers(accountId);
-    if (currentSunflowers < amount) {
-        throw new Error('Insufficient sunflowers');
-    }
+    await db.transaction(async (tx) => {
+        await tx.execute(
+            sql`select pg_advisory_xact_lock(hashtext(${`account-sunflowers:${accountId}`}));`,
+        );
 
-    await createEvent(
-        knownEvents.accounts.sunflowersSpentV1(accountId, { amount, reason }),
-        db,
-    );
+        const currentSunflowers = await getSunflowers(accountId);
+        if (currentSunflowers < amount) {
+            throw new Error('Insufficient sunflowers');
+        }
+
+        await createEvent(
+            knownEvents.accounts.sunflowersSpentV1(accountId, {
+                amount,
+                reason,
+            }),
+            tx,
+        );
+    });
 }
