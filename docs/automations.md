@@ -172,6 +172,13 @@ scoped to the raised bed, operation entity, and weekday occurrence date; existin
 non-canceled/non-failed operations for the same day are counted as existing
 skips.
 
+The managed raised-bed detailed inspection automation is seeded as draft under
+`default.raised-bed-detailed-inspection`. When enabled, it uses the weekly
+schedule on Mondays and `action.createRaisedBedOperations` with draft operation
+entity `652` (`detailedRaisedBedInspection`, label `Detaljno pregledavanje
+gredice`) to create one accepted raised-bed-scoped inspection per active raised
+bed and occurrence day.
+
 ## Graph Validation
 
 `validateAutomationGraph()` in
