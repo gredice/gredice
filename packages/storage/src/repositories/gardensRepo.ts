@@ -15,7 +15,11 @@ import {
 } from '../schema';
 import { createEvent, knownEvents } from './eventsRepo';
 import { getFarms } from './farmsRepo';
-import { createRaisedBed, getRaisedBeds } from './raisedBedsRepo';
+import {
+    createRaisedBed,
+    getRaisedBeds,
+    getRaisedBedsForGardens,
+} from './raisedBedsRepo';
 
 export * from './raisedBedDiaryRepo';
 export * from './raisedBedFieldsRepo';
@@ -160,15 +164,15 @@ export async function getAccountGardens(
             eq(gardens.isDeleted, false),
         ),
     });
-    // For each raised bed, fetch and attach fields with event-sourced info
-    return Promise.all(
-        accountGardens.map(async (garden) => {
-            return {
-                ...garden,
-                raisedBeds: await getRaisedBeds(garden.id, filter),
-            };
-        }),
+    const raisedBedsByGardenId = await getRaisedBedsForGardens(
+        accountGardens.map((garden) => garden.id),
+        filter,
     );
+    // For each raised bed, fetch and attach fields with event-sourced info
+    return accountGardens.map((garden) => ({
+        ...garden,
+        raisedBeds: raisedBedsByGardenId.get(garden.id) ?? [],
+    }));
 }
 
 export async function getGarden(gardenId: number) {
