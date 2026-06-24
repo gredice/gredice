@@ -2185,7 +2185,7 @@ const createRaisedBedOperationsActionModule: AutomationModule = {
             from,
             to,
         });
-        const existingOperationKeys = new Set(
+        const existingOperationsByKey = new Map(
             existingOperations.flatMap((operation) => {
                 if (
                     !operation.raisedBedId ||
@@ -2196,17 +2196,23 @@ const createRaisedBedOperationsActionModule: AutomationModule = {
                 }
 
                 return [
-                    raisedBedOperationKey({
-                        entityId: operation.entityId,
-                        entityTypeName: operation.entityTypeName,
-                        raisedBedId: operation.raisedBedId,
-                        scheduledDate:
-                            operation.scheduledDate ?? operation.timestamp,
-                    }),
+                    [
+                        raisedBedOperationKey({
+                            entityId: operation.entityId,
+                            entityTypeName: operation.entityTypeName,
+                            raisedBedId: operation.raisedBedId,
+                            scheduledDate:
+                                operation.scheduledDate ?? operation.timestamp,
+                        }),
+                        operation,
+                    ],
                 ];
             }),
         );
+        const existingOperationKeys = new Set(existingOperationsByKey.keys());
         const createdOperationIds: number[] = [];
+        const repairedAcceptedOperationIds: number[] = [];
+        const repairedScheduledOperationIds: number[] = [];
         let skippedExistingCount = 0;
 
         for (const raisedBed of activeRaisedBeds) {
@@ -2217,8 +2223,28 @@ const createRaisedBedOperationsActionModule: AutomationModule = {
                 scheduledDate,
             });
 
-            if (existingOperationKeys.has(operationKey)) {
+            const existingOperation = existingOperationsByKey.get(operationKey);
+            if (existingOperation || existingOperationKeys.has(operationKey)) {
                 skippedExistingCount += 1;
+                if (existingOperation && !context.dryRun) {
+                    if (acceptOnCreate && !existingOperation.isAccepted) {
+                        await acceptOperation(existingOperation.id);
+                        repairedAcceptedOperationIds.push(existingOperation.id);
+                    }
+                    if (!existingOperation.scheduledDate) {
+                        await createEvent(
+                            knownEvents.operations.scheduledV1(
+                                existingOperation.id.toString(),
+                                {
+                                    scheduledDate: scheduledDate.toISOString(),
+                                },
+                            ),
+                        );
+                        repairedScheduledOperationIds.push(
+                            existingOperation.id,
+                        );
+                    }
+                }
                 continue;
             }
 
@@ -2261,7 +2287,11 @@ const createRaisedBedOperationsActionModule: AutomationModule = {
             });
         }
 
-        if (createdOperationIds.length === 0) {
+        if (
+            createdOperationIds.length === 0 &&
+            repairedAcceptedOperationIds.length === 0 &&
+            repairedScheduledOperationIds.length === 0
+        ) {
             return skip('All raised-bed operations already exist.', {
                 entityId,
                 entityTypeName,
@@ -2274,6 +2304,10 @@ const createRaisedBedOperationsActionModule: AutomationModule = {
         return success({
             createdOperationIds,
             createdCount: createdOperationIds.length,
+            repairedAcceptedOperationIds,
+            repairedAcceptedCount: repairedAcceptedOperationIds.length,
+            repairedScheduledOperationIds,
+            repairedScheduledCount: repairedScheduledOperationIds.length,
             entityId,
             entityTypeName,
             scheduledDate: scheduledDate.toISOString(),

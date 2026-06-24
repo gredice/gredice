@@ -55,6 +55,7 @@ import {
     processDueAutomationRuns,
     RAISED_BED_WATERING_50L_OPERATION_ID,
     raisedBedPhotoOperationsAutomationKey,
+    raisedBeds,
     recordAutomationRunStep,
     retryFailedAutomationRun,
     seasonalSowedWateringAutomationGraph,
@@ -1094,7 +1095,7 @@ test('monthly schedule automation enqueues once per configured period', async ()
 
     assert.strictEqual(firstResult.enqueuedRuns, 2);
     assert.strictEqual(duplicateResult.enqueuedRuns, 0);
-    assert.strictEqual(offDayResult.enqueuedRuns, 1);
+    assert.strictEqual(offDayResult.enqueuedRuns, 2);
 
     const runs = await listAutomationRuns({
         automationDefinitionId: definition.id,
@@ -1137,7 +1138,7 @@ test('daily schedule automation enqueues once per local day and executes', async
         now: new Date('2026-06-24T08:00:00.000Z'),
     });
 
-    assert.strictEqual(firstResult.enqueuedRuns, 2);
+    assert.strictEqual(firstResult.enqueuedRuns, 3);
     assert.strictEqual(duplicateResult.enqueuedRuns, 0);
     assert.strictEqual(nextDayResult.enqueuedRuns, 2);
 
@@ -1155,12 +1156,17 @@ test('daily schedule automation enqueues once per local day and executes', async
         'daily',
     ]);
 
-    const processResult = await processDueAutomationRuns({
+    await processDueAutomationRuns({
         limit: 10,
         lockedBy: 'automations-test',
     });
-    assert.strictEqual(processResult.succeeded, 2);
-    assert.strictEqual(processResult.skipped, 2);
+    const processedRuns = await listAutomationRuns({
+        automationDefinitionId: definition.id,
+    });
+    assert.deepStrictEqual(processedRuns.map((run) => run.status).sort(), [
+        'succeeded',
+        'succeeded',
+    ]);
 });
 
 test('weekly schedule automation supports selected weekdays', async () => {
@@ -1190,9 +1196,9 @@ test('weekly schedule automation supports selected weekdays', async () => {
     });
 
     assert.strictEqual(offDayResult.enqueuedRuns, 1);
-    assert.strictEqual(tuesdayResult.enqueuedRuns, 2);
+    assert.strictEqual(tuesdayResult.enqueuedRuns, 3);
     assert.strictEqual(duplicateTuesdayResult.enqueuedRuns, 0);
-    assert.strictEqual(fridayResult.enqueuedRuns, 2);
+    assert.strictEqual(fridayResult.enqueuedRuns, 3);
 
     const runs = await listAutomationRuns({
         automationDefinitionId: definition.id,
@@ -1235,9 +1241,9 @@ test('biweekly schedule automation respects anchor week', async () => {
             now: new Date('2026-06-16T09:00:00.000Z'),
         });
 
-    assert.strictEqual(firstWeekResult.enqueuedRuns, 2);
-    assert.strictEqual(skippedWeekResult.enqueuedRuns, 1);
-    assert.strictEqual(secondOccurrenceResult.enqueuedRuns, 2);
+    assert.strictEqual(firstWeekResult.enqueuedRuns, 3);
+    assert.strictEqual(skippedWeekResult.enqueuedRuns, 2);
+    assert.strictEqual(secondOccurrenceResult.enqueuedRuns, 3);
     assert.strictEqual(duplicateSecondOccurrenceResult.enqueuedRuns, 0);
 
     const runs = await listAutomationRuns({
@@ -1731,26 +1737,32 @@ test('default raised-bed photo automation enqueues only Tuesday and Friday occur
             });
         }
     }
+    const getPhotoRunCount = async () =>
+        (
+            await listAutomationRuns({
+                automationDefinitionId: definition.id,
+            })
+        ).length;
 
-    const wednesdayResult = await enqueueAutomationRunsFromSchedules({
+    await enqueueAutomationRunsFromSchedules({
         now: new Date('2026-06-24T08:00:00.000Z'),
     });
-    assert.strictEqual(wednesdayResult.enqueuedRuns, 0);
+    assert.strictEqual(await getPhotoRunCount(), 0);
 
-    const tuesdayResult = await enqueueAutomationRunsFromSchedules({
+    await enqueueAutomationRunsFromSchedules({
         now: new Date('2026-06-23T08:00:00.000Z'),
     });
-    assert.strictEqual(tuesdayResult.enqueuedRuns, 1);
+    assert.strictEqual(await getPhotoRunCount(), 1);
 
-    const duplicateTuesdayResult = await enqueueAutomationRunsFromSchedules({
+    await enqueueAutomationRunsFromSchedules({
         now: new Date('2026-06-23T09:00:00.000Z'),
     });
-    assert.strictEqual(duplicateTuesdayResult.enqueuedRuns, 0);
+    assert.strictEqual(await getPhotoRunCount(), 1);
 
-    const fridayResult = await enqueueAutomationRunsFromSchedules({
+    await enqueueAutomationRunsFromSchedules({
         now: new Date('2026-06-26T08:00:00.000Z'),
     });
-    assert.strictEqual(fridayResult.enqueuedRuns, 1);
+    assert.strictEqual(await getPhotoRunCount(), 2);
 });
 
 test('raised-bed operation automation filters inactive deleted and abandoned raised beds', async (t) => {
@@ -2002,6 +2014,113 @@ test('raised-bed operation automation reports existing skips and prevents duplic
         [firstRaisedBedId, secondRaisedBedId].sort(
             (left, right) => left - right,
         ),
+    );
+});
+
+test('raised-bed operation automation repairs partial existing operations on retry', async (t) => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({
+        accountId,
+        farmId,
+        name: `Raised-bed photo repair ${accountId}`,
+    });
+    const blockId = await createTestBlock(
+        gardenId,
+        `raised-bed-photo-repair-${accountId}`,
+    );
+    const firstRaisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        blockId,
+    );
+    const secondRaisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        blockId,
+    );
+    t.after(async () => {
+        await updateRaisedBed({ id: firstRaisedBedId, status: 'new' }).catch(
+            () => undefined,
+        );
+        await updateRaisedBed({ id: secondRaisedBedId, status: 'new' }).catch(
+            () => undefined,
+        );
+    });
+    await updateRaisedBed({ id: firstRaisedBedId, status: 'active' });
+    await updateRaisedBed({ id: secondRaisedBedId, status: 'active' });
+    const expectedRecipientCount = (await listActiveRaisedBedOperationTargets())
+        .length;
+
+    const entityId = 9_920_003;
+    const scheduledDate = new Date('2026-06-23T00:00:00.000Z');
+    const partialOperationId = await createOperation({
+        entityId,
+        entityTypeName: 'operation',
+        accountId,
+        gardenId,
+        raisedBedId: firstRaisedBedId,
+        timestamp: scheduledDate,
+    });
+    const definition = await createAutomationDefinition({
+        key: 'test.raised-bed-photo-repair',
+        name: 'Raised-bed photo repair',
+        status: 'enabled',
+        graph: raisedBedOperationsAutomationGraph({ entityId }),
+    });
+
+    const { result, run } = await executeManualAutomationRun(
+        definition,
+        weeklyScheduleInput('2026-06-23'),
+    );
+
+    assert.strictEqual(result.status, 'succeeded');
+    const actionStep = run.steps.find(
+        (step) =>
+            step.moduleKey ===
+            automationModuleKeys.actionCreateRaisedBedOperations,
+    );
+    assert.ok(actionStep);
+    assert.strictEqual(
+        Reflect.get(actionStep.output, 'recipientCount'),
+        expectedRecipientCount,
+    );
+    assert.strictEqual(
+        Reflect.get(actionStep.output, 'skippedExistingCount'),
+        1,
+    );
+    assert.strictEqual(
+        Reflect.get(actionStep.output, 'createdCount'),
+        expectedRecipientCount - 1,
+    );
+    assert.deepStrictEqual(
+        Reflect.get(actionStep.output, 'repairedAcceptedOperationIds'),
+        [partialOperationId],
+    );
+    assert.deepStrictEqual(
+        Reflect.get(actionStep.output, 'repairedScheduledOperationIds'),
+        [partialOperationId],
+    );
+
+    const operations = await getRaisedBedOperationsByScheduleRange({
+        raisedBedIds: [firstRaisedBedId, secondRaisedBedId],
+        from: new Date('2026-06-23T00:00:00.000Z'),
+        to: new Date('2026-06-24T00:00:00.000Z'),
+    });
+    const photoOperations = operations.filter(
+        (operation) => operation.entityId === entityId,
+    );
+    assert.strictEqual(photoOperations.length, 2);
+
+    const repairedOperation = photoOperations.find(
+        (operation) => operation.id === partialOperationId,
+    );
+    assert.ok(repairedOperation);
+    assert.strictEqual(repairedOperation.isAccepted, true);
+    assert.strictEqual(
+        repairedOperation.scheduledDate?.toISOString(),
+        scheduledDate.toISOString(),
     );
 });
 
