@@ -28,7 +28,7 @@ import {
 } from '../schema/gardenSchema';
 import {
     createEvent,
-    getEvents,
+    getAllEvents,
     knownEvents,
     knownEventTypes,
     type RaisedBedWeedStateLevel,
@@ -199,11 +199,9 @@ async function getRaisedBedWeedStatesByIds(raisedBedIds: number[]) {
         return weedStatesByRaisedBedId;
     }
 
-    const weedStateEvents = await getEvents(
+    const weedStateEvents = await getAllEvents(
         knownEventTypes.raisedBeds.weedStateSet,
         uniqueRaisedBedIds.map((raisedBedId) => raisedBedId.toString()),
-        0,
-        100000,
     );
 
     const eventsByRaisedBedId = new Map<

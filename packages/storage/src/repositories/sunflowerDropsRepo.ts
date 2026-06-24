@@ -2,7 +2,12 @@ import { randomUUID } from 'node:crypto';
 import { and, eq, sql } from 'drizzle-orm';
 import { events } from '../schema';
 import { storage } from '../storage';
-import { createEvent, getEvents, knownEvents, knownEventTypes } from './events';
+import {
+    createEvent,
+    getAllEvents,
+    knownEvents,
+    knownEventTypes,
+} from './events';
 
 type StorageClient = ReturnType<typeof storage>;
 type TransactionClient = Parameters<
@@ -117,15 +122,13 @@ async function lockSunflowerDrops(accountId: string, db: DatabaseClient) {
 }
 
 async function getSunflowerDropEvents(accountId: string, db: DatabaseClient) {
-    return getEvents(
+    return getAllEvents(
         [
             knownEventTypes.accounts.sunflowerDropSpawn,
             knownEventTypes.accounts.earnSunflowerDrop,
         ],
         [accountId],
-        0,
-        5000,
-        db,
+        { db },
     );
 }
 

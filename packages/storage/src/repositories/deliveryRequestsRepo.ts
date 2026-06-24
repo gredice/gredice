@@ -40,7 +40,7 @@ import { getDeliveryAddress } from './deliveryAddressesRepo';
 import { getEntitiesFormatted, getEntityFormatted } from './entitiesRepo';
 import {
     createEvent,
-    getEvents,
+    getAllEvents,
     knownEvents,
     knownEventTypes,
 } from './eventsRepo';
@@ -50,7 +50,7 @@ import { getOperationById, getOperationsByIds } from './operationsRepo';
 import { getPickupLocation } from './pickupLocationsRepo';
 import { closeTimeSlot, getTimeSlot } from './timeSlotsRepo';
 
-type DbEvent = Awaited<ReturnType<typeof getEvents>>[number];
+type DbEvent = Awaited<ReturnType<typeof getAllEvents>>[number];
 type DeliveryTraceLink = Awaited<
     ReturnType<typeof getHarvestTraceLinksForOperationIds>
 >[number];
@@ -352,11 +352,9 @@ async function reconstructDeliveryRequestRows<
         return [];
     }
 
-    const requestEvents = await getEvents(
+    const requestEvents = await getAllEvents(
         deliveryRequestEventTypes,
         requests.map((request) => request.id),
-        0,
-        100000,
     );
     const eventsByAggregateId = groupEventsByAggregateId(requestEvents);
     const reconstructedRows = requests.map((request) => {
@@ -951,23 +949,7 @@ export async function getDeliveryRequest(
     if (!request) return undefined;
 
     // Get events for this request
-    const events = await getEvents(
-        [
-            knownEventTypes.delivery.requestCreated,
-            knownEventTypes.delivery.requestCancelled,
-            knownEventTypes.delivery.requestAddressChanged,
-            knownEventTypes.delivery.requestConfirmed,
-            knownEventTypes.delivery.requestPreparing,
-            knownEventTypes.delivery.requestReady,
-            knownEventTypes.delivery.requestFulfilled,
-            knownEventTypes.delivery.requestSurveySent,
-            knownEventTypes.delivery.requestSlotChanged,
-            knownEventTypes.delivery.userCancelled,
-        ],
-        [request.id],
-        0,
-        100000,
-    );
+    const events = await getAllEvents(deliveryRequestEventTypes, [request.id]);
 
     return reconstructDeliveryRequestFromEvents(request, events);
 }
@@ -1000,23 +982,7 @@ export async function getDeliveryRequestByOperation(
     if (!request) return undefined;
 
     // Get events and reconstruct state
-    const events = await getEvents(
-        [
-            knownEventTypes.delivery.requestCreated,
-            knownEventTypes.delivery.requestCancelled,
-            knownEventTypes.delivery.requestAddressChanged,
-            knownEventTypes.delivery.requestConfirmed,
-            knownEventTypes.delivery.requestPreparing,
-            knownEventTypes.delivery.requestReady,
-            knownEventTypes.delivery.requestFulfilled,
-            knownEventTypes.delivery.requestSurveySent,
-            knownEventTypes.delivery.requestSlotChanged,
-            knownEventTypes.delivery.userCancelled,
-        ],
-        [request.id],
-        0,
-        100000,
-    );
+    const events = await getAllEvents(deliveryRequestEventTypes, [request.id]);
 
     return reconstructDeliveryRequestFromEvents(request, events);
 }

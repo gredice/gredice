@@ -2,7 +2,7 @@ import 'server-only';
 import { plantFieldStatusLabel } from '@gredice/js/plants';
 import { getEntitiesFormatted, getOperations } from '..';
 import type { EntityStandardized } from '../@types/EntityStandardized';
-import { getEvents, knownEventTypes } from './eventsRepo';
+import { getAllEvents, knownEventTypes } from './eventsRepo';
 import type { getRaisedBedFieldsWithEvents } from './raisedBedFieldsRepo';
 import { getRaisedBed } from './raisedBedsRepo';
 
@@ -13,7 +13,7 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
     }
 
     const [events, operationsData, operations] = await Promise.all([
-        getEvents(
+        getAllEvents(
             [
                 knownEventTypes.raisedBeds.create,
                 knownEventTypes.raisedBeds.aiAnalysis,
@@ -21,8 +21,6 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
                 knownEventTypes.raisedBeds.abandon,
             ],
             [raisedBedId.toString()],
-            0,
-            10000,
         ),
         getEntitiesFormatted<EntityStandardized>('operation'),
         // TODO: Maybe retrieve operations from other accounts as well, but anonimized
@@ -128,7 +126,7 @@ export async function getRaisedBedFieldDiaryEntries(
         (f) => f.positionIndex === positionIndex,
     );
     const [events, operationsData, operations] = await Promise.all([
-        getEvents(
+        getAllEvents(
             [
                 knownEventTypes.raisedBedFields.create,
                 knownEventTypes.raisedBedFields.plantPlace,
@@ -139,8 +137,6 @@ export async function getRaisedBedFieldDiaryEntries(
                 knownEventTypes.raisedBedFields.delete,
             ],
             [`${raisedBedId.toString()}|${positionIndex.toString()}`],
-            0,
-            10000,
         ),
         getEntitiesFormatted<EntityStandardized>('operation'),
         // TODO: Maybe retrieve operations from other accounts as well, but anonimized
@@ -363,14 +359,12 @@ export async function getRaisedBedAiHistoryEntries(raisedBedId: number) {
         ),
     ];
 
-    const events = await getEvents(
+    const events = await getAllEvents(
         [
             knownEventTypes.raisedBeds.aiAnalysis,
             knownEventTypes.raisedBedFields.aiAnalysis,
         ],
         aggregateIds,
-        0,
-        10000,
     );
 
     return events
