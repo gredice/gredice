@@ -346,10 +346,12 @@ function dailyScheduleRunInput(date: Date, key: string) {
 
 async function createAutomationRunForDailyGreenhouseWatering({
     entityId,
+    enqueuedAt,
     referenceDate,
     dryRun = false,
 }: {
     entityId: number;
+    enqueuedAt?: Date;
     referenceDate: Date;
     dryRun?: boolean;
 }) {
@@ -360,9 +362,11 @@ async function createAutomationRunForDailyGreenhouseWatering({
         graph: greenhouseSeedlingWateringAutomationGraphForEntity(entityId),
     });
     const input = dailyScheduleRunInput(
-        referenceDate,
+        enqueuedAt ?? referenceDate,
         `test.greenhouse-seedling-watering-${entityId}`,
     );
+    input.occurrenceDate = referenceDate.toISOString().slice(0, 10);
+    input.occurrenceKey = `test.greenhouse-seedling-watering-${entityId}:${input.occurrenceDate}`;
     const run = await createAutomationRun({
         automationDefinition: definition,
         source: 'schedule',
@@ -1677,6 +1681,60 @@ test('greenhouse seedling watering treats active outlet stock as eligible greenh
                 Array.isArray(reasons) && reasons.includes('activeOutletStock')
             );
         }),
+    );
+});
+
+test('greenhouse seedling watering checks outlet availability at enqueue time', async () => {
+    createTestDb();
+    const entityId = 9_920_006;
+    const occurrenceDate = new Date('2026-10-03T00:00:00.000Z');
+    const enqueuedAt = new Date('2026-10-02T22:05:00.000Z');
+    await createFarm({
+        name: 'Automation Greenhouse Future Outlet Farm',
+        latitude: 45.9,
+        longitude: 16.0,
+    });
+    const plantSortId = await createTestPlantSortForOutlet();
+    await createOutletOffer({
+        plantSortId,
+        sowingDate: new Date('2026-09-20T00:00:00.000Z'),
+        initialPlantStatus: 'sprouted',
+        imageUrls: [],
+        outletPriceCents: 199,
+        comparePriceCents: 349,
+        quantity: 3,
+        startAt: new Date('2026-10-03T00:00:00.000Z'),
+        endAt: new Date('2026-10-04T00:00:00.000Z'),
+        status: 'published',
+        adminNotes: null,
+    });
+
+    const { actionOutput } =
+        await createAutomationRunForDailyGreenhouseWatering({
+            entityId,
+            referenceDate: occurrenceDate,
+            enqueuedAt,
+            dryRun: true,
+        });
+
+    assert.strictEqual(Reflect.get(actionOutput, 'activeOutletOfferCount'), 0);
+    assert.strictEqual(
+        Reflect.get(actionOutput, 'outletAvailabilityCheckedAt'),
+        enqueuedAt.toISOString(),
+    );
+    const eligibleFarms = Reflect.get(actionOutput, 'eligibleFarms');
+    assert.ok(
+        !Array.isArray(eligibleFarms) ||
+            eligibleFarms.every((farm) => {
+                const reasons =
+                    farm && typeof farm === 'object'
+                        ? Reflect.get(farm, 'reasons')
+                        : null;
+                return (
+                    !Array.isArray(reasons) ||
+                    !reasons.includes('activeOutletStock')
+                );
+            }),
     );
 });
 

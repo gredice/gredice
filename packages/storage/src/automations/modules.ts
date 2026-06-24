@@ -1882,6 +1882,9 @@ const createGreenhouseSeedlingWateringOperationsActionModule: AutomationModule =
             const referenceDate = getScheduleOccurrenceReferenceDate(
                 context.run.input,
             );
+            const availabilityDate = getScheduleReferenceDate(
+                context.run.input,
+            );
             const scheduledDate = addUtcDays(
                 referenceDate,
                 operationConfig.scheduledInDays,
@@ -1893,7 +1896,7 @@ const createGreenhouseSeedlingWateringOperationsActionModule: AutomationModule =
                         farms.filter((farm) => !farm.isDeleted),
                     ),
                     getGreenhouseFieldCountsByFarmId(),
-                    getOutletOffers({ now: referenceDate }),
+                    getOutletOffers({ now: availabilityDate }),
                 ]);
 
             if (activeFarms.length === 0) {
@@ -2030,6 +2033,7 @@ const createGreenhouseSeedlingWateringOperationsActionModule: AutomationModule =
                 existingOperationSkips,
                 existingOperationSkipCount: existingOperationSkips.length,
                 activeOutletOfferCount,
+                outletAvailabilityCheckedAt: availabilityDate.toISOString(),
                 projectedCreateCount:
                     eligibleFarms.length - existingOperationSkips.length,
             };
