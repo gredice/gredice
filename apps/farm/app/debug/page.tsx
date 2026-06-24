@@ -1,5 +1,20 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { HomeButton } from '../../components/HomeButton';
+
+const debugGroups = [
+    {
+        title: 'Labels',
+        pages: [
+            {
+                href: '/debug/labels',
+                title: 'Harvest label preview',
+                description:
+                    'Preview and tune generated harvest labels with representative operation data.',
+            },
+        ],
+    },
+] as const;
 
 export default function FarmDebugIndexPage() {
     if (process.env.NODE_ENV !== 'development') {
@@ -19,9 +34,32 @@ export default function FarmDebugIndexPage() {
                     </div>
                 </header>
 
-                <section className="rounded-lg border bg-background p-4 text-sm text-muted-foreground shadow-xs">
-                    No debug pages are linked from this dashboard.
-                </section>
+                {debugGroups.map((group) => (
+                    <section key={group.title} className="flex flex-col gap-3">
+                        <h2 className="text-sm font-semibold uppercase text-muted-foreground">
+                            {group.title}
+                        </h2>
+                        <div className="grid gap-3 md:grid-cols-2">
+                            {group.pages.map((page) => (
+                                <Link
+                                    key={page.href}
+                                    href={page.href}
+                                    className="rounded-lg border bg-background p-4 shadow-xs transition-colors hover:border-primary/50 hover:bg-accent"
+                                >
+                                    <span className="block text-base font-semibold text-foreground">
+                                        {page.title}
+                                    </span>
+                                    <span className="mt-1 block text-sm text-muted-foreground">
+                                        {page.description}
+                                    </span>
+                                    <span className="mt-3 block break-all font-mono text-xs text-muted-foreground">
+                                        {page.href}
+                                    </span>
+                                </Link>
+                            ))}
+                        </div>
+                    </section>
+                ))}
             </div>
         </main>
     );
