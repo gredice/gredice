@@ -1676,7 +1676,9 @@ const createFarmInventoryOperationsActionModule: AutomationModule = {
             );
         }
 
-        const referenceDate = getScheduleReferenceDate(context.run.input);
+        const referenceDate = getScheduleOccurrenceReferenceDate(
+            context.run.input,
+        );
         const scheduledDates = operationConfigs.map((operationConfig) =>
             addUtcDays(referenceDate, operationConfig.scheduledInDays),
         );
@@ -1696,6 +1698,7 @@ const createFarmInventoryOperationsActionModule: AutomationModule = {
         }
 
         let skippedExistingCount = 0;
+        let repairedScheduledCount = 0;
         const createdOperationIds: number[] = [];
         const repairedScheduledOperationIds: number[] = [];
 
@@ -1751,22 +1754,22 @@ const createFarmInventoryOperationsActionModule: AutomationModule = {
                     existingOperationKeys.has(operationKey)
                 ) {
                     skippedExistingCount += 1;
-                    if (
-                        existingOperation &&
-                        !existingOperation.scheduledDate &&
-                        !context.dryRun
-                    ) {
-                        await createEvent(
-                            knownEvents.operations.scheduledV1(
-                                existingOperation.id.toString(),
-                                {
-                                    scheduledDate: scheduledDate.toISOString(),
-                                },
-                            ),
-                        );
-                        repairedScheduledOperationIds.push(
-                            existingOperation.id,
-                        );
+                    if (existingOperation && !existingOperation.scheduledDate) {
+                        repairedScheduledCount += 1;
+                        if (!context.dryRun) {
+                            await createEvent(
+                                knownEvents.operations.scheduledV1(
+                                    existingOperation.id.toString(),
+                                    {
+                                        scheduledDate:
+                                            scheduledDate.toISOString(),
+                                    },
+                                ),
+                            );
+                            repairedScheduledOperationIds.push(
+                                existingOperation.id,
+                            );
+                        }
                     }
                     continue;
                 }
@@ -1804,6 +1807,8 @@ const createFarmInventoryOperationsActionModule: AutomationModule = {
                 projectedCreateCount,
                 skippedCount: skippedExistingCount,
                 skippedExistingCount,
+                skippedScheduledCount: skippedExistingCount,
+                repairedScheduledCount,
             });
         }
 
@@ -1816,8 +1821,11 @@ const createFarmInventoryOperationsActionModule: AutomationModule = {
                 {
                     farmCount: activeFarms.length,
                     operationCount: operationConfigs.length,
+                    createdCount: 0,
                     skippedCount: skippedExistingCount,
                     skippedExistingCount,
+                    skippedScheduledCount: skippedExistingCount,
+                    repairedScheduledCount: 0,
                 },
             );
         }
@@ -1829,6 +1837,7 @@ const createFarmInventoryOperationsActionModule: AutomationModule = {
             repairedScheduledCount: repairedScheduledOperationIds.length,
             skippedCount: skippedExistingCount,
             skippedExistingCount,
+            skippedScheduledCount: skippedExistingCount,
             farmCount: activeFarms.length,
             operationCount: operationConfigs.length,
         });

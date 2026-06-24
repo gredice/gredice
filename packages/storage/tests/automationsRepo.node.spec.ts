@@ -45,6 +45,8 @@ import {
     listAutomationDefinitions,
     listAutomationRuns,
     listEnabledAutomationDefinitionsForEventType,
+    monthlyFarmInventoryOperationConfigs,
+    monthlyFarmInventoryOperationsAutomationKey,
     operationImagePlantStatusReviewAutomationGraph,
     plantRemovalOperationStatusAutomationGraph,
     plantRemovalOperationStatusAutomationKey,
@@ -964,7 +966,7 @@ test('monthly schedule automation enqueues once per configured period', async ()
                 kind: 'trigger' as const,
                 position: { x: 0, y: 0 },
                 config: {
-                    dayOfMonth: 1,
+                    dayOfMonth: 15,
                     timeZone: 'Europe/Zagreb',
                 },
             },
@@ -994,13 +996,13 @@ test('monthly schedule automation enqueues once per configured period', async ()
     });
 
     const firstResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-01T08:00:00.000Z'),
+        now: new Date('2026-06-15T08:00:00.000Z'),
     });
     const duplicateResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-01T09:00:00.000Z'),
+        now: new Date('2026-06-15T09:00:00.000Z'),
     });
     const offDayResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-02T08:00:00.000Z'),
+        now: new Date('2026-06-16T08:00:00.000Z'),
     });
 
     assert.strictEqual(firstResult.enqueuedRuns, 2);
@@ -1014,7 +1016,7 @@ test('monthly schedule automation enqueues once per configured period', async ()
     assert.strictEqual(runs[0]?.source, 'schedule');
     assert.strictEqual(
         runs[0]?.sourceAggregateId,
-        'trigger.scheduleMonthly:Europe/Zagreb:2026-06:day-1',
+        'trigger.scheduleMonthly:Europe/Zagreb:2026-06:day-15',
     );
     for (const run of runs) {
         await completeAutomationRun({
@@ -1230,95 +1232,118 @@ test('monthly farm inventory automation creates accepted scheduled farm tasks', 
         latitude: 46.1,
         longitude: 16.2,
     });
+    const deletedFarmId = await createFarm({
+        name: 'Automation Inventory Deleted Farm',
+        latitude: 44.5,
+        longitude: 15.1,
+    });
+    await storage()
+        .update(farms)
+        .set({ isDeleted: true })
+        .where(eq(farms.id, deletedFarmId));
     const activeFarms = (await getFarms()).filter((farm) => !farm.isDeleted);
-    const referenceDate = new Date('2026-07-01T08:00:00.000Z');
-    const operationConfigs = [
-        {
-            entityId: 9_910_001,
-            entityTypeName: 'operation',
-            scheduledInDays: 0,
-        },
-        {
-            entityId: 9_910_002,
-            entityTypeName: 'operation',
-            scheduledInDays: 2,
-        },
-    ];
+    const occurrenceDate = new Date('2026-07-01T00:00:00.000Z');
+    const enqueuedAt = new Date('2026-07-01T08:00:00.000Z');
+    const operationConfigs = monthlyFarmInventoryOperationConfigs;
     const preexistingFarm = activeFarms[0];
     assert.ok(preexistingFarm);
     const preexistingOperationId = await createOperation({
         entityId: operationConfigs[0].entityId,
         entityTypeName: operationConfigs[0].entityTypeName,
         farmId: preexistingFarm.id,
-        timestamp: new Date('2026-05-01T08:00:00.000Z'),
+        timestamp: occurrenceDate,
     });
     await acceptOperation(preexistingOperationId);
-    await createEvent(
-        knownEvents.operations.scheduledV1(preexistingOperationId.toString(), {
-            scheduledDate: referenceDate.toISOString(),
-        }),
+    await ensureDefaultAutomationDefinitions();
+    const definition = await getAutomationDefinitionByKey(
+        monthlyFarmInventoryOperationsAutomationKey,
     );
-    const graph = {
-        nodes: [
-            {
-                id: 'trigger',
-                moduleKey: automationModuleKeys.triggerScheduleMonthly,
-                kind: 'trigger' as const,
-                position: { x: 0, y: 0 },
-                config: {
-                    dayOfMonth: 1,
-                    timeZone: 'Europe/Zagreb',
-                },
-            },
-            {
-                id: 'create-inventory-operations',
-                moduleKey:
-                    automationModuleKeys.actionCreateFarmInventoryOperations,
-                kind: 'action' as const,
-                position: { x: 300, y: 0 },
-                config: {
-                    operations: operationConfigs,
-                },
-            },
-        ],
-        edges: [
-            {
-                id: 'trigger-to-create-inventory-operations',
-                source: 'trigger',
-                target: 'create-inventory-operations',
-            },
-        ],
-    };
-    const definition = await createAutomationDefinition({
-        key: 'test.monthly-farm-inventory',
-        name: 'Monthly farm inventory',
-        status: 'enabled',
-        graph,
+    assert.ok(definition);
+    const triggerNode = definition.graph.nodes.find(
+        (node) => node.kind === 'trigger',
+    );
+    const actionNode = definition.graph.nodes.find(
+        (node) =>
+            node.moduleKey ===
+            automationModuleKeys.actionCreateFarmInventoryOperations,
+    );
+    assert.strictEqual(
+        triggerNode?.moduleKey,
+        automationModuleKeys.triggerSchedule,
+    );
+    assert.deepStrictEqual(triggerNode?.config, {
+        frequency: 'monthly',
+        dayOfMonth: 1,
+        timeZone: 'Europe/Zagreb',
     });
+    assert.deepStrictEqual(actionNode?.config.operations, operationConfigs);
 
     const enqueueResult = await enqueueAutomationRunsFromSchedules({
-        now: referenceDate,
+        now: enqueuedAt,
+    });
+    const duplicateResult = await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-07-01T09:00:00.000Z'),
+    });
+    const offDayResult = await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-07-02T08:00:00.000Z'),
     });
     assert.strictEqual(enqueueResult.enqueuedRuns, 2);
+    assert.strictEqual(duplicateResult.enqueuedRuns, 0);
+    assert.strictEqual(offDayResult.enqueuedRuns, 1);
+
+    const [scheduledRun] = await listAutomationRuns({
+        automationDefinitionId: definition.id,
+    });
+    assert.ok(scheduledRun);
+    assert.strictEqual(
+        scheduledRun.sourceAggregateId,
+        'trigger.schedule:Europe/Zagreb:monthly:2026-07:day-1',
+    );
+
+    const dryRun = await createAutomationRun({
+        automationDefinition: definition,
+        source: 'test',
+        input: scheduledRun.input,
+    });
+    assert.ok(dryRun);
+    const startedDryRun = await startAutomationRun(dryRun.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedDryRun);
+    const dryRunResult = await executeAutomationRun(startedDryRun);
+    assert.strictEqual(dryRunResult.status, 'succeeded');
+    const dryRunWithSteps = await getAutomationRunWithSteps(dryRun.id);
+    const dryRunActionStep = dryRunWithSteps?.steps.find(
+        (step) => step.nodeId === 'create-inventory-operations',
+    );
+    assert.ok(dryRunActionStep);
+    assert.strictEqual(
+        dryRunActionStep.output.createdCount,
+        activeFarms.length * operationConfigs.length - 1,
+    );
+    assert.strictEqual(dryRunActionStep.output.skippedScheduledCount, 1);
+    assert.strictEqual(dryRunActionStep.output.repairedScheduledCount, 1);
 
     const processResult = await processDueAutomationRuns({
         limit: 10,
         lockedBy: 'automations-test',
     });
     assert.strictEqual(processResult.succeeded, 1);
-    assert.strictEqual(processResult.skipped, 1);
+    assert.strictEqual(processResult.skipped, 2);
 
     const expectedScheduledDates = operationConfigs.map((operationConfig) =>
         addUtcDays(
-            referenceDate,
+            occurrenceDate,
             operationConfig.scheduledInDays,
         ).toISOString(),
     );
+    const expectedCreatedCount =
+        activeFarms.length * operationConfigs.length - 1;
     for (const farm of activeFarms) {
         const farmOperations = await getFarmAcceptedOperationsByScheduleRange({
             farmId: farm.id,
-            from: referenceDate,
-            to: addUtcDays(referenceDate, 3),
+            from: occurrenceDate,
+            to: addUtcDays(occurrenceDate, 1),
         });
         const inventoryOperations = farmOperations
             .filter((operation) =>
@@ -1364,14 +1389,29 @@ test('monthly farm inventory automation creates accepted scheduled farm tasks', 
         }
     }
 
-    const [firstRun] = await listAutomationRuns({
-        automationDefinitionId: definition.id,
-    });
-    assert.ok(firstRun);
+    const deletedFarmOperations =
+        await getFarmAcceptedOperationsByScheduleRange({
+            farmId: deletedFarmId,
+            from: occurrenceDate,
+            to: addUtcDays(occurrenceDate, 1),
+        });
+    assert.strictEqual(deletedFarmOperations.length, 0);
+
+    const scheduledRunWithSteps = await getAutomationRunWithSteps(
+        scheduledRun.id,
+    );
+    const actionStep = scheduledRunWithSteps?.steps.find(
+        (step) => step.nodeId === 'create-inventory-operations',
+    );
+    assert.ok(actionStep);
+    assert.strictEqual(actionStep.output.createdCount, expectedCreatedCount);
+    assert.strictEqual(actionStep.output.skippedScheduledCount, 1);
+    assert.strictEqual(actionStep.output.repairedScheduledCount, 1);
+
     const replayRun = await createAutomationRun({
         automationDefinition: definition,
         source: 'replay',
-        input: firstRun.input,
+        input: scheduledRun.input,
     });
     assert.ok(replayRun);
     const startedReplay = await startAutomationRun(replayRun.id, {
@@ -1385,8 +1425,8 @@ test('monthly farm inventory automation creates accepted scheduled farm tasks', 
     for (const farm of activeFarms) {
         const farmOperations = await getFarmAcceptedOperationsByScheduleRange({
             farmId: farm.id,
-            from: referenceDate,
-            to: addUtcDays(referenceDate, 3),
+            from: occurrenceDate,
+            to: addUtcDays(occurrenceDate, 1),
         });
         const inventoryOperations = farmOperations.filter((operation) =>
             operationConfigs.some(
@@ -1396,6 +1436,17 @@ test('monthly farm inventory automation creates accepted scheduled farm tasks', 
         );
         assert.strictEqual(inventoryOperations.length, operationConfigs.length);
     }
+    const replayRunWithSteps = await getAutomationRunWithSteps(replayRun.id);
+    const replayActionStep = replayRunWithSteps?.steps.find(
+        (step) => step.nodeId === 'create-inventory-operations',
+    );
+    assert.ok(replayActionStep);
+    assert.strictEqual(replayActionStep.output.createdCount, 0);
+    assert.strictEqual(
+        replayActionStep.output.skippedScheduledCount,
+        activeFarms.length * operationConfigs.length,
+    );
+    assert.strictEqual(replayActionStep.output.repairedScheduledCount, 0);
 });
 
 test('default farm raised-bed weeding automation stays draft until enabled', async () => {
@@ -1503,7 +1554,7 @@ test('default farm raised-bed weeding automation filters farms and prevents dupl
     assert.strictEqual(processResult.succeeded, 1);
     assert.strictEqual(processResult.skipped, 2);
 
-    const occurrenceStart = new Date('2026-01-05T08:00:00.000Z');
+    const occurrenceStart = new Date('2026-01-05T00:00:00.000Z');
     const occurrenceEnd = addUtcDays(occurrenceStart, 1);
     for (const farm of activeFarms) {
         const farmOperations = await getFarmAcceptedOperationsByScheduleRange({

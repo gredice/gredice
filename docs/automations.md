@@ -139,6 +139,12 @@ MVP modules:
   threshold.
 - `action.log`: records a no-op step for diagnostics.
 
+The managed default `default.monthly-farm-inventory-operations` uses the shared
+monthly `trigger.schedule` on day 1 in `Europe/Zagreb` and creates the published
+internal farm inventory operation set (`inventoryRaisedBedBoards` through
+`inventoryPlasticDeliveryBags`, operation entity ids 554-565) for each active
+farm.
+
 When adding a module, define metadata, config validation, dry-run behavior, and
 the executor function in the registry. Prefer idempotent repository functions for
 actions that mutate operations, plant state, notifications, or customer-visible

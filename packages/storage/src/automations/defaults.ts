@@ -21,6 +21,8 @@ export const farmRaisedBedWeedingAutomationKey =
     'default.farm-raised-bed-weeding';
 export const greenhouseSeedlingWateringAutomationKey =
     'default.greenhouse-seedling-watering';
+export const monthlyFarmInventoryOperationsAutomationKey =
+    'default.monthly-farm-inventory-operations';
 
 const seedlingTransplantingOperationId = 593;
 const plantRemovalOperationId = 346;
@@ -28,6 +30,20 @@ export const FARM_RAISED_BED_WEEDING_OPERATION_ID = 654;
 export const farmRaisedBedWeedingOperationKey = 'cleanWeedsAroundRaisedBeds';
 export const farmRaisedBedWeedingBiweeklyAnchorDate = '2026-01-05';
 const greenhouseSeedlingWateringOperationId = 655;
+export const monthlyFarmInventoryOperationConfigs = [
+    { entityId: 554, entityTypeName: 'operation', scheduledInDays: 0 },
+    { entityId: 555, entityTypeName: 'operation', scheduledInDays: 0 },
+    { entityId: 556, entityTypeName: 'operation', scheduledInDays: 0 },
+    { entityId: 557, entityTypeName: 'operation', scheduledInDays: 0 },
+    { entityId: 558, entityTypeName: 'operation', scheduledInDays: 0 },
+    { entityId: 559, entityTypeName: 'operation', scheduledInDays: 0 },
+    { entityId: 560, entityTypeName: 'operation', scheduledInDays: 0 },
+    { entityId: 561, entityTypeName: 'operation', scheduledInDays: 0 },
+    { entityId: 562, entityTypeName: 'operation', scheduledInDays: 0 },
+    { entityId: 563, entityTypeName: 'operation', scheduledInDays: 0 },
+    { entityId: 564, entityTypeName: 'operation', scheduledInDays: 0 },
+    { entityId: 565, entityTypeName: 'operation', scheduledInDays: 0 },
+];
 
 export function seasonalSowedWateringAutomationGraph(): AutomationGraph {
     return {
@@ -344,6 +360,41 @@ export function greenhouseSeedlingWateringAutomationGraph(): AutomationGraph {
     };
 }
 
+export function monthlyFarmInventoryOperationsAutomationGraph(): AutomationGraph {
+    return {
+        nodes: [
+            {
+                id: 'trigger',
+                kind: 'trigger',
+                moduleKey: automationModuleKeys.triggerSchedule,
+                position: { x: 0, y: 160 },
+                config: {
+                    frequency: 'monthly',
+                    dayOfMonth: 1,
+                    timeZone: 'Europe/Zagreb',
+                },
+            },
+            {
+                id: 'create-inventory-operations',
+                kind: 'action',
+                moduleKey:
+                    automationModuleKeys.actionCreateFarmInventoryOperations,
+                position: { x: 360, y: 160 },
+                config: {
+                    operations: monthlyFarmInventoryOperationConfigs,
+                },
+            },
+        ],
+        edges: [
+            {
+                id: 'trigger-to-create-inventory-operations',
+                source: 'trigger',
+                target: 'create-inventory-operations',
+            },
+        ],
+    };
+}
+
 export async function ensureDefaultAutomationDefinitions() {
     await initializeAutomationEventCursorToLatest();
 
@@ -454,6 +505,25 @@ export async function ensureDefaultAutomationDefinitions() {
         },
     });
 
+    const monthlyFarmInventoryOperations =
+        await upsertAutomationDefinitionByKey({
+            key: monthlyFarmInventoryOperationsAutomationKey,
+            name: 'Mjesečna inventura farme',
+            description:
+                'Svakog prvog dana u mjesecu kreiraj inventurne radnje za svaku aktivnu farmu.',
+            status: 'enabled',
+            graph: monthlyFarmInventoryOperationsAutomationGraph(),
+            metadata: {
+                managedBy: 'gredice',
+                defaultAutomation: true,
+                dayOfMonth: 1,
+                timeZone: 'Europe/Zagreb',
+                operationEntityIds: monthlyFarmInventoryOperationConfigs.map(
+                    (operation) => operation.entityId,
+                ),
+            },
+        });
+
     return {
         seasonalSowedWatering,
         operationImagePlantStatusReview,
@@ -462,5 +532,6 @@ export async function ensureDefaultAutomationDefinitions() {
         plantRemovalOperationStatus,
         farmRaisedBedWeeding,
         greenhouseSeedlingWatering,
+        monthlyFarmInventoryOperations,
     };
 }
