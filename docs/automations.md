@@ -122,6 +122,13 @@ MVP modules:
 - `action.createFarmInventoryOperations`: creates accepted, scheduled farm-level
   operations for every active farm from a JSON list in the automation
   definition.
+- `action.createGreenhouseSeedlingWateringOperations`: creates at most one
+  accepted, scheduled farm-level `Zalijevanje presadnica u stakleniku`
+  operation per active farm and local schedule date. A farm is eligible when it
+  has current greenhouse-located raised-bed fields, or when central outlet stock
+  has active published non-expired offers with remaining quantity. Outlet offers
+  are not farm-scoped in storage, so active outlet stock makes every active farm
+  eligible for the daily care operation.
 - `action.updateRaisedBedFieldPlantAttributes`: writes plant status and/or
   sowing location events for the operation target field. Use this for new
   no-code plant-state automations.
