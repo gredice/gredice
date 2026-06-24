@@ -1,7 +1,12 @@
 import { and, eq, gte, sql } from 'drizzle-orm';
 import { events } from '../schema';
 import { storage } from '../storage';
-import { createEvent, getEvents, knownEvents, knownEventTypes } from './events';
+import {
+    createEvent,
+    getAllEvents,
+    knownEvents,
+    knownEventTypes,
+} from './events';
 
 type StorageClient = ReturnType<typeof storage>;
 type TransactionClient = Parameters<
@@ -139,12 +144,10 @@ async function getInventoryForAggregateIds(
         return [];
     }
 
-    const inventoryEvents = await getEvents(
+    const inventoryEvents = await getAllEvents(
         [knownEventTypes.inventory.add, knownEventTypes.inventory.consume],
         aggregateIds,
-        0,
-        5000,
-        db,
+        { db },
     );
 
     const totals = new Map<string, InventoryItem>();

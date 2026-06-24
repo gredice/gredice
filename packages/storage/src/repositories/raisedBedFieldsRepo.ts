@@ -19,7 +19,6 @@ import { normalizeAssignedUserIds } from './events/normalizeAssignedUserIds';
 import {
     createEvent,
     getAllEvents,
-    getEvents,
     knownEvents,
     knownEventTypes,
     type RaisedBedFieldSowingLocation,
@@ -1031,11 +1030,9 @@ export async function updateActiveRaisedBedFieldPlantStatusEventCreatedAt({
     createdAt: Date;
 }) {
     const aggregateId = `${raisedBedId.toString()}|${positionIndex.toString()}`;
-    const plantEvents = await getEvents(
+    const plantEvents = await getAllEvents(
         [...PLANT_CYCLE_EVENT_TYPES],
         [aggregateId],
-        0,
-        100000,
     );
     const activePlantCycleEvents = splitPlantCycleEvents(plantEvents).find(
         (plantCycleEvents) => {
