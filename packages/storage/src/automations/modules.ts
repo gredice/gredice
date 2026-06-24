@@ -1676,7 +1676,9 @@ const createFarmInventoryOperationsActionModule: AutomationModule = {
             );
         }
 
-        const referenceDate = getScheduleReferenceDate(context.run.input);
+        const referenceDate = getScheduleOccurrenceReferenceDate(
+            context.run.input,
+        );
         const scheduledDates = operationConfigs.map((operationConfig) =>
             addUtcDays(referenceDate, operationConfig.scheduledInDays),
         );

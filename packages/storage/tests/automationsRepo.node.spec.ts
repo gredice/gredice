@@ -1329,7 +1329,7 @@ test('monthly farm inventory automation creates accepted scheduled farm tasks', 
         lockedBy: 'automations-test',
     });
     assert.strictEqual(processResult.succeeded, 1);
-    assert.strictEqual(processResult.skipped, 1);
+    assert.strictEqual(processResult.skipped, 2);
 
     const expectedScheduledDates = operationConfigs.map((operationConfig) =>
         addUtcDays(
