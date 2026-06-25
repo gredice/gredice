@@ -808,3 +808,50 @@ test('diary entries expose operation and field reschedule targets', async () => 
         scheduledDate: '2026-06-05T00:00:00.000Z',
     });
 });
+
+test('raised bed diary entries order operations by scheduled or completed dates', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createDiaryRescheduleContext();
+    const scheduledCompletedOperationId = await createScheduledOperation({
+        accountId,
+        gardenId,
+        raisedBedId,
+        scheduledDate: '2030-06-25T00:00:00.000Z',
+    });
+    const completedOperationId = await createOperation({
+        accountId,
+        entityId: 1,
+        entityTypeName: 'operation',
+        gardenId,
+        raisedBedId,
+    });
+
+    await createEvent(
+        knownEvents.operations.completedV1(
+            scheduledCompletedOperationId.toString(),
+            {
+                completedBy: 'test-user',
+            },
+        ),
+    );
+    await createEvent(
+        knownEvents.operations.completedV1(completedOperationId.toString(), {
+            completedBy: 'test-user',
+        }),
+    );
+
+    const raisedBedEntries = await getRaisedBedDiaryEntries(raisedBedId);
+    const operationEntryIds = raisedBedEntries
+        .map((entry) => entry.id)
+        .filter((entryId) =>
+            [scheduledCompletedOperationId, completedOperationId].includes(
+                entryId,
+            ),
+        );
+
+    assert.deepEqual(operationEntryIds, [
+        scheduledCompletedOperationId,
+        completedOperationId,
+    ]);
+});

@@ -95,7 +95,7 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
                 (opData) => opData.id === op.entityId,
             )?.information?.shortDescription,
             status: operationStatusToLabel(op.status),
-            timestamp: op.completedAt ?? op.scheduledDate ?? op.createdAt,
+            timestamp: operationDiaryTimestamp(op),
             imageUrls: op.imageUrls,
             rescheduleTarget: operationDiaryRescheduleTarget(op),
         }))
@@ -237,7 +237,7 @@ export async function getRaisedBedFieldDiaryEntries(
                 (opData) => opData.id === op.entityId,
             )?.information?.shortDescription,
             status: operationStatusToLabel(op.status),
-            timestamp: op.completedAt ?? op.scheduledDate ?? op.createdAt,
+            timestamp: operationDiaryTimestamp(op),
             imageUrls: op.imageUrls,
             rescheduleTarget: operationDiaryRescheduleTarget(op, positionIndex),
         }))
@@ -283,6 +283,16 @@ type RaisedBedFieldWithEvents = Awaited<
 >[number];
 
 const fieldPlantRescheduleStatuses = new Set(['new', 'planned']);
+
+function operationDiaryTimestamp(operation: DiaryOperation) {
+    return (
+        operation.scheduledDate ??
+        operation.verifiedAt ??
+        operation.completedAt ??
+        operation.canceledAt ??
+        operation.createdAt
+    );
+}
 
 function operationDiaryRescheduleTarget(
     operation: DiaryOperation,

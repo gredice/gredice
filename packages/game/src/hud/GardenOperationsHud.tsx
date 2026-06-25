@@ -57,6 +57,7 @@ import {
 } from '../hooks/useShoppingCart';
 import { ScrollView } from '../shared-ui/ScrollView';
 import { useShoppingCartOpenParam } from '../useUrlState';
+import { sortOperationTasksNewestFirst } from './gardenOperationOrdering';
 import { RaisedBedDiaryCancelAction } from './raisedBed/RaisedBedDiaryCancelAction';
 import { RaisedBedDiaryRescheduleAction } from './raisedBed/RaisedBedDiaryRescheduleAction';
 
@@ -1629,36 +1630,8 @@ function HistoryModal({
     );
 }
 
-function getLatestOperationChangeTime(operation: GardenOperationHudItem) {
-    let latest = new Date(operation.createdAt).getTime();
-
-    for (const entry of operation.statusHistory) {
-        const changedAt = new Date(entry.changedAt).getTime();
-        if (Number.isFinite(changedAt) && changedAt > latest) {
-            latest = changedAt;
-        }
-    }
-
-    return latest;
-}
-
 export function sortNewestFirst(operations: GardenOperationHudItem[]) {
-    return [...operations].sort((a, b) => {
-        const dateDiff =
-            getLatestOperationChangeTime(b) - getLatestOperationChangeTime(a);
-
-        return dateDiff !== 0 ? dateDiff : b.id - a.id;
-    });
-}
-
-function sortScheduledSoonestFirst(operations: GardenOperationHudItem[]) {
-    return [...operations].sort((a, b) => {
-        const aDate = new Date(a.scheduledDate ?? a.createdAt).getTime();
-        const bDate = new Date(b.scheduledDate ?? b.createdAt).getTime();
-        const dateDiff = aDate - bDate;
-
-        return dateDiff !== 0 ? dateDiff : a.id - b.id;
-    });
+    return sortOperationTasksNewestFirst(operations);
 }
 
 export function GardenOperationsHud() {
@@ -1715,7 +1688,7 @@ export function GardenOperationsHud() {
 
     const pendingOperations = useMemo(
         () =>
-            sortScheduledSoonestFirst(
+            sortNewestFirst(
                 [
                     ...(pending.data?.pages.flatMap((page) => page.items) ??
                         []),
@@ -1798,10 +1771,10 @@ export function GardenOperationsHud() {
             })
             .sort((a, b) => {
                 const dateDiff =
-                    getTimestamp(a.scheduledDate) -
-                    getTimestamp(b.scheduledDate);
+                    getTimestamp(b.scheduledDate) -
+                    getTimestamp(a.scheduledDate);
 
-                return dateDiff !== 0 ? dateDiff : a.item.id - b.item.id;
+                return dateDiff !== 0 ? dateDiff : b.item.id - a.item.id;
             });
     }, [cart?.items, currentGarden, operationDataById]);
     const activeOperationCount =

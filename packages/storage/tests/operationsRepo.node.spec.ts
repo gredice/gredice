@@ -138,7 +138,7 @@ test('farm-targeted operations are visible and assignable for farm users', async
     );
 });
 
-test('getOperationsPage returns included history by newest status change first', async () => {
+test('getOperationsPage returns operations by newest scheduled or completed task date', async () => {
     createTestDb();
     const { accountId, gardenId, raisedBedId } =
         await createOperationsPageTestContext();
@@ -167,6 +167,12 @@ test('getOperationsPage returns included history by newest status change first',
         raisedBedId,
         createdAt: new Date('2026-01-15T08:00:00.000Z'),
     });
+    const completedScheduledOperationId = await createDatedOperation({
+        accountId,
+        gardenId,
+        raisedBedId,
+        createdAt: new Date('2026-01-20T08:00:00.000Z'),
+    });
 
     await createEvent(
         knownEvents.operations.completedV1(completedOperationId.toString(), {
@@ -176,7 +182,7 @@ test('getOperationsPage returns included history by newest status change first',
     await setOperationEventCreatedAt(
         completedOperationId,
         knownEventTypes.operations.complete,
-        new Date('2026-05-01T08:00:00.000Z'),
+        new Date('2026-05-08T08:00:00.000Z'),
     );
     await createEvent(
         knownEvents.operations.scheduledV1(scheduledOperationId.toString(), {
@@ -188,19 +194,49 @@ test('getOperationsPage returns included history by newest status change first',
         knownEventTypes.operations.schedule,
         new Date('2026-05-03T08:00:00.000Z'),
     );
+    await createEvent(
+        knownEvents.operations.scheduledV1(
+            completedScheduledOperationId.toString(),
+            {
+                scheduledDate: '2026-05-12T08:00:00.000Z',
+            },
+        ),
+    );
+    await setOperationEventCreatedAt(
+        completedScheduledOperationId,
+        knownEventTypes.operations.schedule,
+        new Date('2026-05-01T08:00:00.000Z'),
+    );
+    await createEvent(
+        knownEvents.operations.completedV1(
+            completedScheduledOperationId.toString(),
+            {
+                completedBy: 'test-user',
+            },
+        ),
+    );
+    await setOperationEventCreatedAt(
+        completedScheduledOperationId,
+        knownEventTypes.operations.complete,
+        new Date('2026-05-07T08:00:00.000Z'),
+    );
 
     const firstPage = await getOperationsPage({
         accountId,
         gardenId,
         includeCompleted: true,
-        limit: 2,
+        limit: 3,
     });
 
     assert.deepStrictEqual(
         firstPage.items.map((operation) => operation.id),
-        [scheduledOperationId, completedOperationId],
+        [
+            completedScheduledOperationId,
+            scheduledOperationId,
+            completedOperationId,
+        ],
     );
-    assert.strictEqual(firstPage.nextCursor, 2);
+    assert.strictEqual(firstPage.nextCursor, 3);
 
     const secondPage = await getOperationsPage({
         accountId,
@@ -215,6 +251,48 @@ test('getOperationsPage returns included history by newest status change first',
         [createdOperationId, oldOperationId],
     );
     assert.strictEqual(secondPage.nextCursor, null);
+});
+
+test('getOperationsPage returns active operations by newest scheduled date first', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createOperationsPageTestContext();
+
+    const soonerOperationId = await createDatedOperation({
+        accountId,
+        gardenId,
+        raisedBedId,
+        createdAt: new Date('2026-06-01T08:00:00.000Z'),
+    });
+    const laterOperationId = await createDatedOperation({
+        accountId,
+        gardenId,
+        raisedBedId,
+        createdAt: new Date('2026-06-02T08:00:00.000Z'),
+    });
+
+    await createEvent(
+        knownEvents.operations.scheduledV1(soonerOperationId.toString(), {
+            scheduledDate: '2026-06-10T08:00:00.000Z',
+        }),
+    );
+    await createEvent(
+        knownEvents.operations.scheduledV1(laterOperationId.toString(), {
+            scheduledDate: '2026-06-12T08:00:00.000Z',
+        }),
+    );
+
+    const page = await getOperationsPage({
+        accountId,
+        gardenId,
+        includeCompleted: false,
+        limit: 2,
+    });
+
+    assert.deepStrictEqual(
+        page.items.map((operation) => operation.id),
+        [laterOperationId, soonerOperationId],
+    );
 });
 
 test('completed operations expose completion notes and image URLs', async () => {
