@@ -44,7 +44,7 @@ export function RaisedBedDiaryRescheduleAction({
         <Button
             type="button"
             size="xs"
-            variant="soft"
+            variant="plain"
             disabled={Boolean(disabledReason)}
             startDecorator={<Calendar className="size-3.5 shrink-0" />}
         >

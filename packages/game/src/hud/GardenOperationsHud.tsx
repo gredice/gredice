@@ -1216,7 +1216,7 @@ function OperationStatusSummary({
                             ? `Status radnje: ${config.label}. Razlog otkazivanja`
                             : `Status radnje: ${config.label}`
                     }
-                    className="flex max-w-[48%] shrink-0 flex-col items-end rounded-md px-1 py-0.5 text-right transition hover:bg-muted/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    className="flex max-w-full shrink-0 flex-col items-end rounded-md px-1 py-0.5 text-right transition hover:bg-muted/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     onBlur={clearTooltipIntent}
                     onClick={(event) => {
                         event.preventDefault();
@@ -1320,11 +1320,14 @@ function OperationSchedule({
 }) {
     const scheduledDate = formatDate(operation.scheduledDate);
     const scheduleContent = scheduleAction ? (
-        <div className="w-fit max-w-full">{scheduleAction}</div>
+        <div className="min-w-0 max-w-full">{scheduleAction}</div>
     ) : scheduledDate ? (
-        <Row spacing={1} className="w-fit max-w-full text-muted-foreground">
+        <Row
+            spacing={1}
+            className="min-w-0 max-w-full justify-end text-muted-foreground"
+        >
             <Calendar aria-hidden className="size-3.5 shrink-0" />
-            <Typography level="body3" secondary noWrap>
+            <Typography level="body3" secondary noWrap className="min-w-0">
                 {scheduledDate}
             </Typography>
         </Row>
@@ -1335,7 +1338,10 @@ function OperationSchedule({
     }
 
     return (
-        <Row spacing={1} className="w-fit max-w-full items-center">
+        <Row
+            spacing={0.5}
+            className="min-w-0 max-w-full flex-wrap items-center justify-end gap-y-0.5"
+        >
             {scheduleContent}
             {cancelAction}
         </Row>
@@ -1581,36 +1587,39 @@ export function GardenOperationCard({
                     spacing={1.5}
                     className="min-w-0 max-w-full flex-1 overflow-hidden"
                 >
-                    <Stack spacing={0.75}>
-                        <Row
-                            spacing={1}
-                            alignItems="start"
-                            className="min-w-0 max-w-full gap-y-1"
+                    <Row
+                        spacing={1}
+                        alignItems="start"
+                        className="min-w-0 max-w-full gap-y-1"
+                    >
+                        <Stack spacing={0.5} className="min-w-0 flex-1">
+                            <Typography
+                                level="body2"
+                                semiBold
+                                noWrap
+                                className="min-w-0"
+                            >
+                                {resolvedOperationName}
+                            </Typography>
+                            <OperationTargetLabel
+                                targetDetails={targetDetails}
+                            />
+                        </Stack>
+                        <Stack
+                            spacing={0.25}
+                            className="max-w-[52%] shrink-0 items-end"
                         >
-                            <Stack spacing={0.5} className="min-w-0 flex-1">
-                                <Typography
-                                    level="body2"
-                                    semiBold
-                                    noWrap
-                                    className="min-w-0"
-                                >
-                                    {resolvedOperationName}
-                                </Typography>
-                                <OperationTargetLabel
-                                    targetDetails={targetDetails}
-                                />
-                            </Stack>
                             <OperationStatusSummary
                                 operation={operation}
                                 status={displayStatus}
                             />
-                        </Row>
-                    </Stack>
-                    <OperationSchedule
-                        operation={operation}
-                        cancelAction={cancelAction}
-                        scheduleAction={scheduleAction}
-                    />
+                            <OperationSchedule
+                                operation={operation}
+                                cancelAction={cancelAction}
+                                scheduleAction={scheduleAction}
+                            />
+                        </Stack>
+                    </Row>
                     <OperationEvidence operation={operation} />
                     {action && <div className="flex justify-end">{action}</div>}
                 </Stack>
@@ -1766,49 +1775,74 @@ function HistoryModal({
                                 Nema radnji.
                             </Typography>
                         ) : (
-                            operations.map((operation) => (
-                                <GardenOperationCard
-                                    key={`${operation.entityTypeName}-${operation.id}`}
-                                    operation={operation}
-                                    operationName={
-                                        operation.entityTypeName ===
-                                        cartOperationEntityType
-                                            ? operationDataById.get(
-                                                  operation.entityId,
-                                              )?.information.label
-                                            : undefined
-                                    }
-                                    operationData={
-                                        operation.entityTypeName ===
-                                        cartOperationEntityType
-                                            ? operationDataById.get(
-                                                  operation.entityId,
-                                              )
-                                            : undefined
-                                    }
-                                    plantSortData={
-                                        operation.entityTypeName ===
-                                        cartPlantSortEntityType
-                                            ? plantSortById.get(
-                                                  operation.entityId,
-                                              )
-                                            : undefined
-                                    }
-                                    targetPlantSortData={
-                                        operation.entityTypeName ===
-                                        cartOperationEntityType
-                                            ? (plantSortById.get(
-                                                  getOperationFieldPlantSortId(
-                                                      operation,
-                                                      currentGarden,
-                                                  ) ?? 0,
-                                              ) ?? undefined)
-                                            : undefined
-                                    }
-                                    currentGarden={currentGarden}
-                                    referenceDate={referenceDate}
-                                />
-                            ))
+                            operations.map((operation) => {
+                                const operationData =
+                                    operation.entityTypeName ===
+                                    cartOperationEntityType
+                                        ? operationDataById.get(
+                                              operation.entityId,
+                                          )
+                                        : undefined;
+                                const plantSortData =
+                                    operation.entityTypeName ===
+                                    cartPlantSortEntityType
+                                        ? plantSortById.get(operation.entityId)
+                                        : undefined;
+                                const operationName =
+                                    operationData?.information.label;
+                                const entryName = getActiveOperationName({
+                                    operation,
+                                    operationName,
+                                    plantSortName:
+                                        plantSortData?.information.name,
+                                });
+                                const scheduleAction = (
+                                    <GardenOperationScheduleAction
+                                        entryName={entryName}
+                                        garden={currentGarden}
+                                        operation={operation}
+                                        referenceDate={referenceDate}
+                                    />
+                                );
+                                const cancelTarget =
+                                    getGardenOperationCancelTarget(
+                                        operation,
+                                        currentGarden,
+                                    );
+                                const cancelAction = cancelTarget ? (
+                                    <GardenOperationCancelAction
+                                        entryName={entryName}
+                                        garden={currentGarden}
+                                        operation={operation}
+                                        referenceDate={referenceDate}
+                                    />
+                                ) : undefined;
+
+                                return (
+                                    <GardenOperationCard
+                                        key={`${operation.entityTypeName}-${operation.id}`}
+                                        operation={operation}
+                                        operationName={operationName}
+                                        operationData={operationData}
+                                        plantSortData={plantSortData}
+                                        targetPlantSortData={
+                                            operation.entityTypeName ===
+                                            cartOperationEntityType
+                                                ? (plantSortById.get(
+                                                      getOperationFieldPlantSortId(
+                                                          operation,
+                                                          currentGarden,
+                                                      ) ?? 0,
+                                                  ) ?? undefined)
+                                                : undefined
+                                        }
+                                        currentGarden={currentGarden}
+                                        referenceDate={referenceDate}
+                                        scheduleAction={scheduleAction}
+                                        cancelAction={cancelAction}
+                                    />
+                                );
+                            })
                         )}
                         <div ref={listRef} className="h-1" />
                     </Stack>

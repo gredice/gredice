@@ -102,10 +102,28 @@ test.describe('Garden operations HUD', () => {
         const dialog = page
             .getByRole('dialog')
             .filter({ hasText: 'Povijest radnji' });
-        await expect(dialog.getByText('Sadnja: Cherry rajčica')).toBeVisible();
-        await expect(dialog.getByLabel('Raised Bed 1 › Polje 3')).toBeVisible();
-        await expect(dialog.getByText('Završeno')).toBeVisible();
-        await expect(dialog.getByLabel('Tijek radnje').first()).toBeVisible();
+        const reschedulableHistoryCard = dialog
+            .locator('[data-garden-operation-card]')
+            .filter({ hasText: 'Zalijevanje u košari' });
+        await expect(
+            reschedulableHistoryCard.getByRole('button', {
+                name: '20. svibnja 2026.',
+            }),
+        ).toBeVisible();
+        await expect(
+            reschedulableHistoryCard.getByRole('button', { name: 'Otkaži' }),
+        ).toBeVisible();
+        const completedSowingCard = dialog
+            .locator('[data-garden-operation-card]')
+            .filter({ hasText: 'Sadnja: Cherry rajčica' });
+        await expect(completedSowingCard).toBeVisible();
+        await expect(
+            completedSowingCard.getByLabel('Raised Bed 1 › Polje 3'),
+        ).toBeVisible();
+        await expect(completedSowingCard.getByText('Završeno')).toBeVisible();
+        await expect(
+            completedSowingCard.getByLabel('Tijek radnje'),
+        ).toBeVisible();
         const canceledSowingCard = dialog
             .locator('[data-garden-operation-card]')
             .filter({ hasText: 'Sadnja: Maslac salata' });
