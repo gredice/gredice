@@ -1413,8 +1413,29 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         const photoButton = page.getByRole('button', {
             name: /Fotografije gredice Raised Bed 1/u,
         });
+        const detailsButton = page.locator('[data-raised-bed-details-trigger]');
         await expect(photoButton).toBeVisible();
+        await expect(detailsButton).toBeVisible();
         await expect(photoButton.locator('img')).toBeVisible();
+        await expect(
+            photoButton.locator('[data-raised-bed-photo-count]'),
+        ).toHaveCount(0);
+
+        await expect
+            .poll(async () => {
+                const photoBox = await photoButton.boundingBox();
+                const detailsBox = await detailsButton.boundingBox();
+
+                if (!photoBox || !detailsBox) {
+                    return false;
+                }
+
+                return (
+                    photoBox.x < detailsBox.x &&
+                    Math.abs(photoBox.height - detailsBox.height) <= 1
+                );
+            })
+            .toBe(true);
 
         await photoButton.click();
 
@@ -2090,6 +2111,10 @@ test.describe('RaisedBedFieldItem HUD (mobile)', () => {
         const tabList = dialog.getByRole('tablist');
         await expect(moreButton).toBeVisible();
         await expect(photoButton).toBeVisible();
+        await expect(photoButton.locator('img')).toBeVisible();
+        await expect(
+            photoButton.locator('[data-raised-bed-photo-count]'),
+        ).toHaveCount(0);
         await expect(tabList).toBeVisible();
 
         await expect
@@ -2109,6 +2134,104 @@ test.describe('RaisedBedFieldItem HUD (mobile)', () => {
         await expect(
             dialog.getByRole('button', { name: 'Napusti gredicu' }),
         ).toBeVisible();
+    });
+
+    test('raised bed info modal cover searches older history pages', async ({
+        mount,
+        page,
+    }) => {
+        const scenario = plantedGrowingWithOperationHistoryScenario();
+        const baseOperation = scenario.operationHistoryItems?.[0];
+
+        if (!baseOperation) {
+            throw new Error('Expected operation history item.');
+        }
+
+        const firstPageWithoutPhotos = Array.from({ length: 20 }).map(
+            (_, index) => ({
+                ...baseOperation,
+                id: 1000 + index,
+                imageUrls: [],
+                completionNotes: null,
+                statusHistory: [
+                    {
+                        status: 'completed' as const,
+                        changedAt: `2026-05-${String(12 - Math.floor(index / 2)).padStart(2, '0')}T09:00:00.000Z`,
+                    },
+                ],
+            }),
+        );
+        const olderOperationWithPhoto = {
+            ...baseOperation,
+            id: 1099,
+            completedAt: '2026-04-20T08:00:00.000Z',
+            imageUrls: ['https://example.com/older-watering.jpg'],
+            completionNotes: 'Starija fotografija nakon pregleda tla.',
+            statusHistory: [
+                {
+                    status: 'completed' as const,
+                    changedAt: '2026-04-20T09:00:00.000Z',
+                },
+            ],
+        };
+
+        await page.route(
+            '**/api/gredice/api/gardens/*/operations**',
+            async (route) => {
+                const url = new URL(route.request().url());
+                const cursor = url.searchParams.get('cursor');
+
+                await route.fulfill({
+                    body: JSON.stringify({
+                        items: cursor === '20' ? [olderOperationWithPhoto] : [],
+                        nextCursor: null,
+                        total: 21,
+                    }),
+                    contentType: 'application/json',
+                    status: 200,
+                });
+            },
+        );
+
+        await mount(
+            <RaisedBedInfoModalStory
+                scenario={{
+                    ...scenario,
+                    operationHistoryItems: firstPageWithoutPhotos,
+                    operationHistoryNextCursor: 20,
+                }}
+            />,
+        );
+
+        const dialog = page.getByRole('dialog');
+        const photoButton = dialog.getByRole('button', {
+            name: /Fotografije gredice Raised Bed 1/u,
+        });
+        await expect(photoButton).toBeVisible();
+        await expect(
+            photoButton.locator(
+                'img[src="https://example.com/older-watering.jpg"]',
+            ),
+        ).toBeVisible();
+    });
+
+    test('raised bed info modal falls back to the block image without photos', async ({
+        mount,
+        page,
+    }) => {
+        await mount(<RaisedBedInfoModalStory scenario={emptyScenario()} />);
+
+        const dialog = page.getByRole('dialog');
+        const photoButton = dialog.getByRole('button', {
+            name: /Fotografije gredice Raised Bed 1/u,
+        });
+        await expect(photoButton).toBeVisible();
+        await expect(
+            photoButton.getByRole('img', { name: 'Raised_Bed' }),
+        ).toBeVisible();
+        await expect(
+            photoButton.locator('[data-raised-bed-photo-count]'),
+        ).toHaveCount(0);
     });
 
     test('mobile drawer dismisses via swipe down on the drag handle', async ({
