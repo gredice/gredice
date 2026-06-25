@@ -1181,10 +1181,13 @@ function OperationStatusSummary({
             ? operation.cancellationReason?.trim()
             : undefined;
     const hasCancellationReason = Boolean(cancellationReason);
+    const isTerminalFailureStatus =
+        status !== 'scheduled' && terminalFailureStatuses.has(status);
     const showProgressIndicator =
         !hasCancellationReason &&
         status !== 'confirmed' &&
-        status !== 'completed';
+        status !== 'completed' &&
+        !isTerminalFailureStatus;
     const progressLabel =
         showProgressIndicator && status !== 'scheduled'
             ? 'Tijek radnje'

@@ -251,13 +251,23 @@ test.describe('Garden operations HUD', () => {
         expect(await cards.count()).toBeGreaterThan(10);
         const completedCard = cards.filter({ hasText: 'Završeno' }).first();
         const confirmedCard = cards.filter({ hasText: 'Potvrđeno' }).first();
+        const failedCard = cards.filter({ hasText: 'Neuspjelo' }).first();
+        const canceledCard = cards.filter({ hasText: 'Otkazano' }).first();
         await expect(completedCard).toBeVisible();
         await expect(confirmedCard).toBeVisible();
+        await expect(failedCard).toBeVisible();
+        await expect(canceledCard).toBeVisible();
         await expect(
             completedCard.locator('[data-operation-status-progress]'),
         ).toHaveCount(0);
         await expect(
             confirmedCard.locator('[data-operation-status-progress]'),
+        ).toHaveCount(0);
+        await expect(
+            failedCard.locator('[data-operation-status-progress]'),
+        ).toHaveCount(0);
+        await expect(
+            canceledCard.locator('[data-operation-status-progress]'),
         ).toHaveCount(0);
         await expect(cards.nth(8)).toBeVisible();
 

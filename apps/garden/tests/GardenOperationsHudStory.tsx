@@ -189,6 +189,10 @@ function buildHudOperationItem({
 }): GardenOperationItem {
     const day = String(Math.max(1, 30 - (id % 20))).padStart(2, '0');
     const terminalChangedAt = `2026-05-${day}T08:00:00.000Z`;
+    const terminalHistoryStatus =
+        status === 'completed' || status === 'failed' || status === 'canceled'
+            ? status
+            : 'confirmed';
 
     return {
         id,
@@ -216,15 +220,19 @@ function buildHudOperationItem({
             { status: 'planned', changedAt: `2026-05-${day}T01:00:00.000Z` },
             { status: 'assigned', changedAt: `2026-05-${day}T02:00:00.000Z` },
             {
-                status:
-                    status === 'completed' || status === 'canceled'
-                        ? status
-                        : 'confirmed',
+                status: terminalHistoryStatus,
                 changedAt: terminalChangedAt,
             },
         ],
     };
 }
+
+const denseHistoryStatuses: GardenOperationItem['status'][] = [
+    'completed',
+    'confirmed',
+    'failed',
+    'canceled',
+];
 
 function createQueryClient({
     denseOperations = false,
@@ -271,21 +279,15 @@ function createQueryClient({
               } satisfies GardenOperationItem,
           ];
     const historyOperationItems = denseOperations
-        ? Array.from({ length: 18 }, (_, index) =>
-              buildHudOperationItem({
+        ? Array.from({ length: 20 }, (_, index) => {
+              return buildHudOperationItem({
                   id: 800 + index,
                   status:
-                      index % 5 === 4
-                          ? 'canceled'
-                          : index % 3 === 0
-                            ? 'completed'
-                            : 'confirmed',
-                  cancellationReason:
-                      index % 5 === 4
-                          ? 'Korisnik je otkazao radnju.'
-                          : undefined,
-              }),
-          )
+                      denseHistoryStatuses[
+                          index % denseHistoryStatuses.length
+                      ] ?? 'completed',
+              });
+          })
         : [
               buildHudOperationItem({
                   id: 610,
