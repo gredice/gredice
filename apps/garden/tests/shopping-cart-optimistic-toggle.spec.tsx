@@ -3,7 +3,12 @@ import {
     ShoppingCartOptimisticToggleStory,
     ShoppingCartOutletCountdownStory,
     ShoppingCartPaidItemStory,
+    ShoppingCartPlantSortStory,
 } from './ShoppingCartOptimisticToggleStory';
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
 
 function addDays(date: Date, days: number) {
     return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
@@ -137,6 +142,52 @@ test('shopping cart date chip updates scheduled date metadata', async ({
     expect(additionalData?.scheduledDate).toBe(
         scheduledDateIsoFromDateInput(selectedDate),
     );
+});
+
+test('shopping cart greenhouse toggle updates sowing location metadata', async ({
+    mount,
+    page,
+}) => {
+    let resolvePayload:
+        | ((payload: Record<string, unknown>) => void)
+        | undefined;
+    const postedPayload = new Promise<Record<string, unknown>>((resolve) => {
+        resolvePayload = resolve;
+    });
+
+    await page.route('**/api/gredice/**/shopping-cart', async (route) => {
+        if (route.request().method() !== 'POST') {
+            await route.fallback();
+            return;
+        }
+
+        const payload: unknown = route.request().postDataJSON();
+        if (isRecord(payload)) {
+            resolvePayload?.(payload);
+        }
+        await route.fulfill({
+            body: JSON.stringify({ success: true }),
+            contentType: 'application/json',
+            status: 200,
+        });
+    });
+
+    await mount(<ShoppingCartPlantSortStory />);
+
+    const greenhouseSwitch = page.getByRole('switch', { name: 'Staklenik' });
+    await expect(greenhouseSwitch).toHaveAttribute('aria-checked', 'false');
+
+    await greenhouseSwitch.click();
+    await expect(greenhouseSwitch).toHaveAttribute('aria-checked', 'true');
+
+    const payload = await postedPayload;
+    const additionalData =
+        typeof payload.additionalData === 'string'
+            ? JSON.parse(payload.additionalData)
+            : null;
+
+    expect(additionalData?.scheduledDate).toBe('2040-01-05T00:00:00.000Z');
+    expect(additionalData?.sowingLocation).toBe('greenhouse');
 });
 
 test('paid shopping cart item date is not editable', async ({

@@ -3,11 +3,19 @@ import { BackpackIcon } from '@gredice/ui/BackpackIcon';
 import { Button } from '@gredice/ui/Button';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Input } from '@gredice/ui/Input';
-import { Check, Close, Left, Search, ShoppingCart } from '@gredice/ui/icons';
+import {
+    Check,
+    Close,
+    Left,
+    Search,
+    ShoppingCart,
+    Sprout,
+} from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
 import { PlantingSeedIcon } from '@gredice/ui/PlantingSeedIcon';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
+import { Switch } from '@gredice/ui/Switch';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import {
@@ -115,6 +123,27 @@ function groupOutletOffersBySortId(outletOffers: OutletOfferData[] = []) {
     return offersBySortId;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function parseAdditionalData(additionalData?: string | null) {
+    if (!additionalData) {
+        return {};
+    }
+
+    try {
+        const parsed: unknown = JSON.parse(additionalData);
+        return isRecord(parsed) ? parsed : {};
+    } catch {
+        return {};
+    }
+}
+
+function isGreenhouseSowing(additionalData?: string | null) {
+    return parseAdditionalData(additionalData).sowingLocation === 'greenhouse';
+}
+
 type PlantPickerProps = {
     positionIndex: number;
     gardenId: number;
@@ -179,6 +208,7 @@ export function PlantPicker({
     const [flyToShoppingCart, setFlyToShoppingCart] = useState(false);
     const [useInventoryItem, setUseInventoryItem] = useState(false);
     const [useOutletOffer, setUseOutletOffer] = useState(false);
+    const [sowInGreenhouse, setSowInGreenhouse] = useState(false);
     const [selectedOutletOfferId, setSelectedOutletOfferId] = useState<
         number | null
     >(null);
@@ -275,6 +305,7 @@ export function PlantPicker({
         setPlantOptions(null);
         setUseInventoryItem(false);
         setUseOutletOffer(false);
+        setSowInGreenhouse(false);
         setSelectedOutletOfferId(null);
         resetSearch();
         await removeFromCart();
@@ -312,6 +343,7 @@ export function PlantPicker({
                 setSelectedPlantId(null);
                 setSelectedSortId(null);
                 setUseOutletOffer(false);
+                setSowInGreenhouse(false);
                 setSelectedOutletOfferId(null);
                 resetSearch();
             }
@@ -343,6 +375,11 @@ export function PlantPicker({
             position_index: positionIndex,
             raised_bed_id: raisedBedId,
             scheduled_date: plantOptions?.scheduledDate?.toISOString(),
+            sowing_location: selectedOutletOffer
+                ? 'greenhouse'
+                : sowInGreenhouse
+                  ? 'greenhouse'
+                  : 'direct',
             sort_id: selectedSortId,
             use_inventory: useInventoryItem,
             outlet_offer_id: selectedOutletOffer?.id,
@@ -365,6 +402,9 @@ export function PlantPicker({
                         : {
                               scheduledDate:
                                   plantOptions?.scheduledDate?.toISOString(),
+                              ...(sowInGreenhouse
+                                  ? { sowingLocation: 'greenhouse' }
+                                  : {}),
                           }),
                 }),
                 currency: useInventoryItem ? 'inventory' : 'eur',
@@ -404,7 +444,19 @@ export function PlantPicker({
         );
         setUseInventoryItem(existingItem?.currency === 'inventory');
         setUseOutletOffer(Boolean(existingItem?.outlet));
+        setSowInGreenhouse(isGreenhouseSowing(existingItem?.additionalData));
         setSelectedOutletOfferId(existingItem?.outlet?.offerId ?? null);
+    }
+
+    function handleGreenhouseSowingChange(checked: boolean) {
+        track('game_greenhouse_sowing_toggled', {
+            garden_id: gardenId,
+            position_index: positionIndex,
+            raised_bed_id: raisedBedId,
+            sort_id: selectedSortId,
+            sow_in_greenhouse: checked,
+        });
+        setSowInGreenhouse(checked);
     }
 
     // Plant options
@@ -856,20 +908,47 @@ export function PlantPicker({
                                             kratko nakon dodavanja u košaru.
                                         </div>
                                     ) : selectedOutletOfferUnavailable ? null : (
-                                        <Input
-                                            type="date"
-                                            label="Datum sijanja"
-                                            name="plantDate"
-                                            className="w-full bg-card"
-                                            value={plantDate}
-                                            onChange={(e) =>
-                                                handlePlantDateChange(
-                                                    e.target.value,
-                                                )
-                                            }
-                                            min={min}
-                                            max={max}
-                                        />
+                                        <>
+                                            <div
+                                                className={cx(
+                                                    'rounded-lg border p-3 transition-colors',
+                                                    sowInGreenhouse
+                                                        ? 'border-green-500 bg-green-50 text-green-950 dark:border-green-700 dark:bg-green-950/40 dark:text-green-100'
+                                                        : 'border-input bg-card',
+                                                )}
+                                            >
+                                                <Switch
+                                                    checked={sowInGreenhouse}
+                                                    onCheckedChange={
+                                                        handleGreenhouseSowingChange
+                                                    }
+                                                    size="sm"
+                                                    label={
+                                                        <span className="inline-flex items-center gap-1">
+                                                            <Sprout className="size-4 shrink-0" />
+                                                            <span>
+                                                                Staklenik
+                                                            </span>
+                                                        </span>
+                                                    }
+                                                    description="Sadnica počinje u stakleniku i kasnije se presađuje u gredicu."
+                                                />
+                                            </div>
+                                            <Input
+                                                type="date"
+                                                label="Datum sijanja"
+                                                name="plantDate"
+                                                className="w-full bg-card"
+                                                value={plantDate}
+                                                onChange={(e) =>
+                                                    handlePlantDateChange(
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                min={min}
+                                                max={max}
+                                            />
+                                        </>
                                     )}
                                 </>
                             )}

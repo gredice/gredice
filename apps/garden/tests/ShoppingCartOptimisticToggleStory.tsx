@@ -78,6 +78,52 @@ function createPaidCartItem() {
     } as unknown as ShoppingCartItemData;
 }
 
+function createPlantSortCartItem() {
+    return {
+        ...cartItem,
+        entityId: '101',
+        entityTypeName: 'plantSort',
+        gardenId: 1,
+        raisedBedId: 1,
+        positionIndex: 0,
+        additionalData: JSON.stringify({
+            scheduledDate: '2040-01-05T00:00:00.000Z',
+        }),
+        shopData: {
+            ...cartItem.shopData,
+            name: 'Cherry rajčica',
+            description: 'Mock plant sort.',
+        },
+        entityData: {
+            id: 101,
+            entityType: {
+                id: 11,
+                name: 'plantSort',
+                label: 'Sorta biljke',
+            },
+            slug: 'mock-cherry-tomato',
+            information: {
+                name: 'Cherry rajčica',
+                plant: {
+                    information: {
+                        name: 'Rajčica',
+                    },
+                    image: {
+                        cover: {
+                            url: '',
+                        },
+                    },
+                },
+            },
+            image: {
+                cover: {
+                    url: '',
+                },
+            },
+        },
+    } as unknown as ShoppingCartItemData;
+}
+
 function createOptimisticToggleQueryClient(item = cartItem) {
     const queryClient = new ReactQuery.QueryClient({
         defaultOptions: {
@@ -100,7 +146,13 @@ function createOptimisticToggleQueryClient(item = cartItem) {
         name: 'Test garden',
         stacks: [],
         location: { lat: 45.739, lon: 16.572 },
-        raisedBeds: [],
+        raisedBeds: [
+            {
+                id: 1,
+                name: 'Mock gredica',
+                physicalId: '1',
+            },
+        ],
     });
     queryClient.setQueryData(['inventory'], { items: [] });
     queryClient.setQueryData(['shopping-cart'], {
@@ -189,6 +241,16 @@ export function ShoppingCartOutletCountdownStory() {
 
 export function ShoppingCartPaidItemStory() {
     const item = useMemo(() => createPaidCartItem(), []);
+
+    return (
+        <ShoppingCartOptimisticToggleProviders item={item}>
+            <ShoppingCartOptimisticTogglePanel />
+        </ShoppingCartOptimisticToggleProviders>
+    );
+}
+
+export function ShoppingCartPlantSortStory() {
+    const item = useMemo(() => createPlantSortCartItem(), []);
 
     return (
         <ShoppingCartOptimisticToggleProviders item={item}>

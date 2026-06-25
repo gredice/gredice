@@ -8,6 +8,7 @@ import {
     Euro,
     Hammer,
     Navigate,
+    Sprout,
     Timer,
 } from '@gredice/ui/icons';
 import { ModalConfirm } from '@gredice/ui/ModalConfirm';
@@ -16,6 +17,7 @@ import { PlantOrSortImage } from '@gredice/ui/plants';
 import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
+import { Switch } from '@gredice/ui/Switch';
 import { Typography } from '@gredice/ui/Typography';
 import { useQueryClient } from '@tanstack/react-query';
 import { type CSSProperties, useEffect, useState } from 'react';
@@ -129,6 +131,22 @@ function getCartItemScheduledDateInfo(
     };
 }
 
+function greenhouseAdditionalData(
+    additionalData: Record<string, unknown>,
+    enabled: boolean,
+) {
+    if (enabled) {
+        return {
+            ...additionalData,
+            sowingLocation: 'greenhouse',
+        };
+    }
+
+    const nextAdditionalData = { ...additionalData };
+    delete nextAdditionalData.sowingLocation;
+    return nextAdditionalData;
+}
+
 export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const { data: garden } = useCurrentGarden();
     const { data: account } = useCurrentAccount();
@@ -147,6 +165,7 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const raisedBed = hasRaisedBed
         ? garden?.raisedBeds.find((rb) => rb.id === item.raisedBedId)
         : null;
+    const additionalData = parseAdditionalData(item.additionalData);
     const scheduledDateInfo = getCartItemScheduledDateInfo(item);
     const scheduledDate = scheduledDateInfo.date;
     const scheduledDateLabel = formatCartDate(scheduledDate);
@@ -156,6 +175,10 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const hasOutletReservation = Boolean(item.outlet);
     const outletReservationExpiredFromApi = item.outlet?.expired ?? false;
     const outletHoldExpiresAtMs = outletHoldExpiresAt?.getTime() ?? null;
+    const isGreenhouseSowing =
+        item.entityTypeName === 'plantSort' &&
+        (hasOutletReservation ||
+            additionalData.sowingLocation === 'greenhouse');
     const outletReservationRemainingMs =
         outletHoldExpiresAtMs != null
             ? outletHoldExpiresAtMs - countdownNowMs
@@ -189,7 +212,12 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const changeCurrencyShoppingCartItem = useSetShoppingCartItem();
     const removeShoppingCartItem = useSetShoppingCartItem();
     const changeScheduledDateShoppingCartItem = useSetShoppingCartItem();
+    const changeGreenhouseSowingShoppingCartItem = useSetShoppingCartItem();
     const canChangeScheduledDate = !isProcessed && !hasOutletReservation;
+    const canChangeGreenhouseSowing =
+        item.entityTypeName === 'plantSort' &&
+        !isProcessed &&
+        !hasOutletReservation;
     const parsedOperationId = Number(item.entityId);
     const operationId =
         Number.isInteger(parsedOperationId) && parsedOperationId > 0
@@ -301,6 +329,31 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
             entityTypeName: item.entityTypeName,
             currency: usesInventory ? 'eur' : 'inventory',
             additionalData: item.additionalData,
+            positionIndex: item.positionIndex ?? undefined,
+            gardenId: item.gardenId ?? undefined,
+            raisedBedId: item.raisedBedId ?? undefined,
+        });
+    }
+
+    async function handleToggleGreenhouseSowing(checked: boolean) {
+        const nextAdditionalData = greenhouseAdditionalData(
+            parseAdditionalData(item.additionalData),
+            checked,
+        );
+
+        track('game_cart_greenhouse_sowing_toggled', {
+            entity_id: item.entityId,
+            entity_type: item.entityTypeName,
+            item_id: item.id,
+            sow_in_greenhouse: checked,
+        });
+        await changeGreenhouseSowingShoppingCartItem.mutateAsync({
+            id: item.id,
+            amount: item.amount,
+            entityId: item.entityId,
+            entityTypeName: item.entityTypeName,
+            currency: item.currency,
+            additionalData: JSON.stringify(nextAdditionalData),
             positionIndex: item.positionIndex ?? undefined,
             gardenId: item.gardenId ?? undefined,
             raisedBedId: item.raisedBedId ?? undefined,
@@ -458,23 +511,61 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                             </Row>
                         </Row>
                     )}
-                {item.outlet && (
-                    <Row className="flex-wrap" spacing={1}>
-                        <Chip className="bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-100">
-                            <Typography level="body3">
-                                Outlet sadnica
-                            </Typography>
-                        </Chip>
-                        <Chip
-                            className={outletReservationChipClassName}
-                            title={outletReservationTitle}
-                        >
-                            <Typography level="body3">
-                                {outletReservationText}
-                            </Typography>
-                        </Chip>
-                    </Row>
-                )}
+                {(item.outlet || isGreenhouseSowing) &&
+                    !canChangeGreenhouseSowing && (
+                        <Row className="flex-wrap" spacing={1}>
+                            {item.outlet ? (
+                                <>
+                                    <Chip className="bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-100">
+                                        <Typography level="body3">
+                                            Outlet sadnica
+                                        </Typography>
+                                    </Chip>
+                                    <Chip
+                                        className={
+                                            outletReservationChipClassName
+                                        }
+                                        title={outletReservationTitle}
+                                    >
+                                        <Typography level="body3">
+                                            {outletReservationText}
+                                        </Typography>
+                                    </Chip>
+                                </>
+                            ) : null}
+                            {isGreenhouseSowing ? (
+                                <Chip
+                                    className="bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-100"
+                                    startDecorator={<Sprout />}
+                                >
+                                    <Typography level="body3">
+                                        Staklenik
+                                    </Typography>
+                                </Chip>
+                            ) : null}
+                        </Row>
+                    )}
+                {canChangeGreenhouseSowing ? (
+                    <div className="rounded-lg border border-input bg-card px-3 py-2">
+                        <Switch
+                            checked={isGreenhouseSowing}
+                            disabled={
+                                changeGreenhouseSowingShoppingCartItem.isPending
+                            }
+                            onCheckedChange={(checked) => {
+                                void handleToggleGreenhouseSowing(checked);
+                            }}
+                            size="sm"
+                            label={
+                                <span className="inline-flex items-center gap-1">
+                                    <Sprout className="size-4 shrink-0" />
+                                    <span>Staklenik</span>
+                                </span>
+                            }
+                            description="Sijanje počinje u stakleniku."
+                        />
+                    </div>
+                ) : null}
                 <Row justifyContent="space-between">
                     <Stack spacing={1}>
                         <Row spacing={2}>
