@@ -24,6 +24,7 @@ import {
     enqueueAutomationRunsFromSchedules,
     ensureDefaultAutomationDefinitions,
     executeAutomationRun,
+    FARM_GREENHOUSE_PLANT_INVENTORY_OPERATION_ID,
     FARM_RAISED_BED_WEEDING_OPERATION_ID,
     FREE_WATERING_OPERATION_ID,
     farmRaisedBedWeedingAutomationKey,
@@ -434,6 +435,61 @@ function dailyScheduleRunInput(date: Date, key: string) {
         occurrenceDate,
         timeZone: 'Europe/Zagreb',
         enqueuedAt: date.toISOString(),
+    };
+}
+
+async function createAutomationRunForMonthlyFarmInventory({
+    enqueuedAt,
+    referenceDate,
+    dryRun = false,
+}: {
+    enqueuedAt?: Date;
+    referenceDate: Date;
+    dryRun?: boolean;
+}) {
+    await ensureDefaultAutomationDefinitions();
+    const definition = await getAutomationDefinitionByKey(
+        monthlyFarmInventoryOperationsAutomationKey,
+    );
+    assert.ok(definition);
+    const occurrenceDate = referenceDate.toISOString().slice(0, 10);
+    const input = {
+        scheduleType: 'monthly',
+        frequency: 'monthly',
+        triggerModuleKey: automationModuleKeys.triggerSchedule,
+        occurrenceKey: `test.monthly-farm-inventory-${randomUUID()}:${occurrenceDate}`,
+        occurrenceDate,
+        timeZone: 'Europe/Zagreb',
+        dayOfMonth: referenceDate.getUTCDate(),
+        enqueuedAt: (enqueuedAt ?? referenceDate).toISOString(),
+    };
+    const run = await createAutomationRun({
+        automationDefinition: definition,
+        source: 'schedule',
+        sourceEventType: automationScheduleEventType,
+        sourceAggregateId: input.occurrenceKey,
+        dryRun,
+        input,
+    });
+    assert.ok(run);
+
+    const startedRun = await startAutomationRun(run.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedRun);
+
+    const result = await executeAutomationRun(startedRun);
+    const runWithSteps = await getAutomationRunWithSteps(startedRun.id);
+    const actionStep = runWithSteps?.steps.find(
+        (step) =>
+            step.nodeId === 'create-inventory-operations' &&
+            step.moduleKind === 'action',
+    );
+    assert.ok(actionStep);
+
+    return {
+        result,
+        actionOutput: actionStep.output,
     };
 }
 
@@ -1363,11 +1419,31 @@ test('monthly farm inventory automation creates accepted scheduled farm tasks', 
     const occurrenceDate = new Date('2026-07-01T00:00:00.000Z');
     const enqueuedAt = new Date('2026-06-30T08:00:00.000Z');
     const operationConfigs = monthlyFarmInventoryOperationConfigs;
+    const greenhousePlantInventoryOperationConfigs = operationConfigs.filter(
+        (operationConfig) =>
+            Reflect.get(operationConfig, 'requiresGreenhouseOrOutletPlants') ===
+            true,
+    );
+    const unconditionalOperationConfigs = operationConfigs.filter(
+        (operationConfig) =>
+            Reflect.get(operationConfig, 'requiresGreenhouseOrOutletPlants') !==
+            true,
+    );
+    assert.deepStrictEqual(
+        greenhousePlantInventoryOperationConfigs.map(
+            (operationConfig) => operationConfig.entityId,
+        ),
+        [FARM_GREENHOUSE_PLANT_INVENTORY_OPERATION_ID],
+    );
+    const expectedSkippedIneligibleCount =
+        activeFarms.length * greenhousePlantInventoryOperationConfigs.length;
+    const expectedCreatedCount =
+        activeFarms.length * unconditionalOperationConfigs.length - 1;
     const preexistingFarm = activeFarms[0];
     assert.ok(preexistingFarm);
     const preexistingOperationId = await createOperation({
-        entityId: operationConfigs[0].entityId,
-        entityTypeName: operationConfigs[0].entityTypeName,
+        entityId: unconditionalOperationConfigs[0].entityId,
+        entityTypeName: unconditionalOperationConfigs[0].entityTypeName,
         farmId: preexistingFarm.id,
         timestamp: occurrenceDate,
     });
@@ -1439,9 +1515,13 @@ test('monthly farm inventory automation creates accepted scheduled farm tasks', 
     assert.ok(dryRunActionStep);
     assert.strictEqual(
         dryRunActionStep.output.createdCount,
-        activeFarms.length * operationConfigs.length - 1,
+        expectedCreatedCount,
     );
     assert.strictEqual(dryRunActionStep.output.skippedScheduledCount, 1);
+    assert.strictEqual(
+        dryRunActionStep.output.skippedIneligibleCount,
+        expectedSkippedIneligibleCount,
+    );
     assert.strictEqual(dryRunActionStep.output.repairedScheduledCount, 1);
 
     const processResult = await processDueAutomationRuns({
@@ -1451,14 +1531,13 @@ test('monthly farm inventory automation creates accepted scheduled farm tasks', 
     assert.strictEqual(processResult.succeeded, 1);
     assert.strictEqual(processResult.skipped, 2);
 
-    const expectedScheduledDates = operationConfigs.map((operationConfig) =>
-        addUtcDays(
-            occurrenceDate,
-            operationConfig.scheduledInDays,
-        ).toISOString(),
+    const expectedScheduledDates = unconditionalOperationConfigs.map(
+        (operationConfig) =>
+            addUtcDays(
+                occurrenceDate,
+                operationConfig.scheduledInDays,
+            ).toISOString(),
     );
-    const expectedCreatedCount =
-        activeFarms.length * operationConfigs.length - 1;
     for (const farm of activeFarms) {
         const farmOperations = await getFarmAcceptedOperationsByScheduleRange({
             farmId: farm.id,
@@ -1467,7 +1546,7 @@ test('monthly farm inventory automation creates accepted scheduled farm tasks', 
         });
         const inventoryOperations = farmOperations
             .filter((operation) =>
-                operationConfigs.some(
+                unconditionalOperationConfigs.some(
                     (operationConfig) =>
                         operationConfig.entityId === operation.entityId,
                 ),
@@ -1476,8 +1555,8 @@ test('monthly farm inventory automation creates accepted scheduled farm tasks', 
 
         assert.strictEqual(
             inventoryOperations.length,
-            operationConfigs.length,
-            `Expected ${operationConfigs.length} inventory operations for farm ${farm.id}, got ${JSON.stringify(
+            unconditionalOperationConfigs.length,
+            `Expected ${unconditionalOperationConfigs.length} inventory operations for farm ${farm.id}, got ${JSON.stringify(
                 inventoryOperations.map((operation) => ({
                     id: operation.id,
                     entityId: operation.entityId,
@@ -1526,6 +1605,10 @@ test('monthly farm inventory automation creates accepted scheduled farm tasks', 
     assert.ok(actionStep);
     assert.strictEqual(actionStep.output.createdCount, expectedCreatedCount);
     assert.strictEqual(actionStep.output.skippedScheduledCount, 1);
+    assert.strictEqual(
+        actionStep.output.skippedIneligibleCount,
+        expectedSkippedIneligibleCount,
+    );
     assert.strictEqual(actionStep.output.repairedScheduledCount, 1);
 
     const replayRun = await createAutomationRun({
@@ -1549,12 +1632,15 @@ test('monthly farm inventory automation creates accepted scheduled farm tasks', 
             to: addUtcDays(occurrenceDate, 1),
         });
         const inventoryOperations = farmOperations.filter((operation) =>
-            operationConfigs.some(
+            unconditionalOperationConfigs.some(
                 (operationConfig) =>
                     operationConfig.entityId === operation.entityId,
             ),
         );
-        assert.strictEqual(inventoryOperations.length, operationConfigs.length);
+        assert.strictEqual(
+            inventoryOperations.length,
+            unconditionalOperationConfigs.length,
+        );
     }
     const replayRunWithSteps = await getAutomationRunWithSteps(replayRun.id);
     const replayActionStep = replayRunWithSteps?.steps.find(
@@ -1564,9 +1650,164 @@ test('monthly farm inventory automation creates accepted scheduled farm tasks', 
     assert.strictEqual(replayActionStep.output.createdCount, 0);
     assert.strictEqual(
         replayActionStep.output.skippedScheduledCount,
-        activeFarms.length * operationConfigs.length,
+        activeFarms.length * unconditionalOperationConfigs.length,
+    );
+    assert.strictEqual(
+        replayActionStep.output.skippedIneligibleCount,
+        expectedSkippedIneligibleCount,
     );
     assert.strictEqual(replayActionStep.output.repairedScheduledCount, 0);
+});
+
+test('monthly farm inventory automation creates greenhouse plant inventory for farms with greenhouse fields', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await createFarm({
+        name: 'Automation Inventory Greenhouse Farm',
+        latitude: 45.8,
+        longitude: 15.9,
+    });
+    const gardenId = await createTestGarden({
+        accountId,
+        farmId,
+        name: `Automation Inventory Garden ${accountId}`,
+    });
+    const blockId = await createTestBlock(
+        gardenId,
+        `automation-inventory-block-${accountId}`,
+    );
+    const raisedBedId = await createTestRaisedBed(gardenId, accountId, blockId);
+    const otherFarmId = await createFarm({
+        name: 'Automation Inventory No Greenhouse Farm',
+        latitude: 46.2,
+        longitude: 16.3,
+    });
+    const fieldAggregateId = `${raisedBedId}|0`;
+    await upsertRaisedBedField({ raisedBedId, positionIndex: 0 });
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(fieldAggregateId, {
+            plantSortId: '101',
+            scheduledDate: '2026-08-20T08:00:00.000Z',
+            sowingLocation: 'greenhouse',
+        }),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(fieldAggregateId, {
+            status: 'sprouted',
+        }),
+    );
+
+    const { result, actionOutput } =
+        await createAutomationRunForMonthlyFarmInventory({
+            referenceDate: new Date('2026-09-01T00:00:00.000Z'),
+        });
+
+    assert.strictEqual(result.status, 'succeeded');
+    const activeFarmCount = Reflect.get(actionOutput, 'farmCount');
+    if (typeof activeFarmCount !== 'number') {
+        assert.fail('Expected monthly inventory output to include farmCount.');
+    }
+    assert.strictEqual(
+        Reflect.get(actionOutput, 'skippedIneligibleCount'),
+        activeFarmCount - 1,
+    );
+    assert.strictEqual(Reflect.get(actionOutput, 'activeOutletOfferCount'), 0);
+
+    const farmOperations = await getFarmAcceptedOperationsByScheduleRange({
+        farmId,
+        from: new Date('2026-09-01T00:00:00.000Z'),
+        to: new Date('2026-09-02T00:00:00.000Z'),
+    });
+    const greenhouseInventoryOperations = farmOperations.filter(
+        (operation) =>
+            operation.entityId === FARM_GREENHOUSE_PLANT_INVENTORY_OPERATION_ID,
+    );
+    assert.strictEqual(greenhouseInventoryOperations.length, 1);
+    assert.strictEqual(
+        greenhouseInventoryOperations[0]?.scheduledDate?.toISOString(),
+        '2026-09-01T00:00:00.000Z',
+    );
+
+    const otherFarmOperations = await getFarmAcceptedOperationsByScheduleRange({
+        farmId: otherFarmId,
+        from: new Date('2026-09-01T00:00:00.000Z'),
+        to: new Date('2026-09-02T00:00:00.000Z'),
+    });
+    assert.strictEqual(
+        otherFarmOperations.filter(
+            (operation) =>
+                operation.entityId ===
+                FARM_GREENHOUSE_PLANT_INVENTORY_OPERATION_ID,
+        ).length,
+        0,
+    );
+
+    await storage()
+        .update(raisedBeds)
+        .set({ isDeleted: true })
+        .where(eq(raisedBeds.id, raisedBedId));
+    await storage()
+        .update(farms)
+        .set({ isDeleted: true })
+        .where(eq(farms.id, farmId));
+    await storage()
+        .update(farms)
+        .set({ isDeleted: true })
+        .where(eq(farms.id, otherFarmId));
+});
+
+test('monthly farm inventory automation treats active outlet stock as greenhouse plant inventory eligibility', async () => {
+    createTestDb();
+    const firstFarmId = await createFarm({
+        name: 'Automation Inventory Outlet Farm A',
+        latitude: 45.9,
+        longitude: 16.0,
+    });
+    const secondFarmId = await createFarm({
+        name: 'Automation Inventory Outlet Farm B',
+        latitude: 46.0,
+        longitude: 16.1,
+    });
+    const plantSortId = await createTestPlantSortForOutlet();
+    await createOutletOffer({
+        plantSortId,
+        sowingDate: new Date('2026-08-15T00:00:00.000Z'),
+        initialPlantStatus: 'sprouted',
+        imageUrls: [],
+        outletPriceCents: 199,
+        comparePriceCents: 349,
+        quantity: 4,
+        startAt: new Date('2026-08-31T00:00:00.000Z'),
+        endAt: new Date('2026-09-02T00:00:00.000Z'),
+        status: 'published',
+        adminNotes: null,
+    });
+
+    const { result, actionOutput } =
+        await createAutomationRunForMonthlyFarmInventory({
+            referenceDate: new Date('2026-09-01T00:00:00.000Z'),
+            enqueuedAt: new Date('2026-08-31T08:00:00.000Z'),
+        });
+
+    assert.strictEqual(result.status, 'succeeded');
+    assert.strictEqual(Reflect.get(actionOutput, 'activeOutletOfferCount'), 1);
+    assert.strictEqual(Reflect.get(actionOutput, 'skippedIneligibleCount'), 0);
+
+    for (const farmId of [firstFarmId, secondFarmId]) {
+        const farmOperations = await getFarmAcceptedOperationsByScheduleRange({
+            farmId,
+            from: new Date('2026-09-01T00:00:00.000Z'),
+            to: new Date('2026-09-02T00:00:00.000Z'),
+        });
+        assert.strictEqual(
+            farmOperations.filter(
+                (operation) =>
+                    operation.entityId ===
+                    FARM_GREENHOUSE_PLANT_INVENTORY_OPERATION_ID,
+            ).length,
+            1,
+        );
+    }
 });
 
 test('default farm raised-bed weeding automation stays draft until enabled', async () => {

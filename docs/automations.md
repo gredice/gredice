@@ -127,7 +127,12 @@ MVP modules:
 - `action.createOperation`: creates an operation for the event context.
 - `action.createFarmInventoryOperations`: creates accepted, scheduled farm-level
   operations for every active farm from a JSON list in the automation
-  definition.
+  definition. Individual entries can set
+  `requiresGreenhouseOrOutletPlants: true` to create that operation only for
+  farms with current greenhouse-located raised-bed fields, or when central
+  outlet stock has active published non-expired offers with remaining quantity.
+  Because outlet offers are not farm-scoped in storage, active outlet stock makes
+  every active farm eligible for that conditional inventory operation.
 - `action.createGreenhouseSeedlingWateringOperations`: creates at most one
   accepted, scheduled farm-level `Zalijevanje presadnica u stakleniku`
   operation per active farm and local schedule date. A farm is eligible when it

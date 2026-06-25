@@ -34,6 +34,7 @@ export const FARM_RAISED_BED_WEEDING_OPERATION_ID = 654;
 export const farmRaisedBedWeedingOperationKey = 'cleanWeedsAroundRaisedBeds';
 export const farmRaisedBedWeedingBiweeklyAnchorDate = '2026-01-05';
 const greenhouseSeedlingWateringOperationId = 655;
+export const FARM_GREENHOUSE_PLANT_INVENTORY_OPERATION_ID = 661;
 export const monthlyFarmInventoryOperationConfigs = [
     { entityId: 554, entityTypeName: 'operation', scheduledInDays: 0 },
     { entityId: 555, entityTypeName: 'operation', scheduledInDays: 0 },
@@ -47,6 +48,12 @@ export const monthlyFarmInventoryOperationConfigs = [
     { entityId: 563, entityTypeName: 'operation', scheduledInDays: 0 },
     { entityId: 564, entityTypeName: 'operation', scheduledInDays: 0 },
     { entityId: 565, entityTypeName: 'operation', scheduledInDays: 0 },
+    {
+        entityId: FARM_GREENHOUSE_PLANT_INVENTORY_OPERATION_ID,
+        entityTypeName: 'operation',
+        scheduledInDays: 0,
+        requiresGreenhouseOrOutletPlants: true,
+    },
 ];
 export const RAISED_BED_PHOTO_OPERATION_ID = 301;
 export const RAISED_BED_PHOTO_OPERATION_NAME = 'raisedBedFullPhoto';
@@ -593,7 +600,7 @@ export async function ensureDefaultAutomationDefinitions() {
             key: monthlyFarmInventoryOperationsAutomationKey,
             name: 'Mjesečna inventura farme',
             description:
-                'Dan prije prvog dana u mjesecu kreiraj inventurne radnje za svaku aktivnu farmu.',
+                'Dan prije prvog dana u mjesecu kreiraj inventurne radnje za svaku aktivnu farmu. Inventura biljaka u plasteniku kreira se samo kada farma ima biljke u plasteniku ili postoji aktivna outlet ponuda.',
             status: 'enabled',
             graph: monthlyFarmInventoryOperationsAutomationGraph(),
             metadata: {
