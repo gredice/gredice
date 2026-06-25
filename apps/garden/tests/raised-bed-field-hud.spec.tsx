@@ -4,7 +4,7 @@ import type {
     PlantData,
 } from '@gredice/client';
 import { expect, test } from '@playwright/experimental-ct-react';
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import {
     RaisedBedCloseupHudStory,
     RaisedBedFieldDndDialogStory,
@@ -162,6 +162,36 @@ function countAnalyticsEvents(
 ) {
     return analyticsEvents.filter((event) => event.eventName === eventName)
         .length;
+}
+
+async function expectPhotoButtonHoverAffordance(photoButton: Locator) {
+    const overlay = photoButton.locator(
+        '[data-raised-bed-photo-hover-overlay]',
+    );
+    const media = photoButton.locator('[data-raised-bed-photo-media]');
+
+    await photoButton.hover();
+    await expect
+        .poll(async () =>
+            Number(
+                await overlay.evaluate(
+                    (element) => getComputedStyle(element).opacity,
+                ),
+            ),
+        )
+        .toBeGreaterThan(0.9);
+    await expect
+        .poll(async () =>
+            media.evaluate((element) => {
+                const scale = getComputedStyle(element).scale;
+                if (!scale || scale === 'none') {
+                    return 1;
+                }
+
+                return Number(scale.split(' ')[0]);
+            }),
+        )
+        .toBeGreaterThan(1.01);
 }
 
 function emptyScenario(): RaisedBedScenario {
@@ -1437,6 +1467,8 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
             })
             .toBe(true);
 
+        await expectPhotoButtonHoverAffordance(photoButton);
+
         await photoButton.click();
 
         const photosModal = page.locator('[data-raised-bed-photos-modal]');
@@ -1783,6 +1815,12 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         );
 
         const dialog = page.getByRole('dialog');
+        const photoButton = dialog.getByRole('button', {
+            name: /Fotografije gredice Raised Bed 1/u,
+        });
+        await expect(photoButton).toBeVisible();
+        await expect(photoButton.locator('img')).toBeVisible();
+        await expectPhotoButtonHoverAffordance(photoButton);
         await expect(
             dialog.getByText('Površinsko zalijevanje gredice (20L)').first(),
         ).toBeVisible();

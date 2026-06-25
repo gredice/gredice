@@ -84,15 +84,25 @@ function RaisedBedPhotoThumbnail({
                     <img
                         src={imageUrl}
                         alt=""
-                        className="size-full object-cover"
+                        className="size-full object-cover transition-transform duration-300 group-hover:scale-105 group-focus-visible:scale-105"
+                        data-raised-bed-photo-media
                         loading="lazy"
                     />
                 </>
             ) : (
-                (fallback ?? (
-                    <Camera className="size-5 text-muted-foreground" />
-                ))
+                <span
+                    className="flex size-full items-center justify-center transition-transform duration-300 group-hover:scale-105 group-focus-visible:scale-105"
+                    data-raised-bed-photo-media
+                >
+                    {fallback ?? (
+                        <Camera className="size-5 text-muted-foreground" />
+                    )}
+                </span>
             )}
+            <span
+                className="pointer-events-none absolute inset-0 bg-white/30 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100"
+                data-raised-bed-photo-hover-overlay
+            />
         </span>
     );
 }
@@ -181,7 +191,10 @@ export function RaisedBedPhotosModal({
     }
 
     const stackedThumbnail = (
-        <span className="relative flex size-full items-center justify-center overflow-hidden rounded-[inherit] bg-card">
+        <span
+            className="relative flex size-full items-center justify-center overflow-hidden rounded-[inherit] bg-card transition-transform duration-300 group-hover:scale-105 group-focus-visible:scale-105"
+            data-raised-bed-photo-media
+        >
             {latestImageUrls.length > 0 ? (
                 latestImageUrls.map((imageUrl, index) => (
                     <span
@@ -216,9 +229,9 @@ export function RaisedBedPhotosModal({
             <button
                 type="button"
                 className={cx(
-                    'relative inline-flex size-20 shrink-0 items-center justify-center rounded-xl p-0 transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700 focus-visible:ring-offset-2',
+                    'group relative inline-flex size-20 shrink-0 items-center justify-center rounded-xl p-0 transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700 focus-visible:ring-offset-2 hover:cursor-zoom-in',
                     latestImageUrl
-                        ? 'overflow-hidden shadow-sm ring-1 ring-black/10'
+                        ? 'overflow-hidden shadow-sm ring-1 ring-black/10 hover:shadow-md'
                         : 'overflow-visible',
                     className,
                 )}
@@ -242,7 +255,7 @@ export function RaisedBedPhotosModal({
             <button
                 type="button"
                 className={cx(
-                    'relative inline-flex size-10 min-h-10 shrink-0 items-center justify-center overflow-hidden rounded-xl p-0 shadow-sm ring-1 ring-black/10 transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700 focus-visible:ring-offset-2',
+                    'group relative inline-flex size-10 min-h-10 shrink-0 items-center justify-center overflow-hidden rounded-xl p-0 shadow-sm ring-1 ring-black/10 transition hover:cursor-zoom-in hover:shadow-md focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700 focus-visible:ring-offset-2',
                     className,
                 )}
                 aria-label={triggerLabel}
@@ -255,7 +268,7 @@ export function RaisedBedPhotosModal({
             <button
                 type="button"
                 className={cx(
-                    'relative inline-flex size-14 shrink-0 items-center justify-center rounded-2xl border bg-card p-1 shadow-xs transition hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700 focus-visible:ring-offset-2',
+                    'group relative inline-flex size-14 shrink-0 items-center justify-center rounded-2xl border bg-card p-1 shadow-xs transition hover:cursor-zoom-in hover:bg-accent hover:shadow-md focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700 focus-visible:ring-offset-2',
                     className,
                 )}
                 aria-label={triggerLabel}
@@ -263,6 +276,10 @@ export function RaisedBedPhotosModal({
                 title={triggerLabel}
             >
                 {stackedThumbnail}
+                <span
+                    className="pointer-events-none absolute inset-1 rounded-[inherit] bg-white/30 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100"
+                    data-raised-bed-photo-hover-overlay
+                />
                 {photoCount > 0 && (
                     <span
                         className="absolute -bottom-1 -right-1 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold leading-none text-primary-foreground shadow-sm"
