@@ -270,9 +270,6 @@ export function AccountHud() {
                     </DropdownMenuTrigger>
                     <ProfileCard />
                 </DropdownMenu>
-                <div className="md:order-3">
-                    <GardenOperationsHud />
-                </div>
                 <div className="hidden md:block md:order-1">
                     {isLoading ? (
                         <Skeleton className="w-32 h-7" />
@@ -334,6 +331,9 @@ export function AccountHud() {
                             }
                         />
                     </Popper>
+                </div>
+                <div className="md:order-3">
+                    <GardenOperationsHud />
                 </div>
             </Row>
         </HudCard>
