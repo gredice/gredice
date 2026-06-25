@@ -1181,10 +1181,17 @@ function OperationStatusSummary({
             ? operation.cancellationReason?.trim()
             : undefined;
     const hasCancellationReason = Boolean(cancellationReason);
+    const isTerminalFailureStatus =
+        status !== 'scheduled' && terminalFailureStatuses.has(status);
+    const showProgressIndicator =
+        !hasCancellationReason &&
+        status !== 'confirmed' &&
+        status !== 'completed' &&
+        !isTerminalFailureStatus;
     const progressLabel =
-        hasCancellationReason || status === 'scheduled'
-            ? undefined
-            : 'Tijek radnje';
+        showProgressIndicator && status !== 'scheduled'
+            ? 'Tijek radnje'
+            : undefined;
     const tooltipIntentRef = useRef(false);
     const [tooltipOpen, setTooltipOpen] = useState(false);
     const handleTooltipOpenChange = useCallback((nextOpen: boolean) => {
@@ -1253,12 +1260,12 @@ function OperationStatusSummary({
                                 className="size-3.5 shrink-0 text-red-600"
                                 data-operation-cancellation-reason
                             />
-                        ) : (
+                        ) : showProgressIndicator ? (
                             <OperationStatusProgressIndicator
                                 label={progressLabel}
                                 steps={steps}
                             />
-                        )}
+                        ) : null}
                     </span>
                 </button>
             </TooltipTrigger>
