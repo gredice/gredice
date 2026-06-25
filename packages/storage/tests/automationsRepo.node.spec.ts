@@ -53,7 +53,10 @@ import {
     plantRemovalOperationStatusAutomationGraph,
     plantRemovalOperationStatusAutomationKey,
     processDueAutomationRuns,
+    RAISED_BED_DETAILED_INSPECTION_OPERATION_ID,
     RAISED_BED_WATERING_50L_OPERATION_ID,
+    raisedBedDetailedInspectionAutomationGraph,
+    raisedBedDetailedInspectionAutomationKey,
     raisedBedPhotoOperationsAutomationKey,
     raisedBeds,
     recordAutomationRunStep,
@@ -1763,6 +1766,256 @@ test('default raised-bed photo automation enqueues only Tuesday and Friday occur
         now: new Date('2026-06-26T08:00:00.000Z'),
     });
     assert.strictEqual(await getPhotoRunCount(), 2);
+});
+
+test('default raised-bed detailed inspection automation stays draft until enabled', async () => {
+    createTestDb();
+
+    await ensureDefaultAutomationDefinitions();
+    const definition = await getAutomationDefinitionByKey(
+        raisedBedDetailedInspectionAutomationKey,
+    );
+
+    assert.ok(definition);
+    assert.strictEqual(definition.status, 'draft');
+    assert.strictEqual(
+        definition.triggerModuleKey,
+        automationModuleKeys.triggerSchedule,
+    );
+    assert.deepStrictEqual(
+        definition.graph,
+        raisedBedDetailedInspectionAutomationGraph(),
+    );
+    assert.deepStrictEqual(definition.metadata, {
+        managedBy: 'gredice',
+        defaultAutomation: true,
+        operationEntityId: RAISED_BED_DETAILED_INSPECTION_OPERATION_ID,
+        operationEntityName: 'detailedRaisedBedInspection',
+        operationEntityLabel: 'Detaljno pregledavanje gredice',
+        dayOfWeek: 'monday',
+        timeZone: 'Europe/Zagreb',
+        resolvedFromIssue: 3700,
+        implementsIssue: 3702,
+    });
+
+    const enabledDefinition = await updateAutomationDefinition(definition.id, {
+        status: 'enabled',
+    });
+    assert.ok(enabledDefinition);
+
+    await ensureDefaultAutomationDefinitions();
+    const preservedDefinition = await getAutomationDefinitionByKey(
+        raisedBedDetailedInspectionAutomationKey,
+    );
+    assert.ok(preservedDefinition);
+    assert.strictEqual(preservedDefinition.status, 'enabled');
+});
+
+test('default raised-bed detailed inspection automation creates one weekly operation per active raised bed', async (t) => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({
+        accountId,
+        farmId,
+        name: `Raised-bed inspection ${accountId}`,
+    });
+    const blockId = await createTestBlock(
+        gardenId,
+        `raised-bed-inspection-${accountId}`,
+    );
+    const firstActiveRaisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        blockId,
+    );
+    const secondActiveRaisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        blockId,
+    );
+    const inactiveRaisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        blockId,
+    );
+    const abandonedRaisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        blockId,
+    );
+    const deletedRaisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        blockId,
+    );
+    const createdRaisedBedIds = [
+        firstActiveRaisedBedId,
+        secondActiveRaisedBedId,
+        inactiveRaisedBedId,
+        abandonedRaisedBedId,
+        deletedRaisedBedId,
+    ];
+    t.after(async () => {
+        for (const raisedBedId of createdRaisedBedIds) {
+            await updateRaisedBed({ id: raisedBedId, status: 'new' }).catch(
+                () => undefined,
+            );
+        }
+    });
+    await updateRaisedBed({ id: firstActiveRaisedBedId, status: 'active' });
+    await updateRaisedBed({ id: secondActiveRaisedBedId, status: 'active' });
+    await updateRaisedBed({ id: inactiveRaisedBedId, status: 'new' });
+    await updateRaisedBed({ id: abandonedRaisedBedId, status: 'abandoned' });
+    await updateRaisedBed({ id: deletedRaisedBedId, status: 'active' });
+    await storage()
+        .update(raisedBeds)
+        .set({ isDeleted: true })
+        .where(eq(raisedBeds.id, deletedRaisedBedId));
+    const expectedRecipientCount = (await listActiveRaisedBedOperationTargets())
+        .length;
+
+    const { raisedBedDetailedInspection } =
+        await ensureDefaultAutomationDefinitions();
+    const enabledDefinition = await updateAutomationDefinition(
+        raisedBedDetailedInspection.id,
+        { status: 'enabled' },
+    );
+    assert.ok(enabledDefinition);
+
+    const definitions = await listAutomationDefinitions({ limit: 100 });
+    for (const candidate of definitions) {
+        if (candidate.id !== enabledDefinition.id) {
+            await updateAutomationDefinition(candidate.id, {
+                status: 'disabled',
+            });
+        }
+    }
+
+    const dryRun = await executeManualAutomationRun(
+        enabledDefinition,
+        {
+            ...weeklyScheduleInput('2026-06-22', 'monday'),
+            daysOfWeek: ['monday'],
+        },
+        { dryRun: true },
+    );
+    assert.strictEqual(dryRun.result.status, 'succeeded');
+    const dryRunActionStep = dryRun.run.steps.find(
+        (step) =>
+            step.moduleKey ===
+            automationModuleKeys.actionCreateRaisedBedOperations,
+    );
+    assert.ok(dryRunActionStep);
+    assert.strictEqual(
+        Reflect.get(dryRunActionStep.output, 'recipientCount'),
+        expectedRecipientCount,
+    );
+    assert.strictEqual(
+        Reflect.get(dryRunActionStep.output, 'skippedExistingCount'),
+        0,
+    );
+    assert.strictEqual(
+        Reflect.get(dryRunActionStep.output, 'projectedCreateCount'),
+        expectedRecipientCount,
+    );
+
+    const getInspectionRunCount = async () =>
+        (
+            await listAutomationRuns({
+                automationDefinitionId: enabledDefinition.id,
+            })
+        ).filter((run) => run.source === 'schedule').length;
+
+    await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-06-22T08:00:00.000Z'),
+    });
+    assert.strictEqual(await getInspectionRunCount(), 1);
+
+    await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-06-22T09:00:00.000Z'),
+    });
+    assert.strictEqual(await getInspectionRunCount(), 1);
+
+    await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-06-24T08:00:00.000Z'),
+    });
+    assert.strictEqual(await getInspectionRunCount(), 1);
+
+    const processResult = await processDueAutomationRuns({
+        limit: 10,
+        lockedBy: 'automations-test',
+    });
+    assert.strictEqual(processResult.succeeded, 1);
+
+    const scheduledRun = (
+        await listAutomationRuns({
+            automationDefinitionId: enabledDefinition.id,
+        })
+    ).find((run) => run.source === 'schedule');
+    assert.ok(scheduledRun);
+
+    const operations = await getRaisedBedOperationsByScheduleRange({
+        raisedBedIds: createdRaisedBedIds,
+        from: new Date('2026-06-22T00:00:00.000Z'),
+        to: new Date('2026-06-23T00:00:00.000Z'),
+    });
+    const inspectionOperations = operations
+        .filter(
+            (operation) =>
+                operation.entityId ===
+                RAISED_BED_DETAILED_INSPECTION_OPERATION_ID,
+        )
+        .sort(
+            (left, right) => (left.raisedBedId ?? 0) - (right.raisedBedId ?? 0),
+        );
+
+    assert.deepStrictEqual(
+        inspectionOperations.map((operation) => operation.raisedBedId),
+        [firstActiveRaisedBedId, secondActiveRaisedBedId].sort(
+            (left, right) => left - right,
+        ),
+    );
+    assert.ok(inspectionOperations.every((operation) => operation.isAccepted));
+    assert.ok(
+        inspectionOperations.every(
+            (operation) => operation.raisedBedFieldId === null,
+        ),
+    );
+    assert.deepStrictEqual(
+        inspectionOperations.map((operation) =>
+            operation.scheduledDate?.toISOString(),
+        ),
+        ['2026-06-22T00:00:00.000Z', '2026-06-22T00:00:00.000Z'],
+    );
+
+    const replayRun = await createAutomationRun({
+        automationDefinition: enabledDefinition,
+        source: 'replay',
+        input: scheduledRun.input,
+    });
+    assert.ok(replayRun);
+    const startedReplay = await startAutomationRun(replayRun.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedReplay);
+
+    const replayResult = await executeAutomationRun(startedReplay);
+
+    assert.strictEqual(replayResult.status, 'skipped');
+    const replayOperations = await getRaisedBedOperationsByScheduleRange({
+        raisedBedIds: createdRaisedBedIds,
+        from: new Date('2026-06-22T00:00:00.000Z'),
+        to: new Date('2026-06-23T00:00:00.000Z'),
+    });
+    assert.strictEqual(
+        replayOperations.filter(
+            (operation) =>
+                operation.entityId ===
+                RAISED_BED_DETAILED_INSPECTION_OPERATION_ID,
+        ).length,
+        2,
+    );
 });
 
 test('raised-bed operation automation filters inactive deleted and abandoned raised beds', async (t) => {
