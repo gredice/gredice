@@ -200,10 +200,7 @@ function buildHudOperationItem({
         createdAt: `2026-05-${day}T00:00:00.000Z`,
         scheduledDate: `2026-05-${day}T00:00:00.000Z`,
         scheduledAt: `2026-05-${day}T00:00:00.000Z`,
-        completedAt:
-            status === 'confirmed' || status === 'completed'
-                ? terminalChangedAt
-                : null,
+        completedAt: status === 'completed' ? terminalChangedAt : null,
         verifiedAt:
             status === 'completed' ? `2026-05-${day}T09:00:00.000Z` : null,
         canceledAt: status === 'canceled' ? terminalChangedAt : null,
@@ -289,7 +286,12 @@ function createQueryClient({
                           : undefined,
               }),
           )
-        : [];
+        : [
+              buildHudOperationItem({
+                  id: 610,
+                  status: 'confirmed',
+              }),
+          ];
     const pendingOperationPage = {
         pages: [
             {
