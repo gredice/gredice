@@ -1,0 +1,4 @@
+interface:
+  display_name: "Gredice Admin Table To List"
+  short_description: "Convert admin tables into reusable lists"
+  default_prompt: "Use $gredice-admin-table-to-list to convert this Gredice admin table into a paginated list view."
