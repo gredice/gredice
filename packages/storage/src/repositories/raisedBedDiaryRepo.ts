@@ -191,8 +191,17 @@ export async function getRaisedBedFieldDiaryEntries(
                     break;
                 }
                 case knownEventTypes.raisedBedFields.delete: {
-                    name = 'Polje uklonjeno';
-                    description = 'Polje je uklonjeno.';
+                    const cancellationReason =
+                        typeof data?.reason === 'string'
+                            ? data.reason.trim()
+                            : '';
+                    if (cancellationReason) {
+                        name = 'Sijanje otkazano';
+                        description = `Razlog otkazivanja: ${cancellationReason}`;
+                    } else {
+                        name = 'Polje uklonjeno';
+                        description = 'Polje je uklonjeno.';
+                    }
                     break;
                 }
                 case knownEventTypes.raisedBedFields.aiAnalysis: {

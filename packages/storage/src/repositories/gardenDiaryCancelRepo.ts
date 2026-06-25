@@ -268,9 +268,15 @@ export async function cancelGardenDiaryRaisedBedField({
         createEvent(
             knownEvents.raisedBedFields.deletedV1(
                 `${raisedBedId.toString()}|${positionIndex.toString()}`,
+                {
+                    canceledBy,
+                    reason,
+                },
             ),
         ),
-        deleteRaisedBedField(raisedBedId, positionIndex),
+        deleteRaisedBedField(raisedBedId, positionIndex, {
+            preserveHistory: true,
+        }),
         refundAmount > 0
             ? earnSunflowers(
                   accountId,

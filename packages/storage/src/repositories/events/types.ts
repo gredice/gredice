@@ -184,6 +184,10 @@ export type RaisedBedWeedStateSetPayload = {
 export type RaisedBedFieldCreatePayload = {
     status: string;
 };
+export type RaisedBedFieldDeletePayload = {
+    canceledBy?: string;
+    reason?: string;
+};
 
 export type RaisedBedFieldSowingLocation = 'direct' | 'greenhouse';
 

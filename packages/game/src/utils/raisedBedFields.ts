@@ -1,5 +1,7 @@
 type RaisedBedFieldPlantLifecycleLike = {
     assignedAt?: Date | string | null;
+    cancellationReason?: string | null;
+    cancelReason?: string | null;
     createdAt?: Date | string | null;
     endedAt?: Date | string | null;
     plantDeadDate?: Date | string | null;

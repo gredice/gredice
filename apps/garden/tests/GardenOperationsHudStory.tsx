@@ -92,6 +92,37 @@ function buildGarden() {
                         },
                         2,
                     ),
+                    buildField(
+                        {
+                            positionIndex: 6,
+                            plantStatus: 'deleted',
+                            active: false,
+                            toBeRemoved: true,
+                            stoppedDate: '2026-05-24T08:00:00.000Z',
+                            plantCycles: [
+                                {
+                                    aggregateId: `${TEST_RAISED_BED_ID}|6`,
+                                    positionIndex: 6,
+                                    plantPlaceEventId: 301,
+                                    eventIds: [301, 302],
+                                    startedAt: '2026-05-24T00:00:00.000Z',
+                                    endedAt: '2026-05-24T08:00:00.000Z',
+                                    endedEventId: 302,
+                                    active: false,
+                                    plantSortId: testSorts.lettuce.id,
+                                    plantStatus: 'deleted',
+                                    plantScheduledDate:
+                                        '2026-05-24T00:00:00.000Z',
+                                    stoppedDate: '2026-05-24T08:00:00.000Z',
+                                    cancellationReason:
+                                        'Korisnik je otkazao sijanje.',
+                                    statusChanges: [],
+                                    toBeRemoved: true,
+                                },
+                            ],
+                        },
+                        3,
+                    ),
                 ],
                 appliedOperations: [],
                 status: 'new',
@@ -148,13 +179,16 @@ function buildOperationCartItem({
 }
 
 function buildHudOperationItem({
+    cancellationReason,
     id,
     status,
 }: {
+    cancellationReason?: string;
     id: number;
     status: GardenOperationItem['status'];
 }): GardenOperationItem {
     const day = String(Math.max(1, 30 - (id % 20))).padStart(2, '0');
+    const terminalChangedAt = `2026-05-${day}T08:00:00.000Z`;
 
     return {
         id,
@@ -168,11 +202,15 @@ function buildHudOperationItem({
         scheduledAt: `2026-05-${day}T00:00:00.000Z`,
         completedAt:
             status === 'confirmed' || status === 'completed'
-                ? `2026-05-${day}T08:00:00.000Z`
+                ? terminalChangedAt
                 : null,
         verifiedAt:
             status === 'completed' ? `2026-05-${day}T09:00:00.000Z` : null,
-        canceledAt: null,
+        canceledAt: status === 'canceled' ? terminalChangedAt : null,
+        cancellationReason:
+            status === 'canceled'
+                ? (cancellationReason ?? 'Korisnik je otkazao radnju.')
+                : null,
         imageUrls: [],
         completionNotes: `Zapis radnje ${id.toString()}.`,
         targetLabel: 'Raised Bed 1 › Polje 3',
@@ -181,8 +219,11 @@ function buildHudOperationItem({
             { status: 'planned', changedAt: `2026-05-${day}T01:00:00.000Z` },
             { status: 'assigned', changedAt: `2026-05-${day}T02:00:00.000Z` },
             {
-                status: status === 'completed' ? 'completed' : 'confirmed',
-                changedAt: `2026-05-${day}T08:00:00.000Z`,
+                status:
+                    status === 'completed' || status === 'canceled'
+                        ? status
+                        : 'confirmed',
+                changedAt: terminalChangedAt,
             },
         ],
     };
@@ -220,6 +261,7 @@ function createQueryClient({
                   completedAt: null,
                   verifiedAt: null,
                   canceledAt: null,
+                  cancellationReason: null,
                   imageUrls: [],
                   completionNotes: null,
                   targetLabel: 'Raised Bed 1 › Polje 3',
@@ -235,7 +277,16 @@ function createQueryClient({
         ? Array.from({ length: 18 }, (_, index) =>
               buildHudOperationItem({
                   id: 800 + index,
-                  status: index % 3 === 0 ? 'completed' : 'confirmed',
+                  status:
+                      index % 5 === 4
+                          ? 'canceled'
+                          : index % 3 === 0
+                            ? 'completed'
+                            : 'confirmed',
+                  cancellationReason:
+                      index % 5 === 4
+                          ? 'Korisnik je otkazao radnju.'
+                          : undefined,
               }),
           )
         : [];

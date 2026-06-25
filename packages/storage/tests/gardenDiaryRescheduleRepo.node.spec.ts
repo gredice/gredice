@@ -17,6 +17,7 @@ import {
     getRaisedBed,
     getRaisedBedDiaryEntries,
     getRaisedBedFieldDiaryEntries,
+    getRaisedBedFieldPlantCycles,
     getSunflowers,
     knownEvents,
     rescheduleGardenDiaryOperation,
@@ -686,6 +687,7 @@ test('cancelGardenDiaryRaisedBedField removes future planned sowing with refund 
     const field = raisedBed?.fields.find(
         (candidate) => candidate.positionIndex === 0,
     );
+    const [plantCycle] = await getRaisedBedFieldPlantCycles(raisedBedId);
     const notifications = await getNotificationsByAccount(
         accountId,
         false,
@@ -694,7 +696,23 @@ test('cancelGardenDiaryRaisedBedField removes future planned sowing with refund 
     );
 
     assert.equal(result.refundAmount, 1500);
-    assert.equal(field, undefined);
+    assert.equal(field?.active, false);
+    assert.equal(field?.plantStatus, 'deleted');
+    assert.equal(field?.plantSortId, undefined);
+    assert.equal(field?.cancellationReason, 'Korisnik je otkazao.');
+    assert.equal(plantCycle?.active, false);
+    assert.equal(plantCycle?.plantStatus, 'deleted');
+    assert.equal(plantCycle?.plantSortId, plantSortId);
+    assert.equal(plantCycle?.cancellationReason, 'Korisnik je otkazao.');
+    const [cancelDiaryEntry] = await getRaisedBedFieldDiaryEntries(
+        raisedBedId,
+        0,
+    );
+    assert.equal(cancelDiaryEntry?.name, 'Sijanje otkazano');
+    assert.equal(
+        cancelDiaryEntry?.description,
+        'Razlog otkazivanja: Korisnik je otkazao.',
+    );
     assert.equal(await getSunflowers(accountId), 2500);
     assert.equal(notifications.length, 1);
     assert.equal(notifications[0]?.header, 'Sijanje je otkazano');
@@ -734,7 +752,9 @@ test('cancelGardenDiaryRaisedBedField removes future confirmed sowing', async ()
         (candidate) => candidate.positionIndex === 0,
     );
     assert.equal(result.refundAmount, 1500);
-    assert.equal(field, undefined);
+    assert.equal(field?.active, false);
+    assert.equal(field?.plantStatus, 'deleted');
+    assert.equal(field?.cancellationReason, 'Korisnik je otkazao.');
 });
 
 test('cancelGardenDiaryRaisedBedField rejects sowing scheduled for today', async () => {

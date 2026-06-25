@@ -42,6 +42,7 @@ export type GardenOperationItem = {
     completedAt: string | null;
     verifiedAt: string | null;
     canceledAt: string | null;
+    cancellationReason: string | null;
     imageUrls: string[];
     completionNotes: string | null;
     targetLabel: string;
@@ -70,6 +71,7 @@ type CurrentGardenData = NonNullable<
 type GardenOperationItemResponse = Omit<
     GardenOperationItem,
     | 'completionNotes'
+    | 'cancellationReason'
     | 'entityTypeName'
     | 'imageUrls'
     | 'status'
@@ -79,6 +81,7 @@ type GardenOperationItemResponse = Omit<
     entityTypeName?: string;
     imageUrls?: string[] | null;
     status: string;
+    cancellationReason?: string | null;
     statusHistory: ({
         status: string;
         changedAt: string;
@@ -104,6 +107,7 @@ function parseGardenOperationItem(
     return {
         ...item,
         completionNotes: item.completionNotes ?? null,
+        cancellationReason: item.cancellationReason ?? null,
         entityTypeName: item.entityTypeName ?? 'operation',
         imageUrls: item.imageUrls ?? [],
         status: parseGardenOperationStatus(item.status),

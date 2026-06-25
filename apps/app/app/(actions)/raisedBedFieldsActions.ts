@@ -522,13 +522,9 @@ export async function cancelRaisedBedFieldAction(formData: FormData) {
     const positionIndex = formData.get('positionIndex')
         ? Number(formData.get('positionIndex'))
         : undefined;
-    const reason = formData.get('reason') as string;
-    if (
-        raisedBedId === undefined ||
-        positionIndex === undefined ||
-        !reason ||
-        reason.trim().length === 0
-    ) {
+    const reasonValue = formData.get('reason');
+    const reason = typeof reasonValue === 'string' ? reasonValue.trim() : '';
+    if (raisedBedId === undefined || positionIndex === undefined || !reason) {
         throw new Error(
             'Raised bed ID, position index and reason are required',
         );
@@ -569,9 +565,14 @@ export async function cancelRaisedBedFieldAction(formData: FormData) {
         createEvent(
             knownEvents.raisedBedFields.deletedV1(
                 `${raisedBedId}|${positionIndex}`,
+                {
+                    reason,
+                },
             ),
         ),
-        deleteRaisedBedField(raisedBedId, positionIndex),
+        deleteRaisedBedField(raisedBedId, positionIndex, {
+            preserveHistory: true,
+        }),
         refundAmount > 0 && raisedBed.accountId
             ? earnSunflowers(
                   raisedBed.accountId,

@@ -134,7 +134,9 @@ export type FieldConfig = {
         | 'sowed'
         | 'sprouted'
         | 'ready'
-        | 'died';
+        | 'died'
+        | 'deleted'
+        | 'canceled';
     plantScheduledDate?: string;
     plantSowDate?: string;
     plantGrowthDate?: string;
@@ -142,10 +144,42 @@ export type FieldConfig = {
     plantHarvestedDate?: string;
     plantDeadDate?: string;
     plantRemovedDate?: string;
+    cancellationReason?: string;
+    cancelReason?: string;
     sowingLocation?: 'direct' | 'greenhouse';
     toBeRemoved?: boolean;
     active?: boolean;
     stoppedDate?: string;
+    plantCycles?: Array<{
+        active?: boolean;
+        aggregateId?: string;
+        assignedAt?: string;
+        assignedBy?: string | null;
+        assignedUserId?: string | null;
+        assignedUserIds?: string[];
+        cancellationReason?: string;
+        cancelReason?: string;
+        createdAt?: string;
+        endedAt?: string;
+        endedEventId?: number;
+        eventIds?: number[];
+        plantDeadDate?: string;
+        plantGrowthDate?: string;
+        plantHarvestedDate?: string;
+        plantPlaceEventId?: number;
+        plantReadyDate?: string;
+        plantRemovedDate?: string;
+        plantScheduledDate?: string;
+        plantSortId?: number;
+        plantSowDate?: string;
+        plantStatus?: string;
+        positionIndex?: number;
+        sowingLocation?: 'direct' | 'greenhouse';
+        startedAt?: string;
+        statusChanges?: Array<{ status: string; occurredAt: string }>;
+        stoppedDate?: string;
+        toBeRemoved?: boolean;
+    }>;
 };
 
 export type RaisedBedScenario = {
@@ -197,8 +231,10 @@ export function buildField(config: FieldConfig, id: number) {
         plantDeadDate: config.plantDeadDate,
         plantHarvestedDate: config.plantHarvestedDate,
         plantRemovedDate: config.plantRemovedDate,
+        cancellationReason: config.cancellationReason,
+        cancelReason: config.cancelReason,
         sowingLocation: config.sowingLocation ?? 'direct',
-        plantCycles: [],
+        plantCycles: config.plantCycles ?? [],
         assignedUserId: null,
         assignedUserIds: [],
         assignedBy: null,

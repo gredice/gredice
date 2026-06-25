@@ -106,6 +106,25 @@ test.describe('Garden operations HUD', () => {
         await expect(dialog.getByLabel('Raised Bed 1 › Polje 3')).toBeVisible();
         await expect(dialog.getByText('Završeno')).toBeVisible();
         await expect(dialog.getByLabel('Tijek radnje').first()).toBeVisible();
+        const canceledSowingCard = dialog
+            .locator('[data-garden-operation-card]')
+            .filter({ hasText: 'Sadnja: Maslac salata' });
+        await expect(canceledSowingCard.getByText('Otkazano')).toBeVisible();
+        await expect(
+            canceledSowingCard.locator('[data-operation-status-progress]'),
+        ).toHaveCount(0);
+        await expect(
+            canceledSowingCard.locator('[data-operation-cancellation-reason]'),
+        ).toHaveCount(1);
+        await canceledSowingCard
+            .getByRole('button', { name: /Razlog otkazivanja/ })
+            .click();
+        const reasonTooltip = page
+            .getByRole('tooltip')
+            .filter({ hasText: 'Razlog otkazivanja' });
+        await expect(
+            reasonTooltip.getByText('Korisnik je otkazao sijanje.'),
+        ).toBeVisible();
         await expect(dialog.locator('.animate-progress')).toHaveCount(0);
     });
 
