@@ -22,6 +22,7 @@ import { PlantOrSortImage } from '@gredice/ui/plants';
 import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@gredice/ui/Tooltip';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import {
@@ -32,7 +33,6 @@ import {
     useRef,
 } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
-import { SegmentedProgress } from '../controls/components/SegmentedProgress';
 import {
     getDiaryCancelDisabledReason,
     isDiaryCancelTargetEligible,
@@ -150,6 +150,15 @@ type StatusConfig = {
     colorClass: string;
 };
 type OperationDisplayStatus = GardenOperationStatus | 'scheduled';
+type OperationStatusProgressStep = {
+    status: OperationDisplayStatus;
+    date: string | null;
+    reached: boolean;
+    current: boolean;
+    pending: boolean;
+    failed?: boolean;
+    skipped?: boolean;
+};
 
 const statusConfig: Record<GardenOperationStatus, StatusConfig> = {
     new: {
@@ -194,20 +203,17 @@ const scheduledStatusConfig: StatusConfig = {
     colorClass: 'text-indigo-600',
 };
 
+function getDisplayStatusConfig(status: OperationDisplayStatus) {
+    return status === 'scheduled'
+        ? scheduledStatusConfig
+        : statusConfig[status];
+}
+
 function formatDate(value?: string | null) {
     if (!value) return null;
     return new Date(value).toLocaleDateString('hr-HR', {
         day: 'numeric',
         month: 'long',
-        year: 'numeric',
-    });
-}
-
-function formatCompactDate(value?: string | null) {
-    if (!value) return null;
-    return new Date(value).toLocaleDateString('hr-HR', {
-        day: 'numeric',
-        month: 'numeric',
         year: 'numeric',
     });
 }
@@ -910,21 +916,203 @@ function StatusBadge({
     size?: 'sm' | 'md';
     className?: string;
 }) {
-    const config =
-        status === 'scheduled' ? scheduledStatusConfig : statusConfig[status];
+    const config = getDisplayStatusConfig(status);
     const Icon = config.icon;
     const iconSize = size === 'md' ? 'size-4' : 'size-3.5';
     const textLevel = size === 'md' ? 'body2' : 'body3';
     return (
-        <Row
-            spacing={1}
-            className={cx('min-w-0 max-w-full', config.colorClass, className)}
+        <span
+            className={cx(
+                'flex min-w-0 max-w-full flex-row items-center gap-1',
+                config.colorClass,
+                className,
+            )}
         >
             <Icon className={cx(iconSize, 'shrink-0')} />
-            <Typography level={textLevel} semiBold noWrap className="min-w-0">
+            <Typography
+                level={textLevel}
+                semiBold
+                noWrap
+                component="span"
+                className="min-w-0"
+            >
                 {config.label}
             </Typography>
-        </Row>
+        </span>
+    );
+}
+
+function buildStatusProgressSteps(
+    operation: GardenOperationHudItem,
+    displayStatus: OperationDisplayStatus,
+): OperationStatusProgressStep[] {
+    if (displayStatus === 'scheduled') {
+        return [
+            {
+                status: 'scheduled',
+                date: operation.scheduledDate ?? null,
+                reached: true,
+                current: true,
+                pending: false,
+            },
+        ];
+    }
+
+    const historyByStatus = new Map(
+        operation.statusHistory.map((entry) => [entry.status, entry.changedAt]),
+    );
+    const isTerminalFailure = terminalFailureStatuses.has(operation.status);
+    const displayStatusDate =
+        getOperationDisplayStatusDate(operation, displayStatus) ?? null;
+
+    const hasReached = (status: GardenOperationStatus) => {
+        if (historyByStatus.has(status)) return true;
+        const idx = uiPipeline.indexOf(status);
+        if (idx === -1) return false;
+        return uiPipeline
+            .slice(idx + 1)
+            .some((later) => historyByStatus.has(later));
+    };
+
+    const currentIdx = uiPipeline.indexOf(operation.status);
+    const pipelineToShow = uiPipeline.filter((status, idx) => {
+        if (hasReached(status)) return true;
+        if (isTerminalFailure) return true;
+        if (currentIdx >= 0 && idx >= currentIdx) return true;
+        return false;
+    });
+    const firstPendingIdx = pipelineToShow.findIndex((s) => !hasReached(s));
+
+    const steps: OperationStatusProgressStep[] = pipelineToShow.map(
+        (status, idx) => {
+            const reached = hasReached(status);
+            const current = !isTerminalFailure && status === operation.status;
+
+            return {
+                status,
+                date:
+                    historyByStatus.get(status) ??
+                    (current ? displayStatusDate : null),
+                reached,
+                current,
+                pending:
+                    !isTerminalFailure && !reached && idx === firstPendingIdx,
+                skipped: isTerminalFailure && !reached,
+            };
+        },
+    );
+
+    if (isTerminalFailure) {
+        steps.push({
+            status: operation.status,
+            date:
+                historyByStatus.get(operation.status) ??
+                operation.canceledAt ??
+                operation.completedAt ??
+                displayStatusDate,
+            reached: true,
+            current: true,
+            pending: false,
+            failed: true,
+        });
+    }
+
+    return steps;
+}
+
+function OperationStatusProgressIndicator({
+    steps,
+}: {
+    steps: OperationStatusProgressStep[];
+}) {
+    return (
+        <span
+            aria-hidden
+            className="flex shrink-0 items-center gap-0.5"
+            data-operation-status-progress
+        >
+            {steps.map((step) => (
+                <span
+                    key={step.status}
+                    className={cx(
+                        'size-1.5 rounded-full border border-tertiary bg-background',
+                        step.reached &&
+                            !step.failed &&
+                            'border-green-600 bg-green-500',
+                        step.pending &&
+                            'animate-pulse border-green-500 bg-green-500/20',
+                        step.skipped && 'border-muted-foreground/30 bg-muted',
+                        step.failed && 'border-red-500 bg-red-500/20',
+                        step.current && 'size-2.5 border-2',
+                    )}
+                />
+            ))}
+        </span>
+    );
+}
+
+function OperationStatusTooltipContent({
+    steps,
+}: {
+    steps: OperationStatusProgressStep[];
+}) {
+    return (
+        <Stack spacing={1} className="min-w-52">
+            <Typography
+                level="body3"
+                semiBold
+                component="span"
+                className="text-popover-foreground"
+            >
+                Statusi radnje
+            </Typography>
+            <Stack spacing={0.75}>
+                {steps.map((step) => {
+                    const config = getDisplayStatusConfig(step.status);
+                    const Icon = config.icon;
+                    const dateLabel = formatDateTime(step.date);
+                    const fallbackLabel = step.current
+                        ? 'Trenutno'
+                        : step.skipped
+                          ? 'Preskočeno'
+                          : 'Čeka';
+
+                    return (
+                        <Row
+                            key={step.status}
+                            spacing={2}
+                            justifyContent="space-between"
+                            className="min-w-0"
+                        >
+                            <span
+                                className={cx(
+                                    'flex min-w-0 items-center gap-1',
+                                    config.colorClass,
+                                )}
+                            >
+                                <Icon className="size-3.5 shrink-0" />
+                                <Typography
+                                    level="body3"
+                                    component="span"
+                                    noWrap
+                                    className="min-w-0 text-popover-foreground"
+                                >
+                                    {config.label}
+                                </Typography>
+                            </span>
+                            <Typography
+                                level="body3"
+                                component="span"
+                                noWrap
+                                className="shrink-0 text-popover-foreground/75"
+                            >
+                                {dateLabel ?? fallbackLabel}
+                            </Typography>
+                        </Row>
+                    );
+                })}
+            </Stack>
+        </Stack>
     );
 }
 
@@ -935,19 +1123,30 @@ function OperationStatusSummary({
     operation: GardenOperationHudItem;
     status: OperationDisplayStatus;
 }) {
-    const statusDate = formatCompactDate(
-        getOperationDisplayStatusDate(operation, status),
+    const config = getDisplayStatusConfig(status);
+    const steps = useMemo(
+        () => buildStatusProgressSteps(operation, status),
+        [operation, status],
     );
 
     return (
-        <Stack spacing={0.25} className="shrink-0 items-end">
-            <StatusBadge status={status} />
-            {statusDate && (
-                <Typography level="body3" secondary noWrap>
-                    {statusDate}
-                </Typography>
-            )}
-        </Stack>
+        <Tooltip delayDuration={100}>
+            <TooltipTrigger asChild>
+                <button
+                    type="button"
+                    aria-label={`Status radnje: ${config.label}`}
+                    className="flex max-w-[48%] shrink-0 flex-col items-end rounded-md px-1 py-0.5 text-right transition hover:bg-muted/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                    <span className="flex min-w-0 max-w-full items-center justify-end gap-1.5">
+                        <StatusBadge status={status} className="justify-end" />
+                        <OperationStatusProgressIndicator steps={steps} />
+                    </span>
+                </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" align="end" className="max-w-72 p-2">
+                <OperationStatusTooltipContent steps={steps} />
+            </TooltipContent>
+        </Tooltip>
     );
 }
 
@@ -982,130 +1181,6 @@ function useInfiniteScroll(fetchNextPage: () => void, hasNextPage?: boolean) {
             observerRef.current.observe(node);
         },
         [fetchNextPage, hasNextPage],
-    );
-}
-
-function buildSegments(operation: GardenOperationItem) {
-    const historyByStatus = new Map(
-        operation.statusHistory.map((entry) => [entry.status, entry.changedAt]),
-    );
-    const isTerminalFailure = terminalFailureStatuses.has(operation.status);
-
-    const hasReached = (status: GardenOperationStatus) => {
-        if (historyByStatus.has(status)) return true;
-        const idx = uiPipeline.indexOf(status);
-        if (idx === -1) return false;
-        return uiPipeline
-            .slice(idx + 1)
-            .some((later) => historyByStatus.has(later));
-    };
-
-    const currentIdx = uiPipeline.indexOf(operation.status);
-
-    const pipelineToShow = uiPipeline.filter((status, idx) => {
-        if (hasReached(status)) return true;
-        if (isTerminalFailure) return true;
-        if (currentIdx >= 0 && idx >= currentIdx) return true;
-        return false;
-    });
-
-    const firstPendingIdx = pipelineToShow.findIndex((s) => !hasReached(s));
-
-    const segments = pipelineToShow.map((status, idx) => {
-        const reached = hasReached(status);
-        const config = statusConfig[status];
-        const date = historyByStatus.get(status);
-        const tooltipParts = [config.label];
-        const dateStr = formatDateTime(date ?? null);
-        if (dateStr) tooltipParts.push(dateStr);
-        const title = tooltipParts.join(' — ');
-
-        if (reached) {
-            const StatusIcon = config.icon;
-            return {
-                value: 100,
-                label: config.label,
-                icon: (
-                    <StatusIcon
-                        className={cx('size-3.5 shrink-0', config.colorClass)}
-                    />
-                ),
-                title,
-            };
-        }
-
-        if (isTerminalFailure) {
-            const StatusIcon = config.icon;
-            return {
-                value: 0,
-                failed: true,
-                label: config.label,
-                icon: (
-                    <StatusIcon
-                        className={cx('size-3.5 shrink-0', config.colorClass)}
-                    />
-                ),
-                title: `${config.label} — preskočeno`,
-            };
-        }
-
-        const isNextPending = idx === firstPendingIdx;
-        const StatusIcon = config.icon;
-        return {
-            value: isNextPending ? 50 : 0,
-            indeterminate: isNextPending,
-            highlighted: isNextPending,
-            label: config.label,
-            icon: (
-                <StatusIcon
-                    className={cx('size-3.5 shrink-0', config.colorClass)}
-                />
-            ),
-            title,
-        };
-    });
-
-    if (isTerminalFailure) {
-        const terminalConfig = statusConfig[operation.status];
-        const StatusIcon = terminalConfig.icon;
-        segments.push({
-            value: 0,
-            failed: true,
-            label: terminalConfig.label,
-            icon: (
-                <StatusIcon
-                    className={cx(
-                        'size-3.5 shrink-0',
-                        terminalConfig.colorClass,
-                    )}
-                />
-            ),
-            title: `${terminalConfig.label} — ${
-                formatDateTime(
-                    operation.canceledAt ?? operation.completedAt ?? null,
-                ) ?? ''
-            }`.trim(),
-        });
-    }
-
-    return segments;
-}
-
-function OperationProgress({
-    operation,
-    className,
-}: {
-    operation: GardenOperationHudItem;
-    className?: string;
-}) {
-    const segments = useMemo(() => buildSegments(operation), [operation]);
-
-    return (
-        <SegmentedProgress
-            aria-label="Tijek radnje"
-            className={cx('w-full min-w-0 max-w-full pb-6', className)}
-            segments={segments}
-        />
     );
 }
 
@@ -1339,7 +1414,6 @@ export function GardenOperationCard({
     targetPlantSortData,
     currentGarden,
     referenceDate,
-    progressClassName,
     cancelAction,
     scheduleAction,
     action,
@@ -1351,7 +1425,6 @@ export function GardenOperationCard({
     targetPlantSortData?: PlantSortData;
     currentGarden?: CurrentGardenData | null;
     referenceDate: Date;
-    progressClassName?: string;
     cancelAction?: ReactNode;
     scheduleAction?: ReactNode;
     action?: ReactNode;
@@ -1363,7 +1436,6 @@ export function GardenOperationCard({
     });
     const targetDetails = getOperationTargetDetails(operation, currentGarden);
     const displayStatus = getOperationDisplayStatus(operation, referenceDate);
-    const isScheduledUnassigned = displayStatus === 'scheduled';
 
     return (
         <div
@@ -1415,12 +1487,6 @@ export function GardenOperationCard({
                         scheduleAction={scheduleAction}
                     />
                     <OperationEvidence operation={operation} />
-                    {!isScheduledUnassigned && (
-                        <OperationProgress
-                            operation={operation}
-                            className={progressClassName}
-                        />
-                    )}
                     {action && <div className="flex justify-end">{action}</div>}
                 </Stack>
             </Row>
@@ -1559,8 +1625,7 @@ function HistoryModal({
                 <Stack spacing={1}>
                     <Typography level="h5">Povijest radnji</Typography>
                     <Typography level="body2" secondary>
-                        Pregled svih radnji u tvom vrtu. Zadrži pokazivač iznad
-                        točke napretka za datum promjene statusa.
+                        Pregled svih radnji u tvom vrtu.
                     </Typography>
                 </Stack>
                 <Divider />
@@ -1617,7 +1682,6 @@ function HistoryModal({
                                     }
                                     currentGarden={currentGarden}
                                     referenceDate={referenceDate}
-                                    progressClassName="md:max-w-80"
                                 />
                             ))
                         )}
