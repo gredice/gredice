@@ -1,24 +1,17 @@
-import {
-    getAttributeDefinition,
-    getAttributeDefinitions,
-    getEntitiesRaw,
-    getEntityTypeByName,
-    getInventoryConfigByEntityTypeName,
-    getInventoryItemsByConfig,
-} from '@gredice/storage';
+import { getEntityTypeByName } from '@gredice/storage';
 import { Card, CardOverflow } from '@gredice/ui/Card';
 import { Add } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import Link from 'next/link';
 import { EntityTypeMenu } from '../../../../components/admin/directories';
+import { EntitiesList } from '../../../../components/admin/lists';
 import {
     AdminDirectoryBreadcrumbs,
     AdminPageHeader,
 } from '../../../../components/admin/navigation';
 import { FilterProvider } from '../../../../components/admin/providers';
 import { SearchInput } from '../../../../components/admin/SearchInput';
-import { EntitiesTable } from '../../../../components/admin/tables';
 import { ServerActionIconButton } from '../../../../components/shared/ServerActionIconButton';
 import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
@@ -26,30 +19,15 @@ import {
     createEntity,
     duplicateEntity,
 } from '../../../(actions)/entityActions';
+import { defaultDirectoryEntityListSort } from './directoryEntityListConfig';
+import {
+    getDirectoryEntityListContext,
+    listDirectoryEntitiesPageFromContext,
+    parseDirectoryEntityOperationIds,
+} from './directoryEntityListData';
 import { EntitiesFilters } from './EntitiesFilters';
-import { aggregateRelatedInventoryItems } from './inventoryDisplay';
 
 export const dynamic = 'force-dynamic';
-
-function getEntityLabel(
-    attributes: {
-        attributeDefinition: { category: string; name: string };
-        value: string | null;
-    }[],
-) {
-    return (
-        attributes.find(
-            (attribute) =>
-                attribute.attributeDefinition.category === 'information' &&
-                attribute.attributeDefinition.name === 'label',
-        )?.value ??
-        attributes.find(
-            (attribute) =>
-                attribute.attributeDefinition.category === 'information' &&
-                attribute.attributeDefinition.name === 'name',
-        )?.value
-    );
-}
 
 export default async function EntitiesPage({
     params,
@@ -65,93 +43,23 @@ export default async function EntitiesPage({
         typeof urlParams.completion === 'string' ? urlParams.completion : '';
     const stateFilter =
         typeof urlParams.state === 'string' ? urlParams.state : '';
+    const operationIds = parseDirectoryEntityOperationIds(
+        typeof urlParams.operations === 'string'
+            ? urlParams.operations
+            : undefined,
+    );
     const entityType = await getEntityTypeByName(entityTypeName);
     const createEntityBound = createEntity.bind(null, entityTypeName);
     const duplicateEntityBound = duplicateEntity.bind(null, entityTypeName);
-    const [entities, attributeDefinitions, inventoryConfig] = await Promise.all(
-        [
-            getEntitiesRaw(entityTypeName),
-            getAttributeDefinitions(entityTypeName),
-            getInventoryConfigByEntityTypeName(entityTypeName),
-        ],
-    );
-    const directInventoryItems = inventoryConfig
-        ? await getInventoryItemsByConfig(inventoryConfig.id)
-        : [];
-    const inventorySourceAttributeDefinition =
-        entityType?.inventorySourceAttributeDefinitionId && !inventoryConfig
-            ? await getAttributeDefinition(
-                  entityType.inventorySourceAttributeDefinitionId,
-              )
-            : undefined;
-    const shouldUseRelatedInventory =
-        !inventoryConfig &&
-        inventorySourceAttributeDefinition?.dataType ===
-            `ref:${entityTypeName}`;
-    const relatedInventoryConfig = shouldUseRelatedInventory
-        ? await getInventoryConfigByEntityTypeName(
-              inventorySourceAttributeDefinition.entityTypeName,
-          )
-        : undefined;
-    const relatedInventoryItems =
-        shouldUseRelatedInventory && relatedInventoryConfig
-            ? aggregateRelatedInventoryItems({
-                  defaultLowCountThreshold:
-                      relatedInventoryConfig.lowCountThreshold,
-                  sourceAttributeDefinitionId:
-                      inventorySourceAttributeDefinition.id,
-                  sourceEntities: await getEntitiesRaw(
-                      inventorySourceAttributeDefinition.entityTypeName,
-                  ),
-                  inventoryItems: await getInventoryItemsByConfig(
-                      relatedInventoryConfig.id,
-                  ),
-              })
-            : [];
-    const inventoryItems = inventoryConfig
-        ? directInventoryItems
-        : relatedInventoryItems;
-    const inventoryLowCountThreshold =
-        inventoryConfig?.lowCountThreshold ?? null;
-    const inventoryLinkConfig = inventoryConfig ?? relatedInventoryConfig;
-    const showInventoryColumn = Boolean(
-        inventoryConfig ?? relatedInventoryConfig,
-    );
-    const refDefinitions = attributeDefinitions.filter((definition) =>
-        definition.dataType.startsWith('ref:'),
-    );
-    const refEntityTypes = Array.from(
-        new Set(
-            refDefinitions.map(
-                (definition) => definition.dataType.split(':')[1],
-            ),
-        ),
-    );
-    const refEntitiesByType = await Promise.all(
-        refEntityTypes.map(async (refEntityTypeName) => ({
-            refEntityTypeName,
-            entities: await getEntitiesRaw(refEntityTypeName, 'published'),
-        })),
-    );
-    const refLabelsByDefinitionId = Object.fromEntries(
-        refDefinitions.map((definition) => {
-            const refEntityTypeName = definition.dataType.split(':')[1];
-            const refEntities =
-                refEntitiesByType.find(
-                    (entry) => entry.refEntityTypeName === refEntityTypeName,
-                )?.entities ?? [];
-            return [
-                definition.id,
-                Object.fromEntries(
-                    refEntities.map((entity) => [
-                        entity.id.toString(),
-                        getEntityLabel(entity.attributes) ??
-                            `${entity.entityType.label} ${entity.id}`,
-                    ]),
-                ),
-            ];
-        }),
-    );
+    const listContext = await getDirectoryEntityListContext(entityTypeName);
+    const initialPage = await listDirectoryEntitiesPageFromContext({
+        completion: completionFilter,
+        context: listContext,
+        entityTypeName,
+        operationIds,
+        sort: defaultDirectoryEntityListSort,
+        state: stateFilter,
+    });
 
     return (
         <FilterProvider>
@@ -165,10 +73,10 @@ export default async function EntitiesPage({
                     }
                     actions={
                         <Row spacing={2}>
-                            {inventoryLinkConfig && (
+                            {listContext.inventoryLinkConfig && (
                                 <Link
                                     href={KnownPages.InventoryConfig(
-                                        inventoryLinkConfig.id,
+                                        listContext.inventoryLinkConfig.id,
                                     )}
                                 >
                                     <Row
@@ -197,22 +105,31 @@ export default async function EntitiesPage({
                 <h1 className="sr-only">
                     {entityType?.label ?? entityTypeName}
                 </h1>
-                <EntitiesFilters />
+                <EntitiesFilters
+                    operationOptions={listContext.operationFilterOptions}
+                    selectedOperationIds={operationIds}
+                />
                 <Card>
                     <CardOverflow>
-                        <EntitiesTable
+                        <EntitiesList
                             entityTypeName={entityTypeName}
-                            entities={entities}
-                            attributeDefinitions={attributeDefinitions}
-                            inventoryItems={inventoryItems}
-                            showInventoryColumn={showInventoryColumn}
+                            attributeDefinitions={
+                                listContext.attributeDefinitions
+                            }
+                            initialPage={initialPage}
+                            showInventoryColumn={
+                                listContext.showInventoryColumn
+                            }
                             inventoryLowCountThreshold={
-                                inventoryLowCountThreshold
+                                listContext.inventoryLowCountThreshold
                             }
                             completionFilter={completionFilter}
                             stateFilter={stateFilter}
+                            operationIds={operationIds}
                             onDuplicate={duplicateEntityBound}
-                            refLabelsByDefinitionId={refLabelsByDefinitionId}
+                            refLabelsByDefinitionId={
+                                listContext.refLabelsByDefinitionId
+                            }
                         />
                     </CardOverflow>
                 </Card>
