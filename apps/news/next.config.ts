@@ -7,22 +7,59 @@ import {
 
 const app = getAppByName('news');
 const wwwApp = getAppByName('www');
+const newsBasePath = '/novosti';
+
+function isDevelopmentEnv() {
+    return (
+        process.env.NODE_ENV === 'development' ||
+        process.env.NEXT_PUBLIC_VERCEL_ENV === 'development'
+    );
+}
+
+function isProductionDeployment() {
+    return (
+        process.env.VERCEL_ENV === 'production' ||
+        process.env.NEXT_PUBLIC_VERCEL_ENV === 'production'
+    );
+}
+
+function trimTrailingSlash(value: string) {
+    return value.replace(/\/+$/u, '');
+}
+
+function newsRootRedirectDestination() {
+    if (!isProductionDeployment()) {
+        return newsBasePath;
+    }
+
+    const wwwOrigin = process.env.NEXT_PUBLIC_GREDICE_WWW_ORIGIN?.trim();
+    return `${wwwOrigin ? trimTrailingSlash(wwwOrigin) : 'https://www.gredice.com'}${newsBasePath}`;
+}
 
 const nextConfig: NextConfig = {
-    basePath: '/novosti',
+    basePath: newsBasePath,
     reactStrictMode: true,
     typedRoutes: true,
     reactCompiler: true,
     logging: {
         browserToTerminal: true,
     },
+    async redirects() {
+        return [
+            {
+                source: '/',
+                destination: newsRootRedirectDestination(),
+                permanent: true,
+                basePath: false,
+            },
+        ];
+    },
     async rewrites() {
-        const isDev =
-            process.env.NODE_ENV === 'development' ||
-            process.env.NEXT_PUBLIC_VERCEL_ENV === 'development';
         const apiHost =
             process.env.GREDICE_API_HOST ??
-            (isDev ? 'http://localhost:3005' : 'https://api.gredice.com');
+            (isDevelopmentEnv()
+                ? 'http://localhost:3005'
+                : 'https://api.gredice.com');
 
         return [
             {
