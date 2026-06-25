@@ -14,6 +14,9 @@ test.describe('Garden operations HUD', () => {
         await page.getByTitle('Status radnji').click();
 
         await expect(page.getByText('Radnje u košari')).toBeVisible();
+        await expect(
+            page.getByRole('tooltip').filter({ hasText: 'Statusi radnje' }),
+        ).toHaveCount(0);
         await expect(page.getByText('Zalijevanje u košari')).toHaveCount(2);
         await expect(page.getByText('Sadnja: Maslac salata')).toBeVisible();
         await expect(
@@ -124,8 +127,27 @@ test.describe('Garden operations HUD', () => {
         const cards = page.locator('[data-garden-operation-card]');
         await expect(cards.nth(10)).toBeVisible();
         expect(await cards.count()).toBeGreaterThan(10);
+        const statusTooltip = page
+            .getByRole('tooltip')
+            .filter({ hasText: 'Statusi radnje' });
+        await expect(statusTooltip).toHaveCount(0);
+        const firstStatusTrigger = cards.first().getByRole('button', {
+            name: /Status radnje:/,
+        });
+        await firstStatusTrigger.click();
+        await expect(statusTooltip).toHaveCount(1);
+        await expect(
+            statusTooltip.getByText(/\d{1,2}:\d{2}:\d{2}/),
+        ).toHaveCount(0);
+        await page.mouse.move(0, 0);
+        await expect(statusTooltip).toHaveCount(0);
         await expect(cards.first().getByLabel('Tijek radnje')).toBeVisible();
         await expect(cards.nth(5).getByLabel('Tijek radnje')).toBeVisible();
+        await cards.first().getByLabel('Tijek radnje').hover();
+        await expect(statusTooltip).toHaveCount(1);
+        await expect(
+            statusTooltip.getByText(/\d{1,2}:\d{2}:\d{2}/),
+        ).toHaveCount(0);
 
         const firstCardBox = await cards.first().boundingBox();
         const sixthCardBox = await cards.nth(5).boundingBox();
