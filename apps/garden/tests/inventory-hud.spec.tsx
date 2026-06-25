@@ -1,5 +1,26 @@
 import { expect, test } from '@playwright/experimental-ct-react';
-import { InventoryHudGardenBoxesOpenStory } from './InventoryHudStory';
+import {
+    InventoryHudClosedStory,
+    InventoryHudGardenBoxesOpenStory,
+} from './InventoryHudStory';
+
+test('inventory HUD badge counts backpack items without garden box contents', async ({
+    mount,
+    page,
+}) => {
+    await mount(<InventoryHudClosedStory />);
+
+    const inventoryButton = page.locator('button[title="Inventar"]');
+
+    await expect(inventoryButton).toBeVisible();
+    await expect(inventoryButton.getByText('3', { exact: true })).toBeVisible();
+    await expect(inventoryButton.getByText('32', { exact: true })).toHaveCount(
+        0,
+    );
+    await expect(inventoryButton.getByText('29', { exact: true })).toHaveCount(
+        0,
+    );
+});
 
 test('inventory can open directly on garden boxes tab', async ({
     mount,
