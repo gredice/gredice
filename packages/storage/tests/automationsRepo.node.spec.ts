@@ -1087,13 +1087,13 @@ test('monthly schedule automation enqueues once per configured period', async ()
     });
 
     const firstResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-15T08:00:00.000Z'),
+        now: new Date('2026-06-14T08:00:00.000Z'),
     });
     const duplicateResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-15T09:00:00.000Z'),
+        now: new Date('2026-06-14T09:00:00.000Z'),
     });
     const offDayResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-16T08:00:00.000Z'),
+        now: new Date('2026-06-15T08:00:00.000Z'),
     });
 
     assert.strictEqual(firstResult.enqueuedRuns, 2);
@@ -1109,6 +1109,7 @@ test('monthly schedule automation enqueues once per configured period', async ()
         runs[0]?.sourceAggregateId,
         'trigger.scheduleMonthly:Europe/Zagreb:2026-06:day-15',
     );
+    assert.strictEqual(runs[0]?.input.occurrenceDate, '2026-06-15');
     for (const run of runs) {
         await completeAutomationRun({
             id: run.id,
@@ -1132,13 +1133,13 @@ test('daily schedule automation enqueues once per local day and executes', async
     });
 
     const firstResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-23T08:00:00.000Z'),
+        now: new Date('2026-06-22T08:00:00.000Z'),
     });
     const duplicateResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-23T21:00:00.000Z'),
+        now: new Date('2026-06-22T21:00:00.000Z'),
     });
     const nextDayResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-24T08:00:00.000Z'),
+        now: new Date('2026-06-23T08:00:00.000Z'),
     });
 
     assert.strictEqual(firstResult.enqueuedRuns, 3);
@@ -1158,6 +1159,13 @@ test('daily schedule automation enqueues once per local day and executes', async
         'daily',
         'daily',
     ]);
+    assert.deepStrictEqual(
+        runs
+            .map((run) => run.input.occurrenceDate)
+            .filter((occurrenceDate) => typeof occurrenceDate === 'string')
+            .sort(),
+        ['2026-06-23', '2026-06-24'],
+    );
 
     await processDueAutomationRuns({
         limit: 10,
@@ -1186,16 +1194,16 @@ test('weekly schedule automation supports selected weekdays', async () => {
     });
 
     const offDayResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-22T08:00:00.000Z'),
+        now: new Date('2026-06-21T08:00:00.000Z'),
     });
     const tuesdayResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-23T08:00:00.000Z'),
+        now: new Date('2026-06-22T08:00:00.000Z'),
     });
     const duplicateTuesdayResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-23T09:00:00.000Z'),
+        now: new Date('2026-06-22T09:00:00.000Z'),
     });
     const fridayResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-26T08:00:00.000Z'),
+        now: new Date('2026-06-25T08:00:00.000Z'),
     });
 
     assert.strictEqual(offDayResult.enqueuedRuns, 1);
@@ -1214,6 +1222,13 @@ test('weekly schedule automation supports selected weekdays', async () => {
             .sort(),
         ['friday', 'tuesday'],
     );
+    assert.deepStrictEqual(
+        runs
+            .map((run) => run.input.occurrenceDate)
+            .filter((occurrenceDate) => typeof occurrenceDate === 'string')
+            .sort(),
+        ['2026-06-23', '2026-06-26'],
+    );
 });
 
 test('biweekly schedule automation respects anchor week', async () => {
@@ -1231,17 +1246,17 @@ test('biweekly schedule automation respects anchor week', async () => {
     });
 
     const firstWeekResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-02T08:00:00.000Z'),
+        now: new Date('2026-06-01T08:00:00.000Z'),
     });
     const skippedWeekResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-09T08:00:00.000Z'),
+        now: new Date('2026-06-08T08:00:00.000Z'),
     });
     const secondOccurrenceResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-16T08:00:00.000Z'),
+        now: new Date('2026-06-15T08:00:00.000Z'),
     });
     const duplicateSecondOccurrenceResult =
         await enqueueAutomationRunsFromSchedules({
-            now: new Date('2026-06-16T09:00:00.000Z'),
+            now: new Date('2026-06-15T09:00:00.000Z'),
         });
 
     assert.strictEqual(firstWeekResult.enqueuedRuns, 3);
@@ -1259,6 +1274,13 @@ test('biweekly schedule automation respects anchor week', async () => {
             .filter((weekOffset) => typeof weekOffset === 'number')
             .sort(),
         [0, 2],
+    );
+    assert.deepStrictEqual(
+        runs
+            .map((run) => run.input.occurrenceDate)
+            .filter((occurrenceDate) => typeof occurrenceDate === 'string')
+            .sort(),
+        ['2026-06-02', '2026-06-16'],
     );
 });
 
@@ -1339,7 +1361,7 @@ test('monthly farm inventory automation creates accepted scheduled farm tasks', 
         .where(eq(farms.id, deletedFarmId));
     const activeFarms = (await getFarms()).filter((farm) => !farm.isDeleted);
     const occurrenceDate = new Date('2026-07-01T00:00:00.000Z');
-    const enqueuedAt = new Date('2026-07-01T08:00:00.000Z');
+    const enqueuedAt = new Date('2026-06-30T08:00:00.000Z');
     const operationConfigs = monthlyFarmInventoryOperationConfigs;
     const preexistingFarm = activeFarms[0];
     assert.ok(preexistingFarm);
@@ -1378,10 +1400,10 @@ test('monthly farm inventory automation creates accepted scheduled farm tasks', 
         now: enqueuedAt,
     });
     const duplicateResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-07-01T09:00:00.000Z'),
+        now: new Date('2026-06-30T09:00:00.000Z'),
     });
     const offDayResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-07-02T08:00:00.000Z'),
+        now: new Date('2026-07-01T08:00:00.000Z'),
     });
     assert.strictEqual(enqueueResult.enqueuedRuns, 2);
     assert.strictEqual(duplicateResult.enqueuedRuns, 0);
@@ -1395,6 +1417,8 @@ test('monthly farm inventory automation creates accepted scheduled farm tasks', 
         scheduledRun.sourceAggregateId,
         'trigger.schedule:Europe/Zagreb:monthly:2026-07:day-1',
     );
+    assert.strictEqual(scheduledRun.input.occurrenceDate, '2026-07-01');
+    assert.strictEqual(scheduledRun.input.enqueuedAt, enqueuedAt.toISOString());
 
     const dryRun = await createAutomationRun({
         automationDefinition: definition,
@@ -1630,13 +1654,13 @@ test('default farm raised-bed weeding automation filters farms and prevents dupl
     assert.strictEqual(dryRunActionStep.output.skippedCount, 0);
 
     const firstResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-01-05T08:00:00.000Z'),
+        now: new Date('2026-01-04T08:00:00.000Z'),
     });
     const duplicateResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-01-05T09:00:00.000Z'),
+        now: new Date('2026-01-04T09:00:00.000Z'),
     });
     const offWeekResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-01-12T08:00:00.000Z'),
+        now: new Date('2026-01-11T08:00:00.000Z'),
     });
 
     assert.strictEqual(firstResult.enqueuedRuns, 2);
@@ -1691,6 +1715,7 @@ test('default farm raised-bed weeding automation filters farms and prevents dupl
     ).find((run) => run.source === 'schedule');
     assert.ok(firstRun);
     assert.strictEqual(firstRun.input.weekOffset, 0);
+    assert.strictEqual(firstRun.input.occurrenceDate, '2026-01-05');
 
     const replayRun = await createAutomationRun({
         automationDefinition: enabledDefinition,
@@ -1753,17 +1778,17 @@ test('default raised-bed photo automation enqueues only Tuesday and Friday occur
     assert.strictEqual(await getPhotoRunCount(), 0);
 
     await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-23T08:00:00.000Z'),
+        now: new Date('2026-06-22T08:00:00.000Z'),
     });
     assert.strictEqual(await getPhotoRunCount(), 1);
 
     await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-23T09:00:00.000Z'),
+        now: new Date('2026-06-22T09:00:00.000Z'),
     });
     assert.strictEqual(await getPhotoRunCount(), 1);
 
     await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-26T08:00:00.000Z'),
+        now: new Date('2026-06-25T08:00:00.000Z'),
     });
     assert.strictEqual(await getPhotoRunCount(), 2);
 });
@@ -1928,17 +1953,17 @@ test('default raised-bed detailed inspection automation creates one weekly opera
         ).filter((run) => run.source === 'schedule').length;
 
     await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-22T08:00:00.000Z'),
+        now: new Date('2026-06-21T08:00:00.000Z'),
     });
     assert.strictEqual(await getInspectionRunCount(), 1);
 
     await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-22T09:00:00.000Z'),
+        now: new Date('2026-06-21T09:00:00.000Z'),
     });
     assert.strictEqual(await getInspectionRunCount(), 1);
 
     await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-24T08:00:00.000Z'),
+        now: new Date('2026-06-23T08:00:00.000Z'),
     });
     assert.strictEqual(await getInspectionRunCount(), 1);
 
@@ -1954,6 +1979,7 @@ test('default raised-bed detailed inspection automation creates one weekly opera
         })
     ).find((run) => run.source === 'schedule');
     assert.ok(scheduledRun);
+    assert.strictEqual(scheduledRun.input.occurrenceDate, '2026-06-22');
 
     const operations = await getRaisedBedOperationsByScheduleRange({
         raisedBedIds: createdRaisedBedIds,

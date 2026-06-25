@@ -63,8 +63,9 @@ attempts, scheduled runs, and periodic queue execution.
 bounded phases:
 
 1. Ensure default automation definitions exist.
-2. Enqueue due scheduled automation runs, using deterministic occurrence keys so
-   repeated cron ticks do not duplicate the same period.
+2. Enqueue due scheduled automation runs one local calendar day before the
+   configured occurrence, using deterministic occurrence keys so repeated cron
+   ticks do not duplicate the same period.
 3. Read new domain events after the cursor and enqueue matching enabled
    automation runs.
 4. Recover stale running jobs.
@@ -87,7 +88,7 @@ The API cron route is protected with `CRON_SECRET` and is registered in
 { "path": "/api/internal/cron/automations", "schedule": "* * * * *" }
 ```
 
-The cron remains bounded and idempotent: it enqueues missed schedule/event runs,
+The cron remains bounded and idempotent: it enqueues due schedule/event runs,
 recovers stale locks, and claims limited batches of due queued/retrying runs.
 The API cron currently allows up to 10 processing batches, with a 45-second
 processing budget and a 5-second safety margin. This lets fast skipped/no-op
@@ -106,11 +107,13 @@ MVP modules:
 - `trigger.domainEvent`: starts from a stored domain event and filters by event
   type.
 - `trigger.schedule`: starts on a daily, weekly, biweekly, or monthly cadence.
-  Weekly and biweekly schedules can target one weekday or a JSON array of
-  selected weekdays. Biweekly schedules require an anchor date so alternating
+  The cron creates the run on the previous local calendar day, while
+  `occurrenceDate` remains the configured work date used by task-creating
+  actions. Weekly and biweekly schedules can target one weekday or a JSON array
+  of selected weekdays. Biweekly schedules require an anchor date so alternating
   week parity stays explicit.
 - `trigger.scheduleMonthly`: legacy monthly trigger that starts once per month
-  on the configured local day.
+  on the day before the configured local day.
 - `condition.eventDataEquals`: compares a value in event data.
 - `condition.operationMatches`: checks operation status, entity id, or
   operation application.
@@ -148,10 +151,11 @@ MVP modules:
 - `action.log`: records a no-op step for diagnostics.
 
 The managed default `default.monthly-farm-inventory-operations` uses the shared
-monthly `trigger.schedule` on day 1 in `Europe/Zagreb` and creates the published
-internal farm inventory operation set (`inventoryRaisedBedBoards` through
-`inventoryPlasticDeliveryBags`, operation entity ids 554-565) for each active
-farm.
+monthly `trigger.schedule` on day 1 in `Europe/Zagreb`; the run is queued on the
+previous local day and creates the published internal farm inventory operation
+set (`inventoryRaisedBedBoards` through `inventoryPlasticDeliveryBags`,
+operation entity ids 554-565) for each active farm on the configured occurrence
+date.
 
 When adding a module, define metadata, config validation, dry-run behavior, and
 the executor function in the registry. Prefer idempotent repository functions for
@@ -167,8 +171,9 @@ remain idempotent because replays and retries can run the same graph again.
 The managed raised-bed photo automation uses `trigger.schedule` with
 `daysOfWeek: ["tuesday", "friday"]` in the `Europe/Zagreb` time zone and
 `action.createRaisedBedOperations` with operation entity `301`
-(`raisedBedFullPhoto`, label `Fotografiranje gredice`). Duplicate prevention is
-scoped to the raised bed, operation entity, and weekday occurrence date; existing
+(`raisedBedFullPhoto`, label `Fotografiranje gredice`). Tuesday work is created
+on Monday and Friday work is created on Thursday. Duplicate prevention is scoped
+to the raised bed, operation entity, and weekday occurrence date; existing
 non-canceled/non-failed operations for the same day are counted as existing
 skips.
 
