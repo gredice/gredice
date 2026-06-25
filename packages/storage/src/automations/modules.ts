@@ -571,6 +571,7 @@ type FarmInventoryOperationConfig = {
     entityId: number;
     entityTypeName: string;
     scheduledInDays: number;
+    requiresGreenhouseOrOutletPlants: boolean;
 };
 
 const greenhouseSeedlingPlantStatuses = new Set([
@@ -606,6 +607,25 @@ type ExistingOperationSkip = {
     scheduledDate: string;
 };
 
+type GreenhouseFieldCountsByFarmId = Map<
+    number,
+    { greenhouseRaisedBedIds: Set<number>; greenhouseFieldCount: number }
+>;
+
+type GreenhouseOrOutletPlantEligibilitySnapshot = {
+    greenhouseCountsByFarmId: GreenhouseFieldCountsByFarmId;
+    activeOutletOfferCount: number;
+    availabilityDate: Date;
+};
+
+type IneligibleFarmInventoryOperationSkip = {
+    farmId: number;
+    entityId: number;
+    entityTypeName: string;
+    scheduledDate: string;
+    reason: string;
+};
+
 function parseFarmInventoryOperationConfigs(
     value: unknown,
 ): FarmInventoryOperationConfig[] {
@@ -622,6 +642,14 @@ function parseFarmInventoryOperationConfigs(
         const entityTypeName = Reflect.get(item, 'entityTypeName');
         const scheduledInDays = Reflect.get(item, 'scheduledInDays');
         const hasScheduledInDays = Reflect.has(item, 'scheduledInDays');
+        const requiresGreenhouseOrOutletPlants = Reflect.get(
+            item,
+            'requiresGreenhouseOrOutletPlants',
+        );
+        const hasGreenhouseOrOutletRequirement = Reflect.has(
+            item,
+            'requiresGreenhouseOrOutletPlants',
+        );
         if (
             typeof entityId !== 'number' ||
             !Number.isInteger(entityId) ||
@@ -636,6 +664,12 @@ function parseFarmInventoryOperationConfigs(
         ) {
             return [];
         }
+        if (
+            hasGreenhouseOrOutletRequirement &&
+            typeof requiresGreenhouseOrOutletPlants !== 'boolean'
+        ) {
+            return [];
+        }
 
         return [
             {
@@ -647,6 +681,10 @@ function parseFarmInventoryOperationConfigs(
                         : 'operation',
                 scheduledInDays:
                     typeof scheduledInDays === 'number' ? scheduledInDays : 0,
+                requiresGreenhouseOrOutletPlants:
+                    typeof requiresGreenhouseOrOutletPlants === 'boolean'
+                        ? requiresGreenhouseOrOutletPlants
+                        : false,
             },
         ];
     });
@@ -661,7 +699,7 @@ function validateFarmInventoryOperationsConfig(config: AutomationJsonObject) {
     const validOperations = parseFarmInventoryOperationConfigs(operations);
     if (validOperations.length !== operations.length) {
         return [
-            'Each operation must include a positive integer entityId. Optional fields: entityTypeName, integer scheduledInDays.',
+            'Each operation must include a positive integer entityId. Optional fields: entityTypeName, integer scheduledInDays, boolean requiresGreenhouseOrOutletPlants.',
         ];
     }
 
@@ -688,6 +726,7 @@ function parseSingleOperationConfig(
         entityId,
         entityTypeName: getString(config, 'entityTypeName') ?? 'operation',
         scheduledInDays: scheduledInDays ?? 0,
+        requiresGreenhouseOrOutletPlants: false,
     };
 }
 
@@ -865,7 +904,7 @@ function isCurrentlyGreenhouseSeedling(field: RaisedBedFieldForGreenhouseCare) {
     );
 }
 
-async function getGreenhouseFieldCountsByFarmId() {
+async function getGreenhouseFieldCountsByFarmId(): Promise<GreenhouseFieldCountsByFarmId> {
     const [raisedBeds, gardens] = await Promise.all([
         getAllRaisedBeds(),
         getGardens(),
@@ -907,6 +946,46 @@ async function getGreenhouseFieldCountsByFarmId() {
     }
 
     return countsByFarmId;
+}
+
+async function getGreenhouseOrOutletPlantEligibilitySnapshot(
+    availabilityDate: Date,
+): Promise<GreenhouseOrOutletPlantEligibilitySnapshot> {
+    const [greenhouseCountsByFarmId, activeOutletOffers] = await Promise.all([
+        getGreenhouseFieldCountsByFarmId(),
+        getOutletOffers({ now: availabilityDate }),
+    ]);
+
+    return {
+        greenhouseCountsByFarmId,
+        activeOutletOfferCount: activeOutletOffers.length,
+        availabilityDate,
+    };
+}
+
+function getGreenhouseOrOutletPlantEligibilityForFarm({
+    farmId,
+    snapshot,
+}: {
+    farmId: number;
+    snapshot: GreenhouseOrOutletPlantEligibilitySnapshot;
+}): GreenhouseFarmEligibility {
+    const greenhouseCounts = snapshot.greenhouseCountsByFarmId.get(farmId);
+    const greenhouseFieldCount = greenhouseCounts?.greenhouseFieldCount ?? 0;
+    const greenhouseRaisedBedCount =
+        greenhouseCounts?.greenhouseRaisedBedIds.size ?? 0;
+    const reasons = [
+        ...(greenhouseFieldCount > 0 ? ['greenhouseFields'] : []),
+        ...(snapshot.activeOutletOfferCount > 0 ? ['activeOutletStock'] : []),
+    ];
+
+    return {
+        farmId,
+        greenhouseRaisedBedCount,
+        greenhouseFieldCount,
+        activeOutletOfferCount: snapshot.activeOutletOfferCount,
+        reasons,
+    };
 }
 
 function parseRaisedBedFieldAggregateId(aggregateId: string) {
@@ -1720,7 +1799,7 @@ const createFarmInventoryOperationsActionModule: AutomationModule = {
     kind: 'action',
     title: 'Create farm inventory operations',
     description:
-        'Creates configured inventory task operations for every active farm.',
+        'Creates configured inventory task operations for every active farm, with optional greenhouse/outlet plant eligibility per operation.',
     category: 'Operations',
     configFields: [
         {
@@ -1729,7 +1808,7 @@ const createFarmInventoryOperationsActionModule: AutomationModule = {
             type: 'json',
             required: true,
             description:
-                'JSON array: [{"entityId": 123, "entityTypeName": "operation", "scheduledInDays": 0}]',
+                'JSON array: [{"entityId": 123, "entityTypeName": "operation", "scheduledInDays": 0, "requiresGreenhouseOrOutletPlants": false}]',
         },
     ],
     inputDescription: 'A monthly schedule occurrence.',
@@ -1765,15 +1844,29 @@ const createFarmInventoryOperationsActionModule: AutomationModule = {
         const activeFarms = (await getFarms()).filter(
             (farm) => !farm.isDeleted,
         );
+        const requiresGreenhouseOrOutletEligibility = operationConfigs.some(
+            (operationConfig) =>
+                operationConfig.requiresGreenhouseOrOutletPlants,
+        );
+        const greenhouseOrOutletEligibilitySnapshot =
+            requiresGreenhouseOrOutletEligibility
+                ? await getGreenhouseOrOutletPlantEligibilitySnapshot(
+                      getScheduleReferenceDate(context.run.input),
+                  )
+                : null;
 
         if (activeFarms.length === 0) {
             return skip('No active farms were found.');
         }
 
         let skippedExistingCount = 0;
+        let skippedIneligibleCount = 0;
+        let eligibleOperationTargetCount = 0;
         let repairedScheduledCount = 0;
         const createdOperationIds: number[] = [];
         const repairedScheduledOperationIds: number[] = [];
+        const skippedIneligibleOperations: IneligibleFarmInventoryOperationSkip[] =
+            [];
 
         for (const farm of activeFarms) {
             const existingOperations =
@@ -1814,6 +1907,29 @@ const createFarmInventoryOperationsActionModule: AutomationModule = {
                     referenceDate,
                     operationConfig.scheduledInDays,
                 );
+                if (
+                    operationConfig.requiresGreenhouseOrOutletPlants &&
+                    greenhouseOrOutletEligibilitySnapshot
+                ) {
+                    const eligibility =
+                        getGreenhouseOrOutletPlantEligibilityForFarm({
+                            farmId: farm.id,
+                            snapshot: greenhouseOrOutletEligibilitySnapshot,
+                        });
+                    if (eligibility.reasons.length === 0) {
+                        skippedIneligibleCount += 1;
+                        skippedIneligibleOperations.push({
+                            farmId: farm.id,
+                            entityId: operationConfig.entityId,
+                            entityTypeName: operationConfig.entityTypeName,
+                            scheduledDate: scheduledDate.toISOString(),
+                            reason: 'No greenhouse-located plants or active outlet seedlings.',
+                        });
+                        continue;
+                    }
+                }
+
+                eligibleOperationTargetCount += 1;
                 const operationKey = farmOperationKey({
                     entityId: operationConfig.entityId,
                     entityTypeName: operationConfig.entityTypeName,
@@ -1870,18 +1986,26 @@ const createFarmInventoryOperationsActionModule: AutomationModule = {
 
         if (context.dryRun) {
             const projectedCreateCount =
-                activeFarms.length * operationConfigs.length -
-                skippedExistingCount;
+                eligibleOperationTargetCount - skippedExistingCount;
             return success({
                 dryRun: true,
                 farmCount: activeFarms.length,
                 operationCount: operationConfigs.length,
                 createdCount: projectedCreateCount,
                 projectedCreateCount,
-                skippedCount: skippedExistingCount,
+                eligibleOperationTargetCount,
+                skippedCount: skippedExistingCount + skippedIneligibleCount,
                 skippedExistingCount,
                 skippedScheduledCount: skippedExistingCount,
+                skippedIneligibleCount,
+                skippedIneligibleOperations,
                 repairedScheduledCount,
+                activeOutletOfferCount:
+                    greenhouseOrOutletEligibilitySnapshot?.activeOutletOfferCount ??
+                    null,
+                outletAvailabilityCheckedAt:
+                    greenhouseOrOutletEligibilitySnapshot?.availabilityDate.toISOString() ??
+                    null,
             });
         }
 
@@ -1889,16 +2013,50 @@ const createFarmInventoryOperationsActionModule: AutomationModule = {
             createdOperationIds.length === 0 &&
             repairedScheduledOperationIds.length === 0
         ) {
+            if (eligibleOperationTargetCount === 0) {
+                return skip(
+                    'No active farms have greenhouse or outlet plants for the configured farm inventory operations.',
+                    {
+                        farmCount: activeFarms.length,
+                        operationCount: operationConfigs.length,
+                        createdCount: 0,
+                        eligibleOperationTargetCount,
+                        skippedCount:
+                            skippedExistingCount + skippedIneligibleCount,
+                        skippedExistingCount,
+                        skippedScheduledCount: skippedExistingCount,
+                        skippedIneligibleCount,
+                        skippedIneligibleOperations,
+                        repairedScheduledCount: 0,
+                        activeOutletOfferCount:
+                            greenhouseOrOutletEligibilitySnapshot?.activeOutletOfferCount ??
+                            null,
+                        outletAvailabilityCheckedAt:
+                            greenhouseOrOutletEligibilitySnapshot?.availabilityDate.toISOString() ??
+                            null,
+                    },
+                );
+            }
+
             return skip(
                 'All configured farm inventory operations already exist.',
                 {
                     farmCount: activeFarms.length,
                     operationCount: operationConfigs.length,
                     createdCount: 0,
-                    skippedCount: skippedExistingCount,
+                    eligibleOperationTargetCount,
+                    skippedCount: skippedExistingCount + skippedIneligibleCount,
                     skippedExistingCount,
                     skippedScheduledCount: skippedExistingCount,
+                    skippedIneligibleCount,
+                    skippedIneligibleOperations,
                     repairedScheduledCount: 0,
+                    activeOutletOfferCount:
+                        greenhouseOrOutletEligibilitySnapshot?.activeOutletOfferCount ??
+                        null,
+                    outletAvailabilityCheckedAt:
+                        greenhouseOrOutletEligibilitySnapshot?.availabilityDate.toISOString() ??
+                        null,
                 },
             );
         }
@@ -1908,11 +2066,20 @@ const createFarmInventoryOperationsActionModule: AutomationModule = {
             createdCount: createdOperationIds.length,
             repairedScheduledOperationIds,
             repairedScheduledCount: repairedScheduledOperationIds.length,
-            skippedCount: skippedExistingCount,
+            skippedCount: skippedExistingCount + skippedIneligibleCount,
             skippedExistingCount,
             skippedScheduledCount: skippedExistingCount,
+            skippedIneligibleCount,
+            skippedIneligibleOperations,
             farmCount: activeFarms.length,
             operationCount: operationConfigs.length,
+            eligibleOperationTargetCount,
+            activeOutletOfferCount:
+                greenhouseOrOutletEligibilitySnapshot?.activeOutletOfferCount ??
+                null,
+            outletAvailabilityCheckedAt:
+                greenhouseOrOutletEligibilitySnapshot?.availabilityDate.toISOString() ??
+                null,
         });
     },
 };
@@ -1972,37 +2139,28 @@ const createGreenhouseSeedlingWateringOperationsActionModule: AutomationModule =
                 operationConfig.scheduledInDays,
             );
             const rangeEnd = addUtcDays(scheduledDate, 1);
-            const [activeFarms, greenhouseCountsByFarmId, activeOutletOffers] =
-                await Promise.all([
-                    getFarms().then((farms) =>
-                        farms.filter((farm) => !farm.isDeleted),
-                    ),
-                    getGreenhouseFieldCountsByFarmId(),
-                    getOutletOffers({ now: availabilityDate }),
-                ]);
+            const [activeFarms, eligibilitySnapshot] = await Promise.all([
+                getFarms().then((farms) =>
+                    farms.filter((farm) => !farm.isDeleted),
+                ),
+                getGreenhouseOrOutletPlantEligibilitySnapshot(availabilityDate),
+            ]);
 
             if (activeFarms.length === 0) {
                 return skip('No active farms were found.');
             }
 
-            const activeOutletOfferCount = activeOutletOffers.length;
             const eligibleFarms: GreenhouseFarmEligibility[] = [];
             const skippedFarms: GreenhouseFarmSkip[] = [];
 
             for (const farm of activeFarms) {
-                const greenhouseCounts = greenhouseCountsByFarmId.get(farm.id);
-                const greenhouseFieldCount =
-                    greenhouseCounts?.greenhouseFieldCount ?? 0;
-                const greenhouseRaisedBedCount =
-                    greenhouseCounts?.greenhouseRaisedBedIds.size ?? 0;
-                const reasons = [
-                    ...(greenhouseFieldCount > 0 ? ['greenhouseFields'] : []),
-                    ...(activeOutletOfferCount > 0
-                        ? ['activeOutletStock']
-                        : []),
-                ];
+                const eligibility =
+                    getGreenhouseOrOutletPlantEligibilityForFarm({
+                        farmId: farm.id,
+                        snapshot: eligibilitySnapshot,
+                    });
 
-                if (reasons.length === 0) {
+                if (eligibility.reasons.length === 0) {
                     skippedFarms.push({
                         farmId: farm.id,
                         reason: 'No greenhouse-located plants or active outlet seedlings.',
@@ -2010,13 +2168,7 @@ const createGreenhouseSeedlingWateringOperationsActionModule: AutomationModule =
                     continue;
                 }
 
-                eligibleFarms.push({
-                    farmId: farm.id,
-                    greenhouseRaisedBedCount,
-                    greenhouseFieldCount,
-                    activeOutletOfferCount,
-                    reasons,
-                });
+                eligibleFarms.push(eligibility);
             }
 
             const existingOperationSkips: ExistingOperationSkip[] = [];
@@ -2114,8 +2266,10 @@ const createGreenhouseSeedlingWateringOperationsActionModule: AutomationModule =
                 skippedFarmCount: skippedFarms.length,
                 existingOperationSkips,
                 existingOperationSkipCount: existingOperationSkips.length,
-                activeOutletOfferCount,
-                outletAvailabilityCheckedAt: availabilityDate.toISOString(),
+                activeOutletOfferCount:
+                    eligibilitySnapshot.activeOutletOfferCount,
+                outletAvailabilityCheckedAt:
+                    eligibilitySnapshot.availabilityDate.toISOString(),
                 projectedCreateCount:
                     eligibleFarms.length - existingOperationSkips.length,
             };
