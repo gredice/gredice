@@ -1022,31 +1022,46 @@ function buildStatusProgressSteps(
 
 function OperationStatusProgressIndicator({
     steps,
+    label,
 }: {
     steps: OperationStatusProgressStep[];
+    label?: string;
 }) {
+    const dots = steps.map((step) => (
+        <span
+            key={step.status}
+            className={cx(
+                'size-1.5 rounded-full border border-tertiary bg-background',
+                step.reached && !step.failed && 'border-green-600 bg-green-500',
+                step.pending &&
+                    'animate-pulse border-green-500 bg-green-500/20',
+                step.skipped && 'border-muted-foreground/30 bg-muted',
+                step.failed && 'border-red-500 bg-red-500/20',
+                step.current && 'size-2.5 border-2',
+            )}
+        />
+    ));
+
+    if (label) {
+        return (
+            <span
+                aria-label={label}
+                className="flex shrink-0 items-center gap-0.5"
+                data-operation-status-progress
+                role="img"
+            >
+                {dots}
+            </span>
+        );
+    }
+
     return (
         <span
             aria-hidden
             className="flex shrink-0 items-center gap-0.5"
             data-operation-status-progress
         >
-            {steps.map((step) => (
-                <span
-                    key={step.status}
-                    className={cx(
-                        'size-1.5 rounded-full border border-tertiary bg-background',
-                        step.reached &&
-                            !step.failed &&
-                            'border-green-600 bg-green-500',
-                        step.pending &&
-                            'animate-pulse border-green-500 bg-green-500/20',
-                        step.skipped && 'border-muted-foreground/30 bg-muted',
-                        step.failed && 'border-red-500 bg-red-500/20',
-                        step.current && 'size-2.5 border-2',
-                    )}
-                />
-            ))}
+            {dots}
         </span>
     );
 }
@@ -1128,6 +1143,7 @@ function OperationStatusSummary({
         () => buildStatusProgressSteps(operation, status),
         [operation, status],
     );
+    const progressLabel = status === 'scheduled' ? undefined : 'Tijek radnje';
 
     return (
         <Tooltip delayDuration={100}>
@@ -1139,7 +1155,10 @@ function OperationStatusSummary({
                 >
                     <span className="flex min-w-0 max-w-full items-center justify-end gap-1.5">
                         <StatusBadge status={status} className="justify-end" />
-                        <OperationStatusProgressIndicator steps={steps} />
+                        <OperationStatusProgressIndicator
+                            label={progressLabel}
+                            steps={steps}
+                        />
                     </span>
                 </button>
             </TooltipTrigger>
