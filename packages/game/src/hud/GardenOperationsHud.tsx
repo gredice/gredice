@@ -1170,7 +1170,8 @@ function OperationStatusSummary({
                     aria-label={`Status radnje: ${config.label}`}
                     className="flex max-w-[48%] shrink-0 flex-col items-end rounded-md px-1 py-0.5 text-right transition hover:bg-muted/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     onBlur={clearTooltipIntent}
-                    onClick={() => {
+                    onClick={(event) => {
+                        event.preventDefault();
                         tooltipIntentRef.current = true;
                         setTooltipOpen(true);
                     }}

@@ -131,6 +131,16 @@ test.describe('Garden operations HUD', () => {
             .getByRole('tooltip')
             .filter({ hasText: 'Statusi radnje' });
         await expect(statusTooltip).toHaveCount(0);
+        const firstStatusTrigger = cards.first().getByRole('button', {
+            name: /Status radnje:/,
+        });
+        await firstStatusTrigger.click();
+        await expect(statusTooltip).toHaveCount(1);
+        await expect(
+            statusTooltip.getByText(/\d{1,2}:\d{2}:\d{2}/),
+        ).toHaveCount(0);
+        await page.mouse.move(0, 0);
+        await expect(statusTooltip).toHaveCount(0);
         await expect(cards.first().getByLabel('Tijek radnje')).toBeVisible();
         await expect(cards.nth(5).getByLabel('Tijek radnje')).toBeVisible();
         await cards.first().getByLabel('Tijek radnje').hover();
