@@ -425,6 +425,11 @@ const appliedRaisedBedOperationStatuses: OperationStatus[] = [
     'completed',
     'pendingVerification',
 ];
+const terminalOperationStatuses: OperationStatus[] = [
+    'completed',
+    'failed',
+    'canceled',
+];
 
 function getOperationLatestStatusChangeDateExpression() {
     return sql<Date | null>`(
@@ -477,7 +482,10 @@ export async function getOperationsPage(
     const taskSortExpression = getOperationTaskSortExpression();
     const includeCompletedWhere = input.includeCompleted
         ? undefined
-        : sql`${statusExpression} != 'completed'`;
+        : sql`${statusExpression} not in (${sql.join(
+              terminalOperationStatuses.map((value) => sql`${value}`),
+              sql`, `,
+          )})`;
     const sortOrder = [desc(taskSortExpression), desc(operations.id)];
 
     const [pageRows, totalResult] = await Promise.all([

@@ -270,6 +270,12 @@ test('getOperationsPage returns active operations by newest scheduled date first
         raisedBedId,
         createdAt: new Date('2026-06-02T08:00:00.000Z'),
     });
+    const canceledOperationId = await createDatedOperation({
+        accountId,
+        gardenId,
+        raisedBedId,
+        createdAt: new Date('2026-06-03T08:00:00.000Z'),
+    });
 
     await createEvent(
         knownEvents.operations.scheduledV1(soonerOperationId.toString(), {
@@ -279,6 +285,17 @@ test('getOperationsPage returns active operations by newest scheduled date first
     await createEvent(
         knownEvents.operations.scheduledV1(laterOperationId.toString(), {
             scheduledDate: '2026-06-12T08:00:00.000Z',
+        }),
+    );
+    await createEvent(
+        knownEvents.operations.scheduledV1(canceledOperationId.toString(), {
+            scheduledDate: '2026-06-30T08:00:00.000Z',
+        }),
+    );
+    await createEvent(
+        knownEvents.operations.canceledV1(canceledOperationId.toString(), {
+            canceledBy: 'test-user',
+            reason: 'test-cancel',
         }),
     );
 
@@ -293,6 +310,7 @@ test('getOperationsPage returns active operations by newest scheduled date first
         page.items.map((operation) => operation.id),
         [laterOperationId, soonerOperationId],
     );
+    assert.strictEqual(page.total, 2);
 });
 
 test('completed operations expose completion notes and image URLs', async () => {
