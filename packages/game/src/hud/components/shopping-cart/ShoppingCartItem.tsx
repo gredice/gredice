@@ -17,8 +17,8 @@ import { PlantOrSortImage } from '@gredice/ui/plants';
 import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
-import { Switch } from '@gredice/ui/Switch';
 import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import { type CSSProperties, useEffect, useState } from 'react';
 import { useGameAnalytics } from '../../../analytics/GameAnalyticsContext';
@@ -145,6 +145,41 @@ function greenhouseAdditionalData(
     const nextAdditionalData = { ...additionalData };
     delete nextAdditionalData.sowingLocation;
     return nextAdditionalData;
+}
+
+function GreenhouseSowingToggle({
+    checked,
+    disabled,
+    onCheckedChange,
+}: {
+    checked: boolean;
+    disabled?: boolean;
+    onCheckedChange: (checked: boolean) => void;
+}) {
+    return (
+        <button
+            type="button"
+            role="switch"
+            aria-checked={checked}
+            aria-label="Staklenik"
+            title={
+                checked
+                    ? 'Isključi sijanje u stakleniku'
+                    : 'Uključi sijanje u stakleniku'
+            }
+            disabled={disabled}
+            onClick={() => onCheckedChange(!checked)}
+            className={cx(
+                'inline-flex h-6 shrink-0 items-center gap-1 rounded-full border px-1.5 text-xs font-medium transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+                checked
+                    ? 'border-green-500 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950/50 dark:text-green-100'
+                    : 'border-border bg-muted/70 text-muted-foreground hover:bg-muted',
+            )}
+        >
+            <Sprout className="size-3.5 shrink-0" />
+            <span>Staklenik</span>
+        </button>
+    );
 }
 
 export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
@@ -404,6 +439,17 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const hasShopImage = Boolean(item.shopData.image);
     const shouldShowOperationFallback =
         item.entityTypeName === 'operation' && !hasShopImage;
+    function renderGreenhouseSowingToggle() {
+        return (
+            <GreenhouseSowingToggle
+                checked={isGreenhouseSowing}
+                disabled={changeGreenhouseSowingShoppingCartItem.isPending}
+                onCheckedChange={(checked) => {
+                    void handleToggleGreenhouseSowing(checked);
+                }}
+            />
+        );
+    }
 
     return (
         <Row spacing={4} alignItems="start">
@@ -444,6 +490,9 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                     </Typography>
                     {!hasDiscount && (
                         <Row spacing={2}>
+                            {canChangeGreenhouseSowing
+                                ? renderGreenhouseSowingToggle()
+                                : null}
                             {!usesInventory && availableFromInventory && (
                                 <IconButton
                                     title="Iskoristi iz ruksaka"
@@ -485,6 +534,9 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                                 </IconButton>
                             </Row>
                         )}
+                        {hasDiscount && canChangeGreenhouseSowing
+                            ? renderGreenhouseSowingToggle()
+                            : null}
                     </Row>
                 </div>
                 {hasDiscount &&
@@ -545,27 +597,6 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                             ) : null}
                         </Row>
                     )}
-                {canChangeGreenhouseSowing ? (
-                    <div className="rounded-lg border border-input bg-card px-3 py-2">
-                        <Switch
-                            checked={isGreenhouseSowing}
-                            disabled={
-                                changeGreenhouseSowingShoppingCartItem.isPending
-                            }
-                            onCheckedChange={(checked) => {
-                                void handleToggleGreenhouseSowing(checked);
-                            }}
-                            size="sm"
-                            label={
-                                <span className="inline-flex items-center gap-1">
-                                    <Sprout className="size-4 shrink-0" />
-                                    <span>Staklenik</span>
-                                </span>
-                            }
-                            description="Sijanje počinje u stakleniku."
-                        />
-                    </div>
-                ) : null}
                 <Row justifyContent="space-between">
                     <Stack spacing={1}>
                         <Row spacing={2}>
