@@ -31,6 +31,7 @@ import {
     useCallback,
     useMemo,
     useRef,
+    useState,
 } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import {
@@ -217,11 +218,6 @@ function formatDate(value?: string | null) {
         month: 'long',
         year: 'numeric',
     });
-}
-
-function formatDateTime(value?: string | null) {
-    if (!value) return null;
-    return new Date(value).toLocaleString('hr-HR');
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -1086,7 +1082,7 @@ function OperationStatusTooltipContent({
                 {steps.map((step) => {
                     const config = getDisplayStatusConfig(step.status);
                     const Icon = config.icon;
-                    const dateLabel = formatDateTime(step.date);
+                    const dateLabel = formatDate(step.date);
                     const fallbackLabel = step.current
                         ? 'Trenutno'
                         : step.skipped
@@ -1145,14 +1141,60 @@ function OperationStatusSummary({
         [operation, status],
     );
     const progressLabel = status === 'scheduled' ? undefined : 'Tijek radnje';
+    const tooltipIntentRef = useRef(false);
+    const [tooltipOpen, setTooltipOpen] = useState(false);
+    const handleTooltipOpenChange = useCallback((nextOpen: boolean) => {
+        if (!nextOpen) {
+            setTooltipOpen(false);
+            return;
+        }
+
+        if (tooltipIntentRef.current) {
+            setTooltipOpen(true);
+        }
+    }, []);
+    const clearTooltipIntent = useCallback(() => {
+        tooltipIntentRef.current = false;
+        setTooltipOpen(false);
+    }, []);
 
     return (
-        <Tooltip delayDuration={100}>
+        <Tooltip
+            delayDuration={100}
+            onOpenChange={handleTooltipOpenChange}
+            open={tooltipOpen}
+        >
             <TooltipTrigger asChild>
                 <button
                     type="button"
                     aria-label={`Status radnje: ${config.label}`}
                     className="flex max-w-[48%] shrink-0 flex-col items-end rounded-md px-1 py-0.5 text-right transition hover:bg-muted/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    onBlur={clearTooltipIntent}
+                    onClick={() => {
+                        tooltipIntentRef.current = true;
+                        setTooltipOpen(true);
+                    }}
+                    onKeyDown={(event) => {
+                        if (event.key === 'Escape') {
+                            clearTooltipIntent();
+                            return;
+                        }
+
+                        if (event.key !== 'Enter' && event.key !== ' ') {
+                            return;
+                        }
+
+                        event.preventDefault();
+                        tooltipIntentRef.current = true;
+                        setTooltipOpen((currentOpen) => !currentOpen);
+                    }}
+                    onPointerDown={() => {
+                        tooltipIntentRef.current = true;
+                    }}
+                    onPointerEnter={() => {
+                        tooltipIntentRef.current = true;
+                    }}
+                    onPointerLeave={clearTooltipIntent}
                 >
                     <span className="flex min-w-0 max-w-full items-center justify-end gap-1.5">
                         <StatusBadge status={status} className="justify-end" />
