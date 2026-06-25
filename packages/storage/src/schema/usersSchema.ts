@@ -126,12 +126,20 @@ export const users = pgTable(
         whatsNewPopupDisabled: boolean('whats_new_popup_disabled')
             .notNull()
             .default(false),
+        isTemporary: boolean('is_temporary').notNull().default(false),
+        lastActiveAt: timestamp('last_active_at').notNull().defaultNow(),
         createdAt: timestamp('created_at').notNull().defaultNow(),
         updatedAt: timestamp('updated_at')
             .notNull()
             .$onUpdate(() => new Date()),
     },
-    (table) => [index('users_u_username_idx').on(table.userName)],
+    (table) => [
+        index('users_u_username_idx').on(table.userName),
+        index('users_temporary_last_active_idx').on(
+            table.isTemporary,
+            table.lastActiveAt,
+        ),
+    ],
 );
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -149,7 +157,7 @@ export const usersRelations = relations(users, ({ many }) => ({
 export type InsertUser = typeof users.$inferInsert;
 export type UpdateUserInfo = Omit<
     typeof users.$inferInsert,
-    'id' | 'createdAt' | 'updatedAt' | 'role'
+    'id' | 'createdAt' | 'updatedAt' | 'role' | 'isTemporary' | 'lastActiveAt'
 >;
 export type SelectUser = typeof users.$inferSelect;
 

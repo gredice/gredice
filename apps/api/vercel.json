@@ -44,6 +44,10 @@
         {
             "path": "/api/internal/cron/social-publishing",
             "schedule": "*/5 * * * *"
+        },
+        {
+            "path": "/api/internal/cron/temp-accounts",
+            "schedule": "0 * * * *"
         }
     ]
 }

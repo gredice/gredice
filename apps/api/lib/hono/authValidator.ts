@@ -1,4 +1,8 @@
-import { doUseRefreshToken, getUser } from '@gredice/storage';
+import {
+    doUseRefreshToken,
+    getUser,
+    touchTemporaryUserActivity,
+} from '@gredice/storage';
 import type { Context } from 'hono';
 import { getCookie } from 'hono/cookie';
 import { createJwt, setCookie, verifyJwt } from '../auth/auth';
@@ -83,11 +87,16 @@ async function getAuthContextFromAccessToken(
             return null;
         }
 
+        if (dbUser.isTemporary) {
+            await touchTemporaryUserActivity(dbUser.id);
+        }
+
         return {
             userId: dbUser.id,
             user: {
                 id: dbUser.id,
                 accountIds,
+                isTemporary: dbUser.isTemporary,
                 role: dbUser.role,
             },
             accountId,
@@ -140,6 +149,10 @@ export function authValidator(roles: string[]) {
             return context.newResponse('Unauthorized', { status: 401 });
         }
 
+        if (dbUser.isTemporary) {
+            await touchTemporaryUserActivity(dbUser.id);
+        }
+
         const newAccessToken = await createJwt(
             refreshed.userId,
             accessTokenExpiry,
@@ -154,6 +167,7 @@ export function authValidator(roles: string[]) {
             user: {
                 id: dbUser.id,
                 accountIds,
+                isTemporary: dbUser.isTemporary,
                 role: dbUser.role,
             },
             accountId,

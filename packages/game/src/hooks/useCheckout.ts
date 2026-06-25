@@ -1,6 +1,9 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useMutation } from '@tanstack/react-query';
 
+export const temporaryAccountUpgradeRequiredEvent =
+    'gredice:temporary-account-upgrade-required';
+
 export interface CheckoutData {
     cartId: number;
     deliveryInfo?: {
@@ -29,6 +32,23 @@ export function isCompleteDeliverySelection(
     );
 }
 
+function isUpgradeRequiredError(value: unknown) {
+    return (
+        typeof value === 'object' &&
+        value !== null &&
+        'errorCode' in value &&
+        value.errorCode === 'upgrade_required'
+    );
+}
+
+export function requestTemporaryAccountUpgrade() {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    window.dispatchEvent(new CustomEvent(temporaryAccountUpgradeRequiredEvent));
+}
+
 export function useCheckout() {
     return useMutation({
         mutationFn: async (data: CheckoutData) => {
@@ -37,6 +57,18 @@ export function useCheckout() {
                     json: data,
                 });
             if (!response.ok) {
+                let body: unknown;
+                try {
+                    body = await response.json();
+                } catch {
+                    body = null;
+                }
+
+                if (isUpgradeRequiredError(body)) {
+                    requestTemporaryAccountUpgrade();
+                    return;
+                }
+
                 console.error(
                     'Failed to create checkout session:',
                     response.statusText,

@@ -194,6 +194,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 userName: dbUser.userName,
                 displayName: dbUser.displayName ?? dbUser.userName,
                 avatarUrl: dbUser.avatarUrl,
+                isTemporary: dbUser.isTemporary,
                 birthday:
                     dbUser.birthdayMonth && dbUser.birthdayDay
                         ? {
