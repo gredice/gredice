@@ -1,4 +1,5 @@
 import { Alert } from '@gredice/ui/Alert';
+import { BlockImage } from '@gredice/ui/BlockImage';
 import { Button } from '@gredice/ui/Button';
 import { Chip } from '@gredice/ui/Chip';
 import { ImageGallery } from '@gredice/ui/ImageGallery';
@@ -10,12 +11,11 @@ import { Spinner } from '@gredice/ui/Spinner';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
-import { useEffect, useMemo } from 'react';
+import { type ReactNode, useEffect, useMemo } from 'react';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useGardenOperations } from '../../hooks/useGardenOperations';
 import { useOperations } from '../../hooks/useOperations';
 import { useRaisedBedAiHistory } from '../../hooks/useRaisedBedAiHistory';
-import { ButtonGreen } from '../../shared-ui/ButtonGreen';
 import { sortOperationTasksNewestFirst } from '../gardenOperationOrdering';
 import { RaisedBedDiaryAiAction } from './RaisedBedDiaryAiAction';
 import {
@@ -31,7 +31,7 @@ type RaisedBedPhotosModalProps = {
     raisedBedId: number;
     subjectName: string;
     positionIndex?: number;
-    triggerPlacement?: 'hud' | 'header';
+    triggerPlacement?: 'hud' | 'header' | 'cover';
     hideWhenEmpty?: boolean;
     className?: string;
 };
@@ -67,6 +67,34 @@ function getPhotoCountLabel(photoCount: number) {
 
 function isGenericPhotoOperationName(name: string) {
     return /^fotografiranje\b/iu.test(name.trim());
+}
+
+function RaisedBedPhotoThumbnail({
+    fallback,
+    imageUrl,
+}: {
+    fallback?: ReactNode;
+    imageUrl: string | undefined;
+}) {
+    return (
+        <span className="relative flex size-full items-center justify-center overflow-hidden rounded-[inherit]">
+            {imageUrl ? (
+                <>
+                    {/** biome-ignore lint/performance/noImgElement: Operation photos come from runtime data and can use external blob hosts. */}
+                    <img
+                        src={imageUrl}
+                        alt=""
+                        className="size-full object-cover"
+                        loading="lazy"
+                    />
+                </>
+            ) : (
+                (fallback ?? (
+                    <Camera className="size-5 text-muted-foreground" />
+                ))
+            )}
+        </span>
+    );
 }
 
 export function RaisedBedPhotosModal({
@@ -122,6 +150,7 @@ export function RaisedBedPhotosModal({
     const latestImageUrls = Array.from(
         new Set(photoOperations.flatMap((operation) => operation.imageUrls)),
     ).slice(0, 3);
+    const latestImageUrl = latestImageUrls[0];
     const isFieldScoped = typeof positionIndex === 'number';
     const triggerLabel = isFieldScoped
         ? `Fotografije biljke ${subjectName}`
@@ -149,7 +178,7 @@ export function RaisedBedPhotosModal({
         return null;
     }
 
-    const thumbnail = (
+    const stackedThumbnail = (
         <span className="relative flex size-full items-center justify-center overflow-hidden rounded-[inherit] bg-card">
             {latestImageUrls.length > 0 ? (
                 latestImageUrls.map((imageUrl, index) => (
@@ -180,28 +209,46 @@ export function RaisedBedPhotosModal({
         </span>
     );
 
-    const photoCountBadge =
-        photoCount > 0 ? (
-            <span className="absolute -bottom-1 -right-1 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold leading-none text-primary-foreground shadow-sm">
-                {photoCount}
-            </span>
-        ) : null;
     const trigger =
-        triggerPlacement === 'hud' ? (
-            <ButtonGreen
-                variant="plain"
+        triggerPlacement === 'cover' ? (
+            <button
+                type="button"
                 className={cx(
-                    'size-10 rounded-xl p-1 shadow-lg ring-1 ring-black/10',
+                    'relative inline-flex size-20 shrink-0 items-center justify-center rounded-xl p-0 transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700 focus-visible:ring-offset-2',
+                    latestImageUrl
+                        ? 'overflow-hidden shadow-sm ring-1 ring-black/10'
+                        : 'overflow-visible',
                     className,
                 )}
                 aria-label={triggerLabel}
+                data-raised-bed-photo-trigger={triggerPlacement}
                 title={triggerLabel}
             >
-                <span className="relative block size-full rounded-[inherit]">
-                    {thumbnail}
-                    {photoCountBadge}
-                </span>
-            </ButtonGreen>
+                <RaisedBedPhotoThumbnail
+                    imageUrl={latestImageUrl}
+                    fallback={
+                        <BlockImage
+                            blockName="Raised_Bed"
+                            width={80}
+                            height={80}
+                            className="size-full"
+                        />
+                    }
+                />
+            </button>
+        ) : triggerPlacement === 'hud' ? (
+            <button
+                type="button"
+                className={cx(
+                    'relative inline-flex size-10 min-h-10 shrink-0 items-center justify-center overflow-hidden rounded-xl p-0 shadow-sm ring-1 ring-black/10 transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700 focus-visible:ring-offset-2',
+                    className,
+                )}
+                aria-label={triggerLabel}
+                data-raised-bed-photo-trigger={triggerPlacement}
+                title={triggerLabel}
+            >
+                <RaisedBedPhotoThumbnail imageUrl={latestImageUrl} />
+            </button>
         ) : (
             <button
                 type="button"
@@ -210,10 +257,18 @@ export function RaisedBedPhotosModal({
                     className,
                 )}
                 aria-label={triggerLabel}
+                data-raised-bed-photo-trigger={triggerPlacement}
                 title={triggerLabel}
             >
-                {thumbnail}
-                {photoCountBadge}
+                {stackedThumbnail}
+                {photoCount > 0 && (
+                    <span
+                        className="absolute -bottom-1 -right-1 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold leading-none text-primary-foreground shadow-sm"
+                        data-raised-bed-photo-count
+                    >
+                        {photoCount}
+                    </span>
+                )}
             </button>
         );
 

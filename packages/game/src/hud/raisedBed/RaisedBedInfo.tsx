@@ -1,5 +1,4 @@
 import { Alert } from '@gredice/ui/Alert';
-import { BlockImage } from '@gredice/ui/BlockImage';
 import { Button } from '@gredice/ui/Button';
 import { EditableInput } from '@gredice/ui/EditableInput';
 import { Book, Hammer, Info, MoreHorizontal, Warning } from '@gredice/ui/icons';
@@ -71,11 +70,11 @@ export function RaisedBedInfo({
         <Stack spacing={4} className="min-w-0 max-w-full">
             <div className="grid min-w-0 max-w-full grid-cols-[minmax(0,1fr)_auto] items-start gap-3 pr-8">
                 <Row spacing={4} className="min-w-0 flex-1 items-start">
-                    <BlockImage
-                        blockName="Raised_Bed"
-                        width={80}
-                        height={80}
-                        className="size-20 shrink-0"
+                    <RaisedBedPhotosModal
+                        gardenId={gardenId}
+                        raisedBedId={raisedBed.id}
+                        subjectName={raisedBed.name}
+                        triggerPlacement="cover"
                     />
                     <Stack className="min-w-0 flex-1">
                         <Typography level="body2">Naziv gredice</Typography>
@@ -87,11 +86,6 @@ export function RaisedBedInfo({
                     </Stack>
                 </Row>
                 <Row spacing={2} className="items-start">
-                    <RaisedBedPhotosModal
-                        gardenId={gardenId}
-                        raisedBedId={raisedBed.id}
-                        subjectName={raisedBed.name}
-                    />
                     <Button
                         type="button"
                         variant="plain"

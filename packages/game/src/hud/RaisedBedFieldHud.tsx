@@ -88,7 +88,18 @@ export function RaisedBedFieldHud() {
         >
             {currentGarden && raisedBed && (
                 <div className="absolute z-40 top-[var(--raised-bed-ui-top)] left-[var(--raised-bed-title-left)]">
-                    <Row spacing={2} className="items-center">
+                    <div className="relative flex items-center">
+                        {!isSandbox && (
+                            <div className="absolute right-full top-1/2 mr-2 -translate-y-1/2">
+                                <RaisedBedPhotosModal
+                                    gardenId={currentGarden.id}
+                                    raisedBedId={raisedBed.id}
+                                    subjectName={raisedBed.name}
+                                    triggerPlacement="hud"
+                                    hideWhenEmpty
+                                />
+                            </div>
+                        )}
                         <Modal
                             open={isInfoOpen}
                             onOpenChange={(open) => {
@@ -107,6 +118,7 @@ export function RaisedBedFieldHud() {
                             trigger={
                                 <ButtonGreen
                                     className="max-w-64 md:max-w-[312px]"
+                                    data-raised-bed-details-trigger
                                     endDecorator={
                                         <Navigate className="size-4 shrink-0" />
                                     }
@@ -128,16 +140,7 @@ export function RaisedBedFieldHud() {
                                 raisedBed={raisedBed}
                             />
                         </Modal>
-                        {!isSandbox && (
-                            <RaisedBedPhotosModal
-                                gardenId={currentGarden.id}
-                                raisedBedId={raisedBed.id}
-                                subjectName={raisedBed.name}
-                                triggerPlacement="hud"
-                                hideWhenEmpty
-                            />
-                        )}
-                    </Row>
+                    </div>
                 </div>
             )}
             <div className="absolute z-0 top-[calc(50%-1px)] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[var(--raised-bed-grid-size)] h-[var(--raised-bed-grid-height)]">

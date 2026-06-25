@@ -1413,8 +1413,29 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         const photoButton = page.getByRole('button', {
             name: /Fotografije gredice Raised Bed 1/u,
         });
+        const detailsButton = page.locator('[data-raised-bed-details-trigger]');
         await expect(photoButton).toBeVisible();
+        await expect(detailsButton).toBeVisible();
         await expect(photoButton.locator('img')).toBeVisible();
+        await expect(
+            photoButton.locator('[data-raised-bed-photo-count]'),
+        ).toHaveCount(0);
+
+        await expect
+            .poll(async () => {
+                const photoBox = await photoButton.boundingBox();
+                const detailsBox = await detailsButton.boundingBox();
+
+                if (!photoBox || !detailsBox) {
+                    return false;
+                }
+
+                return (
+                    photoBox.x < detailsBox.x &&
+                    Math.abs(photoBox.height - detailsBox.height) <= 1
+                );
+            })
+            .toBe(true);
 
         await photoButton.click();
 
@@ -2090,6 +2111,10 @@ test.describe('RaisedBedFieldItem HUD (mobile)', () => {
         const tabList = dialog.getByRole('tablist');
         await expect(moreButton).toBeVisible();
         await expect(photoButton).toBeVisible();
+        await expect(photoButton.locator('img')).toBeVisible();
+        await expect(
+            photoButton.locator('[data-raised-bed-photo-count]'),
+        ).toHaveCount(0);
         await expect(tabList).toBeVisible();
 
         await expect
@@ -2109,6 +2134,25 @@ test.describe('RaisedBedFieldItem HUD (mobile)', () => {
         await expect(
             dialog.getByRole('button', { name: 'Napusti gredicu' }),
         ).toBeVisible();
+    });
+
+    test('raised bed info modal falls back to the block image without photos', async ({
+        mount,
+        page,
+    }) => {
+        await mount(<RaisedBedInfoModalStory scenario={emptyScenario()} />);
+
+        const dialog = page.getByRole('dialog');
+        const photoButton = dialog.getByRole('button', {
+            name: /Fotografije gredice Raised Bed 1/u,
+        });
+        await expect(photoButton).toBeVisible();
+        await expect(
+            photoButton.getByRole('img', { name: 'Raised_Bed' }),
+        ).toBeVisible();
+        await expect(
+            photoButton.locator('[data-raised-bed-photo-count]'),
+        ).toHaveCount(0);
     });
 
     test('mobile drawer dismisses via swipe down on the drag handle', async ({
