@@ -779,6 +779,16 @@ function scheduledDateFromAdditionalData(additionalData: unknown) {
         : scheduledDate;
 }
 
+function greenhouseSowingLocationFromAdditionalData(additionalData: unknown) {
+    const parsedAdditionalData = parseAdditionalDataValue(additionalData);
+    return typeof parsedAdditionalData === 'object' &&
+        parsedAdditionalData != null &&
+        'sowingLocation' in parsedAdditionalData &&
+        parsedAdditionalData.sowingLocation === 'greenhouse'
+        ? 'greenhouse'
+        : undefined;
+}
+
 function checkoutScheduledDateFromAdditionalData(
     additionalData: unknown,
     dependencies: ProcessCheckoutSessionDependencies = realDependencies,
@@ -1060,7 +1070,11 @@ export async function processItem(
                           itemData.additionalData,
                           dependencies,
                       ),
-                sowingLocation: outletReservation ? 'greenhouse' : undefined,
+                sowingLocation: outletReservation
+                    ? 'greenhouse'
+                    : greenhouseSowingLocationFromAdditionalData(
+                          itemData.additionalData,
+                      ),
             }),
         );
         if (outletReservation) {

@@ -24,6 +24,23 @@ function callsNamed(calls: RecordedCall[], name: string) {
     return calls.filter((call) => call.name === name);
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isRecordedEvent(value: unknown): value is {
+    type: string;
+    aggregateId: string;
+    data: unknown;
+} {
+    return (
+        isRecord(value) &&
+        typeof value.type === 'string' &&
+        typeof value.aggregateId === 'string' &&
+        'data' in value
+    );
+}
+
 function makeDependencies(
     calls: RecordedCall[],
     overrides: Partial<
@@ -493,6 +510,52 @@ describe('processItem', () => {
             callsNamed(calls, 'earnSunflowersForPayment')[0]?.args,
             ['account-1', 25],
         );
+    });
+
+    it('places planned greenhouse sowing when requested in additional data', async () => {
+        const calls: RecordedCall[] = [];
+        const dependencies = makeDependencies(calls, {
+            getRaisedBed: async (...args: unknown[]) => {
+                record(calls, 'getRaisedBed', args);
+                return { status: 'active' };
+            },
+        });
+
+        await processItem(
+            {
+                accountId: 'account-1',
+                amount_total: 2500,
+                additionalData: {
+                    scheduledDate: '2026-07-01',
+                    sowingLocation: 'greenhouse',
+                },
+                cartId: 100,
+                cartItemId: 1,
+                currency: 'eur',
+                entityId: '101',
+                entityTypeName: 'plantSort',
+                gardenId: 200,
+                positionIndex: 2,
+                raisedBedId: 300,
+            },
+            dependencies,
+        );
+
+        const plantPlaceEvents = callsNamed(calls, 'createEvent')
+            .map((call) => call.args[0])
+            .filter(isRecordedEvent)
+            .filter((event) => event.type === 'raisedBedFields.plantPlace');
+
+        assert.equal(plantPlaceEvents.length, 1);
+        assert.deepStrictEqual(plantPlaceEvents[0], {
+            type: 'raisedBedFields.plantPlace',
+            aggregateId: '300|2',
+            data: {
+                plantSortId: '101',
+                scheduledDate: '2026-07-01',
+                sowingLocation: 'greenhouse',
+            },
+        });
     });
 });
 

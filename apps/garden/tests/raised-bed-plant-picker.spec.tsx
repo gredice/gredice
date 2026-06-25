@@ -215,6 +215,9 @@ test('outlet sorts keep planned sowing selected by default', async ({
     await expect(
         page.getByRole('textbox', { name: 'Datum sijanja' }),
     ).toBeVisible();
+    await expect(
+        page.getByRole('switch', { name: 'Staklenik' }),
+    ).toHaveAttribute('aria-checked', 'false');
 
     await page.getByRole('button', { name: 'Dodaj u košaru' }).click();
 
@@ -226,6 +229,43 @@ test('outlet sorts keep planned sowing selected by default', async ({
     }
     expect(post.outletOfferId).toBeUndefined();
     expect(post.entityId).toBe('101');
+});
+
+test('planned greenhouse sowing sends greenhouse location', async ({
+    mount,
+    page,
+}) => {
+    const posts = await mockShoppingCartPosts(page);
+
+    await mount(<PlantPickerTestStory />);
+
+    await page.getByRole('button', { name: 'Sijanje' }).click();
+    await page.getByRole('button', { name: /Rajčica/ }).click();
+    await page.getByRole('button', { name: /Cherry rajčica/ }).click();
+
+    const greenhouseSwitch = page.getByRole('switch', { name: 'Staklenik' });
+    await expect(greenhouseSwitch).toHaveAttribute('aria-checked', 'false');
+    await greenhouseSwitch.click();
+    await expect(greenhouseSwitch).toHaveAttribute('aria-checked', 'true');
+
+    await page.getByRole('button', { name: 'Dodaj u košaru' }).click();
+
+    await expect.poll(() => posts.length).toBe(1);
+    const post = posts[0];
+    expect(isRecord(post)).toBe(true);
+    if (!isRecord(post)) {
+        return;
+    }
+    expect(typeof post.additionalData).toBe('string');
+    if (typeof post.additionalData !== 'string') {
+        return;
+    }
+    const additionalData: unknown = JSON.parse(post.additionalData);
+    expect(isRecord(additionalData)).toBe(true);
+    if (!isRecord(additionalData)) {
+        return;
+    }
+    expect(additionalData.sowingLocation).toBe('greenhouse');
 });
 
 test('outlet sowing sends the selected outlet offer', async ({
