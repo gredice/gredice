@@ -557,7 +557,7 @@ export async function ensureDefaultAutomationDefinitions() {
         key: farmRaisedBedWeedingAutomationKey,
         name: 'Dodaj čišćenje korova oko gredica za svaku farmu',
         description:
-            'Svaki drugi ponedjeljak dodaj prihvaćenu radnju na razini farme Čišćenje korova oko gredica za svaku aktivnu farmu. Definicija je pripremljena za uključivanje nakon operativnog pregleda draft radnje.',
+            'Dan prije svakog drugog ponedjeljka dodaj prihvaćenu radnju na razini farme Čišćenje korova oko gredica za svaku aktivnu farmu. Definicija je pripremljena za uključivanje nakon operativnog pregleda draft radnje.',
         status: 'draft',
         graph: farmRaisedBedWeedingAutomationGraph(),
         preserveExistingStatus: true,
@@ -575,7 +575,7 @@ export async function ensureDefaultAutomationDefinitions() {
         key: greenhouseSeedlingWateringAutomationKey,
         name: 'Dodaj dnevno zalijevanje presadnica u stakleniku',
         description:
-            'Svaki dan dodaj jednu farmsku radnju zalijevanja presadnica u stakleniku za aktivne farme koje imaju presadnice u stakleniku ili aktivne outlet presadnice.',
+            'Dan ranije dodaj jednu farmsku radnju zalijevanja presadnica u stakleniku za aktivne farme koje imaju presadnice u stakleniku ili aktivne outlet presadnice.',
         status: 'enabled',
         graph: greenhouseSeedlingWateringAutomationGraph(),
         metadata: {
@@ -593,7 +593,7 @@ export async function ensureDefaultAutomationDefinitions() {
             key: monthlyFarmInventoryOperationsAutomationKey,
             name: 'Mjesečna inventura farme',
             description:
-                'Svakog prvog dana u mjesecu kreiraj inventurne radnje za svaku aktivnu farmu.',
+                'Dan prije prvog dana u mjesecu kreiraj inventurne radnje za svaku aktivnu farmu.',
             status: 'enabled',
             graph: monthlyFarmInventoryOperationsAutomationGraph(),
             metadata: {
@@ -611,7 +611,7 @@ export async function ensureDefaultAutomationDefinitions() {
         key: raisedBedPhotoOperationsAutomationKey,
         name: 'Dodaj fotografiranje aktivnih gredica',
         description:
-            'Svakog utorka i petka dodaj radnju fotografiranja za svaku aktivnu gredicu ako ta gredica već nema fotografiranje za tu pojavu rasporeda.',
+            'Dan prije svakog utorka i petka dodaj radnju fotografiranja za svaku aktivnu gredicu ako ta gredica već nema fotografiranje za tu pojavu rasporeda.',
         status: 'enabled',
         graph: raisedBedPhotoOperationsAutomationGraph(),
         metadata: {
@@ -628,7 +628,7 @@ export async function ensureDefaultAutomationDefinitions() {
         key: raisedBedDetailedInspectionAutomationKey,
         name: 'Dodaj detaljan pregled aktivnih gredica',
         description:
-            'Jednom tjedno dodaj radnju Detaljno pregledavanje gredice za svaku aktivnu gredicu ako ta gredica već nema pregled za tu pojavu rasporeda. Definicija je pripremljena za uključivanje nakon operativnog pregleda draft radnje.',
+            'Dan prije tjednog rasporeda dodaj radnju Detaljno pregledavanje gredice za svaku aktivnu gredicu ako ta gredica već nema pregled za tu pojavu rasporeda. Definicija je pripremljena za uključivanje nakon operativnog pregleda draft radnje.',
         status: 'draft',
         graph: raisedBedDetailedInspectionAutomationGraph(),
         preserveExistingStatus: true,
