@@ -36,6 +36,7 @@ const PLANT_CYCLE_EVENT_TYPES = [
     knownEventTypes.raisedBedFields.plantSchedule,
     knownEventTypes.raisedBedFields.plantUpdate,
     knownEventTypes.raisedBedFields.plantReplaceSort,
+    knownEventTypes.raisedBedFields.delete,
 ] as const;
 const PLANT_CYCLE_EVENT_TYPE_SET = new Set<string>(PLANT_CYCLE_EVENT_TYPES);
 const RAISED_BED_FIELD_EVENT_TYPES = [
@@ -95,6 +96,7 @@ export type RaisedBedFieldPlantCycle = {
     assignedUserIds?: string[];
     assignedBy?: string | null;
     assignedAt?: Date;
+    cancellationReason?: string;
 };
 
 export type AssignableFarmUser = {
@@ -723,6 +725,7 @@ function summarizePlantCycle(
     let assignedUserIds: string[] | undefined;
     let assignedBy: string | null | undefined;
     let assignedAt: Date | undefined;
+    let cancellationReason: string | undefined;
 
     for (const plantCycleEvent of plantCycleEvents) {
         const data = plantCycleEvent.data as
@@ -762,6 +765,7 @@ function summarizePlantCycle(
             assignedUserIds = undefined;
             assignedBy = undefined;
             assignedAt = undefined;
+            cancellationReason = undefined;
             continue;
         }
 
@@ -896,6 +900,17 @@ function summarizePlantCycle(
                 active = false;
                 stoppedDate = statusEventDate;
             }
+            continue;
+        }
+
+        if (plantCycleEvent.type === knownEventTypes.raisedBedFields.delete) {
+            const statusEventDate = plantCycleEvent.createdAt;
+            plantStatus = 'deleted';
+            active = false;
+            toBeRemoved = true;
+            stoppedDate = statusEventDate;
+            cancellationReason =
+                typeof data?.reason === 'string' ? data.reason : undefined;
         }
     }
 
@@ -932,6 +947,7 @@ function summarizePlantCycle(
         assignedUserId,
         assignedBy,
         assignedAt,
+        cancellationReason,
     };
 }
 
@@ -1268,6 +1284,7 @@ function reduceRaisedBedFieldWithEvents(
     let assignedBy: string | null | undefined;
     let assignedAt: Date | undefined;
     let weedState: RaisedBedWeedState | null = null;
+    let cancellationReason: string | undefined;
 
     for (const event of events) {
         const data = event.data as Record<string, unknown> | undefined;
@@ -1292,6 +1309,7 @@ function reduceRaisedBedFieldWithEvents(
             assignedUserIds = undefined;
             assignedBy = undefined;
             assignedAt = undefined;
+            cancellationReason = undefined;
 
             // Parse plant sort ID if provided
             if (typeof data?.plantSortId === 'number') {
@@ -1446,6 +1464,10 @@ function reduceRaisedBedFieldWithEvents(
             plantSowDate = undefined;
             plantSortId = undefined;
             plantScheduledDate = undefined;
+            active = false;
+            stoppedDate = event.createdAt;
+            cancellationReason =
+                typeof data?.reason === 'string' ? data.reason : undefined;
         } else {
             console.warn('Unhandled raised bed field event type', {
                 eventId: event.id,
@@ -1486,6 +1508,7 @@ function reduceRaisedBedFieldWithEvents(
         assignedUserId,
         assignedBy,
         assignedAt,
+        cancellationReason,
         weedState,
     };
 }
@@ -1685,10 +1708,15 @@ export async function moveRaisedBedFieldPlantHistory({
 export async function deleteRaisedBedField(
     raisedBedId: number,
     positionIndex: number,
+    options: { preserveHistory?: boolean } = {},
 ) {
     await storage()
         .update(raisedBedFields)
-        .set({ isDeleted: true })
+        .set(
+            options.preserveHistory
+                ? { updatedAt: new Date() }
+                : { isDeleted: true },
+        )
         .where(
             and(
                 eq(raisedBedFields.raisedBedId, raisedBedId),

@@ -38,6 +38,7 @@ import type {
     RaisedBedCreatePayload,
     RaisedBedFieldAiAnalysisPayload,
     RaisedBedFieldCreatePayload,
+    RaisedBedFieldDeletePayload,
     RaisedBedFieldPlantPlacePayload,
     RaisedBedFieldPlantReplaceSortPayload,
     RaisedBedFieldPlantSchedulePayload,
@@ -278,10 +279,14 @@ export const knownEvents = {
             aggregateId,
             data,
         }),
-        deletedV1: (aggregateId: string) => ({
+        deletedV1: (
+            aggregateId: string,
+            data?: RaisedBedFieldDeletePayload,
+        ) => ({
             type: knownEventTypes.raisedBedFields.delete,
             version: 1,
             aggregateId,
+            ...(data ? { data } : {}),
         }),
         plantPlaceV1: (
             aggregateId: string,

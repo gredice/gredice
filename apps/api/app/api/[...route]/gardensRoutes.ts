@@ -398,6 +398,7 @@ function serializeGardenOperation(
         completedAt: operation.completedAt?.toISOString() ?? null,
         verifiedAt: operation.verifiedAt?.toISOString() ?? null,
         canceledAt: operation.canceledAt?.toISOString() ?? null,
+        cancellationReason: operation.cancelReason ?? null,
         imageUrls: operation.imageUrls ?? [],
         completionNotes: operation.completionNotes ?? null,
         targetLabel:

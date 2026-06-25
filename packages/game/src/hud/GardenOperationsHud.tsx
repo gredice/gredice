@@ -5,11 +5,11 @@ import { ImageGallery } from '@gredice/ui/ImageGallery';
 import {
     Approved,
     Calendar,
-    Close,
     Error as ErrorIcon,
     History,
     Hourglass,
     Inbox,
+    Info,
     ListTodo,
     MailCheck,
     Navigate,
@@ -89,6 +89,8 @@ type SowingPlantLifecycleEntry = {
     assignedAt?: string | Date | null;
     assignedUserId?: string | null;
     assignedUserIds?: string[] | null;
+    cancellationReason?: string | null;
+    cancelReason?: string | null;
     createdAt?: string | Date | null;
     endedAt?: string | Date | null;
     plantPlaceEventId?: number | null;
@@ -195,8 +197,8 @@ const statusConfig: Record<GardenOperationStatus, StatusConfig> = {
     },
     canceled: {
         label: 'Otkazano',
-        icon: Close,
-        colorClass: 'text-neutral-500',
+        icon: ErrorIcon,
+        colorClass: 'text-red-600',
     },
 };
 const scheduledStatusConfig: StatusConfig = {
@@ -318,6 +320,10 @@ function getSowingEntryCompletedAt(entry: SowingPlantLifecycleEntry) {
         toIsoString(entry.endedAt) ??
         toIsoString(entry.updatedAt)
     );
+}
+
+function getSowingEntryCancellationReason(entry: SowingPlantLifecycleEntry) {
+    return entry.cancellationReason ?? entry.cancelReason ?? null;
 }
 
 function hasAssignedSowingUser(entry: SowingPlantLifecycleEntry) {
@@ -488,6 +494,10 @@ export function buildSowingOperationItems(
                                 : null,
                         verifiedAt: status === 'completed' ? completedAt : null,
                         canceledAt,
+                        cancellationReason:
+                            status === 'canceled'
+                                ? getSowingEntryCancellationReason(entry)
+                                : null,
                         imageUrls: [],
                         completionNotes: null,
                         targetLabel: formatRaisedBedTargetLabel(
@@ -1128,6 +1138,32 @@ function OperationStatusTooltipContent({
     );
 }
 
+function OperationCancellationReasonTooltipContent({
+    reason,
+}: {
+    reason: string;
+}) {
+    return (
+        <Stack spacing={0.75} className="max-w-64">
+            <Typography
+                level="body3"
+                semiBold
+                component="span"
+                className="text-popover-foreground"
+            >
+                Razlog otkazivanja
+            </Typography>
+            <Typography
+                level="body3"
+                component="span"
+                className="whitespace-normal text-popover-foreground/80"
+            >
+                {reason}
+            </Typography>
+        </Stack>
+    );
+}
+
 function OperationStatusSummary({
     operation,
     status,
@@ -1140,7 +1176,15 @@ function OperationStatusSummary({
         () => buildStatusProgressSteps(operation, status),
         [operation, status],
     );
-    const progressLabel = status === 'scheduled' ? undefined : 'Tijek radnje';
+    const cancellationReason =
+        status === 'canceled'
+            ? operation.cancellationReason?.trim()
+            : undefined;
+    const hasCancellationReason = Boolean(cancellationReason);
+    const progressLabel =
+        hasCancellationReason || status === 'scheduled'
+            ? undefined
+            : 'Tijek radnje';
     const tooltipIntentRef = useRef(false);
     const [tooltipOpen, setTooltipOpen] = useState(false);
     const handleTooltipOpenChange = useCallback((nextOpen: boolean) => {
@@ -1167,7 +1211,11 @@ function OperationStatusSummary({
             <TooltipTrigger asChild>
                 <button
                     type="button"
-                    aria-label={`Status radnje: ${config.label}`}
+                    aria-label={
+                        hasCancellationReason
+                            ? `Status radnje: ${config.label}. Razlog otkazivanja`
+                            : `Status radnje: ${config.label}`
+                    }
                     className="flex max-w-[48%] shrink-0 flex-col items-end rounded-md px-1 py-0.5 text-right transition hover:bg-muted/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     onBlur={clearTooltipIntent}
                     onClick={(event) => {
@@ -1199,15 +1247,29 @@ function OperationStatusSummary({
                 >
                     <span className="flex min-w-0 max-w-full items-center justify-end gap-1.5">
                         <StatusBadge status={status} className="justify-end" />
-                        <OperationStatusProgressIndicator
-                            label={progressLabel}
-                            steps={steps}
-                        />
+                        {hasCancellationReason ? (
+                            <Info
+                                aria-hidden
+                                className="size-3.5 shrink-0 text-red-600"
+                                data-operation-cancellation-reason
+                            />
+                        ) : (
+                            <OperationStatusProgressIndicator
+                                label={progressLabel}
+                                steps={steps}
+                            />
+                        )}
                     </span>
                 </button>
             </TooltipTrigger>
             <TooltipContent side="bottom" align="end" className="max-w-72 p-2">
-                <OperationStatusTooltipContent steps={steps} />
+                {hasCancellationReason && cancellationReason ? (
+                    <OperationCancellationReasonTooltipContent
+                        reason={cancellationReason}
+                    />
+                ) : (
+                    <OperationStatusTooltipContent steps={steps} />
+                )}
             </TooltipContent>
         </Tooltip>
     );
