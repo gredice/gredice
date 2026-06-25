@@ -121,7 +121,10 @@ export async function updateAccountTimeZone(
     return result[0];
 }
 
-export async function getSunflowers(accountId: string) {
+export async function getSunflowers(
+    accountId: string,
+    db: ReturnType<typeof storage> = storage(),
+) {
     // Calculate sunflowers based on events
     let currentSunflowers = 0;
     const events = await getAllEvents(
@@ -131,6 +134,7 @@ export async function getSunflowers(accountId: string) {
             knownEventTypes.accounts.spendSunflowers,
         ],
         [accountId],
+        { db },
     );
     for (const event of events) {
         const { amount } = parseSunflowerEventData(event.data);
@@ -203,7 +207,7 @@ export async function spendSunflowers(
             sql`select pg_advisory_xact_lock(hashtext(${`account-sunflowers:${accountId}`}));`,
         );
 
-        const currentSunflowers = await getSunflowers(accountId);
+        const currentSunflowers = await getSunflowers(accountId, tx);
         if (currentSunflowers < amount) {
             throw new Error('Insufficient sunflowers');
         }
