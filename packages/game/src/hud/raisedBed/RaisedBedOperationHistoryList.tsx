@@ -297,7 +297,6 @@ export function RaisedBedOperationHistoryList({
                         }
                         currentGarden={currentGarden}
                         referenceDate={referenceDate}
-                        progressClassName="md:max-w-80"
                         cancelAction={cancelAction}
                         action={action}
                         scheduleAction={scheduleAction}

@@ -102,10 +102,8 @@ test.describe('Garden operations HUD', () => {
         await expect(dialog.getByText('Sadnja: Cherry rajčica')).toBeVisible();
         await expect(dialog.getByLabel('Raised Bed 1 › Polje 3')).toBeVisible();
         await expect(dialog.getByText('Završeno')).toBeVisible();
-        await expect(dialog.getByLabel('Tijek radnje').first()).toHaveCSS(
-            'max-width',
-            '320px',
-        );
+        await expect(dialog.getByLabel('Tijek radnje').first()).toBeVisible();
+        await expect(dialog.locator('.animate-progress')).toHaveCount(0);
     });
 
     test('keeps active operation cards full height in scrollable lists', async ({
