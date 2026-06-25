@@ -1,6 +1,6 @@
 import 'server-only';
 import { randomUUID } from 'node:crypto';
-import { asc, desc, eq } from 'drizzle-orm';
+import { asc, desc, eq, sql } from 'drizzle-orm';
 import { accounts, accountUsers, ensureAccountAchievement, storage } from '..';
 import {
     createEvent,
@@ -121,7 +121,10 @@ export async function updateAccountTimeZone(
     return result[0];
 }
 
-export async function getSunflowers(accountId: string) {
+export async function getSunflowers(
+    accountId: string,
+    db: ReturnType<typeof storage> = storage(),
+) {
     // Calculate sunflowers based on events
     let currentSunflowers = 0;
     const events = await getAllEvents(
@@ -131,6 +134,7 @@ export async function getSunflowers(accountId: string) {
             knownEventTypes.accounts.spendSunflowers,
         ],
         [accountId],
+        { db },
     );
     for (const event of events) {
         const { amount } = parseSunflowerEventData(event.data);
@@ -198,13 +202,22 @@ export async function spendSunflowers(
     reason: string,
     db: ReturnType<typeof storage> = storage(),
 ) {
-    const currentSunflowers = await getSunflowers(accountId);
-    if (currentSunflowers < amount) {
-        throw new Error('Insufficient sunflowers');
-    }
+    await db.transaction(async (tx) => {
+        await tx.execute(
+            sql`select pg_advisory_xact_lock(hashtext(${`account-sunflowers:${accountId}`}));`,
+        );
 
-    await createEvent(
-        knownEvents.accounts.sunflowersSpentV1(accountId, { amount, reason }),
-        db,
-    );
+        const currentSunflowers = await getSunflowers(accountId, tx);
+        if (currentSunflowers < amount) {
+            throw new Error('Insufficient sunflowers');
+        }
+
+        await createEvent(
+            knownEvents.accounts.sunflowersSpentV1(accountId, {
+                amount,
+                reason,
+            }),
+            tx,
+        );
+    });
 }
