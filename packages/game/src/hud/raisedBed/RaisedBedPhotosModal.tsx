@@ -158,8 +158,10 @@ export function RaisedBedPhotosModal({
     const modalTitle = isFieldScoped
         ? 'Fotografije biljke'
         : 'Fotografije gredice';
+    const shouldSearchOlderPhotos =
+        hideWhenEmpty || triggerPlacement === 'cover';
     const shouldFetchOlderPhotos =
-        hideWhenEmpty &&
+        shouldSearchOlderPhotos &&
         photoCount === 0 &&
         !history.isLoading &&
         !history.isError &&
