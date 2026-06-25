@@ -16,7 +16,7 @@ import { useGardenOperations } from '../../hooks/useGardenOperations';
 import { useOperations } from '../../hooks/useOperations';
 import { useRaisedBedAiHistory } from '../../hooks/useRaisedBedAiHistory';
 import { ButtonGreen } from '../../shared-ui/ButtonGreen';
-import { sortNewestFirst } from '../GardenOperationsHud';
+import { sortOperationTasksNewestFirst } from '../gardenOperationOrdering';
 import { RaisedBedDiaryAiAction } from './RaisedBedDiaryAiAction';
 import {
     buildFieldPositionById,
@@ -107,7 +107,7 @@ export function RaisedBedPhotosModal({
     );
     const photoOperations = useMemo(
         () =>
-            sortNewestFirst(
+            sortOperationTasksNewestFirst(
                 history.data?.pages
                     .flatMap((page) => page.items)
                     .filter((operation) => operation.imageUrls.length > 0) ??

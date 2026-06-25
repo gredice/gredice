@@ -425,15 +425,14 @@ const appliedRaisedBedOperationStatuses: OperationStatus[] = [
     'completed',
     'pendingVerification',
 ];
+const terminalOperationStatuses: OperationStatus[] = [
+    'completed',
+    'failed',
+    'canceled',
+];
 
-function getOperationTimelineSortExpression() {
-    const scheduledDateExpression = getOperationScheduledDateExpression();
-
-    return sql<Date>`coalesce(${scheduledDateExpression}, ${operations.createdAt})`;
-}
-
-function getOperationHistorySortExpression() {
-    return sql<Date>`coalesce((
+function getOperationLatestStatusChangeDateExpression() {
+    return sql<Date | null>`(
         select ${events.createdAt}
         from ${events}
         where ${events.aggregateId} = CAST(${operations.id} as text)
@@ -443,7 +442,15 @@ function getOperationHistorySortExpression() {
           )})
         order by ${events.createdAt} desc, ${events.id} desc
         limit 1
-    ), ${operations.createdAt})`;
+    )`;
+}
+
+function getOperationTaskSortExpression() {
+    const scheduledDateExpression = getOperationScheduledDateExpression();
+    const latestStatusChangeDateExpression =
+        getOperationLatestStatusChangeDateExpression();
+
+    return sql<Date>`coalesce(${scheduledDateExpression}, ${latestStatusChangeDateExpression}, ${operations.createdAt})`;
 }
 
 export async function getOperations(
@@ -472,14 +479,14 @@ export async function getOperationsPage(
     const offset = input.cursor ?? 0;
     const pageSize = input.limit ?? 20;
     const statusExpression = getOperationStatusExpression();
-    const timelineSortExpression = getOperationTimelineSortExpression();
-    const historySortExpression = getOperationHistorySortExpression();
+    const taskSortExpression = getOperationTaskSortExpression();
     const includeCompletedWhere = input.includeCompleted
         ? undefined
-        : sql`${statusExpression} != 'completed'`;
-    const sortOrder = input.includeCompleted
-        ? [desc(historySortExpression), desc(operations.id)]
-        : [asc(timelineSortExpression), asc(operations.id)];
+        : sql`${statusExpression} not in (${sql.join(
+              terminalOperationStatuses.map((value) => sql`${value}`),
+              sql`, `,
+          )})`;
+    const sortOrder = [desc(taskSortExpression), desc(operations.id)];
 
     const [pageRows, totalResult] = await Promise.all([
         storage()

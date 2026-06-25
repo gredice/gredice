@@ -21,8 +21,8 @@ import {
     GardenOperationCard,
     GardenOperationScheduleAction,
     getGardenOperationCancelTarget,
-    sortNewestFirst,
 } from '../GardenOperationsHud';
+import { sortOperationTasksNewestFirst } from '../gardenOperationOrdering';
 import { RaisedBedDiaryAiAction } from './RaisedBedDiaryAiAction';
 import {
     buildFieldPlantSortIdById,
@@ -128,7 +128,7 @@ export function RaisedBedOperationHistoryList({
     );
     const operations = useMemo(
         () =>
-            sortNewestFirst([
+            sortOperationTasksNewestFirst([
                 ...(history.data?.pages.flatMap((page) => page.items) ?? []),
                 ...sowingOperations,
             ]),
