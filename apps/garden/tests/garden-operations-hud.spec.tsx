@@ -123,7 +123,10 @@ test.describe('Garden operations HUD', () => {
         await expect(completedSowingCard.getByText('Završeno')).toBeVisible();
         await expect(
             completedSowingCard.getByLabel('Tijek radnje'),
-        ).toBeVisible();
+        ).toHaveCount(0);
+        await expect(
+            completedSowingCard.locator('[data-operation-status-progress]'),
+        ).toHaveCount(0);
         const canceledSowingCard = dialog
             .locator('[data-garden-operation-card]')
             .filter({ hasText: 'Sadnja: Maslac salata' });
@@ -178,9 +181,15 @@ test.describe('Garden operations HUD', () => {
         ).toHaveCount(0);
         await page.mouse.move(0, 0);
         await expect(statusTooltip).toHaveCount(0);
-        await expect(cards.first().getByLabel('Tijek radnje')).toBeVisible();
+        await expect(cards.first().getByLabel('Tijek radnje')).toHaveCount(0);
+        await expect(
+            cards.first().locator('[data-operation-status-progress]'),
+        ).toHaveCount(0);
         await expect(cards.nth(5).getByLabel('Tijek radnje')).toBeVisible();
-        await cards.first().getByLabel('Tijek radnje').hover();
+        await expect(
+            cards.nth(5).locator('[data-operation-status-progress]'),
+        ).toHaveCount(1);
+        await cards.nth(5).getByLabel('Tijek radnje').hover();
         await expect(statusTooltip).toHaveCount(1);
         await expect(
             statusTooltip.getByText(/\d{1,2}:\d{2}:\d{2}/),
@@ -240,7 +249,16 @@ test.describe('Garden operations HUD', () => {
         const cards = dialog.locator('[data-garden-operation-card]');
         await expect(cards.nth(10)).toBeVisible();
         expect(await cards.count()).toBeGreaterThan(10);
-        await expect(cards.first().getByLabel('Tijek radnje')).toBeVisible();
+        const completedCard = cards.filter({ hasText: 'Završeno' }).first();
+        const confirmedCard = cards.filter({ hasText: 'Potvrđeno' }).first();
+        await expect(completedCard).toBeVisible();
+        await expect(confirmedCard).toBeVisible();
+        await expect(
+            completedCard.locator('[data-operation-status-progress]'),
+        ).toHaveCount(0);
+        await expect(
+            confirmedCard.locator('[data-operation-status-progress]'),
+        ).toHaveCount(0);
         await expect(cards.nth(8)).toBeVisible();
 
         const firstCardBox = await cards.first().boundingBox();
