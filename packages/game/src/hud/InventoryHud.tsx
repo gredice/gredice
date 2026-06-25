@@ -649,14 +649,17 @@ export function InventoryHud() {
                     >
                         <div className="relative flex items-center justify-center">
                             <BackpackIcon className="size-6" />
-                            {totalItems > 0 && (
+                            {backpackItemsTotal > 0 && (
                                 <div
                                     className={cx(
                                         'absolute -top-4 -right-4 size-6 px-1.5 rounded-full bg-tertiary text-tertiary-foreground text-sm font-semibold leading-none flex items-center justify-center shadow-md border border-tertiary-foreground/30',
-                                        totalItems > 99 && 'text-[10px]',
+                                        backpackItemsTotal > 99 &&
+                                            'text-[10px]',
                                     )}
                                 >
-                                    {totalItems > 99 ? '99+' : totalItems}
+                                    {backpackItemsTotal > 99
+                                        ? '99+'
+                                        : backpackItemsTotal}
                                 </div>
                             )}
                         </div>
