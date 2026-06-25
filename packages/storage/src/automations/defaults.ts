@@ -17,9 +17,37 @@ export const seedlingTransplantWateringAutomationKey =
     'default.seedling-transplant-watering';
 export const plantRemovalOperationStatusAutomationKey =
     'default.plant-removal-operation-status';
+export const farmRaisedBedWeedingAutomationKey =
+    'default.farm-raised-bed-weeding';
+export const greenhouseSeedlingWateringAutomationKey =
+    'default.greenhouse-seedling-watering';
+export const monthlyFarmInventoryOperationsAutomationKey =
+    'default.monthly-farm-inventory-operations';
+export const raisedBedPhotoOperationsAutomationKey =
+    'default.raised-bed-photo-operations';
 
 const seedlingTransplantingOperationId = 593;
 const plantRemovalOperationId = 346;
+export const FARM_RAISED_BED_WEEDING_OPERATION_ID = 654;
+export const farmRaisedBedWeedingOperationKey = 'cleanWeedsAroundRaisedBeds';
+export const farmRaisedBedWeedingBiweeklyAnchorDate = '2026-01-05';
+const greenhouseSeedlingWateringOperationId = 655;
+export const monthlyFarmInventoryOperationConfigs = [
+    { entityId: 554, entityTypeName: 'operation', scheduledInDays: 0 },
+    { entityId: 555, entityTypeName: 'operation', scheduledInDays: 0 },
+    { entityId: 556, entityTypeName: 'operation', scheduledInDays: 0 },
+    { entityId: 557, entityTypeName: 'operation', scheduledInDays: 0 },
+    { entityId: 558, entityTypeName: 'operation', scheduledInDays: 0 },
+    { entityId: 559, entityTypeName: 'operation', scheduledInDays: 0 },
+    { entityId: 560, entityTypeName: 'operation', scheduledInDays: 0 },
+    { entityId: 561, entityTypeName: 'operation', scheduledInDays: 0 },
+    { entityId: 562, entityTypeName: 'operation', scheduledInDays: 0 },
+    { entityId: 563, entityTypeName: 'operation', scheduledInDays: 0 },
+    { entityId: 564, entityTypeName: 'operation', scheduledInDays: 0 },
+    { entityId: 565, entityTypeName: 'operation', scheduledInDays: 0 },
+];
+export const RAISED_BED_PHOTO_OPERATION_ID = 301;
+export const RAISED_BED_PHOTO_OPERATION_NAME = 'raisedBedFullPhoto';
 
 export function seasonalSowedWateringAutomationGraph(): AutomationGraph {
     return {
@@ -258,6 +286,156 @@ export function plantRemovalOperationStatusAutomationGraph(): AutomationGraph {
     };
 }
 
+export function farmRaisedBedWeedingAutomationGraph(): AutomationGraph {
+    return {
+        nodes: [
+            {
+                id: 'trigger',
+                kind: 'trigger',
+                moduleKey: automationModuleKeys.triggerSchedule,
+                position: { x: 0, y: 160 },
+                config: {
+                    frequency: 'biweekly',
+                    dayOfWeek: 'monday',
+                    anchorDate: farmRaisedBedWeedingBiweeklyAnchorDate,
+                    timeZone: 'Europe/Zagreb',
+                },
+            },
+            {
+                id: 'create-farm-weeding-operations',
+                kind: 'action',
+                moduleKey:
+                    automationModuleKeys.actionCreateFarmInventoryOperations,
+                position: { x: 360, y: 160 },
+                config: {
+                    operations: [
+                        {
+                            entityId: FARM_RAISED_BED_WEEDING_OPERATION_ID,
+                            entityTypeName: 'operation',
+                            scheduledInDays: 0,
+                        },
+                    ],
+                },
+            },
+        ],
+        edges: [
+            {
+                id: 'trigger-to-create-farm-weeding-operations',
+                source: 'trigger',
+                target: 'create-farm-weeding-operations',
+            },
+        ],
+    };
+}
+
+export function greenhouseSeedlingWateringAutomationGraph(): AutomationGraph {
+    return {
+        nodes: [
+            {
+                id: 'trigger',
+                kind: 'trigger',
+                moduleKey: automationModuleKeys.triggerSchedule,
+                position: { x: 0, y: 160 },
+                config: {
+                    frequency: 'daily',
+                    timeZone: 'Europe/Zagreb',
+                },
+            },
+            {
+                id: 'create-greenhouse-seedling-waterings',
+                kind: 'action',
+                moduleKey:
+                    automationModuleKeys.actionCreateGreenhouseSeedlingWateringOperations,
+                position: { x: 360, y: 160 },
+                config: {
+                    entityId: greenhouseSeedlingWateringOperationId,
+                    entityTypeName: 'operation',
+                    scheduledInDays: 0,
+                },
+            },
+        ],
+        edges: [
+            {
+                id: 'trigger-to-create-greenhouse-seedling-waterings',
+                source: 'trigger',
+                target: 'create-greenhouse-seedling-waterings',
+            },
+        ],
+    };
+}
+
+export function monthlyFarmInventoryOperationsAutomationGraph(): AutomationGraph {
+    return {
+        nodes: [
+            {
+                id: 'trigger',
+                kind: 'trigger',
+                moduleKey: automationModuleKeys.triggerSchedule,
+                position: { x: 0, y: 160 },
+                config: {
+                    frequency: 'monthly',
+                    dayOfMonth: 1,
+                    timeZone: 'Europe/Zagreb',
+                },
+            },
+            {
+                id: 'create-inventory-operations',
+                kind: 'action',
+                moduleKey:
+                    automationModuleKeys.actionCreateFarmInventoryOperations,
+                position: { x: 360, y: 160 },
+                config: {
+                    operations: monthlyFarmInventoryOperationConfigs,
+                },
+            },
+        ],
+        edges: [
+            {
+                id: 'trigger-to-create-inventory-operations',
+                source: 'trigger',
+                target: 'create-inventory-operations',
+            },
+        ],
+    };
+}
+
+export function raisedBedPhotoOperationsAutomationGraph(): AutomationGraph {
+    return {
+        nodes: [
+            {
+                id: 'trigger',
+                kind: 'trigger',
+                moduleKey: automationModuleKeys.triggerSchedule,
+                position: { x: 0, y: 160 },
+                config: {
+                    frequency: 'weekly',
+                    daysOfWeek: ['tuesday', 'friday'],
+                    timeZone: 'Europe/Zagreb',
+                },
+            },
+            {
+                id: 'create-photo-operations',
+                kind: 'action',
+                moduleKey: automationModuleKeys.actionCreateRaisedBedOperations,
+                position: { x: 360, y: 160 },
+                config: {
+                    entityId: RAISED_BED_PHOTO_OPERATION_ID,
+                    entityTypeName: 'operation',
+                    scheduledInDays: 0,
+                    acceptOnCreate: true,
+                },
+            },
+        ],
+        edges: [
+            {
+                id: 'trigger-to-create-photo-operations',
+                source: 'trigger',
+                target: 'create-photo-operations',
+            },
+        ],
+    };
+}
+
 export async function ensureDefaultAutomationDefinitions() {
     await initializeAutomationEventCursorToLatest();
 
@@ -333,11 +511,86 @@ export async function ensureDefaultAutomationDefinitions() {
         },
     });
 
+    const farmRaisedBedWeeding = await upsertAutomationDefinitionByKey({
+        key: farmRaisedBedWeedingAutomationKey,
+        name: 'Dodaj čišćenje korova oko gredica za svaku farmu',
+        description:
+            'Svaki drugi ponedjeljak dodaj prihvaćenu radnju na razini farme Čišćenje korova oko gredica za svaku aktivnu farmu. Definicija je pripremljena za uključivanje nakon operativnog pregleda draft radnje.',
+        status: 'draft',
+        graph: farmRaisedBedWeedingAutomationGraph(),
+        preserveExistingStatus: true,
+        metadata: {
+            managedBy: 'gredice',
+            defaultAutomation: true,
+            operationEntityId: FARM_RAISED_BED_WEEDING_OPERATION_ID,
+            operationEntityKey: farmRaisedBedWeedingOperationKey,
+            biweeklyAnchorDate: farmRaisedBedWeedingBiweeklyAnchorDate,
+            resolvedFromIssue: 3700,
+        },
+    });
+
+    const greenhouseSeedlingWatering = await upsertAutomationDefinitionByKey({
+        key: greenhouseSeedlingWateringAutomationKey,
+        name: 'Dodaj dnevno zalijevanje presadnica u stakleniku',
+        description:
+            'Svaki dan dodaj jednu farmsku radnju zalijevanja presadnica u stakleniku za aktivne farme koje imaju presadnice u stakleniku ili aktivne outlet presadnice.',
+        status: 'enabled',
+        graph: greenhouseSeedlingWateringAutomationGraph(),
+        metadata: {
+            managedBy: 'gredice',
+            defaultAutomation: true,
+            operationEntityId: greenhouseSeedlingWateringOperationId,
+            operationInternalName: 'waterGreenhouseSeedlings',
+            operationName: 'Zalijevanje presadnica u stakleniku',
+            resolvedFromIssue: 3700,
+        },
+    });
+
+    const monthlyFarmInventoryOperations =
+        await upsertAutomationDefinitionByKey({
+            key: monthlyFarmInventoryOperationsAutomationKey,
+            name: 'Mjesečna inventura farme',
+            description:
+                'Svakog prvog dana u mjesecu kreiraj inventurne radnje za svaku aktivnu farmu.',
+            status: 'enabled',
+            graph: monthlyFarmInventoryOperationsAutomationGraph(),
+            metadata: {
+                managedBy: 'gredice',
+                defaultAutomation: true,
+                dayOfMonth: 1,
+                timeZone: 'Europe/Zagreb',
+                operationEntityIds: monthlyFarmInventoryOperationConfigs.map(
+                    (operation) => operation.entityId,
+                ),
+            },
+        });
+
+    const raisedBedPhotoOperations = await upsertAutomationDefinitionByKey({
+        key: raisedBedPhotoOperationsAutomationKey,
+        name: 'Dodaj fotografiranje aktivnih gredica',
+        description:
+            'Svakog utorka i petka dodaj radnju fotografiranja za svaku aktivnu gredicu ako ta gredica već nema fotografiranje za tu pojavu rasporeda.',
+        status: 'enabled',
+        graph: raisedBedPhotoOperationsAutomationGraph(),
+        metadata: {
+            managedBy: 'gredice',
+            defaultAutomation: true,
+            operationEntityId: RAISED_BED_PHOTO_OPERATION_ID,
+            operationEntityName: RAISED_BED_PHOTO_OPERATION_NAME,
+            operationEntityLabel: 'Fotografiranje gredice',
+            operationEntitySource: 'live-admin-data',
+        },
+    });
+
     return {
         seasonalSowedWatering,
         operationImagePlantStatusReview,
         seedlingTransplantDirectSowingLocation,
         seedlingTransplantWatering,
         plantRemovalOperationStatus,
+        farmRaisedBedWeeding,
+        greenhouseSeedlingWatering,
+        monthlyFarmInventoryOperations,
+        raisedBedPhotoOperations,
     };
 }

@@ -4,6 +4,7 @@ import {
     automationRunStatusValues,
     getAutomationDefinitionById,
     getAutomationModuleMetadata,
+    isScheduleTriggerModuleKey,
     listAutomationRunSteps,
     listAutomationRuns,
     listRecentDomainEvents,
@@ -79,7 +80,7 @@ export default async function AutomationDetailPage({
     const triggerMode =
         triggerModuleKey === automationModuleKeys.triggerDomainEvent
             ? 'domainEvent'
-            : triggerModuleKey === automationModuleKeys.triggerScheduleMonthly
+            : triggerModuleKey && isScheduleTriggerModuleKey(triggerModuleKey)
               ? 'schedule'
               : 'unsupported';
     const currentRunStatusFilter = normalizeAutomationRunStatusFilter(

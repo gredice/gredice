@@ -1,5 +1,14 @@
 import 'server-only';
-import { and, asc, count, eq, inArray, isNull, or } from 'drizzle-orm';
+import {
+    and,
+    asc,
+    count,
+    eq,
+    inArray,
+    isNotNull,
+    isNull,
+    or,
+} from 'drizzle-orm';
 import { storage } from '..';
 import {
     bustScheduleCache,
@@ -28,7 +37,7 @@ import {
 } from '../schema/gardenSchema';
 import {
     createEvent,
-    getEvents,
+    getAllEvents,
     knownEvents,
     knownEventTypes,
     type RaisedBedWeedStateLevel,
@@ -37,7 +46,9 @@ import {
 } from './eventsRepo';
 import {
     getRaisedBedFieldsWithEvents,
+    getRaisedBedFieldsWithEventsForBeds,
     normalizeRaisedBedFieldsForMerge,
+    type RaisedBedFieldWithEvents,
     type RaisedBedWeedState,
 } from './raisedBedFieldsRepo';
 import { processReferralRewardsForAccount } from './referralsRepo';
@@ -45,6 +56,10 @@ import { processReferralRewardsForAccount } from './referralsRepo';
 const RAISED_BED_FIELDS_PER_BLOCK = 9;
 
 type RaisedBedFieldPlantCycleEvent = typeof events.$inferSelect;
+type RaisedBedWithFields = typeof raisedBeds.$inferSelect & {
+    fields: RaisedBedFieldWithEvents[];
+    weedState: RaisedBedWeedState | null;
+};
 
 function parseWeedStateLevel(value: unknown): RaisedBedWeedStateLevel | null {
     switch (value) {
@@ -186,6 +201,39 @@ export async function getRaisedBedMetadataByIds(raisedBedIds: number[]) {
         .orderBy(asc(raisedBeds.id));
 }
 
+export async function listActiveRaisedBedOperationTargets() {
+    const rows = await storage()
+        .select({
+            id: raisedBeds.id,
+            accountId: raisedBeds.accountId,
+            gardenId: raisedBeds.gardenId,
+        })
+        .from(raisedBeds)
+        .innerJoin(gardens, eq(gardens.id, raisedBeds.gardenId))
+        .where(
+            and(
+                eq(raisedBeds.status, 'active'),
+                eq(raisedBeds.isDeleted, false),
+                eq(gardens.isDeleted, false),
+                isNotNull(raisedBeds.accountId),
+                isNotNull(raisedBeds.gardenId),
+            ),
+        )
+        .orderBy(asc(raisedBeds.id));
+
+    return rows.flatMap((row) =>
+        row.accountId && row.gardenId
+            ? [
+                  {
+                      id: row.id,
+                      accountId: row.accountId,
+                      gardenId: row.gardenId,
+                  },
+              ]
+            : [],
+    );
+}
+
 async function getRaisedBedWeedStatesByIds(raisedBedIds: number[]) {
     const uniqueRaisedBedIds = Array.from(new Set(raisedBedIds));
     const weedStatesByRaisedBedId = new Map<number, RaisedBedWeedState>();
@@ -193,11 +241,9 @@ async function getRaisedBedWeedStatesByIds(raisedBedIds: number[]) {
         return weedStatesByRaisedBedId;
     }
 
-    const weedStateEvents = await getEvents(
+    const weedStateEvents = await getAllEvents(
         knownEventTypes.raisedBeds.weedStateSet,
         uniqueRaisedBedIds.map((raisedBedId) => raisedBedId.toString()),
-        0,
-        100000,
     );
 
     const eventsByRaisedBedId = new Map<
@@ -234,9 +280,31 @@ export async function getRaisedBeds(
         status?: string;
     },
 ) {
+    return (
+        (await getRaisedBedsForGardens([gardenId], filters)).get(gardenId) ?? []
+    );
+}
+
+export async function getRaisedBedsForGardens(
+    gardenIds: number[],
+    filters?: {
+        status?: string;
+    },
+) {
+    const uniqueGardenIds = Array.from(new Set(gardenIds));
+    const raisedBedsByGardenId = new Map<number, RaisedBedWithFields[]>();
+
+    for (const gardenId of uniqueGardenIds) {
+        raisedBedsByGardenId.set(gardenId, []);
+    }
+
+    if (uniqueGardenIds.length === 0) {
+        return raisedBedsByGardenId;
+    }
+
     // Build where conditions
     const whereConditions = [
-        eq(raisedBeds.gardenId, gardenId),
+        inArray(raisedBeds.gardenId, uniqueGardenIds),
         eq(raisedBeds.isDeleted, false),
     ];
 
@@ -250,18 +318,30 @@ export async function getRaisedBeds(
     const weedStatesByRaisedBedId = await getRaisedBedWeedStatesByIds(
         beds.map((bed) => bed.id),
     );
+    const fieldsByRaisedBedId = await getRaisedBedFieldsWithEventsForBeds(
+        beds.map((bed) => bed.id),
+    );
 
     // For each raised bed, fetch and attach fields with event-sourced info
-    return Promise.all(
-        beds.map(async (bed) => {
-            const fields = await getRaisedBedFieldsWithEvents(bed.id);
-            return {
-                ...bed,
-                fields,
-                weedState: weedStatesByRaisedBedId.get(bed.id) ?? null,
-            };
-        }),
-    );
+    for (const bed of beds) {
+        if (bed.gardenId === null) {
+            continue;
+        }
+
+        const gardenBeds = raisedBedsByGardenId.get(bed.gardenId);
+        const bedWithFields = {
+            ...bed,
+            fields: fieldsByRaisedBedId.get(bed.id) ?? [],
+            weedState: weedStatesByRaisedBedId.get(bed.id) ?? null,
+        };
+        if (gardenBeds) {
+            gardenBeds.push(bedWithFields);
+        } else {
+            raisedBedsByGardenId.set(bed.gardenId, [bedWithFields]);
+        }
+    }
+
+    return raisedBedsByGardenId;
 }
 
 export async function getRaisedBed(raisedBedId: number) {
@@ -602,17 +682,13 @@ async function getFarmUserRaisedBedsUncached(userId: string) {
         )
         .orderBy(asc(raisedBeds.id));
 
-    const fields = (
-        await Promise.all(
-            farmRaisedBeds
-                .map((row) => row.raisedBed.id)
-                .map(getRaisedBedFieldsWithEvents),
-        )
-    ).flat();
+    const fieldsByRaisedBedId = await getRaisedBedFieldsWithEventsForBeds(
+        farmRaisedBeds.map((row) => row.raisedBed.id),
+    );
 
     return farmRaisedBeds.map(({ raisedBed }) => ({
         ...raisedBed,
-        fields: fields.filter((field) => field.raisedBedId === raisedBed.id),
+        fields: fieldsByRaisedBedId.get(raisedBed.id) ?? [],
     }));
 }
 
@@ -638,14 +714,12 @@ async function getAllRaisedBedsUncached() {
         .leftJoin(gardens, eq(raisedBeds.gardenId, gardens.id))
         .where(and(eq(raisedBeds.isDeleted, false), excludeSandboxRaisedBeds));
     const allRaisedBeds = rows.map((row) => row.raisedBed);
-    const fields = (
-        await Promise.all(
-            allRaisedBeds.map((r) => r.id).map(getRaisedBedFieldsWithEvents),
-        )
-    ).flat();
+    const fieldsByRaisedBedId = await getRaisedBedFieldsWithEventsForBeds(
+        allRaisedBeds.map((raisedBed) => raisedBed.id),
+    );
     return allRaisedBeds.map((raisedBed) => ({
         ...raisedBed,
-        fields: fields.filter((field) => field.raisedBedId === raisedBed.id),
+        fields: fieldsByRaisedBedId.get(raisedBed.id) ?? [],
     }));
 }
 
@@ -667,15 +741,13 @@ export async function getAllRaisedBedsFiltered(filters?: { status?: string }) {
         .where(and(...whereConditions));
     const allRaisedBeds = rows.map((row) => row.raisedBed);
 
-    const fields = (
-        await Promise.all(
-            allRaisedBeds.map((r) => r.id).map(getRaisedBedFieldsWithEvents),
-        )
-    ).flat();
+    const fieldsByRaisedBedId = await getRaisedBedFieldsWithEventsForBeds(
+        allRaisedBeds.map((raisedBed) => raisedBed.id),
+    );
 
     return allRaisedBeds.map((raisedBed) => ({
         ...raisedBed,
-        fields: fields.filter((field) => field.raisedBedId === raisedBed.id),
+        fields: fieldsByRaisedBedId.get(raisedBed.id) ?? [],
     }));
 }
 

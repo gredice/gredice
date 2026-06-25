@@ -11,7 +11,11 @@ import {
 } from '../repositories/automationsRepo';
 import { ensureDefaultAutomationDefinitions } from './defaults';
 import { executeAutomationRun } from './executor';
-import { automationModuleKeys, getMonthlyScheduleOccurrence } from './modules';
+import {
+    automationModuleKeys,
+    getScheduleOccurrence,
+    isScheduleTriggerModuleKey,
+} from './modules';
 
 const defaultEventBatchLimit = 500;
 const defaultRunBatchLimit = 25;
@@ -66,8 +70,20 @@ export async function enqueueAutomationRunsFromSchedules({
     limit?: number;
 } = {}) {
     await ensureDefaultAutomationDefinitions();
-    const definitions = await listEnabledAutomationDefinitionsForTriggerModule(
-        automationModuleKeys.triggerScheduleMonthly,
+    const scheduleDefinitions = await Promise.all(
+        [
+            automationModuleKeys.triggerSchedule,
+            automationModuleKeys.triggerScheduleMonthly,
+        ].map((triggerModuleKey) =>
+            listEnabledAutomationDefinitionsForTriggerModule(triggerModuleKey),
+        ),
+    );
+    const definitions = Array.from(
+        new Map(
+            scheduleDefinitions
+                .flat()
+                .map((definition) => [definition.id, definition]),
+        ).values(),
     );
     let enqueuedRuns = 0;
 
@@ -75,13 +91,13 @@ export async function enqueueAutomationRunsFromSchedules({
         const trigger = definition.graph.nodes.find(
             (node) =>
                 node.kind === 'trigger' &&
-                node.moduleKey === automationModuleKeys.triggerScheduleMonthly,
+                isScheduleTriggerModuleKey(node.moduleKey),
         );
         if (!trigger) {
             continue;
         }
 
-        const occurrence = getMonthlyScheduleOccurrence(trigger, now);
+        const occurrence = getScheduleOccurrence(trigger, now);
         if (!occurrence) {
             continue;
         }

@@ -8,13 +8,20 @@ import {
     type RaisedBedFieldSowingLocation,
 } from '../repositories/events';
 import { getFarms } from '../repositories/farmsRepo';
-import { getRaisedBed } from '../repositories/gardensRepo';
+import {
+    getAllRaisedBeds,
+    getGardens,
+    getRaisedBed,
+    listActiveRaisedBedOperationTargets,
+} from '../repositories/gardensRepo';
 import {
     acceptOperation,
     createOperation,
     getFarmAcceptedOperationsByScheduleRange,
     getOperationById,
+    getRaisedBedOperationsByScheduleRange,
 } from '../repositories/operationsRepo';
+import { getOutletOffers } from '../repositories/outletOffersRepo';
 import {
     queuePostTransplantWateringOperations,
     queueSeasonalSowingOfferOperations,
@@ -36,6 +43,7 @@ import {
 } from './types';
 
 const domainEventTriggerKey = 'trigger.domainEvent';
+const scheduleTriggerKey = 'trigger.schedule';
 const scheduleMonthlyTriggerKey = 'trigger.scheduleMonthly';
 const eventDataEqualsConditionKey = 'condition.eventDataEquals';
 const operationMatchesConditionKey = 'condition.operationMatches';
@@ -47,17 +55,82 @@ const queuePostTransplantWateringOperationsActionKey =
 const createOperationActionKey = 'action.createOperation';
 const createFarmInventoryOperationsActionKey =
     'action.createFarmInventoryOperations';
+const createGreenhouseSeedlingWateringOperationsActionKey =
+    'action.createGreenhouseSeedlingWateringOperations';
+const createRaisedBedOperationsActionKey = 'action.createRaisedBedOperations';
 const updateRaisedBedFieldPlantAttributesActionKey =
     'action.updateRaisedBedFieldPlantAttributes';
 const createPlantStatusRequestsFromImageAnalysisActionKey =
     'action.createPlantStatusRequestsFromImageAnalysis';
 const logActionKey = 'action.log';
-const monthlyScheduleEventType = 'automation.schedule.monthly';
+export const automationScheduleEventType = 'automation.schedule';
+const legacyMonthlyScheduleEventType = 'automation.schedule.monthly';
 const defaultScheduleTimeZone = 'Europe/Zagreb';
 const defaultImagePlantStatusReviewMinConfidence = 0.9;
+const defaultBiweeklyAnchorDate = '2026-01-05';
+const millisecondsPerDay = 24 * 60 * 60 * 1000;
+const millisecondsPerWeek = 7 * millisecondsPerDay;
+
+const scheduleFrequencyValues = [
+    'daily',
+    'weekly',
+    'biweekly',
+    'monthly',
+] as const;
+type ScheduleFrequency = (typeof scheduleFrequencyValues)[number];
+
+const weekDayValues = [
+    'monday',
+    'tuesday',
+    'wednesday',
+    'thursday',
+    'friday',
+    'saturday',
+    'sunday',
+] as const;
+type WeekDay = (typeof weekDayValues)[number];
+
+const jsDayToWeekDay = [
+    'sunday',
+    'monday',
+    'tuesday',
+    'wednesday',
+    'thursday',
+    'friday',
+    'saturday',
+] as const satisfies readonly WeekDay[];
+
+const weekDayAliases = new Map<string, WeekDay>([
+    ['mon', 'monday'],
+    ['monday', 'monday'],
+    ['1', 'monday'],
+    ['tue', 'tuesday'],
+    ['tues', 'tuesday'],
+    ['tuesday', 'tuesday'],
+    ['2', 'tuesday'],
+    ['wed', 'wednesday'],
+    ['wednesday', 'wednesday'],
+    ['3', 'wednesday'],
+    ['thu', 'thursday'],
+    ['thur', 'thursday'],
+    ['thurs', 'thursday'],
+    ['thursday', 'thursday'],
+    ['4', 'thursday'],
+    ['fri', 'friday'],
+    ['friday', 'friday'],
+    ['5', 'friday'],
+    ['sat', 'saturday'],
+    ['saturday', 'saturday'],
+    ['6', 'saturday'],
+    ['sun', 'sunday'],
+    ['sunday', 'sunday'],
+    ['0', 'sunday'],
+    ['7', 'sunday'],
+]);
 
 export const automationModuleKeys = {
     triggerDomainEvent: domainEventTriggerKey,
+    triggerSchedule: scheduleTriggerKey,
     triggerScheduleMonthly: scheduleMonthlyTriggerKey,
     conditionEventDataEquals: eventDataEqualsConditionKey,
     conditionOperationMatches: operationMatchesConditionKey,
@@ -68,12 +141,31 @@ export const automationModuleKeys = {
         queuePostTransplantWateringOperationsActionKey,
     actionCreateOperation: createOperationActionKey,
     actionCreateFarmInventoryOperations: createFarmInventoryOperationsActionKey,
+    actionCreateGreenhouseSeedlingWateringOperations:
+        createGreenhouseSeedlingWateringOperationsActionKey,
+    actionCreateRaisedBedOperations: createRaisedBedOperationsActionKey,
     actionUpdateRaisedBedFieldPlantAttributes:
         updateRaisedBedFieldPlantAttributesActionKey,
     actionCreatePlantStatusRequestsFromImageAnalysis:
         createPlantStatusRequestsFromImageAnalysisActionKey,
     actionLog: logActionKey,
 } as const;
+
+export function isScheduleTriggerModuleKey(moduleKey: string) {
+    return (
+        moduleKey === scheduleTriggerKey ||
+        moduleKey === scheduleMonthlyTriggerKey
+    );
+}
+
+export function isAutomationScheduleEventType(
+    eventType: string | null | undefined,
+) {
+    return (
+        eventType === automationScheduleEventType ||
+        eventType === legacyMonthlyScheduleEventType
+    );
+}
 
 function getRecord(value: unknown): AutomationJsonObject {
     return value && typeof value === 'object' && !Array.isArray(value)
@@ -138,82 +230,344 @@ function getTimeZoneDateParts(date: Date, timeZone: string) {
     ) {
         throw new Error(`Unable to resolve date parts for ${timeZone}.`);
     }
+    const localDate = new Date(Date.UTC(year, month - 1, day));
+    const dayOfWeek = jsDayToWeekDay[localDate.getUTCDay()];
+    if (!dayOfWeek) {
+        throw new Error(`Unable to resolve day of week for ${timeZone}.`);
+    }
 
     return {
         year,
         month,
         day,
+        dayOfWeek,
         dateKey: `${parts.year}-${parts.month}-${parts.day}`,
         periodKey: `${parts.year}-${parts.month}`,
     };
 }
 
-function validateMonthlyScheduleConfig(config: AutomationJsonObject) {
-    const errors: string[] = [];
-    const dayOfMonth = getNumber(config, 'dayOfMonth');
-    const timeZone = getString(config, 'timeZone') ?? defaultScheduleTimeZone;
+function getScheduleFrequency(
+    config: AutomationJsonObject,
+    moduleKey = scheduleTriggerKey,
+): ScheduleFrequency | null {
+    if (moduleKey === scheduleMonthlyTriggerKey) {
+        return 'monthly';
+    }
 
+    const frequency = getString(config, 'frequency');
+    return scheduleFrequencyValues.find((value) => value === frequency) ?? null;
+}
+
+function parseWeekDay(value: unknown): WeekDay | null {
+    const key =
+        typeof value === 'number' && Number.isInteger(value)
+            ? value.toString()
+            : typeof value === 'string'
+              ? value.trim().toLowerCase()
+              : '';
+
+    return weekDayAliases.get(key) ?? null;
+}
+
+function weekDayLabel(day: WeekDay) {
+    return day.charAt(0).toUpperCase() + day.slice(1);
+}
+
+function getConfiguredWeekDays(config: AutomationJsonObject) {
+    const candidates: unknown[] = [];
+    const dayOfWeek = config.dayOfWeek;
+    const daysOfWeek = config.daysOfWeek;
+
+    if (dayOfWeek !== undefined) {
+        candidates.push(dayOfWeek);
+    }
+    if (Array.isArray(daysOfWeek)) {
+        candidates.push(...daysOfWeek);
+    } else if (typeof daysOfWeek === 'string') {
+        candidates.push(...daysOfWeek.split(','));
+    } else if (typeof daysOfWeek === 'number') {
+        candidates.push(daysOfWeek);
+    }
+
+    const days: WeekDay[] = [];
+    const invalidValues: string[] = [];
+    for (const candidate of candidates) {
+        const day = parseWeekDay(candidate);
+        if (!day) {
+            invalidValues.push(String(candidate));
+            continue;
+        }
+        if (!days.includes(day)) {
+            days.push(day);
+        }
+    }
+
+    return {
+        days,
+        invalidValues,
+    };
+}
+
+function parseLocalDateKey(value: string) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+    if (!match) {
+        return null;
+    }
+
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const date = new Date(Date.UTC(year, month - 1, day));
     if (
-        !Number.isInteger(dayOfMonth) ||
-        dayOfMonth === undefined ||
-        dayOfMonth < 1 ||
-        dayOfMonth > 31
+        date.getUTCFullYear() !== year ||
+        date.getUTCMonth() !== month - 1 ||
+        date.getUTCDate() !== day
     ) {
-        errors.push('dayOfMonth must be an integer from 1 to 31.');
+        return null;
+    }
+
+    return {
+        year,
+        month,
+        day,
+        dateKey: value.trim(),
+    };
+}
+
+function localDateUtcMs({
+    day,
+    month,
+    year,
+}: {
+    day: number;
+    month: number;
+    year: number;
+}) {
+    return Date.UTC(year, month - 1, day);
+}
+
+function localIsoWeekStartUtcMs(parts: {
+    day: number;
+    month: number;
+    year: number;
+}) {
+    const dateMs = localDateUtcMs(parts);
+    const dayOfWeek = new Date(dateMs).getUTCDay();
+    const daysSinceMonday = (dayOfWeek + 6) % 7;
+    return dateMs - daysSinceMonday * millisecondsPerDay;
+}
+
+function getBiweeklyWeekOffset(
+    parts: ReturnType<typeof getTimeZoneDateParts>,
+    anchorDate: string,
+) {
+    const anchorParts = parseLocalDateKey(anchorDate);
+    if (!anchorParts) {
+        return null;
+    }
+
+    return Math.floor(
+        (localIsoWeekStartUtcMs(parts) - localIsoWeekStartUtcMs(anchorParts)) /
+            millisecondsPerWeek,
+    );
+}
+
+function validateScheduleConfigForModule(
+    config: AutomationJsonObject,
+    moduleKey = scheduleTriggerKey,
+) {
+    const errors: string[] = [];
+    const timeZone = getString(config, 'timeZone') ?? defaultScheduleTimeZone;
+    const frequency = getScheduleFrequency(config, moduleKey);
+
+    if (!frequency) {
+        errors.push('frequency must be daily, weekly, biweekly, or monthly.');
     }
 
     if (!isValidTimeZone(timeZone)) {
         errors.push('timeZone must be a valid IANA time zone.');
     }
 
+    if (frequency === 'monthly') {
+        const dayOfMonth = getNumber(config, 'dayOfMonth');
+        if (
+            !Number.isInteger(dayOfMonth) ||
+            dayOfMonth === undefined ||
+            dayOfMonth < 1 ||
+            dayOfMonth > 31
+        ) {
+            errors.push('dayOfMonth must be an integer from 1 to 31.');
+        }
+    }
+
+    if (frequency === 'weekly' || frequency === 'biweekly') {
+        const { days, invalidValues } = getConfiguredWeekDays(config);
+        if (invalidValues.length > 0) {
+            errors.push('daysOfWeek must contain valid weekdays.');
+        }
+        if (days.length === 0) {
+            errors.push(
+                'dayOfWeek or daysOfWeek is required for weekly schedules.',
+            );
+        }
+    }
+
+    if (frequency === 'biweekly') {
+        const anchorDate = getString(config, 'anchorDate');
+        if (!anchorDate || !parseLocalDateKey(anchorDate)) {
+            errors.push('anchorDate must be a valid YYYY-MM-DD date.');
+        }
+    }
+
     return errors;
+}
+
+function buildScheduleOccurrence(
+    node: AutomationGraphNode,
+    {
+        enforceDue,
+        now,
+    }: {
+        enforceDue: boolean;
+        now: Date;
+    },
+) {
+    const frequency = getScheduleFrequency(node.config, node.moduleKey);
+    const timeZone =
+        getString(node.config, 'timeZone') ?? defaultScheduleTimeZone;
+
+    if (
+        !frequency ||
+        validateScheduleConfigForModule(node.config, node.moduleKey).length > 0
+    ) {
+        return null;
+    }
+
+    const parts = getTimeZoneDateParts(now, timeZone);
+    const input: AutomationJsonObject = {
+        scheduleType: frequency,
+        frequency,
+        triggerModuleKey: node.moduleKey,
+        occurrenceDate: parts.dateKey,
+        timeZone,
+        enqueuedAt: now.toISOString(),
+    };
+    let occurrenceKey: string | null = null;
+
+    if (frequency === 'daily') {
+        occurrenceKey = `${node.moduleKey}:${timeZone}:daily:${parts.dateKey}`;
+    } else if (frequency === 'monthly') {
+        const dayOfMonth = getNumber(node.config, 'dayOfMonth');
+        if (!dayOfMonth || (enforceDue && parts.day !== dayOfMonth)) {
+            return null;
+        }
+        occurrenceKey =
+            node.moduleKey === scheduleMonthlyTriggerKey
+                ? `${scheduleMonthlyTriggerKey}:${timeZone}:${parts.periodKey}:day-${dayOfMonth}`
+                : `${node.moduleKey}:${timeZone}:monthly:${parts.periodKey}:day-${dayOfMonth}`;
+        input.period = parts.periodKey;
+        input.dayOfMonth = dayOfMonth;
+    } else {
+        const { days } = getConfiguredWeekDays(node.config);
+        if (enforceDue && !days.includes(parts.dayOfWeek)) {
+            return null;
+        }
+
+        if (frequency === 'biweekly') {
+            const anchorDate = getString(node.config, 'anchorDate');
+            if (!anchorDate) {
+                return null;
+            }
+            const weekOffset = getBiweeklyWeekOffset(parts, anchorDate);
+            if (
+                weekOffset === null ||
+                weekOffset < 0 ||
+                (enforceDue && weekOffset % 2 !== 0)
+            ) {
+                return null;
+            }
+            input.intervalWeeks = 2;
+            input.anchorDate = anchorDate;
+            input.weekOffset = weekOffset;
+        } else {
+            input.intervalWeeks = 1;
+        }
+
+        occurrenceKey = `${node.moduleKey}:${timeZone}:${frequency}:${parts.dateKey}:${parts.dayOfWeek}`;
+        input.dayOfWeek = parts.dayOfWeek;
+        input.daysOfWeek = days;
+    }
+
+    if (!occurrenceKey) {
+        return null;
+    }
+    input.occurrenceKey = occurrenceKey;
+
+    return {
+        eventType: automationScheduleEventType,
+        aggregateId: occurrenceKey,
+        input,
+    };
+}
+
+export function getScheduleOccurrence(
+    node: AutomationGraphNode,
+    now = new Date(),
+) {
+    return buildScheduleOccurrence(node, { enforceDue: true, now });
+}
+
+export function getScheduleTestOccurrence(
+    node: AutomationGraphNode,
+    now = new Date(),
+) {
+    return buildScheduleOccurrence(node, { enforceDue: false, now });
 }
 
 export function getMonthlyScheduleOccurrence(
     node: AutomationGraphNode,
     now = new Date(),
 ) {
-    const dayOfMonth = getNumber(node.config, 'dayOfMonth');
-    const timeZone =
-        getString(node.config, 'timeZone') ?? defaultScheduleTimeZone;
-
-    if (
-        !Number.isInteger(dayOfMonth) ||
-        dayOfMonth === undefined ||
-        dayOfMonth < 1 ||
-        dayOfMonth > 31 ||
-        !isValidTimeZone(timeZone)
-    ) {
-        return null;
-    }
-
-    const parts = getTimeZoneDateParts(now, timeZone);
-    if (parts.day !== dayOfMonth) {
-        return null;
-    }
-
-    const occurrenceKey = `${scheduleMonthlyTriggerKey}:${timeZone}:${parts.periodKey}:day-${dayOfMonth}`;
-
-    return {
-        eventType: monthlyScheduleEventType,
-        aggregateId: occurrenceKey,
-        input: {
-            scheduleType: 'monthly',
-            triggerModuleKey: scheduleMonthlyTriggerKey,
-            occurrenceKey,
-            period: parts.periodKey,
-            occurrenceDate: parts.dateKey,
-            dayOfMonth,
-            timeZone,
-            enqueuedAt: now.toISOString(),
-        } satisfies AutomationJsonObject,
-    };
+    return getScheduleOccurrence(node, now);
 }
 
 type FarmInventoryOperationConfig = {
     entityId: number;
     entityTypeName: string;
     scheduledInDays: number;
+};
+
+const greenhouseSeedlingPlantStatuses = new Set([
+    'new',
+    'planned',
+    'pendingVerification',
+    'sowed',
+    'sprouted',
+]);
+
+type RaisedBedForGreenhouseCare = Awaited<
+    ReturnType<typeof getAllRaisedBeds>
+>[number];
+type RaisedBedFieldForGreenhouseCare =
+    RaisedBedForGreenhouseCare['fields'][number];
+
+type GreenhouseFarmEligibility = {
+    farmId: number;
+    greenhouseRaisedBedCount: number;
+    greenhouseFieldCount: number;
+    activeOutletOfferCount: number;
+    reasons: string[];
+};
+
+type GreenhouseFarmSkip = {
+    farmId: number;
+    reason: string;
+};
+
+type ExistingOperationSkip = {
+    farmId: number;
+    operationId: number;
+    scheduledDate: string;
 };
 
 function parseFarmInventoryOperationConfigs(
@@ -276,6 +630,65 @@ function validateFarmInventoryOperationsConfig(config: AutomationJsonObject) {
     }
 
     return [];
+}
+
+function parseSingleOperationConfig(
+    config: AutomationJsonObject,
+): FarmInventoryOperationConfig | null {
+    const entityId = getNumber(config, 'entityId');
+    if (!entityId || !Number.isInteger(entityId) || entityId <= 0) {
+        return null;
+    }
+
+    const scheduledInDays = getNumber(config, 'scheduledInDays');
+    if (
+        scheduledInDays !== undefined &&
+        (!Number.isInteger(scheduledInDays) || scheduledInDays < 0)
+    ) {
+        return null;
+    }
+
+    return {
+        entityId,
+        entityTypeName: getString(config, 'entityTypeName') ?? 'operation',
+        scheduledInDays: scheduledInDays ?? 0,
+    };
+}
+
+function validateGreenhouseSeedlingWateringConfig(
+    config: AutomationJsonObject,
+) {
+    const entityId = getNumber(config, 'entityId');
+    const scheduledInDays = getNumber(config, 'scheduledInDays');
+    const errors: string[] = [];
+
+    if (!entityId || !Number.isInteger(entityId) || entityId <= 0) {
+        errors.push('entityId is required.');
+    }
+    if (
+        scheduledInDays !== undefined &&
+        (!Number.isInteger(scheduledInDays) || scheduledInDays < 0)
+    ) {
+        errors.push('scheduledInDays must be a non-negative integer.');
+    }
+
+    return errors;
+}
+
+function validateRaisedBedOperationsConfig(config: AutomationJsonObject) {
+    const entityId = getNumber(config, 'entityId');
+    const scheduledInDays = getNumber(config, 'scheduledInDays') ?? 0;
+    const errors: string[] = [];
+
+    if (!entityId || !Number.isInteger(entityId) || entityId <= 0) {
+        errors.push('entityId must be a positive integer.');
+    }
+
+    if (!Number.isInteger(scheduledInDays)) {
+        errors.push('scheduledInDays must be an integer.');
+    }
+
+    return errors;
 }
 
 function validateImagePlantStatusReviewConfig(config: AutomationJsonObject) {
@@ -364,6 +777,18 @@ function getScheduleReferenceDate(input: AutomationJsonObject) {
     return new Date();
 }
 
+function getScheduleOccurrenceReferenceDate(input: AutomationJsonObject) {
+    const occurrenceDate = input.occurrenceDate;
+    if (
+        typeof occurrenceDate === 'string' &&
+        /^\d{4}-\d{2}-\d{2}$/.test(occurrenceDate)
+    ) {
+        return new Date(`${occurrenceDate}T00:00:00.000Z`);
+    }
+
+    return getScheduleReferenceDate(input);
+}
+
 function farmOperationKey({
     entityId,
     entityTypeName,
@@ -374,6 +799,78 @@ function farmOperationKey({
     scheduledDate: Date;
 }) {
     return `${entityTypeName}:${entityId}:${toUtcDayKey(scheduledDate)}`;
+}
+
+function raisedBedOperationKey({
+    entityId,
+    entityTypeName,
+    raisedBedId,
+    scheduledDate,
+}: {
+    entityId: number;
+    entityTypeName: string;
+    raisedBedId: number;
+    scheduledDate: Date;
+}) {
+    return `${raisedBedId}:${entityTypeName}:${entityId}:${toUtcDayKey(
+        scheduledDate,
+    )}`;
+}
+
+function isCurrentlyGreenhouseSeedling(field: RaisedBedFieldForGreenhouseCare) {
+    return Boolean(
+        field.active &&
+            field.sowingLocation === 'greenhouse' &&
+            typeof field.plantSortId === 'number' &&
+            greenhouseSeedlingPlantStatuses.has(field.plantStatus ?? '') &&
+            !field.plantDeadDate &&
+            !field.plantHarvestedDate &&
+            !field.plantRemovedDate,
+    );
+}
+
+async function getGreenhouseFieldCountsByFarmId() {
+    const [raisedBeds, gardens] = await Promise.all([
+        getAllRaisedBeds(),
+        getGardens(),
+    ]);
+    const farmIdByGardenId = new Map(
+        gardens
+            .filter((garden) => !garden.isDeleted && !garden.isSandbox)
+            .map((garden) => [garden.id, garden.farmId]),
+    );
+    const countsByFarmId = new Map<
+        number,
+        { greenhouseRaisedBedIds: Set<number>; greenhouseFieldCount: number }
+    >();
+
+    for (const raisedBed of raisedBeds) {
+        if (!raisedBed.gardenId) {
+            continue;
+        }
+
+        const farmId = farmIdByGardenId.get(raisedBed.gardenId);
+        if (!farmId) {
+            continue;
+        }
+
+        const greenhouseFieldCount = raisedBed.fields.filter(
+            isCurrentlyGreenhouseSeedling,
+        ).length;
+        if (greenhouseFieldCount === 0) {
+            continue;
+        }
+
+        const farmCounts = countsByFarmId.get(farmId) ?? {
+            greenhouseRaisedBedIds: new Set<number>(),
+            greenhouseFieldCount: 0,
+        };
+        farmCounts.greenhouseRaisedBedIds.add(raisedBed.id);
+        farmCounts.greenhouseFieldCount += greenhouseFieldCount;
+        countsByFarmId.set(farmId, farmCounts);
+    }
+
+    return countsByFarmId;
 }
 
 function parseRaisedBedFieldAggregateId(aggregateId: string) {
@@ -529,6 +1026,131 @@ const triggerDomainEventModule: AutomationModule = {
     },
 };
 
+function scheduleConfigFields() {
+    return [
+        {
+            key: 'frequency',
+            label: 'Frequency',
+            type: 'select',
+            required: true,
+            options: [
+                { value: 'daily', label: 'Daily' },
+                { value: 'weekly', label: 'Weekly' },
+                { value: 'biweekly', label: 'Biweekly' },
+                { value: 'monthly', label: 'Monthly' },
+            ],
+        },
+        {
+            key: 'dayOfWeek',
+            label: 'Day of week',
+            type: 'select',
+            required: false,
+            options: weekDayValues.map((day) => ({
+                value: day,
+                label: weekDayLabel(day),
+            })),
+            description:
+                'For weekly or biweekly schedules. Use daysOfWeek for multiple selected weekdays.',
+        },
+        {
+            key: 'daysOfWeek',
+            label: 'Days of week',
+            type: 'json',
+            required: false,
+            description:
+                'Optional JSON array for weekly or biweekly schedules, for example ["tuesday", "friday"].',
+        },
+        {
+            key: 'anchorDate',
+            label: 'Biweekly anchor date',
+            type: 'string',
+            required: false,
+            placeholder: defaultBiweeklyAnchorDate,
+            description:
+                'Required for biweekly schedules. Weeks are counted from this local YYYY-MM-DD date.',
+        },
+        {
+            key: 'dayOfMonth',
+            label: 'Day of month',
+            type: 'number',
+            required: false,
+            placeholder: '1',
+            description: 'Required for monthly schedules.',
+        },
+        {
+            key: 'timeZone',
+            label: 'Time zone',
+            type: 'string',
+            required: false,
+            placeholder: defaultScheduleTimeZone,
+        },
+    ] satisfies AutomationModuleMetadata['configFields'];
+}
+
+function executeScheduleTrigger(
+    context: Parameters<AutomationModule['execute']>[0],
+    node: AutomationGraphNode,
+) {
+    const input = context.run.input;
+    const frequency = getScheduleFrequency(node.config, node.moduleKey);
+    const scheduleType = input.scheduleType;
+    const triggerModuleKey = input.triggerModuleKey;
+    const occurrenceKey = input.occurrenceKey;
+
+    if (
+        !frequency ||
+        scheduleType !== frequency ||
+        triggerModuleKey !== node.moduleKey ||
+        typeof occurrenceKey !== 'string'
+    ) {
+        return skip('Automation run is not a matching schedule occurrence.');
+    }
+
+    return success({
+        occurrenceKey,
+        frequency,
+        scheduleType,
+        period: typeof input.period === 'string' ? input.period : null,
+        occurrenceDate:
+            typeof input.occurrenceDate === 'string'
+                ? input.occurrenceDate
+                : null,
+        dayOfMonth:
+            typeof input.dayOfMonth === 'number' ? input.dayOfMonth : null,
+        dayOfWeek: typeof input.dayOfWeek === 'string' ? input.dayOfWeek : null,
+        daysOfWeek: Array.isArray(input.daysOfWeek) ? input.daysOfWeek : [],
+        intervalWeeks:
+            typeof input.intervalWeeks === 'number'
+                ? input.intervalWeeks
+                : null,
+        anchorDate:
+            typeof input.anchorDate === 'string' ? input.anchorDate : null,
+        timeZone:
+            typeof input.timeZone === 'string'
+                ? input.timeZone
+                : defaultScheduleTimeZone,
+    });
+}
+
+const triggerScheduleModule: AutomationModule = {
+    key: scheduleTriggerKey,
+    kind: 'trigger',
+    title: 'Schedule',
+    description:
+        'Starts an automation from a daily, weekly, biweekly, or monthly schedule.',
+    category: 'Schedules',
+    configFields: scheduleConfigFields(),
+    inputDescription:
+        'A scheduled occurrence generated by the automation runner.',
+    outputDescription: 'The occurrence key and configured local date.',
+    dryRunSupported: true,
+    mutatesData: false,
+    retryable: false,
+    validateConfig: (config) =>
+        validateScheduleConfigForModule(config, scheduleTriggerKey),
+    execute: async (context, node) => executeScheduleTrigger(context, node),
+};
+
 const triggerScheduleMonthlyModule: AutomationModule = {
     key: scheduleMonthlyTriggerKey,
     kind: 'trigger',
@@ -558,36 +1180,9 @@ const triggerScheduleMonthlyModule: AutomationModule = {
     dryRunSupported: true,
     mutatesData: false,
     retryable: false,
-    validateConfig: validateMonthlyScheduleConfig,
-    execute: async (context, node) => {
-        const input = context.run.input;
-        const scheduleType = input.scheduleType;
-        const triggerModuleKey = input.triggerModuleKey;
-        const occurrenceKey = input.occurrenceKey;
-
-        if (
-            scheduleType !== 'monthly' ||
-            triggerModuleKey !== scheduleMonthlyTriggerKey ||
-            typeof occurrenceKey !== 'string'
-        ) {
-            return skip('Automation run is not a monthly schedule occurrence.');
-        }
-
-        const dayOfMonth = getNumber(node.config, 'dayOfMonth');
-        const timeZone =
-            getString(node.config, 'timeZone') ?? defaultScheduleTimeZone;
-
-        return success({
-            occurrenceKey,
-            period: typeof input.period === 'string' ? input.period : null,
-            occurrenceDate:
-                typeof input.occurrenceDate === 'string'
-                    ? input.occurrenceDate
-                    : null,
-            dayOfMonth: dayOfMonth ?? null,
-            timeZone,
-        });
-    },
+    validateConfig: (config) =>
+        validateScheduleConfigForModule(config, scheduleMonthlyTriggerKey),
+    execute: async (context, node) => executeScheduleTrigger(context, node),
 };
 
 const eventDataEqualsConditionModule: AutomationModule = {
@@ -1117,7 +1712,9 @@ const createFarmInventoryOperationsActionModule: AutomationModule = {
             );
         }
 
-        const referenceDate = getScheduleReferenceDate(context.run.input);
+        const referenceDate = getScheduleOccurrenceReferenceDate(
+            context.run.input,
+        );
         const scheduledDates = operationConfigs.map((operationConfig) =>
             addUtcDays(referenceDate, operationConfig.scheduledInDays),
         );
@@ -1137,6 +1734,7 @@ const createFarmInventoryOperationsActionModule: AutomationModule = {
         }
 
         let skippedExistingCount = 0;
+        let repairedScheduledCount = 0;
         const createdOperationIds: number[] = [];
         const repairedScheduledOperationIds: number[] = [];
 
@@ -1192,22 +1790,22 @@ const createFarmInventoryOperationsActionModule: AutomationModule = {
                     existingOperationKeys.has(operationKey)
                 ) {
                     skippedExistingCount += 1;
-                    if (
-                        existingOperation &&
-                        !existingOperation.scheduledDate &&
-                        !context.dryRun
-                    ) {
-                        await createEvent(
-                            knownEvents.operations.scheduledV1(
-                                existingOperation.id.toString(),
-                                {
-                                    scheduledDate: scheduledDate.toISOString(),
-                                },
-                            ),
-                        );
-                        repairedScheduledOperationIds.push(
-                            existingOperation.id,
-                        );
+                    if (existingOperation && !existingOperation.scheduledDate) {
+                        repairedScheduledCount += 1;
+                        if (!context.dryRun) {
+                            await createEvent(
+                                knownEvents.operations.scheduledV1(
+                                    existingOperation.id.toString(),
+                                    {
+                                        scheduledDate:
+                                            scheduledDate.toISOString(),
+                                    },
+                                ),
+                            );
+                            repairedScheduledOperationIds.push(
+                                existingOperation.id,
+                            );
+                        }
                     }
                     continue;
                 }
@@ -1234,14 +1832,19 @@ const createFarmInventoryOperationsActionModule: AutomationModule = {
         }
 
         if (context.dryRun) {
+            const projectedCreateCount =
+                activeFarms.length * operationConfigs.length -
+                skippedExistingCount;
             return success({
                 dryRun: true,
                 farmCount: activeFarms.length,
                 operationCount: operationConfigs.length,
-                projectedCreateCount:
-                    activeFarms.length * operationConfigs.length -
-                    skippedExistingCount,
+                createdCount: projectedCreateCount,
+                projectedCreateCount,
+                skippedCount: skippedExistingCount,
                 skippedExistingCount,
+                skippedScheduledCount: skippedExistingCount,
+                repairedScheduledCount,
             });
         }
 
@@ -1254,7 +1857,11 @@ const createFarmInventoryOperationsActionModule: AutomationModule = {
                 {
                     farmCount: activeFarms.length,
                     operationCount: operationConfigs.length,
+                    createdCount: 0,
+                    skippedCount: skippedExistingCount,
                     skippedExistingCount,
+                    skippedScheduledCount: skippedExistingCount,
+                    repairedScheduledCount: 0,
                 },
             );
         }
@@ -1264,9 +1871,449 @@ const createFarmInventoryOperationsActionModule: AutomationModule = {
             createdCount: createdOperationIds.length,
             repairedScheduledOperationIds,
             repairedScheduledCount: repairedScheduledOperationIds.length,
+            skippedCount: skippedExistingCount,
             skippedExistingCount,
+            skippedScheduledCount: skippedExistingCount,
             farmCount: activeFarms.length,
             operationCount: operationConfigs.length,
+        });
+    },
+};
+
+const createGreenhouseSeedlingWateringOperationsActionModule: AutomationModule =
+    {
+        key: createGreenhouseSeedlingWateringOperationsActionKey,
+        kind: 'action',
+        title: 'Create greenhouse seedling watering operations',
+        description:
+            'Creates one daily farm-scoped greenhouse seedling watering operation for farms with greenhouse seedlings or active outlet seedling stock.',
+        category: 'Operations',
+        configFields: [
+            {
+                key: 'entityId',
+                label: 'Operation entity ID',
+                type: 'number',
+                required: true,
+            },
+            {
+                key: 'entityTypeName',
+                label: 'Entity type',
+                type: 'string',
+                placeholder: 'operation',
+            },
+            {
+                key: 'scheduledInDays',
+                label: 'Schedule after days',
+                type: 'number',
+                placeholder: '0',
+            },
+        ],
+        inputDescription: 'A daily schedule occurrence.',
+        outputDescription:
+            'Eligible farms, skipped farms, existing-operation skips, and created operation ids.',
+        dryRunSupported: true,
+        mutatesData: true,
+        retryable: true,
+        validateConfig: validateGreenhouseSeedlingWateringConfig,
+        execute: async (context, node) => {
+            const operationConfig = parseSingleOperationConfig(node.config);
+            if (!operationConfig) {
+                throw new AutomationModuleExecutionError(
+                    'Greenhouse seedling watering action is missing a valid operation config.',
+                    'invalid_config',
+                );
+            }
+
+            const referenceDate = getScheduleOccurrenceReferenceDate(
+                context.run.input,
+            );
+            const availabilityDate = getScheduleReferenceDate(
+                context.run.input,
+            );
+            const scheduledDate = addUtcDays(
+                referenceDate,
+                operationConfig.scheduledInDays,
+            );
+            const rangeEnd = addUtcDays(scheduledDate, 1);
+            const [activeFarms, greenhouseCountsByFarmId, activeOutletOffers] =
+                await Promise.all([
+                    getFarms().then((farms) =>
+                        farms.filter((farm) => !farm.isDeleted),
+                    ),
+                    getGreenhouseFieldCountsByFarmId(),
+                    getOutletOffers({ now: availabilityDate }),
+                ]);
+
+            if (activeFarms.length === 0) {
+                return skip('No active farms were found.');
+            }
+
+            const activeOutletOfferCount = activeOutletOffers.length;
+            const eligibleFarms: GreenhouseFarmEligibility[] = [];
+            const skippedFarms: GreenhouseFarmSkip[] = [];
+
+            for (const farm of activeFarms) {
+                const greenhouseCounts = greenhouseCountsByFarmId.get(farm.id);
+                const greenhouseFieldCount =
+                    greenhouseCounts?.greenhouseFieldCount ?? 0;
+                const greenhouseRaisedBedCount =
+                    greenhouseCounts?.greenhouseRaisedBedIds.size ?? 0;
+                const reasons = [
+                    ...(greenhouseFieldCount > 0 ? ['greenhouseFields'] : []),
+                    ...(activeOutletOfferCount > 0
+                        ? ['activeOutletStock']
+                        : []),
+                ];
+
+                if (reasons.length === 0) {
+                    skippedFarms.push({
+                        farmId: farm.id,
+                        reason: 'No greenhouse-located plants or active outlet seedlings.',
+                    });
+                    continue;
+                }
+
+                eligibleFarms.push({
+                    farmId: farm.id,
+                    greenhouseRaisedBedCount,
+                    greenhouseFieldCount,
+                    activeOutletOfferCount,
+                    reasons,
+                });
+            }
+
+            const existingOperationSkips: ExistingOperationSkip[] = [];
+            const createdOperationIds: number[] = [];
+            const repairedScheduledOperationIds: number[] = [];
+
+            for (const farm of eligibleFarms) {
+                const existingOperations =
+                    await getFarmAcceptedOperationsByScheduleRange({
+                        farmId: farm.farmId,
+                        from: scheduledDate,
+                        to: rangeEnd,
+                    });
+                const existingOperationsByKey = new Map(
+                    existingOperations.flatMap((operation) => {
+                        if (
+                            operation.status === 'canceled' ||
+                            operation.status === 'failed'
+                        ) {
+                            return [];
+                        }
+
+                        return [
+                            [
+                                farmOperationKey({
+                                    entityId: operation.entityId,
+                                    entityTypeName: operation.entityTypeName,
+                                    scheduledDate:
+                                        operation.scheduledDate ??
+                                        operation.timestamp,
+                                }),
+                                operation,
+                            ],
+                        ];
+                    }),
+                );
+                const operationKey = farmOperationKey({
+                    entityId: operationConfig.entityId,
+                    entityTypeName: operationConfig.entityTypeName,
+                    scheduledDate,
+                });
+                const existingOperation =
+                    existingOperationsByKey.get(operationKey);
+
+                if (existingOperation) {
+                    existingOperationSkips.push({
+                        farmId: farm.farmId,
+                        operationId: existingOperation.id,
+                        scheduledDate: scheduledDate.toISOString(),
+                    });
+                    if (!existingOperation.scheduledDate && !context.dryRun) {
+                        await createEvent(
+                            knownEvents.operations.scheduledV1(
+                                existingOperation.id.toString(),
+                                {
+                                    scheduledDate: scheduledDate.toISOString(),
+                                },
+                            ),
+                        );
+                        repairedScheduledOperationIds.push(
+                            existingOperation.id,
+                        );
+                    }
+                    continue;
+                }
+
+                if (context.dryRun) {
+                    continue;
+                }
+
+                const operationId = await createOperation({
+                    entityId: operationConfig.entityId,
+                    entityTypeName: operationConfig.entityTypeName,
+                    farmId: farm.farmId,
+                    timestamp: scheduledDate,
+                });
+                await acceptOperation(operationId);
+                await createEvent(
+                    knownEvents.operations.scheduledV1(operationId.toString(), {
+                        scheduledDate: scheduledDate.toISOString(),
+                    }),
+                );
+                createdOperationIds.push(operationId);
+            }
+
+            const output = {
+                dryRun: context.dryRun,
+                operationEntityId: operationConfig.entityId,
+                entityTypeName: operationConfig.entityTypeName,
+                scheduledDate: scheduledDate.toISOString(),
+                activeFarmCount: activeFarms.length,
+                eligibleFarms,
+                eligibleFarmCount: eligibleFarms.length,
+                skippedFarms,
+                skippedFarmCount: skippedFarms.length,
+                existingOperationSkips,
+                existingOperationSkipCount: existingOperationSkips.length,
+                activeOutletOfferCount,
+                outletAvailabilityCheckedAt: availabilityDate.toISOString(),
+                projectedCreateCount:
+                    eligibleFarms.length - existingOperationSkips.length,
+            };
+
+            if (context.dryRun) {
+                return success(output);
+            }
+
+            if (
+                createdOperationIds.length === 0 &&
+                repairedScheduledOperationIds.length === 0
+            ) {
+                if (eligibleFarms.length === 0) {
+                    return skip(
+                        'No farms require greenhouse seedling watering.',
+                        output,
+                    );
+                }
+
+                return skip(
+                    'All greenhouse seedling watering operations already exist.',
+                    output,
+                );
+            }
+
+            return success({
+                ...output,
+                createdOperationIds,
+                createdCount: createdOperationIds.length,
+                repairedScheduledOperationIds,
+                repairedScheduledCount: repairedScheduledOperationIds.length,
+            });
+        },
+    };
+
+const createRaisedBedOperationsActionModule: AutomationModule = {
+    key: createRaisedBedOperationsActionKey,
+    kind: 'action',
+    title: 'Create raised-bed operations',
+    description:
+        'Creates a configured raised-bed-scoped operation for every active raised bed.',
+    category: 'Operations',
+    configFields: [
+        {
+            key: 'entityId',
+            label: 'Operation entity ID',
+            type: 'number',
+            required: true,
+        },
+        {
+            key: 'entityTypeName',
+            label: 'Entity type',
+            type: 'string',
+            placeholder: 'operation',
+        },
+        {
+            key: 'scheduledInDays',
+            label: 'Schedule after days',
+            type: 'number',
+        },
+        {
+            key: 'acceptOnCreate',
+            label: 'Accept on create',
+            type: 'boolean',
+        },
+    ],
+    inputDescription: 'A schedule occurrence.',
+    outputDescription:
+        'Created operation ids, recipient count, and skipped existing count.',
+    dryRunSupported: true,
+    mutatesData: true,
+    retryable: true,
+    validateConfig: validateRaisedBedOperationsConfig,
+    execute: async (context, node) => {
+        const entityId = getNumber(node.config, 'entityId');
+        if (!entityId) {
+            throw new AutomationModuleExecutionError(
+                'Raised-bed operation action is missing entityId.',
+                'invalid_config',
+            );
+        }
+
+        const entityTypeName =
+            getString(node.config, 'entityTypeName') ?? 'operation';
+        const scheduledInDays = getNumber(node.config, 'scheduledInDays') ?? 0;
+        const acceptOnCreate = node.config.acceptOnCreate !== false;
+        const referenceDate = getScheduleOccurrenceReferenceDate(
+            context.run.input,
+        );
+        const scheduledDate = addUtcDays(referenceDate, scheduledInDays);
+        const from = new Date(`${toUtcDayKey(scheduledDate)}T00:00:00.000Z`);
+        const to = addUtcDays(from, 1);
+        const activeRaisedBeds = await listActiveRaisedBedOperationTargets();
+
+        if (activeRaisedBeds.length === 0) {
+            return skip('No active raised beds were found.', {
+                recipientCount: 0,
+                skippedExistingCount: 0,
+            });
+        }
+
+        const existingOperations = await getRaisedBedOperationsByScheduleRange({
+            raisedBedIds: activeRaisedBeds.map((raisedBed) => raisedBed.id),
+            from,
+            to,
+        });
+        const existingOperationsByKey = new Map(
+            existingOperations.flatMap((operation) => {
+                if (
+                    !operation.raisedBedId ||
+                    operation.status === 'canceled' ||
+                    operation.status === 'failed'
+                ) {
+                    return [];
+                }
+
+                return [
+                    [
+                        raisedBedOperationKey({
+                            entityId: operation.entityId,
+                            entityTypeName: operation.entityTypeName,
+                            raisedBedId: operation.raisedBedId,
+                            scheduledDate:
+                                operation.scheduledDate ?? operation.timestamp,
+                        }),
+                        operation,
+                    ],
+                ];
+            }),
+        );
+        const existingOperationKeys = new Set(existingOperationsByKey.keys());
+        const createdOperationIds: number[] = [];
+        const repairedAcceptedOperationIds: number[] = [];
+        const repairedScheduledOperationIds: number[] = [];
+        let skippedExistingCount = 0;
+
+        for (const raisedBed of activeRaisedBeds) {
+            const operationKey = raisedBedOperationKey({
+                entityId,
+                entityTypeName,
+                raisedBedId: raisedBed.id,
+                scheduledDate,
+            });
+
+            const existingOperation = existingOperationsByKey.get(operationKey);
+            if (existingOperation || existingOperationKeys.has(operationKey)) {
+                skippedExistingCount += 1;
+                if (existingOperation && !context.dryRun) {
+                    if (acceptOnCreate && !existingOperation.isAccepted) {
+                        await acceptOperation(existingOperation.id);
+                        repairedAcceptedOperationIds.push(existingOperation.id);
+                    }
+                    if (!existingOperation.scheduledDate) {
+                        await createEvent(
+                            knownEvents.operations.scheduledV1(
+                                existingOperation.id.toString(),
+                                {
+                                    scheduledDate: scheduledDate.toISOString(),
+                                },
+                            ),
+                        );
+                        repairedScheduledOperationIds.push(
+                            existingOperation.id,
+                        );
+                    }
+                }
+                continue;
+            }
+
+            if (context.dryRun) {
+                continue;
+            }
+
+            const operationId = await createOperation({
+                entityId,
+                entityTypeName,
+                accountId: raisedBed.accountId,
+                gardenId: raisedBed.gardenId,
+                raisedBedId: raisedBed.id,
+                timestamp: scheduledDate,
+            });
+            if (acceptOnCreate) {
+                await acceptOperation(operationId);
+            }
+            await createEvent(
+                knownEvents.operations.scheduledV1(operationId.toString(), {
+                    scheduledDate: scheduledDate.toISOString(),
+                }),
+            );
+            createdOperationIds.push(operationId);
+            existingOperationKeys.add(operationKey);
+        }
+
+        const recipientCount = activeRaisedBeds.length;
+        const projectedCreateCount = recipientCount - skippedExistingCount;
+
+        if (context.dryRun) {
+            return success({
+                dryRun: true,
+                entityId,
+                entityTypeName,
+                scheduledDate: scheduledDate.toISOString(),
+                recipientCount,
+                projectedCreateCount,
+                skippedExistingCount,
+            });
+        }
+
+        if (
+            createdOperationIds.length === 0 &&
+            repairedAcceptedOperationIds.length === 0 &&
+            repairedScheduledOperationIds.length === 0
+        ) {
+            return skip('All raised-bed operations already exist.', {
+                entityId,
+                entityTypeName,
+                scheduledDate: scheduledDate.toISOString(),
+                recipientCount,
+                skippedExistingCount,
+            });
+        }
+
+        return success({
+            createdOperationIds,
+            createdCount: createdOperationIds.length,
+            repairedAcceptedOperationIds,
+            repairedAcceptedCount: repairedAcceptedOperationIds.length,
+            repairedScheduledOperationIds,
+            repairedScheduledCount: repairedScheduledOperationIds.length,
+            entityId,
+            entityTypeName,
+            scheduledDate: scheduledDate.toISOString(),
+            recipientCount,
+            skippedExistingCount,
+            acceptedCount: acceptOnCreate ? createdOperationIds.length : 0,
         });
     },
 };
@@ -1525,6 +2572,7 @@ const logActionModule: AutomationModule = {
 
 export const automationModules = [
     triggerDomainEventModule,
+    triggerScheduleModule,
     triggerScheduleMonthlyModule,
     eventDataEqualsConditionModule,
     operationMatchesConditionModule,
@@ -1533,6 +2581,8 @@ export const automationModules = [
     queuePostTransplantWateringOperationsActionModule,
     createOperationActionModule,
     createFarmInventoryOperationsActionModule,
+    createGreenhouseSeedlingWateringOperationsActionModule,
+    createRaisedBedOperationsActionModule,
     updateRaisedBedFieldPlantAttributesActionModule,
     createPlantStatusRequestsFromImageAnalysisActionModule,
     logActionModule,

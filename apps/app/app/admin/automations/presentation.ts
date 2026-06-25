@@ -22,6 +22,7 @@ export const automationModuleKeys = {
     actionCreateOperation: 'action.createOperation',
     actionCreatePlantStatusRequestsFromImageAnalysis:
         'action.createPlantStatusRequestsFromImageAnalysis',
+    actionCreateRaisedBedOperations: 'action.createRaisedBedOperations',
     actionLog: 'action.log',
     actionQueuePostTransplantWateringOperations:
         'action.queuePostTransplantWateringOperations',
@@ -33,6 +34,7 @@ export const automationModuleKeys = {
     conditionOperationMatches: 'condition.operationMatches',
     conditionPlantStatusEquals: 'condition.plantStatusEquals',
     triggerDomainEvent: 'trigger.domainEvent',
+    triggerSchedule: 'trigger.schedule',
     triggerScheduleMonthly: 'trigger.scheduleMonthly',
 };
 
@@ -68,6 +70,54 @@ const automationModulePresentations: Record<
         outputDescription: 'ID eventa, tip, ID agregata i podaci eventa.',
         fields: {
             eventType: { label: 'Tip eventa' },
+        },
+    },
+    [automationModuleKeys.triggerSchedule]: {
+        title: 'Raspored',
+        description:
+            'Pokreće automatizaciju po dnevnom, tjednom, dvotjednom ili mjesečnom rasporedu.',
+        inputDescription: 'Pojava rasporeda koju generira runner.',
+        outputDescription:
+            'Ključ pojave rasporeda i konfigurirani lokalni datum.',
+        fields: {
+            frequency: {
+                label: 'Učestalost',
+                options: {
+                    daily: 'Dnevno',
+                    weekly: 'Tjedno',
+                    biweekly: 'Svaka dva tjedna',
+                    monthly: 'Mjesečno',
+                },
+            },
+            dayOfWeek: {
+                label: 'Dan u tjednu',
+                description:
+                    'Za tjedne i dvotjedne rasporede. Za više dana koristite polje Dani u tjednu.',
+                options: {
+                    monday: 'Ponedjeljak',
+                    tuesday: 'Utorak',
+                    wednesday: 'Srijeda',
+                    thursday: 'Četvrtak',
+                    friday: 'Petak',
+                    saturday: 'Subota',
+                    sunday: 'Nedjelja',
+                },
+            },
+            daysOfWeek: {
+                label: 'Dani u tjednu',
+                description:
+                    'JSON niz za više dana, npr. ["tuesday", "friday"].',
+            },
+            anchorDate: {
+                label: 'Referentni datum',
+                description:
+                    'Obavezno za dvotjedni raspored. Format: YYYY-MM-DD.',
+            },
+            dayOfMonth: {
+                label: 'Dan u mjesecu',
+                description: 'Obavezno za mjesečni raspored.',
+            },
+            timeZone: { label: 'Vremenska zona' },
         },
     },
     [automationModuleKeys.triggerScheduleMonthly]: {
@@ -155,6 +205,19 @@ const automationModulePresentations: Record<
                 description:
                     'JSON niz: [{"entityId": 123, "entityTypeName": "operation", "scheduledInDays": 0}]',
             },
+        },
+    },
+    [automationModuleKeys.actionCreateRaisedBedOperations]: {
+        title: 'Radnje aktivnih gredica',
+        description: 'Kreira konfiguriranu radnju za svaku aktivnu gredicu.',
+        inputDescription: 'Pojava rasporeda.',
+        outputDescription:
+            'ID-jevi kreiranih radnji, broj primatelja i broj preskočenih postojećih radnji.',
+        fields: {
+            entityId: { label: 'ID entiteta radnje' },
+            entityTypeName: { label: 'Tip entiteta' },
+            scheduledInDays: { label: 'Zakaži nakon dana' },
+            acceptOnCreate: { label: 'Potvrdi pri kreiranju' },
         },
     },
     [automationModuleKeys.actionUpdateRaisedBedFieldPlantAttributes]: {
@@ -376,6 +439,103 @@ export function automationConfigFieldOptionLabel({
     );
 }
 
+const weekDayLabels: Record<string, string> = {
+    friday: 'petak',
+    monday: 'ponedjeljak',
+    saturday: 'subota',
+    sunday: 'nedjelja',
+    thursday: 'četvrtak',
+    tuesday: 'utorak',
+    wednesday: 'srijeda',
+};
+
+function scheduleFrequencyLabel(frequency: string) {
+    switch (frequency) {
+        case 'daily':
+            return 'dnevno';
+        case 'weekly':
+            return 'tjedno';
+        case 'biweekly':
+            return 'svaka dva tjedna';
+        case 'monthly':
+            return 'mjesečno';
+        default:
+            return frequency;
+    }
+}
+
+function configString(value: unknown) {
+    return typeof value === 'string' && value.trim().length > 0
+        ? value.trim()
+        : null;
+}
+
+function configNumber(value: unknown) {
+    return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function scheduleDaysText(config: AutomationGraph['nodes'][number]['config']) {
+    const days: string[] = [];
+    const dayOfWeek = configString(config.dayOfWeek);
+    const daysOfWeek = config.daysOfWeek;
+
+    if (dayOfWeek) {
+        days.push(dayOfWeek);
+    }
+    if (Array.isArray(daysOfWeek)) {
+        for (const item of daysOfWeek) {
+            if (typeof item === 'string' && item.trim().length > 0) {
+                days.push(item.trim());
+            }
+        }
+    }
+
+    const uniqueDays = [...new Set(days)];
+    return uniqueDays.length > 0
+        ? uniqueDays.map((day) => weekDayLabels[day] ?? day).join(', ')
+        : '?';
+}
+
+function scheduleTriggerSummary(
+    trigger: AutomationGraph['nodes'][number],
+    moduleTitle: string,
+) {
+    const timeZone = configString(trigger.config.timeZone) ?? 'Europe/Zagreb';
+    const frequency =
+        trigger.moduleKey === automationModuleKeys.triggerScheduleMonthly
+            ? 'monthly'
+            : configString(trigger.config.frequency);
+
+    if (!frequency) {
+        return `${moduleTitle}: raspored nije konfiguriran (${timeZone})`;
+    }
+
+    if (frequency === 'daily') {
+        return `${moduleTitle}: svaki dan (${timeZone})`;
+    }
+
+    if (frequency === 'weekly') {
+        return `${moduleTitle}: ${scheduleFrequencyLabel(
+            frequency,
+        )}, ${scheduleDaysText(trigger.config)} (${timeZone})`;
+    }
+
+    if (frequency === 'biweekly') {
+        const anchorDate = configString(trigger.config.anchorDate) ?? '?';
+        return `${moduleTitle}: ${scheduleFrequencyLabel(
+            frequency,
+        )}, ${scheduleDaysText(trigger.config)}, od ${anchorDate} (${timeZone})`;
+    }
+
+    if (frequency === 'monthly') {
+        const dayOfMonth = configNumber(trigger.config.dayOfMonth);
+        const dayText = dayOfMonth ? dayOfMonth.toString() : '?';
+        return `${moduleTitle}: dan ${dayText} (${timeZone})`;
+    }
+
+    return `${moduleTitle}: ${scheduleFrequencyLabel(frequency)} (${timeZone})`;
+}
+
 export function automationTriggerSummary(
     graph: AutomationGraph,
     modules: Map<string, AutomationModuleMetadata>,
@@ -389,17 +549,11 @@ export function automationTriggerSummary(
     const moduleTitle = module
         ? automationModuleTitle(module)
         : trigger.moduleKey;
-    if (trigger.moduleKey === automationModuleKeys.triggerScheduleMonthly) {
-        const dayOfMonth = trigger.config.dayOfMonth;
-        const timeZone = trigger.config.timeZone;
-        const dayText =
-            typeof dayOfMonth === 'number' ? dayOfMonth.toString() : '?';
-        const timeZoneText =
-            typeof timeZone === 'string' && timeZone.trim().length > 0
-                ? timeZone
-                : 'Europe/Zagreb';
-
-        return `${moduleTitle}: dan ${dayText} (${timeZoneText})`;
+    if (
+        trigger.moduleKey === automationModuleKeys.triggerSchedule ||
+        trigger.moduleKey === automationModuleKeys.triggerScheduleMonthly
+    ) {
+        return scheduleTriggerSummary(trigger, moduleTitle);
     }
 
     const eventType = trigger.config.eventType;

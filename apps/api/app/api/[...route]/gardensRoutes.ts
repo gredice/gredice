@@ -29,9 +29,9 @@ import {
     GardenDiaryRescheduleError,
     getAccount,
     getAccountGardensMetadata,
+    getAllEvents,
     getAppliedRaisedBedOperationsForGarden,
     getEntitiesFormatted,
-    getEvents,
     getGarden,
     getGardenBlocks,
     getGardenStack,
@@ -963,7 +963,6 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const [garden, /*blockPlaceEventsRaw,*/ blocks, operations] =
                 await Promise.all([
                     getGarden(gardenIdNumber),
-                    // getEvents(knownEventTypes.gardens.blockPlace, gardenId, 0, 10000),
                     getGardenBlocks(gardenIdNumber),
                     getAppliedRaisedBedOperationsForGarden(
                         accountId,
@@ -988,11 +987,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 .map((raisedBed) => raisedBed.id.toString());
             const raisedBedAbandonEvents =
                 abandonedRaisedBedAggregateIds.length > 0
-                    ? await getEvents(
+                    ? await getAllEvents(
                           knownEventTypes.raisedBeds.abandon,
                           abandonedRaisedBedAggregateIds,
-                          0,
-                          10000,
                       )
                     : [];
             const abandonReasonByRaisedBedId = raisedBedAbandonEvents.reduce(
@@ -1141,12 +1138,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             // TODO: Refactor to use a single function for public and non-public garden retrieval
             const [garden, blockPlaceEventsRaw, blocks] = await Promise.all([
                 getGarden(gardenIdNumber),
-                getEvents(
-                    knownEventTypes.gardens.blockPlace,
-                    [gardenId],
-                    0,
-                    10000,
-                ),
+                getAllEvents(knownEventTypes.gardens.blockPlace, [gardenId]),
                 getGardenBlocks(gardenIdNumber),
             ]);
             if (!garden) {

@@ -610,6 +610,7 @@ async function buildAnalysisMessages({
                 '- Donji red: 1 (donje desno) → 2 (donje sredina) → 3 (donje lijevo).',
                 '- Gornji red kod 18-poljne gredice: 16 (gornje desno) → 17 (gornja sredina) → 18 (gornje lijevo).',
                 '- U JSON kontekstu vrijednost `positionLabel` koristi ovo brojanje (1-bazirano), dok `positionIndex` ostaje 0-bazirana interna oznaka (`positionLabel = positionIndex + 1`).',
+                '- Ponekad su priložene dvije fotografije iste gredice: jedna iz standardne pozicije za gore navedeno numeriranje, a druga s druge strane gredice. Koristi ih kao komplementarne poglede iste gredice; drugi pogled služi za provjeru stanja biljaka, ne kao zasebna gredica ili novi raspored polja.',
                 '- Polja s `currentLocation: "greenhouse"` su presadnice koje trenutno rastu u stakleniku i još nisu presađene u gredicu; polja s `currentLocation: "raisedBed"` su u gredici. `sowingLocation` opisuje gdje je biljka započela.',
                 '- `pastPlantFields` navodi samo nazive biljaka koje su ranije bile u polju; ne sadrži povijest događaja ni datume.',
                 '- `imageDate` je datum fotografija/dnevničkog unosa. Koristi `imageDate`, `analysisReferenceDate` i `weather.historical` za procjenu stanja na fotografijama. `currentDate`, `weather.now` i `weather.forecast` koristi samo za današnje i buduće preporuke za zalijevanje, zaštitu od mraza, sjetvu i berbu.',

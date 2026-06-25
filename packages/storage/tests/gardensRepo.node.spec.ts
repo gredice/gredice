@@ -5,6 +5,7 @@ import {
     countRaisedBedsByAccount,
     createAccount,
     createDefaultGardenForAccount,
+    createEvent,
     createGardenBlock,
     createGardenStack,
     deleteGarden,
@@ -18,12 +19,16 @@ import {
     getGardenStack,
     getGardenStacks,
     getGardens,
+    getRaisedBedFieldsWithEvents,
+    getRaisedBedFieldsWithEventsForBeds,
     getRaisedBedMetadataByIds,
     getRaisedBeds,
+    knownEvents,
     updateGarden,
     updateGardenBlock,
     updateGardenStack,
     updateRaisedBed,
+    upsertRaisedBedField,
 } from '@gredice/storage';
 import { and, eq } from 'drizzle-orm';
 import { gardenStacks } from '../src/schema';
@@ -217,7 +222,7 @@ test('accountHasActiveRaisedBed ignores active beds in soft-deleted gardens', as
     assert.strictEqual(await accountHasActiveRaisedBed(accountId), false);
 });
 
-test('accountHasActiveRaisedBed uses the raised-bed account instead of the garden owner', async () => {
+test('accountHasActiveRaisedBed uses the garden owner instead of the raised-bed account', async () => {
     createTestDb();
     const gardenOwnerAccountId = await createAccount();
     const raisedBedAccountId = await createAccount();
@@ -236,11 +241,11 @@ test('accountHasActiveRaisedBed uses the raised-bed account instead of the garde
     await updateRaisedBed({ id: raisedBedId, status: 'active' });
 
     assert.strictEqual(
-        await accountHasActiveRaisedBed(raisedBedAccountId),
+        await accountHasActiveRaisedBed(gardenOwnerAccountId),
         true,
     );
     assert.strictEqual(
-        await accountHasActiveRaisedBed(gardenOwnerAccountId),
+        await accountHasActiveRaisedBed(raisedBedAccountId),
         false,
     );
 });
@@ -532,6 +537,71 @@ test('createDefaultGardenForAccount creates garden with default layout', async (
         stack10?.blocks.length,
         2,
         'Stack (1,0) should have 2 blocks (grass + raised bed)',
+    );
+});
+
+test('getRaisedBedFieldsWithEventsForBeds matches single-bed projections', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const firstBlockId = await createTestBlock(gardenId, 'Raised_Bed');
+    const secondBlockId = await createTestBlock(gardenId, 'Raised_Bed');
+    const firstRaisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        firstBlockId,
+    );
+    const secondRaisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        secondBlockId,
+    );
+
+    await upsertRaisedBedField({
+        raisedBedId: firstRaisedBedId,
+        positionIndex: 0,
+    });
+    await upsertRaisedBedField({
+        raisedBedId: secondRaisedBedId,
+        positionIndex: 1,
+    });
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(
+            `${firstRaisedBedId.toString()}|0`,
+            {
+                plantSortId: '101',
+                scheduledDate: new Date(
+                    '2026-04-01T00:00:00.000Z',
+                ).toISOString(),
+                sowingLocation: 'greenhouse',
+            },
+        ),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(
+            `${secondRaisedBedId.toString()}|1`,
+            {
+                plantSortId: '202',
+                scheduledDate: new Date(
+                    '2026-04-02T00:00:00.000Z',
+                ).toISOString(),
+            },
+        ),
+    );
+
+    const bulkFields = await getRaisedBedFieldsWithEventsForBeds([
+        firstRaisedBedId,
+        secondRaisedBedId,
+    ]);
+
+    assert.deepStrictEqual(
+        bulkFields.get(firstRaisedBedId) ?? [],
+        await getRaisedBedFieldsWithEvents(firstRaisedBedId),
+    );
+    assert.deepStrictEqual(
+        bulkFields.get(secondRaisedBedId) ?? [],
+        await getRaisedBedFieldsWithEvents(secondRaisedBedId),
     );
 });
 

@@ -81,4 +81,5 @@ export * from './repositories/userFavoritesRepo';
 export * from './repositories/usersRepo';
 export * from './repositories/weatherHistoryRepo';
 export * from './schema';
+export * from './security/columnEncryption';
 export * from './storage';

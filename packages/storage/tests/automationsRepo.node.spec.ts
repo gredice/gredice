@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import test, { afterEach } from 'node:test';
 import {
     type AutomationGraph,
@@ -8,19 +9,26 @@ import {
     automationModuleKeys,
     automationRunSteps,
     automationRuns,
+    automationScheduleEventType,
     claimDueAutomationRuns,
     completeAutomationRun,
     createAccount,
     createAutomationDefinition,
     createAutomationRun,
+    createEntity,
     createEvent,
     createFarm,
     createOperation,
+    createOutletOffer,
     enqueueAutomationRunsFromDomainEvents,
     enqueueAutomationRunsFromSchedules,
     ensureDefaultAutomationDefinitions,
     executeAutomationRun,
+    FARM_RAISED_BED_WEEDING_OPERATION_ID,
     FREE_WATERING_OPERATION_ID,
+    farmRaisedBedWeedingAutomationKey,
+    farmRaisedBedWeedingBiweeklyAnchorDate,
+    farms,
     getAutomationDefinitionByKey,
     getAutomationEventCursor,
     getAutomationRunWithSteps,
@@ -29,17 +37,25 @@ import {
     getFarms,
     getOperations,
     getRaisedBed,
+    getRaisedBedOperationsByScheduleRange,
+    greenhouseSeedlingWateringAutomationGraph,
+    greenhouseSeedlingWateringAutomationKey,
     knownEvents,
     knownEventTypes,
+    listActiveRaisedBedOperationTargets,
     listAutomationDefinitionRunSummaries,
     listAutomationDefinitions,
     listAutomationRuns,
     listEnabledAutomationDefinitionsForEventType,
+    monthlyFarmInventoryOperationConfigs,
+    monthlyFarmInventoryOperationsAutomationKey,
     operationImagePlantStatusReviewAutomationGraph,
     plantRemovalOperationStatusAutomationGraph,
     plantRemovalOperationStatusAutomationKey,
     processDueAutomationRuns,
     RAISED_BED_WATERING_50L_OPERATION_ID,
+    raisedBedPhotoOperationsAutomationKey,
+    raisedBeds,
     recordAutomationRunStep,
     retryFailedAutomationRun,
     seasonalSowedWateringAutomationGraph,
@@ -49,9 +65,13 @@ import {
     startAutomationRun,
     storage,
     updateAutomationDefinition,
+    updateEntity,
+    updateRaisedBed,
+    upsertEntityType,
     upsertRaisedBedField,
     validateAutomationGraph,
 } from '@gredice/storage';
+import { eq } from 'drizzle-orm';
 import {
     createTestBlock,
     createTestGarden,
@@ -83,6 +103,7 @@ async function createAutomationRaisedBedContext() {
 
     return {
         accountId,
+        farmId,
         gardenId,
         raisedBedId,
     };
@@ -205,10 +226,125 @@ function monthlyLogAutomationGraph(): AutomationGraph {
     };
 }
 
+function scheduleLogAutomationGraph(
+    config: Record<string, unknown>,
+): AutomationGraph {
+    return {
+        nodes: [
+            {
+                id: 'trigger',
+                kind: 'trigger',
+                moduleKey: automationModuleKeys.triggerSchedule,
+                position: { x: 0, y: 0 },
+                config,
+            },
+            {
+                id: 'log',
+                kind: 'action',
+                moduleKey: automationModuleKeys.actionLog,
+                position: { x: 280, y: 0 },
+                config: {
+                    message: 'Schedule reached log action.',
+                },
+            },
+        ],
+        edges: [
+            {
+                id: 'trigger-to-log',
+                source: 'trigger',
+                target: 'log',
+            },
+        ],
+    };
+}
+
+function raisedBedOperationsAutomationGraph({
+    entityId,
+    acceptOnCreate = true,
+}: {
+    entityId: number;
+    acceptOnCreate?: boolean;
+}): AutomationGraph {
+    return {
+        nodes: [
+            {
+                id: 'trigger',
+                kind: 'trigger',
+                moduleKey: automationModuleKeys.triggerSchedule,
+                position: { x: 0, y: 0 },
+                config: {
+                    frequency: 'weekly',
+                    daysOfWeek: ['tuesday', 'friday'],
+                    timeZone: 'Europe/Zagreb',
+                },
+            },
+            {
+                id: 'create-raised-bed-operations',
+                kind: 'action',
+                moduleKey: automationModuleKeys.actionCreateRaisedBedOperations,
+                position: { x: 320, y: 0 },
+                config: {
+                    entityId,
+                    entityTypeName: 'operation',
+                    scheduledInDays: 0,
+                    acceptOnCreate,
+                },
+            },
+        ],
+        edges: [
+            {
+                id: 'trigger-to-create-raised-bed-operations',
+                source: 'trigger',
+                target: 'create-raised-bed-operations',
+            },
+        ],
+    };
+}
+
 function addUtcDays(date: Date, days: number) {
     const nextDate = new Date(date);
     nextDate.setUTCDate(nextDate.getUTCDate() + days);
     return nextDate;
+}
+
+function weeklyScheduleInput(dateKey: string, dayOfWeek = 'tuesday') {
+    return {
+        scheduleType: 'weekly',
+        frequency: 'weekly',
+        triggerModuleKey: automationModuleKeys.triggerSchedule,
+        occurrenceKey: `${automationModuleKeys.triggerSchedule}:Europe/Zagreb:weekly:${dateKey}:${dayOfWeek}`,
+        occurrenceDate: dateKey,
+        dayOfWeek,
+        daysOfWeek: ['tuesday', 'friday'],
+        intervalWeeks: 1,
+        timeZone: 'Europe/Zagreb',
+        enqueuedAt: `${dateKey}T08:00:00.000Z`,
+    };
+}
+
+async function executeManualAutomationRun(
+    automationDefinition: Awaited<
+        ReturnType<typeof createAutomationDefinition>
+    >,
+    input: Record<string, unknown>,
+    options: { dryRun?: boolean } = {},
+) {
+    const run = await createAutomationRun({
+        automationDefinition,
+        source: 'manual',
+        dryRun: options.dryRun,
+        input,
+    });
+    assert.ok(run);
+    const startedRun = await startAutomationRun(run.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedRun);
+    const result = await executeAutomationRun(startedRun);
+    const runWithSteps = await getAutomationRunWithSteps(startedRun.id);
+    assert.ok(runWithSteps);
+
+    return { result, run: runWithSteps };
 }
 
 function monthlyScheduleRunInput(index: number) {
@@ -219,6 +355,155 @@ function monthlyScheduleRunInput(index: number) {
         period: '2026-06',
         occurrenceDate: '2026-06-01T08:00:00.000Z',
     };
+}
+
+function biweeklyScheduleRunInput({
+    occurrenceDate,
+    occurrenceKey = `test.biweekly:${occurrenceDate}`,
+    weekOffset = 0,
+}: {
+    occurrenceDate: string;
+    occurrenceKey?: string;
+    weekOffset?: number;
+}) {
+    return {
+        scheduleType: 'biweekly',
+        frequency: 'biweekly',
+        triggerModuleKey: automationModuleKeys.triggerSchedule,
+        occurrenceKey,
+        occurrenceDate: occurrenceDate.slice(0, 10),
+        enqueuedAt: occurrenceDate,
+        timeZone: 'Europe/Zagreb',
+        intervalWeeks: 2,
+        anchorDate: farmRaisedBedWeedingBiweeklyAnchorDate,
+        weekOffset,
+        dayOfWeek: 'monday',
+        daysOfWeek: ['monday'],
+    };
+}
+
+function greenhouseSeedlingWateringAutomationGraphForEntity(
+    entityId: number,
+): AutomationGraph {
+    return {
+        nodes: [
+            {
+                id: 'trigger',
+                kind: 'trigger',
+                moduleKey: automationModuleKeys.triggerSchedule,
+                position: { x: 0, y: 0 },
+                config: {
+                    frequency: 'daily',
+                    timeZone: 'Europe/Zagreb',
+                },
+            },
+            {
+                id: 'create-greenhouse-seedling-waterings',
+                kind: 'action',
+                moduleKey:
+                    automationModuleKeys.actionCreateGreenhouseSeedlingWateringOperations,
+                position: { x: 320, y: 0 },
+                config: {
+                    entityId,
+                    entityTypeName: 'operation',
+                    scheduledInDays: 0,
+                },
+            },
+        ],
+        edges: [
+            {
+                id: 'trigger-to-action',
+                source: 'trigger',
+                target: 'create-greenhouse-seedling-waterings',
+            },
+        ],
+    };
+}
+
+function dailyScheduleRunInput(date: Date, key: string) {
+    const occurrenceDate = date.toISOString().slice(0, 10);
+
+    return {
+        scheduleType: 'daily',
+        frequency: 'daily',
+        triggerModuleKey: automationModuleKeys.triggerSchedule,
+        occurrenceKey: `${key}:${occurrenceDate}`,
+        occurrenceDate,
+        timeZone: 'Europe/Zagreb',
+        enqueuedAt: date.toISOString(),
+    };
+}
+
+async function createAutomationRunForDailyGreenhouseWatering({
+    entityId,
+    enqueuedAt,
+    referenceDate,
+    dryRun = false,
+}: {
+    entityId: number;
+    enqueuedAt?: Date;
+    referenceDate: Date;
+    dryRun?: boolean;
+}) {
+    const definition = await createAutomationDefinition({
+        key: `test.greenhouse-seedling-watering-${entityId}-${randomUUID()}`,
+        name: 'Greenhouse seedling watering',
+        status: 'enabled',
+        graph: greenhouseSeedlingWateringAutomationGraphForEntity(entityId),
+    });
+    const input = dailyScheduleRunInput(
+        enqueuedAt ?? referenceDate,
+        `test.greenhouse-seedling-watering-${entityId}`,
+    );
+    input.occurrenceDate = referenceDate.toISOString().slice(0, 10);
+    input.occurrenceKey = `test.greenhouse-seedling-watering-${entityId}:${input.occurrenceDate}`;
+    const run = await createAutomationRun({
+        automationDefinition: definition,
+        source: 'schedule',
+        sourceEventType: automationScheduleEventType,
+        sourceAggregateId:
+            typeof input.occurrenceKey === 'string'
+                ? input.occurrenceKey
+                : undefined,
+        dryRun,
+        input,
+    });
+    assert.ok(run);
+
+    const startedRun = await startAutomationRun(run.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedRun);
+
+    const result = await executeAutomationRun(startedRun);
+    const runWithSteps = await getAutomationRunWithSteps(startedRun.id);
+    const actionStep = runWithSteps?.steps.find(
+        (step) =>
+            step.nodeId === 'create-greenhouse-seedling-waterings' &&
+            step.moduleKind === 'action',
+    );
+    assert.ok(actionStep);
+
+    return {
+        result,
+        actionOutput: actionStep.output,
+    };
+}
+
+async function createTestPlantSortForOutlet() {
+    const entityTypeName = `automation-outlet-plant-sort-${randomUUID()}`;
+    await upsertEntityType({
+        name: entityTypeName,
+        label: 'Automation Outlet Plant Sort',
+    });
+    const entityId = await createEntity(entityTypeName);
+    await updateEntity({
+        id: entityId,
+        entityTypeName,
+        state: 'published',
+    });
+
+    return entityId;
 }
 
 test('automation definitions persist graph trigger metadata and event-run idempotency', async () => {
@@ -769,7 +1054,7 @@ test('monthly schedule automation enqueues once per configured period', async ()
                 kind: 'trigger' as const,
                 position: { x: 0, y: 0 },
                 config: {
-                    dayOfMonth: 1,
+                    dayOfMonth: 15,
                     timeZone: 'Europe/Zagreb',
                 },
             },
@@ -799,18 +1084,18 @@ test('monthly schedule automation enqueues once per configured period', async ()
     });
 
     const firstResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-01T08:00:00.000Z'),
+        now: new Date('2026-06-15T08:00:00.000Z'),
     });
     const duplicateResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-01T09:00:00.000Z'),
+        now: new Date('2026-06-15T09:00:00.000Z'),
     });
     const offDayResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-02T08:00:00.000Z'),
+        now: new Date('2026-06-16T08:00:00.000Z'),
     });
 
-    assert.strictEqual(firstResult.enqueuedRuns, 1);
+    assert.strictEqual(firstResult.enqueuedRuns, 2);
     assert.strictEqual(duplicateResult.enqueuedRuns, 0);
-    assert.strictEqual(offDayResult.enqueuedRuns, 0);
+    assert.strictEqual(offDayResult.enqueuedRuns, 2);
 
     const runs = await listAutomationRuns({
         automationDefinitionId: definition.id,
@@ -819,7 +1104,7 @@ test('monthly schedule automation enqueues once per configured period', async ()
     assert.strictEqual(runs[0]?.source, 'schedule');
     assert.strictEqual(
         runs[0]?.sourceAggregateId,
-        'trigger.scheduleMonthly:Europe/Zagreb:2026-06:day-1',
+        'trigger.scheduleMonthly:Europe/Zagreb:2026-06:day-15',
     );
     for (const run of runs) {
         await completeAutomationRun({
@@ -829,6 +1114,203 @@ test('monthly schedule automation enqueues once per configured period', async ()
         });
     }
     await updateAutomationDefinition(definition.id, { status: 'disabled' });
+});
+
+test('daily schedule automation enqueues once per local day and executes', async () => {
+    createTestDb();
+    const definition = await createAutomationDefinition({
+        key: 'test.daily-schedule',
+        name: 'Daily schedule',
+        status: 'enabled',
+        graph: scheduleLogAutomationGraph({
+            frequency: 'daily',
+            timeZone: 'Europe/Zagreb',
+        }),
+    });
+
+    const firstResult = await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-06-23T08:00:00.000Z'),
+    });
+    const duplicateResult = await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-06-23T21:00:00.000Z'),
+    });
+    const nextDayResult = await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-06-24T08:00:00.000Z'),
+    });
+
+    assert.strictEqual(firstResult.enqueuedRuns, 3);
+    assert.strictEqual(duplicateResult.enqueuedRuns, 0);
+    assert.strictEqual(nextDayResult.enqueuedRuns, 2);
+
+    const runs = await listAutomationRuns({
+        automationDefinitionId: definition.id,
+    });
+    assert.strictEqual(runs.length, 2);
+    assert.ok(
+        runs.every(
+            (run) => run.sourceEventType === automationScheduleEventType,
+        ),
+    );
+    assert.deepStrictEqual(runs.map((run) => run.input.scheduleType).sort(), [
+        'daily',
+        'daily',
+    ]);
+
+    await processDueAutomationRuns({
+        limit: 10,
+        lockedBy: 'automations-test',
+    });
+    const processedRuns = await listAutomationRuns({
+        automationDefinitionId: definition.id,
+    });
+    assert.deepStrictEqual(processedRuns.map((run) => run.status).sort(), [
+        'succeeded',
+        'succeeded',
+    ]);
+});
+
+test('weekly schedule automation supports selected weekdays', async () => {
+    createTestDb();
+    const definition = await createAutomationDefinition({
+        key: 'test.weekday-schedule',
+        name: 'Weekday schedule',
+        status: 'enabled',
+        graph: scheduleLogAutomationGraph({
+            frequency: 'weekly',
+            daysOfWeek: ['tuesday', 'friday'],
+            timeZone: 'Europe/Zagreb',
+        }),
+    });
+
+    const offDayResult = await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-06-22T08:00:00.000Z'),
+    });
+    const tuesdayResult = await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-06-23T08:00:00.000Z'),
+    });
+    const duplicateTuesdayResult = await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-06-23T09:00:00.000Z'),
+    });
+    const fridayResult = await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-06-26T08:00:00.000Z'),
+    });
+
+    assert.strictEqual(offDayResult.enqueuedRuns, 1);
+    assert.strictEqual(tuesdayResult.enqueuedRuns, 3);
+    assert.strictEqual(duplicateTuesdayResult.enqueuedRuns, 0);
+    assert.strictEqual(fridayResult.enqueuedRuns, 3);
+
+    const runs = await listAutomationRuns({
+        automationDefinitionId: definition.id,
+    });
+    assert.strictEqual(runs.length, 2);
+    assert.deepStrictEqual(
+        runs
+            .map((run) => run.input.dayOfWeek)
+            .filter((dayOfWeek) => typeof dayOfWeek === 'string')
+            .sort(),
+        ['friday', 'tuesday'],
+    );
+});
+
+test('biweekly schedule automation respects anchor week', async () => {
+    createTestDb();
+    const definition = await createAutomationDefinition({
+        key: 'test.biweekly-schedule',
+        name: 'Biweekly schedule',
+        status: 'enabled',
+        graph: scheduleLogAutomationGraph({
+            frequency: 'biweekly',
+            dayOfWeek: 'tuesday',
+            anchorDate: '2026-06-01',
+            timeZone: 'Europe/Zagreb',
+        }),
+    });
+
+    const firstWeekResult = await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-06-02T08:00:00.000Z'),
+    });
+    const skippedWeekResult = await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-06-09T08:00:00.000Z'),
+    });
+    const secondOccurrenceResult = await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-06-16T08:00:00.000Z'),
+    });
+    const duplicateSecondOccurrenceResult =
+        await enqueueAutomationRunsFromSchedules({
+            now: new Date('2026-06-16T09:00:00.000Z'),
+        });
+
+    assert.strictEqual(firstWeekResult.enqueuedRuns, 3);
+    assert.strictEqual(skippedWeekResult.enqueuedRuns, 2);
+    assert.strictEqual(secondOccurrenceResult.enqueuedRuns, 3);
+    assert.strictEqual(duplicateSecondOccurrenceResult.enqueuedRuns, 0);
+
+    const runs = await listAutomationRuns({
+        automationDefinitionId: definition.id,
+    });
+    assert.strictEqual(runs.length, 2);
+    assert.deepStrictEqual(
+        runs
+            .map((run) => run.input.weekOffset)
+            .filter((weekOffset) => typeof weekOffset === 'number')
+            .sort(),
+        [0, 2],
+    );
+});
+
+test('schedule trigger validates cadence config', () => {
+    const invalidTimeZone = validateAutomationGraph(
+        scheduleLogAutomationGraph({
+            frequency: 'daily',
+            timeZone: 'Not/AZone',
+        }),
+    );
+    assert.strictEqual(invalidTimeZone.ok, false);
+    assert.ok(
+        invalidTimeZone.errors.includes(
+            'timeZone must be a valid IANA time zone.',
+        ),
+    );
+
+    const invalidMonthlyDay = validateAutomationGraph(
+        scheduleLogAutomationGraph({
+            frequency: 'monthly',
+            dayOfMonth: 32,
+        }),
+    );
+    assert.strictEqual(invalidMonthlyDay.ok, false);
+    assert.ok(
+        invalidMonthlyDay.errors.includes(
+            'dayOfMonth must be an integer from 1 to 31.',
+        ),
+    );
+
+    const invalidWeekday = validateAutomationGraph(
+        scheduleLogAutomationGraph({
+            frequency: 'weekly',
+            daysOfWeek: ['noday'],
+        }),
+    );
+    assert.strictEqual(invalidWeekday.ok, false);
+    assert.ok(
+        invalidWeekday.errors.includes(
+            'daysOfWeek must contain valid weekdays.',
+        ),
+    );
+
+    const missingBiweeklyAnchor = validateAutomationGraph(
+        scheduleLogAutomationGraph({
+            frequency: 'biweekly',
+            dayOfWeek: 'tuesday',
+        }),
+    );
+    assert.strictEqual(missingBiweeklyAnchor.ok, false);
+    assert.ok(
+        missingBiweeklyAnchor.errors.includes(
+            'anchorDate must be a valid YYYY-MM-DD date.',
+        ),
+    );
 });
 
 test('monthly farm inventory automation creates accepted scheduled farm tasks', async () => {
@@ -843,94 +1325,118 @@ test('monthly farm inventory automation creates accepted scheduled farm tasks', 
         latitude: 46.1,
         longitude: 16.2,
     });
+    const deletedFarmId = await createFarm({
+        name: 'Automation Inventory Deleted Farm',
+        latitude: 44.5,
+        longitude: 15.1,
+    });
+    await storage()
+        .update(farms)
+        .set({ isDeleted: true })
+        .where(eq(farms.id, deletedFarmId));
     const activeFarms = (await getFarms()).filter((farm) => !farm.isDeleted);
-    const referenceDate = new Date('2026-07-01T08:00:00.000Z');
-    const operationConfigs = [
-        {
-            entityId: 9_910_001,
-            entityTypeName: 'operation',
-            scheduledInDays: 0,
-        },
-        {
-            entityId: 9_910_002,
-            entityTypeName: 'operation',
-            scheduledInDays: 2,
-        },
-    ];
+    const occurrenceDate = new Date('2026-07-01T00:00:00.000Z');
+    const enqueuedAt = new Date('2026-07-01T08:00:00.000Z');
+    const operationConfigs = monthlyFarmInventoryOperationConfigs;
     const preexistingFarm = activeFarms[0];
     assert.ok(preexistingFarm);
     const preexistingOperationId = await createOperation({
         entityId: operationConfigs[0].entityId,
         entityTypeName: operationConfigs[0].entityTypeName,
         farmId: preexistingFarm.id,
-        timestamp: new Date('2026-05-01T08:00:00.000Z'),
+        timestamp: occurrenceDate,
     });
     await acceptOperation(preexistingOperationId);
-    await createEvent(
-        knownEvents.operations.scheduledV1(preexistingOperationId.toString(), {
-            scheduledDate: referenceDate.toISOString(),
-        }),
+    await ensureDefaultAutomationDefinitions();
+    const definition = await getAutomationDefinitionByKey(
+        monthlyFarmInventoryOperationsAutomationKey,
     );
-    const graph = {
-        nodes: [
-            {
-                id: 'trigger',
-                moduleKey: automationModuleKeys.triggerScheduleMonthly,
-                kind: 'trigger' as const,
-                position: { x: 0, y: 0 },
-                config: {
-                    dayOfMonth: 1,
-                    timeZone: 'Europe/Zagreb',
-                },
-            },
-            {
-                id: 'create-inventory-operations',
-                moduleKey:
-                    automationModuleKeys.actionCreateFarmInventoryOperations,
-                kind: 'action' as const,
-                position: { x: 300, y: 0 },
-                config: {
-                    operations: operationConfigs,
-                },
-            },
-        ],
-        edges: [
-            {
-                id: 'trigger-to-create-inventory-operations',
-                source: 'trigger',
-                target: 'create-inventory-operations',
-            },
-        ],
-    };
-    const definition = await createAutomationDefinition({
-        key: 'test.monthly-farm-inventory',
-        name: 'Monthly farm inventory',
-        status: 'enabled',
-        graph,
+    assert.ok(definition);
+    const triggerNode = definition.graph.nodes.find(
+        (node) => node.kind === 'trigger',
+    );
+    const actionNode = definition.graph.nodes.find(
+        (node) =>
+            node.moduleKey ===
+            automationModuleKeys.actionCreateFarmInventoryOperations,
+    );
+    assert.strictEqual(
+        triggerNode?.moduleKey,
+        automationModuleKeys.triggerSchedule,
+    );
+    assert.deepStrictEqual(triggerNode?.config, {
+        frequency: 'monthly',
+        dayOfMonth: 1,
+        timeZone: 'Europe/Zagreb',
     });
+    assert.deepStrictEqual(actionNode?.config.operations, operationConfigs);
 
     const enqueueResult = await enqueueAutomationRunsFromSchedules({
-        now: referenceDate,
+        now: enqueuedAt,
     });
-    assert.strictEqual(enqueueResult.enqueuedRuns, 1);
+    const duplicateResult = await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-07-01T09:00:00.000Z'),
+    });
+    const offDayResult = await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-07-02T08:00:00.000Z'),
+    });
+    assert.strictEqual(enqueueResult.enqueuedRuns, 2);
+    assert.strictEqual(duplicateResult.enqueuedRuns, 0);
+    assert.strictEqual(offDayResult.enqueuedRuns, 1);
+
+    const [scheduledRun] = await listAutomationRuns({
+        automationDefinitionId: definition.id,
+    });
+    assert.ok(scheduledRun);
+    assert.strictEqual(
+        scheduledRun.sourceAggregateId,
+        'trigger.schedule:Europe/Zagreb:monthly:2026-07:day-1',
+    );
+
+    const dryRun = await createAutomationRun({
+        automationDefinition: definition,
+        source: 'test',
+        input: scheduledRun.input,
+    });
+    assert.ok(dryRun);
+    const startedDryRun = await startAutomationRun(dryRun.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedDryRun);
+    const dryRunResult = await executeAutomationRun(startedDryRun);
+    assert.strictEqual(dryRunResult.status, 'succeeded');
+    const dryRunWithSteps = await getAutomationRunWithSteps(dryRun.id);
+    const dryRunActionStep = dryRunWithSteps?.steps.find(
+        (step) => step.nodeId === 'create-inventory-operations',
+    );
+    assert.ok(dryRunActionStep);
+    assert.strictEqual(
+        dryRunActionStep.output.createdCount,
+        activeFarms.length * operationConfigs.length - 1,
+    );
+    assert.strictEqual(dryRunActionStep.output.skippedScheduledCount, 1);
+    assert.strictEqual(dryRunActionStep.output.repairedScheduledCount, 1);
 
     const processResult = await processDueAutomationRuns({
         limit: 10,
         lockedBy: 'automations-test',
     });
     assert.strictEqual(processResult.succeeded, 1);
+    assert.strictEqual(processResult.skipped, 2);
 
     const expectedScheduledDates = operationConfigs.map((operationConfig) =>
         addUtcDays(
-            referenceDate,
+            occurrenceDate,
             operationConfig.scheduledInDays,
         ).toISOString(),
     );
+    const expectedCreatedCount =
+        activeFarms.length * operationConfigs.length - 1;
     for (const farm of activeFarms) {
         const farmOperations = await getFarmAcceptedOperationsByScheduleRange({
             farmId: farm.id,
-            from: referenceDate,
-            to: addUtcDays(referenceDate, 3),
+            from: occurrenceDate,
+            to: addUtcDays(occurrenceDate, 1),
         });
         const inventoryOperations = farmOperations
             .filter((operation) =>
@@ -976,14 +1482,29 @@ test('monthly farm inventory automation creates accepted scheduled farm tasks', 
         }
     }
 
-    const [firstRun] = await listAutomationRuns({
-        automationDefinitionId: definition.id,
-    });
-    assert.ok(firstRun);
+    const deletedFarmOperations =
+        await getFarmAcceptedOperationsByScheduleRange({
+            farmId: deletedFarmId,
+            from: occurrenceDate,
+            to: addUtcDays(occurrenceDate, 1),
+        });
+    assert.strictEqual(deletedFarmOperations.length, 0);
+
+    const scheduledRunWithSteps = await getAutomationRunWithSteps(
+        scheduledRun.id,
+    );
+    const actionStep = scheduledRunWithSteps?.steps.find(
+        (step) => step.nodeId === 'create-inventory-operations',
+    );
+    assert.ok(actionStep);
+    assert.strictEqual(actionStep.output.createdCount, expectedCreatedCount);
+    assert.strictEqual(actionStep.output.skippedScheduledCount, 1);
+    assert.strictEqual(actionStep.output.repairedScheduledCount, 1);
+
     const replayRun = await createAutomationRun({
         automationDefinition: definition,
         source: 'replay',
-        input: firstRun.input,
+        input: scheduledRun.input,
     });
     assert.ok(replayRun);
     const startedReplay = await startAutomationRun(replayRun.id, {
@@ -997,8 +1518,8 @@ test('monthly farm inventory automation creates accepted scheduled farm tasks', 
     for (const farm of activeFarms) {
         const farmOperations = await getFarmAcceptedOperationsByScheduleRange({
             farmId: farm.id,
-            from: referenceDate,
-            to: addUtcDays(referenceDate, 3),
+            from: occurrenceDate,
+            to: addUtcDays(occurrenceDate, 1),
         });
         const inventoryOperations = farmOperations.filter((operation) =>
             operationConfigs.some(
@@ -1008,6 +1529,892 @@ test('monthly farm inventory automation creates accepted scheduled farm tasks', 
         );
         assert.strictEqual(inventoryOperations.length, operationConfigs.length);
     }
+    const replayRunWithSteps = await getAutomationRunWithSteps(replayRun.id);
+    const replayActionStep = replayRunWithSteps?.steps.find(
+        (step) => step.nodeId === 'create-inventory-operations',
+    );
+    assert.ok(replayActionStep);
+    assert.strictEqual(replayActionStep.output.createdCount, 0);
+    assert.strictEqual(
+        replayActionStep.output.skippedScheduledCount,
+        activeFarms.length * operationConfigs.length,
+    );
+    assert.strictEqual(replayActionStep.output.repairedScheduledCount, 0);
+});
+
+test('default farm raised-bed weeding automation stays draft until enabled', async () => {
+    createTestDb();
+
+    await ensureDefaultAutomationDefinitions();
+    const draftDefinition = await getAutomationDefinitionByKey(
+        farmRaisedBedWeedingAutomationKey,
+    );
+    assert.ok(draftDefinition);
+    assert.strictEqual(draftDefinition.status, 'draft');
+    assert.strictEqual(
+        draftDefinition.triggerModuleKey,
+        automationModuleKeys.triggerSchedule,
+    );
+    assert.deepStrictEqual(
+        draftDefinition.metadata.operationEntityId,
+        FARM_RAISED_BED_WEEDING_OPERATION_ID,
+    );
+
+    const enabledDefinition = await updateAutomationDefinition(
+        draftDefinition.id,
+        { status: 'enabled' },
+    );
+    assert.ok(enabledDefinition);
+
+    await ensureDefaultAutomationDefinitions();
+    const preservedDefinition = await getAutomationDefinitionByKey(
+        farmRaisedBedWeedingAutomationKey,
+    );
+    assert.ok(preservedDefinition);
+    assert.strictEqual(preservedDefinition.status, 'enabled');
+});
+
+test('default farm raised-bed weeding automation filters farms and prevents duplicate occurrence operations', async () => {
+    createTestDb();
+    await createFarm({
+        name: 'Automation Weeding Farm A',
+        latitude: 45.7,
+        longitude: 16.1,
+    });
+    const deletedFarmId = await createFarm({
+        name: 'Automation Weeding Deleted Farm',
+        latitude: 45.6,
+        longitude: 16.0,
+    });
+    await storage()
+        .update(farms)
+        .set({ isDeleted: true })
+        .where(eq(farms.id, deletedFarmId));
+
+    const activeFarms = (await getFarms()).filter((farm) => !farm.isDeleted);
+    assert.ok(activeFarms.length > 0);
+
+    const { farmRaisedBedWeeding } = await ensureDefaultAutomationDefinitions();
+    const enabledDefinition = await updateAutomationDefinition(
+        farmRaisedBedWeeding.id,
+        { status: 'enabled' },
+    );
+    assert.ok(enabledDefinition);
+
+    const dryRun = await createAutomationRun({
+        automationDefinition: enabledDefinition,
+        source: 'test',
+        input: biweeklyScheduleRunInput({
+            occurrenceDate: '2026-01-05T08:00:00.000Z',
+        }),
+    });
+    assert.ok(dryRun);
+    const startedDryRun = await startAutomationRun(dryRun.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedDryRun);
+    const dryRunResult = await executeAutomationRun(startedDryRun);
+    assert.strictEqual(dryRunResult.status, 'succeeded');
+    const dryRunWithSteps = await getAutomationRunWithSteps(dryRun.id);
+    const dryRunActionStep = dryRunWithSteps?.steps.find(
+        (step) => step.nodeId === 'create-farm-weeding-operations',
+    );
+    assert.ok(dryRunActionStep);
+    assert.strictEqual(
+        dryRunActionStep.output.createdCount,
+        activeFarms.length,
+    );
+    assert.strictEqual(dryRunActionStep.output.skippedCount, 0);
+
+    const firstResult = await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-01-05T08:00:00.000Z'),
+    });
+    const duplicateResult = await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-01-05T09:00:00.000Z'),
+    });
+    const offWeekResult = await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-01-12T08:00:00.000Z'),
+    });
+
+    assert.strictEqual(firstResult.enqueuedRuns, 2);
+    assert.strictEqual(duplicateResult.enqueuedRuns, 0);
+    assert.strictEqual(offWeekResult.enqueuedRuns, 1);
+
+    const processResult = await processDueAutomationRuns({
+        limit: 10,
+        lockedBy: 'automations-test',
+    });
+    assert.strictEqual(processResult.succeeded, 1);
+    assert.strictEqual(processResult.skipped, 2);
+
+    const occurrenceStart = new Date('2026-01-05T00:00:00.000Z');
+    const occurrenceEnd = addUtcDays(occurrenceStart, 1);
+    for (const farm of activeFarms) {
+        const farmOperations = await getFarmAcceptedOperationsByScheduleRange({
+            farmId: farm.id,
+            from: occurrenceStart,
+            to: occurrenceEnd,
+        });
+        const weedingOperations = farmOperations.filter(
+            (operation) =>
+                operation.entityId === FARM_RAISED_BED_WEEDING_OPERATION_ID,
+        );
+
+        assert.strictEqual(weedingOperations.length, 1);
+        assert.strictEqual(weedingOperations[0]?.farmId, farm.id);
+        assert.strictEqual(weedingOperations[0]?.gardenId, null);
+        assert.strictEqual(weedingOperations[0]?.raisedBedId, null);
+        assert.strictEqual(weedingOperations[0]?.raisedBedFieldId, null);
+    }
+
+    const deletedFarmOperations =
+        await getFarmAcceptedOperationsByScheduleRange({
+            farmId: deletedFarmId,
+            from: occurrenceStart,
+            to: occurrenceEnd,
+        });
+    assert.strictEqual(
+        deletedFarmOperations.filter(
+            (operation) =>
+                operation.entityId === FARM_RAISED_BED_WEEDING_OPERATION_ID,
+        ).length,
+        0,
+    );
+
+    const firstRun = (
+        await listAutomationRuns({
+            automationDefinitionId: enabledDefinition.id,
+        })
+    ).find((run) => run.source === 'schedule');
+    assert.ok(firstRun);
+    assert.strictEqual(firstRun.input.weekOffset, 0);
+
+    const replayRun = await createAutomationRun({
+        automationDefinition: enabledDefinition,
+        source: 'replay',
+        input: firstRun.input,
+    });
+    assert.ok(replayRun);
+    const startedReplay = await startAutomationRun(replayRun.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedReplay);
+    const replayResult = await executeAutomationRun(startedReplay);
+
+    assert.strictEqual(replayResult.status, 'skipped');
+    for (const farm of activeFarms) {
+        const farmOperations = await getFarmAcceptedOperationsByScheduleRange({
+            farmId: farm.id,
+            from: occurrenceStart,
+            to: occurrenceEnd,
+        });
+        assert.strictEqual(
+            farmOperations.filter(
+                (operation) =>
+                    operation.entityId === FARM_RAISED_BED_WEEDING_OPERATION_ID,
+            ).length,
+            1,
+        );
+    }
+});
+
+test('default raised-bed photo automation enqueues only Tuesday and Friday occurrences', async () => {
+    createTestDb();
+    await ensureDefaultAutomationDefinitions();
+    const definition = await getAutomationDefinitionByKey(
+        raisedBedPhotoOperationsAutomationKey,
+    );
+    assert.ok(definition);
+    assert.strictEqual(definition.status, 'enabled');
+    const validation = validateAutomationGraph(definition.graph);
+    assert.strictEqual(validation.ok, true);
+
+    const definitions = await listAutomationDefinitions({ limit: 100 });
+    for (const candidate of definitions) {
+        if (candidate.id !== definition.id) {
+            await updateAutomationDefinition(candidate.id, {
+                status: 'disabled',
+            });
+        }
+    }
+    const getPhotoRunCount = async () =>
+        (
+            await listAutomationRuns({
+                automationDefinitionId: definition.id,
+            })
+        ).length;
+
+    await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-06-24T08:00:00.000Z'),
+    });
+    assert.strictEqual(await getPhotoRunCount(), 0);
+
+    await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-06-23T08:00:00.000Z'),
+    });
+    assert.strictEqual(await getPhotoRunCount(), 1);
+
+    await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-06-23T09:00:00.000Z'),
+    });
+    assert.strictEqual(await getPhotoRunCount(), 1);
+
+    await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-06-26T08:00:00.000Z'),
+    });
+    assert.strictEqual(await getPhotoRunCount(), 2);
+});
+
+test('raised-bed operation automation filters inactive deleted and abandoned raised beds', async (t) => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({
+        accountId,
+        farmId,
+        name: `Raised-bed photo filtering ${accountId}`,
+    });
+    const blockId = await createTestBlock(
+        gardenId,
+        `raised-bed-photo-filtering-${accountId}`,
+    );
+    const activeRaisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        blockId,
+    );
+    const secondActiveRaisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        blockId,
+    );
+    const inactiveRaisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        blockId,
+    );
+    const abandonedRaisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        blockId,
+    );
+    const deletedRaisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        blockId,
+    );
+    const createdRaisedBedIds = [
+        activeRaisedBedId,
+        secondActiveRaisedBedId,
+        inactiveRaisedBedId,
+        abandonedRaisedBedId,
+        deletedRaisedBedId,
+    ];
+    t.after(async () => {
+        for (const raisedBedId of createdRaisedBedIds) {
+            await updateRaisedBed({ id: raisedBedId, status: 'new' }).catch(
+                () => undefined,
+            );
+        }
+    });
+    await updateRaisedBed({ id: activeRaisedBedId, status: 'active' });
+    await updateRaisedBed({ id: secondActiveRaisedBedId, status: 'active' });
+    await updateRaisedBed({ id: inactiveRaisedBedId, status: 'new' });
+    await updateRaisedBed({ id: abandonedRaisedBedId, status: 'abandoned' });
+    await updateRaisedBed({ id: deletedRaisedBedId, status: 'active' });
+    await storage()
+        .update(raisedBeds)
+        .set({ isDeleted: true })
+        .where(eq(raisedBeds.id, deletedRaisedBedId));
+    const expectedRecipientCount = (await listActiveRaisedBedOperationTargets())
+        .length;
+
+    const entityId = 9_920_001;
+    const definition = await createAutomationDefinition({
+        key: 'test.raised-bed-photo-filtering',
+        name: 'Raised-bed photo filtering',
+        status: 'enabled',
+        graph: raisedBedOperationsAutomationGraph({ entityId }),
+    });
+
+    const { result, run } = await executeManualAutomationRun(
+        definition,
+        weeklyScheduleInput('2026-06-23'),
+    );
+
+    assert.strictEqual(result.status, 'succeeded');
+    const operations = await getRaisedBedOperationsByScheduleRange({
+        raisedBedIds: createdRaisedBedIds,
+        from: new Date('2026-06-23T00:00:00.000Z'),
+        to: new Date('2026-06-24T00:00:00.000Z'),
+    });
+    const photoOperations = operations
+        .filter((operation) => operation.entityId === entityId)
+        .sort(
+            (left, right) => (left.raisedBedId ?? 0) - (right.raisedBedId ?? 0),
+        );
+
+    assert.deepStrictEqual(
+        photoOperations.map((operation) => operation.raisedBedId),
+        [activeRaisedBedId, secondActiveRaisedBedId].sort(
+            (left, right) => left - right,
+        ),
+    );
+    assert.ok(photoOperations.every((operation) => operation.isAccepted));
+    assert.ok(
+        photoOperations.every(
+            (operation) => operation.raisedBedFieldId === null,
+        ),
+    );
+    assert.deepStrictEqual(
+        photoOperations.map((operation) =>
+            operation.scheduledDate?.toISOString(),
+        ),
+        ['2026-06-23T00:00:00.000Z', '2026-06-23T00:00:00.000Z'],
+    );
+
+    const actionStep = run.steps.find(
+        (step) =>
+            step.moduleKey ===
+            automationModuleKeys.actionCreateRaisedBedOperations,
+    );
+    assert.ok(actionStep);
+    assert.strictEqual(
+        Reflect.get(actionStep.output, 'recipientCount'),
+        expectedRecipientCount,
+    );
+    assert.strictEqual(
+        Reflect.get(actionStep.output, 'skippedExistingCount'),
+        0,
+    );
+});
+
+test('raised-bed operation automation reports existing skips and prevents duplicates', async (t) => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({
+        accountId,
+        farmId,
+        name: `Raised-bed photo duplicates ${accountId}`,
+    });
+    const blockId = await createTestBlock(
+        gardenId,
+        `raised-bed-photo-duplicates-${accountId}`,
+    );
+    const firstRaisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        blockId,
+    );
+    const secondRaisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        blockId,
+    );
+    t.after(async () => {
+        await updateRaisedBed({ id: firstRaisedBedId, status: 'new' }).catch(
+            () => undefined,
+        );
+        await updateRaisedBed({ id: secondRaisedBedId, status: 'new' }).catch(
+            () => undefined,
+        );
+    });
+    await updateRaisedBed({ id: firstRaisedBedId, status: 'active' });
+    await updateRaisedBed({ id: secondRaisedBedId, status: 'active' });
+    const expectedRecipientCount = (await listActiveRaisedBedOperationTargets())
+        .length;
+
+    const entityId = 9_920_002;
+    const scheduledDate = new Date('2026-06-23T00:00:00.000Z');
+    const preexistingOperationId = await createOperation({
+        entityId,
+        entityTypeName: 'operation',
+        accountId,
+        gardenId,
+        raisedBedId: firstRaisedBedId,
+        timestamp: scheduledDate,
+    });
+    await createEvent(
+        knownEvents.operations.scheduledV1(preexistingOperationId.toString(), {
+            scheduledDate: scheduledDate.toISOString(),
+        }),
+    );
+    const definition = await createAutomationDefinition({
+        key: 'test.raised-bed-photo-duplicates',
+        name: 'Raised-bed photo duplicates',
+        status: 'enabled',
+        graph: raisedBedOperationsAutomationGraph({ entityId }),
+    });
+
+    const dryRun = await executeManualAutomationRun(
+        definition,
+        weeklyScheduleInput('2026-06-23'),
+        { dryRun: true },
+    );
+    assert.strictEqual(dryRun.result.status, 'succeeded');
+    const dryRunActionStep = dryRun.run.steps.find(
+        (step) =>
+            step.moduleKey ===
+            automationModuleKeys.actionCreateRaisedBedOperations,
+    );
+    assert.ok(dryRunActionStep);
+    assert.strictEqual(
+        Reflect.get(dryRunActionStep.output, 'recipientCount'),
+        expectedRecipientCount,
+    );
+    assert.strictEqual(
+        Reflect.get(dryRunActionStep.output, 'skippedExistingCount'),
+        1,
+    );
+    assert.strictEqual(
+        Reflect.get(dryRunActionStep.output, 'projectedCreateCount'),
+        expectedRecipientCount - 1,
+    );
+
+    const firstRun = await executeManualAutomationRun(
+        definition,
+        weeklyScheduleInput('2026-06-23'),
+    );
+    assert.strictEqual(firstRun.result.status, 'succeeded');
+
+    const replayRun = await executeManualAutomationRun(
+        definition,
+        weeklyScheduleInput('2026-06-23'),
+    );
+    assert.strictEqual(replayRun.result.status, 'skipped');
+    const replayActionStep = replayRun.run.steps.find(
+        (step) =>
+            step.moduleKey ===
+            automationModuleKeys.actionCreateRaisedBedOperations,
+    );
+    assert.ok(replayActionStep);
+    assert.strictEqual(
+        Reflect.get(replayActionStep.output, 'recipientCount'),
+        expectedRecipientCount,
+    );
+    assert.strictEqual(
+        Reflect.get(replayActionStep.output, 'skippedExistingCount'),
+        expectedRecipientCount,
+    );
+
+    const operations = await getRaisedBedOperationsByScheduleRange({
+        raisedBedIds: [firstRaisedBedId, secondRaisedBedId],
+        from: new Date('2026-06-23T00:00:00.000Z'),
+        to: new Date('2026-06-24T00:00:00.000Z'),
+    });
+    const photoOperations = operations.filter(
+        (operation) => operation.entityId === entityId,
+    );
+    assert.strictEqual(photoOperations.length, 2);
+    assert.deepStrictEqual(
+        photoOperations
+            .map((operation) => operation.raisedBedId)
+            .sort((left, right) => (left ?? 0) - (right ?? 0)),
+        [firstRaisedBedId, secondRaisedBedId].sort(
+            (left, right) => left - right,
+        ),
+    );
+});
+
+test('raised-bed operation automation repairs partial existing operations on retry', async (t) => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({
+        accountId,
+        farmId,
+        name: `Raised-bed photo repair ${accountId}`,
+    });
+    const blockId = await createTestBlock(
+        gardenId,
+        `raised-bed-photo-repair-${accountId}`,
+    );
+    const firstRaisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        blockId,
+    );
+    const secondRaisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        blockId,
+    );
+    t.after(async () => {
+        await updateRaisedBed({ id: firstRaisedBedId, status: 'new' }).catch(
+            () => undefined,
+        );
+        await updateRaisedBed({ id: secondRaisedBedId, status: 'new' }).catch(
+            () => undefined,
+        );
+    });
+    await updateRaisedBed({ id: firstRaisedBedId, status: 'active' });
+    await updateRaisedBed({ id: secondRaisedBedId, status: 'active' });
+    const expectedRecipientCount = (await listActiveRaisedBedOperationTargets())
+        .length;
+
+    const entityId = 9_920_003;
+    const scheduledDate = new Date('2026-06-23T00:00:00.000Z');
+    const partialOperationId = await createOperation({
+        entityId,
+        entityTypeName: 'operation',
+        accountId,
+        gardenId,
+        raisedBedId: firstRaisedBedId,
+        timestamp: scheduledDate,
+    });
+    const definition = await createAutomationDefinition({
+        key: 'test.raised-bed-photo-repair',
+        name: 'Raised-bed photo repair',
+        status: 'enabled',
+        graph: raisedBedOperationsAutomationGraph({ entityId }),
+    });
+
+    const { result, run } = await executeManualAutomationRun(
+        definition,
+        weeklyScheduleInput('2026-06-23'),
+    );
+
+    assert.strictEqual(result.status, 'succeeded');
+    const actionStep = run.steps.find(
+        (step) =>
+            step.moduleKey ===
+            automationModuleKeys.actionCreateRaisedBedOperations,
+    );
+    assert.ok(actionStep);
+    assert.strictEqual(
+        Reflect.get(actionStep.output, 'recipientCount'),
+        expectedRecipientCount,
+    );
+    assert.strictEqual(
+        Reflect.get(actionStep.output, 'skippedExistingCount'),
+        1,
+    );
+    assert.strictEqual(
+        Reflect.get(actionStep.output, 'createdCount'),
+        expectedRecipientCount - 1,
+    );
+    assert.deepStrictEqual(
+        Reflect.get(actionStep.output, 'repairedAcceptedOperationIds'),
+        [partialOperationId],
+    );
+    assert.deepStrictEqual(
+        Reflect.get(actionStep.output, 'repairedScheduledOperationIds'),
+        [partialOperationId],
+    );
+
+    const operations = await getRaisedBedOperationsByScheduleRange({
+        raisedBedIds: [firstRaisedBedId, secondRaisedBedId],
+        from: new Date('2026-06-23T00:00:00.000Z'),
+        to: new Date('2026-06-24T00:00:00.000Z'),
+    });
+    const photoOperations = operations.filter(
+        (operation) => operation.entityId === entityId,
+    );
+    assert.strictEqual(photoOperations.length, 2);
+
+    const repairedOperation = photoOperations.find(
+        (operation) => operation.id === partialOperationId,
+    );
+    assert.ok(repairedOperation);
+    assert.strictEqual(repairedOperation.isAccepted, true);
+    assert.strictEqual(
+        repairedOperation.scheduledDate?.toISOString(),
+        scheduledDate.toISOString(),
+    );
+});
+
+test('default greenhouse seedling watering automation is enabled daily', async () => {
+    createTestDb();
+    await ensureDefaultAutomationDefinitions();
+
+    const definition = await getAutomationDefinitionByKey(
+        greenhouseSeedlingWateringAutomationKey,
+    );
+
+    assert.ok(definition);
+    assert.strictEqual(definition.status, 'enabled');
+    assert.strictEqual(
+        definition.triggerModuleKey,
+        automationModuleKeys.triggerSchedule,
+    );
+    assert.deepStrictEqual(
+        definition.graph,
+        greenhouseSeedlingWateringAutomationGraph(),
+    );
+    assert.deepStrictEqual(definition.metadata, {
+        managedBy: 'gredice',
+        defaultAutomation: true,
+        operationEntityId: 655,
+        operationInternalName: 'waterGreenhouseSeedlings',
+        operationName: 'Zalijevanje presadnica u stakleniku',
+        resolvedFromIssue: 3700,
+    });
+});
+
+test('greenhouse seedling watering dry run reports no-op farms', async () => {
+    createTestDb();
+    const entityId = 9_920_001;
+    await createFarm({
+        name: 'Automation Greenhouse No-op Farm',
+        latitude: 45.8,
+        longitude: 15.9,
+    });
+    const { result, actionOutput } =
+        await createAutomationRunForDailyGreenhouseWatering({
+            entityId,
+            referenceDate: new Date('2026-08-01T08:00:00.000Z'),
+            dryRun: true,
+        });
+
+    assert.strictEqual(result.status, 'succeeded');
+    assert.strictEqual(Reflect.get(actionOutput, 'dryRun'), true);
+    assert.strictEqual(Reflect.get(actionOutput, 'eligibleFarmCount'), 0);
+    assert.strictEqual(Reflect.get(actionOutput, 'projectedCreateCount'), 0);
+    assert.strictEqual(
+        Reflect.get(actionOutput, 'skippedFarmCount'),
+        Reflect.get(actionOutput, 'activeFarmCount'),
+    );
+    assert.strictEqual(
+        Reflect.get(actionOutput, 'existingOperationSkipCount'),
+        0,
+    );
+});
+
+test('greenhouse seedling watering treats active outlet stock as eligible greenhouse care', async () => {
+    createTestDb();
+    const entityId = 9_920_002;
+    const referenceDate = new Date('2026-08-03T08:00:00.000Z');
+    await createFarm({
+        name: 'Automation Greenhouse Outlet Farm',
+        latitude: 45.9,
+        longitude: 16.0,
+    });
+    const plantSortId = await createTestPlantSortForOutlet();
+    await createOutletOffer({
+        plantSortId,
+        sowingDate: new Date('2026-07-20T00:00:00.000Z'),
+        initialPlantStatus: 'sprouted',
+        imageUrls: [],
+        outletPriceCents: 199,
+        comparePriceCents: 349,
+        quantity: 3,
+        startAt: new Date('2026-08-03T00:00:00.000Z'),
+        endAt: new Date('2026-08-04T00:00:00.000Z'),
+        status: 'published',
+        adminNotes: null,
+    });
+
+    const { result, actionOutput } =
+        await createAutomationRunForDailyGreenhouseWatering({
+            entityId,
+            referenceDate,
+            dryRun: true,
+        });
+
+    assert.strictEqual(result.status, 'succeeded');
+    assert.strictEqual(Reflect.get(actionOutput, 'activeOutletOfferCount'), 1);
+    assert.strictEqual(
+        Reflect.get(actionOutput, 'eligibleFarmCount'),
+        Reflect.get(actionOutput, 'activeFarmCount'),
+    );
+    assert.strictEqual(Reflect.get(actionOutput, 'skippedFarmCount'), 0);
+    const eligibleFarms = Reflect.get(actionOutput, 'eligibleFarms');
+    assert.ok(Array.isArray(eligibleFarms));
+    assert.ok(
+        eligibleFarms.every((farm) => {
+            const reasons =
+                farm && typeof farm === 'object'
+                    ? Reflect.get(farm, 'reasons')
+                    : null;
+            return (
+                Array.isArray(reasons) && reasons.includes('activeOutletStock')
+            );
+        }),
+    );
+});
+
+test('greenhouse seedling watering checks outlet availability at enqueue time', async () => {
+    createTestDb();
+    const entityId = 9_920_006;
+    const occurrenceDate = new Date('2026-10-03T00:00:00.000Z');
+    const enqueuedAt = new Date('2026-10-02T22:05:00.000Z');
+    await createFarm({
+        name: 'Automation Greenhouse Future Outlet Farm',
+        latitude: 45.9,
+        longitude: 16.0,
+    });
+    const plantSortId = await createTestPlantSortForOutlet();
+    await createOutletOffer({
+        plantSortId,
+        sowingDate: new Date('2026-09-20T00:00:00.000Z'),
+        initialPlantStatus: 'sprouted',
+        imageUrls: [],
+        outletPriceCents: 199,
+        comparePriceCents: 349,
+        quantity: 3,
+        startAt: new Date('2026-10-03T00:00:00.000Z'),
+        endAt: new Date('2026-10-04T00:00:00.000Z'),
+        status: 'published',
+        adminNotes: null,
+    });
+
+    const { actionOutput } =
+        await createAutomationRunForDailyGreenhouseWatering({
+            entityId,
+            referenceDate: occurrenceDate,
+            enqueuedAt,
+            dryRun: true,
+        });
+
+    assert.strictEqual(Reflect.get(actionOutput, 'activeOutletOfferCount'), 0);
+    assert.strictEqual(
+        Reflect.get(actionOutput, 'outletAvailabilityCheckedAt'),
+        enqueuedAt.toISOString(),
+    );
+    const eligibleFarms = Reflect.get(actionOutput, 'eligibleFarms');
+    assert.ok(
+        !Array.isArray(eligibleFarms) ||
+            eligibleFarms.every((farm) => {
+                const reasons =
+                    farm && typeof farm === 'object'
+                        ? Reflect.get(farm, 'reasons')
+                        : null;
+                return (
+                    !Array.isArray(reasons) ||
+                    !reasons.includes('activeOutletStock')
+                );
+            }),
+    );
+});
+
+test('greenhouse seedling watering creates one operation for farms with greenhouse fields', async () => {
+    createTestDb();
+    const entityId = 9_920_003;
+    const referenceDate = new Date('2026-08-10T08:00:00.000Z');
+    const { farmId, raisedBedId } = await createAutomationRaisedBedContext();
+    const fieldAggregateId = `${raisedBedId}|0`;
+    await upsertRaisedBedField({ raisedBedId, positionIndex: 0 });
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(fieldAggregateId, {
+            plantSortId: '101',
+            scheduledDate: '2026-08-01T08:00:00.000Z',
+            sowingLocation: 'greenhouse',
+        }),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(fieldAggregateId, {
+            status: 'sprouted',
+        }),
+    );
+
+    const { result, actionOutput } =
+        await createAutomationRunForDailyGreenhouseWatering({
+            entityId,
+            referenceDate,
+        });
+
+    assert.strictEqual(result.status, 'succeeded');
+    assert.strictEqual(Reflect.get(actionOutput, 'dryRun'), false);
+    const eligibleFarms = Reflect.get(actionOutput, 'eligibleFarms');
+    assert.ok(Array.isArray(eligibleFarms));
+    assert.ok(
+        eligibleFarms.some((farm) => {
+            if (!farm || typeof farm !== 'object') {
+                return false;
+            }
+
+            return (
+                Reflect.get(farm, 'farmId') === farmId &&
+                Reflect.get(farm, 'greenhouseFieldCount') === 1
+            );
+        }),
+    );
+
+    const farmOperations = await getFarmAcceptedOperationsByScheduleRange({
+        farmId,
+        from: new Date('2026-08-10T00:00:00.000Z'),
+        to: new Date('2026-08-11T00:00:00.000Z'),
+    });
+    const wateringOperations = farmOperations.filter(
+        (operation) => operation.entityId === entityId,
+    );
+    assert.strictEqual(wateringOperations.length, 1);
+    assert.strictEqual(wateringOperations[0]?.farmId, farmId);
+    assert.strictEqual(
+        wateringOperations[0]?.scheduledDate?.toISOString(),
+        '2026-08-10T00:00:00.000Z',
+    );
+});
+
+test('greenhouse seedling watering skips duplicate farm-date operations', async () => {
+    createTestDb();
+    const entityId = 9_920_004;
+    const referenceDate = new Date('2026-08-11T08:00:00.000Z');
+    const { farmId, raisedBedId } = await createAutomationRaisedBedContext();
+    const fieldAggregateId = `${raisedBedId}|0`;
+    await upsertRaisedBedField({ raisedBedId, positionIndex: 0 });
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(fieldAggregateId, {
+            plantSortId: '101',
+            scheduledDate: '2026-08-01T08:00:00.000Z',
+            sowingLocation: 'greenhouse',
+        }),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(fieldAggregateId, {
+            status: 'sowed',
+        }),
+    );
+    const existingOperationId = await createOperation({
+        entityId,
+        entityTypeName: 'operation',
+        farmId,
+        timestamp: new Date('2026-08-11T00:00:00.000Z'),
+    });
+    await acceptOperation(existingOperationId);
+    await createEvent(
+        knownEvents.operations.scheduledV1(existingOperationId.toString(), {
+            scheduledDate: '2026-08-11T00:00:00.000Z',
+        }),
+    );
+
+    const { actionOutput } =
+        await createAutomationRunForDailyGreenhouseWatering({
+            entityId,
+            referenceDate,
+        });
+
+    const existingOperationSkips = Reflect.get(
+        actionOutput,
+        'existingOperationSkips',
+    );
+    assert.ok(Array.isArray(existingOperationSkips));
+    assert.ok(
+        existingOperationSkips.some((skip) => {
+            if (!skip || typeof skip !== 'object') {
+                return false;
+            }
+
+            return (
+                Reflect.get(skip, 'farmId') === farmId &&
+                Reflect.get(skip, 'operationId') === existingOperationId
+            );
+        }),
+    );
+
+    const farmOperations = await getFarmAcceptedOperationsByScheduleRange({
+        farmId,
+        from: new Date('2026-08-11T00:00:00.000Z'),
+        to: new Date('2026-08-12T00:00:00.000Z'),
+    });
+    const wateringOperations = farmOperations.filter(
+        (operation) => operation.entityId === entityId,
+    );
+    assert.deepStrictEqual(
+        wateringOperations.map((operation) => operation.id),
+        [existingOperationId],
+    );
 });
 
 test('default sowed automation queues seasonal watering operations through executor', async () => {

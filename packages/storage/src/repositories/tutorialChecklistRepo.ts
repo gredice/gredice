@@ -11,7 +11,12 @@ import {
 } from './accountsRepo';
 import { getAccountAchievements } from './achievementsRepo';
 import { getDeliveryAddresses } from './deliveryAddressesRepo';
-import { createEvent, getEvents, knownEventTypes } from './eventsRepo';
+import {
+    createEvent,
+    getAllEvents,
+    getEvents,
+    knownEventTypes,
+} from './eventsRepo';
 import { getAccountGardens } from './gardensRepo';
 import { getOperations } from './operationsRepo';
 import { getAccountReferralState } from './referralsRepo';
@@ -608,7 +613,7 @@ function getManualReadyTaskKey(value: unknown) {
 }
 
 async function getManualReadyTaskKeys(accountId: string) {
-    const readyEvents = await getEvents(
+    const readyEvents = await getAllEvents(
         knownEventTypes.tutorialChecklist.taskReady,
         [accountId],
     );

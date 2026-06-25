@@ -44,6 +44,80 @@ import { notifyDeliveryScheduled } from '../delivery/emailNotifications';
 import { notifyScheduledDeliveryEmailOnce } from '../delivery/scheduledEmailDeduper';
 import { getPostHogClient } from '../posthog-server';
 
+export type ProcessCheckoutSessionDependencies = {
+    isRaisedBedAbandoned: typeof isRaisedBedAbandoned;
+    notifyDeliveryRequestEvent: typeof notifyDeliveryRequestEvent;
+    notifyOperationUpdate: typeof notifyOperationUpdate;
+    notifyPurchase: typeof notifyPurchase;
+    consumeInventoryItem: typeof consumeInventoryItem;
+    convertOutletReservationForCartItem: typeof convertOutletReservationForCartItem;
+    createDeliveryRequest: typeof createDeliveryRequest;
+    createEvent: typeof createEvent;
+    createOperation: typeof createOperation;
+    createTransaction: typeof createTransaction;
+    earnSunflowersForPayment: typeof earnSunflowersForPayment;
+    getCompletedTransactionByStripePaymentId: typeof getCompletedTransactionByStripePaymentId;
+    getDefaultShoppingCartScheduledDate: typeof getDefaultShoppingCartScheduledDate;
+    getInventory: typeof getInventory;
+    getOutletOfferReservationForCartItem: typeof getOutletOfferReservationForCartItem;
+    getRaisedBed: typeof getRaisedBed;
+    getRaisedBedFieldsWithEvents: typeof getRaisedBedFieldsWithEvents;
+    getShoppingCart: typeof getShoppingCart;
+    isCartItemDeliverable: typeof isCartItemDeliverable;
+    knownEvents: typeof knownEvents;
+    markCartPaidIfAllItemsPaid: typeof markCartPaidIfAllItemsPaid;
+    normalizeShoppingCartInventoryUsage: typeof normalizeShoppingCartInventoryUsage;
+    normalizeShoppingCartScheduledDates: typeof normalizeShoppingCartScheduledDates;
+    setCartItemPaid: typeof setCartItemPaid;
+    spendSunflowers: typeof spendSunflowers;
+    updateRaisedBed: typeof updateRaisedBed;
+    upsertRaisedBedField: typeof upsertRaisedBedField;
+    withStripePaymentProcessingLock: typeof withStripePaymentProcessingLock;
+    getStripeCheckoutSession: typeof getStripeCheckoutSession;
+    getCartInfo: typeof getCartInfo;
+    calculateSunflowerAmount: typeof calculateSunflowerAmount;
+    notifyDeliveryScheduled: typeof notifyDeliveryScheduled;
+    notifyScheduledDeliveryEmailOnce: typeof notifyScheduledDeliveryEmailOnce;
+    getPostHogClient: typeof getPostHogClient;
+};
+
+const realDependencies: ProcessCheckoutSessionDependencies = {
+    isRaisedBedAbandoned,
+    notifyDeliveryRequestEvent,
+    notifyOperationUpdate,
+    notifyPurchase,
+    consumeInventoryItem,
+    convertOutletReservationForCartItem,
+    createDeliveryRequest,
+    createEvent,
+    createOperation,
+    createTransaction,
+    earnSunflowersForPayment,
+    getCompletedTransactionByStripePaymentId,
+    getDefaultShoppingCartScheduledDate,
+    getInventory,
+    getOutletOfferReservationForCartItem,
+    getRaisedBed,
+    getRaisedBedFieldsWithEvents,
+    getShoppingCart,
+    isCartItemDeliverable,
+    knownEvents,
+    markCartPaidIfAllItemsPaid,
+    normalizeShoppingCartInventoryUsage,
+    normalizeShoppingCartScheduledDates,
+    setCartItemPaid,
+    spendSunflowers,
+    updateRaisedBed,
+    upsertRaisedBedField,
+    withStripePaymentProcessingLock,
+    getStripeCheckoutSession,
+    getCartInfo,
+    calculateSunflowerAmount,
+    notifyDeliveryScheduled,
+    notifyScheduledDeliveryEmailOnce,
+    getPostHogClient,
+};
+
 /**
  * Recursively sorts object keys for deterministic JSON serialization.
  * Handles nested objects and arrays to ensure consistent comparison.
@@ -69,9 +143,10 @@ async function processNonStripeCartItems(
     deliveryInfo?: unknown,
     scheduledDeliveryEmailKeys?: Set<string>,
     checkoutSessionId?: string | null,
+    dependencies: ProcessCheckoutSessionDependencies = realDependencies,
 ): Promise<ShoppingCartItemWithShopData[]> {
     const inventoryNormalizedCart =
-        await normalizeShoppingCartInventoryUsage(cartId);
+        await dependencies.normalizeShoppingCartInventoryUsage(cartId);
     if (!inventoryNormalizedCart) {
         console.warn(
             `No cart found for ID ${cartId} when processing non-stripe items.`,
@@ -79,11 +154,14 @@ async function processNonStripeCartItems(
         return [];
     }
     const cart =
-        (await normalizeShoppingCartScheduledDates(inventoryNormalizedCart.id, {
-            defaultMissingScheduledDates: true,
-        })) ?? inventoryNormalizedCart;
+        (await dependencies.normalizeShoppingCartScheduledDates(
+            inventoryNormalizedCart.id,
+            {
+                defaultMissingScheduledDates: true,
+            },
+        )) ?? inventoryNormalizedCart;
 
-    const cartInfo = await getCartInfo(cart.items, accountId);
+    const cartInfo = await dependencies.getCartInfo(cart.items, accountId);
     if (!cartInfo.allowPurchase) {
         console.warn(
             `Cart ${cartId} failed validation when processing non-stripe items: ${cartInfo.notes.join('; ')}`,
@@ -100,7 +178,7 @@ async function processNonStripeCartItems(
     let totalSunflowersToSpend = 0;
 
     for (const item of sunflowerCartItemsWithShopData) {
-        const sunflowerAmount = calculateSunflowerAmount(item);
+        const sunflowerAmount = dependencies.calculateSunflowerAmount(item);
         sunflowerAmountsByItem.set(item.id, sunflowerAmount);
         totalSunflowersToSpend += sunflowerAmount;
     }
@@ -111,7 +189,7 @@ async function processNonStripeCartItems(
             // Spend all sunflowers in a single transaction for the entire cart
             // to prevent race conditions. Reference format: shoppingCart:${cartId}
             // (Note: This differs from immediate processing which uses shoppingCartItem:${item.id})
-            await spendSunflowers(
+            await dependencies.spendSunflowers(
                 accountId,
                 totalSunflowersToSpend,
                 `shoppingCart:${cartId}`,
@@ -139,22 +217,25 @@ async function processNonStripeCartItems(
             };
 
             await Promise.all([
-                setCartItemPaid(item.id),
-                processItem({
-                    accountId,
-                    cartItemId: item.id,
-                    entityId: item.entityId,
-                    entityTypeName: item.entityTypeName,
-                    cartId: item.cartId,
-                    gardenId: item.gardenId,
-                    raisedBedId: item.raisedBedId,
-                    positionIndex: item.positionIndex,
-                    currency: item.currency,
-                    amount_total: sunflowerAmount,
-                    additionalData,
-                    scheduledDeliveryEmailKeys,
-                    checkoutSessionId,
-                }),
+                dependencies.setCartItemPaid(item.id),
+                processItem(
+                    {
+                        accountId,
+                        cartItemId: item.id,
+                        entityId: item.entityId,
+                        entityTypeName: item.entityTypeName,
+                        cartId: item.cartId,
+                        gardenId: item.gardenId,
+                        raisedBedId: item.raisedBedId,
+                        positionIndex: item.positionIndex,
+                        currency: item.currency,
+                        amount_total: sunflowerAmount,
+                        additionalData,
+                        scheduledDeliveryEmailKeys,
+                        checkoutSessionId,
+                    },
+                    dependencies,
+                ),
             ]);
         }
     }
@@ -175,7 +256,7 @@ async function processNonStripeCartItems(
     // This prevents partial processing when multiple items consume the same inventory
     let inventoryLookup = new Map<string, number>();
     if (inventoryCartItems.length > 0) {
-        const inventory = await getInventory(accountId);
+        const inventory = await dependencies.getInventory(accountId);
         inventoryLookup = new Map(
             inventory.map((inventoryItem) => [
                 getInventoryKey(inventoryItem),
@@ -216,28 +297,31 @@ async function processNonStripeCartItems(
             };
 
             await Promise.all([
-                consumeInventoryItem(accountId, {
+                dependencies.consumeInventoryItem(accountId, {
                     entityTypeName: item.entityTypeName,
                     entityId: item.entityId,
                     amount: item.amount,
                     source: `shoppingCartItem:${item.id}`,
                 }),
-                setCartItemPaid(item.id),
-                processItem({
-                    accountId,
-                    cartItemId: item.id,
-                    entityId: item.entityId,
-                    entityTypeName: item.entityTypeName,
-                    cartId: item.cartId,
-                    gardenId: item.gardenId,
-                    raisedBedId: item.raisedBedId,
-                    positionIndex: item.positionIndex,
-                    currency: item.currency,
-                    amount_total: 0,
-                    additionalData,
-                    scheduledDeliveryEmailKeys,
-                    checkoutSessionId,
-                }),
+                dependencies.setCartItemPaid(item.id),
+                processItem(
+                    {
+                        accountId,
+                        cartItemId: item.id,
+                        entityId: item.entityId,
+                        entityTypeName: item.entityTypeName,
+                        cartId: item.cartId,
+                        gardenId: item.gardenId,
+                        raisedBedId: item.raisedBedId,
+                        positionIndex: item.positionIndex,
+                        currency: item.currency,
+                        amount_total: 0,
+                        additionalData,
+                        scheduledDeliveryEmailKeys,
+                        checkoutSessionId,
+                    },
+                    dependencies,
+                ),
             ]);
 
             // Update the lookup to reflect consumed inventory
@@ -248,13 +332,24 @@ async function processNonStripeCartItems(
     return cartInfo.items;
 }
 
-export async function processCheckoutSession(checkoutSessionId?: string) {
+export async function processCheckoutSession(
+    checkoutSessionId?: string,
+    dependenciesOrMapIndex:
+        | ProcessCheckoutSessionDependencies
+        | number = realDependencies,
+) {
+    const dependencies =
+        typeof dependenciesOrMapIndex === 'number'
+            ? realDependencies
+            : dependenciesOrMapIndex;
+
     if (!checkoutSessionId) {
         console.warn(`No checkout session ID provided`);
         return;
     }
 
-    const session = await getStripeCheckoutSession(checkoutSessionId);
+    const session =
+        await dependencies.getStripeCheckoutSession(checkoutSessionId);
     if (!session) {
         console.warn(`No session found for ID ${checkoutSessionId}`);
         return;
@@ -272,18 +367,18 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
         return;
     }
 
-    return withStripePaymentProcessingLock(session.id, () =>
-        processPaidCheckoutSession(checkoutSessionId, session),
+    return dependencies.withStripePaymentProcessingLock(session.id, () =>
+        processPaidCheckoutSession(checkoutSessionId, session, dependencies),
     );
 }
 
 async function processPaidCheckoutSession(
     checkoutSessionId: string,
     session: NonNullable<Awaited<ReturnType<typeof getStripeCheckoutSession>>>,
+    dependencies: ProcessCheckoutSessionDependencies = realDependencies,
 ) {
-    const alreadyProcessed = await getCompletedTransactionByStripePaymentId(
-        session.id,
-    );
+    const alreadyProcessed =
+        await dependencies.getCompletedTransactionByStripePaymentId(session.id);
     if (alreadyProcessed) {
         console.info(
             `Checkout session ${checkoutSessionId} already processed; skipping.`,
@@ -399,7 +494,7 @@ async function processPaidCheckoutSession(
         // Process cart item
         try {
             let resolvedAccountId: string | undefined;
-            const cart = await getShoppingCart(itemData.cartId);
+            const cart = await dependencies.getShoppingCart(itemData.cartId);
             if (!cart) {
                 console.warn(
                     `No cart found for ID ${itemData.cartId} in session ${checkoutSessionId}`,
@@ -453,12 +548,15 @@ async function processPaidCheckoutSession(
                 continue;
             }
             if (
-                !(await assertRaisedBedAllowsCheckoutItem(cartItem.raisedBedId))
+                !(await assertRaisedBedAllowsCheckoutItem(
+                    cartItem.raisedBedId,
+                    dependencies,
+                ))
             ) {
                 continue;
             }
 
-            await setCartItemPaid(cartItem.id);
+            await dependencies.setCartItemPaid(cartItem.id);
             affectedCartIds.push(cart.id);
 
             if (typeof item.amount_total !== 'number') {
@@ -468,13 +566,16 @@ async function processPaidCheckoutSession(
                 continue;
             }
 
-            await processItem({
-                ...itemData,
-                accountId: resolvedAccountId,
-                amount_total: item.amount_total,
-                scheduledDeliveryEmailKeys,
-                checkoutSessionId: session.id,
-            });
+            await processItem(
+                {
+                    ...itemData,
+                    accountId: resolvedAccountId,
+                    amount_total: item.amount_total,
+                    scheduledDeliveryEmailKeys,
+                    checkoutSessionId: session.id,
+                },
+                dependencies,
+            );
         } catch (error) {
             console.error(
                 `Error processing cart item ${itemData.cartItemId} in session ${checkoutSessionId}`,
@@ -532,15 +633,16 @@ async function processPaidCheckoutSession(
                 deliveryInfo,
                 scheduledDeliveryEmailKeys,
                 session.id,
+                dependencies,
             );
         }
     }
 
     // Update all affected carts to mark them as paid if all items are paid
     await Promise.all([
-        ...uniqueAffectedCartIds.map(markCartPaidIfAllItemsPaid),
+        ...uniqueAffectedCartIds.map(dependencies.markCartPaidIfAllItemsPaid),
         accountId && session.amountTotal
-            ? createTransaction({
+            ? dependencies.createTransaction({
                   accountId,
                   amount: session.amountTotal,
                   stripePaymentId: session.id,
@@ -550,7 +652,7 @@ async function processPaidCheckoutSession(
             : undefined,
     ]);
 
-    await notifyPurchase({
+    await dependencies.notifyPurchase({
         accountId,
         amountTotal: session.amountTotal ?? null,
         checkoutSessionId: session.id ?? null,
@@ -558,7 +660,7 @@ async function processPaidCheckoutSession(
     });
 
     if (accountId) {
-        (await getPostHogClient()).capture({
+        (await dependencies.getPostHogClient()).capture({
             distinctId: accountId,
             event: 'purchase_completed',
             properties: {
@@ -571,13 +673,16 @@ async function processPaidCheckoutSession(
     }
 }
 
-async function assertRaisedBedAllowsCheckoutItem(raisedBedId?: number | null) {
+async function assertRaisedBedAllowsCheckoutItem(
+    raisedBedId?: number | null,
+    dependencies: ProcessCheckoutSessionDependencies = realDependencies,
+) {
     if (!raisedBedId) {
         return true;
     }
 
-    const raisedBed = await getRaisedBed(raisedBedId);
-    if (raisedBed && isRaisedBedAbandoned(raisedBed.status)) {
+    const raisedBed = await dependencies.getRaisedBed(raisedBedId);
+    if (raisedBed && dependencies.isRaisedBedAbandoned(raisedBed.status)) {
         console.warn(
             `${RAISED_BED_ABANDONED_DUE_TO_INACTIVITY_MESSAGE} ${RAISED_BED_ABANDONED_ACTIONS_DISABLED_MESSAGE}`,
             { raisedBedId },
@@ -588,17 +693,20 @@ async function assertRaisedBedAllowsCheckoutItem(raisedBedId?: number | null) {
     return true;
 }
 
-async function outletReservationForCheckout(itemData: {
-    cartItemId?: number | null;
-    entityId: string | null | undefined;
-    outletOfferId?: number | null;
-    outletReservationId?: number | null;
-}) {
+async function outletReservationForCheckout(
+    itemData: {
+        cartItemId?: number | null;
+        entityId: string | null | undefined;
+        outletOfferId?: number | null;
+        outletReservationId?: number | null;
+    },
+    dependencies: ProcessCheckoutSessionDependencies = realDependencies,
+) {
     if (!itemData.cartItemId) {
         return null;
     }
 
-    const reservation = await getOutletOfferReservationForCartItem(
+    const reservation = await dependencies.getOutletOfferReservationForCartItem(
         itemData.cartItemId,
     );
     if (!reservation) {
@@ -633,7 +741,7 @@ async function outletReservationForCheckout(itemData: {
         );
     }
 
-    await convertOutletReservationForCartItem(itemData.cartItemId);
+    await dependencies.convertOutletReservationForCartItem(itemData.cartItemId);
     return reservation;
 }
 
@@ -648,6 +756,10 @@ function parseAdditionalDataValue(additionalData: unknown) {
         return null;
     }
 }
+
+export const __testUtils = {
+    parseAdditionalDataValue,
+};
 
 function scheduledDateFromAdditionalData(additionalData: unknown) {
     const parsedAdditionalData = parseAdditionalDataValue(additionalData);
@@ -667,40 +779,46 @@ function scheduledDateFromAdditionalData(additionalData: unknown) {
         : scheduledDate;
 }
 
-function checkoutScheduledDateFromAdditionalData(additionalData: unknown) {
+function checkoutScheduledDateFromAdditionalData(
+    additionalData: unknown,
+    dependencies: ProcessCheckoutSessionDependencies = realDependencies,
+) {
     return (
         scheduledDateFromAdditionalData(additionalData) ??
-        getDefaultShoppingCartScheduledDate()
+        dependencies.getDefaultShoppingCartScheduledDate()
     );
 }
 
-export async function processItem(itemData: {
-    entityId: string | null | undefined;
-    entityTypeName: string | null | undefined;
-    accountId: string | null | undefined;
-    cartItemId?: number | null;
-    cartId: number | null | undefined;
-    gardenId: number | null | undefined;
-    raisedBedId: number | null | undefined;
-    positionIndex: number | null | undefined;
-    additionalData: unknown | null | undefined;
-    outletOfferId?: number | null;
-    outletReservationId?: number | null;
-    outletSowingDate?: string | null;
-    outletInitialPlantStatus?: string | null;
-    outletPriceCents?: number | null;
-    currency: string | null;
-    amount_total: number; // Amount in cents or sunflowers
-    scheduledDeliveryEmailKeys?: Set<string>;
-    checkoutSessionId?: string | null;
-}) {
+export async function processItem(
+    itemData: {
+        entityId: string | null | undefined;
+        entityTypeName: string | null | undefined;
+        accountId: string | null | undefined;
+        cartItemId?: number | null;
+        cartId: number | null | undefined;
+        gardenId: number | null | undefined;
+        raisedBedId: number | null | undefined;
+        positionIndex: number | null | undefined;
+        additionalData: unknown | null | undefined;
+        outletOfferId?: number | null;
+        outletReservationId?: number | null;
+        outletSowingDate?: string | null;
+        outletInitialPlantStatus?: string | null;
+        outletPriceCents?: number | null;
+        currency: string | null;
+        amount_total: number; // Amount in cents or sunflowers
+        scheduledDeliveryEmailKeys?: Set<string>;
+        checkoutSessionId?: string | null;
+    },
+    dependencies: ProcessCheckoutSessionDependencies = realDependencies,
+) {
     console.debug(
         `Processing item with entityId ${itemData.entityId} and entityTypeName ${itemData.entityTypeName} for account ${itemData.accountId} in total amount ${itemData.amount_total}`,
     );
 
     const earnSunflowersFunc = () =>
         itemData.accountId && itemData.currency === 'eur'
-            ? earnSunflowersForPayment(
+            ? dependencies.earnSunflowersForPayment(
                   itemData.accountId,
                   itemData.amount_total / 100,
               )
@@ -731,7 +849,12 @@ export async function processItem(itemData: {
             );
             return;
         }
-        if (!(await assertRaisedBedAllowsCheckoutItem(itemData.raisedBedId))) {
+        if (
+            !(await assertRaisedBedAllowsCheckoutItem(
+                itemData.raisedBedId,
+                dependencies,
+            ))
+        ) {
             return;
         }
 
@@ -741,9 +864,10 @@ export async function processItem(itemData: {
             typeof itemData.positionIndex === 'number' &&
             itemData.raisedBedId
         ) {
-            const raisedBedFields = await getRaisedBedFieldsWithEvents(
-                itemData.raisedBedId,
-            );
+            const raisedBedFields =
+                await dependencies.getRaisedBedFieldsWithEvents(
+                    itemData.raisedBedId,
+                );
             fieldId = raisedBedFields.find(
                 (field) =>
                     field.positionIndex === itemData.positionIndex &&
@@ -767,10 +891,12 @@ export async function processItem(itemData: {
                 additionalData = null;
             }
         }
-        const scheduledDate =
-            checkoutScheduledDateFromAdditionalData(additionalData);
+        const scheduledDate = checkoutScheduledDateFromAdditionalData(
+            additionalData,
+            dependencies,
+        );
 
-        const operationId = await createOperation({
+        const operationId = await dependencies.createOperation({
             accountId: itemData.accountId,
             entityId: entityIdNumber,
             entityTypeName: itemData.entityTypeName,
@@ -793,10 +919,13 @@ export async function processItem(itemData: {
 
         // Every purchased operation is scheduled; missing dates default to tomorrow.
         try {
-            await createEvent(
-                knownEvents.operations.scheduledV1(operationId.toString(), {
-                    scheduledDate,
-                }),
+            await dependencies.createEvent(
+                dependencies.knownEvents.operations.scheduledV1(
+                    operationId.toString(),
+                    {
+                        scheduledDate,
+                    },
+                ),
             );
             console.debug(
                 `Scheduled operation ${operationId} for date ${scheduledDate}.`,
@@ -807,13 +936,13 @@ export async function processItem(itemData: {
                 error,
             );
         }
-        await notifyOperationUpdate(operationId, 'scheduled', {
+        await dependencies.notifyOperationUpdate(operationId, 'scheduled', {
             scheduledDate: new Date(scheduledDate).toISOString(),
         });
 
         // Check if this operation/entity is deliverable and create delivery request if needed
         if (itemData.cartId) {
-            const isDeliverable = await isCartItemDeliverable({
+            const isDeliverable = await dependencies.isCartItemDeliverable({
                 entityId: entityIdNumber,
             });
             if (isDeliverable) {
@@ -846,28 +975,29 @@ export async function processItem(itemData: {
 
                 if (deliveryInfo?.slotId && deliveryInfo.mode) {
                     try {
-                        const deliveryRequestId = await createDeliveryRequest({
-                            operationId,
-                            slotId: deliveryInfo.slotId,
-                            mode: deliveryInfo.mode,
-                            addressId: deliveryInfo.addressId,
-                            locationId: deliveryInfo.locationId,
-                            notes: deliveryInfo.notes,
-                            accountId: itemData.accountId,
-                        });
+                        const deliveryRequestId =
+                            await dependencies.createDeliveryRequest({
+                                operationId,
+                                slotId: deliveryInfo.slotId,
+                                mode: deliveryInfo.mode,
+                                addressId: deliveryInfo.addressId,
+                                locationId: deliveryInfo.locationId,
+                                notes: deliveryInfo.notes,
+                                accountId: itemData.accountId,
+                            });
                         console.debug(
                             `Created delivery request ${deliveryRequestId} for operation ${operationId}`,
                         );
-                        await notifyDeliveryRequestEvent(
+                        await dependencies.notifyDeliveryRequestEvent(
                             deliveryRequestId,
                             'created',
                         );
-                        await notifyScheduledDeliveryEmailOnce({
+                        await dependencies.notifyScheduledDeliveryEmailOnce({
                             requestId: deliveryRequestId,
                             accountId: itemData.accountId,
                             deliveryInfo,
                             notifiedKeys: itemData.scheduledDeliveryEmailKeys,
-                            notify: notifyDeliveryScheduled,
+                            notify: dependencies.notifyDeliveryScheduled,
                         });
                     } catch (error) {
                         console.error(
@@ -876,7 +1006,7 @@ export async function processItem(itemData: {
                         );
                         // Payment already captured -- do not re-throw. Surface the failure so ops
                         // can reconcile the paid-but-undelivered order.
-                        (await getPostHogClient()).capture({
+                        (await dependencies.getPostHogClient()).capture({
                             distinctId: itemData.accountId,
                             event: 'delivery_request_creation_failed',
                             properties: {
@@ -902,48 +1032,63 @@ export async function processItem(itemData: {
         itemData.raisedBedId &&
         typeof itemData.positionIndex === 'number'
     ) {
-        if (!(await assertRaisedBedAllowsCheckoutItem(itemData.raisedBedId))) {
+        if (
+            !(await assertRaisedBedAllowsCheckoutItem(
+                itemData.raisedBedId,
+                dependencies,
+            ))
+        ) {
             return;
         }
 
-        const outletReservation = await outletReservationForCheckout(itemData);
+        const outletReservation = await outletReservationForCheckout(
+            itemData,
+            dependencies,
+        );
         const aggregateId = `${itemData.raisedBedId}|${itemData.positionIndex}`;
 
-        await upsertRaisedBedField({
+        await dependencies.upsertRaisedBedField({
             positionIndex: itemData.positionIndex,
             raisedBedId: itemData.raisedBedId,
         });
-        await createEvent(
-            knownEvents.raisedBedFields.plantPlaceV1(aggregateId, {
+        await dependencies.createEvent(
+            dependencies.knownEvents.raisedBedFields.plantPlaceV1(aggregateId, {
                 plantSortId: itemData.entityId,
                 scheduledDate: outletReservation
                     ? null
                     : checkoutScheduledDateFromAdditionalData(
                           itemData.additionalData,
+                          dependencies,
                       ),
                 sowingLocation: outletReservation ? 'greenhouse' : undefined,
             }),
         );
         if (outletReservation) {
-            await createEvent(
-                knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
-                    status: 'sowed',
-                    effectiveDate:
-                        outletReservation.heldSowingDate.toISOString(),
-                }),
+            await dependencies.createEvent(
+                dependencies.knownEvents.raisedBedFields.plantUpdateV1(
+                    aggregateId,
+                    {
+                        status: 'sowed',
+                        effectiveDate:
+                            outletReservation.heldSowingDate.toISOString(),
+                    },
+                ),
             );
 
             if (outletReservation.heldInitialPlantStatus !== 'sowed') {
-                await createEvent(
-                    knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
-                        status: outletReservation.heldInitialPlantStatus,
-                    }),
+                await dependencies.createEvent(
+                    dependencies.knownEvents.raisedBedFields.plantUpdateV1(
+                        aggregateId,
+                        {
+                            status: outletReservation.heldInitialPlantStatus,
+                        },
+                    ),
                 );
             }
         }
 
         await Promise.all([
-            updateRaisedBed({
+            dependencies.updateRaisedBed({
                 id: itemData.raisedBedId,
                 status: 'active',
             }),
@@ -953,7 +1098,7 @@ export async function processItem(itemData: {
             `Placed plant sort ${itemData.entityId} in raised bed ${itemData.raisedBedId} at position ${itemData.positionIndex}.`,
         );
         if (outletReservation && itemData.accountId) {
-            (await getPostHogClient()).capture({
+            (await dependencies.getPostHogClient()).capture({
                 distinctId: itemData.accountId,
                 event: 'outlet_reservation_converted',
                 properties: {

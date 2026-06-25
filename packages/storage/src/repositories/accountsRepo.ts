@@ -4,6 +4,7 @@ import { asc, desc, eq } from 'drizzle-orm';
 import { accounts, accountUsers, ensureAccountAchievement, storage } from '..';
 import {
     createEvent,
+    getAllEvents,
     getEvents,
     knownEvents,
     knownEventTypes,
@@ -123,7 +124,7 @@ export async function updateAccountTimeZone(
 export async function getSunflowers(accountId: string) {
     // Calculate sunflowers based on events
     let currentSunflowers = 0;
-    const events = await getEvents(
+    const events = await getAllEvents(
         [
             knownEventTypes.accounts.earnSunflowers,
             knownEventTypes.accounts.earnSunflowerDrop,
