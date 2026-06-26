@@ -18,7 +18,6 @@ import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import { cx } from '@gredice/ui/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import { type CSSProperties, useEffect, useState } from 'react';
 import { useGameAnalytics } from '../../../analytics/GameAnalyticsContext';
@@ -32,6 +31,7 @@ import {
 } from '../../../hooks/useShoppingCart';
 import { RaisedBedWateringCalendar } from '../../raisedBed/RaisedBedWateringCalendar';
 import { ButtonPricePickPaymentMethod } from './ButtonPricePickPaymentMethod';
+import { GreenhouseSowingToggle } from './GreenhouseSowingToggle';
 
 const outletReservationCountdownIntervalMs = 1000;
 const outletReservationRefetchBufferMs = 500;
@@ -145,41 +145,6 @@ function greenhouseAdditionalData(
     const nextAdditionalData = { ...additionalData };
     delete nextAdditionalData.sowingLocation;
     return nextAdditionalData;
-}
-
-function GreenhouseSowingToggle({
-    checked,
-    disabled,
-    onCheckedChange,
-}: {
-    checked: boolean;
-    disabled?: boolean;
-    onCheckedChange: (checked: boolean) => void;
-}) {
-    return (
-        <button
-            type="button"
-            role="switch"
-            aria-checked={checked}
-            aria-label="Staklenik"
-            title={
-                checked
-                    ? 'Isključi sijanje u stakleniku'
-                    : 'Uključi sijanje u stakleniku'
-            }
-            disabled={disabled}
-            onClick={() => onCheckedChange(!checked)}
-            className={cx(
-                'inline-flex h-6 shrink-0 items-center gap-1 rounded-full border px-1.5 text-xs font-medium transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
-                checked
-                    ? 'border-green-500 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950/50 dark:text-green-100'
-                    : 'border-border bg-muted/70 text-muted-foreground hover:bg-muted',
-            )}
-        >
-            <Sprout className="size-3.5 shrink-0" />
-            <span>Staklenik</span>
-        </button>
-    );
 }
 
 export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
