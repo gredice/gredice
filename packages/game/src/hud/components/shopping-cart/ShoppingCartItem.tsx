@@ -17,7 +17,6 @@ import { PlantOrSortImage } from '@gredice/ui/plants';
 import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
-import { Switch } from '@gredice/ui/Switch';
 import { Typography } from '@gredice/ui/Typography';
 import { useQueryClient } from '@tanstack/react-query';
 import { type CSSProperties, useEffect, useState } from 'react';
@@ -32,6 +31,7 @@ import {
 } from '../../../hooks/useShoppingCart';
 import { RaisedBedWateringCalendar } from '../../raisedBed/RaisedBedWateringCalendar';
 import { ButtonPricePickPaymentMethod } from './ButtonPricePickPaymentMethod';
+import { GreenhouseSowingToggle } from './GreenhouseSowingToggle';
 
 const outletReservationCountdownIntervalMs = 1000;
 const outletReservationRefetchBufferMs = 500;
@@ -404,6 +404,17 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const hasShopImage = Boolean(item.shopData.image);
     const shouldShowOperationFallback =
         item.entityTypeName === 'operation' && !hasShopImage;
+    function renderGreenhouseSowingToggle() {
+        return (
+            <GreenhouseSowingToggle
+                checked={isGreenhouseSowing}
+                disabled={changeGreenhouseSowingShoppingCartItem.isPending}
+                onCheckedChange={(checked) => {
+                    void handleToggleGreenhouseSowing(checked);
+                }}
+            />
+        );
+    }
 
     return (
         <Row spacing={4} alignItems="start">
@@ -444,6 +455,9 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                     </Typography>
                     {!hasDiscount && (
                         <Row spacing={2}>
+                            {canChangeGreenhouseSowing
+                                ? renderGreenhouseSowingToggle()
+                                : null}
                             {!usesInventory && availableFromInventory && (
                                 <IconButton
                                     title="Iskoristi iz ruksaka"
@@ -485,6 +499,9 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                                 </IconButton>
                             </Row>
                         )}
+                        {hasDiscount && canChangeGreenhouseSowing
+                            ? renderGreenhouseSowingToggle()
+                            : null}
                     </Row>
                 </div>
                 {hasDiscount &&
@@ -545,27 +562,6 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                             ) : null}
                         </Row>
                     )}
-                {canChangeGreenhouseSowing ? (
-                    <div className="rounded-lg border border-input bg-card px-3 py-2">
-                        <Switch
-                            checked={isGreenhouseSowing}
-                            disabled={
-                                changeGreenhouseSowingShoppingCartItem.isPending
-                            }
-                            onCheckedChange={(checked) => {
-                                void handleToggleGreenhouseSowing(checked);
-                            }}
-                            size="sm"
-                            label={
-                                <span className="inline-flex items-center gap-1">
-                                    <Sprout className="size-4 shrink-0" />
-                                    <span>Staklenik</span>
-                                </span>
-                            }
-                            description="Sijanje počinje u stakleniku."
-                        />
-                    </div>
-                ) : null}
                 <Row justifyContent="space-between">
                     <Stack spacing={1}>
                         <Row spacing={2}>
