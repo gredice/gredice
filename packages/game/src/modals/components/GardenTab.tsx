@@ -19,6 +19,7 @@ import { useGardens } from '../../hooks/useGardens';
 import { GardenAccountMenuItems } from '../../hud/GardenAccountMenuItems';
 import { useCurrentGardenIdParam } from '../../useUrlState';
 import { CreateGardenModal } from './CreateGardenModal';
+import { GardenDangerCard } from './GardenDangerCard';
 import { GardenNameCard } from './GardenNameCard';
 
 function NoGardensCard() {
@@ -137,11 +138,17 @@ export function GardenTab() {
                     <>
                         <GardensSelector />
                         {selectedGarden && (
-                            <GardenNameCard
-                                gardenId={selectedGarden.id}
-                                gardenName={selectedGarden.name}
-                                gardenCreatedAt={selectedGarden.createdAt}
-                            />
+                            <>
+                                <GardenNameCard
+                                    gardenId={selectedGarden.id}
+                                    gardenName={selectedGarden.name}
+                                    gardenCreatedAt={selectedGarden.createdAt}
+                                />
+                                <GardenDangerCard
+                                    gardenId={selectedGarden.id}
+                                    gardenName={selectedGarden.name}
+                                />
+                            </>
                         )}
                     </>
                 ) : (

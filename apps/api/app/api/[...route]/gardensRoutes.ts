@@ -21,6 +21,7 @@ import {
     createGardenBlock,
     createGardenStack,
     createSandboxGarden,
+    deleteGardenIfNoActiveRaisedBeds,
     deleteGardenStack,
     deleteSandboxGardenCompletely,
     type EntityStandardized,
@@ -1260,7 +1261,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/:gardenId',
         describeRoute({
             description:
-                'Delete a sandbox garden accessible to the current user, including related blocks, raised beds, notifications, operations, cart rows, transactions, and events. Real gardens cannot be deleted from this endpoint. Large deletions may return 202 and should be retried until complete.',
+                'Delete a garden accessible to the current user. Sandbox gardens are deleted completely, including related blocks, raised beds, notifications, operations, cart rows, transactions, and events. Real gardens are soft-deleted only when they have no active raised beds. Large sandbox deletions may return 202 and should be retried until complete.',
             security: authSecurity,
         }),
         zValidator(
@@ -1291,9 +1292,25 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             if (!garden.isSandbox) {
+                const result =
+                    await deleteGardenIfNoActiveRaisedBeds(gardenIdNumber);
+                if (result.activeRaisedBedCount > 0) {
+                    return context.json(
+                        {
+                            error: 'Garden cannot be deleted while it has active raised beds',
+                            activeRaisedBedCount: result.activeRaisedBedCount,
+                        },
+                        409,
+                    );
+                }
+
                 return context.json(
-                    { error: 'Only sandbox gardens can be deleted' },
-                    400,
+                    {
+                        success: true,
+                        complete: true,
+                        deletedRows: result.deleted ? 1 : 0,
+                    },
+                    200,
                 );
             }
 
