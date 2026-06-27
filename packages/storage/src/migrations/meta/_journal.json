@@ -428,6 +428,13 @@
       "when": 1782254477182,
       "tag": "0060_vengeful_puck",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1782555354664,
+      "tag": "0061_workable_luckman",
+      "breakpoints": true
     }
   ]
 }

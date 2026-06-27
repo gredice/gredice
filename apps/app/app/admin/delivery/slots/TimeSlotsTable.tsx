@@ -1,10 +1,12 @@
 import {
     getAllTimeSlots,
     getPickupLocations,
+    getTimeSlotEffectiveClosesAt,
     TimeSlotStatuses,
 } from '@gredice/storage';
 import { Chip } from '@gredice/ui/Chip';
-import { TimeRange } from '@gredice/ui/LocalDateTime';
+import { LocalDateTime, TimeRange } from '@gredice/ui/LocalDateTime';
+import { Stack } from '@gredice/ui/Stack';
 import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
@@ -71,6 +73,7 @@ export async function TimeSlotsTable({
                     <Table.Head>Tip</Table.Head>
                     <Table.Head>Lokacija</Table.Head>
                     <Table.Head>Vremenski slot</Table.Head>
+                    <Table.Head>Zatvaranje</Table.Head>
                     <Table.Head>Status</Table.Head>
                     <Table.Head>Akcije</Table.Head>
                 </Table.Row>
@@ -78,7 +81,7 @@ export async function TimeSlotsTable({
             <Table.Body>
                 {filteredSlots.length === 0 && (
                     <Table.Row>
-                        <Table.Cell colSpan={5}>
+                        <Table.Cell colSpan={6}>
                             <NoDataPlaceholder>
                                 Nema vremenskih slotova
                             </NoDataPlaceholder>
@@ -89,6 +92,7 @@ export async function TimeSlotsTable({
                     const location = pickupLocations.find(
                         (loc) => loc.id === slot.locationId,
                     );
+                    const closesAt = getTimeSlotEffectiveClosesAt(slot);
 
                     return (
                         <Table.Row key={slot.id}>
@@ -110,6 +114,23 @@ export async function TimeSlotsTable({
                                         endAt={slot.endAt}
                                     />
                                 </Typography>
+                            </Table.Cell>
+                            <Table.Cell>
+                                <Stack spacing={1}>
+                                    <Typography level="body2">
+                                        <LocalDateTime>
+                                            {closesAt}
+                                        </LocalDateTime>
+                                    </Typography>
+                                    <Typography
+                                        level="body3"
+                                        className="text-muted-foreground"
+                                    >
+                                        {slot.closesAt
+                                            ? 'Ručno postavljeno'
+                                            : 'Automatski 48 h prije'}
+                                    </Typography>
+                                </Stack>
                             </Table.Cell>
                             <Table.Cell>
                                 <Chip color={getStatusColor(slot.status)}>

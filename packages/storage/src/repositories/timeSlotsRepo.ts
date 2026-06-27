@@ -1,6 +1,7 @@
 import 'server-only';
 import { and, asc, desc, eq, gte, lte } from 'drizzle-orm';
 import { bustDeliveryRequestsCache } from '../cache/scheduleCache';
+import { assertTimeSlotClosesBeforeStart } from '../helpers/timeSlotAutomation';
 import {
     type InsertTimeSlot,
     type SelectTimeSlot,
@@ -55,6 +56,10 @@ export async function createTimeSlot(data: InsertTimeSlot): Promise<number> {
     // Validate that endAt = startAt + 2h
     const startAt = new Date(data.startAt);
     const expectedEndAt = new Date(startAt.getTime() + 2 * 60 * 60 * 1000); // +2 hours
+    assertTimeSlotClosesBeforeStart({
+        startAt,
+        closesAt: data.closesAt ?? null,
+    });
 
     if (data.endAt.getTime() !== expectedEndAt.getTime()) {
         throw new Error('End time must be exactly 2 hours after start time');
@@ -94,6 +99,24 @@ export async function createTimeSlot(data: InsertTimeSlot): Promise<number> {
 
 // Update a time slot
 export async function updateTimeSlot(update: UpdateTimeSlot): Promise<void> {
+    if (update.startAt !== undefined || update.closesAt !== undefined) {
+        const existingSlot = await storage().query.timeSlots.findFirst({
+            where: eq(timeSlots.id, update.id),
+        });
+
+        if (!existingSlot) {
+            throw new Error('Failed to update time slot - slot not found');
+        }
+
+        assertTimeSlotClosesBeforeStart({
+            startAt: update.startAt ?? existingSlot.startAt,
+            closesAt:
+                update.closesAt === undefined
+                    ? existingSlot.closesAt
+                    : update.closesAt,
+        });
+    }
+
     const result = await storage()
         .update(timeSlots)
         .set(update)
