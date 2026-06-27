@@ -56,6 +56,40 @@ test.describe('Garden tab', () => {
         await expect.poll(() => deleteRequests.length).toBe(1);
     });
 
+    test('retries incomplete sandbox garden deletion until complete', async ({
+        mount,
+        page,
+    }) => {
+        let deleteRequestCount = 0;
+        await page.route('**/api/gredice/api/gardens/1', async (route) => {
+            if (route.request().method() === 'DELETE') {
+                deleteRequestCount += 1;
+                await route.fulfill({
+                    contentType: 'application/json',
+                    status: deleteRequestCount === 1 ? 202 : 200,
+                    body: JSON.stringify({
+                        success: true,
+                        complete: deleteRequestCount !== 1,
+                    }),
+                });
+                return;
+            }
+
+            await route.fallback();
+        });
+
+        await mount(<GardenTabStory activeRaisedBedCount={0} isSandbox />);
+
+        await page.getByRole('button', { name: 'Obriši vrt' }).click();
+        const dialog = page.getByRole('alertdialog', {
+            name: 'Brisanje vrta',
+        });
+        await dialog.getByLabel('Upiši "Test" za potvrdu').fill('Test');
+        await dialog.getByRole('button', { name: 'Obriši vrt' }).click();
+
+        await expect.poll(() => deleteRequestCount).toBe(2);
+    });
+
     test('shows blocked delete errors returned by the API', async ({
         mount,
         page,

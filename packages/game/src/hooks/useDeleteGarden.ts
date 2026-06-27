@@ -10,9 +10,21 @@ type DeleteGardenVariables = {
     gardenId: number;
 };
 
+type DeleteGardenResponse = {
+    complete?: boolean;
+};
+
 const mutationKey = ['gardens', 'delete'];
 const GARDEN_DELETE_FAILED_MESSAGE =
     'Došlo je do greške prilikom brisanja vrta. Pokušaj ponovno.';
+const GARDEN_DELETE_TIMEOUT_MESSAGE =
+    'Brisanje vrta nije završilo na vrijeme. Pokušaj ponovno.';
+const retryableTimeoutStatuses = new Set([408, 425, 429, 502, 503, 504]);
+const maxDeleteAttempts = 1_000;
+
+function waitForRetry() {
+    return new Promise((resolve) => setTimeout(resolve, 250));
+}
 
 function activeRaisedBedsMessage(count: number) {
     return count === 1
@@ -50,6 +62,28 @@ async function getDeleteGardenErrorMessage(response: Response) {
     return GARDEN_DELETE_FAILED_MESSAGE;
 }
 
+async function getDeleteGardenResponse(
+    response: Response,
+): Promise<DeleteGardenResponse> {
+    try {
+        const body: unknown = await response.json();
+        if (
+            typeof body !== 'object' ||
+            body === null ||
+            !('complete' in body)
+        ) {
+            return {};
+        }
+
+        const { complete } = body;
+        return {
+            complete: typeof complete === 'boolean' ? complete : undefined,
+        } satisfies DeleteGardenResponse;
+    } catch {
+        return {};
+    }
+}
+
 export function useDeleteGarden() {
     const queryClient = useQueryClient();
     const winterMode = useGameState((state) => state.winterMode);
@@ -58,17 +92,55 @@ export function useDeleteGarden() {
     return useMutation({
         mutationKey,
         mutationFn: async ({ gardenId }: DeleteGardenVariables) => {
-            const response = await clientAuthenticated().api.gardens[
-                ':gardenId'
-            ].$delete({
-                param: {
-                    gardenId: gardenId.toString(),
-                },
-            });
+            let lastError: unknown;
 
-            if (!response.ok) {
-                throw new Error(await getDeleteGardenErrorMessage(response));
+            for (let attempt = 0; attempt < maxDeleteAttempts; attempt += 1) {
+                let response: Awaited<
+                    ReturnType<
+                        ReturnType<
+                            typeof clientAuthenticated
+                        >['api']['gardens'][':gardenId']['$delete']
+                    >
+                >;
+
+                try {
+                    response = await clientAuthenticated().api.gardens[
+                        ':gardenId'
+                    ].$delete({
+                        param: {
+                            gardenId: gardenId.toString(),
+                        },
+                    });
+                } catch (error) {
+                    lastError = error;
+                    await waitForRetry();
+                    continue;
+                }
+
+                if (!response.ok) {
+                    if (retryableTimeoutStatuses.has(response.status)) {
+                        await waitForRetry();
+                        continue;
+                    }
+
+                    throw new Error(
+                        await getDeleteGardenErrorMessage(response),
+                    );
+                }
+
+                const result = await getDeleteGardenResponse(response);
+                if (result.complete !== false) {
+                    return result;
+                }
+
+                await waitForRetry();
             }
+
+            if (lastError instanceof Error) {
+                throw lastError;
+            }
+
+            throw new Error(GARDEN_DELETE_TIMEOUT_MESSAGE);
         },
         onSuccess: async (_data, { gardenId }) => {
             if (selectedGardenId === gardenId) {

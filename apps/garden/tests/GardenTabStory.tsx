@@ -12,9 +12,10 @@ import {
 
 type GardenTabStoryProps = {
     activeRaisedBedCount?: number;
+    isSandbox?: boolean;
 };
 
-const garden = {
+const baseGarden = {
     id: 1,
     name: 'Test',
     isSandbox: false,
@@ -33,12 +34,19 @@ function raisedBed(id: number, status: string) {
     };
 }
 
-function createGardenTabQueryClient(activeRaisedBedCount = 0) {
+function createGardenTabQueryClient(
+    activeRaisedBedCount = 0,
+    isSandbox = false,
+) {
     const queryClient = new ReactQuery.QueryClient({
         defaultOptions: {
             queries: { retry: false, staleTime: Infinity },
         },
     });
+    const garden = {
+        ...baseGarden,
+        isSandbox,
+    };
     const raisedBeds = [
         ...Array.from({ length: activeRaisedBedCount }, (_value, index) =>
             raisedBed(index + 1, 'active'),
@@ -69,11 +77,12 @@ function createGardenTabQueryClient(activeRaisedBedCount = 0) {
 
 function GardenTabTestProviders({
     activeRaisedBedCount,
+    isSandbox,
     children,
 }: PropsWithChildren<GardenTabStoryProps>) {
     const queryClient = useMemo(
-        () => createGardenTabQueryClient(activeRaisedBedCount),
-        [activeRaisedBedCount],
+        () => createGardenTabQueryClient(activeRaisedBedCount, isSandbox),
+        [activeRaisedBedCount, isSandbox],
     );
     const gameState = useMemo(
         () =>
@@ -96,10 +105,16 @@ function GardenTabTestProviders({
     );
 }
 
-export function GardenTabStory({ activeRaisedBedCount }: GardenTabStoryProps) {
+export function GardenTabStory({
+    activeRaisedBedCount,
+    isSandbox,
+}: GardenTabStoryProps) {
     return (
         <div className="min-h-96 max-w-2xl p-4">
-            <GardenTabTestProviders activeRaisedBedCount={activeRaisedBedCount}>
+            <GardenTabTestProviders
+                activeRaisedBedCount={activeRaisedBedCount}
+                isSandbox={isSandbox}
+            >
                 <GardenTab />
             </GardenTabTestProviders>
         </div>
