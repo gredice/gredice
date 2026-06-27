@@ -1,4 +1,8 @@
 import {
+    RAISED_BED_PHOTO_OPERATION_ID,
+    RAISED_BED_PHOTO_OPERATION_NAME,
+} from '../helpers/raisedBedPhotoOperations';
+import {
     initializeAutomationEventCursorToLatest,
     upsertAutomationDefinitionByKey,
 } from '../repositories/automationsRepo';
@@ -6,6 +10,11 @@ import { knownEventTypes } from '../repositories/events/knownEventTypes';
 import { RAISED_BED_WATERING_50L_OPERATION_ID } from '../repositories/seasonalOffersRepo';
 import type { AutomationGraph } from '../schema';
 import { automationModuleKeys } from './modules';
+
+export {
+    RAISED_BED_PHOTO_OPERATION_ID,
+    RAISED_BED_PHOTO_OPERATION_NAME,
+} from '../helpers/raisedBedPhotoOperations';
 
 export const seasonalSowedWateringAutomationKey =
     'default.seasonal-sowed-watering';
@@ -55,8 +64,6 @@ export const monthlyFarmInventoryOperationConfigs = [
         requiresGreenhouseOrOutletPlants: true,
     },
 ];
-export const RAISED_BED_PHOTO_OPERATION_ID = 301;
-export const RAISED_BED_PHOTO_OPERATION_NAME = 'raisedBedFullPhoto';
 export const RAISED_BED_DETAILED_INSPECTION_OPERATION_ID = 652;
 export const RAISED_BED_DETAILED_INSPECTION_OPERATION_NAME =
     'detailedRaisedBedInspection';

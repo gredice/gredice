@@ -8,11 +8,13 @@ import {
     createEvent,
     createGardenBlock,
     createGardenStack,
+    createOperation,
     deleteGarden,
     deleteGardenBlock,
     deleteGardenStack,
     getAccountGardens,
     getAccountGardensMetadata,
+    getAllRaisedBedsFiltered,
     getGarden,
     getGardenBlock,
     getGardenBlocks,
@@ -24,6 +26,7 @@ import {
     getRaisedBedMetadataByIds,
     getRaisedBeds,
     knownEvents,
+    RAISED_BED_PHOTO_OPERATION_ID,
     updateGarden,
     updateGardenBlock,
     updateGardenStack,
@@ -537,6 +540,120 @@ test('createDefaultGardenForAccount creates garden with default layout', async (
         stack10?.blocks.length,
         2,
         'Stack (1,0) should have 2 blocks (grass + raised bed)',
+    );
+});
+
+test('raised-bed reads include latest images from the last photography operation', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const blockId = await createTestBlock(gardenId, 'Raised_Bed');
+    const raisedBedId = await createTestRaisedBed(gardenId, accountId, blockId);
+
+    const olderPhotoOperationId = await createOperation({
+        accountId,
+        entityId: RAISED_BED_PHOTO_OPERATION_ID,
+        entityTypeName: 'operation',
+        gardenId,
+        raisedBedId,
+    });
+    const nonPhotoOperationId = await createOperation({
+        accountId,
+        entityId: 1,
+        entityTypeName: 'operation',
+        gardenId,
+        raisedBedId,
+    });
+    const newerPhotoOperationId = await createOperation({
+        accountId,
+        entityId: RAISED_BED_PHOTO_OPERATION_ID,
+        entityTypeName: 'operation',
+        gardenId,
+        raisedBedId,
+    });
+    const replannedPhotoOperationId = await createOperation({
+        accountId,
+        entityId: RAISED_BED_PHOTO_OPERATION_ID,
+        entityTypeName: 'operation',
+        gardenId,
+        raisedBedId,
+    });
+
+    await createEvent({
+        ...knownEvents.operations.completedV1(
+            olderPhotoOperationId.toString(),
+            {
+                completedBy: 'test-user',
+                images: ['https://cdn.gredice.com/older-photo.jpg'],
+            },
+        ),
+        createdAt: new Date('2026-06-01T08:00:00.000Z'),
+    });
+    await createEvent({
+        ...knownEvents.operations.completedV1(nonPhotoOperationId.toString(), {
+            completedBy: 'test-user',
+            images: ['https://cdn.gredice.com/non-photo.jpg'],
+        }),
+        createdAt: new Date('2026-06-02T08:00:00.000Z'),
+    });
+    await createEvent({
+        ...knownEvents.operations.completedV1(
+            newerPhotoOperationId.toString(),
+            {
+                completedBy: 'test-user',
+                images: [
+                    'https://cdn.gredice.com/latest-photo-1.jpg',
+                    'https://cdn.gredice.com/latest-photo-2.jpg',
+                ],
+            },
+        ),
+        createdAt: new Date('2026-06-03T08:00:00.000Z'),
+    });
+    await createEvent({
+        ...knownEvents.operations.completedV1(
+            replannedPhotoOperationId.toString(),
+            {
+                completedBy: 'test-user',
+                images: ['https://cdn.gredice.com/replanned-photo.jpg'],
+            },
+        ),
+        createdAt: new Date('2026-06-04T08:00:00.000Z'),
+    });
+    await createEvent({
+        ...knownEvents.operations.scheduledV1(
+            replannedPhotoOperationId.toString(),
+            {
+                scheduledDate: '2026-06-06T08:00:00.000Z',
+            },
+        ),
+        createdAt: new Date('2026-06-05T08:00:00.000Z'),
+    });
+
+    const [gardenRaisedBed] = await getRaisedBeds(gardenId);
+    assert.strictEqual(
+        gardenRaisedBed?.latestPhotoOperation?.id,
+        newerPhotoOperationId,
+    );
+    assert.deepStrictEqual(gardenRaisedBed?.latestPhotoOperation?.imageUrls, [
+        'https://cdn.gredice.com/latest-photo-1.jpg',
+        'https://cdn.gredice.com/latest-photo-2.jpg',
+    ]);
+
+    const listedRaisedBed = (await getAllRaisedBedsFiltered()).find(
+        (bed) => bed.id === raisedBedId,
+    );
+    assert.strictEqual(
+        listedRaisedBed?.latestPhotoOperation?.id,
+        newerPhotoOperationId,
+    );
+    assert.notStrictEqual(
+        listedRaisedBed?.latestPhotoOperation?.id,
+        nonPhotoOperationId,
+    );
+    assert.notStrictEqual(
+        listedRaisedBed?.latestPhotoOperation?.id,
+        replannedPhotoOperationId,
     );
 });
 

@@ -17,6 +17,7 @@ import {
     scheduleCacheTtls,
 } from '../cache/scheduleCache';
 import { generateRaisedBedName } from '../helpers/generateRaisedBedName';
+import { RAISED_BED_PHOTO_OPERATION_ID } from '../helpers/raisedBedPhotoOperations';
 import {
     events,
     farmUsers,
@@ -56,10 +57,24 @@ import { processReferralRewardsForAccount } from './referralsRepo';
 const RAISED_BED_FIELDS_PER_BLOCK = 9;
 
 type RaisedBedFieldPlantCycleEvent = typeof events.$inferSelect;
+export type RaisedBedLatestPhotoOperation = {
+    id: number;
+    completedAt: Date;
+    imageUrls: string[];
+};
 type RaisedBedWithFields = typeof raisedBeds.$inferSelect & {
     fields: RaisedBedFieldWithEvents[];
+    latestPhotoOperation: RaisedBedLatestPhotoOperation | null;
     weedState: RaisedBedWeedState | null;
 };
+
+const raisedBedPhotoOperationStatusEventTypes = [
+    knownEventTypes.operations.schedule,
+    knownEventTypes.operations.complete,
+    knownEventTypes.operations.verify,
+    knownEventTypes.operations.fail,
+    knownEventTypes.operations.cancel,
+];
 
 function parseWeedStateLevel(value: unknown): RaisedBedWeedStateLevel | null {
     switch (value) {
@@ -120,6 +135,127 @@ function latestWeedStateFromEvents(
     }
 
     return weedState;
+}
+
+function imageUrlsFromOperationCompleteData(value: unknown) {
+    if (!value || typeof value !== 'object') {
+        return [];
+    }
+
+    const images = (value as { images?: unknown }).images;
+    return Array.isArray(images)
+        ? images.filter(
+              (imageUrl): imageUrl is string =>
+                  typeof imageUrl === 'string' && imageUrl.trim().length > 0,
+          )
+        : [];
+}
+
+async function getLatestRaisedBedPhotoOperationsByIds(
+    raisedBedIds: number[],
+): Promise<Map<number, RaisedBedLatestPhotoOperation>> {
+    const uniqueRaisedBedIds = Array.from(new Set(raisedBedIds));
+    const latestPhotoOperationsByRaisedBedId = new Map<
+        number,
+        RaisedBedLatestPhotoOperation & { eventId: number }
+    >();
+
+    if (uniqueRaisedBedIds.length === 0) {
+        return new Map();
+    }
+
+    const photoOperations = await storage().query.operations.findMany({
+        columns: {
+            id: true,
+            raisedBedId: true,
+        },
+        where: and(
+            inArray(operations.raisedBedId, uniqueRaisedBedIds),
+            eq(operations.entityId, RAISED_BED_PHOTO_OPERATION_ID),
+            eq(operations.entityTypeName, 'operation'),
+            eq(operations.isDeleted, false),
+            isNotNull(operations.raisedBedId),
+        ),
+    });
+    const raisedBedIdByOperationId = new Map<number, number>();
+    for (const operation of photoOperations) {
+        if (typeof operation.raisedBedId === 'number') {
+            raisedBedIdByOperationId.set(operation.id, operation.raisedBedId);
+        }
+    }
+
+    const operationIds = Array.from(raisedBedIdByOperationId.keys());
+    if (operationIds.length === 0) {
+        return new Map();
+    }
+
+    const operationEvents = await getAllEvents(
+        raisedBedPhotoOperationStatusEventTypes,
+        operationIds.map((operationId) => operationId.toString()),
+    );
+    const latestStatusTypeByOperationId = new Map<number, string>();
+    for (const event of operationEvents) {
+        const operationId = Number(event.aggregateId);
+        if (raisedBedIdByOperationId.has(operationId)) {
+            latestStatusTypeByOperationId.set(operationId, event.type);
+        }
+    }
+
+    for (const event of operationEvents) {
+        if (event.type !== knownEventTypes.operations.complete) {
+            continue;
+        }
+
+        const operationId = Number(event.aggregateId);
+        const latestStatusType = latestStatusTypeByOperationId.get(operationId);
+        if (
+            latestStatusType !== knownEventTypes.operations.complete &&
+            latestStatusType !== knownEventTypes.operations.verify
+        ) {
+            continue;
+        }
+
+        const raisedBedId = raisedBedIdByOperationId.get(operationId);
+        if (!raisedBedId) {
+            continue;
+        }
+
+        const imageUrls = imageUrlsFromOperationCompleteData(event.data);
+        if (imageUrls.length === 0) {
+            continue;
+        }
+
+        const current = latestPhotoOperationsByRaisedBedId.get(raisedBedId);
+        if (
+            current &&
+            (current.completedAt > event.createdAt ||
+                (current.completedAt.getTime() === event.createdAt.getTime() &&
+                    current.eventId > event.id))
+        ) {
+            continue;
+        }
+
+        latestPhotoOperationsByRaisedBedId.set(raisedBedId, {
+            id: operationId,
+            completedAt: event.createdAt,
+            imageUrls,
+            eventId: event.id,
+        });
+    }
+
+    return new Map(
+        Array.from(
+            latestPhotoOperationsByRaisedBedId,
+            ([raisedBedId, item]) => [
+                raisedBedId,
+                {
+                    id: item.id,
+                    completedAt: item.completedAt,
+                    imageUrls: item.imageUrls,
+                },
+            ],
+        ),
+    );
 }
 
 export async function createRaisedBed(
@@ -315,12 +451,16 @@ export async function getRaisedBedsForGardens(
     const beds = await storage().query.raisedBeds.findMany({
         where: and(...whereConditions),
     });
-    const weedStatesByRaisedBedId = await getRaisedBedWeedStatesByIds(
-        beds.map((bed) => bed.id),
-    );
-    const fieldsByRaisedBedId = await getRaisedBedFieldsWithEventsForBeds(
-        beds.map((bed) => bed.id),
-    );
+    const bedIds = beds.map((bed) => bed.id);
+    const [
+        weedStatesByRaisedBedId,
+        fieldsByRaisedBedId,
+        latestPhotoOperationsByRaisedBedId,
+    ] = await Promise.all([
+        getRaisedBedWeedStatesByIds(bedIds),
+        getRaisedBedFieldsWithEventsForBeds(bedIds),
+        getLatestRaisedBedPhotoOperationsByIds(bedIds),
+    ]);
 
     // For each raised bed, fetch and attach fields with event-sourced info
     for (const bed of beds) {
@@ -332,6 +472,8 @@ export async function getRaisedBedsForGardens(
         const bedWithFields = {
             ...bed,
             fields: fieldsByRaisedBedId.get(bed.id) ?? [],
+            latestPhotoOperation:
+                latestPhotoOperationsByRaisedBedId.get(bed.id) ?? null,
             weedState: weedStatesByRaisedBedId.get(bed.id) ?? null,
         };
         if (gardenBeds) {
@@ -345,7 +487,12 @@ export async function getRaisedBedsForGardens(
 }
 
 export async function getRaisedBed(raisedBedId: number) {
-    const [raisedBed, fields, weedStatesByRaisedBedId] = await Promise.all([
+    const [
+        raisedBed,
+        fields,
+        weedStatesByRaisedBedId,
+        latestPhotoOperationsByRaisedBedId,
+    ] = await Promise.all([
         storage().query.raisedBeds.findFirst({
             where: and(
                 eq(raisedBeds.id, raisedBedId),
@@ -354,12 +501,15 @@ export async function getRaisedBed(raisedBedId: number) {
         }),
         getRaisedBedFieldsWithEvents(raisedBedId),
         getRaisedBedWeedStatesByIds([raisedBedId]),
+        getLatestRaisedBedPhotoOperationsByIds([raisedBedId]),
     ]);
     if (!raisedBed) return null;
     // Attach raised bed fields with event-sourced info
     return {
         ...raisedBed,
         fields,
+        latestPhotoOperation:
+            latestPhotoOperationsByRaisedBedId.get(raisedBed.id) ?? null,
         weedState: weedStatesByRaisedBedId.get(raisedBed.id) ?? null,
     };
 }
@@ -714,12 +864,17 @@ async function getAllRaisedBedsUncached() {
         .leftJoin(gardens, eq(raisedBeds.gardenId, gardens.id))
         .where(and(eq(raisedBeds.isDeleted, false), excludeSandboxRaisedBeds));
     const allRaisedBeds = rows.map((row) => row.raisedBed);
-    const fieldsByRaisedBedId = await getRaisedBedFieldsWithEventsForBeds(
-        allRaisedBeds.map((raisedBed) => raisedBed.id),
-    );
+    const raisedBedIds = allRaisedBeds.map((raisedBed) => raisedBed.id);
+    const [fieldsByRaisedBedId, latestPhotoOperationsByRaisedBedId] =
+        await Promise.all([
+            getRaisedBedFieldsWithEventsForBeds(raisedBedIds),
+            getLatestRaisedBedPhotoOperationsByIds(raisedBedIds),
+        ]);
     return allRaisedBeds.map((raisedBed) => ({
         ...raisedBed,
         fields: fieldsByRaisedBedId.get(raisedBed.id) ?? [],
+        latestPhotoOperation:
+            latestPhotoOperationsByRaisedBedId.get(raisedBed.id) ?? null,
     }));
 }
 
@@ -741,13 +896,18 @@ export async function getAllRaisedBedsFiltered(filters?: { status?: string }) {
         .where(and(...whereConditions));
     const allRaisedBeds = rows.map((row) => row.raisedBed);
 
-    const fieldsByRaisedBedId = await getRaisedBedFieldsWithEventsForBeds(
-        allRaisedBeds.map((raisedBed) => raisedBed.id),
-    );
+    const raisedBedIds = allRaisedBeds.map((raisedBed) => raisedBed.id);
+    const [fieldsByRaisedBedId, latestPhotoOperationsByRaisedBedId] =
+        await Promise.all([
+            getRaisedBedFieldsWithEventsForBeds(raisedBedIds),
+            getLatestRaisedBedPhotoOperationsByIds(raisedBedIds),
+        ]);
 
     return allRaisedBeds.map((raisedBed) => ({
         ...raisedBed,
         fields: fieldsByRaisedBedId.get(raisedBed.id) ?? [],
+        latestPhotoOperation:
+            latestPhotoOperationsByRaisedBedId.get(raisedBed.id) ?? null,
     }));
 }
 
