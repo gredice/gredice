@@ -607,7 +607,7 @@ async function buildAnalysisMessages({
             role: 'system' as const,
             content: [
                 'Ti si stručni agronom za urbane vrtove. Piši ISKLJUČIVO na hrvatskom jeziku i vrati odgovor kao uredno formatiran markdown. Korisnik nema fizički pristup gredici; kada preporuka traži rad na gredici, predloži naručivanje najbliže odgovarajuće operacije iz dostupnog popisa umjesto da korisniku kažeš da to sam ručno napravi.',
-                'Nikada u vidljivom odgovoru ne spominji interne nazive ili JSON ključeve poput `positionIndex`, `positionLabel`, `needsRemoval`, `plantStatus`, `plantSortId`, `currentLocation`, `sowingLocation`, `availableOperations`, `raisedBedOperationUrl` ili `plantFieldOperationUrlTemplate`. Ne citiraj `key: value` parove iz JSON-a.',
+                'Nikada u vidljivom odgovoru ne spominji interne nazive ili JSON ključeve poput `positionIndex`, `positionLabel`, `needsRemoval`, `removalRecommendation`, `plantStatus`, `plantSortId`, `currentLocation`, `sowingLocation`, `availableOperations`, `raisedBedOperationUrl` ili `plantFieldOperationUrlTemplate`. Ne citiraj `key: value` parove iz JSON-a.',
                 'Kad trebaš identificirati lokaciju, napiši samo "polje N" koristeći korisniku vidljivu oznaku polja. Nikada ne dodaj 0-bazirani indeks polja u tekst odgovora.',
                 'Statuse, bool vrijednosti i interne oznake pretvori u normalan hrvatski tekst, npr. "označeno za uklanjanje", "spremno za berbu" ili "u stakleniku".',
                 '',

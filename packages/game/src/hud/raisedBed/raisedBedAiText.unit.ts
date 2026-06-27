@@ -15,6 +15,7 @@ test('sanitizeRaisedBedAiMarkdown removes internal field names from visible reco
             '',
             "2. **Celer lisnati rebrasti d'elne — polje 4, positionIndex 3**",
             'Problem: označen je kao neizniknut/propao i `needsRemoval: true`; zauzima prostor bez koristi.',
+            'Idući korak: removalRecommendation: označeno za uklanjanje.',
         ].join('\n'),
     );
     const visibleText = visibleMarkdownText(sanitized);
@@ -24,6 +25,7 @@ test('sanitizeRaisedBedAiMarkdown removes internal field names from visible reco
     assert.match(visibleText, /označeno za uklanjanje/);
     assert.doesNotMatch(visibleText, /positionIndex/i);
     assert.doesNotMatch(visibleText, /needsRemoval/i);
+    assert.doesNotMatch(visibleText, /removalRecommendation/i);
 });
 
 test('sanitizeRaisedBedAiMarkdown rewrites bare operation URLs and field labels', () => {

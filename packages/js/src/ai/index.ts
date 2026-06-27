@@ -27,6 +27,7 @@ const INTERNAL_TERM_REPLACEMENTS = new Map([
     ['positionIndex', 'polje'],
     ['positionLabel', 'polje'],
     ['raisedBedOperationUrl', 'poveznica za radnju na gredici'],
+    ['removalRecommendation', 'preporuka za uklanjanje'],
     ['requestedStatus', 'predloženo stanje'],
     ['requestedWeedLevel', 'predložena razina korova'],
     ['sowingLocation', 'mjesto sjetve'],
@@ -109,6 +110,10 @@ export function sanitizeRaisedBedAiMarkdown(markdown: string) {
         .replace(
             /`?\b(?:needsRemoval|toBeRemoved)\b`?\s*[:=]?\s*false\b`?/gi,
             'nije označeno za uklanjanje',
+        )
+        .replace(
+            /`?\bremovalRecommendation\b`?\s*[:=]?\s*["'`]?označeno za uklanjanje["'`]?/gi,
+            'označeno za uklanjanje',
         )
         .replace(
             /`?\bcurrentLocation\b`?\s*[:=]?\s*["'`]?greenhouse["'`]?/gi,
