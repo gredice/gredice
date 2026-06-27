@@ -8,11 +8,15 @@ import {
 import { Card, CardOverflow } from '@gredice/ui/Card';
 import { Stack } from '@gredice/ui/Stack';
 import { AdminPageHeader } from '../../../components/admin/navigation';
-import { OperationsTable } from '../../../components/operations/OperationsTable';
+import { OperationsList } from '../../../components/operations/OperationsList';
 import { auth } from '../../../lib/auth/auth';
 import { getDateFromTimeFilter } from '../../../lib/utils/timeFilters';
 import { BulkOperationCreateModal } from './BulkOperationCreateModal';
 import { OperationsFilters } from './OperationsFilters';
+import {
+    getOperationsListContext,
+    listOperationsPageFromContext,
+} from './operationsListData';
 import { SingleOperationCreateModal } from './SingleOperationCreateModal';
 
 export const dynamic = 'force-dynamic';
@@ -56,6 +60,11 @@ export default async function OperationsPage({
     const fromFilter =
         typeof params.from === 'string' ? params.from : 'last-14-days';
     const fromDate = getDateFromTimeFilter(fromFilter);
+    const operationsListContext = await getOperationsListContext();
+    const initialOperationsPage = await listOperationsPageFromContext({
+        context: operationsListContext,
+        fromDate,
+    });
 
     return (
         <Stack spacing={4}>
@@ -80,7 +89,10 @@ export default async function OperationsPage({
             <OperationsFilters />
             <Card>
                 <CardOverflow>
-                    <OperationsTable fromDate={fromDate} />
+                    <OperationsList
+                        fromFilter={fromFilter}
+                        initialPage={initialOperationsPage}
+                    />
                 </CardOverflow>
             </Card>
         </Stack>
