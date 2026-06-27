@@ -1018,7 +1018,7 @@ export async function createDeliveryRequest(data: {
         throw new Error('Cannot book slots in the past');
     }
 
-    if (slot.type === 'delivery' && hasTimeSlotCloseDeadlinePassed(slot, now)) {
+    if (hasTimeSlotCloseDeadlinePassed(slot, now)) {
         await closeTimeSlot(slot.id);
         throw new Error('Time slot is not available for booking');
     }
@@ -1102,7 +1102,7 @@ export async function changeDeliveryRequestSlot(
 
     const now = new Date();
 
-    if (slot.type === 'delivery' && hasTimeSlotCloseDeadlinePassed(slot, now)) {
+    if (hasTimeSlotCloseDeadlinePassed(slot, now)) {
         await closeTimeSlot(slot.id);
         throw new Error('Time slot is not available for booking');
     }
