@@ -1,4 +1,5 @@
 import { client } from '@gredice/client';
+import { sanitizeRaisedBedAiMarkdown } from '@gredice/js/ai';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     AiAnalysisRequestError,
@@ -69,10 +70,10 @@ export function useRaisedBedFieldAiAnalysis() {
                 const { done, value } = await reader.read();
                 if (done) break;
                 markdown += decoder.decode(value, { stream: true });
-                onChunk?.(markdown);
+                onChunk?.(sanitizeRaisedBedAiMarkdown(markdown));
             }
 
-            return { markdown };
+            return { markdown: sanitizeRaisedBedAiMarkdown(markdown) };
         },
         onSuccess: async (_data, variables) => {
             await Promise.all([
