@@ -15,6 +15,7 @@ import {
     scrollableTableCardClassName,
     scrollableTableCardOverflowClassName,
 } from '../../../../components/admin/cards/tableCardLayout';
+import { RaisedBedLatestPhotoThumbnail } from '../../../../components/raised-beds/RaisedBedLatestPhotoThumbnail';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
 import { KnownPages } from '../../../../src/KnownPages';
 import { RaisedBedStatusItems } from '../../raised-beds/[raisedBedId]/RaisedBedStatusItems';
@@ -113,6 +114,16 @@ export async function RaisedBedsTableCard({
                                             href={KnownPages.RaisedBed(bed.id)}
                                         >
                                             <Row spacing={2}>
+                                                {bed.latestPhotoOperation && (
+                                                    <RaisedBedLatestPhotoThumbnail
+                                                        alt={`Zadnje fotografije gredice ${bed.name}`}
+                                                        imageUrls={
+                                                            bed
+                                                                .latestPhotoOperation
+                                                                .imageUrls
+                                                        }
+                                                    />
+                                                )}
                                                 <RaisedBedIcon
                                                     className="size-6 shrink-0"
                                                     physicalId={bed.physicalId}
