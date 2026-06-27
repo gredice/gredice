@@ -1,5 +1,6 @@
 'use client';
 
+import { sanitizeRaisedBedAiMarkdown } from '@gredice/js/ai';
 import { Card, CardOverflow } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
 import { ImageGallery } from '@gredice/ui/ImageGallery';
@@ -96,6 +97,9 @@ function AiAnalysisDetails({ row }: { row: AiAnalyticsRow }) {
     const markdown = row.data?.markdown?.trim();
     const summary = row.data?.summary?.trim();
     const generatedContent = markdown || summary;
+    const sanitizedGeneratedContent = generatedContent
+        ? sanitizeRaisedBedAiMarkdown(generatedContent)
+        : '';
     const imageCount = row.data?.imageCount ?? images.length;
 
     return (
@@ -176,9 +180,9 @@ function AiAnalysisDetails({ row }: { row: AiAnalyticsRow }) {
                 <Typography level="body2" semiBold>
                     Generirani sadržaj
                 </Typography>
-                {generatedContent ? (
+                {sanitizedGeneratedContent ? (
                     <Markdown className="rounded-md border bg-muted/20 p-3">
-                        {generatedContent}
+                        {sanitizedGeneratedContent}
                     </Markdown>
                 ) : (
                     <NoDataPlaceholder>Nema sadržaja</NoDataPlaceholder>

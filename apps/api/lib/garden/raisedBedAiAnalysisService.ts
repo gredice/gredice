@@ -1,4 +1,5 @@
 import { TZDate, tz } from '@date-fns/tz';
+import { sanitizeRaisedBedAiMarkdown } from '@gredice/js/ai';
 import {
     getEntitiesFormatted,
     getOperations,
@@ -542,6 +543,7 @@ async function buildAnalysisMessages({
         .map((field) => {
             const isGreenhouseSeedling = isCurrentlyGreenhouseSeedling(field);
             return {
+                fieldLabel: `polje ${toPositionLabel(field.positionIndex)}`,
                 positionIndex: field.positionIndex,
                 positionLabel: toPositionLabel(field.positionIndex),
                 plantSortId: field.plantSortId,
@@ -562,7 +564,9 @@ async function buildAnalysisMessages({
                     referenceDate,
                 ),
                 daysFromDead: daysSince(field.plantDeadDate, referenceDate),
-                needsRemoval: Boolean(field.toBeRemoved),
+                removalRecommendation: field.toBeRemoved
+                    ? 'označeno za uklanjanje'
+                    : null,
                 isAnalyzedField:
                     typeof positionIndex === 'number' &&
                     field.positionIndex === positionIndex,
@@ -603,19 +607,22 @@ async function buildAnalysisMessages({
             role: 'system' as const,
             content: [
                 'Ti si stručni agronom za urbane vrtove. Piši ISKLJUČIVO na hrvatskom jeziku i vrati odgovor kao uredno formatiran markdown. Korisnik nema fizički pristup gredici; kada preporuka traži rad na gredici, predloži naručivanje najbliže odgovarajuće operacije iz dostupnog popisa umjesto da korisniku kažeš da to sam ručno napravi.',
+                'Nikada u vidljivom odgovoru ne spominji interne nazive ili JSON ključeve poput `positionIndex`, `positionLabel`, `needsRemoval`, `removalRecommendation`, `plantStatus`, `plantSortId`, `currentLocation`, `sowingLocation`, `availableOperations`, `raisedBedOperationUrl` ili `plantFieldOperationUrlTemplate`. Ne citiraj `key: value` parove iz JSON-a.',
+                'Kad trebaš identificirati lokaciju, napiši samo "polje N" koristeći korisniku vidljivu oznaku polja. Nikada ne dodaj 0-bazirani indeks polja u tekst odgovora.',
+                'Statuse, bool vrijednosti i interne oznake pretvori u normalan hrvatski tekst, npr. "označeno za uklanjanje", "spremno za berbu" ili "u stakleniku".',
                 '',
                 'Raspored polja u gredici:',
                 `- Standardna gredica ima ${RAISED_BED_COLUMNS} stupca i do ${rows} redova (ukupno do ${totalFields} polja).`,
                 '- Polja su numerirana od 1 nadalje, počevši od donjeg desnog kuta slike i čitajući zdesna nalijevo, red po red prema gore.',
                 '- Donji red: 1 (donje desno) → 2 (donje sredina) → 3 (donje lijevo).',
                 '- Gornji red kod 18-poljne gredice: 16 (gornje desno) → 17 (gornja sredina) → 18 (gornje lijevo).',
-                '- U JSON kontekstu vrijednost `positionLabel` koristi ovo brojanje (1-bazirano), dok `positionIndex` ostaje 0-bazirana interna oznaka (`positionLabel = positionIndex + 1`).',
+                '- U kontekstu koristi korisniku vidljivu oznaku polja. Internu vrijednost polja koristi samo za slaganje URL-a radnje i nikada je ne ispisuj u tekstu.',
                 '- Ponekad su priložene dvije fotografije iste gredice: jedna iz standardne pozicije za gore navedeno numeriranje, a druga s druge strane gredice. Koristi ih kao komplementarne poglede iste gredice; drugi pogled služi za provjeru stanja biljaka, ne kao zasebna gredica ili novi raspored polja.',
                 '- Polja s `currentLocation: "greenhouse"` su presadnice koje trenutno rastu u stakleniku i još nisu presađene u gredicu; polja s `currentLocation: "raisedBed"` su u gredici. `sowingLocation` opisuje gdje je biljka započela.',
                 '- `pastPlantFields` navodi samo nazive biljaka koje su ranije bile u polju; ne sadrži povijest događaja ni datume.',
                 '- `imageDate` je datum fotografija/dnevničkog unosa. Koristi `imageDate`, `analysisReferenceDate` i `weather.historical` za procjenu stanja na fotografijama. `currentDate`, `weather.now` i `weather.forecast` koristi samo za današnje i buduće preporuke za zalijevanje, zaštitu od mraza, sjetvu i berbu.',
-                '- Kada preporučiš konkretnu radnju iz `availableOperations`, napiši je kao markdown poveznicu na apsolutni URL iz `raisedBedOperationUrl` ili `plantFieldOperationUrlTemplate`, npr. `[Naziv radnje](https://www.gredice.com/radnje/{slug}#raisedBedId={raisedBedId})`.',
-                '- Za radnje nad pojedinom biljkom/poljem koristi hash s 0-baziranim `positionIndex`: `[Naziv radnje](https://www.gredice.com/radnje/{slug}#raisedBedId={raisedBedId}&positionIndex={positionIndex})`. Ne koristi `positionLabel` u URL-u.',
+                '- Kada preporučiš konkretnu radnju, napiši je kao markdown poveznicu s apsolutnim URL-om iz konteksta, npr. `[Naziv radnje](https://www.gredice.com/radnje/{slug}#raisedBedId={raisedBedId})`.',
+                '- Za radnje nad pojedinom biljkom/poljem koristi točan URL predložak iz konteksta. Interna vrijednost polja smije postojati samo u URL-u markdown poveznice, nikada u vidljivom tekstu.',
                 '- Koristi samo apsolutne `https://www.gredice.com/radnje/...` URL predloške iz `availableOperations`; ne izmišljaj slugove, ne piši sirovi URL bez markdown oznake i ne dodaj link ako za radnju ne postoji odgovarajući URL predložak.',
             ].join('\n'),
         },
@@ -626,14 +633,15 @@ async function buildAnalysisMessages({
                     type: 'text' as const,
                     text: [
                         typeof positionIndex === 'number'
-                            ? `Analiziraj sve fotografije vrta i kontekst te napiši objedinjene praktične preporuke za označeno polje (positionLabel ${analyzedPositionLabel}) i ostatak gredice.`
+                            ? `Analiziraj sve fotografije vrta i kontekst te napiši objedinjene praktične preporuke za označeno polje ${analyzedPositionLabel} i ostatak gredice.`
                             : 'Analiziraj sve fotografije gredice i kontekst te napiši objedinjene praktične preporuke za cijelu gredicu.',
                         'Fotografije su različiti pogledi istog dnevničkog unosa; nemoj ih tretirati kao zasebne zahtjeve.',
-                        'Odgovor MORA imati ove markdown sekcije:',
+                        'Odgovor MORA imati ove markdown sekcije s točno ovim naslovima:',
                         '## Sažetak stanja',
-                        '## Globalne preporuke (2-4 stavke)',
-                        '## Biljke koje traže najviše pažnje (2-4 biljke, po biljci navedi problem + konkretan idući korak)',
+                        '## Najvažnije preporuke',
+                        '## Biljke koje traže najviše pažnje',
                         '## Plan za sljedeća 3 dana',
+                        'U najvažnijim preporukama napiši 2-4 stavke. U sekciji o biljkama navedi 2-4 biljke; za svaku napiši problem i konkretan idući korak.',
                         '',
                         'Kontekst (JSON):',
                         JSON.stringify(
@@ -698,7 +706,7 @@ export async function streamRaisedBedImageAnalysis(
         messages,
         onFinish: async ({ text, usage }) => {
             await onFinish({
-                markdown: text,
+                markdown: sanitizeRaisedBedAiMarkdown(text),
                 model: AI_MODEL,
                 analyzedAt: new Date().toISOString(),
                 inputTokens: usage.inputTokens ?? 0,

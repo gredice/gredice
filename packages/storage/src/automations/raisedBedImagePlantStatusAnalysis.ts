@@ -1,3 +1,4 @@
+import { sanitizeRaisedBedAiMarkdown } from '@gredice/js/ai';
 import {
     calculatePlantsPerField,
     getImageObservablePlantStatusTargets,
@@ -540,6 +541,7 @@ function buildReviewMessages({
             content: [
                 'Ti si stručni agronom koji pregledava fotografije Gredice i predlaže ISKLJUČIVO sigurne promjene stanja biljaka.',
                 'Vrati strukturirani rezultat prema shemi. Ne vraćaj markdown.',
+                'U poljima `summary` i `evidence` piši normalne hrvatske rečenice. Ne spominji interne nazive ili JSON ključeve kao `positionIndex`, `needsRemoval`, `plantStatus`, `plantSortId`, `currentLocation` ili `sowingLocation`.',
                 'Predloži promjenu samo kada je vizualni dokaz jasan i gotovo siguran; ne pogađaj na temelju kalendara, očekivanih dana rasta ili mutne/zaklonjene fotografije.',
                 'Za svako polje smiješ predložiti plant-status samo iz `allowedTargetStatuses`; ako nema odgovarajućeg statusa, preskoči plant-status prijedlog za to polje.',
                 'Ako je trenutno stanje `sowed` ili `pendingVerification`, a na slici se jasno vide klice za direktno sijanu biljku, predloži `sprouted`.',
@@ -780,7 +782,7 @@ function buildApprovalNote({
         proposal.observedPlantCount !== null
             ? `Uočeni broj biljaka/klica: ${proposal.observedPlantCount}.`
             : null,
-        `Dokaz: ${proposal.evidence}`,
+        `Dokaz: ${sanitizeRaisedBedAiMarkdown(proposal.evidence)}`,
     ]
         .filter((line): line is string => typeof line === 'string')
         .join('\n');
@@ -802,7 +804,7 @@ function buildWeedStateNotes({
         `Polje: ${proposal.positionLabel}.`,
         `Promjena: ${proposal.currentWeedLevel ?? 'none'} -> ${proposal.requestedWeedLevel}.`,
         `Pouzdanost: ${Math.round(proposal.confidence * 100)}%.`,
-        `Dokaz: ${proposal.evidence}`,
+        `Dokaz: ${sanitizeRaisedBedAiMarkdown(proposal.evidence)}`,
     ]
         .filter((line): line is string => typeof line === 'string')
         .join('\n');
@@ -1044,7 +1046,7 @@ export async function runRaisedBedImagePlantStatusReview({
             imageCount: input.imageUrls.length,
             skippedInvalidImageCount: input.skippedInvalidImageCount,
             model: AI_MODEL,
-            summary: output.summary,
+            summary: sanitizeRaisedBedAiMarkdown(output.summary),
             proposalCount: output.proposals.length,
             acceptedProposalCount: accepted.length,
             requestIds,
