@@ -20,7 +20,7 @@ import {
     scheduleCacheKeys,
     scheduleCacheTtls,
 } from '../cache/scheduleCache';
-import { AUTO_CLOSE_WINDOW_MS } from '../helpers/timeSlotAutomation';
+import { hasTimeSlotCloseDeadlinePassed } from '../helpers/timeSlotAutomation';
 import {
     accounts,
     accountUsers,
@@ -1018,10 +1018,7 @@ export async function createDeliveryRequest(data: {
         throw new Error('Cannot book slots in the past');
     }
 
-    if (
-        slot.type === 'delivery' &&
-        slot.startAt.getTime() - now.getTime() < AUTO_CLOSE_WINDOW_MS
-    ) {
+    if (hasTimeSlotCloseDeadlinePassed(slot, now)) {
         await closeTimeSlot(slot.id);
         throw new Error('Time slot is not available for booking');
     }
@@ -1105,10 +1102,7 @@ export async function changeDeliveryRequestSlot(
 
     const now = new Date();
 
-    if (
-        slot.type === 'delivery' &&
-        slot.startAt.getTime() - now.getTime() < AUTO_CLOSE_WINDOW_MS
-    ) {
+    if (hasTimeSlotCloseDeadlinePassed(slot, now)) {
         await closeTimeSlot(slot.id);
         throw new Error('Time slot is not available for booking');
     }

@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
     acceptOperation,
+    changeDeliveryRequestSlot,
     createAttributeDefinition,
     createDeliveryRequest,
     createEntity,
@@ -16,6 +17,7 @@ import {
     events,
     getDeliveryRequestsWithEvents,
     getPendingDeliveryReadyEmailRequestIds,
+    getTimeSlot,
     knownEvents,
     knownEventTypes,
     raisedBedFields,
@@ -246,7 +248,7 @@ async function createDeliveryRequestWithTraceFixture() {
         endAt: new Date(slotStartAt.getTime() + 2 * 60 * 60 * 1000),
         status: TimeSlotStatuses.SCHEDULED,
     });
-    await createDeliveryRequest({
+    const requestId = await createDeliveryRequest({
         operationId,
         slotId,
         mode: 'pickup',
@@ -256,12 +258,70 @@ async function createDeliveryRequestWithTraceFixture() {
 
     return {
         accountId,
+        locationId,
         latestPlantSortId,
         operationId,
         originalPlantSortId,
+        requestId,
         traceLink,
     };
 }
+
+test('createDeliveryRequest rejects pickup slots after their close deadline', async () => {
+    createTestDb();
+
+    const locationId = await createPickupLocation({
+        name: `Closed pickup location ${randomUUID()}`,
+        street1: 'Testna 1',
+        city: 'Zagreb',
+        postalCode: '10000',
+        countryCode: 'HR',
+    });
+    const slotStartAt = new Date('2099-01-02T08:00:00.000Z');
+    const slotId = await createTimeSlot({
+        locationId,
+        type: 'pickup',
+        startAt: slotStartAt,
+        endAt: new Date(slotStartAt.getTime() + 2 * 60 * 60 * 1000),
+        closesAt: new Date('2026-01-01T08:00:00.000Z'),
+        status: TimeSlotStatuses.SCHEDULED,
+    });
+
+    await assert.rejects(
+        createDeliveryRequest({
+            operationId: 999_999,
+            slotId,
+            mode: 'pickup',
+            locationId,
+            accountId: randomUUID(),
+        }),
+        /Time slot is not available for booking/,
+    );
+
+    const slot = await getTimeSlot(slotId);
+    assert.equal(slot?.status, TimeSlotStatuses.CLOSED);
+});
+
+test('changeDeliveryRequestSlot rejects pickup slots after their close deadline', async () => {
+    const fixture = await createDeliveryRequestWithTraceFixture();
+    const slotStartAt = new Date('2099-01-03T08:00:00.000Z');
+    const slotId = await createTimeSlot({
+        locationId: fixture.locationId,
+        type: 'pickup',
+        startAt: slotStartAt,
+        endAt: new Date(slotStartAt.getTime() + 2 * 60 * 60 * 1000),
+        closesAt: new Date('2026-01-01T08:00:00.000Z'),
+        status: TimeSlotStatuses.SCHEDULED,
+    });
+
+    await assert.rejects(
+        changeDeliveryRequestSlot(fixture.requestId, slotId),
+        /Time slot is not available for booking/,
+    );
+
+    const slot = await getTimeSlot(slotId);
+    assert.equal(slot?.status, TimeSlotStatuses.CLOSED);
+});
 
 test('getPendingDeliveryReadyEmailRequestIds returns ordered retryable ready events', async () => {
     createTestDb();

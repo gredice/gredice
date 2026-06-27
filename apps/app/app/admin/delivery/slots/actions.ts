@@ -5,6 +5,7 @@ import {
     closeTimeSlot,
     createTimeSlot,
     getTimeSlot,
+    hasTimeSlotCloseDeadlinePassed,
     TimeSlotStatuses,
     updateTimeSlot,
 } from '@gredice/storage';
@@ -150,6 +151,28 @@ function getDateInputTime(dateParts: DateInputParts) {
     return Date.UTC(dateParts.year, dateParts.month - 1, dateParts.day);
 }
 
+function parseOptionalDateTimeInput(value: string, timeZone: string) {
+    const trimmedValue = value.trim();
+
+    if (!trimmedValue) {
+        return null;
+    }
+
+    const [dateString, timeString] = trimmedValue.split('T');
+
+    if (!dateString || !timeString) {
+        throw new Error('Unesite ispravan datum i vrijeme zatvaranja');
+    }
+
+    return zonedDateTimeToUtc(parseDateInput(dateString), timeString, timeZone);
+}
+
+function validateClosesAtBeforeStart(closesAt: Date | null, startAt: Date) {
+    if (closesAt && closesAt.getTime() >= startAt.getTime()) {
+        throw new Error('Vrijeme zatvaranja mora biti prije početka slota');
+    }
+}
+
 export async function createTimeSlotAction(
     _prevState: unknown,
     formData: FormData,
@@ -164,12 +187,18 @@ export async function createTimeSlotAction(
         const timeZone = getTimeZone(formData);
         const startAt = zonedDateTimeToUtc(startDate, startTime, timeZone);
         const endAt = new Date(startAt.getTime() + SLOT_DURATION_MS);
+        const closesAt = parseOptionalDateTimeInput(
+            getStringValue(formData, 'closesAt'),
+            timeZone,
+        );
+        validateClosesAtBeforeStart(closesAt, startAt);
 
         await createTimeSlot({
             locationId,
             type,
             startAt,
             endAt,
+            closesAt,
             status: TimeSlotStatuses.SCHEDULED,
         });
 
@@ -425,6 +454,26 @@ export async function updateTimeSlotStatusAction(
 ) {
     try {
         await auth(['admin']);
+
+        if (status === TimeSlotStatuses.SCHEDULED) {
+            const slot = await getTimeSlot(slotId);
+            const now = new Date();
+
+            if (!slot) {
+                throw new Error('Slot nije pronađen');
+            }
+
+            if (new Date(slot.endAt) < now) {
+                throw new Error('Nije moguće otvoriti prošli slot');
+            }
+
+            if (hasTimeSlotCloseDeadlinePassed(slot, now)) {
+                throw new Error(
+                    'Postavite kasniji datum zatvaranja prije ponovnog otvaranja slota',
+                );
+            }
+        }
+
         await updateTimeSlot({ id: slotId, status });
         revalidatePath('/admin/delivery/slots');
         return { success: true, message: 'Status slota je uspješno ažuriran' };
@@ -436,6 +485,52 @@ export async function updateTimeSlotStatusAction(
                 error instanceof Error
                     ? error.message
                     : 'Greška pri ažuriranju statusa slota',
+        };
+    }
+}
+
+export async function updateTimeSlotCloseAtAction(
+    _prevState: unknown,
+    formData: FormData,
+) {
+    try {
+        await auth(['admin']);
+
+        const slotId = parseInt(getStringValue(formData, 'slotId'), 10);
+        const timeZone = getTimeZone(formData);
+
+        if (!slotId || Number.isNaN(slotId)) {
+            throw new Error('Slot nije pronađen');
+        }
+
+        const slot = await getTimeSlot(slotId);
+        if (!slot) {
+            throw new Error('Slot nije pronađen');
+        }
+
+        const closesAt = parseOptionalDateTimeInput(
+            getStringValue(formData, 'closesAt'),
+            timeZone,
+        );
+        validateClosesAtBeforeStart(closesAt, slot.startAt);
+
+        await updateTimeSlot({ id: slotId, closesAt });
+        revalidatePath('/admin/delivery/slots');
+
+        return {
+            success: true,
+            message: closesAt
+                ? 'Datum zatvaranja je uspješno ažuriran'
+                : 'Slot ponovno koristi automatsko zatvaranje',
+        };
+    } catch (error) {
+        console.error('Failed to update slot close date:', error);
+        return {
+            success: false,
+            message:
+                error instanceof Error
+                    ? error.message
+                    : 'Greška pri ažuriranju datuma zatvaranja',
         };
     }
 }

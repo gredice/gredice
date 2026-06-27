@@ -92,6 +92,7 @@ export const timeSlots = pgTable(
         type: text('type').notNull(), // 'delivery' | 'pickup'
         startAt: timestamp('start_at').notNull(),
         endAt: timestamp('end_at').notNull(), // Always startAt + 2h
+        closesAt: timestamp('closes_at'), // Optional override for the automatic close deadline
         status: text('status').notNull().default('scheduled'), // 'scheduled' | 'closed' | 'archived'
         createdAt: timestamp('created_at').notNull().defaultNow(),
         updatedAt: timestamp('updated_at')
@@ -102,6 +103,7 @@ export const timeSlots = pgTable(
         index('time_slots_location_id_idx').on(table.locationId),
         index('time_slots_type_idx').on(table.type),
         index('time_slots_start_at_idx').on(table.startAt),
+        index('time_slots_closes_at_idx').on(table.closesAt),
         index('time_slots_status_idx').on(table.status),
         // Prevent overlapping slots for same location and type
         index('time_slots_unique_slot_idx').on(

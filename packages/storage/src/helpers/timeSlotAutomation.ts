@@ -1,6 +1,11 @@
 import 'server-only';
-import { and, eq, gte, inArray, lt } from 'drizzle-orm';
-import { DeliveryModes, TimeSlotStatuses, timeSlots } from '../schema';
+import { and, eq, gte, inArray, isNull, lt, lte, or } from 'drizzle-orm';
+import {
+    DeliveryModes,
+    type SelectTimeSlot,
+    TimeSlotStatuses,
+    timeSlots,
+} from '../schema';
 import { storage } from '../storage';
 
 export const AUTO_CLOSE_WINDOW_HOURS = 48;
@@ -8,6 +13,37 @@ export const AUTO_CLOSE_WINDOW_MS = AUTO_CLOSE_WINDOW_HOURS * 60 * 60 * 1000;
 
 function getAutoCloseThreshold(referenceDate: Date) {
     return new Date(referenceDate.getTime() + AUTO_CLOSE_WINDOW_MS);
+}
+
+export function getDefaultTimeSlotClosesAt(startAt: Date) {
+    return new Date(startAt.getTime() - AUTO_CLOSE_WINDOW_MS);
+}
+
+export function getTimeSlotEffectiveClosesAt(
+    slot: Pick<SelectTimeSlot, 'closesAt' | 'startAt'>,
+) {
+    return slot.closesAt ?? getDefaultTimeSlotClosesAt(slot.startAt);
+}
+
+export function assertTimeSlotClosesBeforeStart(
+    slot: Pick<SelectTimeSlot, 'closesAt' | 'startAt'>,
+) {
+    if (slot.closesAt && slot.closesAt.getTime() >= slot.startAt.getTime()) {
+        throw new Error('Close time must be before slot start time');
+    }
+}
+
+export function hasTimeSlotCloseDeadlinePassed(
+    slot: Pick<SelectTimeSlot, 'closesAt' | 'startAt'>,
+    referenceDate = new Date(),
+) {
+    const closeAt = getTimeSlotEffectiveClosesAt(slot);
+
+    if (slot.closesAt) {
+        return closeAt.getTime() <= referenceDate.getTime();
+    }
+
+    return closeAt.getTime() < referenceDate.getTime();
 }
 
 /**
@@ -31,7 +67,13 @@ export async function autoCloseUpcomingSlots(
                 ]),
                 eq(timeSlots.status, TimeSlotStatuses.SCHEDULED),
                 gte(timeSlots.startAt, now),
-                lt(timeSlots.startAt, cutoffTime),
+                or(
+                    lte(timeSlots.closesAt, now),
+                    and(
+                        isNull(timeSlots.closesAt),
+                        lt(timeSlots.startAt, cutoffTime),
+                    ),
+                ),
             ),
         );
 }

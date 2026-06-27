@@ -11,6 +11,7 @@ import {
     closeTimeSlotAction,
     updateTimeSlotStatusAction,
 } from './actions';
+import { EditTimeSlotCloseAtModal } from './EditTimeSlotCloseAtModal';
 
 interface SlotActionButtonsProps {
     slot: SelectTimeSlot;
@@ -55,6 +56,8 @@ export function SlotActionButtons({ slot }: SlotActionButtonsProps) {
 
     return (
         <Row spacing={2}>
+            <EditTimeSlotCloseAtModal slot={slot} />
+
             {isScheduled && (
                 <IconButton
                     title="Zatvori"
