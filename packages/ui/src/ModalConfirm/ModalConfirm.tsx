@@ -1,7 +1,7 @@
 'use client';
 
 import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog';
-import type { FormEvent, HTMLAttributes, ReactNode } from 'react';
+import type { FormEvent, HTMLAttributes, MouseEvent, ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { Button } from '../Button';
 import { Input } from '../Input';
@@ -88,14 +88,23 @@ export function ModalConfirm({
         onOpenChange?.(nextOpen);
     }
 
-    function handleSubmit(event: FormEvent<HTMLFormElement>) {
-        event.preventDefault();
+    function confirm() {
         if (!canConfirm) {
             return;
         }
 
         setOpen(false);
         onConfirm?.();
+    }
+
+    function handleSubmit(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        confirm();
+    }
+
+    function handleConfirmClick(event: MouseEvent<HTMLButtonElement>) {
+        event.preventDefault();
+        confirm();
     }
 
     return (
@@ -169,6 +178,7 @@ export function ModalConfirm({
                                     <Button
                                         disabled={!canConfirm}
                                         type="submit"
+                                        onClick={handleConfirmClick}
                                     >
                                         {confirmLabel}
                                     </Button>

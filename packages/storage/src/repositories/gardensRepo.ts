@@ -152,6 +152,26 @@ export async function accountHasActiveRaisedBed(accountId: string) {
     return (result[0]?.count ?? 0) > 0;
 }
 
+export async function countActiveRaisedBedsForGarden(
+    gardenId: number,
+    db: DatabaseClient = storage(),
+) {
+    const result = await db
+        .select({ count: count() })
+        .from(raisedBeds)
+        .innerJoin(gardens, eq(raisedBeds.gardenId, gardens.id))
+        .where(
+            and(
+                eq(gardens.id, gardenId),
+                eq(gardens.isDeleted, false),
+                eq(raisedBeds.status, 'active'),
+                eq(raisedBeds.isDeleted, false),
+            ),
+        );
+
+    return result[0]?.count ?? 0;
+}
+
 export async function getAccountGardens(
     accountId: string,
     filter?: {
@@ -221,6 +241,41 @@ export async function deleteGarden(gardenId: number) {
         .where(eq(gardens.id, gardenId));
     await createEvent(knownEvents.gardens.deletedV1(gardenId.toString()));
     await bustScheduleCache();
+}
+
+export async function deleteGardenIfNoActiveRaisedBeds(gardenId: number) {
+    let deleted = false;
+    const activeRaisedBedCount = await storage().transaction(async (tx) => {
+        const activeCount = await countActiveRaisedBedsForGarden(gardenId, tx);
+        if (activeCount > 0) {
+            return activeCount;
+        }
+
+        const [updatedGarden] = await tx
+            .update(gardens)
+            .set({ isDeleted: true })
+            .where(and(eq(gardens.id, gardenId), eq(gardens.isDeleted, false)))
+            .returning({ id: gardens.id });
+
+        if (updatedGarden) {
+            deleted = true;
+            await createEvent(
+                knownEvents.gardens.deletedV1(gardenId.toString()),
+                tx,
+            );
+        }
+
+        return 0;
+    });
+
+    if (deleted) {
+        await bustScheduleCache();
+    }
+
+    return {
+        activeRaisedBedCount,
+        deleted,
+    };
 }
 
 export async function getGardenBlocks(gardenId: number) {
