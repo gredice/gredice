@@ -3,9 +3,7 @@ import { Button } from '@gredice/ui/Button';
 import { Card, CardOverflow } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
-import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { auth } from '../../../lib/auth/auth';
@@ -50,123 +48,142 @@ export default async function AdminApprovalsPage() {
         <Stack spacing={4}>
             <Card>
                 <CardOverflow>
-                    <div className="overflow-auto">
-                        <Table>
-                            <Table.Header>
-                                <Table.Row>
-                                    <Table.Head>Vrsta</Table.Head>
-                                    <Table.Head>Zahtjev</Table.Head>
-                                    <Table.Head>Detalji</Table.Head>
-                                    <Table.Head>Zaprimljeno</Table.Head>
-                                    <Table.Head>Radnja</Table.Head>
-                                </Table.Row>
-                            </Table.Header>
-                            <Table.Body>
-                                {tasks.length === 0 && (
-                                    <Table.Row>
-                                        <Table.Cell colSpan={5}>
-                                            <NoDataPlaceholder>
-                                                Nema zahtjeva za odobrenje.
-                                            </NoDataPlaceholder>
-                                        </Table.Cell>
-                                    </Table.Row>
-                                )}
-                                {tasks.map((task) => {
-                                    const meta = taskKindMeta(task.kind);
-                                    return (
-                                        <Table.Row key={task.id}>
-                                            <Table.Cell>
-                                                <Chip
-                                                    color={meta.color}
-                                                    size="sm"
-                                                    variant="soft"
-                                                >
-                                                    {taskKindLabel(task.kind)}
-                                                </Chip>
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                <Row
-                                                    spacing={3}
-                                                    alignItems="start"
-                                                >
-                                                    {task.raisedBedId !=
-                                                    null ? (
-                                                        <RaisedBedTaskLink
-                                                            raisedBedId={
-                                                                task.raisedBedId
-                                                            }
-                                                            physicalId={
-                                                                task.raisedBedPhysicalId
-                                                            }
-                                                        />
-                                                    ) : null}
-                                                    <Stack spacing={1}>
-                                                        <Typography
-                                                            level="body2"
-                                                            semiBold
-                                                        >
-                                                            {task.title}
-                                                        </Typography>
+                    {tasks.length === 0 ? (
+                        <div className="p-4">
+                            <NoDataPlaceholder>
+                                Nema zahtjeva za odobrenje.
+                            </NoDataPlaceholder>
+                        </div>
+                    ) : (
+                        <ul className="divide-y">
+                            {tasks.map((task) => {
+                                const meta = taskKindMeta(task.kind);
+
+                                return (
+                                    <li
+                                        key={task.id}
+                                        className="transition-colors hover:bg-muted/40"
+                                    >
+                                        <div className="flex min-w-0 flex-col gap-3 px-3 py-3 sm:px-4 lg:flex-row lg:items-start lg:justify-between">
+                                            <div className="flex min-w-0 flex-1 flex-col gap-3 md:flex-row md:items-start">
+                                                <div className="flex shrink-0 items-center">
+                                                    <Chip
+                                                        color={meta.color}
+                                                        size="sm"
+                                                        variant="soft"
+                                                    >
+                                                        {taskKindLabel(
+                                                            task.kind,
+                                                        )}
+                                                    </Chip>
+                                                </div>
+                                                <div className="grid min-w-0 flex-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(12rem,0.8fr)]">
+                                                    <Stack
+                                                        spacing={1}
+                                                        className="min-w-0"
+                                                    >
+                                                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                                                            {task.raisedBedId !=
+                                                            null ? (
+                                                                <RaisedBedTaskLink
+                                                                    raisedBedId={
+                                                                        task.raisedBedId
+                                                                    }
+                                                                    physicalId={
+                                                                        task.raisedBedPhysicalId
+                                                                    }
+                                                                />
+                                                            ) : null}
+                                                            <Typography
+                                                                level="body2"
+                                                                component="h3"
+                                                                semiBold
+                                                                className="min-w-0 break-words"
+                                                            >
+                                                                {task.title}
+                                                            </Typography>
+                                                        </div>
                                                         <Typography
                                                             level="body3"
-                                                            className="text-muted-foreground"
+                                                            className="min-w-0 break-words text-muted-foreground"
                                                         >
                                                             {task.description}
                                                         </Typography>
                                                     </Stack>
-                                                </Row>
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                {task.kind ===
-                                                'plantStatusRequest' ? (
-                                                    <Stack spacing={1}>
-                                                        <Typography level="body3">
-                                                            Zatražio:{' '}
-                                                            {task.requestedBy}
-                                                        </Typography>
+                                                    <Stack
+                                                        spacing={1}
+                                                        className="min-w-0"
+                                                    >
                                                         <Typography
                                                             level="body3"
+                                                            semiBold
                                                             className="text-muted-foreground"
                                                         >
-                                                            Novo stanje:{' '}
-                                                            {
-                                                                plantFieldStatusLabel(
-                                                                    task.requestedStatus,
-                                                                ).shortLabel
-                                                            }
+                                                            Detalji
                                                         </Typography>
-                                                        {task.note ? (
-                                                            <Typography
-                                                                level="body3"
-                                                                className="max-w-md whitespace-pre-line text-muted-foreground"
-                                                            >
-                                                                {task.note}
+                                                        {task.kind ===
+                                                        'plantStatusRequest' ? (
+                                                            <>
+                                                                <Typography level="body3">
+                                                                    Zatražio:{' '}
+                                                                    {
+                                                                        task.requestedBy
+                                                                    }
+                                                                </Typography>
+                                                                <Typography
+                                                                    level="body3"
+                                                                    className="text-muted-foreground"
+                                                                >
+                                                                    Novo stanje:{' '}
+                                                                    {
+                                                                        plantFieldStatusLabel(
+                                                                            task.requestedStatus,
+                                                                        )
+                                                                            .shortLabel
+                                                                    }
+                                                                </Typography>
+                                                                {task.note ? (
+                                                                    <Typography
+                                                                        level="body3"
+                                                                        className="max-w-md whitespace-pre-line break-words text-muted-foreground"
+                                                                    >
+                                                                        {
+                                                                            task.note
+                                                                        }
+                                                                    </Typography>
+                                                                ) : null}
+                                                            </>
+                                                        ) : task.kind ===
+                                                          'scheduleOperationVerification' ? (
+                                                            <Typography level="body3">
+                                                                Označio
+                                                                završeno:{' '}
+                                                                {task.completedBy ??
+                                                                    'Nepoznato'}
                                                             </Typography>
-                                                        ) : null}
+                                                        ) : (
+                                                            <Typography level="body3">
+                                                                Čeka
+                                                                verifikaciju
+                                                                sijanja.
+                                                            </Typography>
+                                                        )}
                                                     </Stack>
-                                                ) : task.kind ===
-                                                  'scheduleOperationVerification' ? (
-                                                    <Typography level="body3">
-                                                        Označio završeno:{' '}
-                                                        {task.completedBy ??
-                                                            'Nepoznato'}
-                                                    </Typography>
-                                                ) : (
-                                                    <Typography level="body3">
-                                                        Čeka verifikaciju
-                                                        sijanja.
-                                                    </Typography>
-                                                )}
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                <LocalDateTime>
-                                                    {task.receivedAt}
-                                                </LocalDateTime>
-                                            </Table.Cell>
-                                            <Table.Cell>
+                                                </div>
+                                            </div>
+                                            <div className="flex min-w-0 flex-wrap items-center justify-start gap-2 lg:max-w-[22rem] lg:justify-end">
+                                                <Typography
+                                                    level="body3"
+                                                    className="whitespace-nowrap text-muted-foreground"
+                                                >
+                                                    Zaprimljeno:{' '}
+                                                    <LocalDateTime>
+                                                        {task.receivedAt}
+                                                    </LocalDateTime>
+                                                </Typography>
                                                 {task.kind ===
                                                 'plantStatusRequest' ? (
-                                                    <Row spacing={2}>
+                                                    <>
                                                         <form
                                                             action={approveApprovalRequestAction.bind(
                                                                 null,
@@ -194,7 +211,7 @@ export default async function AdminApprovalsPage() {
                                                                 Odbij
                                                             </Button>
                                                         </form>
-                                                    </Row>
+                                                    </>
                                                 ) : task.kind ===
                                                   'scheduleOperationVerification' ? (
                                                     <form
@@ -226,13 +243,13 @@ export default async function AdminApprovalsPage() {
                                                         </Button>
                                                     </form>
                                                 )}
-                                            </Table.Cell>
-                                        </Table.Row>
-                                    );
-                                })}
-                            </Table.Body>
-                        </Table>
-                    </div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    )}
                 </CardOverflow>
             </Card>
         </Stack>
