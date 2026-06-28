@@ -1,8 +1,7 @@
 import type { SelectCmsPage } from '@gredice/storage';
+import { List, ListItem } from '@gredice/ui/List';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
-import Link from 'next/link';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
 import { KnownPages } from '../../../../src/KnownPages';
 import { CmsPageStateChip } from './CmsPageStateChip';
@@ -39,69 +38,72 @@ function comparePagesByPublishDate(a: SelectCmsPage, b: SelectCmsPage) {
     return b.id - a.id;
 }
 
+function contentKindLabel(page: SelectCmsPage) {
+    switch (page.contentKind) {
+        case 'blog':
+            return 'Blog';
+        case 'changelog':
+            return 'Changelog';
+        default:
+            return 'Stranica';
+    }
+}
+
 export function CmsPagesTable({ pages }: { pages: SelectCmsPage[] }) {
     const sortedPages = [...pages].sort(comparePagesByPublishDate);
 
+    if (pages.length === 0) {
+        return (
+            <div className="p-4">
+                <NoDataPlaceholder />
+            </div>
+        );
+    }
+
     return (
-        <Table>
-            <Table.Header>
-                <Table.Row>
-                    <Table.Head>Naslov</Table.Head>
-                    <Table.Head>Vrsta</Table.Head>
-                    <Table.Head>Objavljeno</Table.Head>
-                </Table.Row>
-            </Table.Header>
-            <Table.Body>
-                {pages.length === 0 && (
-                    <Table.Row>
-                        <Table.Cell colSpan={3}>
-                            <NoDataPlaceholder />
-                        </Table.Cell>
-                    </Table.Row>
-                )}
-                {sortedPages.map((page) => (
-                    <Table.Row key={page.id}>
-                        <Table.Cell>
-                            <div className="flex min-w-0 items-center gap-2">
-                                {page.state !== 'published' ? (
-                                    <CmsPageStateChip state={page.state} />
-                                ) : null}
-                                <Link
-                                    className="min-w-0"
-                                    href={KnownPages.CmsPageEdit(page.id)}
+        <List className="divide-y" spacing={0}>
+            {sortedPages.map((page) => (
+                <ListItem
+                    key={page.id}
+                    href={KnownPages.CmsPageEdit(page.id)}
+                    className="rounded-none px-3 py-3 hover:bg-muted/40 sm:px-4"
+                    label={
+                        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <Typography
+                                component="span"
+                                className="min-w-0 truncate"
+                                semiBold
+                            >
+                                {page.title}
+                            </Typography>
+                            <div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end">
+                                <Typography
+                                    level="body3"
+                                    component="span"
+                                    className="whitespace-nowrap text-muted-foreground"
                                 >
-                                    <Typography
-                                        component="span"
-                                        className="block truncate"
-                                    >
-                                        {page.title}
-                                    </Typography>
-                                </Link>
+                                    {contentKindLabel(page)}
+                                </Typography>
+                                <CmsPageStateChip state={page.state} />
+                                <Typography
+                                    level="body3"
+                                    component="span"
+                                    className="whitespace-nowrap text-muted-foreground"
+                                >
+                                    Objavljeno:{' '}
+                                    {page.publishedAt ? (
+                                        <LocalDateTime time={false}>
+                                            {page.publishedAt}
+                                        </LocalDateTime>
+                                    ) : (
+                                        '-'
+                                    )}
+                                </Typography>
                             </div>
-                        </Table.Cell>
-                        <Table.Cell>
-                            <Typography secondary>
-                                {page.contentKind === 'blog'
-                                    ? 'Blog'
-                                    : page.contentKind === 'changelog'
-                                      ? 'Changelog'
-                                      : 'Stranica'}
-                            </Typography>
-                        </Table.Cell>
-                        <Table.Cell>
-                            <Typography secondary>
-                                {page.publishedAt ? (
-                                    <LocalDateTime time={false}>
-                                        {page.publishedAt}
-                                    </LocalDateTime>
-                                ) : (
-                                    '-'
-                                )}
-                            </Typography>
-                        </Table.Cell>
-                    </Table.Row>
-                ))}
-            </Table.Body>
-        </Table>
+                        </div>
+                    }
+                />
+            ))}
+        </List>
     );
 }
