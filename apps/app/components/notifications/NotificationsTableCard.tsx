@@ -110,6 +110,7 @@ export async function NotificationsTableCard({
                   notification.accountId
                 : null,
             blockId: notification.blockId,
+            category: notification.category,
             content: notification.content,
             createdAt: notification.createdAt.toISOString(),
             gardenId: notification.gardenId,
@@ -125,6 +126,8 @@ export async function NotificationsTableCard({
                 : null,
             readAt: notification.readAt?.toISOString() ?? null,
             timestamp: notification.timestamp.toISOString(),
+            type: notification.type,
+            primaryChannel: notification.primaryChannel,
             userId: notification.userId,
         }),
     );
