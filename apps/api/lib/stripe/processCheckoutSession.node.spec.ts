@@ -460,6 +460,43 @@ describe('processItem', () => {
         assert.equal(callsNamed(calls, 'createOperation').length, 0);
     });
 
+    it('uses greenhouse sowing location from scheduled plant additional data', async () => {
+        const calls: RecordedCall[] = [];
+        const dependencies = makeDependencies(calls);
+
+        await processItem(
+            {
+                accountId: 'account-1',
+                amount_total: 2500,
+                additionalData: {
+                    scheduledDate: '2026-07-01',
+                    sowingLocation: 'greenhouse',
+                },
+                cartId: 100,
+                cartItemId: 1,
+                currency: 'eur',
+                entityId: '42',
+                entityTypeName: 'plantSort',
+                gardenId: 200,
+                positionIndex: 2,
+                raisedBedId: 300,
+            },
+            dependencies,
+        );
+
+        assert.deepStrictEqual(callsNamed(calls, 'createEvent')[0]?.args, [
+            {
+                type: 'raisedBedFields.plantPlace',
+                aggregateId: '300|2',
+                data: {
+                    plantSortId: '42',
+                    scheduledDate: '2026-07-01',
+                    sowingLocation: 'greenhouse',
+                },
+            },
+        ]);
+    });
+
     it('continues operation processing when earning sunflowers fails', async () => {
         const calls: RecordedCall[] = [];
         const dependencies = makeDependencies(calls, {
