@@ -1,10 +1,11 @@
 import { getUsers } from '@gredice/storage';
 import { Card, CardOverflow } from '@gredice/ui/Card';
 import { Fence, Security, User } from '@gredice/ui/icons';
+import { List } from '@gredice/ui/List';
+import { ListItem } from '@gredice/ui/ListItem';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Stack } from '@gredice/ui/Stack';
-import { Table } from '@gredice/ui/Table';
-import Link from 'next/link';
+import { Typography } from '@gredice/ui/Typography';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { auth } from '../../../lib/auth/auth';
 import { getDateFromTimeFilter } from '../../../lib/utils/timeFilters';
@@ -78,57 +79,65 @@ export default async function UsersPage({
 
             <Card>
                 <CardOverflow>
-                    <Table>
-                        <Table.Header>
-                            <Table.Row>
-                                <Table.Head>Korisnicko ime</Table.Head>
-                                <Table.Head>Datum kreiranja</Table.Head>
-                            </Table.Row>
-                        </Table.Header>
-                        <Table.Body>
-                            {filteredUsers.length === 0 && (
-                                <Table.Row>
-                                    <Table.Cell colSpan={2}>
-                                        <NoDataPlaceholder>
-                                            Nema korisnika
-                                        </NoDataPlaceholder>
-                                    </Table.Cell>
-                                </Table.Row>
-                            )}
-                            {filteredUsers.map((user) => {
-                                const role = getUserRoleMeta(user.role);
+                    <div className="min-w-0">
+                        {filteredUsers.length === 0 ? (
+                            <div className="p-4">
+                                <NoDataPlaceholder>
+                                    Nema korisnika
+                                </NoDataPlaceholder>
+                            </div>
+                        ) : (
+                            <List className="divide-y">
+                                {filteredUsers.map((user) => {
+                                    const role = getUserRoleMeta(user.role);
 
-                                return (
-                                    <Table.Row key={user.id}>
-                                        <Table.Cell>
-                                            <div className="flex items-center gap-2">
-                                                <span
-                                                    title={role.label}
-                                                    role="img"
-                                                    aria-label={role.label}
-                                                    className="text-muted-foreground"
+                                    return (
+                                        <ListItem
+                                            key={user.id}
+                                            href={KnownPages.User(user.id)}
+                                            className="!flex-wrap !items-center !gap-x-3 !gap-y-1 !rounded-none px-3 py-3 hover:bg-muted/40 sm:!flex-nowrap sm:px-4"
+                                            label={
+                                                <div className="flex min-w-0 items-center gap-2">
+                                                    <span
+                                                        title={role.label}
+                                                        role="img"
+                                                        aria-label={role.label}
+                                                        className="shrink-0 text-muted-foreground"
+                                                    >
+                                                        {role.icon}
+                                                    </span>
+                                                    <Typography
+                                                        component="span"
+                                                        level="body2"
+                                                        semiBold
+                                                        className="min-w-0 truncate text-primary"
+                                                    >
+                                                        {user.userName}
+                                                    </Typography>
+                                                </div>
+                                            }
+                                            endDecorator={
+                                                <Typography
+                                                    component="span"
+                                                    level="body3"
+                                                    className="basis-full pl-7 text-muted-foreground sm:basis-auto sm:pl-0 sm:text-right"
                                                 >
-                                                    {role.icon}
-                                                </span>
-                                                <Link
-                                                    href={KnownPages.User(
-                                                        user.id,
-                                                    )}
-                                                >
-                                                    {user.userName}
-                                                </Link>
-                                            </div>
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            <LocalDateTime time={false}>
-                                                {user.createdAt}
-                                            </LocalDateTime>
-                                        </Table.Cell>
-                                    </Table.Row>
-                                );
-                            })}
-                        </Table.Body>
-                    </Table>
+                                                    Kreiran:{' '}
+                                                    <span className="whitespace-nowrap">
+                                                        <LocalDateTime
+                                                            time={false}
+                                                        >
+                                                            {user.createdAt}
+                                                        </LocalDateTime>
+                                                    </span>
+                                                </Typography>
+                                            }
+                                        />
+                                    );
+                                })}
+                            </List>
+                        )}
+                    </div>
                 </CardOverflow>
             </Card>
         </Stack>
