@@ -1,12 +1,13 @@
 import {
     getAllTimeSlots,
-    getDeliveryRequestsSummary,
+    getDeliveryRequestsWithEvents,
     TimeSlotStatuses,
 } from '@gredice/storage';
 import { Chip } from '@gredice/ui/Chip';
 import { Typography } from '@gredice/ui/Typography';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
 import { getDateFromTimeFilter } from '../../../../lib/utils/timeFilters';
+import { groupDeliveryRequests } from './DeliveryRequestGroups';
 import { DeliveryRequestListItem } from './DeliveryRequestListItem';
 import { DeliveryRequestSlotsProvider } from './DeliveryRequestSlotsProvider';
 import {
@@ -20,7 +21,7 @@ export async function DeliveryRequestsList({
     searchParams?: { [key: string]: string | string[] | undefined };
 }) {
     const [deliveryRequests, timeSlots] = await Promise.all([
-        getDeliveryRequestsSummary(),
+        getDeliveryRequestsWithEvents(),
         getAllTimeSlots(),
     ]);
 
@@ -74,6 +75,7 @@ export async function DeliveryRequestsList({
 
         return bSlot.getTime() - aSlot.getTime();
     });
+    const deliveryRequestGroups = groupDeliveryRequests(sortedDeliveryRequests);
     const slotOptions: DeliveryRequestSlotOption[] = timeSlots
         .filter(
             (slot) =>
@@ -94,18 +96,27 @@ export async function DeliveryRequestsList({
                 <div className="flex min-w-0 flex-col gap-2 border-b bg-card px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
                         <Chip color="neutral" size="sm" variant="soft">
-                            {sortedDeliveryRequests.length}
+                            {deliveryRequestGroups.length}
                         </Chip>
                         <Typography
                             level="body3"
                             className="text-muted-foreground"
                         >
-                            Zahtjevi za dostavu
+                            Grupirani zahtjevi za dostavu
                         </Typography>
+                        {deliveryRequestGroups.length !==
+                        sortedDeliveryRequests.length ? (
+                            <Typography
+                                level="body3"
+                                className="text-muted-foreground"
+                            >
+                                {sortedDeliveryRequests.length} zahtjeva
+                            </Typography>
+                        ) : null}
                     </div>
                 </div>
 
-                {sortedDeliveryRequests.length === 0 ? (
+                {deliveryRequestGroups.length === 0 ? (
                     <div className="p-4">
                         <NoDataPlaceholder>
                             Nema zahtjeva za dostavu
@@ -113,10 +124,10 @@ export async function DeliveryRequestsList({
                     </div>
                 ) : (
                     <ul className="divide-y">
-                        {sortedDeliveryRequests.map((request) => (
+                        {deliveryRequestGroups.map((group) => (
                             <DeliveryRequestListItem
-                                key={request.id}
-                                request={request}
+                                key={group.key}
+                                group={group}
                             />
                         ))}
                     </ul>
