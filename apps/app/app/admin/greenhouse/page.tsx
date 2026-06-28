@@ -11,7 +11,7 @@ import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Row } from '@gredice/ui/Row';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Stack } from '@gredice/ui/Stack';
-import { Table } from '@gredice/ui/Table';
+import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { auth } from '../../../lib/auth/auth';
@@ -251,113 +251,152 @@ export default async function GreenhousePage() {
                         </Row>
                     </CardHeader>
                     <CardOverflow>
-                        <Table>
-                            <Table.Header>
-                                <Table.Row>
-                                    <Table.Head className="w-20">
-                                        Polje
-                                    </Table.Head>
-                                    <Table.Head>Biljka</Table.Head>
-                                    <Table.Head>Status</Table.Head>
-                                    <Table.Head>Sijano</Table.Head>
-                                    <Table.Head>Proklijalo</Table.Head>
-                                    <Table.Head>Presađivanje</Table.Head>
-                                </Table.Row>
-                            </Table.Header>
-                            <Table.Body>
-                                {raisedBed.fields.map((field) => {
-                                    const plantSort = plantSortById.get(
-                                        field.plantSortId,
-                                    );
-                                    const plantName = getPlantName(
-                                        plantSort,
-                                        field.plantSortId,
-                                    );
+                        <ul className="divide-y">
+                            {raisedBed.fields.map((field) => {
+                                const plantSort = plantSortById.get(
+                                    field.plantSortId,
+                                );
+                                const plantName = getPlantName(
+                                    plantSort,
+                                    field.plantSortId,
+                                );
 
-                                    return (
-                                        <Table.Row
-                                            key={`${raisedBed.id}-${field.id}`}
-                                        >
-                                            <Table.Cell className="font-medium">
-                                                {field.positionIndex + 1}
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                <div className="flex min-w-0 items-center gap-3">
-                                                    <div className="relative size-9 shrink-0 overflow-hidden rounded-md border bg-muted/30">
-                                                        <PlantOrSortImage
-                                                            plantSort={
-                                                                plantSort
-                                                            }
-                                                            alt={plantName}
-                                                            fill
-                                                            className="object-contain"
-                                                            sizes="36px"
-                                                        />
-                                                    </div>
-                                                    <span className="min-w-0 font-medium">
-                                                        {plantName}
-                                                    </span>
+                                return (
+                                    <li
+                                        key={`${raisedBed.id}-${field.id}`}
+                                        className="px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4"
+                                    >
+                                        <div className="flex min-w-0 flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+                                            <div className="flex min-w-0 items-start gap-3">
+                                                <div className="relative size-10 shrink-0 overflow-hidden rounded-md border bg-muted/30">
+                                                    <PlantOrSortImage
+                                                        plantSort={plantSort}
+                                                        alt={plantName}
+                                                        fill
+                                                        className="object-contain"
+                                                        sizes="40px"
+                                                    />
                                                 </div>
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                <Chip
-                                                    color={getStatusColor(
-                                                        field.plantStatus,
-                                                    )}
-                                                    size="sm"
+                                                <Stack
+                                                    spacing={1}
+                                                    className="min-w-0"
                                                 >
-                                                    {statusLabels[
-                                                        field.plantStatus ?? ''
-                                                    ] ??
-                                                        field.plantStatus ??
-                                                        'Nepoznato'}
-                                                </Chip>
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                {sowingDateCell(
-                                                    field.plantSowDate,
-                                                    field.plantGrowthDate,
-                                                    today,
-                                                )}
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                <SproutedDateQuickAction
-                                                    raisedBedId={raisedBed.id}
-                                                    positionIndex={
-                                                        field.positionIndex
-                                                    }
-                                                    sproutedDate={
-                                                        field.plantGrowthDate ??
-                                                        null
-                                                    }
-                                                />
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                {field.plantStatus ===
-                                                    'sprouted' &&
-                                                raisedBed.accountId ? (
-                                                    <SeedlingTransplantingQuickAction
+                                                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                                                        <Chip
+                                                            size="sm"
+                                                            variant="outlined"
+                                                        >
+                                                            Polje{' '}
+                                                            {field.positionIndex +
+                                                                1}
+                                                        </Chip>
+                                                        <Typography
+                                                            level="body2"
+                                                            component="h3"
+                                                            semiBold
+                                                            className="min-w-0 break-words"
+                                                        >
+                                                            {plantName}
+                                                        </Typography>
+                                                    </div>
+                                                </Stack>
+                                            </div>
+                                            <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:min-w-[36rem] xl:justify-items-end xl:text-right">
+                                                <div className="min-w-0 space-y-1">
+                                                    <Typography
+                                                        level="body3"
+                                                        semiBold
+                                                        className="text-muted-foreground"
+                                                    >
+                                                        Status
+                                                    </Typography>
+                                                    <Chip
+                                                        color={getStatusColor(
+                                                            field.plantStatus,
+                                                        )}
+                                                        size="sm"
+                                                    >
+                                                        {statusLabels[
+                                                            field.plantStatus ??
+                                                                ''
+                                                        ] ??
+                                                            field.plantStatus ??
+                                                            'Nepoznato'}
+                                                    </Chip>
+                                                </div>
+                                                <div className="min-w-0 space-y-1">
+                                                    <Typography
+                                                        level="body3"
+                                                        semiBold
+                                                        className="text-muted-foreground"
+                                                    >
+                                                        Sijano
+                                                    </Typography>
+                                                    {sowingDateCell(
+                                                        field.plantSowDate,
+                                                        field.plantGrowthDate,
+                                                        today,
+                                                    )}
+                                                </div>
+                                                <div className="min-w-0 space-y-1">
+                                                    <Typography
+                                                        level="body3"
+                                                        semiBold
+                                                        className="text-muted-foreground"
+                                                    >
+                                                        Proklijalo
+                                                    </Typography>
+                                                    <SproutedDateQuickAction
                                                         raisedBedId={
                                                             raisedBed.id
                                                         }
                                                         positionIndex={
                                                             field.positionIndex
                                                         }
-                                                        existingOperationId={
-                                                            transplantingOperationIdsByFieldId.get(
-                                                                field.id,
-                                                            ) ?? null
+                                                        sproutedDate={
+                                                            field.plantGrowthDate ??
+                                                            null
                                                         }
                                                     />
-                                                ) : (
-                                                    '-'
-                                                )}
-                                            </Table.Cell>
-                                        </Table.Row>
-                                    );
-                                })}
-                            </Table.Body>
-                        </Table>
+                                                </div>
+                                                <div className="min-w-0 space-y-1">
+                                                    <Typography
+                                                        level="body3"
+                                                        semiBold
+                                                        className="text-muted-foreground"
+                                                    >
+                                                        Presađivanje
+                                                    </Typography>
+                                                    <div className="flex min-w-0 xl:justify-end">
+                                                        {field.plantStatus ===
+                                                            'sprouted' &&
+                                                        raisedBed.accountId ? (
+                                                            <SeedlingTransplantingQuickAction
+                                                                raisedBedId={
+                                                                    raisedBed.id
+                                                                }
+                                                                positionIndex={
+                                                                    field.positionIndex
+                                                                }
+                                                                existingOperationId={
+                                                                    transplantingOperationIdsByFieldId.get(
+                                                                        field.id,
+                                                                    ) ?? null
+                                                                }
+                                                            />
+                                                        ) : (
+                                                            <span className="text-sm text-muted-foreground">
+                                                                -
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                );
+                            })}
+                        </ul>
                     </CardOverflow>
                 </Card>
             ))}
