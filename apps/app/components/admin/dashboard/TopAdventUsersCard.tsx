@@ -1,8 +1,10 @@
 import type { AdventCalendarTopUser } from '@gredice/storage';
 import { Card, CardOverflow } from '@gredice/ui/Card';
+import { Chip } from '@gredice/ui/Chip';
 import { Stack } from '@gredice/ui/Stack';
-import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
+import Link from 'next/link';
+import { KnownPages } from '../../../src/KnownPages';
 import { NoDataPlaceholder } from '../../shared/placeholders/NoDataPlaceholder';
 
 type TopAdventUsersCardProps = {
@@ -10,47 +12,66 @@ type TopAdventUsersCardProps = {
     year: number;
 };
 
+function userLabel(user: AdventCalendarTopUser) {
+    return user.displayName || user.userName || user.userId;
+}
+
 export function TopAdventUsersCard({ users, year }: TopAdventUsersCardProps) {
     return (
         <Card>
             <CardOverflow>
-                <Stack spacing={2} className="p-4">
-                    <Typography level="h2" className="text-lg" semiBold>
-                        Advent {year} - top korisnici
-                    </Typography>
-                    <Table>
-                        <Table.Header>
-                            <Table.Row>
-                                <Table.Head>Korisnik</Table.Head>
-                                <Table.Head className="text-right">
-                                    Otvoreni dani
-                                </Table.Head>
-                            </Table.Row>
-                        </Table.Header>
-                        <Table.Body>
-                            {users.length === 0 && (
-                                <Table.Row>
-                                    <Table.Cell colSpan={2}>
-                                        <NoDataPlaceholder>
-                                            Nema otvorenih dana
-                                        </NoDataPlaceholder>
-                                    </Table.Cell>
-                                </Table.Row>
-                            )}
-                            {users.map((user) => (
-                                <Table.Row key={user.userId}>
-                                    <Table.Cell>
-                                        {user.displayName ||
-                                            user.userName ||
-                                            user.userId}
-                                    </Table.Cell>
-                                    <Table.Cell className="text-right">
-                                        {user.openedDays}
-                                    </Table.Cell>
-                                </Table.Row>
+                <Stack spacing={0}>
+                    <div className="p-4 pb-3">
+                        <Typography level="h2" className="text-lg" semiBold>
+                            Advent {year} - top korisnici
+                        </Typography>
+                    </div>
+                    {users.length === 0 ? (
+                        <div className="px-4 pb-4">
+                            <NoDataPlaceholder>
+                                Nema otvorenih dana
+                            </NoDataPlaceholder>
+                        </div>
+                    ) : (
+                        <ul className="divide-y border-t">
+                            {users.map((user, index) => (
+                                <li
+                                    key={user.userId}
+                                    className="px-4 py-3 transition-colors hover:bg-muted/40"
+                                >
+                                    <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                        <div className="flex min-w-0 items-start gap-3">
+                                            <Chip
+                                                color="neutral"
+                                                size="sm"
+                                                variant="soft"
+                                                className="mt-0.5"
+                                            >
+                                                #{index + 1}
+                                            </Chip>
+                                            <Link
+                                                href={KnownPages.User(
+                                                    user.userId,
+                                                )}
+                                                className="block min-w-0 truncate text-sm font-medium text-primary underline-offset-4 hover:underline"
+                                            >
+                                                {userLabel(user)}
+                                            </Link>
+                                        </div>
+                                        <div className="flex min-w-0 justify-start pl-9 sm:justify-end sm:pl-0">
+                                            <Chip
+                                                color="neutral"
+                                                size="sm"
+                                                variant="outlined"
+                                            >
+                                                Otvoreni dani: {user.openedDays}
+                                            </Chip>
+                                        </div>
+                                    </div>
+                                </li>
                             ))}
-                        </Table.Body>
-                    </Table>
+                        </ul>
+                    )}
                 </Stack>
             </CardOverflow>
         </Card>
