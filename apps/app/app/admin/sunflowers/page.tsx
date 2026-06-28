@@ -9,7 +9,7 @@ import { Chip } from '@gredice/ui/Chip';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
-import { Table } from '@gredice/ui/Table';
+import { Typography } from '@gredice/ui/Typography';
 import { and, desc, gte, inArray } from 'drizzle-orm';
 import Link from 'next/link';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
@@ -161,85 +161,156 @@ export default async function SunflowersPage({
 
             <Card>
                 <CardOverflow>
-                    <Table>
-                        <Table.Header>
-                            <Table.Row>
-                                <Table.Head>Tip</Table.Head>
-                                <Table.Head>Iznos</Table.Head>
-                                <Table.Head>Račun</Table.Head>
-                                <Table.Head>Korisnici računa</Table.Head>
-                                <Table.Head>Razlog</Table.Head>
-                                <Table.Head>Datum kreiranja</Table.Head>
-                            </Table.Row>
-                        </Table.Header>
-                        <Table.Body>
-                            {parsedEvents.length === 0 && (
-                                <Table.Row>
-                                    <Table.Cell colSpan={6}>
-                                        <NoDataPlaceholder>
-                                            Nema suncokreta za odabrane filtere
-                                        </NoDataPlaceholder>
-                                    </Table.Cell>
-                                </Table.Row>
-                            )}
+                    {parsedEvents.length === 0 ? (
+                        <div className="p-4">
+                            <NoDataPlaceholder>
+                                Nema suncokreta za odabrane filtere
+                            </NoDataPlaceholder>
+                        </div>
+                    ) : (
+                        <ul className="divide-y">
                             {parsedEvents.map((event) => {
                                 const accountUsers =
                                     event.account?.accountUsers ?? [];
+                                const isSpent = event.amount < 0;
+                                const eventTypeLabel = isSpent
+                                    ? 'Potrošeno'
+                                    : 'Zarađeno';
 
                                 return (
-                                    <Table.Row key={event.id}>
-                                        <Table.Cell>
-                                            {event.amount < 0
-                                                ? 'Potrošeno'
-                                                : 'Zarađeno'}
-                                        </Table.Cell>
-                                        <Table.Cell>{event.amount}</Table.Cell>
-                                        <Table.Cell>
-                                            <Link
-                                                href={KnownPages.Account(
-                                                    event.aggregateId,
-                                                )}
+                                    <li
+                                        key={event.id}
+                                        className="px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4"
+                                    >
+                                        <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                            <Stack
+                                                spacing={2}
+                                                className="min-w-0 flex-1"
                                             >
-                                                {event.aggregateId}
-                                            </Link>
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            <Stack spacing={1}>
-                                                {accountUsers.length === 0 &&
-                                                    '-'}
-                                                {accountUsers.map(
-                                                    (accountUser) => {
-                                                        const user =
-                                                            accountUser.user;
-                                                        const label =
-                                                            user.displayName?.trim() ||
-                                                            user.userName ||
-                                                            user.id;
-                                                        return (
-                                                            <Link
-                                                                href={KnownPages.User(
-                                                                    user.id,
+                                                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                                                    <Chip
+                                                        color={
+                                                            isSpent
+                                                                ? 'error'
+                                                                : 'success'
+                                                        }
+                                                        size="sm"
+                                                        variant="soft"
+                                                    >
+                                                        {eventTypeLabel}
+                                                    </Chip>
+                                                    <Chip
+                                                        color="neutral"
+                                                        size="sm"
+                                                        variant="outlined"
+                                                    >
+                                                        Iznos: {event.amount}
+                                                    </Chip>
+                                                    <Link
+                                                        href={KnownPages.Account(
+                                                            event.aggregateId,
+                                                        )}
+                                                        className="min-w-0 break-all text-sm font-medium text-primary underline-offset-4 hover:underline"
+                                                    >
+                                                        {event.aggregateId}
+                                                    </Link>
+                                                </div>
+
+                                                <div className="grid min-w-0 gap-3 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+                                                    <Stack
+                                                        spacing={1}
+                                                        className="min-w-0"
+                                                    >
+                                                        <Typography
+                                                            level="body3"
+                                                            semiBold
+                                                            className="text-muted-foreground"
+                                                        >
+                                                            Korisnici računa
+                                                        </Typography>
+                                                        {accountUsers.length ===
+                                                        0 ? (
+                                                            <Typography level="body2">
+                                                                -
+                                                            </Typography>
+                                                        ) : (
+                                                            <div className="flex min-w-0 flex-wrap gap-x-3 gap-y-1">
+                                                                {accountUsers.map(
+                                                                    (
+                                                                        accountUser,
+                                                                    ) => {
+                                                                        const user =
+                                                                            accountUser.user;
+                                                                        const label =
+                                                                            user.displayName?.trim() ||
+                                                                            user.userName ||
+                                                                            user.id;
+                                                                        return (
+                                                                            <Link
+                                                                                href={KnownPages.User(
+                                                                                    user.id,
+                                                                                )}
+                                                                                key={`${event.id}-${user.id}`}
+                                                                                className="min-w-0 break-words text-sm text-primary underline-offset-4 hover:underline [overflow-wrap:anywhere]"
+                                                                            >
+                                                                                {
+                                                                                    label
+                                                                                }
+                                                                            </Link>
+                                                                        );
+                                                                    },
                                                                 )}
-                                                                key={`${event.id}-${user.id}`}
-                                                            >
-                                                                {label}
-                                                            </Link>
-                                                        );
-                                                    },
-                                                )}
+                                                            </div>
+                                                        )}
+                                                    </Stack>
+
+                                                    <Stack
+                                                        spacing={1}
+                                                        className="min-w-0"
+                                                    >
+                                                        <Typography
+                                                            level="body3"
+                                                            semiBold
+                                                            className="text-muted-foreground"
+                                                        >
+                                                            Razlog
+                                                        </Typography>
+                                                        <Typography
+                                                            level="body2"
+                                                            className="min-w-0 whitespace-pre-wrap break-words"
+                                                        >
+                                                            {event.reason}
+                                                        </Typography>
+                                                    </Stack>
+                                                </div>
                                             </Stack>
-                                        </Table.Cell>
-                                        <Table.Cell>{event.reason}</Table.Cell>
-                                        <Table.Cell>
-                                            <LocalDateTime>
-                                                {event.createdAt}
-                                            </LocalDateTime>
-                                        </Table.Cell>
-                                    </Table.Row>
+
+                                            <Stack
+                                                spacing={1}
+                                                className="min-w-0 lg:items-end lg:text-right"
+                                            >
+                                                <Typography
+                                                    level="body3"
+                                                    semiBold
+                                                    className="text-muted-foreground"
+                                                >
+                                                    Datum kreiranja
+                                                </Typography>
+                                                <Typography
+                                                    level="body2"
+                                                    className="whitespace-nowrap"
+                                                >
+                                                    <LocalDateTime>
+                                                        {event.createdAt}
+                                                    </LocalDateTime>
+                                                </Typography>
+                                            </Stack>
+                                        </div>
+                                    </li>
                                 );
                             })}
-                        </Table.Body>
-                    </Table>
+                        </ul>
+                    )}
                 </CardOverflow>
             </Card>
         </Stack>
