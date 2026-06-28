@@ -1,6 +1,5 @@
 import type { OperationData } from '@gredice/client';
 import { Alert } from '@gredice/ui/Alert';
-import { Button } from '@gredice/ui/Button';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Close, Search } from '@gredice/ui/icons';
 import { List } from '@gredice/ui/List';
@@ -15,7 +14,6 @@ import {
 import { useOperations } from '../../../hooks/useOperations';
 import { usePlantSort } from '../../../hooks/usePlantSorts';
 import { ScrollView } from '../../../shared-ui/ScrollView';
-import { useShoppingCartOpenParam } from '../../../useUrlState';
 import { OperationListItemSkeleton } from '../OperationListItemSkeleton';
 import { OperationsListItem } from './OperationsListItem';
 import { useOperationContextIndicators } from './useOperationContextIndicators';
@@ -100,7 +98,6 @@ export function OperationsList({
     const { data: plantSort, isLoading: isPlantSortLoading } =
         usePlantSort(plantSortId);
     const favoriteOperationIds = useFavoriteIds('operation');
-    const [, setShoppingCartOpen] = useShoppingCartOpenParam();
     const isLoading =
         isLoadingOperations || (Boolean(plantSortId) && isPlantSortLoading);
     const [search, setSearch] = useState('');
@@ -170,24 +167,6 @@ export function OperationsList({
             </Row>
             {isError && (
                 <Alert color="danger">Greška prilikom učitavanja radnji</Alert>
-            )}
-            {cartOperations.length > 0 && (
-                <Row
-                    justifyContent="space-between"
-                    alignItems="center"
-                    className="px-1"
-                >
-                    <Alert color="warning" className="py-1">
-                        Radnje u košari (nisu kupljene) su na vrhu popisa.
-                    </Alert>
-                    <Button
-                        size="sm"
-                        variant="link"
-                        onClick={() => setShoppingCartOpen(true)}
-                    >
-                        Otvori košaru
-                    </Button>
-                </Row>
             )}
             <OperationsListContent
                 operations={sortedOperations}
