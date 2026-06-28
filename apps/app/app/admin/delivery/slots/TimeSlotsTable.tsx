@@ -1,16 +1,17 @@
 import {
+    AUTO_CLOSE_WINDOW_HOURS,
     getAllTimeSlots,
     getPickupLocations,
     getTimeSlotEffectiveClosesAt,
     TimeSlotStatuses,
 } from '@gredice/storage';
 import { Chip } from '@gredice/ui/Chip';
-import { LocalDateTime, TimeRange } from '@gredice/ui/LocalDateTime';
-import { Stack } from '@gredice/ui/Stack';
+import { TimeRange } from '@gredice/ui/LocalDateTime';
 import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
 import { SlotActionButtons } from './SlotActionButtons';
+import { SlotClosingCountdown } from './SlotClosingCountdown';
 
 export async function TimeSlotsTable({
     status = 'active',
@@ -116,21 +117,14 @@ export async function TimeSlotsTable({
                                 </Typography>
                             </Table.Cell>
                             <Table.Cell>
-                                <Stack spacing={1}>
-                                    <Typography level="body2">
-                                        <LocalDateTime>
-                                            {closesAt}
-                                        </LocalDateTime>
-                                    </Typography>
-                                    <Typography
-                                        level="body3"
-                                        className="text-muted-foreground"
-                                    >
-                                        {slot.closesAt
+                                <SlotClosingCountdown
+                                    closeAt={closesAt.toISOString()}
+                                    sourceLabel={
+                                        slot.closesAt
                                             ? 'Ručno postavljeno'
-                                            : 'Automatski 48 h prije'}
-                                    </Typography>
-                                </Stack>
+                                            : `Automatski ${AUTO_CLOSE_WINDOW_HOURS} h prije`
+                                    }
+                                />
                             </Table.Cell>
                             <Table.Cell>
                                 <Chip color={getStatusColor(slot.status)}>
