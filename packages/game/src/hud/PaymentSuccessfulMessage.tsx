@@ -3,13 +3,13 @@
 import { Button } from '@gredice/ui/Button';
 import { useSearchParam } from '@gredice/ui/hooks';
 import { Navigate } from '@gredice/ui/icons';
-import { Modal } from '@gredice/ui/Modal';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import { useState } from 'react';
 import Confetti from 'react-confetti-boom';
 import { useGameAudio } from '../hooks/useGameAudio';
+import { GameModal } from '../shared-ui/game-modal';
 
 export function PaymentSuccessfulMessage() {
     const [showSuccessMessage, setShowSuccessMessage] =
@@ -35,11 +35,11 @@ export function PaymentSuccessfulMessage() {
     };
 
     return (
-        <Modal
+        <GameModal
             title={title}
             open={open}
             onOpenChange={handleOpenChange}
-            className="max-w-screen-md border-tertiary border-b-4"
+            className="max-w-screen-md"
         >
             <div className="grid md:grid-cols-2 [grid-template-areas:'sunflower'_'content'] md:[grid-template-areas:'content_sunflower'] md:p-4 gap-4">
                 <Stack spacing={6} className="[grid-area:content]">
@@ -76,6 +76,6 @@ export function PaymentSuccessfulMessage() {
                     </div>
                 </div>
             </div>
-        </Modal>
+        </GameModal>
     );
 }

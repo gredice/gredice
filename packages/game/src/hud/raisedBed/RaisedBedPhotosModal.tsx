@@ -4,7 +4,6 @@ import { Button } from '@gredice/ui/Button';
 import { Chip } from '@gredice/ui/Chip';
 import { ImageGallery } from '@gredice/ui/ImageGallery';
 import { Camera, Navigate } from '@gredice/ui/icons';
-import { Modal } from '@gredice/ui/Modal';
 import { NoDataPlaceholder } from '@gredice/ui/NoDataPlaceholder';
 import { Row } from '@gredice/ui/Row';
 import { Spinner } from '@gredice/ui/Spinner';
@@ -16,6 +15,7 @@ import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useGardenOperations } from '../../hooks/useGardenOperations';
 import { useOperations } from '../../hooks/useOperations';
 import { useRaisedBedAiHistory } from '../../hooks/useRaisedBedAiHistory';
+import { GameModal } from '../../shared-ui/game-modal';
 import { sortOperationTasksNewestFirst } from '../gardenOperationOrdering';
 import { RaisedBedDiaryAiAction } from './RaisedBedDiaryAiAction';
 import {
@@ -292,9 +292,9 @@ export function RaisedBedPhotosModal({
         );
 
     return (
-        <Modal
+        <GameModal
             title={modalTitle}
-            className="overflow-x-hidden md:max-w-5xl md:border-tertiary md:border-b-4"
+            className="overflow-x-hidden md:max-w-5xl"
             trigger={trigger}
         >
             <Stack
@@ -473,6 +473,6 @@ export function RaisedBedPhotosModal({
                     </Button>
                 )}
             </Stack>
-        </Modal>
+        </GameModal>
     );
 }

@@ -1,7 +1,6 @@
 import { useSearchParam } from '@gredice/ui/hooks';
 import { List } from '@gredice/ui/List';
 import { ListItem } from '@gredice/ui/ListItem';
-import { Modal } from '@gredice/ui/Modal';
 import { SelectItems } from '@gredice/ui/SelectItems';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -14,6 +13,7 @@ import {
     notificationsFilterSearchParam,
     notificationsViewSearchParam,
 } from '../notificationFilters';
+import { GameModal } from '../shared-ui/game-modal';
 import { ProfileInfo } from '../shared-ui/ProfileInfo';
 import { AccountUsersTab } from './components/AccountUsersTab';
 import { AchievementsTab } from './components/AchievementsTab';
@@ -168,10 +168,10 @@ export function OverviewModal() {
     };
 
     return (
-        <Modal
+        <GameModal
             open={Boolean(settingsMode)}
             onOpenChange={handleOpenChange}
-            className="max-h-[90dvh] overflow-hidden md:min-w-full lg:min-w-[80%] xl:min-w-[60%] md:min-h-[70%] md:max-h-full md:border-tertiary md:border-b-4"
+            className="max-h-[90dvh] overflow-hidden md:min-w-full lg:min-w-[80%] xl:min-w-[60%] md:min-h-[70%] md:max-h-full"
             title="Profil"
         >
             <div className="grid max-h-[calc(90dvh-5rem)] min-h-0 grid-rows-[auto_1fr] gap-4 overflow-y-auto pr-1 md:gap-0 md:grid-rows-1 md:grid-cols-[minmax(230px,auto)_1fr] md:overflow-hidden md:pr-0">
@@ -234,6 +234,6 @@ export function OverviewModal() {
                     {settingsMode === 'preporuke' && <ReferralsTab />}
                 </div>
             </div>
-        </Modal>
+        </GameModal>
     );
 }

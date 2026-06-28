@@ -1,12 +1,12 @@
 import { Button } from '@gredice/ui/Button';
 import { Discount } from '@gredice/ui/icons';
-import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useOutletOffers } from '../hooks/useOutletOffers';
+import { GameModal } from '../shared-ui/game-modal';
 import { useOutletOpenParam } from '../useUrlState';
 import { HudCard } from './components/HudCard';
 
@@ -43,7 +43,7 @@ export function OutletHud() {
 
     return (
         <HudCard open position="floating" className="static p-0.5">
-            <Modal
+            <GameModal
                 open={isOpen}
                 onOpenChange={(open) => {
                     setOutletParam(open ? '1' : null);
@@ -54,8 +54,9 @@ export function OutletHud() {
                     }
                 }}
                 title="Outlet sadnica"
-                className="z-[46] border-tertiary border-b-4 md:max-w-2xl"
-                overlayClassName="z-[46]"
+                className="md:max-w-2xl"
+                headerIcon={<Discount className="size-7 shrink-0" />}
+                hudLayer
                 trigger={
                     <Button
                         title="Outlet sadnica"
@@ -154,7 +155,7 @@ export function OutletHud() {
                         })}
                     </div>
                 </Stack>
-            </Modal>
+            </GameModal>
         </HudCard>
     );
 }

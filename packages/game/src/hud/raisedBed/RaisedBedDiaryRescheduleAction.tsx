@@ -2,7 +2,6 @@ import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { Input } from '@gredice/ui/Input';
 import { Calendar } from '@gredice/ui/icons';
-import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@gredice/ui/Tooltip';
@@ -14,6 +13,7 @@ import {
     getMinimumDiaryRescheduleDateInput,
     useRescheduleDiaryEntry,
 } from '../../hooks/useRescheduleDiaryEntry';
+import { GameModal } from '../../shared-ui/game-modal';
 
 export function RaisedBedDiaryRescheduleAction({
     disabledReason,
@@ -97,7 +97,7 @@ export function RaisedBedDiaryRescheduleAction({
     }
 
     return (
-        <Modal
+        <GameModal
             title={`${modalActionLabel} ${entryName}`}
             open={open}
             onOpenChange={(nextOpen) => {
@@ -160,6 +160,6 @@ export function RaisedBedDiaryRescheduleAction({
                     </Row>
                 </Stack>
             </form>
-        </Modal>
+        </GameModal>
     );
 }

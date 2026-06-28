@@ -5,7 +5,6 @@ import { Chip } from '@gredice/ui/Chip';
 import { DotIndicator } from '@gredice/ui/DotIndicator';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Check, ExpandDown } from '@gredice/ui/icons';
-import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -26,6 +25,7 @@ import {
     useTutorialChecklist,
 } from '../hooks/useTutorialChecklist';
 import { KnownPages } from '../knownPages';
+import { GameModal } from '../shared-ui/game-modal';
 import { useSetRaisedBedCloseupParam } from '../useRaisedBedCloseup';
 import { useBackpackOpenParam, useShoppingCartOpenParam } from '../useUrlState';
 import { getRaisedBedBlockIds } from '../utils/raisedBedBlocks';
@@ -964,11 +964,11 @@ export function TutorialChecklistHud() {
                     <DotIndicator color="success" size={16} />
                 </div>
             )}
-            <Modal
-                className="z-[46] border-tertiary border-b-4 md:max-w-3xl"
+            <GameModal
+                className="md:max-w-3xl"
+                hudLayer
                 onOpenChange={handleOpenChange}
                 open={isOpen}
-                overlayClassName="z-[46]"
                 title="Zadaci za novi vrt"
                 trigger={
                     <IconButton
@@ -1029,7 +1029,7 @@ export function TutorialChecklistHud() {
                     onDismissCompleted={handleDismissCompleted}
                     onOpenChange={handleOpenChange}
                 />
-            </Modal>
+            </GameModal>
         </HudCard>
     );
 }

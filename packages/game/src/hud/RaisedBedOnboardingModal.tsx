@@ -15,7 +15,6 @@ import {
     ShoppingCart,
     Sprout,
 } from '@gredice/ui/icons';
-import { Modal } from '@gredice/ui/Modal';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -42,6 +41,7 @@ import {
     showShoppingCartTransientHub,
 } from '../hooks/useShoppingCartTransientHub';
 import { KnownPages } from '../knownPages';
+import { GameModal } from '../shared-ui/game-modal';
 import { useGameState } from '../useGameState';
 import { useSetRaisedBedCloseupParam } from '../useRaisedBedCloseup';
 import { isRaisedBedFieldOccupied } from '../utils/raisedBedFields';
@@ -1072,7 +1072,7 @@ export function RaisedBedOnboardingModal({
     );
 
     const modal = (
-        <Modal
+        <GameModal
             title="Brzi plan gredice"
             open={open}
             onOpenChange={(nextOpen) => {
@@ -1500,7 +1500,7 @@ export function RaisedBedOnboardingModal({
                     </Stack>
                 </div>
             </div>
-        </Modal>
+        </GameModal>
     );
 
     if (showTrigger) {

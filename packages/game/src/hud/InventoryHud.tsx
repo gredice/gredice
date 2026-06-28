@@ -4,7 +4,6 @@ import { BlockImage } from '@gredice/ui/BlockImage';
 import { Button } from '@gredice/ui/Button';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Add } from '@gredice/ui/icons';
-import { Modal } from '@gredice/ui/Modal';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Row } from '@gredice/ui/Row';
@@ -23,6 +22,7 @@ import { useGardenBoxPlaceBlock } from '../hooks/useGardenBoxPlaceBlock';
 import { useInventory } from '../hooks/useInventory';
 import { useOperations } from '../hooks/useOperations';
 import { useSorts } from '../hooks/usePlantSorts';
+import { GameModal } from '../shared-ui/game-modal';
 import { useGameState } from '../useGameState';
 import {
     normalizeBackpackTab,
@@ -320,7 +320,7 @@ function InventoryItemModal({
     }
 
     return (
-        <Modal
+        <GameModal
             open={open}
             onOpenChange={(isOpen) => !isOpen && onClose()}
             title={displayName}
@@ -437,7 +437,7 @@ function InventoryItemModal({
                     </Stack>
                 )}
             </Stack>
-        </Modal>
+        </GameModal>
     );
 }
 
@@ -637,10 +637,11 @@ export function InventoryHud() {
 
     return (
         <HudCard open position="floating" className="static p-0.5">
-            <Modal
+            <GameModal
                 open={isOpen}
                 onOpenChange={handleOpenChange}
                 title="Inventar"
+                headerIcon={<BackpackIcon className="size-7 shrink-0" />}
                 trigger={
                     <IconButton
                         variant="plain"
@@ -667,12 +668,6 @@ export function InventoryHud() {
                 }
             >
                 <Stack spacing={4}>
-                    <Row spacing={2}>
-                        <BackpackIcon className="size-8 shrink-0" />
-                        <Typography level="h6" className="font-bold">
-                            Inventar
-                        </Typography>
-                    </Row>
                     <Tabs
                         value={backpackTab}
                         onValueChange={handleTabChange}
@@ -771,7 +766,7 @@ export function InventoryHud() {
                         </TabsContent>
                     </Tabs>
                 </Stack>
-            </Modal>
+            </GameModal>
 
             {selectedItem && (
                 <InventoryItemModal

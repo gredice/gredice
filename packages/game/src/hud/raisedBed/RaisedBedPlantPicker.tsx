@@ -11,7 +11,6 @@ import {
     ShoppingCart,
     Sprout,
 } from '@gredice/ui/icons';
-import { Modal } from '@gredice/ui/Modal';
 import { PlantingSeedIcon } from '@gredice/ui/PlantingSeedIcon';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -48,6 +47,7 @@ import {
     showShoppingCartTransientHub,
 } from '../../hooks/useShoppingCartTransientHub';
 import { KnownPages } from '../../knownPages';
+import { GameModal } from '../../shared-ui/game-modal';
 import { PlantsList } from './PlantsList';
 import { PlantsSortList } from './PlantsSortList';
 import {
@@ -558,13 +558,13 @@ export function PlantPicker({
     }
 
     return (
-        <Modal
+        <GameModal
             trigger={trigger}
             open={open}
             onOpenChange={handleOpenChange}
             title={'Sijanje biljke'}
             modal={false}
-            className="md:border-tertiary md:border-b-4 md:max-w-2xl"
+            className="md:max-w-2xl"
         >
             <Stack spacing={4}>
                 <SegmentedProgress
@@ -1026,6 +1026,6 @@ export function PlantPicker({
                     </>
                 )}
             </Stack>
-        </Modal>
+        </GameModal>
     );
 }

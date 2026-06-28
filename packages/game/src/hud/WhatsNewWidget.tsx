@@ -5,7 +5,6 @@ import { Button } from '@gredice/ui/Button';
 import { CmsMediaImage } from '@gredice/ui/cms';
 import { Close, ExternalLink } from '@gredice/ui/icons';
 import { Markdown } from '@gredice/ui/Markdown';
-import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
@@ -28,6 +27,7 @@ import {
     whatsNewEntriesAudienceTag,
 } from '../hooks/useWhatsNewEntries';
 import { KnownPages } from '../knownPages';
+import { GameModal } from '../shared-ui/game-modal';
 
 function formatEntryDate(value: Date | null) {
     if (!value) {
@@ -370,8 +370,8 @@ export function WhatsNewWidget({
                     </div>
                 </div>
             ) : null}
-            <Modal
-                className="max-w-2xl overflow-hidden border-tertiary border-b-4 p-0"
+            <GameModal
+                className="max-w-2xl overflow-hidden p-0"
                 onOpenChange={setModalOpen}
                 open={modalOpen}
                 title="Što je novo"
@@ -514,7 +514,7 @@ export function WhatsNewWidget({
                         </Stack>
                     </div>
                 </div>
-            </Modal>
+            </GameModal>
         </>
     );
 }

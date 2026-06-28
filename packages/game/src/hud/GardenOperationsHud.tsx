@@ -15,7 +15,6 @@ import {
     Navigate,
     ShoppingCart,
 } from '@gredice/ui/icons';
-import { Modal } from '@gredice/ui/Modal';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { Popper } from '@gredice/ui/Popper';
 import { PlantOrSortImage } from '@gredice/ui/plants';
@@ -56,6 +55,7 @@ import {
     type ShoppingCartItemData,
     useShoppingCart,
 } from '../hooks/useShoppingCart';
+import { GameModal } from '../shared-ui/game-modal';
 import { ScrollView } from '../shared-ui/ScrollView';
 import { useShoppingCartOpenParam } from '../useUrlState';
 import { sortOperationTasksNewestFirst } from './gardenOperationOrdering';
@@ -1723,7 +1723,7 @@ function HistoryModal({
     referenceDate: Date;
 }) {
     return (
-        <Modal
+        <GameModal
             title="Povijest radnji"
             trigger={trigger}
             className="md:max-w-4xl"
@@ -1821,7 +1821,7 @@ function HistoryModal({
                     </Stack>
                 </ScrollView>
             </Stack>
-        </Modal>
+        </GameModal>
     );
 }
 

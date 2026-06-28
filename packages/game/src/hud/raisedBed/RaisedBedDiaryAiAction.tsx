@@ -1,6 +1,5 @@
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
-import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -10,6 +9,7 @@ import { AiAnalysisRequestError } from '../../hooks/aiAnalysisError';
 import { useRaisedBedAiAnalysis } from '../../hooks/useRaisedBedAiAnalysis';
 import { useRaisedBedFieldAiAnalysis } from '../../hooks/useRaisedBedFieldAiAnalysis';
 import { ButtonGreen } from '../../shared-ui/ButtonGreen';
+import { GameModal } from '../../shared-ui/game-modal';
 import { RaisedBedAiOperationMarkdown } from './RaisedBedAiOperationMarkdown';
 import styles from './RaisedBedDiaryAiAction.module.css';
 
@@ -279,7 +279,7 @@ export function RaisedBedDiaryAiAction({
                         : 'Pitaj suncokret za savjete'}
                 </ButtonGreen>
             </Stack>
-            <Modal
+            <GameModal
                 open={open}
                 onOpenChange={handleOpenChange}
                 title="AI analiza fotografije"
@@ -479,7 +479,7 @@ export function RaisedBedDiaryAiAction({
                         </Row>
                     </Stack>
                 </div>
-            </Modal>
+            </GameModal>
         </>
     );
 }

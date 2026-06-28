@@ -1,5 +1,4 @@
 import { Check, Navigate } from '@gredice/ui/icons';
-import { Modal } from '@gredice/ui/Modal';
 import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -13,6 +12,7 @@ import {
 } from '../hooks/useCurrentGarden';
 import { isRaisedBedAbandoned } from '../raisedBedConstants';
 import { ButtonGreen } from '../shared-ui/ButtonGreen';
+import { GameModal } from '../shared-ui/game-modal';
 import { useGameState } from '../useGameState';
 import { useRemoveRaisedBedCloseupParam } from '../useRaisedBedCloseup';
 import {
@@ -100,7 +100,7 @@ export function RaisedBedFieldHud() {
                                 />
                             </div>
                         )}
-                        <Modal
+                        <GameModal
                             open={isInfoOpen}
                             onOpenChange={(open) => {
                                 if (open) {
@@ -114,7 +114,7 @@ export function RaisedBedFieldHud() {
                             }}
                             title="Informacije o gredici"
                             modal={false}
-                            className="overflow-x-hidden md:border-tertiary md:border-b-4"
+                            className="overflow-x-hidden"
                             trigger={
                                 <ButtonGreen
                                     className="max-w-64 md:max-w-[312px]"
@@ -139,7 +139,7 @@ export function RaisedBedFieldHud() {
                                 gardenId={currentGarden.id}
                                 raisedBed={raisedBed}
                             />
-                        </Modal>
+                        </GameModal>
                     </div>
                 </div>
             )}
