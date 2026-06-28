@@ -1,9 +1,9 @@
 import type { PlantData, PlantSortData } from '@gredice/client';
-import { BackpackIcon } from '@gredice/ui/BackpackIcon';
 import { Button } from '@gredice/ui/Button';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Input } from '@gredice/ui/Input';
 import {
+    Calendar,
     Check,
     Close,
     Left,
@@ -144,6 +144,10 @@ function isGreenhouseSowing(additionalData?: string | null) {
     return parseAdditionalData(additionalData).sowingLocation === 'greenhouse';
 }
 
+type PlantPickerOptions = {
+    scheduledDate: Date | null | undefined;
+};
+
 type PlantPickerProps = {
     positionIndex: number;
     gardenId: number;
@@ -152,7 +156,7 @@ type PlantPickerProps = {
     inShoppingCart?: boolean;
     selectedPlantId?: number | null;
     selectedSortId?: number | null;
-    selectedPlantOptions?: { scheduledDate: Date | null | undefined } | null;
+    selectedPlantOptions?: PlantPickerOptions | null;
 };
 
 export function PlantPicker({
@@ -202,9 +206,9 @@ export function PlantPicker({
     const [selectedSortId, setSelectedSortId] = useState<number | null>(
         preselectedSortId ?? null,
     );
-    const [plantOptions, setPlantOptions] = useState<{
-        scheduledDate: Date | null | undefined;
-    } | null>(preselectedPlantOptions ?? null);
+    const [plantOptions, setPlantOptions] = useState<PlantPickerOptions | null>(
+        preselectedPlantOptions ?? null,
+    );
     const [flyToShoppingCart, setFlyToShoppingCart] = useState(false);
     const [useInventoryItem, setUseInventoryItem] = useState(false);
     const [useOutletOffer, setUseOutletOffer] = useState(false);
@@ -475,17 +479,34 @@ export function PlantPicker({
     const plantDate = formatLocalDate(plantOptions?.scheduledDate ?? tomorrow);
     function handlePlantDateChange(date: string) {
         const parsedDate = date ? new Date(date) : null;
-        setPlantOptions({ scheduledDate: parsedDate });
+        setPlantOptions({
+            scheduledDate: parsedDate,
+        });
     }
 
     const min = formatLocalDate(tomorrow);
     const max = formatLocalDate(threeMonthsFromTomorrow);
 
-    const availableFromInventory = inventory?.items?.find(
-        (item) =>
-            item.entityTypeName === 'plantSort' &&
-            item.entityId === selectedSortId?.toString(),
-    )?.amount;
+    const inventoryAvailabilityBySortId = useMemo(() => {
+        const availabilityBySortId = new Map<number, number>();
+        for (const item of inventory?.items ?? []) {
+            if (item.entityTypeName !== 'plantSort') {
+                continue;
+            }
+
+            const sortId = Number(item.entityId);
+            if (!Number.isInteger(sortId) || item.amount <= 0) {
+                continue;
+            }
+
+            availabilityBySortId.set(
+                sortId,
+                (availabilityBySortId.get(sortId) ?? 0) + item.amount,
+            );
+        }
+
+        return availabilityBySortId;
+    }, [inventory?.items]);
     const outletOffersBySortId = useMemo(
         () => groupOutletOffersBySortId(outletOffers),
         [outletOffers],
@@ -518,6 +539,23 @@ export function PlantPicker({
         raisedBedId,
         sorts: allSorts,
     });
+    function handleSortInventoryToggle(sort: PlantSortData) {
+        const nextUseInventory = !(
+            selectedSortId === sort.id && useInventoryItem
+        );
+        track('game_plant_inventory_toggled', {
+            garden_id: gardenId,
+            position_index: positionIndex,
+            raised_bed_id: raisedBedId,
+            sort_id: sort.id,
+            use_inventory: nextUseInventory,
+        });
+        setSelectedSortId(sort.id);
+        setUseOutletOffer(false);
+        setSelectedOutletOfferId(null);
+        setUseInventoryItem(nextUseInventory);
+        resetSearch();
+    }
 
     return (
         <Modal
@@ -621,6 +659,13 @@ export function PlantPicker({
                                 neighborPlants={neighborPlants}
                                 flyToShoppingCart={flyToShoppingCart}
                                 outletOffersBySortId={outletOffersBySortId}
+                                inventoryAvailabilityBySortId={
+                                    inventoryAvailabilityBySortId
+                                }
+                                inventorySelectedSortId={
+                                    useInventoryItem ? selectedSortId : null
+                                }
+                                onInventoryToggle={handleSortInventoryToggle}
                             />
                             {isSandbox ? (
                                 <Stack spacing={1}>
@@ -857,45 +902,6 @@ export function PlantPicker({
                                             ) : null}
                                         </Stack>
                                     ) : null}
-                                    <Row spacing={2} className="flex-wrap">
-                                        <Button
-                                            variant={
-                                                availableFromInventory &&
-                                                useInventoryItem
-                                                    ? 'solid'
-                                                    : 'outlined'
-                                            }
-                                            size="sm"
-                                            disabled={
-                                                !availableFromInventory ||
-                                                Boolean(selectedOutletOffer) ||
-                                                selectedOutletOfferUnavailable
-                                            }
-                                            startDecorator={
-                                                <BackpackIcon className="size-5 shrink-0" />
-                                            }
-                                            onClick={() => {
-                                                track(
-                                                    'game_plant_inventory_toggled',
-                                                    {
-                                                        garden_id: gardenId,
-                                                        position_index:
-                                                            positionIndex,
-                                                        raised_bed_id:
-                                                            raisedBedId,
-                                                        sort_id: selectedSortId,
-                                                        use_inventory:
-                                                            !useInventoryItem,
-                                                    },
-                                                );
-                                                setUseInventoryItem(
-                                                    (previous) => !previous,
-                                                );
-                                            }}
-                                        >
-                                            {`U ruksaku (${availableFromInventory ?? 0})`}
-                                        </Button>
-                                    </Row>
                                     {selectedOutletOffer ? (
                                         <div className="rounded-lg border border-green-300 bg-green-50 p-3 text-sm text-green-900 dark:border-green-900 dark:bg-green-950/40 dark:text-green-100">
                                             Presadnica je posijana{' '}
@@ -908,37 +914,23 @@ export function PlantPicker({
                                             kratko nakon dodavanja u košaru.
                                         </div>
                                     ) : selectedOutletOfferUnavailable ? null : (
-                                        <>
-                                            <div
-                                                className={cx(
-                                                    'rounded-lg border p-3 transition-colors',
-                                                    sowInGreenhouse
-                                                        ? 'border-green-500 bg-green-50 text-green-950 dark:border-green-700 dark:bg-green-950/40 dark:text-green-100'
-                                                        : 'border-input bg-card',
-                                                )}
-                                            >
-                                                <Switch
-                                                    checked={sowInGreenhouse}
-                                                    onCheckedChange={
-                                                        handleGreenhouseSowingChange
-                                                    }
-                                                    size="sm"
-                                                    label={
-                                                        <span className="inline-flex items-center gap-1">
-                                                            <Sprout className="size-4 shrink-0" />
-                                                            <span>
-                                                                Staklenik
-                                                            </span>
-                                                        </span>
-                                                    }
-                                                    description="Sadnica počinje u stakleniku i kasnije se presađuje u gredicu."
-                                                />
-                                            </div>
+                                        <div
+                                            className={cx(
+                                                'grid gap-2 rounded-lg border p-3 transition-colors md:grid-cols-[minmax(0,1fr)_auto] md:items-end',
+                                                sowInGreenhouse
+                                                    ? 'border-green-500 bg-green-50 text-green-950 dark:border-green-700 dark:bg-green-950/40 dark:text-green-100'
+                                                    : 'border-green-200 bg-green-50/70 dark:border-green-900 dark:bg-green-950/30',
+                                            )}
+                                        >
                                             <Input
                                                 type="date"
                                                 label="Datum sijanja"
                                                 name="plantDate"
-                                                className="w-full bg-card"
+                                                className="w-full border-green-200 bg-card dark:border-green-900"
+                                                fullWidth
+                                                startDecorator={
+                                                    <Calendar className="ml-3 size-4 shrink-0 text-green-700 dark:text-green-300" />
+                                                }
                                                 value={plantDate}
                                                 onChange={(e) =>
                                                     handlePlantDateChange(
@@ -948,7 +940,21 @@ export function PlantPicker({
                                                 min={min}
                                                 max={max}
                                             />
-                                        </>
+                                            <Switch
+                                                checked={sowInGreenhouse}
+                                                className="data-[state=checked]:border-green-700 data-[state=checked]:bg-green-700"
+                                                label={
+                                                    <span className="inline-flex items-center gap-1.5">
+                                                        <Sprout className="size-4 text-green-700 dark:text-green-300" />
+                                                        Sijanje u stakleniku
+                                                    </span>
+                                                }
+                                                onCheckedChange={
+                                                    handleGreenhouseSowingChange
+                                                }
+                                                size="sm"
+                                            />
+                                        </div>
                                     )}
                                 </>
                             )}

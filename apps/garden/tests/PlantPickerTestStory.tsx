@@ -210,7 +210,19 @@ const tomatoOutletOffers = [
     },
 ] satisfies OutletOfferData[];
 
-function createPlantPickerQueryClient(favorites: FavoriteItem[] = []) {
+type TestInventoryItem = {
+    entityTypeName: string;
+    entityId: string;
+    amount: number;
+};
+
+function createPlantPickerQueryClient({
+    favorites = [],
+    inventoryItems = [],
+}: {
+    favorites?: FavoriteItem[];
+    inventoryItems?: TestInventoryItem[];
+} = {}) {
     const queryClient = new ReactQuery.QueryClient({
         defaultOptions: {
             queries: {
@@ -267,7 +279,7 @@ function createPlantPickerQueryClient(favorites: FavoriteItem[] = []) {
         items: [],
     });
     queryClient.setQueryData(['inventory'], {
-        items: [],
+        items: inventoryItems,
     });
     queryClient.setQueryData(['outlet-offers'], tomatoOutletOffers);
     queryClient.setQueryData(favoritesQueryKey, favorites);
@@ -280,10 +292,14 @@ function createPlantPickerQueryClient(favorites: FavoriteItem[] = []) {
 function PlantPickerTestProviders({
     children,
     favorites = [],
-}: PropsWithChildren<{ favorites?: FavoriteItem[] }>) {
+    inventoryItems = [],
+}: PropsWithChildren<{
+    favorites?: FavoriteItem[];
+    inventoryItems?: TestInventoryItem[];
+}>) {
     const queryClient = useMemo(
-        () => createPlantPickerQueryClient(favorites),
-        [favorites],
+        () => createPlantPickerQueryClient({ favorites, inventoryItems }),
+        [favorites, inventoryItems],
     );
     const gameStore = useMemo(
         () =>
@@ -328,13 +344,18 @@ function OutletOfferRefetchTestHook() {
 
 export function PlantPickerTestStory({
     favorites,
+    inventoryItems,
     showOutletRefetchControl = false,
 }: {
     favorites?: FavoriteItem[];
+    inventoryItems?: TestInventoryItem[];
     showOutletRefetchControl?: boolean;
 } = {}) {
     return (
-        <PlantPickerTestProviders favorites={favorites}>
+        <PlantPickerTestProviders
+            favorites={favorites}
+            inventoryItems={inventoryItems}
+        >
             {showOutletRefetchControl ? <OutletOfferRefetchTestHook /> : null}
             <PlantPicker
                 gardenId={1}

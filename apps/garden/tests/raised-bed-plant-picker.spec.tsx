@@ -216,7 +216,7 @@ test('outlet sorts keep planned sowing selected by default', async ({
         page.getByRole('textbox', { name: 'Datum sijanja' }),
     ).toBeVisible();
     await expect(
-        page.getByRole('switch', { name: 'Staklenik' }),
+        page.getByRole('switch', { name: 'Sijanje u stakleniku' }),
     ).toHaveAttribute('aria-checked', 'false');
 
     await page.getByRole('button', { name: 'Dodaj u košaru' }).click();
@@ -243,7 +243,9 @@ test('planned greenhouse sowing sends greenhouse location', async ({
     await page.getByRole('button', { name: /Rajčica/ }).click();
     await page.getByRole('button', { name: /Cherry rajčica/ }).click();
 
-    const greenhouseSwitch = page.getByRole('switch', { name: 'Staklenik' });
+    const greenhouseSwitch = page.getByRole('switch', {
+        name: 'Sijanje u stakleniku',
+    });
     await expect(greenhouseSwitch).toHaveAttribute('aria-checked', 'false');
     await greenhouseSwitch.click();
     await expect(greenhouseSwitch).toHaveAttribute('aria-checked', 'true');
@@ -302,6 +304,105 @@ test('outlet sowing sends the selected outlet offer', async ({
     }
     expect(post.outletOfferId).toBe(302);
     expect(post.additionalData).toBe(JSON.stringify({ outletOfferId: 302 }));
+});
+
+test('sort rows show backpack action only for available backpack items', async ({
+    mount,
+    page,
+}) => {
+    const posts = await mockShoppingCartPosts(page);
+
+    await mount(
+        <PlantPickerTestStory
+            inventoryItems={[
+                {
+                    entityId: '101',
+                    entityTypeName: 'plantSort',
+                    amount: 2,
+                },
+            ]}
+        />,
+    );
+
+    await page.getByRole('button', { name: 'Sijanje' }).click();
+    await page.getByRole('button', { name: /Rajčica/ }).click();
+
+    const cherrySort = page.locator('[data-plant-picker-sort-id="101"]');
+    const saintPierreSort = page.locator('[data-plant-picker-sort-id="102"]');
+    const backpackButton = cherrySort.getByRole('button', {
+        name: 'Koristi iz ruksaka (2)',
+    });
+    await expect(backpackButton).toBeVisible();
+    await expect(
+        saintPierreSort.getByRole('button', { name: /ruksaka/ }),
+    ).toHaveCount(0);
+    await expect(page.getByText(/^U ruksaku/u)).toHaveCount(0);
+
+    await backpackButton.click();
+    await expect(
+        cherrySort.getByRole('button', { name: 'Ne koristi iz ruksaka' }),
+    ).toHaveAttribute('aria-pressed', 'true');
+
+    await page.getByRole('button', { name: 'Dodaj u košaru' }).click();
+
+    await expect.poll(() => posts.length).toBe(1);
+    const post = posts[0];
+    expect(isRecord(post)).toBe(true);
+    if (!isRecord(post)) {
+        return;
+    }
+    expect(post.entityId).toBe('101');
+    expect(post.currency).toBe('inventory');
+});
+
+test('scheduled greenhouse sowing sends date and sowing location together', async ({
+    mount,
+    page,
+}) => {
+    const posts = await mockShoppingCartPosts(page);
+
+    await mount(<PlantPickerTestStory />);
+
+    await page.getByRole('button', { name: 'Sijanje' }).click();
+    await page.getByRole('button', { name: /Rajčica/ }).click();
+    await page.getByRole('button', { name: /Cherry rajčica/ }).click();
+
+    const dateInput = page.getByRole('textbox', { name: 'Datum sijanja' });
+    const greenhouseSwitch = page.getByRole('switch', {
+        name: 'Sijanje u stakleniku',
+    });
+    await expect(dateInput).toBeVisible();
+    await expect(greenhouseSwitch).toBeVisible();
+
+    const dateBox = await dateInput.boundingBox();
+    const switchBox = await greenhouseSwitch.boundingBox();
+    expect(dateBox).not.toBeNull();
+    expect(switchBox).not.toBeNull();
+    expect(Math.abs((dateBox?.y ?? 0) - (switchBox?.y ?? 0))).toBeLessThan(48);
+
+    await dateInput.fill('2026-07-01');
+    await greenhouseSwitch.click();
+    await expect(greenhouseSwitch).toBeChecked();
+    await page.getByRole('button', { name: 'Dodaj u košaru' }).click();
+
+    await expect.poll(() => posts.length).toBe(1);
+    const post = posts[0];
+    expect(isRecord(post)).toBe(true);
+    if (!isRecord(post)) {
+        return;
+    }
+    expect(typeof post.additionalData).toBe('string');
+    if (typeof post.additionalData !== 'string') {
+        return;
+    }
+
+    const additionalData: unknown = JSON.parse(post.additionalData);
+    expect(isRecord(additionalData)).toBe(true);
+    if (!isRecord(additionalData)) {
+        return;
+    }
+    expect(additionalData.sowingLocation).toBe('greenhouse');
+    expect(additionalData.scheduledDate).toBe('2026-07-01T00:00:00.000Z');
 });
 
 test('outlet refetch does not replace a missing selected offer', async ({

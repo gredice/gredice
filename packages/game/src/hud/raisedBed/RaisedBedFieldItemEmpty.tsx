@@ -16,21 +16,45 @@ function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null;
 }
 
-function parseScheduledSowingDate(additionalData: string | null | undefined) {
+type CartPlantOptions = {
+    scheduledDate: Date | null;
+    sowingLocation: 'direct' | 'greenhouse';
+};
+
+function defaultCartPlantOptions(): CartPlantOptions {
+    return {
+        scheduledDate: null,
+        sowingLocation: 'direct',
+    };
+}
+
+function parseCartPlantOptions(
+    additionalData: string | null | undefined,
+): CartPlantOptions {
     if (!additionalData) {
-        return null;
+        return defaultCartPlantOptions();
     }
 
     try {
         const parsed: unknown = JSON.parse(additionalData);
-        if (!isRecord(parsed) || typeof parsed.scheduledDate !== 'string') {
-            return null;
+        if (!isRecord(parsed)) {
+            return defaultCartPlantOptions();
         }
 
-        const date = new Date(parsed.scheduledDate);
-        return Number.isNaN(date.getTime()) ? null : date;
+        const date =
+            typeof parsed.scheduledDate === 'string'
+                ? new Date(parsed.scheduledDate)
+                : null;
+
+        return {
+            scheduledDate: date && !Number.isNaN(date.getTime()) ? date : null,
+            sowingLocation:
+                parsed.sowingLocation === 'greenhouse'
+                    ? 'greenhouse'
+                    : 'direct',
+        };
     } catch {
-        return null;
+        return defaultCartPlantOptions();
     }
 }
 
@@ -62,12 +86,9 @@ export function RaisedBedFieldItemEmpty({
 
     const cartPlantSort = cartPlantItem?.entityData;
     const cartPlantId = cartPlantSort?.information?.plant?.id;
-    const scheduledDate = parseScheduledSowingDate(
+    const cartPlantOptions = parseCartPlantOptions(
         cartPlantItem?.additionalData,
     );
-    const cartPlantOptions = {
-        scheduledDate,
-    };
     const plantPickerProps = {
         gardenId,
         inShoppingCart: Boolean(cartPlantItem),
@@ -119,9 +140,9 @@ export function RaisedBedFieldItemEmpty({
                                     width={50}
                                     height={50}
                                 />
-                                {scheduledDate && (
+                                {cartPlantOptions.scheduledDate && (
                                     <ScheduledSowingDateBadge
-                                        date={scheduledDate}
+                                        date={cartPlantOptions.scheduledDate}
                                     />
                                 )}
                             </>
