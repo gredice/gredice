@@ -404,15 +404,106 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const hasShopImage = Boolean(item.shopData.image);
     const shouldShowOperationFallback =
         item.entityTypeName === 'operation' && !hasShopImage;
-    function renderGreenhouseSowingToggle() {
+    function renderGreenhouseSowingControl() {
+        if (canChangeGreenhouseSowing) {
+            return (
+                <GreenhouseSowingToggle
+                    checked={isGreenhouseSowing}
+                    disabled={changeGreenhouseSowingShoppingCartItem.isPending}
+                    onCheckedChange={(checked) => {
+                        void handleToggleGreenhouseSowing(checked);
+                    }}
+                />
+            );
+        }
+
+        if (!isGreenhouseSowing) {
+            return null;
+        }
+
         return (
-            <GreenhouseSowingToggle
-                checked={isGreenhouseSowing}
-                disabled={changeGreenhouseSowingShoppingCartItem.isPending}
-                onCheckedChange={(checked) => {
-                    void handleToggleGreenhouseSowing(checked);
+            <Chip
+                className="bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-100"
+                startDecorator={<Sprout />}
+            >
+                <Typography level="body3">Staklenik</Typography>
+            </Chip>
+        );
+    }
+
+    function renderScheduledDateControl() {
+        return canChangeScheduledDate ? (
+            <Popper
+                open={datePickerOpen}
+                onOpenChange={(open) => {
+                    setDatePickerOpen(open);
+                    if (open) {
+                        setDatePickerError(null);
+                    }
                 }}
-            />
+                side="bottom"
+                align="start"
+                sideOffset={8}
+                className="w-72 p-3"
+                trigger={
+                    <Chip
+                        startDecorator={<Timer className="size-4" />}
+                        className="bg-muted"
+                        disabled={changeScheduledDateShoppingCartItem.isPending}
+                        onClick={() => setDatePickerError(null)}
+                        title={`Promijeni datum: ${scheduledDateLabel}`}
+                    >
+                        <Typography level="body3" secondary>
+                            {scheduledDateLabel}
+                        </Typography>
+                    </Chip>
+                }
+            >
+                <Stack spacing={2}>
+                    <Input
+                        type="date"
+                        label="Datum"
+                        name={`cartItemScheduledDate-${item.id}`}
+                        className="w-full bg-card"
+                        value={formatDateInput(scheduledDate)}
+                        min={formatDateInput(getTomorrowDate())}
+                        disabled={changeScheduledDateShoppingCartItem.isPending}
+                        onChange={(event) => {
+                            void handleScheduledDateChange(event.target.value);
+                        }}
+                        required
+                    />
+                    {datePickerError ? (
+                        <Typography level="body3" className="text-red-600">
+                            {datePickerError}
+                        </Typography>
+                    ) : null}
+                    {showWateringCalendar &&
+                    typeof item.gardenId === 'number' &&
+                    typeof item.raisedBedId === 'number' ? (
+                        <RaisedBedWateringCalendar
+                            className="shadow-none"
+                            gardenId={item.gardenId}
+                            operationId={operationId}
+                            raisedBedId={item.raisedBedId}
+                        />
+                    ) : null}
+                </Stack>
+            </Popper>
+        ) : (
+            <Chip
+                startDecorator={<Timer className="size-4" />}
+                className="bg-muted"
+                title={
+                    scheduledDateInfo.source === 'outlet'
+                        ? 'Datum sjetve outlet sadnice'
+                        : 'Datum'
+                }
+            >
+                <Typography level="body3" secondary>
+                    {scheduledDateLabel}
+                </Typography>
+            </Chip>
         );
     }
 
@@ -455,9 +546,6 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                     </Typography>
                     {!hasDiscount && (
                         <Row spacing={2}>
-                            {canChangeGreenhouseSowing
-                                ? renderGreenhouseSowingToggle()
-                                : null}
                             {!usesInventory && availableFromInventory && (
                                 <IconButton
                                     title="Iskoristi iz ruksaka"
@@ -499,9 +587,6 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                                 </IconButton>
                             </Row>
                         )}
-                        {hasDiscount && canChangeGreenhouseSowing
-                            ? renderGreenhouseSowingToggle()
-                            : null}
                     </Row>
                 </div>
                 {hasDiscount &&
@@ -528,40 +613,23 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                             </Row>
                         </Row>
                     )}
-                {(item.outlet || isGreenhouseSowing) &&
-                    !canChangeGreenhouseSowing && (
-                        <Row className="flex-wrap" spacing={1}>
-                            {item.outlet ? (
-                                <>
-                                    <Chip className="bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-100">
-                                        <Typography level="body3">
-                                            Outlet sadnica
-                                        </Typography>
-                                    </Chip>
-                                    <Chip
-                                        className={
-                                            outletReservationChipClassName
-                                        }
-                                        title={outletReservationTitle}
-                                    >
-                                        <Typography level="body3">
-                                            {outletReservationText}
-                                        </Typography>
-                                    </Chip>
-                                </>
-                            ) : null}
-                            {isGreenhouseSowing ? (
-                                <Chip
-                                    className="bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-100"
-                                    startDecorator={<Sprout />}
-                                >
-                                    <Typography level="body3">
-                                        Staklenik
-                                    </Typography>
-                                </Chip>
-                            ) : null}
-                        </Row>
-                    )}
+                {item.outlet ? (
+                    <Row className="flex-wrap" spacing={1}>
+                        <Chip className="bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-100">
+                            <Typography level="body3">
+                                Outlet sadnica
+                            </Typography>
+                        </Chip>
+                        <Chip
+                            className={outletReservationChipClassName}
+                            title={outletReservationTitle}
+                        >
+                            <Typography level="body3">
+                                {outletReservationText}
+                            </Typography>
+                        </Chip>
+                    </Row>
+                ) : null}
                 <Row justifyContent="space-between">
                     <Stack spacing={1}>
                         <Row spacing={2}>
@@ -599,99 +667,9 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                                 )}
                             </Row>
                         </Row>
-                        <Row>
-                            {canChangeScheduledDate ? (
-                                <Popper
-                                    open={datePickerOpen}
-                                    onOpenChange={(open) => {
-                                        setDatePickerOpen(open);
-                                        if (open) {
-                                            setDatePickerError(null);
-                                        }
-                                    }}
-                                    side="bottom"
-                                    align="start"
-                                    sideOffset={8}
-                                    className="w-72 p-3"
-                                    trigger={
-                                        <Chip
-                                            startDecorator={
-                                                <Timer className="size-4" />
-                                            }
-                                            className="bg-muted"
-                                            disabled={
-                                                changeScheduledDateShoppingCartItem.isPending
-                                            }
-                                            onClick={() =>
-                                                setDatePickerError(null)
-                                            }
-                                            title={`Promijeni datum: ${scheduledDateLabel}`}
-                                        >
-                                            <Typography level="body3" secondary>
-                                                {scheduledDateLabel}
-                                            </Typography>
-                                        </Chip>
-                                    }
-                                >
-                                    <Stack spacing={2}>
-                                        <Input
-                                            type="date"
-                                            label="Datum"
-                                            name={`cartItemScheduledDate-${item.id}`}
-                                            className="w-full bg-card"
-                                            value={formatDateInput(
-                                                scheduledDate,
-                                            )}
-                                            min={formatDateInput(
-                                                getTomorrowDate(),
-                                            )}
-                                            disabled={
-                                                changeScheduledDateShoppingCartItem.isPending
-                                            }
-                                            onChange={(event) => {
-                                                void handleScheduledDateChange(
-                                                    event.target.value,
-                                                );
-                                            }}
-                                            required
-                                        />
-                                        {datePickerError ? (
-                                            <Typography
-                                                level="body3"
-                                                className="text-red-600"
-                                            >
-                                                {datePickerError}
-                                            </Typography>
-                                        ) : null}
-                                        {showWateringCalendar &&
-                                        typeof item.gardenId === 'number' &&
-                                        typeof item.raisedBedId === 'number' ? (
-                                            <RaisedBedWateringCalendar
-                                                className="shadow-none"
-                                                gardenId={item.gardenId}
-                                                operationId={operationId}
-                                                raisedBedId={item.raisedBedId}
-                                            />
-                                        ) : null}
-                                    </Stack>
-                                </Popper>
-                            ) : (
-                                <Chip
-                                    startDecorator={
-                                        <Timer className="size-4" />
-                                    }
-                                    className="bg-muted"
-                                    title={
-                                        scheduledDateInfo.source === 'outlet'
-                                            ? 'Datum sjetve outlet sadnice'
-                                            : 'Datum'
-                                    }
-                                >
-                                    <Typography level="body3" secondary>
-                                        {scheduledDateLabel}
-                                    </Typography>
-                                </Chip>
-                            )}
+                        <Row spacing={1} className="flex-wrap">
+                            {renderScheduledDateControl()}
+                            {renderGreenhouseSowingControl()}
                         </Row>
                     </Stack>
                     {!isProcessed && (
