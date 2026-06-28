@@ -2,12 +2,15 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 
 export interface DeliveryAddressData {
+    label?: string | null;
     street1?: string | null;
     street2?: string | null;
     city?: string | null;
     postalCode?: string | null;
+    countryCode?: string | null;
     contactName?: string | null;
     phone?: string | null;
+    isDefault?: boolean | null;
 }
 
 export function formatDeliveryAddress(
@@ -17,7 +20,13 @@ export function formatDeliveryAddress(
         return '';
     }
 
-    return [address.street1, address.street2, address.city, address.postalCode]
+    return [
+        address.street1,
+        address.street2,
+        address.postalCode,
+        address.city,
+        address.countryCode,
+    ]
         .filter(Boolean)
         .join(', ');
 }

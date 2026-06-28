@@ -2,7 +2,7 @@ import { Card, CardOverflow } from '@gredice/ui/Card';
 import { Stack } from '@gredice/ui/Stack';
 import { auth } from '../../../../lib/auth/auth';
 import { DeliveryRequestsFilters } from './DeliveryRequestsFilters';
-import { DeliveryRequestsTable } from './DeliveryRequestsTable';
+import { DeliveryRequestsList } from './DeliveryRequestsList';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +20,7 @@ export default async function AdminDeliveryRequestsPage({
             <DeliveryRequestsFilters />
             <Card>
                 <CardOverflow>
-                    <DeliveryRequestsTable searchParams={params} />
+                    <DeliveryRequestsList searchParams={params} />
                 </CardOverflow>
             </Card>
         </Stack>
