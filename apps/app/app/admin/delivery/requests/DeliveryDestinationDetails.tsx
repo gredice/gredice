@@ -1,12 +1,8 @@
-import type { getDeliveryRequestsSummary } from '@gredice/storage';
 import { Chip } from '@gredice/ui/Chip';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { formatDeliveryAddress, PhoneLink } from '../components';
-
-type DeliveryRequestSummary = Awaited<
-    ReturnType<typeof getDeliveryRequestsSummary>
->[number];
+import type { DeliveryRequestDetails } from './DeliveryRequestListTypes';
 
 function cleanText(value: string | null | undefined) {
     const trimmed = value?.trim();
@@ -14,7 +10,7 @@ function cleanText(value: string | null | undefined) {
 }
 
 function locationAddressFields(
-    location: NonNullable<DeliveryRequestSummary['location']>,
+    location: NonNullable<DeliveryRequestDetails['location']>,
 ) {
     return [
         { key: 'street1', value: cleanText(location.street1) },
@@ -30,7 +26,7 @@ function locationAddressFields(
 }
 
 function deliveryAddressFields(
-    address: NonNullable<DeliveryRequestSummary['address']>,
+    address: NonNullable<DeliveryRequestDetails['address']>,
 ) {
     return [
         { key: 'street1', value: cleanText(address.street1) },
@@ -50,7 +46,7 @@ function mapsHref(value: string) {
 }
 
 export function getDeliveryRequestDestinationTitle(
-    request: DeliveryRequestSummary,
+    request: DeliveryRequestDetails,
 ) {
     if (request.mode === 'pickup') {
         return cleanText(request.location?.name) ?? 'Nepoznata lokacija';
@@ -62,7 +58,7 @@ export function getDeliveryRequestDestinationTitle(
 export function DeliveryDestinationDetails({
     request,
 }: {
-    request: DeliveryRequestSummary;
+    request: DeliveryRequestDetails;
 }) {
     const notes = [
         { label: 'Napomena zahtjeva', value: cleanText(request.requestNotes) },
