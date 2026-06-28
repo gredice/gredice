@@ -56,6 +56,7 @@ export function OutletHud() {
                 title="Outlet sadnica"
                 className="md:max-w-2xl"
                 headerIcon={<Discount className="size-7 shrink-0" />}
+                hudLayer
                 trigger={
                     <Button
                         title="Outlet sadnica"

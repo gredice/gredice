@@ -309,6 +309,7 @@ export function ShoppingCartHud() {
                     headerIcon={
                         <ShoppingCartIcon className="size-7 shrink-0" />
                     }
+                    hudLayer
                     trigger={
                         <Button
                             title="Košara"

@@ -966,6 +966,7 @@ export function TutorialChecklistHud() {
             )}
             <GameModal
                 className="md:max-w-3xl"
+                hudLayer
                 onOpenChange={handleOpenChange}
                 open={isOpen}
                 title="Zadaci za novi vrt"

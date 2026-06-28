@@ -8,6 +8,7 @@ export type GameModalProps = ModalProps & {
     headerClassName?: string;
     headerDescription?: ReactNode;
     headerIcon?: ReactNode;
+    hudLayer?: boolean;
     showHeader?: boolean;
 };
 
@@ -18,6 +19,7 @@ export function GameModal({
     headerClassName,
     headerDescription,
     headerIcon,
+    hudLayer,
     overlayClassName,
     showHeader,
     title,
@@ -28,8 +30,12 @@ export function GameModal({
 
     return (
         <Modal
-            className={cx('z-[46] border-tertiary border-b-4', className)}
-            overlayClassName={cx('z-[46]', overlayClassName)}
+            className={cx(
+                'border-tertiary border-b-4',
+                hudLayer && 'z-[46]',
+                className,
+            )}
+            overlayClassName={cx(hudLayer && 'z-[46]', overlayClassName)}
             title={title}
             {...rest}
         >
