@@ -145,133 +145,161 @@ export default async function OutletAdminPage() {
                 </Card>
             ) : (
                 <Card>
-                    <CardOverflow className="overflow-x-auto">
-                        <table className="w-full min-w-[980px] text-sm">
-                            <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
-                                <tr>
-                                    <th className="px-4 py-3 font-medium">
-                                        Ponuda
-                                    </th>
-                                    <th className="px-4 py-3 font-medium">
-                                        Sorta
-                                    </th>
-                                    <th className="px-4 py-3 font-medium">
-                                        Cijena
-                                    </th>
-                                    <th className="px-4 py-3 font-medium">
-                                        Stanje
-                                    </th>
-                                    <th className="px-4 py-3 font-medium">
-                                        Trajanje
-                                    </th>
-                                    <th className="px-4 py-3 font-medium">
-                                        Sjetva
-                                    </th>
-                                    <th className="px-4 py-3 font-medium">
-                                        Akcije
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y">
-                                {offers.map((offer) => (
-                                    <tr key={offer.id}>
-                                        <td className="px-4 py-3 align-top">
-                                            <Stack spacing={1}>
+                    <CardOverflow>
+                        <ul className="divide-y">
+                            {offers.map((offer) => {
+                                const offerHref = KnownPages.OutletOffer(
+                                    offer.id,
+                                );
+                                const offerEditHref =
+                                    KnownPages.OutletOfferEdit(offer.id);
+                                const plantSortName = plantSortLabel(
+                                    plantSortsById.get(offer.plantSortId),
+                                );
+
+                                return (
+                                    <li
+                                        key={offer.id}
+                                        className="px-3 py-4 transition-colors hover:bg-muted/40 sm:px-4"
+                                    >
+                                        <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                            <Stack
+                                                spacing={1}
+                                                className="min-w-0 flex-1"
+                                            >
                                                 <Link
-                                                    className="font-medium text-primary hover:underline"
-                                                    href={KnownPages.OutletOffer(
-                                                        offer.id,
-                                                    )}
+                                                    className="min-w-0 truncate text-sm font-medium text-primary underline-offset-4 hover:underline"
+                                                    href={offerHref}
                                                 >
                                                     Outlet #{offer.id}
                                                 </Link>
-                                                <OutletOfferStatusBadge
-                                                    status={offer.status}
-                                                />
-                                            </Stack>
-                                        </td>
-                                        <td className="px-4 py-3 align-top">
-                                            {plantSortLabel(
-                                                plantSortsById.get(
-                                                    offer.plantSortId,
-                                                ),
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3 align-top">
-                                            <Stack spacing={1}>
-                                                <span>
-                                                    {formatPrice(
-                                                        offer.outletPriceCents,
-                                                    )}
-                                                </span>
-                                                {offer.comparePriceCents ? (
-                                                    <span className="text-xs text-muted-foreground line-through">
-                                                        {formatPrice(
-                                                            offer.comparePriceCents,
-                                                        )}
+                                                <Typography
+                                                    level="body3"
+                                                    className="text-muted-foreground"
+                                                >
+                                                    Sorta:{' '}
+                                                    <span className="text-foreground">
+                                                        {plantSortName}
                                                     </span>
-                                                ) : null}
+                                                </Typography>
                                             </Stack>
-                                        </td>
-                                        <td className="px-4 py-3 align-top">
-                                            <Stack spacing={1}>
-                                                <span>
-                                                    {offer.remainingQuantity} /
-                                                    {offer.quantity} dostupno
-                                                </span>
-                                                <span className="text-xs text-muted-foreground">
-                                                    {offer.reservedQuantity}{' '}
-                                                    rezervirano,{' '}
-                                                    {offer.soldQuantity} prodano
-                                                </span>
-                                            </Stack>
-                                        </td>
-                                        <td className="px-4 py-3 align-top">
-                                            <Stack spacing={1}>
-                                                <span>
-                                                    {formatDateTime(
-                                                        offer.startAt,
-                                                    )}
-                                                </span>
-                                                <span className="text-xs text-muted-foreground">
-                                                    do{' '}
-                                                    {formatDateTime(
-                                                        offer.endAt,
-                                                    )}
-                                                </span>
-                                            </Stack>
-                                        </td>
-                                        <td className="px-4 py-3 align-top">
-                                            {formatDate(offer.sowingDate)}
-                                        </td>
-                                        <td className="px-4 py-3 align-top">
-                                            <Row spacing={2}>
-                                                <Button
-                                                    href={KnownPages.OutletOffer(
-                                                        offer.id,
-                                                    )}
-                                                    variant="outlined"
-                                                    color="neutral"
-                                                    size="sm"
-                                                >
-                                                    Otvori
-                                                </Button>
-                                                <Button
-                                                    href={KnownPages.OutletOfferEdit(
-                                                        offer.id,
-                                                    )}
-                                                    variant="plain"
-                                                    color="neutral"
-                                                    size="sm"
-                                                >
-                                                    Uredi
-                                                </Button>
-                                            </Row>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+
+                                            <div className="flex min-w-0 flex-col gap-3 lg:items-end">
+                                                <div className="flex min-w-0 flex-wrap items-center gap-2 lg:justify-end">
+                                                    <OutletOfferStatusBadge
+                                                        status={offer.status}
+                                                    />
+                                                    <Row
+                                                        spacing={2}
+                                                        className="min-w-0 flex-wrap"
+                                                    >
+                                                        <Button
+                                                            href={offerHref}
+                                                            variant="outlined"
+                                                            color="neutral"
+                                                            size="sm"
+                                                        >
+                                                            Otvori
+                                                        </Button>
+                                                        <Button
+                                                            href={offerEditHref}
+                                                            variant="plain"
+                                                            color="neutral"
+                                                            size="sm"
+                                                        >
+                                                            Uredi
+                                                        </Button>
+                                                    </Row>
+                                                </div>
+
+                                                <dl className="grid min-w-0 gap-x-4 gap-y-2 text-sm sm:grid-cols-2 xl:grid-cols-4 xl:text-right">
+                                                    <div className="min-w-0">
+                                                        <dt className="text-xs font-medium uppercase text-muted-foreground">
+                                                            Cijena
+                                                        </dt>
+                                                        <dd className="mt-1">
+                                                            <Stack spacing={1}>
+                                                                <span>
+                                                                    {formatPrice(
+                                                                        offer.outletPriceCents,
+                                                                    )}
+                                                                </span>
+                                                                {offer.comparePriceCents ? (
+                                                                    <span className="text-xs text-muted-foreground line-through">
+                                                                        {formatPrice(
+                                                                            offer.comparePriceCents,
+                                                                        )}
+                                                                    </span>
+                                                                ) : null}
+                                                            </Stack>
+                                                        </dd>
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <dt className="text-xs font-medium uppercase text-muted-foreground">
+                                                            Stanje
+                                                        </dt>
+                                                        <dd className="mt-1">
+                                                            <Stack spacing={1}>
+                                                                <span>
+                                                                    {
+                                                                        offer.remainingQuantity
+                                                                    }{' '}
+                                                                    /{' '}
+                                                                    {
+                                                                        offer.quantity
+                                                                    }{' '}
+                                                                    dostupno
+                                                                </span>
+                                                                <span className="text-xs text-muted-foreground">
+                                                                    {
+                                                                        offer.reservedQuantity
+                                                                    }{' '}
+                                                                    rezervirano,{' '}
+                                                                    {
+                                                                        offer.soldQuantity
+                                                                    }{' '}
+                                                                    prodano
+                                                                </span>
+                                                            </Stack>
+                                                        </dd>
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <dt className="text-xs font-medium uppercase text-muted-foreground">
+                                                            Trajanje
+                                                        </dt>
+                                                        <dd className="mt-1">
+                                                            <Stack spacing={1}>
+                                                                <span>
+                                                                    {formatDateTime(
+                                                                        offer.startAt,
+                                                                    )}
+                                                                </span>
+                                                                <span className="text-xs text-muted-foreground">
+                                                                    do{' '}
+                                                                    {formatDateTime(
+                                                                        offer.endAt,
+                                                                    )}
+                                                                </span>
+                                                            </Stack>
+                                                        </dd>
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <dt className="text-xs font-medium uppercase text-muted-foreground">
+                                                            Sjetva
+                                                        </dt>
+                                                        <dd className="mt-1">
+                                                            {formatDate(
+                                                                offer.sowingDate,
+                                                            )}
+                                                        </dd>
+                                                    </div>
+                                                </dl>
+                                            </div>
+                                        </div>
+                                    </li>
+                                );
+                            })}
+                        </ul>
                     </CardOverflow>
                 </Card>
             )}
