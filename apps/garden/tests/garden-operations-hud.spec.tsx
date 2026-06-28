@@ -41,7 +41,15 @@ test.describe('Garden operations HUD', () => {
             page.getByText('Zakazano: 21. svibnja 2026.'),
         ).toBeVisible();
         await expect(page.getByText('Zakazano: sutra')).toBeVisible();
-        await expect(page.getByText('U košari').last()).toBeVisible();
+        await expect(page.getByText('U košari', { exact: true })).toHaveCount(
+            0,
+        );
+        await expect(page.getByText('U košari, još nije kupljeno')).toHaveCount(
+            0,
+        );
+        await expect(
+            page.getByRole('button', { name: 'Otvori košaru' }),
+        ).toHaveCount(1);
 
         await expect(page.getByText('Zakazano', { exact: true })).toHaveCount(
             2,

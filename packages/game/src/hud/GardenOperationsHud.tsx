@@ -1639,12 +1639,10 @@ function CartOperationCard({
     item,
     operationData,
     targetDetails,
-    onOpenCart,
 }: {
     item: ShoppingCartItemData;
     operationData?: OperationData;
     targetDetails: OperationTargetDetails;
-    onOpenCart: () => void;
 }) {
     const scheduledDate = getCartItemScheduledDate(item);
     const scheduledDateLabel = parseScheduledDate(item.additionalData)
@@ -1694,45 +1692,13 @@ function CartOperationCard({
                             iconClassName="dark:text-amber-100/85"
                         />
                     </Stack>
-                    <Row spacing={2} className="flex-wrap">
-                        <Typography
-                            level="body3"
-                            secondary
-                            className="dark:text-amber-100/80"
-                        >
-                            U košari, još nije kupljeno
-                        </Typography>
-                        <Typography
-                            level="body3"
-                            secondary
-                            className="dark:text-amber-100/80"
-                        >
-                            Zakazano: {scheduledDateLabel}
-                        </Typography>
-                    </Row>
-                    <Row justifyContent="space-between" spacing={2}>
-                        <Row
-                            spacing={1}
-                            className="text-amber-600 dark:text-amber-300"
-                        >
-                            <ShoppingCart className="size-3.5 shrink-0" />
-                            <Typography
-                                level="body3"
-                                semiBold
-                                className="dark:text-amber-200"
-                            >
-                                U košari
-                            </Typography>
-                        </Row>
-                        <Button
-                            variant="link"
-                            size="sm"
-                            className="px-0 dark:text-amber-50 dark:hover:text-white"
-                            onClick={onOpenCart}
-                        >
-                            Otvori košaru
-                        </Button>
-                    </Row>
+                    <Typography
+                        level="body3"
+                        secondary
+                        className="dark:text-amber-100/80"
+                    >
+                        Zakazano: {scheduledDateLabel}
+                    </Typography>
                 </Stack>
             </Row>
         </div>
@@ -2085,9 +2051,6 @@ export function GardenOperationsHud() {
                                                 }
                                                 targetDetails={
                                                     cartOperation.targetDetails
-                                                }
-                                                onOpenCart={() =>
-                                                    setShoppingCartOpen(true)
                                                 }
                                             />
                                         ))}
