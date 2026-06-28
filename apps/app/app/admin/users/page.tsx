@@ -1,11 +1,10 @@
 import { getUsers } from '@gredice/storage';
 import { Card, CardOverflow } from '@gredice/ui/Card';
 import { Fence, Security, User } from '@gredice/ui/icons';
-import { List } from '@gredice/ui/List';
-import { ListItem } from '@gredice/ui/ListItem';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import Link from 'next/link';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { auth } from '../../../lib/auth/auth';
 import { getDateFromTimeFilter } from '../../../lib/utils/timeFilters';
@@ -87,16 +86,16 @@ export default async function UsersPage({
                                 </NoDataPlaceholder>
                             </div>
                         ) : (
-                            <List className="divide-y">
+                            <ul className="divide-y">
                                 {filteredUsers.map((user) => {
                                     const role = getUserRoleMeta(user.role);
 
                                     return (
-                                        <ListItem
+                                        <li
                                             key={user.id}
-                                            href={KnownPages.User(user.id)}
-                                            className="!flex-wrap !items-center !gap-x-3 !gap-y-1 !rounded-none px-3 py-3 hover:bg-muted/40 sm:!flex-nowrap sm:px-4"
-                                            label={
+                                            className="px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4"
+                                        >
+                                            <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                                                 <div className="flex min-w-0 items-center gap-2">
                                                     <span
                                                         title={role.label}
@@ -106,21 +105,19 @@ export default async function UsersPage({
                                                     >
                                                         {role.icon}
                                                     </span>
-                                                    <Typography
-                                                        component="span"
-                                                        level="body2"
-                                                        semiBold
-                                                        className="min-w-0 truncate text-primary"
+                                                    <Link
+                                                        href={KnownPages.User(
+                                                            user.id,
+                                                        )}
+                                                        className="min-w-0 truncate text-sm font-medium text-primary underline-offset-4 hover:underline"
                                                     >
                                                         {user.userName}
-                                                    </Typography>
+                                                    </Link>
                                                 </div>
-                                            }
-                                            endDecorator={
                                                 <Typography
                                                     component="span"
                                                     level="body3"
-                                                    className="basis-full pl-7 text-muted-foreground sm:basis-auto sm:pl-0 sm:text-right"
+                                                    className="pl-7 text-muted-foreground sm:pl-0 sm:text-right"
                                                 >
                                                     Kreiran:{' '}
                                                     <span className="whitespace-nowrap">
@@ -131,11 +128,11 @@ export default async function UsersPage({
                                                         </LocalDateTime>
                                                     </span>
                                                 </Typography>
-                                            }
-                                        />
+                                            </div>
+                                        </li>
                                     );
                                 })}
-                            </List>
+                            </ul>
                         )}
                     </div>
                 </CardOverflow>
