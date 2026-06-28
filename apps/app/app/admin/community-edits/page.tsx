@@ -2,11 +2,12 @@ import {
     type CommunityEditRequestStatus,
     listCommunityEditRequests,
 } from '@gredice/storage';
+import { Button } from '@gredice/ui/Button';
 import { Card, CardOverflow } from '@gredice/ui/Card';
 import { Chip, type ColorPaletteProp } from '@gredice/ui/Chip';
+import { ExternalLink } from '@gredice/ui/icons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Stack } from '@gredice/ui/Stack';
-import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
 import { UserAvatar } from '@gredice/ui/UserAvatar';
 import Link from 'next/link';
@@ -143,6 +144,14 @@ function buildSubmitterFilterOptions(
     })).sort((left, right) => left.label.localeCompare(right.label, 'hr'));
 }
 
+function publicPageUrl(publicPath: string) {
+    if (/^https?:\/\//u.test(publicPath)) {
+        return publicPath;
+    }
+
+    return `https://www.gredice.com${publicPath.startsWith('/') ? '' : '/'}${publicPath}`;
+}
+
 export default async function CommunityEditsPage({
     searchParams,
 }: {
@@ -186,28 +195,15 @@ export default async function CommunityEditsPage({
 
             <Card>
                 <CardOverflow>
-                    <div className="overflow-auto">
-                        <Table>
-                            <Table.Header>
-                                <Table.Row>
-                                    <Table.Head>Status</Table.Head>
-                                    <Table.Head>Zahtjev</Table.Head>
-                                    <Table.Head>Promjene</Table.Head>
-                                    <Table.Head>Pošiljatelj</Table.Head>
-                                    <Table.Head>Kreirano</Table.Head>
-                                </Table.Row>
-                            </Table.Header>
-                            <Table.Body>
-                                {filteredRequests.length === 0 && (
-                                    <Table.Row>
-                                        <Table.Cell colSpan={5}>
-                                            <NoDataPlaceholder>
-                                                Nema prijedloga za odabrane
-                                                filtre.
-                                            </NoDataPlaceholder>
-                                        </Table.Cell>
-                                    </Table.Row>
-                                )}
+                    <div className="min-w-0">
+                        {filteredRequests.length === 0 ? (
+                            <div className="p-4">
+                                <NoDataPlaceholder>
+                                    Nema prijedloga za odabrane filtre.
+                                </NoDataPlaceholder>
+                            </div>
+                        ) : (
+                            <ul className="divide-y">
                                 {filteredRequests.map((request) => {
                                     const requestStatus =
                                         isCommunityEditRequestStatus(
@@ -219,60 +215,62 @@ export default async function CommunityEditsPage({
                                         submitterDisplayName(request);
 
                                     return (
-                                        <Table.Row key={request.id}>
-                                            <Table.Cell>
-                                                <Chip
-                                                    color={
-                                                        requestStatus
-                                                            ? statusColor(
-                                                                  requestStatus,
-                                                              )
-                                                            : 'neutral'
-                                                    }
-                                                    size="sm"
-                                                    variant="soft"
+                                        <li
+                                            key={request.id}
+                                            className="px-3 py-4 transition-colors hover:bg-muted/40 sm:px-4"
+                                        >
+                                            <div className="flex min-w-0 flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                                                <Stack
+                                                    spacing={2}
+                                                    className="min-w-0 xl:max-w-xl"
                                                 >
-                                                    {statusLabel(
-                                                        request.status,
-                                                    )}
-                                                </Chip>
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                <Stack spacing={1}>
-                                                    <Link
-                                                        href={KnownPages.CommunityEdit(
-                                                            request.id,
-                                                        )}
+                                                    <Stack
+                                                        spacing={1}
+                                                        className="min-w-0"
                                                     >
-                                                        {entityTypeLabel(
-                                                            request.entityTypeName,
-                                                        )}{' '}
-                                                        #{request.entityId}
-                                                    </Link>
-                                                    <Typography
-                                                        level="body3"
-                                                        className="text-muted-foreground"
-                                                    >
-                                                        {request.sectionKey ??
-                                                            'Cijela stranica'}
-                                                    </Typography>
+                                                        <Link
+                                                            href={KnownPages.CommunityEdit(
+                                                                request.id,
+                                                            )}
+                                                            className="block min-w-0 truncate text-sm font-medium text-primary underline-offset-4 hover:underline"
+                                                        >
+                                                            {entityTypeLabel(
+                                                                request.entityTypeName,
+                                                            )}{' '}
+                                                            #{request.entityId}
+                                                        </Link>
+                                                        <Typography
+                                                            level="body3"
+                                                            className="text-muted-foreground"
+                                                        >
+                                                            {request.sectionKey ??
+                                                                'Cijela stranica'}
+                                                        </Typography>
+                                                    </Stack>
+                                                    <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+                                                        <Typography
+                                                            component="span"
+                                                            level="body3"
+                                                            className="text-muted-foreground"
+                                                        >
+                                                            Zahtjev #
+                                                            {request.id}
+                                                        </Typography>
+                                                        <Typography
+                                                            component="span"
+                                                            level="body3"
+                                                            className="min-w-0 break-all text-muted-foreground"
+                                                        >
+                                                            {request.publicPath}
+                                                        </Typography>
+                                                    </div>
                                                 </Stack>
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                <Chip
-                                                    color="info"
-                                                    size="sm"
-                                                    variant="soft"
-                                                >
-                                                    {request.changes.length}
-                                                </Chip>
-                                            </Table.Cell>
-                                            <Table.Cell>
+
                                                 <Link
                                                     href={KnownPages.User(
                                                         request.submitterUserId,
                                                     )}
-                                                    className="flex min-w-0 items-center gap-2"
+                                                    className="flex min-w-0 items-center gap-2 xl:w-64"
                                                 >
                                                     <UserAvatar
                                                         avatarUrl={
@@ -306,17 +304,111 @@ export default async function CommunityEditsPage({
                                                         ) : null}
                                                     </Stack>
                                                 </Link>
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                <LocalDateTime>
-                                                    {request.createdAt}
-                                                </LocalDateTime>
-                                            </Table.Cell>
-                                        </Table.Row>
+
+                                                <div className="flex shrink-0 flex-col gap-3 xl:items-end">
+                                                    <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+                                                        <Chip
+                                                            color={
+                                                                requestStatus
+                                                                    ? statusColor(
+                                                                          requestStatus,
+                                                                      )
+                                                                    : 'neutral'
+                                                            }
+                                                            size="sm"
+                                                            variant="soft"
+                                                        >
+                                                            {statusLabel(
+                                                                request.status,
+                                                            )}
+                                                        </Chip>
+                                                        <Chip
+                                                            color="info"
+                                                            size="sm"
+                                                            variant="soft"
+                                                        >
+                                                            {
+                                                                request.changes
+                                                                    .length
+                                                            }{' '}
+                                                            promjena
+                                                        </Chip>
+                                                    </div>
+
+                                                    <div className="grid gap-1 sm:grid-cols-2 xl:text-right">
+                                                        <Typography
+                                                            level="body3"
+                                                            className="text-muted-foreground"
+                                                        >
+                                                            Predano:{' '}
+                                                            <span className="whitespace-nowrap">
+                                                                <LocalDateTime>
+                                                                    {
+                                                                        request.createdAt
+                                                                    }
+                                                                </LocalDateTime>
+                                                            </span>
+                                                        </Typography>
+                                                        <Typography
+                                                            level="body3"
+                                                            className="text-muted-foreground"
+                                                        >
+                                                            Ažurirano:{' '}
+                                                            <span className="whitespace-nowrap">
+                                                                <LocalDateTime>
+                                                                    {
+                                                                        request.updatedAt
+                                                                    }
+                                                                </LocalDateTime>
+                                                            </span>
+                                                        </Typography>
+                                                    </div>
+
+                                                    <div className="flex flex-wrap gap-2 xl:justify-end">
+                                                        <Button
+                                                            href={KnownPages.CommunityEdit(
+                                                                request.id,
+                                                            )}
+                                                            size="xs"
+                                                            variant="outlined"
+                                                        >
+                                                            Detalji
+                                                        </Button>
+                                                        <Button
+                                                            href={KnownPages.DirectoryEntity(
+                                                                request.entityTypeName,
+                                                                request.entityId,
+                                                            )}
+                                                            size="xs"
+                                                            variant="outlined"
+                                                        >
+                                                            Admin zapis
+                                                        </Button>
+                                                        <Button
+                                                            endDecorator={
+                                                                <ExternalLink
+                                                                    aria-hidden
+                                                                    className="size-3.5"
+                                                                />
+                                                            }
+                                                            href={publicPageUrl(
+                                                                request.publicPath,
+                                                            )}
+                                                            rel="noreferrer"
+                                                            size="xs"
+                                                            target="_blank"
+                                                            variant="outlined"
+                                                        >
+                                                            Javna stranica
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </li>
                                     );
                                 })}
-                            </Table.Body>
-                        </Table>
+                            </ul>
+                        )}
                     </div>
                 </CardOverflow>
             </Card>
