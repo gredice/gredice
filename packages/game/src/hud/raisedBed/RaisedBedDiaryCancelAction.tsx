@@ -2,7 +2,6 @@ import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Close, Warning } from '@gredice/ui/icons';
-import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@gredice/ui/Tooltip';
@@ -12,6 +11,7 @@ import {
     type DiaryCancelTarget,
     useCancelDiaryEntry,
 } from '../../hooks/useCancelDiaryEntry';
+import { GameModal } from '../../shared-ui/game-modal';
 
 export function RaisedBedDiaryCancelAction({
     disabledReason,
@@ -79,7 +79,7 @@ export function RaisedBedDiaryCancelAction({
     }
 
     return (
-        <Modal
+        <GameModal
             title={`Otkaži ${entryName}`}
             open={open}
             onOpenChange={(nextOpen) => {
@@ -134,6 +134,6 @@ export function RaisedBedDiaryCancelAction({
                     </Button>
                 </Row>
             </Stack>
-        </Modal>
+        </GameModal>
     );
 }

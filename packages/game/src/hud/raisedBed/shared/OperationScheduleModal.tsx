@@ -6,12 +6,12 @@ import { Button } from '@gredice/ui/Button';
 import { Card, CardContent } from '@gredice/ui/Card';
 import { EventCalendar } from '@gredice/ui/EventCalendar';
 import { Calendar } from '@gredice/ui/icons';
-import { Modal } from '@gredice/ui/Modal';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
+import { GameModal } from '../../../shared-ui/game-modal';
 import { formatLocalDate } from '../RaisedBedPlantPicker';
 import {
     isWateringOperation,
@@ -103,8 +103,7 @@ export function OperationScheduleModal({
     };
 
     return (
-        <Modal
-            className="border border-tertiary border-b-4"
+        <GameModal
             trigger={trigger}
             title={`Zakaži radnju: ${operation.information.label}`}
             open={open}
@@ -230,6 +229,6 @@ export function OperationScheduleModal({
                     </Row>
                 </Stack>
             </form>
-        </Modal>
+        </GameModal>
     );
 }

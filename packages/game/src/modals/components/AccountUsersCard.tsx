@@ -1,13 +1,13 @@
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent } from '@gredice/ui/Card';
 import { Add } from '@gredice/ui/icons';
-import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { Spinner } from '@gredice/ui/Spinner';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { UserAvatar } from '@gredice/ui/UserAvatar';
 import { useCurrentAccountUsers } from '../../hooks/useCurrentAccountUsers';
+import { GameModal } from '../../shared-ui/game-modal';
 import { InviteUserForm } from './InviteUserForm';
 import { PendingInvitationsList } from './PendingInvitationsList';
 
@@ -32,7 +32,7 @@ export function AccountUsersCard() {
                                 korisnike.
                             </Typography>
                         </Stack>
-                        <Modal
+                        <GameModal
                             trigger={
                                 <Button
                                     variant="solid"
@@ -54,7 +54,7 @@ export function AccountUsersCard() {
                                 </Typography>
                                 <InviteUserForm />
                             </Stack>
-                        </Modal>
+                        </GameModal>
                     </Row>
                     {accountUsers.isLoading && (
                         <Spinner

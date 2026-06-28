@@ -2,13 +2,13 @@
 
 import { BlockImage } from '@gredice/ui/BlockImage';
 import { Button } from '@gredice/ui/Button';
-import { Modal } from '@gredice/ui/Modal';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useEffect, useMemo, useState } from 'react';
 import Confetti from 'react-confetti-boom';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useOpenGiftBox } from '../hooks/useOpenGiftBox';
+import { GameModal } from '../shared-ui/game-modal';
 import { useGiftBoxParam } from '../useUrlState';
 import { GiftBoxRewardScreen } from './GiftBoxRewardScreen';
 
@@ -62,7 +62,7 @@ export function GiftBoxModal() {
     };
 
     return (
-        <Modal
+        <GameModal
             open={isOpen}
             onOpenChange={(open) => !open && handleClose()}
             title="Poklon kutija"
@@ -136,6 +136,6 @@ export function GiftBoxModal() {
                     )}
                 </Stack>
             )}
-        </Modal>
+        </GameModal>
     );
 }

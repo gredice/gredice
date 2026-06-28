@@ -4,7 +4,6 @@ import { Card, CardContent } from '@gredice/ui/Card';
 import { Input } from '@gredice/ui/Input';
 import { Close, Info, ShoppingCart, Truck } from '@gredice/ui/icons';
 import { TimeRange } from '@gredice/ui/LocalDateTime';
-import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { SelectItems } from '@gredice/ui/SelectItems';
 import { Stack } from '@gredice/ui/Stack';
@@ -12,6 +11,7 @@ import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 import { useCancelDeliveryRequest } from '../../hooks/useDeliveryRequestMutations';
 import type { DeliveryRequestData } from '../../hooks/useDeliveryRequests';
+import { GameModal } from '../game-modal';
 
 export const CANCEL_REASON_OPTIONS = [
     { value: 'USER_CHANGE_MIND', label: 'Predomislio/la sam se' },
@@ -70,7 +70,7 @@ export function DeliveryCancelRequestModal({
     };
 
     return (
-        <Modal
+        <GameModal
             open={isOpen}
             onOpenChange={setIsOpen}
             title="Otkaži dostavu"
@@ -201,6 +201,6 @@ export function DeliveryCancelRequestModal({
                     </Button>
                 </Row>
             </Stack>
-        </Modal>
+        </GameModal>
     );
 }

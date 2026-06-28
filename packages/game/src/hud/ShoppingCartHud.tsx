@@ -7,7 +7,6 @@ import {
     Navigate,
     ShoppingCart as ShoppingCartIcon,
 } from '@gredice/ui/icons';
-import { Modal } from '@gredice/ui/Modal';
 import { ModalConfirm } from '@gredice/ui/ModalConfirm';
 import { NoDataPlaceholder } from '@gredice/ui/NoDataPlaceholder';
 import { Row } from '@gredice/ui/Row';
@@ -25,6 +24,7 @@ import {
     type DeliverySelectionData,
     DeliveryStep,
 } from '../shared-ui/delivery/DeliveryStep';
+import { GameModal } from '../shared-ui/game-modal';
 import { useShoppingCartOpenParam } from '../useUrlState';
 import {
     calculateSunflowerAmountFromPrices,
@@ -133,12 +133,6 @@ export function ShoppingCart() {
 
     return (
         <Stack spacing={4}>
-            <Row spacing={4}>
-                <div className="rounded-full bg-tertiary/40 p-3 flex items-center justify-center">
-                    <ShoppingCartIcon className="size-7 shrink-0" />
-                </div>
-                <Typography level="h3">Košara</Typography>
-            </Row>
             <Stack>
                 <div
                     className={cx(
@@ -299,7 +293,7 @@ export function ShoppingCartHud() {
     return (
         <HudCard open position="floating" className="static p-0.5">
             <Row spacing={2}>
-                <Modal
+                <GameModal
                     open={isOpen}
                     onOpenChange={(open) => {
                         if (open) {
@@ -311,8 +305,10 @@ export function ShoppingCartHud() {
                         setIsOpen(open);
                     }}
                     title="Košara"
-                    className="z-[46] border-tertiary border-b-4 md:max-w-2xl"
-                    overlayClassName="z-[46]"
+                    className="md:max-w-2xl"
+                    headerIcon={
+                        <ShoppingCartIcon className="size-7 shrink-0" />
+                    }
                     trigger={
                         <Button
                             title="Košara"
@@ -345,7 +341,7 @@ export function ShoppingCartHud() {
                     }
                 >
                     <ShoppingCart />
-                </Modal>
+                </GameModal>
             </Row>
         </HudCard>
     );

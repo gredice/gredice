@@ -14,7 +14,6 @@ import {
     Warning,
 } from '@gredice/ui/icons';
 import { Link } from '@gredice/ui/Link';
-import { Modal } from '@gredice/ui/Modal';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Row } from '@gredice/ui/Row';
 import { SegmentedCircularProgress } from '@gredice/ui/SegmentedCircularProgress';
@@ -26,6 +25,7 @@ import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { usePlantSort } from '../../hooks/usePlantSorts';
 import { KnownPages } from '../../knownPages';
+import { GameModal } from '../../shared-ui/game-modal';
 import { ScrollView } from '../../shared-ui/ScrollView';
 import {
     findRaisedBedFieldWithPlant,
@@ -429,7 +429,7 @@ export function RaisedBedFieldItemPlanted({
         triggerOverride === undefined ? defaultTrigger : triggerOverride;
 
     const modal = (
-        <Modal
+        <GameModal
             open={open}
             onOpenChange={(nextOpen) => {
                 if (nextOpen) {
@@ -447,7 +447,7 @@ export function RaisedBedFieldItemPlanted({
                 onOpenChange?.(nextOpen);
             }}
             title={modalTitle}
-            className="max-w-xl overflow-x-hidden md:border-tertiary md:border-b-4"
+            className="max-w-xl overflow-x-hidden"
             trigger={trigger ?? undefined}
         >
             <Stack spacing={4} className="min-w-0 max-w-full">
@@ -638,7 +638,7 @@ export function RaisedBedFieldItemPlanted({
                     Zatvori
                 </button>
             </Stack>
-        </Modal>
+        </GameModal>
     );
 
     if (triggerOverride === undefined && triggerVariant === 'field') {

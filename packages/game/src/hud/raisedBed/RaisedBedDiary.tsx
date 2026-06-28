@@ -3,7 +3,6 @@ import { Chip } from '@gredice/ui/Chip';
 import { ImageGallery } from '@gredice/ui/ImageGallery';
 import { List } from '@gredice/ui/List';
 import { ListItem } from '@gredice/ui/ListItem';
-import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { Spinner } from '@gredice/ui/Spinner';
 import { Stack } from '@gredice/ui/Stack';
@@ -18,6 +17,7 @@ import {
     type DiaryRescheduleTarget,
     isDiaryRescheduleTargetEligible,
 } from '../../hooks/useRescheduleDiaryEntry';
+import { GameModal } from '../../shared-ui/game-modal';
 import { RaisedBedAiOperationMarkdown } from './RaisedBedAiOperationMarkdown';
 import { RaisedBedDiaryAiAction } from './RaisedBedDiaryAiAction';
 import { RaisedBedDiaryCancelAction } from './RaisedBedDiaryCancelAction';
@@ -173,7 +173,7 @@ function SavedAiDiaryEntryButton({
     gardenId: number;
 }) {
     return (
-        <Modal
+        <GameModal
             title={entry.name}
             className="md:max-w-3xl"
             trigger={
@@ -202,7 +202,7 @@ function SavedAiDiaryEntryButton({
                     {entry.timestamp.toLocaleDateString('hr-HR')}
                 </Typography>
             </Stack>
-        </Modal>
+        </GameModal>
     );
 }
 

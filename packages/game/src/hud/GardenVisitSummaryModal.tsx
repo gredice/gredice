@@ -11,7 +11,6 @@ import {
     Sprout,
     Timer,
 } from '@gredice/ui/icons';
-import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -33,6 +32,7 @@ import {
     useGardenVisitSummary,
     useMarkGardenVisitSummarySeen,
 } from '../hooks/useGardenVisitSummary';
+import { GameModal } from '../shared-ui/game-modal';
 import { useGameState } from '../useGameState';
 import { useSetRaisedBedCloseupParam } from '../useRaisedBedCloseup';
 
@@ -331,10 +331,10 @@ export function GardenVisitSummaryModalContent({
     open,
 }: GardenVisitSummaryModalContentProps) {
     return (
-        <Modal
+        <GameModal
             title="Od zadnjeg posjeta"
             open={open}
-            className="max-w-xl overflow-hidden border-tertiary border-b-4 p-0"
+            className="max-w-xl overflow-hidden p-0"
             dismissible={false}
         >
             <div className="flex max-h-[calc(100dvh-2rem)] min-h-0 flex-col">
@@ -453,6 +453,6 @@ export function GardenVisitSummaryModalContent({
                     </Button>
                 </Row>
             </div>
-        </Modal>
+        </GameModal>
     );
 }

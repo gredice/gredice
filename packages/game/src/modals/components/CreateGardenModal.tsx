@@ -1,10 +1,10 @@
 import { Button } from '@gredice/ui/Button';
 import { Input } from '@gredice/ui/Input';
-import { Modal } from '@gredice/ui/Modal';
 import { Stack } from '@gredice/ui/Stack';
 import { type SubmitEvent, useState } from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { useCreateGarden } from '../../hooks/useCreateGarden';
+import { GameModal } from '../../shared-ui/game-modal';
 
 type CreateGardenModalProps = {
     open: boolean;
@@ -55,7 +55,7 @@ export function CreateGardenModal({
     };
 
     return (
-        <Modal
+        <GameModal
             open={open}
             onOpenChange={onOpenChange}
             title={isSandbox ? 'Kreiraj vrt za igru' : 'Kreiraj novi vrt'}
@@ -89,6 +89,6 @@ export function CreateGardenModal({
                     </Button>
                 </Stack>
             </form>
-        </Modal>
+        </GameModal>
     );
 }

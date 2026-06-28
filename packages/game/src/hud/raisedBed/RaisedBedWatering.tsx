@@ -1,9 +1,9 @@
 import { BlockImage } from '@gredice/ui/BlockImage';
-import { Modal } from '@gredice/ui/Modal';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 import { ButtonGreen } from '../../shared-ui/ButtonGreen';
+import { GameModal } from '../../shared-ui/game-modal';
 import { RaisedBedWateringCalendar } from './RaisedBedWateringCalendar';
 import { OperationsList } from './shared/OperationsList';
 
@@ -17,8 +17,7 @@ export function RaisedBedWatering({
     const [open, setOpen] = useState(false);
 
     return (
-        <Modal
-            className="border border-tertiary border-b-4"
+        <GameModal
             title="Zalijevanje"
             open={open}
             onOpenChange={setOpen}
@@ -61,6 +60,6 @@ export function RaisedBedWatering({
                     raisedBedId={raisedBedId}
                 />
             </Stack>
-        </Modal>
+        </GameModal>
     );
 }
