@@ -12,6 +12,7 @@ import { Card, CardOverflow } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
 import { Stack } from '@gredice/ui/Stack';
 import { Table } from '@gredice/ui/Table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import { Typography } from '@gredice/ui/Typography';
 import { auth } from '../../../lib/auth/auth';
 import {
@@ -221,272 +222,313 @@ export default async function AiAnalyticsPage({
 
     return (
         <Stack spacing={4}>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <Card>
-                    <CardOverflow>
-                        <Stack className="p-2">
-                            <Typography level="body3">
-                                Ukupno operacija
-                            </Typography>
-                            <Typography level="h4" semiBold>
-                                {events.length}
-                            </Typography>
-                        </Stack>
-                    </CardOverflow>
-                </Card>
-                <Card>
-                    <CardOverflow>
-                        <Stack className="p-2">
-                            <Typography level="body3">Zadnjih 24h</Typography>
-                            <Typography level="h4" semiBold>
-                                {totals24h.count}
-                            </Typography>
-                        </Stack>
-                    </CardOverflow>
-                </Card>
-                <Card>
-                    <CardOverflow>
-                        <Stack className="p-2">
-                            <Typography level="body3">
-                                Zadnjih 30 dana
-                            </Typography>
-                            <Typography level="h4" semiBold>
-                                {totals30d.count}
-                            </Typography>
-                        </Stack>
-                    </CardOverflow>
-                </Card>
-                <Card>
-                    <CardOverflow>
-                        <Stack className="p-2">
-                            <Typography level="body3">Ukupno tokena</Typography>
-                            <Typography level="h4" semiBold>
-                                {formatTokens(totalTokens)}
-                            </Typography>
-                        </Stack>
-                    </CardOverflow>
-                </Card>
-                <Card>
-                    <CardOverflow>
-                        <Stack className="p-2">
-                            <Typography level="body3">Ukupni trošak</Typography>
-                            <Typography level="h4" semiBold>
-                                {formatAiCostUsd(totalCostUsd)}
-                            </Typography>
-                        </Stack>
-                    </CardOverflow>
-                </Card>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                <Card>
-                    <CardOverflow>
-                        <Stack className="p-2">
-                            <Typography level="body3">Ulazni tokeni</Typography>
-                            <Typography level="h4" semiBold>
-                                {formatTokens(totalInputTokens)}
-                            </Typography>
-                        </Stack>
-                    </CardOverflow>
-                </Card>
-                <Card>
-                    <CardOverflow>
-                        <Stack className="p-2">
-                            <Typography level="body3">
-                                Izlazni tokeni
-                            </Typography>
-                            <Typography level="h4" semiBold>
-                                {formatTokens(totalOutputTokens)}
-                            </Typography>
-                        </Stack>
-                    </CardOverflow>
-                </Card>
-                <Card>
-                    <CardOverflow>
-                        <Stack className="p-2">
-                            <Typography level="body3">
-                                Prosj. tokeni/zahtjev
-                            </Typography>
-                            <Typography level="h4" semiBold>
-                                {events.length > 0
-                                    ? formatTokens(
-                                          Math.round(
-                                              totalTokens / events.length,
-                                          ),
-                                      )
-                                    : '-'}
-                            </Typography>
-                        </Stack>
-                    </CardOverflow>
-                </Card>
-            </div>
-            <Typography level="h3" semiBold>
-                Suncokret chat
-            </Typography>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <Card>
-                    <CardOverflow>
-                        <Stack className="p-2">
-                            <Typography level="body3">Razgovori</Typography>
-                            <Typography level="h4" semiBold>
-                                {chatConversations.length}
-                            </Typography>
-                        </Stack>
-                    </CardOverflow>
-                </Card>
-                <Card>
-                    <CardOverflow>
-                        <Stack className="p-2">
-                            <Typography level="body3">Chat 24h</Typography>
-                            <Typography level="h4" semiBold>
-                                {chatTotals24h.count}
-                            </Typography>
-                        </Stack>
-                    </CardOverflow>
-                </Card>
-                <Card>
-                    <CardOverflow>
-                        <Stack className="p-2">
-                            <Typography level="body3">Chat 30d</Typography>
-                            <Typography level="h4" semiBold>
-                                {chatTotals30d.count}
-                            </Typography>
-                        </Stack>
-                    </CardOverflow>
-                </Card>
-                <Card>
-                    <CardOverflow>
-                        <Stack className="p-2">
-                            <Typography level="body3">Chat tokeni</Typography>
-                            <Typography level="h4" semiBold>
-                                {formatTokens(chatTotals30d.totalTokens)}
-                            </Typography>
-                        </Stack>
-                    </CardOverflow>
-                </Card>
-                <Card>
-                    <CardOverflow>
-                        <Stack className="p-2">
-                            <Typography level="body3">Chat trošak</Typography>
-                            <Typography level="h4" semiBold>
-                                {formatAiCostUsd(
-                                    microUsdToUsd(chatTotals30d.totalMicroUsd),
-                                )}
-                            </Typography>
-                        </Stack>
-                    </CardOverflow>
-                </Card>
-            </div>
-            <AiChatAnalyticsTable rows={chatRows} />
-            <Typography level="h3" semiBold>
-                Limiti računa
-            </Typography>
-            <Card>
-                <CardOverflow>
-                    <Table>
-                        <Table.Header>
-                            <Table.Row>
-                                <Table.Head>Račun</Table.Head>
-                                <Table.Head>Tip</Table.Head>
-                                <Table.Head className="text-right">
-                                    Dnevni limit
-                                </Table.Head>
-                                <Table.Head className="text-right">
-                                    Iskorišteno
-                                </Table.Head>
-                                <Table.Head className="text-right">
-                                    Rezervirano
-                                </Table.Head>
-                                <Table.Head className="text-right">
-                                    Preostalo
-                                </Table.Head>
-                                <Table.Head>Probni dani</Table.Head>
-                                <Table.Head>Status</Table.Head>
-                            </Table.Row>
-                        </Table.Header>
-                        <Table.Body>
-                            {accountLimitSummaries.map(
-                                ({ account, limitState }) => (
-                                    <Table.Row key={account.id}>
-                                        <Table.Cell>
-                                            <Stack spacing={0}>
-                                                <Typography
-                                                    level="body2"
-                                                    semiBold
-                                                >
-                                                    {account.id}
-                                                </Typography>
-                                                <Typography
-                                                    level="body3"
-                                                    className="text-muted-foreground"
-                                                >
-                                                    {account.accountUsers
-                                                        .map(
-                                                            (accountUser) =>
-                                                                accountUser.user
-                                                                    .displayName ??
-                                                                accountUser.user
-                                                                    .userName,
-                                                        )
-                                                        .join(', ')}
-                                                </Typography>
-                                            </Stack>
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            <Chip size="sm">
-                                                {limitState.activeRaisedBed
-                                                    ? 'Aktivna gredica'
-                                                    : 'Probni račun'}
-                                            </Chip>
-                                        </Table.Cell>
-                                        <Table.Cell className="text-right">
+            <Tabs defaultValue="analysis">
+                <TabsList className="grid w-full grid-cols-2 md:w-auto">
+                    <TabsTrigger value="analysis">Analize</TabsTrigger>
+                    <TabsTrigger value="chat">Chat</TabsTrigger>
+                </TabsList>
+                <TabsContent value="analysis" className="mt-4">
+                    <Stack spacing={4}>
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                            <Card>
+                                <CardOverflow>
+                                    <Stack className="p-2">
+                                        <Typography level="body3">
+                                            Ukupno operacija
+                                        </Typography>
+                                        <Typography level="h4" semiBold>
+                                            {events.length}
+                                        </Typography>
+                                    </Stack>
+                                </CardOverflow>
+                            </Card>
+                            <Card>
+                                <CardOverflow>
+                                    <Stack className="p-2">
+                                        <Typography level="body3">
+                                            Zadnjih 24h
+                                        </Typography>
+                                        <Typography level="h4" semiBold>
+                                            {totals24h.count}
+                                        </Typography>
+                                    </Stack>
+                                </CardOverflow>
+                            </Card>
+                            <Card>
+                                <CardOverflow>
+                                    <Stack className="p-2">
+                                        <Typography level="body3">
+                                            Zadnjih 30 dana
+                                        </Typography>
+                                        <Typography level="h4" semiBold>
+                                            {totals30d.count}
+                                        </Typography>
+                                    </Stack>
+                                </CardOverflow>
+                            </Card>
+                            <Card>
+                                <CardOverflow>
+                                    <Stack className="p-2">
+                                        <Typography level="body3">
+                                            Ukupno tokena
+                                        </Typography>
+                                        <Typography level="h4" semiBold>
+                                            {formatTokens(totalTokens)}
+                                        </Typography>
+                                    </Stack>
+                                </CardOverflow>
+                            </Card>
+                            <Card>
+                                <CardOverflow>
+                                    <Stack className="p-2">
+                                        <Typography level="body3">
+                                            Ukupni trošak
+                                        </Typography>
+                                        <Typography level="h4" semiBold>
+                                            {formatAiCostUsd(totalCostUsd)}
+                                        </Typography>
+                                    </Stack>
+                                </CardOverflow>
+                            </Card>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                            <Card>
+                                <CardOverflow>
+                                    <Stack className="p-2">
+                                        <Typography level="body3">
+                                            Ulazni tokeni
+                                        </Typography>
+                                        <Typography level="h4" semiBold>
+                                            {formatTokens(totalInputTokens)}
+                                        </Typography>
+                                    </Stack>
+                                </CardOverflow>
+                            </Card>
+                            <Card>
+                                <CardOverflow>
+                                    <Stack className="p-2">
+                                        <Typography level="body3">
+                                            Izlazni tokeni
+                                        </Typography>
+                                        <Typography level="h4" semiBold>
+                                            {formatTokens(totalOutputTokens)}
+                                        </Typography>
+                                    </Stack>
+                                </CardOverflow>
+                            </Card>
+                            <Card>
+                                <CardOverflow>
+                                    <Stack className="p-2">
+                                        <Typography level="body3">
+                                            Prosj. tokeni/zahtjev
+                                        </Typography>
+                                        <Typography level="h4" semiBold>
+                                            {events.length > 0
+                                                ? formatTokens(
+                                                      Math.round(
+                                                          totalTokens /
+                                                              events.length,
+                                                      ),
+                                                  )
+                                                : '-'}
+                                        </Typography>
+                                    </Stack>
+                                </CardOverflow>
+                            </Card>
+                        </div>
+                        <Typography level="h3" semiBold>
+                            Analize gredica
+                        </Typography>
+                        <AiAnalyticsFilters />
+                        <AiAnalyticsTable rows={rows} />
+                    </Stack>
+                </TabsContent>
+                <TabsContent value="chat" className="mt-4">
+                    <Stack spacing={4}>
+                        <Typography level="h3" semiBold>
+                            Suncokret chat
+                        </Typography>
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                            <Card>
+                                <CardOverflow>
+                                    <Stack className="p-2">
+                                        <Typography level="body3">
+                                            Razgovori
+                                        </Typography>
+                                        <Typography level="h4" semiBold>
+                                            {chatConversations.length}
+                                        </Typography>
+                                    </Stack>
+                                </CardOverflow>
+                            </Card>
+                            <Card>
+                                <CardOverflow>
+                                    <Stack className="p-2">
+                                        <Typography level="body3">
+                                            Chat 24h
+                                        </Typography>
+                                        <Typography level="h4" semiBold>
+                                            {chatTotals24h.count}
+                                        </Typography>
+                                    </Stack>
+                                </CardOverflow>
+                            </Card>
+                            <Card>
+                                <CardOverflow>
+                                    <Stack className="p-2">
+                                        <Typography level="body3">
+                                            Chat 30d
+                                        </Typography>
+                                        <Typography level="h4" semiBold>
+                                            {chatTotals30d.count}
+                                        </Typography>
+                                    </Stack>
+                                </CardOverflow>
+                            </Card>
+                            <Card>
+                                <CardOverflow>
+                                    <Stack className="p-2">
+                                        <Typography level="body3">
+                                            Chat tokeni
+                                        </Typography>
+                                        <Typography level="h4" semiBold>
+                                            {formatTokens(
+                                                chatTotals30d.totalTokens,
+                                            )}
+                                        </Typography>
+                                    </Stack>
+                                </CardOverflow>
+                            </Card>
+                            <Card>
+                                <CardOverflow>
+                                    <Stack className="p-2">
+                                        <Typography level="body3">
+                                            Chat trošak
+                                        </Typography>
+                                        <Typography level="h4" semiBold>
                                             {formatAiCostUsd(
                                                 microUsdToUsd(
-                                                    limitState.dailyLimitMicroUsd,
+                                                    chatTotals30d.totalMicroUsd,
                                                 ),
                                             )}
-                                        </Table.Cell>
-                                        <Table.Cell className="text-right">
-                                            {formatAiCostUsd(
-                                                microUsdToUsd(
-                                                    limitState.usedMicroUsd,
-                                                ),
-                                            )}
-                                        </Table.Cell>
-                                        <Table.Cell className="text-right">
-                                            {formatAiCostUsd(
-                                                microUsdToUsd(
-                                                    limitState.reservedMicroUsd,
-                                                ),
-                                            )}
-                                        </Table.Cell>
-                                        <Table.Cell className="text-right">
-                                            {formatAiCostUsd(
-                                                microUsdToUsd(
-                                                    limitState.remainingMicroUsd,
-                                                ),
-                                            )}
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            {`${limitState.trialChatDaysUsed.toString()}/${limitState.trialChatDaysLimit.toString()}`}
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            <Chip size="sm">
-                                                {limitState.blockedReason ??
-                                                    'ok'}
-                                            </Chip>
-                                        </Table.Cell>
-                                    </Table.Row>
-                                ),
-                            )}
-                        </Table.Body>
-                    </Table>
-                </CardOverflow>
-            </Card>
-            <Typography level="h3" semiBold>
-                Analize gredica
-            </Typography>
-            <AiAnalyticsFilters />
-            <AiAnalyticsTable rows={rows} />
+                                        </Typography>
+                                    </Stack>
+                                </CardOverflow>
+                            </Card>
+                        </div>
+                        <AiChatAnalyticsTable rows={chatRows} />
+                        <Typography level="h3" semiBold>
+                            Limiti računa
+                        </Typography>
+                        <Card>
+                            <CardOverflow>
+                                <Table>
+                                    <Table.Header>
+                                        <Table.Row>
+                                            <Table.Head>Račun</Table.Head>
+                                            <Table.Head>Tip</Table.Head>
+                                            <Table.Head className="text-right">
+                                                Dnevni limit
+                                            </Table.Head>
+                                            <Table.Head className="text-right">
+                                                Iskorišteno
+                                            </Table.Head>
+                                            <Table.Head className="text-right">
+                                                Rezervirano
+                                            </Table.Head>
+                                            <Table.Head className="text-right">
+                                                Preostalo
+                                            </Table.Head>
+                                            <Table.Head>Probni dani</Table.Head>
+                                            <Table.Head>Status</Table.Head>
+                                        </Table.Row>
+                                    </Table.Header>
+                                    <Table.Body>
+                                        {accountLimitSummaries.map(
+                                            ({ account, limitState }) => (
+                                                <Table.Row key={account.id}>
+                                                    <Table.Cell>
+                                                        <Stack spacing={0}>
+                                                            <Typography
+                                                                level="body2"
+                                                                semiBold
+                                                            >
+                                                                {account.id}
+                                                            </Typography>
+                                                            <Typography
+                                                                level="body3"
+                                                                className="text-muted-foreground"
+                                                            >
+                                                                {account.accountUsers
+                                                                    .map(
+                                                                        (
+                                                                            accountUser,
+                                                                        ) =>
+                                                                            accountUser
+                                                                                .user
+                                                                                .displayName ??
+                                                                            accountUser
+                                                                                .user
+                                                                                .userName,
+                                                                    )
+                                                                    .join(', ')}
+                                                            </Typography>
+                                                        </Stack>
+                                                    </Table.Cell>
+                                                    <Table.Cell>
+                                                        <Chip size="sm">
+                                                            {limitState.activeRaisedBed
+                                                                ? 'Aktivna gredica'
+                                                                : 'Probni račun'}
+                                                        </Chip>
+                                                    </Table.Cell>
+                                                    <Table.Cell className="text-right">
+                                                        {formatAiCostUsd(
+                                                            microUsdToUsd(
+                                                                limitState.dailyLimitMicroUsd,
+                                                            ),
+                                                        )}
+                                                    </Table.Cell>
+                                                    <Table.Cell className="text-right">
+                                                        {formatAiCostUsd(
+                                                            microUsdToUsd(
+                                                                limitState.usedMicroUsd,
+                                                            ),
+                                                        )}
+                                                    </Table.Cell>
+                                                    <Table.Cell className="text-right">
+                                                        {formatAiCostUsd(
+                                                            microUsdToUsd(
+                                                                limitState.reservedMicroUsd,
+                                                            ),
+                                                        )}
+                                                    </Table.Cell>
+                                                    <Table.Cell className="text-right">
+                                                        {formatAiCostUsd(
+                                                            microUsdToUsd(
+                                                                limitState.remainingMicroUsd,
+                                                            ),
+                                                        )}
+                                                    </Table.Cell>
+                                                    <Table.Cell>
+                                                        {`${limitState.trialChatDaysUsed.toString()}/${limitState.trialChatDaysLimit.toString()}`}
+                                                    </Table.Cell>
+                                                    <Table.Cell>
+                                                        <Chip size="sm">
+                                                            {limitState.blockedReason ??
+                                                                'ok'}
+                                                        </Chip>
+                                                    </Table.Cell>
+                                                </Table.Row>
+                                            ),
+                                        )}
+                                    </Table.Body>
+                                </Table>
+                            </CardOverflow>
+                        </Card>
+                    </Stack>
+                </TabsContent>
+            </Tabs>
         </Stack>
     );
 }
