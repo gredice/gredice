@@ -1,6 +1,6 @@
 import type { SelectGarden } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Table } from '@gredice/ui/Table';
+import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { KnownPages } from '../../../src/KnownPages';
@@ -20,49 +20,62 @@ export function GardensTable({
     showCreatedTime = false,
     emptyLabel = 'Nema vrtova',
 }: GardensTableProps) {
-    const columnCount = showAccountColumn ? 3 : 2;
+    if (gardens.length === 0) {
+        return (
+            <div className="p-4">
+                <NoDataPlaceholder>{emptyLabel}</NoDataPlaceholder>
+            </div>
+        );
+    }
 
     return (
-        <Table>
-            <Table.Header>
-                <Table.Row>
-                    <Table.Head>Naziv</Table.Head>
-                    {showAccountColumn && <Table.Head>Račun</Table.Head>}
-                    <Table.Head>Datum kreiranja</Table.Head>
-                </Table.Row>
-            </Table.Header>
-            <Table.Body>
-                {gardens.length === 0 && (
-                    <Table.Row>
-                        <Table.Cell colSpan={columnCount}>
-                            <NoDataPlaceholder>{emptyLabel}</NoDataPlaceholder>
-                        </Table.Cell>
-                    </Table.Row>
-                )}
-                {gardens.map((garden) => (
-                    <Table.Row key={garden.id}>
-                        <Table.Cell>
-                            <Link href={KnownPages.Garden(garden.id)}>
+        <ul className="divide-y">
+            {gardens.map((garden) => (
+                <li
+                    key={garden.id}
+                    className="px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4"
+                >
+                    <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                            <Link
+                                href={KnownPages.Garden(garden.id)}
+                                className="min-w-0 break-words text-sm font-medium text-primary underline-offset-4 hover:underline"
+                            >
                                 {garden.name}
                             </Link>
-                        </Table.Cell>
-                        {showAccountColumn && (
-                            <Table.Cell>
-                                <Link
-                                    href={KnownPages.Account(garden.accountId)}
+                        </div>
+                        <div className="flex min-w-0 flex-col gap-1 text-left sm:items-end sm:text-right">
+                            {showAccountColumn && (
+                                <Typography
+                                    component="div"
+                                    level="body3"
+                                    className="flex min-w-0 max-w-full flex-wrap items-baseline gap-x-1 gap-y-0.5 text-muted-foreground sm:justify-end"
                                 >
-                                    {garden.accountId}
-                                </Link>
-                            </Table.Cell>
-                        )}
-                        <Table.Cell>
-                            <LocalDateTime time={showCreatedTime}>
-                                {garden.createdAt}
-                            </LocalDateTime>
-                        </Table.Cell>
-                    </Table.Row>
-                ))}
-            </Table.Body>
-        </Table>
+                                    <span className="shrink-0">Račun</span>
+                                    <Link
+                                        href={KnownPages.Account(
+                                            garden.accountId,
+                                        )}
+                                        title={garden.accountId}
+                                        className="min-w-0 font-mono text-primary underline-offset-4 [overflow-wrap:anywhere] hover:underline"
+                                    >
+                                        {garden.accountId}
+                                    </Link>
+                                </Typography>
+                            )}
+                            <Typography
+                                component="div"
+                                level="body3"
+                                className="whitespace-nowrap text-muted-foreground"
+                            >
+                                <LocalDateTime time={showCreatedTime}>
+                                    {garden.createdAt}
+                                </LocalDateTime>
+                            </Typography>
+                        </div>
+                    </div>
+                </li>
+            ))}
+        </ul>
     );
 }
