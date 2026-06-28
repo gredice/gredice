@@ -5,8 +5,8 @@ import {
 } from '@gredice/storage';
 import { Card, CardOverflow } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
+import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Stack } from '@gredice/ui/Stack';
-import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
 import type { EntityStandardized } from '../../../../lib/@types/EntityStandardized';
@@ -101,48 +101,97 @@ export default async function SowingStatisticsPage() {
                 <Chip>Sorti sa sijanjem: {sortedSowingSummary.length}</Chip>
             </Stack>
             <Card>
-                <CardOverflow>
-                    <Table>
-                        <Table.Header>
-                            <Table.Row>
-                                <Table.Head>#</Table.Head>
-                                <Table.Head>Sorta</Table.Head>
-                                <Table.Head className="text-right">
-                                    Broj sijanja
-                                </Table.Head>
-                                <Table.Head className="text-right">
-                                    Zadnje sijanje
-                                </Table.Head>
-                            </Table.Row>
-                        </Table.Header>
-                        <Table.Body>
-                            {sortedSowingSummary.length === 0 && (
-                                <Table.Row>
-                                    <Table.Cell colSpan={4}>
-                                        <NoDataPlaceholder>
-                                            Nema evidentiranih sijanja.
-                                        </NoDataPlaceholder>
-                                    </Table.Cell>
-                                </Table.Row>
-                            )}
+                <CardOverflow className="overflow-hidden rounded-[calc(var(--radius)-1px)]">
+                    {sortedSowingSummary.length === 0 ? (
+                        <div className="p-4">
+                            <NoDataPlaceholder>
+                                Nema evidentiranih sijanja.
+                            </NoDataPlaceholder>
+                        </div>
+                    ) : (
+                        <ul className="divide-y">
                             {sortedSowingSummary.map((summary, index) => (
-                                <Table.Row key={summary.sortId}>
-                                    <Table.Cell>{index + 1}</Table.Cell>
-                                    <Table.Cell>{summary.name}</Table.Cell>
-                                    <Table.Cell className="text-right">
-                                        {summary.sowingCount}
-                                    </Table.Cell>
-                                    <Table.Cell className="text-right">
-                                        {summary.lastSowedAt
-                                            ? summary.lastSowedAt.toLocaleDateString(
-                                                  'hr-HR',
-                                              )
-                                            : '-'}
-                                    </Table.Cell>
-                                </Table.Row>
+                                <li
+                                    key={summary.sortId}
+                                    className="px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4"
+                                >
+                                    <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <div className="flex min-w-0 items-start gap-3">
+                                            <Chip
+                                                color="neutral"
+                                                size="sm"
+                                                variant="soft"
+                                                className="mt-0.5 font-mono"
+                                            >
+                                                #{index + 1}
+                                            </Chip>
+                                            <Stack
+                                                spacing={1}
+                                                className="min-w-0"
+                                            >
+                                                <Typography
+                                                    component="div"
+                                                    level="body2"
+                                                    className="min-w-0 truncate font-medium"
+                                                    title={summary.name}
+                                                >
+                                                    {summary.name}
+                                                </Typography>
+                                                <Typography
+                                                    level="body3"
+                                                    className="text-muted-foreground"
+                                                >
+                                                    Sorta
+                                                </Typography>
+                                            </Stack>
+                                        </div>
+                                        <div className="grid min-w-0 grid-cols-2 gap-3 text-left sm:flex sm:items-center sm:justify-end sm:gap-6 sm:text-right">
+                                            <Stack spacing={1}>
+                                                <Typography
+                                                    level="body3"
+                                                    className="text-muted-foreground"
+                                                >
+                                                    Broj sijanja
+                                                </Typography>
+                                                <Typography
+                                                    component="div"
+                                                    level="body2"
+                                                    className="font-medium tabular-nums"
+                                                >
+                                                    {summary.sowingCount}
+                                                </Typography>
+                                            </Stack>
+                                            <Stack spacing={1}>
+                                                <Typography
+                                                    level="body3"
+                                                    className="text-muted-foreground"
+                                                >
+                                                    Zadnje sijanje
+                                                </Typography>
+                                                <Typography
+                                                    component="div"
+                                                    level="body2"
+                                                    className="font-medium tabular-nums"
+                                                >
+                                                    {summary.lastSowedAt ? (
+                                                        <LocalDateTime
+                                                            time={false}
+                                                        >
+                                                            {
+                                                                summary.lastSowedAt
+                                                            }
+                                                        </LocalDateTime>
+                                                    ) : (
+                                                        '-'
+                                                    )}
+                                                </Typography>
+                                            </Stack>
+                                        </div>
+                                    </div>
+                                </li>
                             ))}
-                        </Table.Body>
-                    </Table>
+                        </ul>
+                    )}
                 </CardOverflow>
             </Card>
         </Stack>
