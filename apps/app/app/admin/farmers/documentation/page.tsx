@@ -1,10 +1,15 @@
 import { Button } from '@gredice/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardOverflow,
+    CardTitle,
+} from '@gredice/ui/Card';
 import { Book, Hammer, Printer, Sprout } from '@gredice/ui/icons';
 import { DropdownMenuItem } from '@gredice/ui/Menu';
 import { SplitButton } from '@gredice/ui/SplitButton';
 import { Stack } from '@gredice/ui/Stack';
-import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
 import { AdminPageHeader } from '../../../../components/admin/navigation';
 import { auth } from '../../../../lib/auth/auth';
@@ -210,48 +215,65 @@ export default async function FarmerDocumentationPage({
                 <CardHeader>
                     <CardTitle>Sadržaj paketa</CardTitle>
                 </CardHeader>
-                <CardContent className="p-0">
+                <CardOverflow className="border-t">
                     {packageRows.length > 0 ? (
-                        <Table>
-                            <Table.Header>
-                                <Table.Row>
-                                    <Table.Head>Kod</Table.Head>
-                                    <Table.Head>Priručnik</Table.Head>
-                                    <Table.Head>Vrsta</Table.Head>
-                                    <Table.Head>Status</Table.Head>
-                                    <Table.Head>Promjena</Table.Head>
-                                    <Table.Head>Sažetak</Table.Head>
-                                </Table.Row>
-                            </Table.Header>
-                            <Table.Body>
-                                {packageRows.map((row) => (
-                                    <Table.Row
-                                        key={`${row.changeType}-${row.code}`}
-                                    >
-                                        <Table.Cell className="font-mono text-sm">
-                                            {row.code}
-                                        </Table.Cell>
-                                        <Table.Cell>{row.label}</Table.Cell>
-                                        <Table.Cell className="text-muted-foreground">
-                                            {row.documentTypeLabel}
-                                        </Table.Cell>
-                                        <Table.Cell>
+                        <ul className="divide-y">
+                            {packageRows.map((row) => (
+                                <li
+                                    key={`${row.changeType}-${row.code}`}
+                                    className="px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4"
+                                >
+                                    <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                        <Stack spacing={1} className="min-w-0">
+                                            <div className="flex min-w-0 flex-wrap items-center gap-2">
+                                                <span className="rounded-md bg-muted px-2 py-1 font-mono text-xs font-medium text-muted-foreground">
+                                                    {row.code}
+                                                </span>
+                                                <Typography
+                                                    component="span"
+                                                    level="body3"
+                                                    className="text-muted-foreground"
+                                                >
+                                                    {row.documentTypeLabel}
+                                                </Typography>
+                                            </div>
+                                            <Typography
+                                                level="body2"
+                                                semiBold
+                                                className="min-w-0 break-words"
+                                            >
+                                                {row.label}
+                                            </Typography>
+                                            <Typography
+                                                level="body3"
+                                                className="text-muted-foreground"
+                                            >
+                                                {row.detail}
+                                            </Typography>
+                                        </Stack>
+                                        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center lg:shrink-0 lg:justify-end">
                                             <DocumentationChangeTypeBadge
                                                 type={row.changeType}
                                             />
-                                        </Table.Cell>
-                                        <Table.Cell className="text-muted-foreground">
-                                            {formatDocumentationDateTime(
-                                                row.changedAt,
-                                            )}
-                                        </Table.Cell>
-                                        <Table.Cell className="text-muted-foreground">
-                                            {row.detail}
-                                        </Table.Cell>
-                                    </Table.Row>
-                                ))}
-                            </Table.Body>
-                        </Table>
+                                            <Typography
+                                                component="span"
+                                                level="body3"
+                                                className="text-muted-foreground lg:text-right"
+                                            >
+                                                <span className="sr-only">
+                                                    Promjena:{' '}
+                                                </span>
+                                                <span className="whitespace-nowrap">
+                                                    {formatDocumentationDateTime(
+                                                        row.changedAt,
+                                                    )}
+                                                </span>
+                                            </Typography>
+                                        </div>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
                     ) : (
                         <div className="p-6">
                             <Typography
@@ -263,7 +285,7 @@ export default async function FarmerDocumentationPage({
                             </Typography>
                         </div>
                     )}
-                </CardContent>
+                </CardOverflow>
             </Card>
         </Stack>
     );
