@@ -1,10 +1,12 @@
 import { getFeedbacks } from '@gredice/storage';
 import { Card, CardOverflow } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
+import { List } from '@gredice/ui/List';
+import { ListItem } from '@gredice/ui/ListItem';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
-import { Table } from '@gredice/ui/Table';
+import { Typography } from '@gredice/ui/Typography';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { auth } from '../../../lib/auth/auth';
 
@@ -21,43 +23,84 @@ export default async function FeedbackPage() {
             </Row>
             <Card>
                 <CardOverflow>
-                    <Table>
-                        <Table.Header>
-                            <Table.Row>
-                                <Table.Head>Tema</Table.Head>
-                                <Table.Head>Ocijena</Table.Head>
-                                <Table.Head>Komentar</Table.Head>
-                                <Table.Head>Podaci</Table.Head>
-                                <Table.Head>Datum kreiranja</Table.Head>
-                            </Table.Row>
-                        </Table.Header>
-                        <Table.Body>
-                            {feedbacks.length === 0 && (
-                                <Table.Row>
-                                    <Table.Cell colSpan={5}>
-                                        <NoDataPlaceholder>
-                                            Nema povratnih informacija
-                                        </NoDataPlaceholder>
-                                    </Table.Cell>
-                                </Table.Row>
-                            )}
-                            {feedbacks.map((feedback) => (
-                                <Table.Row key={feedback.id}>
-                                    <Table.Cell>{feedback.topic}</Table.Cell>
-                                    <Table.Cell>{feedback.score}</Table.Cell>
-                                    <Table.Cell>{feedback.comment}</Table.Cell>
-                                    <Table.Cell>
-                                        {JSON.stringify(feedback.data)}
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        <LocalDateTime time={false}>
-                                            {feedback.createdAt}
-                                        </LocalDateTime>
-                                    </Table.Cell>
-                                </Table.Row>
-                            ))}
-                        </Table.Body>
-                    </Table>
+                    {feedbacks.length === 0 ? (
+                        <div className="p-4">
+                            <NoDataPlaceholder>
+                                Nema povratnih informacija
+                            </NoDataPlaceholder>
+                        </div>
+                    ) : (
+                        <List className="divide-y" spacing={0}>
+                            {feedbacks.map((feedback) => {
+                                const dataSummary =
+                                    JSON.stringify(feedback.data) ?? '';
+
+                                return (
+                                    <ListItem
+                                        key={feedback.id}
+                                        className="rounded-none px-3 py-3 hover:bg-muted/40 sm:px-4"
+                                        label={
+                                            <div className="flex min-w-0 flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                                                <Stack
+                                                    spacing={1}
+                                                    className="min-w-0 flex-1"
+                                                >
+                                                    <Typography
+                                                        level="body1"
+                                                        component="h3"
+                                                        semiBold
+                                                        className="min-w-0 break-words"
+                                                    >
+                                                        {feedback.topic}
+                                                    </Typography>
+                                                    {feedback.comment ? (
+                                                        <Typography
+                                                            level="body2"
+                                                            className="min-w-0 whitespace-pre-wrap break-words"
+                                                        >
+                                                            {feedback.comment}
+                                                        </Typography>
+                                                    ) : null}
+                                                </Stack>
+                                                <div className="flex min-w-0 flex-wrap items-center justify-start gap-2 md:max-w-[32rem] md:justify-end">
+                                                    {feedback.score ? (
+                                                        <Chip
+                                                            color="neutral"
+                                                            size="sm"
+                                                            variant="outlined"
+                                                        >
+                                                            Ocijena:{' '}
+                                                            {feedback.score}
+                                                        </Chip>
+                                                    ) : null}
+                                                    <Typography
+                                                        level="body3"
+                                                        className="whitespace-nowrap text-muted-foreground"
+                                                    >
+                                                        <LocalDateTime
+                                                            time={false}
+                                                        >
+                                                            {feedback.createdAt}
+                                                        </LocalDateTime>
+                                                    </Typography>
+                                                    <Typography
+                                                        level="body3"
+                                                        mono
+                                                        className="min-w-0 max-w-full break-words text-muted-foreground [overflow-wrap:anywhere]"
+                                                    >
+                                                        <span className="font-sans">
+                                                            Podaci:{' '}
+                                                        </span>
+                                                        {dataSummary}
+                                                    </Typography>
+                                                </div>
+                                            </div>
+                                        }
+                                    />
+                                );
+                            })}
+                        </List>
+                    )}
                 </CardOverflow>
             </Card>
         </Stack>
