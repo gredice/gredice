@@ -8,7 +8,6 @@ import { Chip } from '@gredice/ui/Chip';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
-import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
@@ -55,6 +54,33 @@ function formatRecipients(
     return addresses
         .map((recipient) => recipient.displayName ?? recipient.address)
         .join(', ');
+}
+
+function EmailDateValue({
+    label,
+    value,
+    fallback,
+}: {
+    label: string;
+    value: Date | string | null | undefined;
+    fallback?: string;
+}) {
+    return (
+        <Typography
+            component="span"
+            level="body3"
+            className="text-muted-foreground"
+        >
+            <span className="font-medium text-foreground">{label}: </span>
+            {value ? (
+                <span className="whitespace-nowrap">
+                    <LocalDateTime>{value}</LocalDateTime>
+                </span>
+            ) : (
+                fallback
+            )}
+        </Typography>
+    );
 }
 
 const ITEMS_PER_PAGE = 50;
@@ -129,27 +155,14 @@ export default async function EmailsPage({
 
             <Card>
                 <CardOverflow>
-                    <Table>
-                        <Table.Header>
-                            <Table.Row>
-                                <Table.Head>Naslov</Table.Head>
-                                <Table.Head>Primatelji</Table.Head>
-                                <Table.Head>Status</Table.Head>
-                                <Table.Head>Tip</Table.Head>
-                                <Table.Head>Poslano</Table.Head>
-                                <Table.Head>Kreirano</Table.Head>
-                            </Table.Row>
-                        </Table.Header>
-                        <Table.Body>
-                            {emails.length === 0 && (
-                                <Table.Row>
-                                    <Table.Cell colSpan={6}>
-                                        <NoDataPlaceholder>
-                                            Trenutno nema emailova za prikaz.
-                                        </NoDataPlaceholder>
-                                    </Table.Cell>
-                                </Table.Row>
-                            )}
+                    {emails.length === 0 ? (
+                        <div className="p-4">
+                            <NoDataPlaceholder>
+                                Trenutno nema emailova za prikaz.
+                            </NoDataPlaceholder>
+                        </div>
+                    ) : (
+                        <ul className="divide-y">
                             {emails.map((email) => {
                                 const toRecipients = formatRecipients(
                                     email.recipients.to,
@@ -162,94 +175,147 @@ export default async function EmailsPage({
                                     : null;
 
                                 return (
-                                    <Table.Row key={email.id}>
-                                        <Table.Cell>
-                                            <Stack spacing={1}>
-                                                <Link
-                                                    href={KnownPages.CommunicationEmail(
-                                                        email.id,
-                                                    )}
+                                    <li
+                                        key={email.id}
+                                        className="px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4"
+                                    >
+                                        <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                            <Stack
+                                                spacing={2}
+                                                className="min-w-0 flex-1"
+                                            >
+                                                <Stack
+                                                    spacing={1}
+                                                    className="min-w-0"
                                                 >
-                                                    {email.subject}
-                                                </Link>
-                                                {email.templateName && (
                                                     <Typography
-                                                        level="body2"
+                                                        component="h3"
+                                                        level="body1"
+                                                        semiBold
+                                                        className="min-w-0"
+                                                    >
+                                                        <Link
+                                                            href={KnownPages.CommunicationEmail(
+                                                                email.id,
+                                                            )}
+                                                            className="break-words text-primary underline-offset-2 hover:underline [overflow-wrap:anywhere]"
+                                                        >
+                                                            {email.subject}
+                                                        </Link>
+                                                    </Typography>
+                                                    {email.templateName && (
+                                                        <Typography
+                                                            level="body2"
+                                                            className="min-w-0 break-words text-muted-foreground [overflow-wrap:anywhere]"
+                                                        >
+                                                            {email.templateName}
+                                                        </Typography>
+                                                    )}
+                                                </Stack>
+
+                                                <Stack
+                                                    spacing={1}
+                                                    className="min-w-0"
+                                                >
+                                                    <Typography
+                                                        level="body3"
+                                                        uppercase
                                                         className="text-muted-foreground"
                                                     >
-                                                        {email.templateName}
+                                                        Primatelji
                                                     </Typography>
-                                                )}
+                                                    <Typography
+                                                        level="body2"
+                                                        className="min-w-0 break-words [overflow-wrap:anywhere]"
+                                                    >
+                                                        <span className="font-medium text-foreground">
+                                                            Za:{' '}
+                                                        </span>
+                                                        {toRecipients}
+                                                    </Typography>
+                                                    {ccRecipients && (
+                                                        <Typography
+                                                            level="body2"
+                                                            className="min-w-0 break-words text-muted-foreground [overflow-wrap:anywhere]"
+                                                        >
+                                                            <span className="font-medium text-foreground">
+                                                                CC:{' '}
+                                                            </span>
+                                                            {ccRecipients}
+                                                        </Typography>
+                                                    )}
+                                                    {bccRecipients && (
+                                                        <Typography
+                                                            level="body2"
+                                                            className="min-w-0 break-words text-muted-foreground [overflow-wrap:anywhere]"
+                                                        >
+                                                            <span className="font-medium text-foreground">
+                                                                BCC:{' '}
+                                                            </span>
+                                                            {bccRecipients}
+                                                        </Typography>
+                                                    )}
+                                                </Stack>
                                             </Stack>
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            <Stack spacing={1}>
-                                                <Typography>
-                                                    {toRecipients}
-                                                </Typography>
-                                                {ccRecipients && (
+
+                                            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-start lg:max-w-[32rem] lg:justify-end">
+                                                <div className="flex min-w-0 flex-wrap items-center gap-2 lg:justify-end">
+                                                    <EmailStatusBadge
+                                                        status={email.status}
+                                                    />
+                                                    {email.providerStatus && (
+                                                        <Typography
+                                                            component="span"
+                                                            level="body3"
+                                                            className="min-w-0 break-words text-muted-foreground [overflow-wrap:anywhere]"
+                                                        >
+                                                            {
+                                                                email.providerStatus
+                                                            }
+                                                        </Typography>
+                                                    )}
+                                                </div>
+
+                                                <div className="flex min-w-0 flex-wrap items-center gap-2 lg:justify-end">
                                                     <Typography
-                                                        level="body2"
-                                                        className="text-muted-foreground"
+                                                        component="span"
+                                                        level="body3"
+                                                        className="font-medium text-foreground"
                                                     >
-                                                        CC: {ccRecipients}
+                                                        Tip:
                                                     </Typography>
-                                                )}
-                                                {bccRecipients && (
-                                                    <Typography
-                                                        level="body2"
-                                                        className="text-muted-foreground"
-                                                    >
-                                                        BCC: {bccRecipients}
-                                                    </Typography>
-                                                )}
-                                            </Stack>
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            <Stack spacing={1}>
-                                                <EmailStatusBadge
-                                                    status={email.status}
-                                                />
-                                                {email.providerStatus && (
-                                                    <Typography
-                                                        level="body2"
-                                                        className="text-muted-foreground"
-                                                    >
-                                                        {email.providerStatus}
-                                                    </Typography>
-                                                )}
-                                            </Stack>
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            {email.messageType ? (
-                                                <Chip>{email.messageType}</Chip>
-                                            ) : (
-                                                <NoDataPlaceholder>
-                                                    Nije određeno
-                                                </NoDataPlaceholder>
-                                            )}
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            {email.sentAt ? (
-                                                <LocalDateTime>
-                                                    {email.sentAt}
-                                                </LocalDateTime>
-                                            ) : (
-                                                <NoDataPlaceholder>
-                                                    Nije poslano
-                                                </NoDataPlaceholder>
-                                            )}
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            <LocalDateTime>
-                                                {email.createdAt}
-                                            </LocalDateTime>
-                                        </Table.Cell>
-                                    </Table.Row>
+                                                    {email.messageType ? (
+                                                        <Chip
+                                                            size="sm"
+                                                            className="whitespace-normal break-words [overflow-wrap:anywhere]"
+                                                        >
+                                                            {email.messageType}
+                                                        </Chip>
+                                                    ) : (
+                                                        <NoDataPlaceholder className="!text-left">
+                                                            Nije određeno
+                                                        </NoDataPlaceholder>
+                                                    )}
+                                                </div>
+
+                                                <div className="grid min-w-0 gap-1 sm:basis-full sm:grid-cols-2 lg:text-right">
+                                                    <EmailDateValue
+                                                        label="Poslano"
+                                                        value={email.sentAt}
+                                                        fallback="Nije poslano"
+                                                    />
+                                                    <EmailDateValue
+                                                        label="Kreirano"
+                                                        value={email.createdAt}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </li>
                                 );
                             })}
-                        </Table.Body>
-                    </Table>
+                        </ul>
+                    )}
                 </CardOverflow>
             </Card>
 
