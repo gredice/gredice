@@ -11,7 +11,6 @@ import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Row } from '@gredice/ui/Row';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Stack } from '@gredice/ui/Stack';
-import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
 import { AdminPageHeader } from '../../../components/admin/navigation';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
@@ -190,134 +189,185 @@ export default async function HarvestTracesPage({
 
             <Card>
                 <CardOverflow>
-                    <Table>
-                        <Table.Header>
-                            <Table.Row>
-                                <Table.Head>Status</Table.Head>
-                                <Table.Head>Javni trag</Table.Head>
-                                <Table.Head>Biljka</Table.Head>
-                                <Table.Head>Lokacija</Table.Head>
-                                <Table.Head>Ispis</Table.Head>
-                                <Table.Head>Skeniranja</Table.Head>
-                                <Table.Head>Akcije</Table.Head>
-                            </Table.Row>
-                        </Table.Header>
-                        <Table.Body>
-                            {traces.length === 0 ? (
-                                <Table.Row>
-                                    <Table.Cell colSpan={7}>
-                                        <NoDataPlaceholder>
-                                            Nema QR tragova za odabrane filtere
-                                        </NoDataPlaceholder>
-                                    </Table.Cell>
-                                </Table.Row>
-                            ) : null}
+                    {traces.length === 0 ? (
+                        <div className="p-4">
+                            <NoDataPlaceholder>
+                                Nema QR tragova za odabrane filtere
+                            </NoDataPlaceholder>
+                        </div>
+                    ) : (
+                        <ul className="divide-y">
                             {traces.map((trace) => {
                                 const publicUrl = buildHarvestTracePublicUrl(
                                     trace.publicToken,
                                 );
 
                                 return (
-                                    <Table.Row key={trace.id}>
-                                        <Table.Cell>
-                                            {statusChip(trace.status)}
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            <Stack spacing={1}>
-                                                <Row
-                                                    spacing={2}
-                                                    alignItems="center"
+                                    <li
+                                        key={trace.id}
+                                        className="px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4"
+                                    >
+                                        <div className="flex min-w-0 flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                                            <div className="grid min-w-0 flex-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(14rem,1.15fr)_minmax(12rem,0.85fr)_minmax(10rem,0.75fr)]">
+                                                <Stack
+                                                    spacing={1}
+                                                    className="min-w-0"
                                                 >
-                                                    <LinkIcon className="size-4 text-muted-foreground" />
-                                                    <code className="max-w-[16rem] truncate rounded bg-muted px-1.5 py-0.5 text-xs">
-                                                        {trace.publicToken}
-                                                    </code>
-                                                </Row>
-                                                <a
-                                                    className="inline-flex items-center gap-1 text-sm text-primary underline"
-                                                    href={publicUrl}
-                                                    rel="noreferrer"
-                                                    target="_blank"
-                                                >
-                                                    {trace.publicPath}
-                                                    <ExternalLink className="size-3.5" />
-                                                </a>
-                                            </Stack>
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            <Stack spacing={1}>
-                                                <Typography semiBold>
-                                                    {trace.plantSortName}
-                                                </Typography>
-                                                <Typography
-                                                    level="body2"
-                                                    className="text-muted-foreground"
-                                                >
-                                                    {trace.harvestLabel}
-                                                </Typography>
-                                            </Stack>
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            <Stack spacing={1}>
-                                                <RaisedBedLabel
-                                                    physicalId={
-                                                        trace.raisedBedPhysicalId
-                                                    }
-                                                    name={trace.raisedBedName}
-                                                    size="compact"
-                                                />
-                                                <Typography
-                                                    level="body2"
-                                                    className="text-muted-foreground"
-                                                >
-                                                    Polje {trace.fieldLabel}
-                                                </Typography>
-                                            </Stack>
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            <Stack spacing={1}>
-                                                {trace.printedAt ? (
-                                                    <LocalDateTime time={false}>
-                                                        {trace.printedAt}
-                                                    </LocalDateTime>
-                                                ) : (
-                                                    <Typography level="body2">
-                                                        Nije označeno
+                                                    <Typography
+                                                        level="body3"
+                                                        className="text-muted-foreground"
+                                                    >
+                                                        Javni trag
                                                     </Typography>
-                                                )}
-                                                <Typography
-                                                    level="body2"
-                                                    className="text-muted-foreground"
+                                                    <Row
+                                                        spacing={2}
+                                                        alignItems="center"
+                                                        className="min-w-0"
+                                                    >
+                                                        <LinkIcon className="size-4 shrink-0 text-muted-foreground" />
+                                                        <code className="block min-w-0 max-w-full truncate rounded bg-muted px-1.5 py-0.5 text-xs">
+                                                            {trace.publicToken}
+                                                        </code>
+                                                    </Row>
+                                                    <a
+                                                        className="inline-flex min-w-0 max-w-full items-center gap-1 text-sm text-primary underline"
+                                                        href={publicUrl}
+                                                        rel="noreferrer"
+                                                        target="_blank"
+                                                    >
+                                                        <span className="min-w-0 truncate">
+                                                            {trace.publicPath}
+                                                        </span>
+                                                        <ExternalLink className="size-3.5 shrink-0" />
+                                                    </a>
+                                                </Stack>
+                                                <Stack
+                                                    spacing={1}
+                                                    className="min-w-0"
                                                 >
-                                                    Kreirano{' '}
-                                                    <LocalDateTime time={false}>
-                                                        {trace.createdAt}
-                                                    </LocalDateTime>
-                                                </Typography>
-                                            </Stack>
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            {scanSummary(
-                                                trace.scanCount,
-                                                trace.lastScannedAt,
-                                            )}
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            <Button
-                                                href={KnownPages.HarvestTrace(
-                                                    trace.id,
-                                                )}
-                                                variant="outlined"
-                                                size="sm"
-                                            >
-                                                Detalji
-                                            </Button>
-                                        </Table.Cell>
-                                    </Table.Row>
+                                                    <Typography
+                                                        level="body3"
+                                                        className="text-muted-foreground"
+                                                    >
+                                                        Biljka
+                                                    </Typography>
+                                                    <Typography
+                                                        component="h3"
+                                                        semiBold
+                                                        className="min-w-0 truncate"
+                                                    >
+                                                        {trace.plantSortName}
+                                                    </Typography>
+                                                    <Typography
+                                                        level="body2"
+                                                        className="text-muted-foreground"
+                                                    >
+                                                        {trace.harvestLabel}
+                                                    </Typography>
+                                                </Stack>
+                                                <Stack
+                                                    spacing={1}
+                                                    className="min-w-0"
+                                                >
+                                                    <Typography
+                                                        level="body3"
+                                                        className="text-muted-foreground"
+                                                    >
+                                                        Lokacija
+                                                    </Typography>
+                                                    <RaisedBedLabel
+                                                        physicalId={
+                                                            trace.raisedBedPhysicalId
+                                                        }
+                                                        name={
+                                                            trace.raisedBedName
+                                                        }
+                                                        size="compact"
+                                                    />
+                                                    <Typography
+                                                        level="body2"
+                                                        className="text-muted-foreground"
+                                                    >
+                                                        Polje {trace.fieldLabel}
+                                                    </Typography>
+                                                </Stack>
+                                            </div>
+                                            <div className="flex min-w-0 flex-col gap-3 xl:max-w-[34rem] xl:items-end xl:text-right">
+                                                <div className="flex min-w-0 flex-wrap items-center gap-2 xl:justify-end">
+                                                    {statusChip(trace.status)}
+                                                    <Button
+                                                        href={KnownPages.HarvestTrace(
+                                                            trace.id,
+                                                        )}
+                                                        variant="outlined"
+                                                        size="sm"
+                                                    >
+                                                        Detalji
+                                                    </Button>
+                                                </div>
+                                                <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:justify-items-end">
+                                                    <Stack
+                                                        spacing={1}
+                                                        className="min-w-0"
+                                                    >
+                                                        <Typography
+                                                            level="body3"
+                                                            className="text-muted-foreground"
+                                                        >
+                                                            Ispis
+                                                        </Typography>
+                                                        {trace.printedAt ? (
+                                                            <Typography level="body2">
+                                                                <LocalDateTime
+                                                                    time={false}
+                                                                >
+                                                                    {
+                                                                        trace.printedAt
+                                                                    }
+                                                                </LocalDateTime>
+                                                            </Typography>
+                                                        ) : (
+                                                            <Typography level="body2">
+                                                                Nije označeno
+                                                            </Typography>
+                                                        )}
+                                                        <Typography
+                                                            level="body2"
+                                                            className="text-muted-foreground"
+                                                        >
+                                                            Kreirano{' '}
+                                                            <LocalDateTime
+                                                                time={false}
+                                                            >
+                                                                {
+                                                                    trace.createdAt
+                                                                }
+                                                            </LocalDateTime>
+                                                        </Typography>
+                                                    </Stack>
+                                                    <Stack
+                                                        spacing={1}
+                                                        className="min-w-0"
+                                                    >
+                                                        <Typography
+                                                            level="body3"
+                                                            className="text-muted-foreground"
+                                                        >
+                                                            Skeniranja
+                                                        </Typography>
+                                                        {scanSummary(
+                                                            trace.scanCount,
+                                                            trace.lastScannedAt,
+                                                        )}
+                                                    </Stack>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </li>
                                 );
                             })}
-                        </Table.Body>
-                    </Table>
+                        </ul>
+                    )}
                 </CardOverflow>
             </Card>
         </Stack>
