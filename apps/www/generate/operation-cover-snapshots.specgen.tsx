@@ -13,20 +13,70 @@ import {
 
 const gameAssetBaseUrl =
     process.env.GAME_ASSET_BASE_URL ?? 'https://vrt.gredice.com';
+const visibleAlphaThreshold = 8;
+const normalizedIconPaddingRatio = 0.14;
+
+type AlphaBounds = {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    visiblePixels: number;
+};
+
+function findAlphaBounds({
+    data,
+    width,
+    height,
+}: {
+    data: Buffer;
+    width: number;
+    height: number;
+}): AlphaBounds | null {
+    let minX = width;
+    let minY = height;
+    let maxX = -1;
+    let maxY = -1;
+    let visiblePixels = 0;
+
+    for (let y = 0; y < height; y += 1) {
+        for (let x = 0; x < width; x += 1) {
+            const alpha = data[(y * width + x) * 4 + 3];
+
+            if (alpha > visibleAlphaThreshold) {
+                visiblePixels += 1;
+                minX = Math.min(minX, x);
+                minY = Math.min(minY, y);
+                maxX = Math.max(maxX, x);
+                maxY = Math.max(maxY, y);
+            }
+        }
+    }
+
+    if (visiblePixels === 0) {
+        return null;
+    }
+
+    return {
+        left: minX,
+        top: minY,
+        width: maxX - minX + 1,
+        height: maxY - minY + 1,
+        visiblePixels,
+    };
+}
 
 async function assertCaptureNotBlank(buffer: Buffer, outputFileName: string) {
     const { data, info } = await sharp(buffer)
         .ensureAlpha()
         .raw()
         .toBuffer({ resolveWithObject: true });
-    const alphaChannel = 4;
-    let visiblePixels = 0;
-
-    for (let index = alphaChannel - 1; index < data.length; index += 4) {
-        if (data[index] > 8) {
-            visiblePixels += 1;
-        }
-    }
+    const bounds = findAlphaBounds({
+        data,
+        width: info.width,
+        height: info.height,
+    });
+    const visiblePixels = bounds?.visiblePixels ?? 0;
 
     const minVisiblePixels = Math.max(32, info.width * info.height * 0.002);
     if (visiblePixels < minVisiblePixels) {
@@ -36,8 +86,64 @@ async function assertCaptureNotBlank(buffer: Buffer, outputFileName: string) {
     }
 }
 
+async function normalizeOperationIconBuffer(buffer: Buffer) {
+    const { data, info } = await sharp(buffer)
+        .ensureAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+    const bounds = findAlphaBounds({
+        data,
+        width: info.width,
+        height: info.height,
+    });
+
+    if (!bounds) {
+        throw new Error('Operation icon capture has no visible pixels.');
+    }
+
+    const targetWidth = Math.max(
+        1,
+        Math.round(info.width * (1 - normalizedIconPaddingRatio * 2)),
+    );
+    const targetHeight = Math.max(
+        1,
+        Math.round(info.height * (1 - normalizedIconPaddingRatio * 2)),
+    );
+    const scale = Math.min(
+        targetWidth / bounds.width,
+        targetHeight / bounds.height,
+    );
+    const resizedWidth = Math.max(1, Math.round(bounds.width * scale));
+    const resizedHeight = Math.max(1, Math.round(bounds.height * scale));
+    const left = Math.round((info.width - resizedWidth) / 2);
+    const top = Math.round((info.height - resizedHeight) / 2);
+
+    const cropped = await sharp(buffer)
+        .ensureAlpha()
+        .extract(bounds)
+        .resize({
+            width: resizedWidth,
+            height: resizedHeight,
+            fit: 'fill',
+        })
+        .png()
+        .toBuffer();
+
+    return sharp({
+        create: {
+            width: info.width,
+            height: info.height,
+            channels: 4,
+            background: { r: 0, g: 0, b: 0, alpha: 0 },
+        },
+    })
+        .composite([{ input: cropped, left, top }])
+        .webp({ quality: 90 })
+        .toBuffer();
+}
+
 async function saveWebp(buffer: Buffer, path: string) {
-    const webp = await sharp(buffer).webp({ quality: 90 }).toBuffer();
+    const webp = await normalizeOperationIconBuffer(buffer);
     await writeFile(path, webp);
 }
 
