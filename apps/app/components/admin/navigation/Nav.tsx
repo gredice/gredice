@@ -626,6 +626,13 @@ export function Nav({
             </NavSection>
             <NavSection label="Upravljanje" compact={compact}>
                 <NavItem
+                    href={adminPages.Schedule.href}
+                    label={adminPages.Schedule.label}
+                    icon={<Calendar className="size-5" />}
+                    onClick={onItemClick}
+                    compact={compact}
+                />
+                <NavItem
                     href={adminPages.Approvals.href}
                     label={adminPages.Approvals.label}
                     icon={<Inbox className="size-5" />}
@@ -663,20 +670,11 @@ export function Nav({
                     label="Logistika"
                     icon={<Truck className="size-5" />}
                     forceOpen={includesSelectedPath(pathname, [
-                        adminPages.Schedule.href,
                         adminPages.DeliverySlots.href,
                         adminPages.DeliveryRequests.href,
                     ])}
                     compact={compact}
                 >
-                    <NavItem
-                        href={adminPages.Schedule.href}
-                        label={adminPages.Schedule.label}
-                        icon={<Calendar className="size-5" />}
-                        onClick={onItemClick}
-                        compact={compact}
-                        nested
-                    />
                     <NavItem
                         href={adminPages.DeliverySlots.href}
                         label={adminPages.DeliverySlots.label}
