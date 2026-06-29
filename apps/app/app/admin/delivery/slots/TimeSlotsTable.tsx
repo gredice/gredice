@@ -7,7 +7,6 @@ import {
 } from '@gredice/storage';
 import { Chip } from '@gredice/ui/Chip';
 import { TimeRange } from '@gredice/ui/LocalDateTime';
-import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
 import { SlotActionButtons } from './SlotActionButtons';
@@ -67,77 +66,121 @@ export async function TimeSlotsTable({
         }
     }
 
-    return (
-        <Table>
-            <Table.Header>
-                <Table.Row>
-                    <Table.Head>Tip</Table.Head>
-                    <Table.Head>Lokacija</Table.Head>
-                    <Table.Head>Vremenski slot</Table.Head>
-                    <Table.Head>Zatvaranje</Table.Head>
-                    <Table.Head>Status</Table.Head>
-                    <Table.Head>Akcije</Table.Head>
-                </Table.Row>
-            </Table.Header>
-            <Table.Body>
-                {filteredSlots.length === 0 && (
-                    <Table.Row>
-                        <Table.Cell colSpan={6}>
-                            <NoDataPlaceholder>
-                                Nema vremenskih slotova
-                            </NoDataPlaceholder>
-                        </Table.Cell>
-                    </Table.Row>
-                )}
-                {filteredSlots.map((slot) => {
-                    const location = pickupLocations.find(
-                        (loc) => loc.id === slot.locationId,
-                    );
-                    const closesAt = getTimeSlotEffectiveClosesAt(slot);
+    if (filteredSlots.length === 0) {
+        return (
+            <div className="p-4">
+                <NoDataPlaceholder>Nema vremenskih slotova</NoDataPlaceholder>
+            </div>
+        );
+    }
 
-                    return (
-                        <Table.Row key={slot.id}>
-                            <Table.Cell>
-                                <Chip color="primary">
-                                    {getTypeLabel(slot.type)}
-                                </Chip>
-                            </Table.Cell>
-                            <Table.Cell>
-                                <Typography>
-                                    {location?.name ||
-                                        `Lokacija ${slot.locationId}`}
-                                </Typography>
-                            </Table.Cell>
-                            <Table.Cell>
-                                <Typography level="body2">
-                                    <TimeRange
-                                        startAt={slot.startAt}
-                                        endAt={slot.endAt}
+    return (
+        <ul className="divide-y">
+            {filteredSlots.map((slot) => {
+                const location = pickupLocations.find(
+                    (loc) => loc.id === slot.locationId,
+                );
+                const closesAt = getTimeSlotEffectiveClosesAt(slot);
+
+                return (
+                    <li
+                        key={slot.id}
+                        className="px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4"
+                    >
+                        <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                            <div className="grid min-w-0 flex-1 gap-3 sm:grid-cols-[minmax(9rem,0.85fr)_minmax(14rem,1.2fr)_minmax(14rem,1fr)]">
+                                <div className="min-w-0 space-y-1">
+                                    <Typography
+                                        level="body3"
+                                        component="div"
+                                        className="text-muted-foreground"
+                                    >
+                                        Tip
+                                    </Typography>
+                                    <Chip color="primary">
+                                        {getTypeLabel(slot.type)}
+                                    </Chip>
+                                </div>
+                                <div className="min-w-0 space-y-1">
+                                    <Typography
+                                        level="body3"
+                                        component="div"
+                                        className="text-muted-foreground"
+                                    >
+                                        Lokacija
+                                    </Typography>
+                                    <Typography
+                                        level="body2"
+                                        component="div"
+                                        semiBold
+                                        className="min-w-0 break-words"
+                                    >
+                                        {location?.name ||
+                                            `Lokacija ${slot.locationId}`}
+                                    </Typography>
+                                </div>
+                                <div className="min-w-0 space-y-1">
+                                    <Typography
+                                        level="body3"
+                                        component="div"
+                                        className="text-muted-foreground"
+                                    >
+                                        Vremenski slot
+                                    </Typography>
+                                    <Typography level="body2" component="div">
+                                        <TimeRange
+                                            startAt={slot.startAt}
+                                            endAt={slot.endAt}
+                                        />
+                                    </Typography>
+                                </div>
+                            </div>
+
+                            <div className="flex min-w-0 flex-wrap items-center gap-2 lg:max-w-[34rem] lg:justify-end">
+                                <div className="min-w-0">
+                                    <Typography
+                                        level="body3"
+                                        component="div"
+                                        className="text-muted-foreground"
+                                    >
+                                        Zatvaranje
+                                    </Typography>
+                                    <SlotClosingCountdown
+                                        closeAt={closesAt.toISOString()}
+                                        sourceLabel={
+                                            slot.closesAt
+                                                ? 'Ručno postavljeno'
+                                                : `Automatski ${AUTO_CLOSE_WINDOW_HOURS} h prije`
+                                        }
                                     />
-                                </Typography>
-                            </Table.Cell>
-                            <Table.Cell>
-                                <SlotClosingCountdown
-                                    closeAt={closesAt.toISOString()}
-                                    sourceLabel={
-                                        slot.closesAt
-                                            ? 'Ručno postavljeno'
-                                            : `Automatski ${AUTO_CLOSE_WINDOW_HOURS} h prije`
-                                    }
-                                />
-                            </Table.Cell>
-                            <Table.Cell>
-                                <Chip color={getStatusColor(slot.status)}>
-                                    {getStatusLabel(slot.status)}
-                                </Chip>
-                            </Table.Cell>
-                            <Table.Cell>
-                                <SlotActionButtons slot={slot} />
-                            </Table.Cell>
-                        </Table.Row>
-                    );
-                })}
-            </Table.Body>
-        </Table>
+                                </div>
+                                <div className="min-w-0">
+                                    <Typography
+                                        level="body3"
+                                        component="div"
+                                        className="text-muted-foreground"
+                                    >
+                                        Status
+                                    </Typography>
+                                    <Chip color={getStatusColor(slot.status)}>
+                                        {getStatusLabel(slot.status)}
+                                    </Chip>
+                                </div>
+                                <div className="min-w-0">
+                                    <Typography
+                                        level="body3"
+                                        component="div"
+                                        className="text-muted-foreground"
+                                    >
+                                        Akcije
+                                    </Typography>
+                                    <SlotActionButtons slot={slot} />
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+                );
+            })}
+        </ul>
     );
 }
