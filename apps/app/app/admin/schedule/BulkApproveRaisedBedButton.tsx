@@ -21,6 +21,7 @@ type OperationApprovalTarget = {
 
 interface BulkApproveRaisedBedButtonProps {
     physicalId: string;
+    targetLabel?: string;
     fields: FieldApprovalTarget[];
     operations: OperationApprovalTarget[];
     onConfirm?: () => unknown | Promise<unknown>;
@@ -28,6 +29,7 @@ interface BulkApproveRaisedBedButtonProps {
 
 export function BulkApproveRaisedBedButton({
     physicalId,
+    targetLabel,
     fields,
     operations,
     onConfirm,
@@ -36,6 +38,9 @@ export function BulkApproveRaisedBedButton({
 
     const totalItems = fields.length + operations.length;
     const disabled = totalItems === 0 || isSubmitting;
+    const targetText =
+        targetLabel ??
+        (physicalId === 'dan' ? 'za dan' : `za gredicu ${physicalId}`);
 
     const handleConfirm = async () => {
         if (totalItems === 0) {
@@ -70,13 +75,13 @@ export function BulkApproveRaisedBedButton({
         <AcceptRequestModal
             title="Potvrda zadataka"
             header="Potvrda zadataka"
-            label={`sve zadatke (${totalItems}) za gredicu ${physicalId}`}
+            label={`sve zadatke (${totalItems}) ${targetText}`}
             onConfirm={handleConfirm}
             trigger={
                 <IconButton
                     variant="plain"
                     size="xs"
-                    title="Potvrdi sve zadatke gredice"
+                    title="Potvrdi sve zadatke"
                     disabled={disabled}
                     aria-disabled={disabled}
                     loading={isSubmitting}
