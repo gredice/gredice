@@ -213,7 +213,7 @@ export default function RaisedBedPage() {
                                     </span>
                                 </Stack>
                             </div>
-                            <div className="absolute left-1/2 top-[45%] bg-white/10 rounded-full py-1 px-4 pointer-events-none text-white/80 backdrop-blur text-center -translate-x-1/2 -translate-y-1/2">
+                            <div className="absolute left-1/2 top-[50%] bg-white/10 rounded-full py-1 px-4 pointer-events-none text-white/80 backdrop-blur text-center -translate-x-1/2 -translate-y-1/2">
                                 <Stack>
                                     <span className="text-xl font-bold leading-none">
                                         90%
@@ -223,7 +223,7 @@ export default function RaisedBedPage() {
                                     </span>
                                 </Stack>
                             </div>
-                            <div className="absolute left-1/2 top-[75%] bg-white/10 rounded-full py-1 px-4 pointer-events-none text-white/80 backdrop-blur text-center -translate-x-1/2 -translate-y-1/2">
+                            <div className="absolute left-1/2 top-[86%] bg-white/10 rounded-full py-1 px-4 pointer-events-none text-white/80 backdrop-blur text-center -translate-x-1/2 -translate-y-1/2">
                                 <Stack>
                                     <span className="text-xl font-bold leading-none">
                                         Zemlja
