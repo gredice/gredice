@@ -61,10 +61,9 @@ export default function UvjetiKoristenjaPage() {
                         IBAN: <span>HR5223400091111312385</span>
                         <br />
                         <small>
-                            Molimo vas da ne uplaćujete na gore navedeni račun
-                            bez prethodne najave i dogovora s našim prodajnim
-                            timom. Ovaj podatak je ovdje isključivo u zakonske
-                            svrhe.
+                            Molimo te da ne uplaćuješ na gore navedeni račun bez
+                            prethodne najave i dogovora s našim prodajnim timom.
+                            Ovaj podatak je ovdje isključivo u zakonske svrhe.
                         </small>
                     </p>
 

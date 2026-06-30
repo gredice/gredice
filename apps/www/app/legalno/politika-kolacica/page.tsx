@@ -24,9 +24,9 @@ export default function PolitikaKolacicaPage() {
                     <h2>Što su kolačići?</h2>
                     <p>
                         Kolačići su male tekstualne datoteke koje se pohranjuju
-                        na vašem uređaju prilikom posjeta našoj web stranici.
-                        Oni omogućuju web stranici da prepozna vaš uređaj i
-                        prikupi informacije o vašem posjetu.
+                        na tvojem uređaju prilikom posjeta našoj web stranici.
+                        Oni omogućuju web stranici da prepozna tvoj uređaj i
+                        prikupi informacije o tvojem posjetu.
                     </p>
                     <h2>Kolačići koje koristimo</h2>
                     <p>
@@ -34,14 +34,14 @@ export default function PolitikaKolacicaPage() {
                         kolačići su bitni za ispravno funkcioniranje web
                         stranice i ne mogu se isključiti u našim sustavima.
                         Obično se postavljaju samo kao odgovor na radnje koje
-                        ste poduzeli, kao što su postavljanje vaših postavki
+                        poduzmeš, kao što su postavljanje tvojih postavki
                         privatnosti, prijava ili dovršavanje obrazaca.
                     </p>
                     <p>Primjeri nužnih kolačića uključuju:</p>
                     <ul>
                         <li>
                             <strong>Kolačići za autentikaciju</strong>: Ovi
-                            kolačići omogućuju vam pristup sigurnim dijelovima
+                            kolačići omogućuju ti pristup sigurnim dijelovima
                             naše web stranice.
                         </li>
                         <li>
@@ -51,31 +51,29 @@ export default function PolitikaKolacicaPage() {
                             stranice.
                         </li>
                     </ul>
-                    <h2>Kako možete upravljati kolačićima</h2>
+                    <h2>Kako možeš upravljati kolačićima</h2>
                     <p>
                         Većina web preglednika automatski prihvaća kolačiće, ali
-                        vi možete odabrati hoćete li ih prihvatiti ili ne. Ako
-                        ne želite primati kolačiće, možete postaviti svoje
-                        preglednike da ih odbijaju ili vas upozore kada se
-                        kolačići šalju.
+                        možeš odabrati želiš li ih prihvatiti ili ne. Ako ne
+                        želiš primati kolačiće, možeš postaviti preglednik da ih
+                        odbija ili te upozori kada se kolačići šalju.
                     </p>
                     <p>
-                        Imajte na umu da, ako onemogućite kolačiće, neke
-                        dijelove naše web stranice možda neće pravilno
-                        funkcionirati.
+                        Imaj na umu da, ako onemogućiš kolačiće, neke dijelove
+                        naše web stranice možda neće pravilno funkcionirati.
                     </p>
-                    <h2>Prava korisnika</h2>
+                    <h2>Tvoja prava</h2>
                     <p>
-                        Imate pravo znati koje informacije prikupljamo putem
-                        kolačića i za što se koriste. Također imate pravo
+                        Imaš pravo znati koje informacije prikupljamo putem
+                        kolačića i za što se koriste. Također imaš pravo
                         zatražiti brisanje ili ispravak informacija koje smo
                         prikupili.
                     </p>
                     <h2>Kontakt informacije</h2>
                     <p>
-                        Ako imate bilo kakva pitanja ili trebate više
-                        informacija o našoj politici kolačića, slobodno nas
-                        kontaktirajte putem adrese e-pošte na{' '}
+                        Ako imaš bilo kakva pitanja ili trebaš više informacija
+                        o našoj politici kolačića, slobodno nas kontaktiraj
+                        putem adrese e-pošte na{' '}
                         <a href="mailto:kontakt@gredice.com">
                             kontakt@gredice.com
                         </a>

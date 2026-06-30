@@ -107,7 +107,7 @@ function getDevelopmentSections(hosts: EnvironmentHosts): DevelopmentSection[] {
                 {
                     title: 'Aplikacija',
                     description:
-                        'Interno aplikacijsko sučelje za prijavljene korisnike i dijeljene značajke proizvoda.',
+                        'Interno aplikacijsko sučelje za prijavu i dijeljene značajke proizvoda.',
                     href: hosts.app,
                     icon: '🧩',
                 },

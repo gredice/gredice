@@ -25,9 +25,9 @@ export default function PolitikaPrivatnostiPage() {
                         <a href="https://github.com/gredice/gredice/blob/main/LICENSE">
                             AGPL-3.0
                         </a>
-                        . To znači da možete pregledati, preuzeti, mijenjati i
-                        distribuirati izvorni kod aplikacije pod uvjetima ove
-                        licence.
+                        . To znači da je dopušteno pregledati, preuzeti,
+                        mijenjati i distribuirati izvorni kod aplikacije pod
+                        uvjetima ove licence.
                     </p>
                     <p>
                         Izvorni kod dostupan je na{' '}
@@ -35,8 +35,8 @@ export default function PolitikaPrivatnostiPage() {
                         repozitoriju.
                     </p>
                     <p>
-                        Ukoliko imate bilo kakvih pitanja o licenci ili
-                        korištenju izvornog koda, slobodno nas kontaktirajte na{' '}
+                        Ako imaš bilo kakvih pitanja o licenci ili korištenju
+                        izvornog koda, slobodno nas kontaktiraj na{' '}
                         <a href="mailto:kontakt@gredice.com">
                             kontakt@gredice.com
                         </a>

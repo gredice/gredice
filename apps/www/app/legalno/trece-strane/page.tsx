@@ -75,7 +75,7 @@ const thirdPartyPlatforms = [
                 name: 'Vercel Analytics',
                 category: 'Web analitika',
                 description:
-                    'Alat za analitiku koji nam pomaže razumjeti kako korisnici koriste našu web stranicu.',
+                    'Alat za analitiku koji nam pomaže razumjeti korištenje naše web stranice.',
                 iconUrl: 'https://vercel.com/favicon.ico',
                 website: 'https://vercel.com',
             },
@@ -214,8 +214,8 @@ export default function UvjetiKoristenjaPage() {
                     <p>
                         Zadržavamo pravo izmjene ovih informacija u bilo kojem
                         trenutku, uključujući dodavanje ili uklanjanje platformi
-                        trećih strana. Ukoliko platforma nije navedena na ovoj
-                        stranici, molimo kontaktirajte nas na{' '}
+                        trećih strana. Ako platforma nije navedena na ovoj
+                        stranici, slobodno nas kontaktiraj na{' '}
                         <a href="mailto:kontakt@gredice.com">
                             kontakt@gredice.com
                         </a>

@@ -26,10 +26,10 @@ export default function PolitikaPrivatnostiPage() {
                         Naša web stranica (
                         <a href="https://www.gredice.com">www.gredice.com</a>,
                         uključujući sve podstranice) pruža usluge upravljanja i
-                        dostave povrća i vrtnih proizvoda. Vaša privatnost nam
+                        dostave povrća i vrtnih proizvoda. Tvoja privatnost nam
                         je važna, stoga smo izradili ovu Politiku privatnosti
-                        kako bismo vam objasnili kako prikupljamo, koristimo i
-                        štitimo vaše osobne podatke.
+                        kako bismo ti objasnili kako prikupljamo, koristimo i
+                        štitimo tvoje osobne podatke.
                     </p>
                     <h2>Prikupljanje Podataka</h2>
                     <p>
@@ -43,32 +43,32 @@ export default function PolitikaPrivatnostiPage() {
                         </li>
                         <li>
                             <strong>Podaci o narudžbama</strong>: informacije
-                            vezane uz vaše narudžbe, uključujući isporuku i
+                            vezane uz tvoje narudžbe, uključujući isporuku i
                             odabrane proizvode.
                         </li>
                         <li>
                             <strong>Podaci o korištenju</strong>: informacije
                             prikupljene putem alata za analitiku (Vercel
-                            Analytics) koje nam pomažu da razumijemo kako
-                            koristite našu web stranicu.
+                            Analytics) koje nam pomažu da razumijemo korištenje
+                            naše web stranice.
                         </li>
                     </ul>
                     <p>
-                        Svi podaci prikupljaju se s vašim pristankom ili na
+                        Svi podaci prikupljaju se s tvojim pristankom ili na
                         temelju zakonskih obveza.
                     </p>
                     <h2>Korištenje Podataka</h2>
-                    <p>Vaše osobne podatke koristimo u sljedeće svrhe:</p>
+                    <p>Tvoje osobne podatke koristimo u sljedeće svrhe:</p>
                     <ul>
                         <li>
                             <strong>Obrada narudžbi</strong>: kako bismo
-                            ispunili vašu narudžbu i osigurali kvalitetnu
+                            ispunili tvoju narudžbu i osigurali kvalitetnu
                             uslugu.
                         </li>
                         <li>
                             <strong>Komunikacija:</strong> za slanje obavijesti
-                            o vašim narudžbama, sustavnih e-poruka i za
-                            odgovaranje na vaše upite.
+                            o tvojim narudžbama, sustavnih e-poruka i za
+                            odgovaranje na tvoje upite.
                         </li>
                         <li>
                             <strong>Poboljšanje usluga</strong>: analizom
@@ -77,30 +77,30 @@ export default function PolitikaPrivatnostiPage() {
                         </li>
                         <li>
                             <strong>Planiranje marketinških aktivnosti</strong>:
-                            ako ste nam dali izričiti pristanak, vaši kontakt
+                            ako nam daš izričiti pristanak, tvoji kontaktni
                             podaci (npr. adresa e-pošte) mogu se interno
                             dijeliti s našim ovlaštenim suradnicima radi
                             osmišljavanja marketinških kampanja i poboljšanja
                             korisničkog iskustva. Ove aktivnosti nikada ne
-                            uključuju slanje poruka bez vašeg pristanka.
+                            uključuju slanje poruka bez tvojeg pristanka.
                         </li>
                         <li>
                             <strong>Interna komunikacija sa suradnicima</strong>
-                            : vaši podaci mogu se koristiti za internu
+                            : tvoji podaci mogu se koristiti za internu
                             komunikaciju s našim suradnicima kako bismo
                             osigurali kvalitetnu uslugu.
                         </li>
                     </ul>
                     <h2>Mjere Zaštite</h2>
                     <p>
-                        Razumijemo važnost zaštite vaših osobnih podataka.
+                        Razumijemo važnost zaštite tvojih osobnih podataka.
                         Poduzeli smo sve moguće mjere zaštite, uključujući:
                     </p>
                     <ul>
                         <li>
                             <strong>Tehničke mjere</strong>: korištenje sigurnih
                             poslužitelja i enkripcije podataka kako bismo
-                            zaštitili vaše informacije.
+                            zaštitili tvoje informacije.
                         </li>
                         <li>
                             <strong>Organizacijske mjere</strong>: ograničavanje
@@ -108,38 +108,38 @@ export default function PolitikaPrivatnostiPage() {
                             zaposlenike koji ih trebaju za obradu.
                         </li>
                     </ul>
-                    <h2>Prava Korisnika</h2>
+                    <h2>Tvoja prava</h2>
                     <p>
-                        Kao korisnik naše web stranice imate prava koja
+                        Pri korištenju naše web stranice imaš prava koja
                         uključuju:
                     </p>
                     <ul>
                         <li>
-                            <strong>Pravo na pristup</strong>: možete zatražiti
+                            <strong>Pravo na pristup</strong>: možeš zatražiti
                             kopiju svojih osobnih podataka.
                         </li>
                         <li>
-                            <strong>Pravo na ispravak</strong>: imate pravo
+                            <strong>Pravo na ispravak</strong>: imaš pravo
                             ispraviti svoje osobne podatke ako su netočni ili
                             nepotpuni.
                         </li>
                         <li>
-                            <strong>Pravo na brisanje</strong>: možete tražiti
+                            <strong>Pravo na brisanje</strong>: možeš tražiti
                             brisanje svojih osobnih podataka pod određenim
                             uvjetima.
                         </li>
                         <li>
-                            <strong>Pravo na pritužbu</strong>: imate pravo
-                            podnijeti pritužbu nadležnom tijelu ako smatrate da
-                            su vaši podaci korišteni protivno zakonu.
+                            <strong>Pravo na pritužbu</strong>: imaš pravo
+                            podnijeti pritužbu nadležnom tijelu ako smatraš da
+                            su tvoji podaci korišteni protivno zakonu.
                         </li>
                     </ul>
                     <h2>Treće Strane</h2>
                     <p>
-                        Možemo dijeliti vaše osobne podatke s trećim stranama
+                        Možemo dijeliti tvoje osobne podatke s trećim stranama
                         isključivo u svrhu opskrbe naših usluga, uključujući
                         pružatelje usluga dostave i analitičke alate. Uvijek
-                        ćemo se pobrinuti da te treće strane poštuju vašu
+                        ćemo se pobrinuti da te treće strane poštuju tvoju
                         privatnost u skladu s ovom politikom.
                     </p>
                     <p>
@@ -148,10 +148,10 @@ export default function PolitikaPrivatnostiPage() {
                         marketinški savjetnici ili kreatori kampanja) radi
                         planiranja i razvoja marketinških strategija i
                         unapređenja korisničkog iskustva. Ove aktivnosti nikada
-                        ne uključuju slanje marketinških poruka bez vašeg
+                        ne uključuju slanje marketinških poruka bez tvojeg
                         izričitog pristanka. Niti dijeljenje osobnih podataka s
                         trećim stranama u svrhu slanja marketinških poruka bez
-                        vašeg pristanka.
+                        tvojeg pristanka.
                     </p>
                     <h2>Dijagnostika i Praćenje Grešaka</h2>
                     <p>
@@ -159,7 +159,7 @@ export default function PolitikaPrivatnostiPage() {
                         stabilnosti naše platforme koristimo uslugu{' '}
                         <strong>Posthog</strong>
                         Posthog nam pomaže identificirati i otkloniti tehničke
-                        probleme kako bismo vam pružili bolju i pouzdaniju
+                        probleme kako bismo ti pružili bolju i pouzdaniju
                         uslugu.
                     </p>
                     <p>
@@ -173,10 +173,10 @@ export default function PolitikaPrivatnostiPage() {
                             mrežnih problema.
                         </li>
                         <li>
-                            <strong>Korisnički identifikator</strong>: ako ste
-                            prijavljeni, vaš korisnički ID može biti povezan s
-                            prijavljenim greškama radi bržeg rješavanja
-                            problema.
+                            <strong>Korisnički identifikator</strong>: kada
+                            postoji prijava u račun, korisnički ID može biti
+                            povezan s prijavljenim greškama radi bržeg
+                            rješavanja problema.
                         </li>
                         <li>
                             <strong>Tehničke informacije</strong>: vrsta
@@ -191,7 +191,7 @@ export default function PolitikaPrivatnostiPage() {
                         čime osiguravamo usklađenost s Općom uredbom o zaštiti
                         podataka (GDPR). Posthog je certificiran prema
                         standardima zaštite podataka i primjenjuje odgovarajuće
-                        tehničke i organizacijske mjere za zaštitu vaših
+                        tehničke i organizacijske mjere za zaštitu tvojih
                         podataka.
                     </p>
                     <p>
@@ -208,17 +208,15 @@ export default function PolitikaPrivatnostiPage() {
                     </p>
                     <h2>Kontakt</h2>
                     <p>
-                        Ako imate bilo kakva pitanja ili brige u vezi s ovom
-                        politikom privatnosti, slobodno nas kontaktirajte putem
+                        Ako imaš bilo kakva pitanja ili brige u vezi s ovom
+                        politikom privatnosti, slobodno nas kontaktiraj putem
                         e-pošte na{' '}
                         <a href="mailto:kontakt@gredice.com">
                             kontakt@gredice.com
                         </a>
                         .
                     </p>
-                    <p>
-                        Zahvaljujemo vam na povjerenju i što koristite Gredice!
-                    </p>
+                    <p>Hvala ti na povjerenju i što koristiš Gredice!</p>
                 </StyledHtml>
                 <Typography level="body2" secondary className="mt-8">
                     Zadnja izmjena: 5. prosinca 2025.
