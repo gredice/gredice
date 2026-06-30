@@ -176,7 +176,7 @@ export default function RaisedBedPage() {
                             alt={'Podignuta gredica 2x1 m'}
                         />
                     </div>
-                    <div className="grid grid-cols-1 grid-rows-[auto_400px] sm:grid-rows-1 sm:grid-cols-[2fr_1fr] gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-[2fr_1fr] gap-4">
                         <div>
                             <h3>Sastav tla</h3>
                             <ol>
@@ -194,15 +194,15 @@ export default function RaisedBedPage() {
                                 </li>
                             </ol>
                         </div>
-                        <div className="relative">
+                        <div className="relative mx-auto aspect-[2/3] w-full max-w-80">
                             <Image
                                 src="/assets/raised-beds/soil-composition.png"
                                 fill
-                                sizes="(min-width: 640px) 33vw, 100vw"
-                                className="rounded-xl p-0 m-0 shadow-lg"
+                                sizes="(min-width: 640px) 20rem, 100vw"
+                                className="rounded-xl p-0 m-0 shadow-lg object-cover"
                                 alt={'Sastav tla podignutih gredica'}
                             />
-                            <div className="absolute left-1/2 top-[15%] bg-white/10 rounded-full py-1 px-4 pointer-events-none text-white/80 backdrop-blur text-center -translate-x-1/2">
+                            <div className="absolute left-1/2 top-[15%] bg-white/10 rounded-full py-1 px-4 pointer-events-none text-white/80 backdrop-blur text-center -translate-x-1/2 -translate-y-1/2">
                                 <Stack>
                                     <span className="text-xl font-bold leading-none">
                                         10%
@@ -212,7 +212,7 @@ export default function RaisedBedPage() {
                                     </span>
                                 </Stack>
                             </div>
-                            <div className="absolute left-1/2 top-[45%] bg-white/10 rounded-full py-1 px-4 pointer-events-none text-white/80 backdrop-blur text-center -translate-x-1/2">
+                            <div className="absolute left-1/2 top-[45%] bg-white/10 rounded-full py-1 px-4 pointer-events-none text-white/80 backdrop-blur text-center -translate-x-1/2 -translate-y-1/2">
                                 <Stack>
                                     <span className="text-xl font-bold leading-none">
                                         90%
@@ -222,7 +222,7 @@ export default function RaisedBedPage() {
                                     </span>
                                 </Stack>
                             </div>
-                            <div className="absolute left-1/2 top-[75%] bg-white/10 rounded-full py-1 px-4 pointer-events-none text-white/80 backdrop-blur text-center -translate-x-1/2">
+                            <div className="absolute left-1/2 top-[75%] bg-white/10 rounded-full py-1 px-4 pointer-events-none text-white/80 backdrop-blur text-center -translate-x-1/2 -translate-y-1/2">
                                 <Stack>
                                     <span className="text-xl font-bold leading-none">
                                         Zemlja
