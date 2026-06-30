@@ -38,6 +38,7 @@ type OperationAssignmentTarget = {
 
 interface BulkAssignRaisedBedButtonProps {
     physicalId: string;
+    targetLabel?: string;
     fields: FieldAssignmentTarget[];
     operations: OperationAssignmentTarget[];
     onSubmit?: (assignedUserIds: string[]) => unknown | Promise<unknown>;
@@ -51,6 +52,7 @@ function getUserLabel(user: AssignableUser) {
 
 export function BulkAssignRaisedBedButton({
     physicalId,
+    targetLabel,
     fields,
     operations,
     onSubmit,
@@ -62,6 +64,9 @@ export function BulkAssignRaisedBedButton({
 
     const totalItems = fields.length + operations.length;
     const disabled = totalItems === 0 || isSubmitting;
+    const targetText =
+        targetLabel ??
+        (physicalId === 'dan' ? 'za dan' : `za gredicu ${physicalId}`);
 
     const selectableUsers = useMemo(() => {
         const targetUsers = [...fields, ...operations].map(
@@ -155,7 +160,7 @@ export function BulkAssignRaisedBedButton({
                 <IconButton
                     variant="plain"
                     size="xs"
-                    title="Dodijeli korisnika svim nepotvrđenim zadacima gredice"
+                    title="Dodijeli korisnika svim zadacima"
                     disabled={disabled}
                     aria-disabled={disabled}
                     loading={isSubmitting}
@@ -167,8 +172,7 @@ export function BulkAssignRaisedBedButton({
             <Stack spacing={4}>
                 <Typography level="h5">Skupna dodjela korisnika</Typography>
                 <Typography>
-                    Odaberi korisnika za sve nepotvrđene zadatke ({totalItems})
-                    za gredicu <strong>{physicalId}</strong>.
+                    {`Odaberi korisnika za sve zadatke (${totalItems}) ${targetText}.`}
                 </Typography>
 
                 <UserPickerField

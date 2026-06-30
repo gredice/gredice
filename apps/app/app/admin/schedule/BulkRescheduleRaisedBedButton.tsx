@@ -24,6 +24,7 @@ type OperationRescheduleTarget = {
 
 interface BulkRescheduleRaisedBedButtonProps {
     physicalId: string;
+    targetLabel?: string;
     fields: FieldRescheduleTarget[];
     operations: OperationRescheduleTarget[];
     onSubmit?: (scheduledDate: string) => unknown | Promise<unknown>;
@@ -38,6 +39,7 @@ function formatLocalDate(date: Date): string {
 
 export function BulkRescheduleRaisedBedButton({
     physicalId,
+    targetLabel,
     fields,
     operations,
     onSubmit,
@@ -47,6 +49,9 @@ export function BulkRescheduleRaisedBedButton({
 
     const totalItems = fields.length + operations.length;
     const disabled = totalItems === 0 || isSubmitting;
+    const targetText =
+        targetLabel ??
+        (physicalId === 'dan' ? 'za dan' : `za gredicu ${physicalId}`);
 
     const today = new Date();
     const threeMonthsFromToday = new Date(
@@ -117,7 +122,7 @@ export function BulkRescheduleRaisedBedButton({
                 <IconButton
                     variant="plain"
                     size="xs"
-                    title="Zakaži sve nepotvrđene zadatke gredice"
+                    title="Zakaži sve nepotvrđene zadatke"
                     disabled={disabled}
                     aria-disabled={disabled}
                     loading={isSubmitting}
@@ -131,7 +136,7 @@ export function BulkRescheduleRaisedBedButton({
                     <Typography level="h5">Skupno zakazivanje</Typography>
                     <Typography>
                         Odaberite datum za sve nepotvrđene zadatke ({totalItems}
-                        ) za gredicu <strong>{physicalId}</strong>.
+                        ) {targetText}.
                     </Typography>
 
                     <Input
