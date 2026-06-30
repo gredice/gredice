@@ -30,9 +30,9 @@ export default function UvjetiKoristenjaPage() {
                         društvo s ograničenom odgovornošću za proizvodnju,
                         trgovinu i usluge, sa sjedištem na Ulica Julija Knifera
                         3, Zagreb, Hrvatska, OIB: 86171547809. Korištenje
-                        Platforme podrazumijeva suglasnost s ovim Uvjetima.
-                        Ukoliko se ne slažete s Uvjetima, molimo vas da ne
-                        koristite Platformu.
+                        Platforme podrazumijeva suglasnost s ovim Uvjetima. Ako
+                        se ne slažeš s Uvjetima, molimo te da ne koristiš
+                        Platformu.
                     </p>
                     <h2>Definicije</h2>
                     <p>
@@ -40,10 +40,6 @@ export default function UvjetiKoristenjaPage() {
                         slovom imaju sljedeća značenja:
                     </p>
                     <ul>
-                        <li>
-                            &quot;<strong>Korisnik</strong>&quot; označava svaku
-                            fizičku ili pravnu osobu koja koristi Platformu.
-                        </li>
                         <li>
                             &quot;<strong>Sadržaj</strong>&quot; odnosi se na
                             sve informacije, tekst, slike, videozapise i druge
@@ -56,11 +52,11 @@ export default function UvjetiKoristenjaPage() {
                             drugim korisnicima i dijeljenje sadržaja.
                         </li>
                     </ul>
-                    <h2>Prava i obveze Korisnika</h2>
-                    <p>Korisnik se obvezuje:</p>
+                    <h2>Prava i obveze pri korištenju Platforme</h2>
+                    <p>Korištenjem Platforme potrebno je:</p>
                     <ul>
                         <li>
-                            Korištenje Platforme isključivo u svrhe koje su u
+                            Koristiti Platformu isključivo u svrhe koje su u
                             skladu s važećim zakonima i propisima.
                         </li>
                         <li>
@@ -69,7 +65,7 @@ export default function UvjetiKoristenjaPage() {
                             obmanjujući ili koji krši prava trećih osoba.
                         </li>
                         <li>
-                            Održavati sigurnost svog korisničkog računa i
+                            Održavati sigurnost korisničkog računa i
                             pravovremeno obavještavati Platformu o bilo kakvim
                             neovlaštenim pristupima.
                         </li>
@@ -82,9 +78,8 @@ export default function UvjetiKoristenjaPage() {
                             neprikladnim ili nesukladnim ovim Uvjetima.
                         </li>
                         <li>
-                            Pružiti Korisnicima podršku u vezi s korištenjem
-                            Usluga, ali ne jamči neprekidnu ili potpuno sigurnu
-                            uslugu.
+                            Pružiti podršku u vezi s korištenjem Usluga, ali ne
+                            jamči neprekidnu ili potpuno sigurnu uslugu.
                         </li>
                         <li>
                             Izmijeniti, suspendirati ili prekinuti dostupnost
@@ -97,8 +92,8 @@ export default function UvjetiKoristenjaPage() {
                         ograničavajući se na, dizajn, logotipe, softver i
                         Sadržaj, zaštićeni su zakonima o autorskim pravima i
                         drugim pravima intelektualnog vlasništva osim ako nije
-                        drugačije navedeno. Korisnici se obvezuju ne koristiti
-                        te elemente bez izričitog pisanog odobrenja Platforme.
+                        drugačije navedeno. Nije dopušteno koristiti te elemente
+                        bez izričitog pisanog odobrenja Platforme.
                     </p>
                     <h2>Odgovornost</h2>
                     <p>
@@ -115,14 +110,14 @@ export default function UvjetiKoristenjaPage() {
                     </p>
                     <h2>Završne odredbe</h2>
                     <p>
-                        Ovi Uvjeti predstavljaju cjelokupni sporazum između
-                        Korisnika i Platforme u vezi s korištenjem Platforme.
-                        Platforma zadržava pravo izmjene ovih Uvjeta, a
-                        Korisnici će biti obaviješteni o svim promjenama.
+                        Ovi Uvjeti predstavljaju cjelokupni sporazum o
+                        korištenju Platforme. Platforma zadržava pravo izmjene
+                        ovih Uvjeta, a obavijest o promjenama bit će dostupna
+                        putem Platforme.
                     </p>
                     <p>
-                        Za sve dodatne informacije ili upite, molimo
-                        kontaktirajte nas putem e-pošte na{' '}
+                        Za sve dodatne informacije ili upite, slobodno nas
+                        kontaktiraj putem e-pošte na{' '}
                         <a href="mailto:kontakt@gredice.com">
                             kontakt@gredice.com
                         </a>

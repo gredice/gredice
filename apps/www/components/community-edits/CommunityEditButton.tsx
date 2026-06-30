@@ -541,7 +541,7 @@ export function CommunityEditButton({
                 ) : !user ? (
                     <Stack spacing={3}>
                         <Typography level="body2">
-                            Za slanje prijedloga trebaš biti prijavljen.
+                            Za slanje prijedloga treba se prijaviti.
                         </Typography>
                         <Button href={KnownPages.GardenApp} variant="outlined">
                             Prijavi se u vrt
