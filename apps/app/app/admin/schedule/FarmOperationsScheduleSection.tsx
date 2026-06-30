@@ -23,6 +23,13 @@ import {
 } from '../../(actions)/operationActions';
 import { AcceptOperationModal } from './AcceptOperationModal';
 import { AssignOperationModal } from './AssignOperationModal';
+import { BulkApproveRaisedBedButton } from './BulkApproveRaisedBedButton';
+import { BulkAssignRaisedBedButton } from './BulkAssignRaisedBedButton';
+import {
+    BulkCancelRaisedBedButton,
+    buildOperationCancelFormData,
+} from './BulkCancelRaisedBedButton';
+import { BulkRescheduleRaisedBedButton } from './BulkRescheduleRaisedBedButton';
 import { CancelOperationModal } from './CancelOperationModal';
 import { CompleteOperationModal } from './CompleteOperationModal';
 import { OperationCompletionAttachments } from './OperationCompletionAttachments';
@@ -112,6 +119,56 @@ export function FarmOperationsScheduleSection({
         return null;
     }
 
+    const operationById = new Map(
+        dayOperations.map((operation) => [operation.id, operation]),
+    );
+    const farmTargetLabel = `za farmu ${farm.name}`;
+    const operationsToApprove = dayOperations
+        .filter(
+            (operation) =>
+                !operation.isAccepted &&
+                !isOperationCompleted(operation.status) &&
+                !isOperationCancelled(operation.status) &&
+                !!operation.assignedUserId,
+        )
+        .map((operation) => ({
+            id: operation.id,
+            label: getOperationLabel(operation, operationDataById),
+        }));
+    const operationsToReschedule = dayOperations
+        .filter(
+            (operation) =>
+                !operation.isAccepted &&
+                !isOperationCompleted(operation.status) &&
+                !isOperationCancelled(operation.status),
+        )
+        .map((operation) => ({
+            id: operation.id,
+        }));
+    const operationsToAssign = dayOperations
+        .filter(
+            (operation) =>
+                !isOperationCompleted(operation.status) &&
+                !isOperationPendingVerification(operation.status) &&
+                !isOperationCancelled(operation.status),
+        )
+        .map((operation) => ({
+            id: operation.id,
+            farmUsers: assignableFarmUsersByOperationId[operation.id] ?? [],
+        }));
+    const operationsToCancel = dayOperations
+        .filter(
+            (operation) =>
+                !isOperationCompleted(operation.status) &&
+                !isOperationPendingVerification(operation.status) &&
+                !isOperationCancelled(operation.status) &&
+                operation.status !== 'failed',
+        )
+        .map((operation) => ({
+            id: operation.id,
+            label: getOperationLabel(operation, operationDataById),
+        }));
+
     const totalDuration = dayOperations.reduce(
         (sum, operation) =>
             sum +
@@ -124,17 +181,175 @@ export function FarmOperationsScheduleSection({
     return (
         <Stack spacing={2}>
             <Row spacing={2} className="w-full items-center flex-wrap gap-y-1">
-                <Link href={KnownPages.Farm(farm.id)}>
-                    <Typography semiBold>{farm.name}</Typography>
-                </Link>
-                <Typography level="body2" className="text-muted-foreground">
-                    {dayOperations.length} zadataka
-                </Typography>
-                {totalDuration > 0 && (
+                <Row
+                    spacing={2}
+                    className="min-w-0 grow items-center flex-wrap gap-y-1"
+                >
+                    <Link href={KnownPages.Farm(farm.id)}>
+                        <Typography semiBold>{farm.name}</Typography>
+                    </Link>
                     <Typography level="body2" className="text-muted-foreground">
-                        Vrijeme: {formatMinutes(totalDuration)}
+                        {dayOperations.length} zadataka
                     </Typography>
-                )}
+                    {totalDuration > 0 && (
+                        <Typography
+                            level="body2"
+                            className="text-muted-foreground"
+                        >
+                            Vrijeme: {formatMinutes(totalDuration)}
+                        </Typography>
+                    )}
+                </Row>
+                <Row spacing={1} className="ml-auto shrink-0 items-center">
+                    <BulkApproveRaisedBedButton
+                        physicalId={farm.id.toString()}
+                        targetLabel={farmTargetLabel}
+                        fields={[]}
+                        operations={operationsToApprove}
+                        onConfirm={() =>
+                            runOptimisticAction({
+                                operationPatches: operationsToApprove.map(
+                                    (operation) => ({
+                                        id: operation.id,
+                                        patch: { isAccepted: true },
+                                    }),
+                                ),
+                                action: () =>
+                                    Promise.all(
+                                        operationsToApprove.map((operation) =>
+                                            acceptOperationAction(operation.id),
+                                        ),
+                                    ),
+                                errorLogMessage:
+                                    'Failed to approve all farm operation items:',
+                                errorAlertMessage:
+                                    'Skupna potvrda radnji nije uspjela. Promjena je vraćena.',
+                            })
+                        }
+                    />
+                    <BulkAssignRaisedBedButton
+                        physicalId={farm.id.toString()}
+                        targetLabel={farmTargetLabel}
+                        fields={[]}
+                        operations={operationsToAssign}
+                        onSubmit={(assignedUserIds) =>
+                            runOptimisticAction({
+                                operationPatches: operationsToAssign.map(
+                                    (operation) => {
+                                        const currentOperation =
+                                            operationById.get(operation.id);
+                                        const assignedUsers =
+                                            createOperationAssignedUsers(
+                                                assignedUserIds,
+                                                operation.farmUsers,
+                                                currentOperation?.assignedUsers,
+                                            );
+
+                                        return {
+                                            id: operation.id,
+                                            patch: {
+                                                assignedUser:
+                                                    assignedUsers[0] ?? null,
+                                                assignedUserId:
+                                                    assignedUserIds[0] ?? null,
+                                                assignedUserIds,
+                                                assignedUsers,
+                                            },
+                                        };
+                                    },
+                                ),
+                                action: () =>
+                                    Promise.all(
+                                        operationsToAssign.map((operation) =>
+                                            assignOperationUserAction(
+                                                operation.id,
+                                                assignedUserIds,
+                                            ),
+                                        ),
+                                    ),
+                                errorLogMessage:
+                                    'Failed to assign users for all farm operation items:',
+                                errorAlertMessage:
+                                    'Skupna dodjela radnji nije uspjela. Promjena je vraćena.',
+                            })
+                        }
+                    />
+                    <BulkRescheduleRaisedBedButton
+                        physicalId={farm.id.toString()}
+                        targetLabel={farmTargetLabel}
+                        fields={[]}
+                        operations={operationsToReschedule}
+                        onSubmit={(scheduledDate) =>
+                            runOptimisticAction({
+                                operationPatches: operationsToReschedule.map(
+                                    (operation) => ({
+                                        id: operation.id,
+                                        patch: {
+                                            scheduledDate:
+                                                parseScheduledDateInput(
+                                                    scheduledDate,
+                                                ),
+                                        },
+                                    }),
+                                ),
+                                action: () =>
+                                    Promise.all(
+                                        operationsToReschedule.map(
+                                            (operation) => {
+                                                const formData = new FormData();
+                                                formData.set(
+                                                    'operationId',
+                                                    operation.id.toString(),
+                                                );
+                                                formData.set(
+                                                    'scheduledDate',
+                                                    scheduledDate,
+                                                );
+                                                return rescheduleOperationAction(
+                                                    formData,
+                                                );
+                                            },
+                                        ),
+                                    ),
+                                errorLogMessage:
+                                    'Failed to reschedule all farm operation items:',
+                                errorAlertMessage:
+                                    'Skupno zakazivanje radnji nije uspjelo. Promjena je vraćena.',
+                            })
+                        }
+                    />
+                    <BulkCancelRaisedBedButton
+                        physicalId={farm.id.toString()}
+                        targetLabel={farmTargetLabel}
+                        fields={[]}
+                        operations={operationsToCancel}
+                        onSubmit={(formData) =>
+                            runOptimisticAction({
+                                operationPatches: operationsToCancel.map(
+                                    (operation) => ({
+                                        id: operation.id,
+                                        patch: { status: 'canceled' },
+                                    }),
+                                ),
+                                action: () =>
+                                    Promise.all(
+                                        operationsToCancel.map((operation) =>
+                                            cancelOperationAction(
+                                                buildOperationCancelFormData(
+                                                    operation,
+                                                    formData,
+                                                ),
+                                            ),
+                                        ),
+                                    ),
+                                errorLogMessage:
+                                    'Failed to cancel all farm operation items:',
+                                errorAlertMessage:
+                                    'Skupno otkazivanje radnji nije uspjelo. Promjena je vraćena.',
+                            })
+                        }
+                    />
+                </Row>
             </Row>
             <Stack spacing={0}>
                 {dayOperations.map((operation) => {
