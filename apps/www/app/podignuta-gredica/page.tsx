@@ -14,7 +14,7 @@ import { KnownPages } from '../../src/KnownPages';
 export const metadata: Metadata = {
     title: 'Podignuta gredica',
     description:
-        'Sve što trebaš znati o podignutim gredicama i korištenju aplikacije Gredice za planiranje vrta.',
+        'Kako funkcionira tvoja podignuta gredica u Gredicama: tlo, sadnja, održavanje, berba i dostava.',
 };
 
 export default function RaisedBedPage() {
@@ -30,54 +30,57 @@ export default function RaisedBedPage() {
                         />
                     }
                     header="Podignuta gredica"
-                    subHeader="Sve što trebaš znati o podignutim gredicama i korištenju aplikacije Gredice za planiranje vrta."
+                    subHeader="Tvoj prostor za uzgoj na partnerskom OPG-u, od pripreme tla do dostave ubranih plodova."
                     padded
                 />
                 <StyledHtml>
                     <p>
-                        Podignute vrtne gredice sve su popularniji način uzgoja
-                        povrća, začinskog bilja i cvijeća, osobito u urbanim i
-                        ograničenim prostorima. Radi se o uzgoju biljaka u
-                        povišenim strukturama koje su ispunjene zemljom i često
-                        ograđene drvom, kamenom ili drugim materijalima. Ovakav
-                        pristup vrtlarstvu nudi brojne prednosti u odnosu na
-                        klasične vrtove u tlu.
+                        Podignuta gredica u Gredicama je tvoj prostor za uzgoj
+                        povrća, začinskog bilja i cvijeća. Ti planiraš što želiš
+                        posaditi u aplikaciji, partnerski OPG obavlja radnje na
+                        gredici, a Gredice ti omogućuju praćenje stanja,
+                        fotografije i dostavu ubranih plodova.
                     </p>
-                    <p>
-                        Jedna od glavnih prednosti podignutih gredica je bolja
-                        kontrola nad kvalitetom zemlje. Možete kombinirati
-                        idealan supstrat za specifične kulture, čime
-                        poboljšavate plodnost tla i smanjujete rizik od korova i
-                        bolesti. Osim toga, zemlja u podignutim gredicama se
-                        brže zagrijava u proljeće, što omogućuje raniju sadnju i
-                        dužu vegetacijsku sezonu.
-                    </p>
-                    <p>
-                        Podignute gredice su fleksibilno rješenje koje se može
-                        prilagoditi svakom prostoru - bilo da imate veliki vrt,
-                        malu okućnicu ili samo balkon. Estetski su privlačne i
-                        mogu unijeti red i strukturu u vaš zeleni kutak.
-                        Ukratko, podignute gredice omogućuju zdraviji,
-                        organiziraniji i produktivniji vrt.
-                    </p>
+                    <h2>Najvažnije</h2>
+                    <ul>
+                        <li>
+                            <strong>Gredica je samo tvoja:</strong> nije
+                            dijeljena s drugim korisnicima i ima svoj kod za
+                            lakše praćenje.
+                        </li>
+                        <li>
+                            <strong>Standardna veličina je 2 x 1 m:</strong>{' '}
+                            gredica ima 18 polja veličine {FIELD_SIZE_LABEL} za
+                            planiranje sadnje.
+                        </li>
+                        <li>
+                            <strong>Biljke biraš u aplikaciji:</strong>{' '}
+                            aplikacija pomaže u odabiru kultura i prikazuje
+                            raspored na tvojoj gredici.
+                        </li>
+                        <li>
+                            <strong>Radnje obavlja partnerski OPG:</strong>{' '}
+                            priprema tla, sadnja, održavanje i berba rade se na
+                            lokaciji OPG-a s kojim surađujemo.
+                        </li>
+                        <li>
+                            <strong>Plodovi dolaze do tebe:</strong> nakon berbe
+                            možeš naručiti dostavu prema dostupnim terminima.
+                        </li>
+                    </ul>
                     <div className="grid grid-rows-[auto_1fr] grid-cols-1 sm:grid-rows-1 sm:grid-cols-[1fr_1fr] gap-8 relative">
                         <div>
-                            <h2>Tvoja podignuta gredica</h2>
+                            <h2>Tvoja gredica u Gredicama</h2>
                             <p>
-                                Sijanjem biljaka u gredice u aplikaciji Gredice
-                                možeš iskoristiti sve prednosti podignutih
-                                gredica. Gredica u koju siješ je samo tvoja i
-                                nije dijeljena s drugim korisnicima. To znači da
-                                možeš slobodno planirati i saditi biljke prema
-                                svojim željama i potrebama.
+                                Svaka gredica dobiva svoj kod koji vidiš u
+                                aplikaciji i na fotografijama s terena, kako bi
+                                praćenje rasta i radnji kroz sezonu bilo
+                                jednostavnije.
                             </p>
                             <p>
-                                Svaka gredica je jedinstvena i dobiva svoj kod
-                                koji možeš vidjeti na svim slikama koje dobiješ
-                                putem aplikacije Gredice. Ovaj kod ti omogućuje
-                                da lako prepoznaš svoju gredicu i pratiš njen
-                                rast i razvoj. Kod je ujedno vidljiv i u
-                                aplikaciji.
+                                Standardna gredica ima 2 x 1 m i 18 polja za
+                                sadnju. U aplikaciji je prikazana kao dva bloka
+                                od 1 x 1 m, što olakšava planiranje i pregled.
                             </p>
                         </div>
                         <div>
@@ -92,24 +95,44 @@ export default function RaisedBedPage() {
                             />
                         </div>
                     </div>
+                    <h2>Što Gredice rade za tvoju gredicu</h2>
+                    <ul>
+                        <li>
+                            <strong>Tlo:</strong> pripremamo slojeve podignute
+                            gredice za sadnju.
+                        </li>
+                        <li>
+                            <strong>Sadnja:</strong> odabireš biljke u
+                            aplikaciji, a sadnja se provodi na OPG-u.
+                        </li>
+                        <li>
+                            <strong>Održavanje:</strong> obavljaju se radnje
+                            poput zalijevanja, prihrane, zaštite i kontrole
+                            korova.
+                        </li>
+                        <li>
+                            <strong>Berba:</strong> kada su biljke spremne,
+                            pokreće se berba za tvoju gredicu.
+                        </li>
+                        <li>
+                            <strong>Dostava:</strong> ubrane plodove možeš
+                            naručiti prema dostupnim terminima dostave.
+                        </li>
+                    </ul>
                     <div className="grid overflow-hidden grid-rows-[auto_1fr] grid-cols-1 sm:grid-rows-1 sm:grid-cols-[1fr_1fr] gap-8 relative">
                         <div>
-                            <h3>Dimenzije i veličina</h3>
+                            <h3>Lokacija i veličina</h3>
                             <p>
-                                Dimenzije tvoje podignute gredice su 2x1 metar,
-                                odnosno 2 m², što je idealno za sadnju
-                                različitih biljaka. Ova veličina omogućava
-                                dovoljno prostora za rast i razvoj biljaka, a
-                                istovremeno olakšava održavanje.
+                                Gredica se nalazi na partnerskom OPG-u u
+                                Bosiljevu u Bjelovarsko-bilogorskoj županiji.
+                                Ondje se obavljaju radnje na tvojoj gredici,
+                                uključujući pripremu tla, sadnju, održavanje i
+                                berbu.
                             </p>
                             <ul>
                                 <li>
                                     <strong>Dimenzije:</strong> 2 m x 1 m x 20
                                     cm
-                                </li>
-                                <li>
-                                    <strong>Zapremina:</strong> 400 L (600 L
-                                    zemlje)
                                 </li>
                                 <li>
                                     <strong>Površina:</strong> 2 m²
@@ -118,14 +141,6 @@ export default function RaisedBedPage() {
                                     <strong>Broj polja:</strong> 18
                                 </li>
                             </ul>
-                            <p>
-                                Gredica je unutar aplikacije prikazana kao dvije
-                                podignute gredice dimenzija 1x1 m, što omogućava
-                                lakše upravljanje i pregledavanje. Usto, u planu
-                                nam je omogućiti korisnicima da kreiraju gredice
-                                različitih dimenzija i oblika, ovisno o njihovim
-                                potrebama i prostoru.
-                            </p>
                         </div>
                         <Image
                             src={
@@ -139,33 +154,18 @@ export default function RaisedBedPage() {
                     </div>
                     <div className="grid grid-rows-[auto_1fr] grid-cols-1 sm:grid-rows-1 sm:grid-cols-[1fr_1fr] gap-8 relative">
                         <div>
-                            <h3>Lokacija</h3>
+                            <h3>Tlo i priprema</h3>
                             <p>
-                                Tvoja podignuta gredica će biti postavljena na
-                                lokaciji jednog od OPG-a s kojim surađujemo. OPG
-                                će izvršavati radnje na gredici, uključujući
-                                sadnju, održavanje i berbu, mi ćemo ti omogućiti
-                                da sve to pratiš putem aplikacije Gredice i
-                                dostavit ćemo svo povrće i plodove tvoje gredice
-                                na tvoju adresu.
+                                Sastav tla dio je usluge jer utječe na rast,
+                                vlagu i hranjivost. Gredica se priprema u
+                                slojevima kako bi biljke imale stabilan prostor
+                                za razvoj.
                             </p>
                             <p>
-                                Trenutno surađujemo s jednim OPG-om, a planiramo
-                                proširiti suradnju s drugim OPG-ima kako bismo
-                                ti omogućili veći izbor i fleksibilnost u
-                                odabiru lokacije i vrsta biljaka koje želiš
-                                saditi.
+                                U aplikaciji ne moraš upravljati zemljom ručno,
+                                ali možeš pratiti radnje koje se odnose na tvoju
+                                gredicu.
                             </p>
-                            <p>OPG koji će brinuti o tvojoj gredici:</p>
-                            <ul>
-                                <li>
-                                    Bosiljevo, Bjelovarsko-bilogorska županija
-                                </li>
-                            </ul>
-                            <em>
-                                Uskoro više informacija o OPG-u na stranici
-                                OPG-a
-                            </em>
                         </div>
                         <Image
                             src={
@@ -177,68 +177,58 @@ export default function RaisedBedPage() {
                             alt={'Podignuta gredica 2x1 m'}
                         />
                     </div>
-                    <h3>Sastav tla</h3>
-                    <div className="grid grid-cols-1 grid-rows-[auto_400px] sm:grid-rows-1 sm:grid-cols-[2fr_1fr] gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-[2fr_1fr] gap-4">
                         <div>
-                            <p>
-                                Sastav tla podignutih gredica važan je za
-                                uspješan rast biljaka. Preporučuje se korištenje
-                                mješavine komposta, treseta i pijeska kako bi se
-                                osigurala dobra drenaža i hranjivost tla.
-                            </p>
-                            <p>
-                                Tvoja podignuta gredica sastoji se od tri sloja:
-                            </p>
+                            <h3>Sastav tla</h3>
                             <ol>
                                 <li>
-                                    <strong>Gornji sloj (10%):</strong> Organsko
-                                    tlo koje se koristi za sadnju biljaka.
+                                    <strong>Gornji sloj:</strong> organsko tlo
+                                    koje se koristi za sadnju biljaka.
                                 </li>
                                 <li>
-                                    <strong>Srednji sloj (90%):</strong>{' '}
-                                    Mješavina komposta, treseta i pijeska koja
-                                    osigurava hranjivost i drenažu tla.
+                                    <strong>Srednji sloj:</strong> mješavina
+                                    koja podržava hranjivost i drenažu.
                                 </li>
                                 <li>
-                                    <strong>Zemlja:</strong> Prirodno tlo
-                                    nedefiniranog sastava koje se koristi kao
-                                    temelj gredice.
+                                    <strong>Prirodno tlo:</strong> temelj na
+                                    kojem se gredica postavlja.
                                 </li>
                             </ol>
                         </div>
-                        <div className="relative">
+                        <div className="relative mx-auto aspect-[2/3] w-full max-w-80">
                             <Image
                                 src="/assets/raised-beds/soil-composition.png"
                                 fill
-                                className="rounded-xl p-0 m-0 shadow-lg"
+                                sizes="(min-width: 640px) 20rem, 100vw"
+                                className="rounded-xl p-0 m-0 shadow-lg object-cover"
                                 alt={'Sastav tla podignutih gredica'}
                             />
-                            <div className="absolute left-1/2 top-[15%] bg-white/10 rounded-full py-1 px-4 pointer-events-none text-white/80 backdrop-blur text-center -translate-x-1/2">
+                            <div className="absolute left-1/2 top-[15%] bg-white/10 rounded-full py-1 px-4 pointer-events-none text-white/80 backdrop-blur text-center -translate-x-1/2 -translate-y-1/2">
                                 <Stack>
                                     <span className="text-xl font-bold leading-none">
                                         10%
                                     </span>
-                                    <span className="text-lg  leading-none">
+                                    <span className="text-lg leading-none">
                                         Gornji sloj
                                     </span>
                                 </Stack>
                             </div>
-                            <div className="absolute left-1/2 top-[45%] bg-white/10 rounded-full py-1 px-4 pointer-events-none text-white/80 backdrop-blur text-center -translate-x-1/2">
+                            <div className="absolute left-1/2 top-[50%] bg-white/10 rounded-full py-1 px-4 pointer-events-none text-white/80 backdrop-blur text-center -translate-x-1/2 -translate-y-1/2">
                                 <Stack>
                                     <span className="text-xl font-bold leading-none">
                                         90%
                                     </span>
-                                    <span className="text-lg  leading-none">
+                                    <span className="text-lg leading-none">
                                         Srednji sloj
                                     </span>
                                 </Stack>
                             </div>
-                            <div className="absolute left-1/2 top-[75%] bg-white/10 rounded-full py-1 px-4 pointer-events-none text-white/80 backdrop-blur text-center -translate-x-1/2">
+                            <div className="absolute left-1/2 top-[86%] bg-white/10 rounded-full py-1 px-4 pointer-events-none text-white/80 backdrop-blur text-center -translate-x-1/2 -translate-y-1/2">
                                 <Stack>
                                     <span className="text-xl font-bold leading-none">
                                         Zemlja
                                     </span>
-                                    <span className="text-lg  leading-none">
+                                    <span className="text-lg leading-none">
                                         Prirodno tlo
                                     </span>
                                 </Stack>
@@ -247,31 +237,17 @@ export default function RaisedBedPage() {
                     </div>
                     <h3>Sadnja biljaka</h3>
                     <p>
-                        Podignuta gredica podijeljena je na polja veličine{' '}
-                        {FIELD_SIZE_LABEL}
-                        cm. Tako podignuta gredica od 2x1 m ima 18 polja za
-                        sadnju tvojih biljaka. U svako polje može stati određeni
-                        broj biljaka, ovisno o vrsti, odnosno o razmaku
-                        sijanja/sadnje biljke. Tako, na primjer, u jedno polje
-                        može stati 1 rajčica, 4 salate ili 16 mrkvi.
+                        Gredica je podijeljena na polja veličine{' '}
+                        {FIELD_SIZE_LABEL}. U svako polje stane različit broj
+                        biljaka, ovisno o vrsti i razmaku sadnje. Zato je
+                        planiranje u aplikaciji važno prije nego što se sadnja
+                        provede na OPG-u.
                     </p>
                     <p>
-                        Sadnja se radi sijanjem sjemena odabranih biljaka putem{' '}
-                        <a href={KnownPages.GardenApp}>aplikacije Gredice</a>.
-                        Aplikacija će ti pomoći da odabereš prave biljke za
-                        svoju gredicu.
-                    </p>
-                    <p>
-                        Detaljan pregled kako funkcionira{' '}
-                        <a href={KnownPages.Sowing}>sjetva biljaka</a>, koja je
-                        cijena i koje pogodnosti dobivaš pronađi na našoj
-                        stranici posvećenoj sjetvi.
-                    </p>
-                    <p>
-                        Kada odabereš biljke koje želiš posaditi, aplikacija će
-                        ti pružiti sve potrebne informacije o sadnji,
-                        uključujući preporučeno vrijeme sadnje, razmak između
-                        biljaka i druge važne detalje.
+                        Detalje o odabiru biljaka i pogodnostima možeš pronaći
+                        na stranici o <a href={KnownPages.Sowing}>sjetvi</a>, a
+                        dostupne kulture na stranici{' '}
+                        <a href={KnownPages.Plants}>biljaka</a>.
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-3 sm:gap-2">
                         <Image
@@ -281,7 +257,7 @@ export default function RaisedBedPage() {
                             width={1280}
                             height={800}
                             className="rounded-xl shadow-lg"
-                            alt={'Podignuta gredica 2x1 m'}
+                            alt={'Mlada biljka u podignutoj gredici'}
                         />
                         <Image
                             src={
@@ -290,7 +266,7 @@ export default function RaisedBedPage() {
                             width={1280}
                             height={800}
                             className="rounded-xl shadow-lg"
-                            alt={'Podignuta gredica 2x1 m'}
+                            alt={'Biljka u rastu u podignutoj gredici'}
                         />
                         <Image
                             src={
@@ -299,37 +275,22 @@ export default function RaisedBedPage() {
                             width={1280}
                             height={800}
                             className="rounded-xl shadow-lg"
-                            alt={'Podignuta gredica 2x1 m'}
+                            alt={'Detalj biljke u podignutoj gredici'}
                         />
                     </div>
+                    <h3>Održavanje i praćenje</h3>
                     <p>
-                        Imaj na umu da nije nužno pratiti sve preporuke vezane
-                        uz sadnju biljaka. Možeš eksperimentirati s različitim
-                        biljkama i njihovim kombinacijama kako bi pronašao ono
-                        što najbolje odgovara tvom vrtu i tvojim željama jer
-                        imaš potpunu kontrolu nad svojim podignutim gredicama i
-                        radnjama na njima.
+                        Održavanje uključuje radnje koje biljke trebaju kroz
+                        sezonu: zalijevanje, prihranu, kontrolu korova, zaštitu
+                        i druge zahvate ovisno o stanju biljaka. Te radnje su
+                        dio usluge, a u aplikaciji možeš pratiti što se događa s
+                        tvojom gredicom.
                     </p>
                     <p>
-                        Sve informacije o pojedinim biljkama koje su dostupne
-                        možeš pronaći na stranicama{' '}
-                        <a href={KnownPages.Plants}>biljaka</a> i u{' '}
-                        <a href={KnownPages.GardenApp}>aplikaciji Gredice</a>.
+                        Fotografije i statusi pomažu ti razumjeti kako vrt
+                        napreduje bez odlaska na lokaciju OPG-a.
                     </p>
-                    <h3>Održavanje podignutih gredica</h3>
-                    <p>
-                        Održavanje podignutih gredica uključuje redovito
-                        zalijevanje, dodavanje hranjivih tvari i kontrolu
-                        korova.
-                    </p>
-                    <p>
-                        Preporučuje se korištenje malča kako bi se smanjila
-                        potreba za zalijevanjem i kontrolom korova. Također, za
-                        neke biljke može biti korisno koristiti potporne
-                        strukture kako bi se spriječilo njihovo savijanje ili
-                        lomljenje.
-                    </p>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <Image
                             src={
                                 'https://myegtvromcktt2y7.public.blob.vercel-storage.com/plants/plant-growing-002-8ev5nCKH203QY9WX8C3AdUNND55xsM.jpg'
@@ -337,7 +298,7 @@ export default function RaisedBedPage() {
                             width={1280}
                             height={800}
                             className="rounded-xl shadow-lg"
-                            alt={'Podignuta gredica 2x1 m'}
+                            alt={'Biljke u rastu u podignutoj gredici'}
                         />
                         <Image
                             src={
@@ -346,74 +307,21 @@ export default function RaisedBedPage() {
                             width={1280}
                             height={800}
                             className="rounded-xl shadow-lg"
-                            alt={'Podignuta gredica 2x1 m'}
+                            alt={'Održavana podignuta gredica s biljkama'}
                         />
                     </div>
+                    <h3>Berba i dostava</h3>
                     <p>
-                        Također, važno je redovito provjeravati stanje tla i
-                        biljaka kako bi se osiguralo da su biljke zdrave i da
-                        rastu prema očekivanjima.
+                        Kada su biljke spremne, berba se provodi za tvoju
+                        gredicu. Nakon berbe možeš naručiti dostavu ubranih
+                        plodova kroz Gredice prema dostupnim terminima.
                     </p>
                     <p>
-                        Možeš pratiti stanje svojih podignutih gredica u
-                        aplikaciji Gredice, gdje možeš vidjeti sve informacije o
-                        svojim gredicama, uključujući stanje tla, zalijevanje,
-                        sadnju i berbu biljaka.
-                    </p>
-                    <p>
-                        Dobit ćeš i obavijesti o važnim događajima vezanim uz
-                        tvoje gredice, kao što su vrijeme sadnje, zalijevanja i
-                        berbe biljaka, te ostale važne informacije koje će ti
-                        pomoći u održavanju i uspješnom uzgoju biljaka.
-                    </p>
-                    <p>
-                        Periodično ćemo ti poslati slike tvojih podignutih
-                        gredica kako bi mogao pratiti njihov rast i razvoj. Ako
-                        želiš, možeš podijeliti te slike s prijateljima i
-                        obitelji kako bi ih inspirirao na uzgoj vlastitih
-                        biljaka.
-                    </p>
-                    <p>
-                        Sve informacije o održavanju pojedinih biljaka možeš
-                        pronaći na stranicama{' '}
-                        <a href={KnownPages.Plants}>biljaka</a> i u aplikaciji
-                        Gredice.
-                    </p>
-                    <h3>Berba</h3>
-                    <p>
-                        Berba biljaka iz podignutih gredica može biti vrlo
-                        zadovoljavajuća. Kada su biljke spremne za berbu, obično
-                        ćeš primijetiti promjene u njihovom izgledu, poput boje,
-                        veličine i teksture.
-                    </p>
-                    <p>
-                        Berbu možeš naručiti putem{' '}
-                        <a href={KnownPages.GardenApp}>aplikacije Gredice</a>,
-                        gdje ćeš dobiti obavijest kada su tvoje biljke spremne
-                        za berbu. Također, možeš pratiti stanje svojih biljaka i
-                        planirati berbu prema njihovoj zrelosti.
-                    </p>
-                    <p>
-                        Berbom automatski započinje proces dostave povrća i
-                        drugih plodova tvoje gredice. Putem aplikacije možeš
-                        naručiti dostavu, a mi ćemo se pobrinuti da sve stigne
-                        na tvoju adresu u najkraćem mogućem roku i što svježije.
-                    </p>
-                    <p>
-                        Više informacija o dostavi možeš pronaći na našoj
-                        stranici <a href={KnownPages.Delivery}>dostava</a>.
-                    </p>
-                    <h2>Kako ti možemo pomoći?</h2>
-                    <p>
-                        Ako imaš dodatnih pitanja ili trebaš pomoć oko
-                        podignutih gredica, slobodno nas{' '}
-                        <a href={KnownPages.Contact}>kontaktiraj</a>.
-                    </p>
-                    <p>
-                        Također, možeš posjetiti našu stranicu s{' '}
-                        <a href={KnownPages.FAQ}>najčešćim pitanjima (FAQ)</a>{' '}
-                        gdje možeš pronaći odgovore na mnoge upite vezane uz
-                        podignute gredice.
+                        Više o pravilima, zonama i terminima pronađi na stranici{' '}
+                        <a href={KnownPages.Delivery}>dostava</a>. Ako imaš
+                        dodatna pitanja, tu su{' '}
+                        <a href={KnownPages.FAQ}>najčešća pitanja</a> i{' '}
+                        <a href={KnownPages.Contact}>kontakt</a>.
                     </p>
                 </StyledHtml>
                 <Row spacing={4} className="mt-12">
