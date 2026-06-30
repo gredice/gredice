@@ -74,7 +74,8 @@ export default function RaisedBedPage() {
                             <p>
                                 Svaka gredica dobiva svoj kod koji vidiš u
                                 aplikaciji i na fotografijama s terena, kako bi
-                                lakše pratio rast i radnje kroz sezonu.
+                                praćenje rasta i radnji kroz sezonu bilo
+                                jednostavnije.
                             </p>
                             <p>
                                 Standardna gredica ima 2 x 1 m i 18 polja za
