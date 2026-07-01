@@ -151,6 +151,7 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
         knownEventTypes.operations.assign,
         knownEventTypes.operations.schedule,
         knownEventTypes.operations.complete,
+        knownEventTypes.operations.completionEvidenceUpdate,
         knownEventTypes.operations.verify,
         knownEventTypes.operations.fail,
         knownEventTypes.operations.cancel,
@@ -224,11 +225,21 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
                 completedBy = asString(data?.completedBy) ?? completedBy;
                 completedAt = completedAt ?? event.createdAt;
                 if (Array.isArray(data?.images)) {
-                    imageUrls = (data.images as unknown[]).filter(
+                    imageUrls = data.images.filter(
                         (url): url is string => typeof url === 'string',
                     );
                 }
                 completionNotes = asString(data?.notes) ?? completionNotes;
+            } else if (
+                event.type ===
+                knownEventTypes.operations.completionEvidenceUpdate
+            ) {
+                if (Array.isArray(data?.images)) {
+                    imageUrls = data.images.filter(
+                        (url): url is string => typeof url === 'string',
+                    );
+                }
+                completionNotes = asString(data?.notes) ?? '';
             } else if (event.type === knownEventTypes.operations.verify) {
                 status = 'completed';
                 verifiedBy = asString(data?.verifiedBy) ?? verifiedBy;

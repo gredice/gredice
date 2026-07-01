@@ -11,6 +11,7 @@ import {
     type AdminApprovalTask,
     getPendingAdminApprovalTasks,
 } from '../../../src/approvalTasks';
+import { KnownPages } from '../../../src/KnownPages';
 import {
     approveApprovalRequestAction,
     approveScheduleOperationTaskAction,
@@ -214,19 +215,30 @@ export default async function AdminApprovalsPage() {
                                                     </>
                                                 ) : task.kind ===
                                                   'scheduleOperationVerification' ? (
-                                                    <form
-                                                        action={approveScheduleOperationTaskAction.bind(
-                                                            null,
-                                                            task.operationId,
-                                                        )}
-                                                    >
+                                                    <>
                                                         <Button
-                                                            type="submit"
+                                                            href={KnownPages.Operation(
+                                                                task.operationId,
+                                                            )}
                                                             size="sm"
+                                                            variant="outlined"
                                                         >
-                                                            Verificiraj
+                                                            Uredi
                                                         </Button>
-                                                    </form>
+                                                        <form
+                                                            action={approveScheduleOperationTaskAction.bind(
+                                                                null,
+                                                                task.operationId,
+                                                            )}
+                                                        >
+                                                            <Button
+                                                                type="submit"
+                                                                size="sm"
+                                                            >
+                                                                Verificiraj
+                                                            </Button>
+                                                        </form>
+                                                    </>
                                                 ) : (
                                                     <form
                                                         action={approveSchedulePlantingTaskAction.bind(

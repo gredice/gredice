@@ -91,6 +91,7 @@ const scheduleInvalidatingEventTypes = new Set<string>([
     knownEventTypes.operations.assign,
     knownEventTypes.operations.schedule,
     knownEventTypes.operations.complete,
+    knownEventTypes.operations.completionEvidenceUpdate,
     knownEventTypes.operations.verify,
     knownEventTypes.operations.fail,
     knownEventTypes.operations.cancel,

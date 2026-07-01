@@ -5,7 +5,10 @@ import {
     RAISED_BED_ABANDONED_ACTIONS_DISABLED_MESSAGE,
     RAISED_BED_ABANDONED_DUE_TO_INACTIVITY_MESSAGE,
 } from '@gredice/js/raisedBeds';
-import { getRaisedBedCloseupUrl } from '@gredice/js/urls';
+import {
+    getRaisedBedCloseupUrl,
+    validateHostedImageUrl,
+} from '@gredice/js/urls';
 import {
     notifyOperationAssignedUsers,
     notifyOperationUpdate,
@@ -36,6 +39,7 @@ import { KnownPages } from '../../src/KnownPages';
 import { operationDefinitionMatchesTargetScope } from '../admin/operations/operationScope';
 
 const MAX_COMPLETION_NOTES_LENGTH = 2000;
+const MAX_COMPLETION_IMAGE_COUNT = 20;
 
 function normalizeCompletionNotes(notes?: string) {
     const normalizedNotes = notes?.trim();
@@ -48,6 +52,45 @@ function normalizeCompletionNotes(notes?: string) {
     }
 
     return normalizedNotes;
+}
+
+function normalizeCompletionImageUrls(
+    value: unknown,
+    existingImageUrls: string[],
+) {
+    if (!Array.isArray(value)) {
+        throw new Error('Popis slika nije ispravan.');
+    }
+
+    const allowedExistingImageUrls = new Set(
+        existingImageUrls.map((imageUrl) => imageUrl.trim()).filter(Boolean),
+    );
+    const uniqueUrls = new Set<string>();
+    for (const item of value) {
+        if (typeof item !== 'string') {
+            throw new Error('Popis slika nije ispravan.');
+        }
+
+        const imageUrl = item.trim();
+        if (!imageUrl) {
+            continue;
+        }
+
+        const urlError = validateHostedImageUrl(imageUrl);
+        if (urlError && !allowedExistingImageUrls.has(imageUrl)) {
+            throw new Error('Slike moraju biti učitane kroz Gredice.');
+        }
+
+        uniqueUrls.add(imageUrl);
+    }
+
+    if (uniqueUrls.size > MAX_COMPLETION_IMAGE_COUNT) {
+        throw new Error(
+            `Zapis završetka može imati najviše ${MAX_COMPLETION_IMAGE_COUNT} slika.`,
+        );
+    }
+
+    return Array.from(uniqueUrls);
 }
 
 function buildRaisedBedNotificationLink(
@@ -702,6 +745,7 @@ async function revalidateOperationPaths(
 ) {
     revalidatePath(KnownPages.Schedule);
     revalidatePath(KnownPages.Operations);
+    revalidatePath(KnownPages.Approvals);
     revalidatePath(KnownPages.Operation(operation.id));
     if (operation.accountId)
         revalidatePath(KnownPages.Account(operation.accountId));
@@ -904,6 +948,43 @@ export async function completeOperationWithImageUrls(
         throw new Error('Operation ID is required');
     }
     return completeOperation(operationId, imageUrls, notes);
+}
+
+export async function updateOperationCompletionEvidenceAction(
+    operationId: number,
+    imageUrls: unknown,
+    notes?: string,
+) {
+    const { userId } = await auth(['admin']);
+    const operation = await getOperationById(operationId);
+    if (!operation) {
+        throw new Error(`Operation with ID ${operationId} not found.`);
+    }
+
+    if (operation.status !== 'pendingVerification') {
+        throw new Error(
+            'Zapis završetka može se urediti samo prije verifikacije.',
+        );
+    }
+
+    await createEvent(
+        knownEvents.operations.completionEvidenceUpdatedV1(
+            operationId.toString(),
+            {
+                updatedBy: userId,
+                images: normalizeCompletionImageUrls(
+                    imageUrls,
+                    operation.imageUrls ?? [],
+                ),
+                notes: normalizeCompletionNotes(notes) ?? '',
+            },
+        ),
+    );
+
+    const updatedOperation = await getOperationById(operationId);
+    await revalidateOperationPaths(updatedOperation);
+
+    return { success: true };
 }
 
 export async function verifyOperationAction(operationId: number) {

@@ -46,6 +46,7 @@ import type { EntityStandardized } from '../../../../lib/@types/EntityStandardiz
 import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
 import { AcceptOperationModal } from '../../schedule/AcceptOperationModal';
+import { OperationCompletionEvidenceEditModal } from '../../schedule/OperationCompletionEvidenceEditModal';
 import { VerifyOperationModal } from '../../schedule/VerifyOperationModal';
 import { operationDefinitionMatchesTargetScope } from '../operationScope';
 
@@ -564,10 +565,22 @@ export default async function OperationDetailsPage({
                     actions={
                         <Row className="items-center" spacing={2}>
                             {operation.status === 'pendingVerification' && (
-                                <VerifyOperationModal
-                                    operationId={operation.id}
-                                    label={operationTitle}
-                                />
+                                <>
+                                    <OperationCompletionEvidenceEditModal
+                                        operationId={operation.id}
+                                        label={operationTitle}
+                                        initialNotes={
+                                            operation.completionNotes ?? ''
+                                        }
+                                        initialImageUrls={
+                                            operation.imageUrls ?? []
+                                        }
+                                    />
+                                    <VerifyOperationModal
+                                        operationId={operation.id}
+                                        label={operationTitle}
+                                    />
+                                </>
                             )}
                             {operation.isAccepted ? (
                                 <OperationUnacceptButton

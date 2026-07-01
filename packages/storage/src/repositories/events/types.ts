@@ -291,6 +291,12 @@ export type OperationCompletePayload = {
     notes?: string;
 };
 
+export type OperationCompletionEvidenceUpdatePayload = {
+    updatedBy: string;
+    images: string[];
+    notes: string;
+};
+
 export type OperationVerifyPayload = {
     verifiedBy: string;
 };
@@ -310,6 +316,7 @@ export type OperationEventsPayload =
     | OperationAssignPayload
     | OperationSchedulePayload
     | OperationCompletePayload
+    | OperationCompletionEvidenceUpdatePayload
     | OperationVerifyPayload
     | OperationFailPayload
     | OperationCancelPayload;
@@ -318,6 +325,7 @@ export type OperationEventsAnyPayload = Partial<
     OperationAssignPayload &
         OperationSchedulePayload &
         OperationCompletePayload &
+        OperationCompletionEvidenceUpdatePayload &
         OperationVerifyPayload &
         OperationFailPayload &
         OperationCancelPayload

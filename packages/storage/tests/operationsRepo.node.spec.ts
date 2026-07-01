@@ -342,6 +342,83 @@ test('completed operations expose completion notes and image URLs', async () => 
     assert.strictEqual(operation.completionNotes, 'Zaliveno nakon berbe.');
 });
 
+test('pending operation completion evidence updates replace notes and images', async () => {
+    createTestDb();
+
+    const completedBy = randomUUID();
+    const updatedBy = randomUUID();
+    const operationId = await createOperation({
+        entityId: 1,
+        entityTypeName: 'operation',
+        accountId: randomUUID(),
+    });
+    await acceptOperation(operationId);
+
+    await createEvent(
+        knownEvents.operations.completedV1(operationId.toString(), {
+            completedBy,
+            images: ['https://cdn.gredice.com/original.jpg'],
+            notes: 'Original note.',
+        }),
+    );
+    const initialOperation = await getOperationById(operationId);
+
+    await createEvent(
+        knownEvents.operations.completionEvidenceUpdatedV1(
+            operationId.toString(),
+            {
+                updatedBy,
+                images: ['https://cdn.gredice.com/reviewed.jpg'],
+                notes: 'Reviewed note.',
+            },
+        ),
+    );
+
+    const operation = await getOperationById(operationId);
+
+    assert.strictEqual(operation.status, 'pendingVerification');
+    assert.strictEqual(operation.completedBy, completedBy);
+    assert.deepStrictEqual(operation.imageUrls, [
+        'https://cdn.gredice.com/reviewed.jpg',
+    ]);
+    assert.strictEqual(operation.completionNotes, 'Reviewed note.');
+    assert.deepStrictEqual(operation.completedAt, initialOperation.completedAt);
+});
+
+test('pending operation completion evidence updates can clear notes and images', async () => {
+    createTestDb();
+
+    const operationId = await createOperation({
+        entityId: 1,
+        entityTypeName: 'operation',
+        accountId: randomUUID(),
+    });
+    await acceptOperation(operationId);
+
+    await createEvent(
+        knownEvents.operations.completedV1(operationId.toString(), {
+            completedBy: randomUUID(),
+            images: ['https://cdn.gredice.com/original.jpg'],
+            notes: 'Original note.',
+        }),
+    );
+    await createEvent(
+        knownEvents.operations.completionEvidenceUpdatedV1(
+            operationId.toString(),
+            {
+                updatedBy: randomUUID(),
+                images: [],
+                notes: '',
+            },
+        ),
+    );
+
+    const operation = await getOperationById(operationId);
+
+    assert.deepStrictEqual(operation.imageUrls, []);
+    assert.strictEqual(operation.completionNotes, '');
+});
+
 test('switchOperationEntity changes only the selected operation entity', async () => {
     createTestDb();
 

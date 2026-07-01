@@ -75,6 +75,7 @@ import {
 } from '../../../lib/garden/appliedRaisedBedOperations';
 import { resolveGardenBlockPlacement } from '../../../lib/garden/blockPlacementService';
 import { deleteGardenBlock } from '../../../lib/garden/gardenBlocksService';
+import { serializeGardenOperationEvidence } from '../../../lib/garden/gardenOperationsSerialization';
 import { synchronizeGardenStacksAndRaisedBeds } from '../../../lib/garden/gardenStacksSyncService';
 import {
     generateGardenVisitSummaryFacts,
@@ -339,6 +340,7 @@ function serializeGardenOperation(
         : isAssigned
           ? 'assigned'
           : operation.status;
+    const evidence = serializeGardenOperationEvidence(operation);
 
     const statusHistory = [
         {
@@ -404,8 +406,8 @@ function serializeGardenOperation(
         verifiedAt: operation.verifiedAt?.toISOString() ?? null,
         canceledAt: operation.canceledAt?.toISOString() ?? null,
         cancellationReason: operation.cancelReason ?? null,
-        imageUrls: operation.imageUrls ?? [],
-        completionNotes: operation.completionNotes ?? null,
+        imageUrls: evidence.imageUrls,
+        completionNotes: evidence.completionNotes,
         targetLabel:
             (operation.raisedBedFieldId
                 ? targetsByRaisedBedFieldId.get(operation.raisedBedFieldId)
@@ -2665,8 +2667,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Raised bed not found' }, 404);
             }
 
-            const diaryEntries =
-                await getRaisedBedDiaryEntries(raisedBedIdNumber);
+            const diaryEntries = await getRaisedBedDiaryEntries(
+                raisedBedIdNumber,
+                { includeUnverifiedOperationEvidence: false },
+            );
             return context.json(diaryEntries);
         },
     )
@@ -3587,6 +3591,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const diaryEntries = await getRaisedBedFieldDiaryEntries(
                 raisedBedIdNumber,
                 positionIndexNumber,
+                { includeUnverifiedOperationEvidence: false },
             );
             return context.json(diaryEntries);
         },

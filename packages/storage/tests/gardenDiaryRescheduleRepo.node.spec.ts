@@ -829,6 +829,94 @@ test('diary entries expose operation and field reschedule targets', async () => 
     });
 });
 
+test('diary entries can hide unverified operation images', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createDiaryRescheduleContext();
+    await upsertRaisedBedField({
+        raisedBedId,
+        positionIndex: 0,
+    });
+    const raisedBed = await getRaisedBed(raisedBedId);
+    const raisedBedFieldId = raisedBed?.fields[0]?.id;
+    if (!raisedBedFieldId) {
+        throw new Error('Expected test raised bed field.');
+    }
+
+    const raisedBedOperationId = await createOperation({
+        accountId,
+        entityId: 1,
+        entityTypeName: 'operation',
+        gardenId,
+        raisedBedId,
+    });
+    const fieldOperationId = await createOperation({
+        accountId,
+        entityId: 1,
+        entityTypeName: 'operation',
+        gardenId,
+        raisedBedId,
+        raisedBedFieldId,
+    });
+
+    await createEvent(
+        knownEvents.operations.completedV1(raisedBedOperationId.toString(), {
+            completedBy: 'test-user',
+            images: ['https://cdn.gredice.com/raised-bed-pending.jpg'],
+        }),
+    );
+    await createEvent(
+        knownEvents.operations.completedV1(fieldOperationId.toString(), {
+            completedBy: 'test-user',
+            images: ['https://cdn.gredice.com/field-pending.jpg'],
+        }),
+    );
+
+    const defaultRaisedBedEntries = await getRaisedBedDiaryEntries(raisedBedId);
+    assert.deepEqual(
+        defaultRaisedBedEntries.find(
+            (entry) => entry.id === raisedBedOperationId,
+        )?.imageUrls,
+        ['https://cdn.gredice.com/raised-bed-pending.jpg'],
+    );
+
+    const publicRaisedBedEntries = await getRaisedBedDiaryEntries(raisedBedId, {
+        includeUnverifiedOperationEvidence: false,
+    });
+    assert.equal(
+        publicRaisedBedEntries.find(
+            (entry) => entry.id === raisedBedOperationId,
+        )?.imageUrls,
+        undefined,
+    );
+
+    const publicFieldEntries = await getRaisedBedFieldDiaryEntries(
+        raisedBedId,
+        0,
+        { includeUnverifiedOperationEvidence: false },
+    );
+    assert.equal(
+        publicFieldEntries.find((entry) => entry.id === fieldOperationId)
+            ?.imageUrls,
+        undefined,
+    );
+
+    await createEvent(
+        knownEvents.operations.verifiedV1(raisedBedOperationId.toString(), {
+            verifiedBy: 'admin-user',
+        }),
+    );
+
+    const verifiedPublicEntries = await getRaisedBedDiaryEntries(raisedBedId, {
+        includeUnverifiedOperationEvidence: false,
+    });
+    assert.deepEqual(
+        verifiedPublicEntries.find((entry) => entry.id === raisedBedOperationId)
+            ?.imageUrls,
+        ['https://cdn.gredice.com/raised-bed-pending.jpg'],
+    );
+});
+
 test('raised bed diary entries order operations by scheduled or completed dates', async () => {
     createTestDb();
     const { accountId, gardenId, raisedBedId } =
