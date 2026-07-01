@@ -5,9 +5,10 @@ import Link from 'next/link';
 import { KnownPages } from '../../src/KnownPages';
 import { type OutletOffer, outletOfferImage } from './outletData';
 import {
-    compactDateFormatter,
     currencyFormatter,
+    formatOutletSowingDate,
     outletDiscountLabel,
+    outletIsLowStock,
     outletRemainingLabel,
 } from './outletPresentation';
 
@@ -57,9 +58,11 @@ export function OutletLandingOfferCard({
                         <Discount aria-hidden className="size-3.5" />
                         {outletDiscountLabel(offer)}
                     </span>
-                    <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                        {outletRemainingLabel(offer)}
-                    </span>
+                    {outletIsLowStock(offer) ? (
+                        <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+                            {outletRemainingLabel(offer)}
+                        </span>
+                    ) : null}
                 </div>
                 <div>
                     <Typography level="h5" component="h3">
@@ -67,9 +70,7 @@ export function OutletLandingOfferCard({
                     </Typography>
                     <Typography level="body3" tertiary>
                         Sjetva{' '}
-                        {compactDateFormatter.format(
-                            new Date(offer.sowingDate),
-                        )}
+                        {formatOutletSowingDate(new Date(offer.sowingDate))}
                     </Typography>
                 </div>
                 <div className="mt-auto flex items-end justify-between gap-3">
