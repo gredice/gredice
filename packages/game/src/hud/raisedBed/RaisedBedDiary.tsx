@@ -40,6 +40,11 @@ type DiaryEntryAiHistory = {
     entries: DiaryEntry[];
 };
 
+type DiaryEntryActions = {
+    compactActions?: ReactNode;
+    detailAction?: ReactNode;
+};
+
 function relateAiHistory(entries: DiaryEntry[] | undefined) {
     const aiHistoryByEntryId = new Map<number, DiaryEntryAiHistory>();
 
@@ -156,13 +161,16 @@ function diaryEntryActions({
         return null;
     }
 
-    return (
-        <Row spacing={2} className="flex-wrap items-center">
-            {rescheduleAction}
-            {cancelAction}
-            {aiAction}
-        </Row>
-    );
+    return {
+        compactActions:
+            rescheduleAction || cancelAction ? (
+                <>
+                    {rescheduleAction}
+                    {cancelAction}
+                </>
+            ) : undefined,
+        detailAction: aiAction,
+    };
 }
 
 function SavedAiDiaryEntryButton({
@@ -220,7 +228,7 @@ function DiaryList({
     renderEntryAction?: (
         entry: DiaryEntry,
         aiHistory?: DiaryEntryAiHistory,
-    ) => ReactNode;
+    ) => DiaryEntryActions | null | undefined;
 }) {
     const aiHistoryByEntryId = relateAiHistory(entries);
 
@@ -253,7 +261,7 @@ function DiaryList({
             )}
             {entries?.map((entry) => {
                 const aiHistory = aiHistoryByEntryId.get(entry.id);
-                const entryAction = renderEntryAction?.(entry, aiHistory);
+                const entryActions = renderEntryAction?.(entry, aiHistory);
 
                 return (
                     <div
@@ -354,9 +362,11 @@ function DiaryList({
                                                 >
                                                     {entry.description}
                                                 </Typography>
-                                                {entryAction && (
+                                                {entryActions?.detailAction && (
                                                     <div className="mt-2 w-fit max-w-full">
-                                                        {entryAction}
+                                                        {
+                                                            entryActions.detailAction
+                                                        }
                                                     </div>
                                                 )}
                                             </Stack>
@@ -385,11 +395,21 @@ function DiaryList({
                                                     {entry.status}
                                                 </Chip>
                                             )}
-                                            <Typography level="body2" noWrap>
-                                                {entry.timestamp.toLocaleDateString(
-                                                    'hr-HR',
-                                                )}
-                                            </Typography>
+                                            <Row
+                                                spacing={1}
+                                                className="min-w-0 max-w-full flex-nowrap items-center self-start sm:self-end"
+                                            >
+                                                <Typography
+                                                    level="body2"
+                                                    noWrap
+                                                    className="min-w-0"
+                                                >
+                                                    {entry.timestamp.toLocaleDateString(
+                                                        'hr-HR',
+                                                    )}
+                                                </Typography>
+                                                {entryActions?.compactActions}
+                                            </Row>
                                         </Stack>
                                     </Row>
                                 }

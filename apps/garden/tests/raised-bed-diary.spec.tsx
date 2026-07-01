@@ -150,6 +150,23 @@ async function expectNoHorizontalOverflow(locator: Locator) {
     expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1);
 }
 
+async function expectSameControlRow(
+    leftControl: Locator,
+    rightControl: Locator,
+) {
+    const leftBox = await leftControl.boundingBox();
+    const rightBox = await rightControl.boundingBox();
+
+    if (!leftBox || !rightBox) {
+        throw new Error('Expected both controls to be visible');
+    }
+
+    const leftCenterY = leftBox.y + leftBox.height / 2;
+    const rightCenterY = rightBox.y + rightBox.height / 2;
+
+    expect(Math.abs(leftCenterY - rightCenterY)).toBeLessThanOrEqual(8);
+}
+
 async function openSavedAiDiaryEntry(page: Page) {
     const aiEntry = page.locator('[data-diary-entry]').nth(1);
 
@@ -249,6 +266,12 @@ test('future planned diary entries expose cancel confirmation', async ({
         name: 'Otkaži',
     });
     await expect(cancelButtons).toHaveCount(1);
+
+    const firstEntry = page.locator('[data-diary-entry]').first();
+    await expectSameControlRow(
+        firstEntry.getByRole('button', { name: 'Prerasporedi' }),
+        firstEntry.getByRole('button', { name: 'Otkaži' }),
+    );
 
     await cancelButtons.first().click();
 
