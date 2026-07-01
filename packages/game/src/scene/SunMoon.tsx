@@ -3,7 +3,7 @@
 import { useThree } from '@react-three/fiber';
 import chroma from 'chroma-js';
 import { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
-import SunCalc from 'suncalc';
+import * as SunCalc from 'suncalc';
 import {
     AdditiveBlending,
     Color,
@@ -16,7 +16,11 @@ import {
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useSnapshotTime } from '../hooks/useSnapshotTime';
 import { useGameState } from '../useGameState';
-import { altAzToScenePosition, timeOfDayToDate } from './Environment';
+import {
+    altAzToScenePosition,
+    degreesToRadians,
+    timeOfDayToDate,
+} from './Environment';
 import { visualDayNightTimes } from './visualDayNight';
 
 // World-space size of the billboard planes. The visible disc is a fraction of
@@ -287,9 +291,11 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
         const sun = SunCalc.getPosition(date, location.lat, location.lon);
         const moon = SunCalc.getMoonPosition(date, location.lat, location.lon);
         const illumination = SunCalc.getMoonIllumination(date);
+        const sunAltitude = degreesToRadians(sun.altitude);
+        const moonAltitude = degreesToRadians(moon.altitude);
 
         const sunOpacity =
-            smoothstep(HORIZON_FADE_START, HORIZON_FADE_END, sun.altitude) *
+            smoothstep(HORIZON_FADE_START, HORIZON_FADE_END, sunAltitude) *
             visibility;
         if (sunOpacity > 0.001) {
             const sunDir = altAzToScenePosition(
@@ -334,11 +340,11 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
         const moonHorizonOpacity = smoothstep(
             HORIZON_FADE_START,
             HORIZON_FADE_END,
-            moon.altitude,
+            moonAltitude,
         );
         // Fade the moon down while the sun is well above the horizon so it
         // reads as a pale daytime moon rather than a competing sun.
-        const moonDayFade = 1 - 0.85 * smoothstep(-0.05, 0.3, sun.altitude);
+        const moonDayFade = 1 - 0.85 * smoothstep(-0.05, 0.3, sunAltitude);
         const moonOpacity = moonHorizonOpacity * moonDayFade * visibility;
         if (moonOpacity > 0.001) {
             const moonDir = altAzToScenePosition(
@@ -356,13 +362,15 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
             moonMesh.current.lookAt(camera.position);
 
             moonMaterial.uniforms.uPhase.value = illumination.phase;
-            moonMaterial.uniforms.uAngle.value = illumination.angle;
+            moonMaterial.uniforms.uAngle.value = degreesToRadians(
+                illumination.angle,
+            );
             moonMaterial.uniforms.uOpacity.value = moonOpacity;
             // Warm the tint toward white as the sun rises so the daytime moon
             // doesn't read as a cool blue spot against a bright sky.
             const dayBlend = dayNightCycleDisabled
                 ? 1
-                : smoothstep(-0.05, 0.3, sun.altitude);
+                : smoothstep(-0.05, 0.3, sunAltitude);
             (moonMaterial.uniforms.uColor.value as Color)
                 .copy(MOON_NIGHT_COLOR)
                 .lerp(MOON_DAY_COLOR, dayBlend);

@@ -142,8 +142,11 @@ export async function getAccountGardensMetadata(accountId: string) {
     });
 }
 
-export async function accountHasActiveRaisedBed(accountId: string) {
-    const result = await storage()
+export async function accountHasActiveRaisedBed(
+    accountId: string,
+    db: DatabaseClient = storage(),
+) {
+    const result = await db
         .select({ count: count() })
         .from(raisedBeds)
         .innerJoin(gardens, eq(raisedBeds.gardenId, gardens.id))

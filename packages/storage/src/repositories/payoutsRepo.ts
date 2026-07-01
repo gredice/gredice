@@ -593,22 +593,21 @@ export async function createPayoutRequest(
     }
     const requestedAmountCents = moneyToCents(requestedAmount);
 
-    return storage().transaction(async (tx) => {
-        // Lock and re-verify balance inside the transaction
-        const balance = await getFarmerBalance(userId, farmId);
-        const availableBalanceCents = moneyToCents(balance.availableBalance);
+    const balance = await getFarmerBalance(userId, farmId);
+    const availableBalanceCents = moneyToCents(balance.availableBalance);
 
-        if (requestedAmountCents > availableBalanceCents) {
-            throw new Error(
-                `Zatraženi iznos (${requestedAmount} ${currency.toUpperCase()}) premašuje raspoloživo stanje (${balance.availableBalance.toFixed(2)} ${balance.currency.toUpperCase()}).`,
-            );
-        }
-        if (requestedAmountCents !== availableBalanceCents) {
-            throw new Error(
-                'Zahtjev za isplatu mora biti za cijeli raspoloživi iznos.',
-            );
-        }
+    if (requestedAmountCents > availableBalanceCents) {
+        throw new Error(
+            `Zatraženi iznos (${requestedAmount} ${currency.toUpperCase()}) premašuje raspoloživo stanje (${balance.availableBalance.toFixed(2)} ${balance.currency.toUpperCase()}).`,
+        );
+    }
+    if (requestedAmountCents !== availableBalanceCents) {
+        throw new Error(
+            'Zahtjev za isplatu mora biti za cijeli raspoloživi iznos.',
+        );
+    }
 
+    const row = await storage().transaction(async (tx) => {
         const [row] = await tx
             .insert(farmerPayoutRequests)
             .values({
@@ -629,17 +628,19 @@ export async function createPayoutRequest(
             await tx.insert(farmerPayoutRequestItems).values(itemValues);
         }
 
-        await createEvent(
-            knownEvents.payouts.requestedV1(row.id.toString(), {
-                userId,
-                farmId,
-                amount: requestedAmountCents / 100,
-                currency,
-            }),
-        );
-
         return row;
     });
+
+    await createEvent(
+        knownEvents.payouts.requestedV1(row.id.toString(), {
+            userId,
+            farmId,
+            amount: requestedAmountCents / 100,
+            currency,
+        }),
+    );
+
+    return row;
 }
 
 export async function getPayoutRequest(

@@ -14,9 +14,9 @@ import { generateFarmerDocumentationPdf } from './farmerDocumentationPdf';
 const generatedAt = new Date('2026-06-13T10:00:00.000Z');
 const since = new Date('2026-06-01T00:00:00.000Z');
 const plantImageDataUrl =
-    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC';
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAADElEQVQImWP4z8AAAAMBAQCc479ZAAAAAElFTkSuQmCC';
 const sortImageDataUrl =
-    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR4nGNg+M8AAAICAQCOqX3YAAAAAElFTkSuQmCC';
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAADElEQVQImWNgaGAAAAEEAIEl6+oTAAAAAElFTkSuQmCC';
 
 test('builds insert, replace, and discard instructions from manual revisions', () => {
     const documentationPackage = buildFarmerDocumentationPackage({

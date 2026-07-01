@@ -291,28 +291,26 @@ export async function getAiChatAccountLimitState(
     now = new Date(),
     db: DatabaseClient = storage(),
 ): Promise<AiChatLimitState> {
-    const [account, activeRaisedBed, override, ledgerRows] = await Promise.all([
-        db.query.accounts.findFirst({
-            columns: { id: true, timeZone: true },
-            where: eq(accounts.id, accountId),
-        }),
-        accountHasActiveRaisedBed(accountId),
-        db.query.aiAccountLimitOverrides.findFirst({
-            where: eq(aiAccountLimitOverrides.accountId, accountId),
-        }),
-        db.query.aiUsageLedger.findMany({
-            columns: {
-                usageDate: true,
-                status: true,
-                reservedMicroUsd: true,
-                totalMicroUsd: true,
-            },
-            where: and(
-                eq(aiUsageLedger.accountId, accountId),
-                eq(aiUsageLedger.feature, SUNCOKRET_AI_FEATURE),
-            ),
-        }),
-    ]);
+    const account = await db.query.accounts.findFirst({
+        columns: { id: true, timeZone: true },
+        where: eq(accounts.id, accountId),
+    });
+    const activeRaisedBed = await accountHasActiveRaisedBed(accountId, db);
+    const override = await db.query.aiAccountLimitOverrides.findFirst({
+        where: eq(aiAccountLimitOverrides.accountId, accountId),
+    });
+    const ledgerRows = await db.query.aiUsageLedger.findMany({
+        columns: {
+            usageDate: true,
+            status: true,
+            reservedMicroUsd: true,
+            totalMicroUsd: true,
+        },
+        where: and(
+            eq(aiUsageLedger.accountId, accountId),
+            eq(aiUsageLedger.feature, SUNCOKRET_AI_FEATURE),
+        ),
+    });
 
     const timeZone = validTimeZone(account?.timeZone);
     const usageDate = aiChatUsageDateKey(now, timeZone);

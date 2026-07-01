@@ -1,6 +1,6 @@
 import { useTheme } from 'next-themes';
 import { useEffect } from 'react';
-import SunCalc from 'suncalc';
+import * as SunCalc from 'suncalc';
 import {
     DAY_NIGHT_CYCLE_DISABLED_CHANGE_EVENT,
     isDayNightCycleDisabled,
@@ -11,12 +11,29 @@ import { resolveDayNightTheme } from './dayNightTheme';
 const defaultLocation = { lat: 45.739, lon: 16.572 };
 
 function isDaytime(now: Date): boolean {
-    const { sunrise, sunset } = SunCalc.getTimes(
+    const times = SunCalc.getTimes(
         now,
         defaultLocation.lat,
         defaultLocation.lon,
     );
-    return now >= sunrise && now < sunset;
+    const { sunrise, sunset } = times;
+
+    if (sunrise && sunset) {
+        return now >= sunrise && now < sunset;
+    }
+
+    if (times.alwaysUp) {
+        return true;
+    }
+
+    if (times.alwaysDown) {
+        return false;
+    }
+
+    return (
+        SunCalc.getPosition(now, defaultLocation.lat, defaultLocation.lon)
+            .altitude >= 0
+    );
 }
 
 /**
