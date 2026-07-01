@@ -9,6 +9,7 @@ import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import type { OutletOfferData } from '../hooks/useOutletOffers';
 import { useOutletOffers } from '../hooks/useOutletOffers';
+import { useShoppingCart } from '../hooks/useShoppingCart';
 import { GameModal } from '../shared-ui/game-modal';
 import { useSetRaisedBedCloseupParam } from '../useRaisedBedCloseup';
 import {
@@ -41,6 +42,7 @@ function offerImageUrl(offer: {
 export function OutletHud() {
     const { data: offers, isLoading, isError } = useOutletOffers();
     const { data: currentGarden } = useCurrentGarden();
+    const { data: cart } = useShoppingCart();
     const [outletParam, setOutletParam] = useOutletOpenParam();
     const [, setOutletOfferSelectionParam] = useOutletOfferSelectionParam();
     const { mutate: setRaisedBedCloseupParam } = useSetRaisedBedCloseupParam();
@@ -55,7 +57,10 @@ export function OutletHud() {
         offers?.find((offer) => offer.id === highlightedOfferId) ??
         offers?.[0] ??
         null;
-    const emptyFieldTarget = findFirstEmptyRaisedBedField(currentGarden);
+    const emptyFieldTarget = findFirstEmptyRaisedBedField(
+        currentGarden,
+        cart?.items,
+    );
 
     async function handleStartPlanting(offer: OutletOfferData) {
         if (!emptyFieldTarget || pendingOfferId !== null) {

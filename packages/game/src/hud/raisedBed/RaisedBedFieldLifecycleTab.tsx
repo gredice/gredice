@@ -8,6 +8,7 @@ import { ShovelIcon } from '@gredice/ui/ShovelIcon';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
+import { useLiveTime } from '../../hooks/useLiveTime';
 import { usePlantSort } from '../../hooks/usePlantSorts';
 import { useRaisedBedFieldRemove } from '../../hooks/useRaisedBedFieldRemove';
 import { KnownPages } from '../../knownPages';
@@ -36,6 +37,7 @@ export function useRaisedBedFieldLifecycleData(
     fieldOverride?: RaisedBedFieldPlantHistoryEntry,
 ) {
     const { data: garden } = useCurrentGarden();
+    const now = useLiveTime();
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
     const field =
         fieldOverride ??
@@ -46,6 +48,7 @@ export function useRaisedBedFieldLifecycleData(
     const { data: plantSort } = usePlantSort(plantSortId);
     return getPlantLifecycleProgressData({
         field: raisedBed && field && plantSort ? field : null,
+        now,
         plantAttributes: plantSort?.information.plant.attributes,
     });
 }

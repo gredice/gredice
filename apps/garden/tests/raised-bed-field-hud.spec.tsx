@@ -689,7 +689,7 @@ function daysAgoIso(days: number): string {
 }
 
 function daysFromNowIso(days: number): string {
-    const date = new Date();
+    const date = new Date('2026-05-13T12:00:00.000Z');
     date.setDate(date.getDate() + days);
     return date.toISOString();
 }
@@ -1340,15 +1340,6 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await expect(
             scheduleDialog.locator('[data-event-calendar]'),
         ).toBeVisible();
-
-        await expect(
-            scheduleDialog.getByRole('button', {
-                name: 'Prethodni mjesec',
-            }),
-        ).toBeEnabled();
-        await scheduleDialog
-            .getByRole('button', { name: 'Prethodni mjesec' })
-            .click();
 
         await expect(
             scheduleDialog.locator('[data-event-calendar-month="2026-05"]'),

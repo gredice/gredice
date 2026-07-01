@@ -15,6 +15,7 @@ import { parseAsString, useQueryState } from 'nuqs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
+import { useShoppingCart } from '../hooks/useShoppingCart';
 import {
     type TutorialChecklistGroup,
     type TutorialChecklistState,
@@ -354,13 +355,14 @@ function shouldCloseChecklistBeforeOpen(task: TutorialChecklistTask) {
 
 function useOpenTaskTarget(onChecklistOpenChange: (open: boolean) => void) {
     const { data: currentGarden } = useCurrentGarden();
+    const { data: cart } = useShoppingCart();
     const [, setBackpackOpen] = useBackpackOpenParam();
     const [, setCartOpen] = useShoppingCartOpenParam();
     const [, setOverviewTab] = useQueryState('pregled', parseAsString);
     const { mutate: setRaisedBedCloseupParam } = useSetRaisedBedCloseupParam();
 
     async function openFirstEmptyRaisedBedPlantPicker() {
-        const target = findFirstEmptyRaisedBedField(currentGarden);
+        const target = findFirstEmptyRaisedBedField(currentGarden, cart?.items);
         if (!target) {
             return false;
         }

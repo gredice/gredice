@@ -1,10 +1,37 @@
-import type { useCurrentGarden } from '../../hooks/useCurrentGarden';
+import type { Stack } from '../../types/Stack';
 import { getRaisedBedBlockIds } from '../../utils/raisedBedBlocks';
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
 
-type CurrentGardenData = NonNullable<
-    ReturnType<typeof useCurrentGarden>['data']
->;
+type RaisedBedTargetField = {
+    active?: boolean | null;
+    plantSortId?: number | null;
+    positionIndex: number;
+};
+
+type RaisedBedTarget = {
+    blockId: string | null;
+    fields: RaisedBedTargetField[];
+    id: number;
+    isValid: boolean;
+    name?: string | null;
+    orientation?: 'vertical' | 'horizontal';
+    status: string;
+};
+
+export type RaisedBedFieldTargetGarden = {
+    id: number;
+    isSandbox?: boolean | null;
+    raisedBeds: RaisedBedTarget[];
+    stacks: Stack[];
+};
+
+export type RaisedBedFieldTargetCartItem = {
+    entityTypeName?: string | null;
+    gardenId?: number | null;
+    positionIndex?: number | null;
+    raisedBedId?: number | null;
+    status?: string | null;
+};
 
 export type EmptyRaisedBedFieldTarget = {
     positionIndex: number;
@@ -12,8 +39,23 @@ export type EmptyRaisedBedFieldTarget = {
     raisedBedName: string;
 };
 
+function isRaisedBedCartPlantItem(
+    item: RaisedBedFieldTargetCartItem,
+    gardenId: number,
+    raisedBedId: number,
+): item is RaisedBedFieldTargetCartItem & { positionIndex: number } {
+    return (
+        item.gardenId === gardenId &&
+        item.raisedBedId === raisedBedId &&
+        item.entityTypeName === 'plantSort' &&
+        item.status === 'new' &&
+        typeof item.positionIndex === 'number'
+    );
+}
+
 export function findFirstEmptyRaisedBedField(
-    garden: CurrentGardenData | null | undefined,
+    garden: RaisedBedFieldTargetGarden | null | undefined,
+    cartItems?: RaisedBedFieldTargetCartItem[] | null,
 ): EmptyRaisedBedFieldTarget | null {
     if (!garden || garden.isSandbox) {
         return null;
@@ -38,6 +80,11 @@ export function findFirstEmptyRaisedBedField(
                 .filter(isRaisedBedFieldOccupied)
                 .map((field) => field.positionIndex),
         );
+        for (const item of cartItems ?? []) {
+            if (isRaisedBedCartPlantItem(item, garden.id, raisedBed.id)) {
+                occupiedPositionIndices.add(item.positionIndex);
+            }
+        }
 
         for (
             let positionIndex = 0;
