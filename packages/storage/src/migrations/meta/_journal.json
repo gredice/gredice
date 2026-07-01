@@ -435,6 +435,13 @@
       "when": 1782555354664,
       "tag": "0061_workable_luckman",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1782866133207,
+      "tag": "0062_fixed_fallen_one",
+      "breakpoints": true
     }
   ]
 }

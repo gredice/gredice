@@ -29,6 +29,7 @@ export const gardens = pgTable(
         // Sandbox ("play") gardens have no economy: free building, no inventory,
         // no plant-status lifecycle and no weather. Decoration only.
         isSandbox: boolean('is_sandbox').notNull().default(false),
+        isPublic: boolean('is_public').notNull().default(false),
         createdAt: timestamp('created_at').notNull().defaultNow(),
         updatedAt: timestamp('updated_at')
             .notNull()
@@ -39,6 +40,7 @@ export const gardens = pgTable(
         index('garden_g_account_id_idx').on(table.accountId),
         index('garden_g_farm_id_idx').on(table.farmId),
         index('garden_g_is_deleted_idx').on(table.isDeleted),
+        index('garden_g_is_public_idx').on(table.isPublic),
         index('garden_g_is_sandbox_idx').on(table.isSandbox),
     ],
 );

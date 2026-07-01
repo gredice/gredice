@@ -126,6 +126,13 @@ export async function getGardens() {
     });
 }
 
+export async function getPublicGardens() {
+    return storage().query.gardens.findMany({
+        where: and(eq(gardens.isDeleted, false), eq(gardens.isPublic, true)),
+        orderBy: desc(gardens.updatedAt),
+    });
+}
+
 export async function getAccountGardensMetadata(accountId: string) {
     return storage().query.gardens.findMany({
         where: and(
@@ -212,6 +219,33 @@ export async function getGarden(gardenId: number) {
         return null;
     }
     // Attach raised beds with event-sourced info
+    return {
+        ...garden,
+        raisedBeds,
+    };
+}
+
+export async function getPublicGarden(gardenId: number) {
+    const [garden, raisedBeds] = await Promise.all([
+        storage().query.gardens.findFirst({
+            where: and(
+                eq(gardens.id, gardenId),
+                eq(gardens.isDeleted, false),
+                eq(gardens.isPublic, true),
+            ),
+            with: {
+                farm: true,
+                stacks: {
+                    where: eq(gardenStacks.isDeleted, false),
+                },
+            },
+        }),
+        getRaisedBeds(gardenId),
+    ]);
+    if (!garden) {
+        return null;
+    }
+
     return {
         ...garden,
         raisedBeds,
