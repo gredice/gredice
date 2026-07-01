@@ -1,14 +1,25 @@
 import { Button } from '@gredice/ui/Button';
-import { Discount } from '@gredice/ui/icons';
+import { Discount, Navigate } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
+import { useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
+import { useCurrentGarden } from '../hooks/useCurrentGarden';
+import type { OutletOfferData } from '../hooks/useOutletOffers';
 import { useOutletOffers } from '../hooks/useOutletOffers';
 import { GameModal } from '../shared-ui/game-modal';
-import { useOutletOpenParam } from '../useUrlState';
+import { useSetRaisedBedCloseupParam } from '../useRaisedBedCloseup';
+import {
+    useOutletOfferSelectionParam,
+    useOutletOpenParam,
+} from '../useUrlState';
 import { HudCard } from './components/HudCard';
+import {
+    findFirstEmptyRaisedBedField,
+    waitForPlantPickerTrigger,
+} from './raisedBed/plantPickerNavigation';
 
 const currencyFormatter = new Intl.NumberFormat('hr-HR', {
     style: 'currency',
@@ -29,13 +40,52 @@ function offerImageUrl(offer: {
 
 export function OutletHud() {
     const { data: offers, isLoading, isError } = useOutletOffers();
+    const { data: currentGarden } = useCurrentGarden();
     const [outletParam, setOutletParam] = useOutletOpenParam();
+    const [, setOutletOfferSelectionParam] = useOutletOfferSelectionParam();
+    const { mutate: setRaisedBedCloseupParam } = useSetRaisedBedCloseupParam();
     const { track } = useGameAnalytics();
+    const [pendingOfferId, setPendingOfferId] = useState<number | null>(null);
     const isOpen = outletParam !== null;
     const highlightedOfferId =
         outletParam && outletParam !== '1'
             ? Number.parseInt(outletParam, 10)
             : null;
+    const selectedOffer =
+        offers?.find((offer) => offer.id === highlightedOfferId) ??
+        offers?.[0] ??
+        null;
+    const emptyFieldTarget = findFirstEmptyRaisedBedField(currentGarden);
+
+    async function handleStartPlanting(offer: OutletOfferData) {
+        if (!emptyFieldTarget || pendingOfferId !== null) {
+            return;
+        }
+
+        setPendingOfferId(offer.id);
+        track('game_outlet_offer_planting_started', {
+            garden_id: currentGarden?.id,
+            outlet_offer_id: offer.id,
+            plant_sort_id: offer.plantSort.id,
+            position_index: emptyFieldTarget.positionIndex,
+            raised_bed_id: emptyFieldTarget.raisedBedId,
+        });
+
+        try {
+            await setOutletOfferSelectionParam(offer.id);
+            await setOutletParam(null);
+            await Promise.resolve(
+                setRaisedBedCloseupParam(
+                    emptyFieldTarget.raisedBedName,
+                    emptyFieldTarget.positionIndex,
+                ),
+            );
+            const trigger = await waitForPlantPickerTrigger(emptyFieldTarget);
+            trigger?.click();
+        } finally {
+            setPendingOfferId(null);
+        }
+    }
 
     if (!isLoading && !offers?.length && !isOpen) {
         return null;
@@ -76,8 +126,8 @@ export function OutletHud() {
             >
                 <Stack spacing={4}>
                     <Typography level="body2" secondary>
-                        Odaberi prazno polje u gredici i u popisu sorti uključi
-                        Outlet cijenu za dostupnu presadnicu.
+                        Odaberi outlet sadnicu i nastavi na prvo prazno polje u
+                        aktivnoj gredici.
                     </Typography>
                     {isLoading ? (
                         <Typography level="body2">Učitavanje...</Typography>
@@ -95,10 +145,11 @@ export function OutletHud() {
                     <div className="grid gap-3">
                         {offers?.map((offer) => {
                             const imageUrl = offerImageUrl(offer);
-                            const highlighted = highlightedOfferId === offer.id;
+                            const highlighted = selectedOffer?.id === offer.id;
 
                             return (
                                 <button
+                                    aria-pressed={highlighted}
                                     key={offer.id}
                                     type="button"
                                     className={cx(
@@ -154,6 +205,32 @@ export function OutletHud() {
                             );
                         })}
                     </div>
+                    {selectedOffer ? (
+                        <Stack spacing={2}>
+                            {!emptyFieldTarget ? (
+                                <Typography level="body2" secondary>
+                                    Za outlet sadnicu treba prazno polje u
+                                    aktivnoj gredici.
+                                </Typography>
+                            ) : null}
+                            <Row justifyContent="end">
+                                <Button
+                                    disabled={!emptyFieldTarget}
+                                    loading={
+                                        pendingOfferId === selectedOffer.id
+                                    }
+                                    onClick={() =>
+                                        void handleStartPlanting(selectedOffer)
+                                    }
+                                    startDecorator={
+                                        <Navigate className="size-5 shrink-0" />
+                                    }
+                                >
+                                    Nastavi na sijanje
+                                </Button>
+                            </Row>
+                        </Stack>
+                    ) : null}
                 </Stack>
             </GameModal>
         </HudCard>

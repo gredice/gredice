@@ -293,9 +293,11 @@ function PlantPickerTestProviders({
     children,
     favorites = [],
     inventoryItems = [],
+    searchParams,
 }: PropsWithChildren<{
     favorites?: FavoriteItem[];
     inventoryItems?: TestInventoryItem[];
+    searchParams?: string;
 }>) {
     const queryClient = useMemo(
         () => createPlantPickerQueryClient({ favorites, inventoryItems }),
@@ -313,7 +315,7 @@ function PlantPickerTestProviders({
     );
 
     return (
-        <NuqsTestingAdapter>
+        <NuqsTestingAdapter hasMemory searchParams={searchParams}>
             <ReactQuery.QueryClientProvider client={queryClient}>
                 <GameStateContext.Provider value={gameStore}>
                     {children}
@@ -345,16 +347,19 @@ function OutletOfferRefetchTestHook() {
 export function PlantPickerTestStory({
     favorites,
     inventoryItems,
+    searchParams,
     showOutletRefetchControl = false,
 }: {
     favorites?: FavoriteItem[];
     inventoryItems?: TestInventoryItem[];
+    searchParams?: string;
     showOutletRefetchControl?: boolean;
 } = {}) {
     return (
         <PlantPickerTestProviders
             favorites={favorites}
             inventoryItems={inventoryItems}
+            searchParams={searchParams}
         >
             {showOutletRefetchControl ? <OutletOfferRefetchTestHook /> : null}
             <PlantPicker

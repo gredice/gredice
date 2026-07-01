@@ -48,6 +48,7 @@ import {
 } from '../../hooks/useShoppingCartTransientHub';
 import { KnownPages } from '../../knownPages';
 import { GameModal } from '../../shared-ui/game-modal';
+import { useOutletOfferSelectionParam } from '../../useUrlState';
 import { PlantsList } from './PlantsList';
 import { PlantsSortList } from './PlantsSortList';
 import {
@@ -123,6 +124,33 @@ function groupOutletOffersBySortId(outletOffers: OutletOfferData[] = []) {
     return offersBySortId;
 }
 
+function groupOutletOffersByPlantId(
+    outletOffers: OutletOfferData[] | undefined,
+    allSorts: PlantSortData[] | undefined,
+) {
+    const offersByPlantId = new Map<number, OutletOfferData[]>();
+
+    for (const offer of outletOffers ?? []) {
+        const plantId = outletOfferPlantId(offer, allSorts);
+        if (!plantId) {
+            continue;
+        }
+
+        const plantOffers = offersByPlantId.get(plantId);
+        if (plantOffers) {
+            plantOffers.push(offer);
+        } else {
+            offersByPlantId.set(plantId, [offer]);
+        }
+    }
+
+    for (const plantOffers of offersByPlantId.values()) {
+        plantOffers.sort(compareOutletOffers);
+    }
+
+    return offersByPlantId;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
@@ -142,6 +170,18 @@ function parseAdditionalData(additionalData?: string | null) {
 
 function isGreenhouseSowing(additionalData?: string | null) {
     return parseAdditionalData(additionalData).sowingLocation === 'greenhouse';
+}
+
+function outletOfferPlantId(
+    offer: OutletOfferData,
+    allSorts: PlantSortData[] | undefined,
+) {
+    return (
+        offer.plantSort.plant?.id ??
+        allSorts?.find((sort) => sort.id === offer.plantSort.id)?.information
+            .plant.id ??
+        null
+    );
 }
 
 type PlantPickerOptions = {
@@ -186,6 +226,8 @@ export function PlantPicker({
     const raisedBed = currentGarden?.raisedBeds.find(
         (bed) => bed.id === raisedBedId,
     );
+    const [outletOfferSelectionParam, setOutletOfferSelectionParam] =
+        useOutletOfferSelectionParam();
     const { data: allSorts } = useAllSorts();
     const { data: outletOffers } = useOutletOffers();
     const setCartItem = useSetShoppingCartItem();
@@ -435,6 +477,30 @@ export function PlantPicker({
             });
         }
         setOpen(open);
+
+        const selectedOutletOfferFromParam =
+            open && typeof outletOfferSelectionParam === 'number'
+                ? outletOffers?.find(
+                      (offer) => offer.id === outletOfferSelectionParam,
+                  )
+                : undefined;
+        const selectedOutletPlantId = selectedOutletOfferFromParam
+            ? outletOfferPlantId(selectedOutletOfferFromParam, allSorts)
+            : null;
+
+        if (selectedOutletOfferFromParam && selectedOutletPlantId) {
+            setSelectedPlantId(selectedOutletPlantId);
+            setSelectedSortId(selectedOutletOfferFromParam.plantSort.id);
+            setPlantOptions(null);
+            setUseInventoryItem(false);
+            setUseOutletOffer(true);
+            setSowInGreenhouse(false);
+            setSelectedOutletOfferId(selectedOutletOfferFromParam.id);
+            void setOutletOfferSelectionParam(null);
+            resetSearch();
+            return;
+        }
+
         setSelectedPlantId(preselectedPlantId ?? null);
         setSelectedSortId(preselectedSortId ?? null);
         setPlantOptions(preselectedPlantOptions ?? null);
@@ -510,6 +576,10 @@ export function PlantPicker({
     const outletOffersBySortId = useMemo(
         () => groupOutletOffersBySortId(outletOffers),
         [outletOffers],
+    );
+    const outletOffersByPlantId = useMemo(
+        () => groupOutletOffersByPlantId(outletOffers, allSorts),
+        [allSorts, outletOffers],
     );
     const selectedOutletOffers = selectedSortId
         ? (outletOffersBySortId.get(selectedSortId) ?? [])
@@ -644,6 +714,7 @@ export function PlantPicker({
                 {currentStep === 0 && (
                     <PlantsList
                         neighborPlants={neighborPlants}
+                        outletOffersByPlantId={outletOffersByPlantId}
                         search={search}
                         onChange={handlePlantSelect}
                     />
