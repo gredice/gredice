@@ -16,6 +16,8 @@ export const KnownPages = {
     GrediceSunflowers: 'https://www.gredice.com/suncokreti',
     GrediceReferrals: 'https://www.gredice.com/preporuke',
     GrediceContact: 'https://www.gredice.com/kontakt',
+    GredicePublicGarden: (gardenId: number) =>
+        `https://www.gredice.com/vrtovi/${gardenId.toString()}`,
     GrediceFirstRaisedBedGuide: 'https://www.gredice.com/vodic-za-prvu-gredicu',
     GrediceWhatsNew: 'https://www.gredice.com/novosti/sto-je-novo',
     GrediceDeliverySlots: 'https://www.gredice.com/dostava/termini',

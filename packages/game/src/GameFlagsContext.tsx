@@ -13,6 +13,7 @@ export interface GameFeatureFlags {
     enableRainWetOverlayFlag?: boolean;
     enableSuncokretChatFlag?: boolean;
     enableSuncokretDebugFlag?: boolean;
+    publicGardensFlag?: boolean;
 }
 
 export const GameFlagsContext = createContext<GameFeatureFlags>({});
