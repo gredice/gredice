@@ -8,7 +8,7 @@ import { StructuredDataScript } from '../../components/shared/seo/StructuredData
 import { KnownPages } from '../../src/KnownPages';
 import { OutletOfferCard } from './OutletOfferCard';
 import { getOutletOffers, outletOfferImage } from './outletData';
-import { currencyFormatter, offerEndFormatter } from './outletPresentation';
+import { currencyFormatter } from './outletPresentation';
 
 export const dynamic = 'force-dynamic';
 
@@ -79,27 +79,15 @@ function outletSummary(offers: Awaited<ReturnType<typeof getOutletOffers>>) {
                 : Math.min(lowestPrice, offer.outletPrice),
         null,
     );
-    const nextEndingOffer = offers.reduce<(typeof offers)[number] | null>(
-        (nextOffer, offer) =>
-            nextOffer === null ||
-            new Date(offer.endAt).getTime() <
-                new Date(nextOffer.endAt).getTime()
-                ? offer
-                : nextOffer,
-        null,
-    );
-
     return {
         lowestOutletPrice,
-        nextEndingOffer,
         remainingQuantity,
     };
 }
 
 export default async function OutletPage() {
     const offers = await getOutletOffers();
-    const { lowestOutletPrice, nextEndingOffer, remainingQuantity } =
-        outletSummary(offers);
+    const { lowestOutletPrice, remainingQuantity } = outletSummary(offers);
 
     return (
         <Container className="py-10 sm:py-14">
@@ -194,15 +182,6 @@ export default async function OutletPage() {
                                 >
                                     Dostupne outlet sadnice
                                 </Typography>
-                                {nextEndingOffer ? (
-                                    <Typography level="body2" secondary>
-                                        Sljedeća ponuda istječe{' '}
-                                        {offerEndFormatter.format(
-                                            new Date(nextEndingOffer.endAt),
-                                        )}
-                                        .
-                                    </Typography>
-                                ) : null}
                             </Stack>
                             <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-card px-3 py-1.5 text-sm text-secondary-foreground ring-1 ring-tertiary">
                                 <Timer
@@ -212,7 +191,7 @@ export default async function OutletPage() {
                                 Dok traju zalihe
                             </span>
                         </div>
-                        <div className="grid gap-5">
+                        <div className="grid gap-5 md:grid-cols-2">
                             {offers.map((offer) => (
                                 <OutletOfferCard key={offer.id} offer={offer} />
                             ))}
