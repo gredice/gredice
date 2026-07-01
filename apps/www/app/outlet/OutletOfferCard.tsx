@@ -19,8 +19,8 @@ export function OutletOfferCard({ offer }: { offer: OutletOffer }) {
     const imageUrl = outletOfferImage(offer);
 
     return (
-        <article className="grid overflow-hidden rounded-2xl border border-tertiary border-b-4 bg-card shadow-sm md:grid-cols-[minmax(220px,0.8fr)_1fr]">
-            <div className="relative aspect-[4/3] overflow-hidden bg-muted md:aspect-auto">
+        <article className="grid grid-cols-[7.5rem_minmax(0,1fr)] overflow-hidden rounded-xl border border-tertiary border-b-4 bg-card shadow-sm sm:grid-cols-[minmax(9rem,11rem)_minmax(0,1fr)] lg:grid-cols-[minmax(10rem,13rem)_minmax(0,1fr)_auto]">
+            <div className="relative min-h-36 overflow-hidden bg-muted lg:min-h-44">
                 {imageUrl ? (
                     <>
                         {/** biome-ignore lint/performance/noImgElement: Offer images come from API data and may use configured external origins. */}
@@ -31,7 +31,7 @@ export function OutletOfferCard({ offer }: { offer: OutletOffer }) {
                         />
                     </>
                 ) : (
-                    <div className="flex h-full min-h-56 items-center justify-center bg-tertiary/15 px-6 text-center">
+                    <div className="flex h-full min-h-36 items-center justify-center bg-tertiary/15 px-4 text-center">
                         <Typography level="body2" secondary>
                             Fotografija sadnice uskoro stiže
                         </Typography>
@@ -47,56 +47,40 @@ export function OutletOfferCard({ offer }: { offer: OutletOffer }) {
                     </span>
                 </div>
             </div>
-            <div className="p-5 sm:p-6">
-                <Stack spacing={6}>
-                    <Stack spacing={2}>
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div className="min-w-0">
-                                <Typography level="h3" component="h2">
-                                    {offer.plantSort.name}
+            <div className="p-3 sm:p-4 lg:p-5 lg:pr-4">
+                <Stack spacing={3}>
+                    <Stack spacing={1}>
+                        <div className="min-w-0">
+                            <Typography
+                                level="h5"
+                                component="h2"
+                                className="line-clamp-2"
+                            >
+                                {offer.plantSort.name}
+                            </Typography>
+                            {offer.plantSort.plant?.name ? (
+                                <Typography level="body2" tertiary>
+                                    {offer.plantSort.plant.name}
                                 </Typography>
-                                {offer.plantSort.plant?.name ? (
-                                    <Typography level="body2" tertiary>
-                                        {offer.plantSort.plant.name}
-                                    </Typography>
-                                ) : null}
-                            </div>
-                            <div className="rounded-xl bg-muted/60 px-4 py-3 text-right">
-                                <Typography level="body3" tertiary>
-                                    Outlet cijena
-                                </Typography>
-                                <Typography level="h3" component="p">
-                                    {currencyFormatter.format(
-                                        offer.outletPrice,
-                                    )}
-                                </Typography>
-                                {typeof offer.comparePrice === 'number' ? (
-                                    <Typography
-                                        level="body2"
-                                        secondary
-                                        className="line-through"
-                                    >
-                                        {currencyFormatter.format(
-                                            offer.comparePrice,
-                                        )}
-                                    </Typography>
-                                ) : null}
-                            </div>
+                            ) : null}
                         </div>
                         {offer.plantSort.description ? (
                             <Typography
                                 level="body2"
                                 secondary
-                                className="max-w-2xl text-pretty"
+                                className="hidden max-w-2xl text-pretty sm:line-clamp-2 sm:block"
                             >
                                 {offer.plantSort.description}
                             </Typography>
                         ) : null}
                     </Stack>
-                    <dl className="grid gap-4 border-y border-tertiary py-4 text-sm sm:grid-cols-3">
+                    <dl className="grid gap-2 border-t border-tertiary pt-2 text-xs sm:grid-cols-3 sm:text-sm lg:gap-3 lg:pt-3">
                         <div>
                             <dt className="flex items-center gap-1.5 text-muted-foreground">
-                                <Sprout aria-hidden className="size-4" />
+                                <Sprout
+                                    aria-hidden
+                                    className="size-3.5 sm:size-4"
+                                />
                                 Sjetva
                             </dt>
                             <dd className="mt-1 font-medium">
@@ -107,7 +91,10 @@ export function OutletOfferCard({ offer }: { offer: OutletOffer }) {
                         </div>
                         <div>
                             <dt className="flex items-center gap-1.5 text-muted-foreground">
-                                <Calendar aria-hidden className="size-4" />
+                                <Calendar
+                                    aria-hidden
+                                    className="size-3.5 sm:size-4"
+                                />
                                 Preostalo
                             </dt>
                             <dd className="mt-1 font-medium">
@@ -116,8 +103,11 @@ export function OutletOfferCard({ offer }: { offer: OutletOffer }) {
                         </div>
                         <div>
                             <dt className="flex items-center gap-1.5 text-muted-foreground">
-                                <Timer aria-hidden className="size-4" />
-                                Ponuda traje do
+                                <Timer
+                                    aria-hidden
+                                    className="size-3.5 sm:size-4"
+                                />
+                                Istječe
                             </dt>
                             <dd className="mt-1 font-medium">
                                 {offerEndFormatter.format(
@@ -126,23 +116,33 @@ export function OutletOfferCard({ offer }: { offer: OutletOffer }) {
                             </dd>
                         </div>
                     </dl>
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                </Stack>
+            </div>
+            <div className="col-span-2 flex items-end justify-between gap-3 border-t border-tertiary p-3 sm:p-4 lg:col-span-1 lg:flex-col lg:items-end lg:border-l lg:border-t-0 lg:text-right">
+                <div>
+                    <Typography level="body3" tertiary>
+                        Outlet cijena
+                    </Typography>
+                    <Typography level="h5" component="p">
+                        {currencyFormatter.format(offer.outletPrice)}
+                    </Typography>
+                    {typeof offer.comparePrice === 'number' ? (
                         <Typography
                             level="body2"
                             secondary
-                            className="max-w-md text-pretty"
+                            className="line-through"
                         >
-                            Outlet presadnicu rezerviraš odabirom praznog polja
-                            u svom vrtu.
+                            {currencyFormatter.format(offer.comparePrice)}
                         </Typography>
-                        <NavigatingButton
-                            href={outletGardenUrl(offer.id)}
-                            className="w-fit"
-                        >
-                            Odaberi u vrtu
-                        </NavigatingButton>
-                    </div>
-                </Stack>
+                    ) : null}
+                </div>
+                <NavigatingButton
+                    href={outletGardenUrl(offer.id)}
+                    size="sm"
+                    className="w-fit shrink-0"
+                >
+                    Odaberi u vrtu
+                </NavigatingButton>
             </div>
         </article>
     );

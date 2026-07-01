@@ -154,7 +154,7 @@ export default async function OutletPage() {
                                 <dt className="text-sm text-muted-foreground">
                                     Ponude
                                 </dt>
-                                <dd className="mt-1 text-3xl">
+                                <dd className="mt-1 text-2xl leading-tight sm:text-3xl">
                                     {offers.length}
                                 </dd>
                             </div>
@@ -162,7 +162,7 @@ export default async function OutletPage() {
                                 <dt className="text-sm text-muted-foreground">
                                     Sadnice
                                 </dt>
-                                <dd className="mt-1 text-3xl">
+                                <dd className="mt-1 text-2xl leading-tight sm:text-3xl">
                                     {remainingQuantity}
                                 </dd>
                             </div>
@@ -170,7 +170,7 @@ export default async function OutletPage() {
                                 <dt className="text-sm text-muted-foreground">
                                     Od
                                 </dt>
-                                <dd className="mt-1 text-3xl">
+                                <dd className="mt-1 text-2xl leading-tight sm:text-3xl">
                                     {lowestOutletPrice === null
                                         ? '-'
                                         : currencyFormatter.format(
