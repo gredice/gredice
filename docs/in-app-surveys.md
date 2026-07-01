@@ -28,7 +28,7 @@ In-app surveys replace the delivery Typeform flow with auditable survey definiti
 
 Survey definitions have draft, published, or archived status. Published survey versions are immutable; changing copy or questions creates a new version. Assignments are unique by version, target key, and context key, so a delivery account/month can only receive one assignment for a given version. Responses store the version/question IDs that the customer saw, preserving historical meaning even after a later version is published.
 
-Question types in the first rollout are 0-10 opinion scale, long text, and optional contact info. Opinion questions carry score metadata with `internalScore` and `publicScore`; the delivery seed keeps public scoring disabled until a later reporting rollout defines public thresholds and sample-size rules.
+Question types in the first rollout are 0-10 opinion scale, long text, and optional contact info for custom surveys. Opinion questions carry score metadata with `internalScore` and `publicScore`; the delivery seed keeps public scoring disabled until a later reporting rollout defines public thresholds and sample-size rules. Delivery satisfaction surveys do not ask for separate contact details because the customer route requires login and submissions are linked to the assignment's account/user.
 
 ## Delivery Survey Path
 
