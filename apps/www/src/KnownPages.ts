@@ -47,6 +47,9 @@ export const KnownPages = {
     Referrals: '/preporuke',
     News: '/novosti',
     WhatsNew: '/novosti/sto-je-novo',
+    PublicGardens: '/vrtovi',
+    PublicGarden: (gardenId: number) =>
+        `/vrtovi/${gardenId.toString()}` as Route,
 
     LegalPrivacy: '/legalno/politika-privatnosti',
     LegalTerms: '/legalno/uvjeti-koristenja',
