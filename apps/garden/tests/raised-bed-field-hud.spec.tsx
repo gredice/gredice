@@ -1483,6 +1483,42 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         ).toBeVisible();
     });
 
+    test('closeup HUD photo AI action keeps dark mode button colors', async ({
+        mount,
+        page,
+    }) => {
+        await page.evaluate(() =>
+            document.documentElement.classList.add('dark'),
+        );
+        await mount(
+            <RaisedBedCloseupHudStory
+                scenario={plantedGrowingWithOperationHistoryScenario()}
+            />,
+        );
+
+        await page
+            .getByRole('button', {
+                name: /Fotografije gredice Raised Bed 1/u,
+            })
+            .click();
+
+        const photosModal = page.locator('[data-raised-bed-photos-modal]');
+        const aiButton = photosModal.getByRole('button', {
+            name: /Pregledaj savjete suncokreta/u,
+        });
+        await expect(aiButton).toBeVisible();
+
+        const aiButtonClassName = await aiButton.evaluate(
+            (element) => element.className,
+        );
+        expect(aiButtonClassName).toContain('dark:from-green-700');
+        expect(aiButtonClassName).toContain('dark:to-green-800');
+        expect(aiButtonClassName).toContain('dark:text-white');
+        expect(aiButtonClassName).not.toContain('dark:from-lime-200');
+        expect(aiButtonClassName).not.toContain('dark:to-lime-200');
+        expect(aiButtonClassName).not.toContain('dark:text-primary-foreground');
+    });
+
     test('closeup HUD photo shortcut searches older history pages before hiding', async ({
         mount,
         page,
