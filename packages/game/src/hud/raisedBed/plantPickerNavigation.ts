@@ -1,3 +1,4 @@
+import { isRaisedBedAbandoned } from '../../raisedBedConstants';
 import type { Stack } from '../../types/Stack';
 import { getRaisedBedBlockIds } from '../../utils/raisedBedBlocks';
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
@@ -39,6 +40,10 @@ export type EmptyRaisedBedFieldTarget = {
     raisedBedName: string;
 };
 
+type EmptyRaisedBedFieldTargetOptions = {
+    includeNotYetActiveRaisedBeds?: boolean;
+};
+
 function isRaisedBedCartPlantItem(
     item: RaisedBedFieldTargetCartItem,
     gardenId: number,
@@ -53,20 +58,37 @@ function isRaisedBedCartPlantItem(
     );
 }
 
-export function findFirstEmptyRaisedBedField(
+function isRaisedBedEligibleForEmptyFieldTarget(
+    raisedBed: RaisedBedTarget,
+    options: EmptyRaisedBedFieldTargetOptions,
+) {
+    if (!raisedBed.isValid) {
+        return false;
+    }
+
+    if (options.includeNotYetActiveRaisedBeds) {
+        return !isRaisedBedAbandoned(raisedBed.status);
+    }
+
+    return raisedBed.status === 'active';
+}
+
+export function findEmptyRaisedBedFieldTargets(
     garden: RaisedBedFieldTargetGarden | null | undefined,
     cartItems?: RaisedBedFieldTargetCartItem[] | null,
-): EmptyRaisedBedFieldTarget | null {
+    options: EmptyRaisedBedFieldTargetOptions = {},
+): EmptyRaisedBedFieldTarget[] {
     if (!garden || garden.isSandbox) {
-        return null;
+        return [];
     }
+
+    const targets: EmptyRaisedBedFieldTarget[] = [];
 
     for (const raisedBed of garden.raisedBeds) {
         const raisedBedName = raisedBed.name?.trim();
         if (
             !raisedBedName ||
-            raisedBed.status !== 'active' ||
-            !raisedBed.isValid
+            !isRaisedBedEligibleForEmptyFieldTarget(raisedBed, options)
         ) {
             continue;
         }
@@ -92,16 +114,27 @@ export function findFirstEmptyRaisedBedField(
             positionIndex += 1
         ) {
             if (!occupiedPositionIndices.has(positionIndex)) {
-                return {
+                targets.push({
                     positionIndex,
                     raisedBedId: raisedBed.id,
                     raisedBedName,
-                };
+                });
+                break;
             }
         }
     }
 
-    return null;
+    return targets;
+}
+
+export function findFirstEmptyRaisedBedField(
+    garden: RaisedBedFieldTargetGarden | null | undefined,
+    cartItems?: RaisedBedFieldTargetCartItem[] | null,
+    options: EmptyRaisedBedFieldTargetOptions = {},
+): EmptyRaisedBedFieldTarget | null {
+    return (
+        findEmptyRaisedBedFieldTargets(garden, cartItems, options)[0] ?? null
+    );
 }
 
 export function waitForPlantPickerTrigger({
