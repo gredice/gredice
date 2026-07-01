@@ -146,4 +146,6 @@ export const KnownPages = {
         `https://www.gredice.com/radnje/${slugify(operationAlias)}`,
     GrediceUser: (publicId: string) =>
         `https://www.gredice.com/korisnici/${publicId}`,
+    GredicePublicGarden: (gardenId: number) =>
+        `https://www.gredice.com/vrtovi/${gardenId.toString()}`,
 } as const;

@@ -1,11 +1,15 @@
 import type { SelectGarden } from '@gredice/storage';
+import { Chip } from '@gredice/ui/Chip';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { KnownPages } from '../../../src/KnownPages';
 
-type GardenRow = Pick<SelectGarden, 'accountId' | 'createdAt' | 'id' | 'name'>;
+type GardenRow = Pick<
+    SelectGarden,
+    'accountId' | 'createdAt' | 'id' | 'isPublic' | 'name'
+>;
 
 type GardensTableProps = {
     gardens: GardenRow[];
@@ -43,6 +47,16 @@ export function GardensTable({
                             >
                                 {garden.name}
                             </Link>
+                            {garden.isPublic ? (
+                                <Chip
+                                    color="success"
+                                    size="sm"
+                                    variant="soft"
+                                    className="mt-1"
+                                >
+                                    Public
+                                </Chip>
+                            ) : null}
                         </div>
                         <div className="flex min-w-0 flex-col gap-1 text-left sm:items-end sm:text-right">
                             {showAccountColumn && (
