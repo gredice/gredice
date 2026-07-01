@@ -81,6 +81,7 @@ import {
     hashGardenVisitSummaryFacts,
 } from '../../../lib/garden/gardenVisitSummaryService';
 import { isBlockPurchaseAvailableNow } from '../../../lib/garden/nightOnlyBlockPurchases';
+import { serializePublicRaisedBedField } from '../../../lib/garden/publicGardenSerialization';
 import { purchaseGardenBlock } from '../../../lib/garden/purchaseGardenBlockService';
 import {
     AI_REQUEST_QUOTAS,
@@ -618,20 +619,7 @@ async function serializeGardenDetails(
             abandonReason: abandonReasonByRaisedBedId.get(raisedBed.id) ?? null,
             orientation: raisedBed.orientation,
             fields: options.publicView
-                ? raisedBed.fields.map((field) => {
-                      const {
-                          assignedAt,
-                          assignedBy,
-                          assignedUserId,
-                          assignedUserIds,
-                          ...publicField
-                      } = field;
-                      void assignedAt;
-                      void assignedBy;
-                      void assignedUserId;
-                      void assignedUserIds;
-                      return publicField;
-                  })
+                ? raisedBed.fields.map(serializePublicRaisedBedField)
                 : raisedBed.fields,
             appliedOperations:
                 appliedOperationsByRaisedBedId.get(raisedBed.id) ?? [],
