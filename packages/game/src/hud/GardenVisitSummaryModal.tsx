@@ -160,6 +160,21 @@ function inspectTargetForItem(
     };
 }
 
+function dismissalKeyForSummary(
+    factsHash: string | null,
+    displayItems: GardenVisitSummaryDisplayItem[],
+) {
+    if (factsHash !== null) {
+        return `hash:${factsHash}`;
+    }
+
+    if (displayItems.length === 0) {
+        return null;
+    }
+
+    return `items:${displayItems.map((item) => item.id).join('|')}`;
+}
+
 export function GardenVisitSummaryModal({
     enabled,
     onClosed,
@@ -171,13 +186,19 @@ export function GardenVisitSummaryModal({
         (state) => state.setGardenVisitSummaryHighlight,
     );
     const { mutate: setRaisedBedCloseupParam } = useSetRaisedBedCloseupParam();
-    const [dismissedFactsHash, setDismissedFactsHash] = useState<string | null>(
-        null,
-    );
+    const [dismissedSummaryKey, setDismissedSummaryKey] = useState<
+        string | null
+    >(null);
     const emptySummarySeenRequestKeyRef = useRef<string | null>(null);
+    const closingSummaryKeyRef = useRef<string | null>(null);
     const currentFactsHash = summary.factsHash ?? null;
+    const currentDismissalKey = dismissalKeyForSummary(
+        currentFactsHash,
+        summary.displayItems,
+    );
     const hasCurrentDismissal =
-        currentFactsHash !== null && dismissedFactsHash === currentFactsHash;
+        currentDismissalKey !== null &&
+        dismissedSummaryKey === currentDismissalKey;
     const open =
         enabled &&
         summary.hasDisplayItems &&
@@ -190,8 +211,9 @@ export function GardenVisitSummaryModal({
 
     useEffect(() => {
         if (!enabled) {
-            setDismissedFactsHash(null);
+            setDismissedSummaryKey(null);
             emptySummarySeenRequestKeyRef.current = null;
+            closingSummaryKeyRef.current = null;
             return;
         }
 
@@ -254,9 +276,17 @@ export function GardenVisitSummaryModal({
 
     const closeSummary = useCallback(
         (afterClose?: () => void) => {
-            if (markSeen.isPending) {
+            if (
+                currentDismissalKey === null ||
+                closingSummaryKeyRef.current === currentDismissalKey
+            ) {
                 return;
             }
+
+            closingSummaryKeyRef.current = currentDismissalKey;
+            setDismissedSummaryKey(currentDismissalKey);
+            afterClose?.();
+            completeFlow();
 
             markSeen.mutate(
                 { factsHash: currentFactsHash },
@@ -267,15 +297,17 @@ export function GardenVisitSummaryModal({
                             error,
                         );
                     },
-                    onSuccess: () => {
-                        setDismissedFactsHash(currentFactsHash);
-                        afterClose?.();
-                        completeFlow();
+                    onSettled: () => {
+                        if (
+                            closingSummaryKeyRef.current === currentDismissalKey
+                        ) {
+                            closingSummaryKeyRef.current = null;
+                        }
                     },
                 },
             );
         },
-        [completeFlow, currentFactsHash, markSeen],
+        [completeFlow, currentDismissalKey, currentFactsHash, markSeen],
     );
 
     const handleInspect = (item: GardenVisitSummaryDisplayItem) => {
@@ -315,7 +347,6 @@ export function GardenVisitSummaryModal({
     return (
         <GardenVisitSummaryModalContent
             displayItems={summary.displayItems}
-            isClosing={markSeen.isPending}
             onClose={handleClose}
             onInspect={handleInspect}
             open={open}
@@ -330,12 +361,23 @@ export function GardenVisitSummaryModalContent({
     onInspect,
     open,
 }: GardenVisitSummaryModalContentProps) {
+    const handleOpenChange = useCallback(
+        (nextOpen: boolean) => {
+            if (open && !nextOpen && !isClosing) {
+                onClose();
+            }
+        },
+        [isClosing, onClose, open],
+    );
+
     return (
         <GameModal
             title="Od zadnjeg posjeta"
             open={open}
+            onOpenChange={handleOpenChange}
             className="max-w-xl overflow-hidden p-0"
-            dismissible={false}
+            dismissible={!isClosing}
+            hideClose
         >
             <div className="flex max-h-[calc(100dvh-2rem)] min-h-0 flex-col">
                 <Row
