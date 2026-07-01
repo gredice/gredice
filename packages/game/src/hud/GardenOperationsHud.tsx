@@ -44,7 +44,7 @@ import {
     useGardenOperations,
 } from '../hooks/useGardenOperations';
 import { useLiveTime } from '../hooks/useLiveTime';
-import { useOperations } from '../hooks/useOperations';
+import { useOperationDefinitions } from '../hooks/useOperations';
 import { useSorts } from '../hooks/usePlantSorts';
 import {
     type DiaryRescheduleTarget,
@@ -63,7 +63,7 @@ import { RaisedBedDiaryCancelAction } from './raisedBed/RaisedBedDiaryCancelActi
 import { RaisedBedDiaryRescheduleAction } from './raisedBed/RaisedBedDiaryRescheduleAction';
 
 type OperationData = NonNullable<
-    ReturnType<typeof useOperations>['data']
+    ReturnType<typeof useOperationDefinitions>['data']
 >[number];
 type PlantSortData = NonNullable<ReturnType<typeof useSorts>['data']>[number];
 type CurrentGardenData = NonNullable<
@@ -1833,7 +1833,7 @@ export function GardenOperationsHud() {
     const { track } = useGameAnalytics();
     const referenceDate = useLiveTime();
     const { data: currentGarden } = useCurrentGarden();
-    const { data: operationsData } = useOperations();
+    const { data: operationsData } = useOperationDefinitions();
     const { data: cart } = useShoppingCart();
     const [, setShoppingCartOpen] = useShoppingCartOpenParam();
     const pending = useGardenOperations({

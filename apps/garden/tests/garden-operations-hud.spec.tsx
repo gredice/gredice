@@ -98,6 +98,24 @@ test.describe('Garden operations HUD', () => {
         ).toBeVisible();
     });
 
+    test('shows internal operation labels in operation cards', async ({
+        mount,
+        page,
+    }) => {
+        await mount(<GardenOperationsHudStory />);
+
+        await page.getByTitle('Status radnji').click();
+        await page.getByRole('button', { name: 'Prikaži sve radnje' }).click();
+
+        const dialog = page
+            .getByRole('dialog')
+            .filter({ hasText: 'Povijest radnji' });
+        await expect(
+            dialog.getByText('Detaljan pregled gredice'),
+        ).toBeVisible();
+        await expect(dialog.getByText('Radnja #611')).toHaveCount(0);
+    });
+
     test('shows completed sowing tasks in operation history', async ({
         mount,
         page,

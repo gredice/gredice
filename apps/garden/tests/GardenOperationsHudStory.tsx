@@ -7,6 +7,7 @@ import {
     type GardenOperationItem,
     gardenOperationsQueryKey,
 } from '../../../packages/game/src/hooks/useGardenOperations';
+import { operationDefinitionsQueryKey } from '../../../packages/game/src/hooks/useOperations';
 import type { ShoppingCartItemData } from '../../../packages/game/src/hooks/useShoppingCart';
 import { GardenOperationsHud } from '../../../packages/game/src/hud/GardenOperationsHud';
 import {
@@ -58,6 +59,23 @@ export const cartOperation = {
     },
     createdAt: now,
     updatedAt: now,
+} satisfies OperationData;
+
+const internalOperation = {
+    ...cartOperation,
+    id: 999_002,
+    slug: 'mock-raised-bed-detailed-inspection',
+    attributes: {
+        ...cartOperation.attributes,
+        application: 'raisedBedFull',
+        internal: true,
+    },
+    information: {
+        ...cartOperation.information,
+        name: 'raised-bed-detailed-inspection',
+        label: 'Detaljan pregled gredice',
+        shortDescription: 'Interna radnja za detaljan pregled gredice.',
+    },
 } satisfies OperationData;
 
 function buildGarden() {
@@ -180,11 +198,15 @@ function buildOperationCartItem({
 
 function buildHudOperationItem({
     cancellationReason,
+    entityId = cartOperation.id,
     id,
+    raisedBedFieldId = 1,
     status,
 }: {
     cancellationReason?: string;
+    entityId?: number;
     id: number;
+    raisedBedFieldId?: number | null;
     status: GardenOperationItem['status'];
 }): GardenOperationItem {
     const day = String(Math.max(1, 30 - (id % 20))).padStart(2, '0');
@@ -196,10 +218,10 @@ function buildHudOperationItem({
 
     return {
         id,
-        entityId: cartOperation.id,
+        entityId,
         entityTypeName: 'operation',
         raisedBedId: TEST_RAISED_BED_ID,
-        raisedBedFieldId: 1,
+        raisedBedFieldId,
         status,
         createdAt: `2026-05-${day}T00:00:00.000Z`,
         scheduledDate: `2026-05-${day}T00:00:00.000Z`,
@@ -293,6 +315,12 @@ function createQueryClient({
                   id: 610,
                   status: 'confirmed',
               }),
+              buildHudOperationItem({
+                  entityId: internalOperation.id,
+                  id: 611,
+                  raisedBedFieldId: null,
+                  status: 'confirmed',
+              }),
           ];
     const pendingOperationPage = {
         pages: [
@@ -323,6 +351,10 @@ function createQueryClient({
     );
     queryClient.setQueryData(['sorts'], allSorts);
     queryClient.setQueryData(['operations'], [cartOperation]);
+    queryClient.setQueryData(operationDefinitionsQueryKey.all, [
+        cartOperation,
+        internalOperation,
+    ]);
     queryClient.setQueryData(['shopping-cart'], {
         id: 1,
         items: [
