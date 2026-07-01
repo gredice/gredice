@@ -23,7 +23,7 @@ export function RaisedBedWatering({
             onOpenChange={setOpen}
             trigger={
                 <ButtonGreen
-                    className="rounded-full size-10 md:w-full p-0 md:pr-4 gap-0"
+                    className="rounded-full size-10 max-[390px]:size-9 md:w-full p-0 md:pr-4 gap-0"
                     fullWidth
                     startDecorator={
                         <BlockImage
@@ -31,7 +31,7 @@ export function RaisedBedWatering({
                             height={56}
                             alt="Zalijevanje"
                             blockName="Bucket"
-                            className="size-10 md:size-14 md:-mt-3"
+                            className="size-10 max-[390px]:size-9 md:size-14 md:-mt-3"
                         />
                     }
                 >

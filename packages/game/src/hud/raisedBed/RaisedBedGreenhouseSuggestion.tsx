@@ -38,11 +38,11 @@ export function RaisedBedGreenhouseSuggestion({
             modal={false}
             onOpenChange={setOpen}
             trigger={
-                <ButtonGreen className="rounded-full size-10 md:size-auto p-0 md:pr-4 gap-0 md:w-full">
+                <ButtonGreen className="rounded-full size-10 max-[390px]:size-9 md:size-auto p-0 md:pr-4 gap-0 md:w-full">
                     <OperationImage
                         size={32}
                         operation={basicGreenhouseOperation}
-                        className="size-10 md:size-14 md:mr-4"
+                        className="size-10 max-[390px]:size-9 md:size-14 md:mr-4"
                     />
                     <span className="hidden md:block -ml-2">Staklenik</span>
                 </ButtonGreen>

@@ -210,6 +210,8 @@ export type RaisedBedScenario = {
     }>;
     raisedBedStatus?: string;
     raisedBedAbandonReason?: string | null;
+    raisedBedBlockCount?: 1 | 2;
+    raisedBedOrientation?: 'horizontal' | 'vertical';
     isRaisedBedValid?: boolean;
 };
 

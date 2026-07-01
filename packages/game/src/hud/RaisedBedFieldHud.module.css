@@ -1,0 +1,77 @@
+.root {
+    --raised-bed-grid-size: 240px;
+    --raised-bed-grid-half-size: 120px;
+    --raised-bed-grid-height: var(--raised-bed-grid-size);
+    --raised-bed-grid-half-height: var(--raised-bed-grid-half-size);
+    --raised-bed-grid-height-additional: 30px;
+    --raised-bed-grid-height-additional-half: 15px;
+    --raised-bed-button-half-height: 20px;
+    --raised-bed-grid-top-anchor-offset: 10px;
+    --raised-bed-side-panel-gap: 4px;
+    --raised-bed-mobile-close-gap: 2px;
+    --raised-bed-mobile-top-shift: 48px;
+    --raised-bed-title-max-width: 16rem;
+    --raised-bed-action-gap: 0.5rem;
+}
+
+.doubleRaisedBed {
+    --raised-bed-grid-height: calc(
+        var(--raised-bed-grid-size) +
+        var(--raised-bed-grid-size) +
+        var(--raised-bed-grid-height-additional)
+    );
+    --raised-bed-grid-half-height: calc(
+        var(--raised-bed-grid-size) +
+        var(--raised-bed-grid-height-additional-half)
+    );
+}
+
+.root {
+    --raised-bed-ui-top: calc(
+        50% -
+        var(--raised-bed-grid-half-height) -
+        var(--raised-bed-grid-height-additional-half) -
+        var(--raised-bed-button-half-height) -
+        var(--raised-bed-grid-top-anchor-offset)
+    );
+    --raised-bed-ui-top-mobile: calc(
+        var(--raised-bed-ui-top) +
+        var(--raised-bed-mobile-top-shift)
+    );
+    --raised-bed-title-left: calc(50% - var(--raised-bed-grid-half-size));
+    --raised-bed-side-panel-left: calc(
+        50% +
+        var(--raised-bed-grid-half-size) +
+        var(--raised-bed-side-panel-gap)
+    );
+    --raised-bed-close-button-left: calc(
+        50% +
+        var(--raised-bed-grid-half-size) +
+        var(--raised-bed-mobile-close-gap)
+    );
+}
+
+@media (max-width: 390px), (max-height: 700px) {
+    .root {
+        --raised-bed-grid-size: 216px;
+        --raised-bed-grid-half-size: 108px;
+        --raised-bed-grid-height-additional: 24px;
+        --raised-bed-grid-height-additional-half: 12px;
+        --raised-bed-button-half-height: 18px;
+        --raised-bed-grid-top-anchor-offset: 8px;
+        --raised-bed-side-panel-gap: 6px;
+        --raised-bed-mobile-close-gap: 1px;
+        --raised-bed-mobile-top-shift: 40px;
+        --raised-bed-title-max-width: 13.5rem;
+        --raised-bed-action-gap: 0.375rem;
+    }
+}
+
+@media (max-width: 340px) {
+    .root {
+        --raised-bed-grid-size: 204px;
+        --raised-bed-grid-half-size: 102px;
+        --raised-bed-title-max-width: 12.5rem;
+        --raised-bed-action-gap: 0.25rem;
+    }
+}

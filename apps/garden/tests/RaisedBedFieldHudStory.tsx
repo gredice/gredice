@@ -7,6 +7,7 @@ import { GameAnalyticsProvider } from '../../../packages/game/src/analytics/Game
 import { useCurrentGarden } from '../../../packages/game/src/hooks/useCurrentGarden';
 import { favoritesQueryKey } from '../../../packages/game/src/hooks/useFavorites';
 import { gardenOperationsQueryKey } from '../../../packages/game/src/hooks/useGardenOperations';
+import { useOutletOffersQueryKey } from '../../../packages/game/src/hooks/useOutletOffers';
 import { queryKeys as raisedBedAiHistoryQueryKeys } from '../../../packages/game/src/hooks/useRaisedBedAiHistory';
 import { queryKeys as raisedBedDiaryQueryKeys } from '../../../packages/game/src/hooks/useRaisedBedDiaryEntries';
 import { queryKeys as raisedBedFieldDiaryQueryKeys } from '../../../packages/game/src/hooks/useRaisedBedFieldDiaryEntries';
@@ -31,14 +32,62 @@ import {
 
 const now = '2026-05-13T00:00:00.000Z';
 
+type MockStackPosition = {
+    clone: () => MockStackPosition;
+    x: number;
+    y: number;
+    z: number;
+};
+
+function createMockStackPosition(
+    x: number,
+    y: number,
+    z: number,
+): MockStackPosition {
+    return {
+        clone: () => createMockStackPosition(x, y, z),
+        x,
+        y,
+        z,
+    };
+}
+
+function buildRaisedBedStacks({
+    blockCount,
+    orientation,
+}: {
+    blockCount: 1 | 2;
+    orientation: 'horizontal' | 'vertical';
+}) {
+    return Array.from({ length: blockCount }, (_, index) => ({
+        position:
+            orientation === 'horizontal'
+                ? createMockStackPosition(0, 0, index)
+                : createMockStackPosition(-index, 0, 0),
+        blocks: [
+            {
+                id: `raised-bed-${index + 1}`,
+                name: 'Raised_Bed',
+                rotation: 0,
+            },
+        ],
+    }));
+}
+
 function buildGarden(scenario: RaisedBedScenario) {
     const fields = scenario.fields.map((config, index) =>
         buildField(config, index + 1),
     );
+    const raisedBedBlockCount = scenario.raisedBedBlockCount ?? 1;
+    const raisedBedOrientation = scenario.raisedBedOrientation ?? 'horizontal';
+
     return {
         id: TEST_GARDEN_ID,
         name: 'Test garden',
-        stacks: [],
+        stacks: buildRaisedBedStacks({
+            blockCount: raisedBedBlockCount,
+            orientation: raisedBedOrientation,
+        }),
         location: { lat: 45.739, lon: 16.572 },
         raisedBeds: [
             {
@@ -51,7 +100,7 @@ function buildGarden(scenario: RaisedBedScenario) {
                 status: scenario.raisedBedStatus ?? 'new',
                 abandonReason: scenario.raisedBedAbandonReason ?? null,
                 isValid: scenario.isRaisedBedValid ?? true,
-                orientation: 'horizontal' as const,
+                orientation: raisedBedOrientation,
                 createdAt: now,
                 updatedAt: now,
             },
@@ -70,6 +119,7 @@ function createScenarioQueryClient(
     });
     const garden = buildGarden(scenario);
 
+    queryClient.setQueryDefaults(useOutletOffersQueryKey, { enabled: false });
     queryClient.setQueryData(['currentUser'], { id: 'test-user' });
     queryClient.setQueryData(['gardens'], [{ id: TEST_GARDEN_ID }]);
     queryClient.setQueryData(
@@ -85,6 +135,8 @@ function createScenarioQueryClient(
     queryClient.setQueryData(['plants'], scenario.plants ?? allPlants);
     queryClient.setQueryData(['sorts'], scenario.sorts ?? allSorts);
     queryClient.setQueryData(['operations'], scenario.operations ?? []);
+    queryClient.setQueryData(useOutletOffersQueryKey, []);
+    queryClient.setQueryData(['raisedBeds', TEST_RAISED_BED_ID, 'sensors'], []);
     const operationHistoryItems = scenario.operationHistoryItems ?? [];
     const raisedBedOperationDiaryEntries =
         scenario.raisedBedOperationDiaryEntries ?? [];
@@ -255,18 +307,28 @@ export function RaisedBedInfoModalStory({
 }
 
 export function RaisedBedCloseupHudStory({
+    height = 620,
     scenario,
+    width = 720,
 }: {
+    height?: number;
     scenario: RaisedBedScenario;
+    width?: number;
 }) {
     return (
         <RaisedBedHudTestProviders scenario={scenario}>
-            <RaisedBedCloseupHudStoryContent />
+            <RaisedBedCloseupHudStoryContent height={height} width={width} />
         </RaisedBedHudTestProviders>
     );
 }
 
-function RaisedBedCloseupHudStoryContent() {
+function RaisedBedCloseupHudStoryContent({
+    height,
+    width,
+}: {
+    height: number;
+    width: number;
+}) {
     const setView = useGameState((state) => state.setView);
 
     useEffect(() => {
@@ -281,7 +343,11 @@ function RaisedBedCloseupHudStoryContent() {
     }, [setView]);
 
     return (
-        <div className="relative h-[620px] w-[720px]">
+        <div
+            className="relative overflow-hidden bg-lime-950/20"
+            data-raised-bed-closeup-story-frame
+            style={{ height, width }}
+        >
             <RaisedBedFieldHud />
         </div>
     );
