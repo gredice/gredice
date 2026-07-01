@@ -14,6 +14,7 @@ export type LocalSandboxGarden = {
     id: number;
     name: string;
     isSandbox: true;
+    isPublic: false;
     backgroundPalette: GameBackgroundPaletteKey;
     stacks: Stack[];
     location: {
@@ -81,6 +82,7 @@ export function createDefaultLocalSandboxGarden(
         id: localSandboxGardenId,
         name: options.name ?? 'Debug sandbox',
         isSandbox: true,
+        isPublic: false,
         backgroundPalette:
             options.backgroundPalette ?? defaultGameBackgroundPaletteKey,
         stacks: resolveDefaultLocalSandboxStacks(options.stacks),

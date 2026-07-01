@@ -6,6 +6,8 @@ export type {
     ClientOptions,
     GardenResponse,
     GardenVisitSummaryResponse,
+    PublicGardenResponse,
+    PublicGardensResponse,
 } from './hono';
 export { client, clientAuthenticated, clientPublic } from './hono';
 export {
