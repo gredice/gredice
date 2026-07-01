@@ -6,6 +6,7 @@ import { MathUtils, OrthographicCamera, Vector2, Vector3 } from 'three';
 import {
     defaultGameCameraPosition,
     defaultGameCameraTarget,
+    getCloseupGameCameraZoom,
 } from '../gameCamera';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useGameState } from '../useGameState';
@@ -19,7 +20,6 @@ import {
 } from './dragEdgeAutopan';
 import type { GameCameraRigApi, GameCameraSnapshot } from './GameCameraRigApi';
 
-const closeupZoom = 300;
 const animationDurationSeconds = 1;
 const focusAnimationDurationSeconds = 0.65;
 const focusStopDistance = 0.01;
@@ -199,6 +199,14 @@ export function GameCameraRig({
     });
     const scratchForwardRef = useRef(new Vector3());
     const scratchRightRef = useRef(new Vector3());
+    const closeupZoom = useMemo(
+        () =>
+            getCloseupGameCameraZoom({
+                height: size.height,
+                width: size.width,
+            }),
+        [size.height, size.width],
+    );
 
     const closeupTarget = useMemo(() => {
         if (!closeupBlock || !garden) {
@@ -819,7 +827,14 @@ export function GameCameraRig({
             });
         }
         previousViewRef.current = view;
-    }, [camera, closeupTarget, isOrthographicCamera, startAnimation, view]);
+    }, [
+        camera,
+        closeupTarget,
+        closeupZoom,
+        isOrthographicCamera,
+        startAnimation,
+        view,
+    ]);
 
     useFrame((_, delta) => {
         if (!isOrthographicCamera) {

@@ -172,7 +172,7 @@ function RaisedBedFieldLayerToggle({
             aria-label={label}
             aria-pressed={isPressed}
             className={cx(
-                'inline-flex size-10 items-center justify-center rounded-md border-2 border-white shadow-md ring-1 ring-black/10 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700',
+                'inline-flex size-10 max-[390px]:size-9 items-center justify-center rounded-md border-2 border-white shadow-md ring-1 ring-black/10 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700',
                 isPressed
                     ? 'bg-gradient-to-br from-lime-100/90 to-lime-100/80 text-primary hover:text-primary/80 dark:from-lime-200/80 dark:to-lime-200/70 dark:text-primary-foreground dark:hover:text-primary-foreground/80'
                     : 'bg-white/85 text-lime-950 hover:bg-white',
@@ -475,7 +475,10 @@ export function RaisedBedField({
                     }
                     storageName="history"
                 >
-                    <History aria-hidden className="size-5" />
+                    <History
+                        aria-hidden
+                        className="size-5 max-[390px]:size-4"
+                    />
                 </RaisedBedFieldLayerToggle>
                 <RaisedBedFieldLayerToggle
                     isPressed={layerPreferences.showRelationshipIndicators}
@@ -492,12 +495,12 @@ export function RaisedBedField({
                     <span className="flex items-center justify-center gap-0.5">
                         <Heart
                             aria-hidden
-                            className="size-3.5 shrink-0 fill-current"
+                            className="size-3.5 max-[390px]:size-3 shrink-0 fill-current"
                             strokeWidth={3}
                         />
                         <Lightning
                             aria-hidden
-                            className="size-4 shrink-0 fill-current"
+                            className="size-4 max-[390px]:size-3.5 shrink-0 fill-current"
                             strokeWidth={3}
                         />
                     </span>

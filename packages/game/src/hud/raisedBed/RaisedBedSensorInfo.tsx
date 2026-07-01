@@ -663,7 +663,7 @@ export function RaisedBedSensorInfo({
 
     if (sensorGroups.length === 0) {
         return (
-            <div className="flex flex-col w-full md:flex-row gap-2 md:gap-1">
+            <div className="flex flex-col w-full gap-2 max-[390px]:gap-1.5 md:flex-row md:gap-1">
                 <SensorInfoModal
                     icon={
                         <Droplets className="size-7 shrink-0 stroke-blue-500" />
@@ -715,13 +715,13 @@ export function RaisedBedSensorInfo({
                     trigger={
                         <ButtonGreen
                             size="sm"
-                            className="rounded-full px-2"
+                            className="rounded-full px-2 max-[390px]:h-9 max-[390px]:px-1.5 max-[390px]:text-[11px]"
                             fullWidth
                         >
                             <Row spacing={1}>
                                 <Droplet
                                     className={cx(
-                                        'size-5 shrink-0 stroke-blue-400',
+                                        'size-5 max-[390px]:size-4 shrink-0 stroke-blue-400',
                                         Number(0) >= 20 && 'fill-blue-300',
                                     )}
                                 />
@@ -759,13 +759,13 @@ export function RaisedBedSensorInfo({
                     trigger={
                         <ButtonGreen
                             size="sm"
-                            className="rounded-full px-2"
+                            className="rounded-full px-2 max-[390px]:h-9 max-[390px]:px-1.5 max-[390px]:text-[11px]"
                             fullWidth
                         >
                             <Row spacing={1}>
                                 <Thermometer
                                     className={cx(
-                                        'size-5 shrink-0 stroke-red-400',
+                                        'size-5 max-[390px]:size-4 shrink-0 stroke-red-400',
                                         Number(0) >= 20 && 'fill-red-300',
                                     )}
                                 />
@@ -800,7 +800,7 @@ export function RaisedBedSensorInfo({
                     group.soilTemperature?.status ?? group.status;
                 return (
                     <div
-                        className="flex flex-col md:flex-row gap-2 md:gap-0.5"
+                        className="flex flex-col gap-2 max-[390px]:gap-1.5 md:flex-row md:gap-0.5"
                         key={`sensor-${group.id}`}
                     >
                         <SensorInfoModal
@@ -852,11 +852,14 @@ export function RaisedBedSensorInfo({
                                 },
                             ]}
                             trigger={
-                                <ButtonGreen size="sm" className="rounded-full">
+                                <ButtonGreen
+                                    size="sm"
+                                    className="rounded-full max-[390px]:h-9 max-[390px]:px-1.5 max-[390px]:text-[11px]"
+                                >
                                     <Row spacing={1}>
                                         <Droplet
                                             className={cx(
-                                                'size-5 shrink-0 stroke-blue-400',
+                                                'size-5 max-[390px]:size-4 shrink-0 stroke-blue-400',
                                                 !isSensorDataStale(
                                                     group.soilMoisture
                                                         ?.updatedAt,
@@ -909,11 +912,14 @@ export function RaisedBedSensorInfo({
                                 areaGradientEnd: '#fca5a5',
                             }}
                             trigger={
-                                <ButtonGreen size="sm" className="rounded-full">
+                                <ButtonGreen
+                                    size="sm"
+                                    className="rounded-full max-[390px]:h-9 max-[390px]:px-1.5 max-[390px]:text-[11px]"
+                                >
                                     <Row spacing={1}>
                                         <Thermometer
                                             className={cx(
-                                                'size-5 shrink-0 stroke-red-400',
+                                                'size-5 max-[390px]:size-4 shrink-0 stroke-red-400',
                                                 !isSensorDataStale(
                                                     group.soilTemperature
                                                         ?.updatedAt,

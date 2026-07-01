@@ -160,7 +160,8 @@ const quickSeedOptions: Record<
     },
 };
 
-const quickSowingButtonClassName = 'size-10 rounded-full md:size-auto';
+const quickSowingButtonClassName =
+    'size-10 rounded-full max-[390px]:size-9 md:size-auto';
 
 function getSeasonForDate(date: Date | null): QuickSeedType {
     if (!date || Number.isNaN(date.getTime())) {
@@ -298,7 +299,7 @@ export function RaisedBedFieldSuggestions({
     return (
         <RaisedBedCard
             data-quick-sowing-recommendations
-            className="flex w-fit flex-col items-center gap-1 rounded-full px-2 py-2 md:w-auto md:self-stretch md:gap-2 md:px-2 md:pb-4 md:pt-3"
+            className="flex w-fit flex-col items-center gap-1 rounded-full px-2 py-2 max-[390px]:px-1.5 max-[390px]:py-1.5 md:w-auto md:self-stretch md:gap-2 md:px-2 md:pb-4 md:pt-3"
         >
             <Typography
                 level="body2"
@@ -307,14 +308,14 @@ export function RaisedBedFieldSuggestions({
             >
                 Brzo sijanje
             </Typography>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 max-[390px]:gap-1.5">
                 {/* Seasonal option */}
                 {seasonalOption && (
                     <ButtonGreen
                         variant="plain"
                         className={quickSowingButtonClassName}
                         startDecorator={
-                            <span className="text-xl">
+                            <span className="text-xl max-[390px]:text-lg">
                                 {seasonalOption.emoji}
                             </span>
                         }
@@ -338,7 +339,9 @@ export function RaisedBedFieldSuggestions({
                         variant="plain"
                         className={quickSowingButtonClassName}
                         startDecorator={
-                            <span className="text-xl">{option.emoji}</span>
+                            <span className="text-xl max-[390px]:text-lg">
+                                {option.emoji}
+                            </span>
                         }
                         onClick={() => handleQuickPick(type as QuickSeedType)}
                         loading={
