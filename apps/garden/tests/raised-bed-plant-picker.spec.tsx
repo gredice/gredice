@@ -193,6 +193,21 @@ test('plant search keeps keyboard focus while filtering sowing options', async (
     await expect(page.getByRole('button', { name: /Bosiljak/ })).toHaveCount(0);
 });
 
+test('plant list shows outlet availability before sort selection', async ({
+    mount,
+    page,
+}) => {
+    await mount(<PlantPickerTestStory />);
+
+    await page.getByRole('button', { name: 'Sijanje' }).click();
+
+    const tomatoRow = page.locator('[data-plant-picker-plant-id="1"]');
+    const basilRow = page.locator('[data-plant-picker-plant-id="2"]');
+
+    await expect(tomatoRow).toContainText('Outlet 2 ponude');
+    await expect(basilRow).not.toContainText('Outlet');
+});
+
 test('outlet sorts keep planned sowing selected by default', async ({
     mount,
     page,
@@ -289,6 +304,40 @@ test('outlet sowing sends the selected outlet offer', async ({
         name: /Preostalo 3/,
     });
     await sowingMode.getByText('Preostalo 3').click();
+    await expect(laterOutletOffer).toBeChecked();
+    await expect(
+        page.getByRole('textbox', { name: 'Datum sijanja' }),
+    ).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Dodaj u košaru' }).click();
+
+    await expect.poll(() => posts.length).toBe(1);
+    const post = posts[0];
+    expect(isRecord(post)).toBe(true);
+    if (!isRecord(post)) {
+        return;
+    }
+    expect(post.outletOfferId).toBe(302);
+    expect(post.additionalData).toBe(JSON.stringify({ outletOfferId: 302 }));
+});
+
+test('outlet selection param opens the selected outlet offer', async ({
+    mount,
+    page,
+}) => {
+    const posts = await mockShoppingCartPosts(page);
+
+    await mount(<PlantPickerTestStory searchParams="outlet-ponuda=302" />);
+
+    await page.getByRole('button', { name: 'Sijanje' }).click();
+
+    await expect(page.getByText('Odabir sorte').last()).toBeVisible();
+    const sowingMode = page.getByRole('radiogroup', {
+        name: 'Način sijanja',
+    });
+    const laterOutletOffer = sowingMode.getByRole('radio', {
+        name: /Preostalo 3/,
+    });
     await expect(laterOutletOffer).toBeChecked();
     await expect(
         page.getByRole('textbox', { name: 'Datum sijanja' }),

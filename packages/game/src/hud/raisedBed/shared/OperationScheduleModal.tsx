@@ -11,6 +11,7 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
+import { useLiveTime } from '../../../hooks/useLiveTime';
 import { GameModal } from '../../../shared-ui/game-modal';
 import { formatLocalDate } from '../RaisedBedPlantPicker';
 import {
@@ -53,7 +54,7 @@ export function OperationScheduleModal({
         null,
     );
 
-    const today = new Date();
+    const today = useLiveTime();
     const tomorrow = new Date(
         today.getFullYear(),
         today.getMonth(),
@@ -173,6 +174,7 @@ export function OperationScheduleModal({
                             previewDate={selectedDate}
                             previewOperation={operation}
                             raisedBedId={raisedBedId}
+                            referenceDate={today}
                             selectedDate={selectedDate}
                             visibleFrom={tomorrow}
                             visibleTo={threeMonthsFromTomorrow}
@@ -189,6 +191,7 @@ export function OperationScheduleModal({
                             positionIndex={positionIndex}
                             previewDate={selectedDate}
                             raisedBedId={raisedBedId}
+                            referenceDate={today}
                             selectedDate={selectedDate}
                             visibleFrom={tomorrow}
                             visibleTo={threeMonthsFromTomorrow}
@@ -202,6 +205,7 @@ export function OperationScheduleModal({
                             maxSelectableDate={threeMonthsFromTomorrow}
                             minSelectableDate={tomorrow}
                             onDateSelect={handleDateSelect}
+                            referenceDate={today}
                             selectedDate={selectedDate}
                             visibleFrom={tomorrow}
                             visibleTo={threeMonthsFromTomorrow}

@@ -16,6 +16,10 @@ export function useOutletOpenParam() {
     return useQueryState('outlet', parseAsString);
 }
 
+export function useOutletOfferSelectionParam() {
+    return useQueryState('outlet-ponuda', parseAsInteger);
+}
+
 // Backpack/Inventory modal parameter (Croatian: "ruksak" = backpack)
 export function useBackpackOpenParam() {
     return useQueryState('ruksak', parseAsBoolean.withDefault(false));
@@ -79,6 +83,7 @@ export function useCurrentGardenIdParam() {
 export const urlStateSerializer = createSerializer({
     kosarica: parseAsBoolean,
     outlet: parseAsString,
+    'outlet-ponuda': parseAsInteger,
     ruksak: parseAsBoolean,
     'ruksak-kartica': parseAsString,
     gredica: parseAsString,
