@@ -4,7 +4,7 @@ import type { OperationAssignableFarmUser } from '@gredice/storage';
 import { Checkbox } from '@gredice/ui/Checkbox';
 import { Chip } from '@gredice/ui/Chip';
 import { IconButton } from '@gredice/ui/IconButton';
-import { Calendar, Close } from '@gredice/ui/icons';
+import { Calendar, Close, Edit } from '@gredice/ui/icons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Row } from '@gredice/ui/Row';
@@ -35,6 +35,7 @@ import { CancelOperationModal } from './CancelOperationModal';
 import { CompleteOperationModal } from './CompleteOperationModal';
 import { CopyTasksButton } from './CopyTasksButton';
 import { OperationCompletionAttachments } from './OperationCompletionAttachments';
+import { OperationCompletionEvidenceEditModal } from './OperationCompletionEvidenceEditModal';
 import { OperationRequirementIcons } from './OperationRequirementIcons';
 import { RescheduleOperationModal } from './RescheduleOperationModal';
 import { ScheduleOperationVisual } from './ScheduleTaskVisual';
@@ -690,6 +691,28 @@ export function RaisedBedOperationsScheduleSection({
                                             operationId={operation.id}
                                             notes={operation.completionNotes}
                                             imageUrls={operation.imageUrls}
+                                        />
+                                    )}
+                                    {operationPendingVerification && (
+                                        <OperationCompletionEvidenceEditModal
+                                            operationId={operation.id}
+                                            label={operationLabel}
+                                            initialNotes={
+                                                operation.completionNotes ?? ''
+                                            }
+                                            initialImageUrls={
+                                                operation.imageUrls ?? []
+                                            }
+                                            trigger={
+                                                <IconButton
+                                                    title="Uredi zapis završetka"
+                                                    type="button"
+                                                    size="xs"
+                                                    variant="plain"
+                                                >
+                                                    <Edit className="size-4 shrink-0" />
+                                                </IconButton>
+                                            }
                                         />
                                     )}
                                     <AssignOperationModal

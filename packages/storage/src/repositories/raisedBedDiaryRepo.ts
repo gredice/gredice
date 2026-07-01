@@ -6,7 +6,28 @@ import { getAllEvents, knownEventTypes } from './eventsRepo';
 import type { getRaisedBedFieldsWithEvents } from './raisedBedFieldsRepo';
 import { getRaisedBed } from './raisedBedsRepo';
 
-export async function getRaisedBedDiaryEntries(raisedBedId: number) {
+type RaisedBedDiaryEntriesOptions = {
+    includeUnverifiedOperationEvidence?: boolean;
+};
+
+function operationDiaryImageUrls(
+    operation: DiaryOperation,
+    options?: RaisedBedDiaryEntriesOptions,
+) {
+    if (
+        options?.includeUnverifiedOperationEvidence === false &&
+        operation.status !== 'completed'
+    ) {
+        return undefined;
+    }
+
+    return operation.imageUrls;
+}
+
+export async function getRaisedBedDiaryEntries(
+    raisedBedId: number,
+    options?: RaisedBedDiaryEntriesOptions,
+) {
     const raisedBed = await getRaisedBed(raisedBedId);
     if (!raisedBed) {
         throw new Error(`Raised bed with ID ${raisedBedId} not found`);
@@ -96,7 +117,7 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
             )?.information?.shortDescription,
             status: operationStatusToLabel(op.status),
             timestamp: operationDiaryTimestamp(op),
-            imageUrls: op.imageUrls,
+            imageUrls: operationDiaryImageUrls(op, options),
             rescheduleTarget: operationDiaryRescheduleTarget(op),
         }))
         .filter((op) => op.name)
@@ -116,6 +137,7 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
 export async function getRaisedBedFieldDiaryEntries(
     raisedBedId: number,
     positionIndex: number,
+    options?: RaisedBedDiaryEntriesOptions,
 ) {
     const raisedBed = await getRaisedBed(raisedBedId);
     if (!raisedBed) {
@@ -247,7 +269,7 @@ export async function getRaisedBedFieldDiaryEntries(
             )?.information?.shortDescription,
             status: operationStatusToLabel(op.status),
             timestamp: operationDiaryTimestamp(op),
-            imageUrls: op.imageUrls,
+            imageUrls: operationDiaryImageUrls(op, options),
             rescheduleTarget: operationDiaryRescheduleTarget(op, positionIndex),
         }))
         .filter((op) => op.name)
