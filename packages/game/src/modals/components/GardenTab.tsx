@@ -21,6 +21,7 @@ import { useCurrentGardenIdParam } from '../../useUrlState';
 import { CreateGardenModal } from './CreateGardenModal';
 import { GardenDangerCard } from './GardenDangerCard';
 import { GardenNameCard } from './GardenNameCard';
+import { GardenVisibilityCard } from './GardenVisibilityCard';
 
 function NoGardensCard() {
     const [createGardenModalOpen, setCreateGardenModalOpen] = useState(false);
@@ -143,6 +144,11 @@ export function GardenTab() {
                                     gardenId={selectedGarden.id}
                                     gardenName={selectedGarden.name}
                                     gardenCreatedAt={selectedGarden.createdAt}
+                                />
+                                <GardenVisibilityCard
+                                    gardenId={selectedGarden.id}
+                                    gardenName={selectedGarden.name}
+                                    isPublic={selectedGarden.isPublic}
                                 />
                                 <GardenDangerCard
                                     gardenId={selectedGarden.id}
