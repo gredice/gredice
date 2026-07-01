@@ -19,8 +19,8 @@ export function OutletOfferCard({ offer }: { offer: OutletOffer }) {
     const imageUrl = outletOfferImage(offer);
 
     return (
-        <article className="grid grid-cols-[7.5rem_minmax(0,1fr)] overflow-hidden rounded-xl border border-tertiary border-b-4 bg-card shadow-sm sm:grid-cols-[minmax(9rem,11rem)_minmax(0,1fr)] lg:grid-cols-[minmax(10rem,13rem)_minmax(0,1fr)_auto]">
-            <div className="relative min-h-36 overflow-hidden bg-muted lg:min-h-44">
+        <article className="grid h-full grid-cols-[7.5rem_minmax(0,1fr)] overflow-hidden rounded-xl border border-tertiary border-b-4 bg-card shadow-sm sm:grid-cols-[minmax(8rem,10rem)_minmax(0,1fr)]">
+            <div className="relative min-h-36 overflow-hidden bg-muted sm:min-h-44">
                 {imageUrl ? (
                     <>
                         {/** biome-ignore lint/performance/noImgElement: Offer images come from API data and may use configured external origins. */}
@@ -38,7 +38,7 @@ export function OutletOfferCard({ offer }: { offer: OutletOffer }) {
                     </div>
                 )}
                 <div className="absolute left-3 top-3 flex flex-wrap gap-2">
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-900 shadow-sm dark:bg-amber-950 dark:text-amber-200">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-900 shadow-sm dark:bg-emerald-950 dark:text-emerald-200">
                         <Discount aria-hidden className="size-3.5" />
                         {outletDiscountLabel(offer)}
                     </span>
@@ -47,7 +47,7 @@ export function OutletOfferCard({ offer }: { offer: OutletOffer }) {
                     </span>
                 </div>
             </div>
-            <div className="p-3 sm:p-4 lg:p-5 lg:pr-4">
+            <div className="p-3 sm:p-4">
                 <Stack spacing={3}>
                     <Stack spacing={1}>
                         <div className="min-w-0">
@@ -68,13 +68,13 @@ export function OutletOfferCard({ offer }: { offer: OutletOffer }) {
                             <Typography
                                 level="body2"
                                 secondary
-                                className="hidden max-w-2xl text-pretty sm:line-clamp-2 sm:block"
+                                className="hidden max-w-2xl text-pretty lg:line-clamp-2 lg:block"
                             >
                                 {offer.plantSort.description}
                             </Typography>
                         ) : null}
                     </Stack>
-                    <dl className="grid gap-2 border-t border-tertiary pt-2 text-xs sm:grid-cols-3 sm:text-sm lg:gap-3 lg:pt-3">
+                    <dl className="grid gap-2 border-t border-tertiary pt-2 text-xs sm:text-sm lg:grid-cols-3">
                         <div>
                             <dt className="flex items-center gap-1.5 text-muted-foreground">
                                 <Sprout
@@ -118,7 +118,7 @@ export function OutletOfferCard({ offer }: { offer: OutletOffer }) {
                     </dl>
                 </Stack>
             </div>
-            <div className="col-span-2 flex items-end justify-between gap-3 border-t border-tertiary p-3 sm:p-4 lg:col-span-1 lg:flex-col lg:items-end lg:border-l lg:border-t-0 lg:text-right">
+            <div className="col-span-2 flex items-end justify-between gap-3 border-t border-tertiary p-3 sm:p-4">
                 <div>
                     <Typography level="body3" tertiary>
                         Outlet cijena

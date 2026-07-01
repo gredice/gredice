@@ -45,5 +45,5 @@ export function outletDiscountLabel(offer: OutletOffer) {
 export function outletRemainingLabel(offer: OutletOffer) {
     return offer.remainingQuantity === 1
         ? 'Samo 1 preostala'
-        : `preostalo ${offer.remainingQuantity}`;
+        : `Preostalo ${offer.remainingQuantity}`;
 }
