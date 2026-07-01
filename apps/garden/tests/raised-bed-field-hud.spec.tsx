@@ -1438,13 +1438,20 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         const photoButton = page.getByRole('button', {
             name: /Fotografije gredice Raised Bed 1/u,
         });
+        const titleCluster = page.locator('[data-raised-bed-title-cluster]');
         const detailsButton = page.locator('[data-raised-bed-details-trigger]');
+        await expect(titleCluster).toBeVisible();
         await expect(photoButton).toBeVisible();
         await expect(detailsButton).toBeVisible();
         await expect(photoButton.locator('img')).toBeVisible();
         await expect(
             photoButton.locator('[data-raised-bed-photo-count]'),
         ).toHaveCount(0);
+        const photoButtonClassName = await photoButton.evaluate(
+            (element) => element.className,
+        );
+        expect(photoButtonClassName).not.toContain('!ring-0');
+        expect(photoButtonClassName).toContain('focus-visible:!ring-2');
 
         await expect
             .poll(async () => {
@@ -1457,7 +1464,8 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
 
                 return (
                     photoBox.x < detailsBox.x &&
-                    Math.abs(photoBox.height - detailsBox.height) <= 1
+                    Math.abs(photoBox.height - detailsBox.height) <= 1 &&
+                    Math.abs(detailsBox.x - (photoBox.x + photoBox.width)) <= 1
                 );
             })
             .toBe(true);
@@ -1517,6 +1525,80 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         expect(aiButtonClassName).not.toContain('dark:from-lime-200');
         expect(aiButtonClassName).not.toContain('dark:to-lime-200');
         expect(aiButtonClassName).not.toContain('dark:text-primary-foreground');
+    });
+
+    test('closeup HUD controls use dark surfaces in dark mode', async ({
+        mount,
+        page,
+    }) => {
+        await page.evaluate(() =>
+            document.documentElement.classList.add('dark'),
+        );
+
+        await mount(<RaisedBedCloseupHudStory scenario={emptyScenario()} />);
+
+        const titleCluster = page.locator('[data-raised-bed-title-cluster]');
+        const detailsButton = page.locator('[data-raised-bed-details-trigger]');
+        const fieldButton = page
+            .locator('[data-raised-bed-plant-picker-trigger="true"]')
+            .first();
+        const fieldPositionLabel = fieldButton.locator(
+            '[data-raised-bed-field-position-label]',
+        );
+
+        await expect(titleCluster).toBeVisible();
+        await expect(detailsButton).toBeVisible();
+        await expect(fieldButton).toBeVisible();
+        await expect(fieldPositionLabel).toBeVisible();
+
+        await expect(titleCluster).toHaveCSS(
+            'background-image',
+            /linear-gradient/u,
+        );
+        await expect(fieldButton).toHaveCSS(
+            'background-image',
+            /linear-gradient/u,
+        );
+
+        const [
+            titleClusterStyles,
+            detailsButtonStyles,
+            fieldButtonStyles,
+            fieldPositionLabelStyles,
+        ] = await Promise.all([
+            titleCluster.evaluate((element) => {
+                const styles = window.getComputedStyle(element);
+                return {
+                    backgroundImage: styles.backgroundImage,
+                    color: styles.color,
+                };
+            }),
+            detailsButton.evaluate((element) => {
+                const styles = window.getComputedStyle(element);
+                return { color: styles.color };
+            }),
+            fieldButton.evaluate((element) => {
+                const styles = window.getComputedStyle(element);
+                return {
+                    backgroundImage: styles.backgroundImage,
+                    color: styles.color,
+                };
+            }),
+            fieldPositionLabel.evaluate((element) => {
+                const styles = window.getComputedStyle(element);
+                return { color: styles.color };
+            }),
+        ]);
+
+        expect(titleClusterStyles.backgroundImage).not.toContain(
+            '217, 249, 157',
+        );
+        expect(fieldButtonStyles.backgroundImage).not.toContain(
+            '217, 249, 157',
+        );
+        expect(detailsButtonStyles.color).toBe(titleClusterStyles.color);
+        expect(fieldButtonStyles.color).toBe(titleClusterStyles.color);
+        expect(fieldPositionLabelStyles.color).not.toContain('77, 124, 15');
     });
 
     test('closeup HUD photo shortcut searches older history pages before hiding', async ({

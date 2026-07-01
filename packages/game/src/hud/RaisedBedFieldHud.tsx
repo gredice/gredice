@@ -88,17 +88,19 @@ export function RaisedBedFieldHud() {
         >
             {currentGarden && raisedBed && (
                 <div className="absolute z-40 top-[var(--raised-bed-ui-top)] left-[var(--raised-bed-title-left)]">
-                    <div className="relative flex items-center">
+                    <div
+                        className="relative flex max-w-72 items-stretch overflow-hidden rounded-xl bg-gradient-to-br from-lime-100/95 to-lime-100/85 text-green-950 shadow-lg ring-1 ring-black/10 dark:from-emerald-950/95 dark:to-lime-950/90 dark:text-lime-50 dark:ring-lime-100/10 md:max-w-[360px]"
+                        data-raised-bed-title-cluster
+                    >
                         {!isSandbox && (
-                            <div className="absolute right-full top-1/2 mr-2 -translate-y-1/2">
-                                <RaisedBedPhotosModal
-                                    gardenId={currentGarden.id}
-                                    raisedBedId={raisedBed.id}
-                                    subjectName={raisedBed.name}
-                                    triggerPlacement="hud"
-                                    hideWhenEmpty
-                                />
-                            </div>
+                            <RaisedBedPhotosModal
+                                gardenId={currentGarden.id}
+                                raisedBedId={raisedBed.id}
+                                subjectName={raisedBed.name}
+                                triggerPlacement="hud"
+                                hideWhenEmpty
+                                className="rounded-l-xl rounded-r-none border-r border-green-950/10 ring-0 !shadow-none focus-visible:!ring-2 focus-visible:!ring-lime-700 focus-visible:!ring-offset-2 dark:border-lime-100/10"
+                            />
                         )}
                         <GameModal
                             open={isInfoOpen}
@@ -117,7 +119,7 @@ export function RaisedBedFieldHud() {
                             className="overflow-x-hidden"
                             trigger={
                                 <ButtonGreen
-                                    className="max-w-64 md:max-w-[312px]"
+                                    className="min-w-0 flex-1 justify-between rounded-none px-3 !bg-transparent !bg-none !text-green-950 shadow-none hover:!bg-white/30 hover:!text-green-900 dark:!text-lime-50 dark:hover:!bg-white/10 dark:hover:!text-lime-100"
                                     data-raised-bed-details-trigger
                                     endDecorator={
                                         <Navigate className="size-4 shrink-0" />
