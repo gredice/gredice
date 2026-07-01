@@ -2,6 +2,7 @@ import { Calendar, Discount, Sprout, Timer } from '@gredice/ui/icons';
 import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import { KnownPages } from '../../src/KnownPages';
 import {
     type OutletOffer,
     outletGardenUrl,
@@ -9,14 +10,19 @@ import {
 } from './outletData';
 import {
     currencyFormatter,
-    longDateFormatter,
+    formatOutletSowingDate,
     offerEndFormatter,
     outletDiscountLabel,
+    outletIsLowStock,
     outletRemainingLabel,
 } from './outletPresentation';
 
 export function OutletOfferCard({ offer }: { offer: OutletOffer }) {
     const imageUrl = outletOfferImage(offer);
+    const plantName = offer.plantSort.plant?.name;
+    const detailsHref = plantName
+        ? KnownPages.PlantSort(plantName, offer.plantSort.name)
+        : KnownPages.Plants;
 
     return (
         <article className="grid h-full grid-cols-[7.5rem_minmax(0,1fr)] overflow-hidden rounded-xl border border-tertiary border-b-4 bg-card shadow-sm sm:grid-cols-[minmax(8rem,10rem)_minmax(0,1fr)]">
@@ -42,9 +48,11 @@ export function OutletOfferCard({ offer }: { offer: OutletOffer }) {
                         <Discount aria-hidden className="size-3.5" />
                         {outletDiscountLabel(offer)}
                     </span>
-                    <span className="rounded-full bg-background/90 px-2.5 py-1 text-xs font-medium text-primary shadow-sm">
-                        {outletRemainingLabel(offer)}
-                    </span>
+                    {outletIsLowStock(offer) ? (
+                        <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-900 shadow-sm dark:bg-amber-950 dark:text-amber-200">
+                            {outletRemainingLabel(offer)}
+                        </span>
+                    ) : null}
                 </div>
             </div>
             <div className="p-3 sm:p-4">
@@ -74,7 +82,7 @@ export function OutletOfferCard({ offer }: { offer: OutletOffer }) {
                             </Typography>
                         ) : null}
                     </Stack>
-                    <dl className="grid gap-2 border-t border-tertiary pt-2 text-xs sm:text-sm lg:grid-cols-3">
+                    <dl className="grid gap-2 text-xs sm:text-sm lg:grid-cols-3">
                         <div>
                             <dt className="flex items-center gap-1.5 text-muted-foreground">
                                 <Sprout
@@ -84,7 +92,7 @@ export function OutletOfferCard({ offer }: { offer: OutletOffer }) {
                                 Sjetva
                             </dt>
                             <dd className="mt-1 font-medium">
-                                {longDateFormatter.format(
+                                {formatOutletSowingDate(
                                     new Date(offer.sowingDate),
                                 )}
                             </dd>
@@ -136,13 +144,23 @@ export function OutletOfferCard({ offer }: { offer: OutletOffer }) {
                         </Typography>
                     ) : null}
                 </div>
-                <NavigatingButton
-                    href={outletGardenUrl(offer.id)}
-                    size="sm"
-                    className="w-fit shrink-0"
-                >
-                    Odaberi u vrtu
-                </NavigatingButton>
+                <div className="flex flex-wrap justify-end gap-2">
+                    <NavigatingButton
+                        href={detailsHref}
+                        size="sm"
+                        variant="outlined"
+                        className="w-fit shrink-0"
+                    >
+                        Detalji sorte
+                    </NavigatingButton>
+                    <NavigatingButton
+                        href={outletGardenUrl(offer.id)}
+                        size="sm"
+                        className="w-fit shrink-0"
+                    >
+                        Sadi u vrtu
+                    </NavigatingButton>
+                </div>
             </div>
         </article>
     );
