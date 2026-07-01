@@ -307,16 +307,8 @@ function mockRaisedBedField(
                 stoppedDate: undefined,
                 cancellationReason: undefined,
                 toBeRemoved: false,
-                assignedUserId: null,
-                assignedUserIds: [],
-                assignedBy: null,
-                assignedAt: undefined,
             },
         ],
-        assignedUserId: null,
-        assignedUserIds: [],
-        assignedBy: null,
-        assignedAt: undefined,
         createdAt: plantSowDate,
         updatedAt: plantReadyDate ?? plantGrowthDate,
     };
@@ -833,6 +825,7 @@ function denseMockGarden(
                 ? 'Profile plant-heavy garden'
                 : 'Profile dense garden',
         isSandbox: false,
+        isPublic: false,
         backgroundPalette: defaultGameBackgroundPaletteKey,
         stacks,
         location: { lat: 45.739, lon: 16.572 },
@@ -881,6 +874,7 @@ function operationRewardDebugMockGarden(
         id: 99997,
         name: 'Operation reward debug garden',
         isSandbox: false,
+        isPublic: false,
         backgroundPalette: defaultGameBackgroundPaletteKey,
         stacks,
         location: { lat: 45.739, lon: 16.572 },
@@ -945,6 +939,7 @@ function mockGarden(
         id: 99999,
         name: 'Moj vrt',
         isSandbox: false,
+        isPublic: false,
         backgroundPalette: defaultGameBackgroundPaletteKey,
         stacks: [
             {
@@ -1260,6 +1255,7 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
                 id: garden.id,
                 name: garden.name,
                 isSandbox: garden.isSandbox,
+                isPublic: garden.isPublic,
                 backgroundPalette: normalizeGardenBackgroundPalette(
                     garden.backgroundPalette,
                 ),
