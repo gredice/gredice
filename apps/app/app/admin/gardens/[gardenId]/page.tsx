@@ -1,6 +1,7 @@
 import { getGarden } from '@gredice/storage';
 import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
 import { Card, CardOverflow } from '@gredice/ui/Card';
+import { Chip } from '@gredice/ui/Chip';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import Image from 'next/image';
@@ -20,7 +21,9 @@ import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navig
 import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPageTitle';
 import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
+import { publicGardensFlag } from '../../../flags';
 import { RaisedBedsTableCard } from '../../accounts/[accountId]/RaisedBedsTableCard';
+import { AdminGardenVisibilityToggle } from './AdminGardenVisibilityToggle';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,14 +56,23 @@ export default async function GardenPage({
 }) {
     const { gardenId } = await params;
     await auth(['admin']);
-    const garden = await getGarden(gardenId);
+    const [garden, publicGardensEnabled] = await Promise.all([
+        getGarden(gardenId),
+        publicGardensFlag(),
+    ]);
 
     if (!garden) {
         notFound();
     }
+    const publicGardenUrl = KnownPages.GredicePublicGarden(garden.id);
     const propertyItems: EntityDetailsPropertyListItem[] = [
         { id: 'id', label: 'ID vrta', value: garden.id, mono: true },
         { id: 'name', label: 'Naziv', value: garden.name },
+        {
+            id: 'public',
+            label: 'Javan',
+            value: garden.isPublic ? 'Da' : 'Ne',
+        },
         {
             id: 'account',
             label: 'Račun',
@@ -89,6 +101,27 @@ export default async function GardenPage({
         <EntityDetailsPropertiesPanel>
             <EntityDetailsPanelCard title="Detalji">
                 <EntityDetailsPropertyList items={propertyItems} />
+            </EntityDetailsPanelCard>
+            <EntityDetailsPanelCard
+                title="Vidljivost"
+                action={
+                    garden.isPublic ? (
+                        <Chip color="success" size="sm" variant="soft">
+                            Public
+                        </Chip>
+                    ) : (
+                        <Chip color="neutral" size="sm" variant="soft">
+                            Private
+                        </Chip>
+                    )
+                }
+            >
+                <AdminGardenVisibilityToggle
+                    enabled={publicGardensEnabled}
+                    gardenId={garden.id}
+                    isPublic={garden.isPublic}
+                    publicUrl={publicGardenUrl}
+                />
             </EntityDetailsPanelCard>
         </EntityDetailsPropertiesPanel>
     );
