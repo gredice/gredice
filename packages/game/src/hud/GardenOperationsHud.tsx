@@ -1327,7 +1327,9 @@ function OperationSchedule({
 }) {
     const scheduledDate = formatDate(operation.scheduledDate);
     const scheduleContent = scheduleAction ? (
-        <div className="min-w-0 max-w-full">{scheduleAction}</div>
+        <div className="min-w-0 max-w-full overflow-hidden">
+            {scheduleAction}
+        </div>
     ) : scheduledDate ? (
         <Row
             spacing={1}
@@ -1347,10 +1349,10 @@ function OperationSchedule({
     return (
         <Row
             spacing={0.5}
-            className="min-w-0 max-w-full flex-wrap items-center justify-end gap-y-0.5"
+            className="min-w-0 max-w-full flex-nowrap items-center justify-end overflow-hidden"
         >
             {scheduleContent}
-            {cancelAction}
+            {cancelAction && <div className="shrink-0">{cancelAction}</div>}
         </Row>
     );
 }
@@ -1614,7 +1616,7 @@ export function GardenOperationCard({
                         </Stack>
                         <Stack
                             spacing={0.25}
-                            className="max-w-[52%] shrink-0 items-end"
+                            className="min-w-0 max-w-[52%] shrink-0 items-end overflow-hidden"
                         >
                             <OperationStatusSummary
                                 operation={operation}
