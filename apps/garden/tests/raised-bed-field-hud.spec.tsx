@@ -1447,6 +1447,11 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await expect(
             photoButton.locator('[data-raised-bed-photo-count]'),
         ).toHaveCount(0);
+        const photoButtonClassName = await photoButton.evaluate(
+            (element) => element.className,
+        );
+        expect(photoButtonClassName).not.toContain('!ring-0');
+        expect(photoButtonClassName).toContain('focus-visible:!ring-2');
 
         await expect
             .poll(async () => {

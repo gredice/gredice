@@ -99,7 +99,7 @@ export function RaisedBedFieldHud() {
                                 subjectName={raisedBed.name}
                                 triggerPlacement="hud"
                                 hideWhenEmpty
-                                className="rounded-l-xl rounded-r-none border-r border-green-950/10 dark:border-lime-100/10 !shadow-none !ring-0"
+                                className="rounded-l-xl rounded-r-none border-r border-green-950/10 ring-0 !shadow-none focus-visible:!ring-2 focus-visible:!ring-lime-700 focus-visible:!ring-offset-2 dark:border-lime-100/10"
                             />
                         )}
                         <GameModal
