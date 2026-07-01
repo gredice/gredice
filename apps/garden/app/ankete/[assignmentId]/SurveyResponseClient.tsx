@@ -46,6 +46,7 @@ type SurveyRuntime = {
     questions: SurveyQuestion[];
     response: { id: string } | null;
     survey: {
+        key: string;
         title: string;
     };
     version: {
@@ -57,7 +58,14 @@ type SurveyRuntime = {
     };
 };
 
-type AnswerState = Record<string, number | string | undefined>;
+type ContactValue = {
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+};
+
+type AnswerState = Record<string, number | string | ContactValue | undefined>;
 
 function assignmentUrl(assignmentId: string) {
     return `/api/gredice/api/surveys/assignments/${encodeURIComponent(
@@ -69,8 +77,52 @@ async function readJson<T>(response: Response) {
     return (await response.json()) as T;
 }
 
-function visibleIntroDescription(description: string | null) {
+function isLegacyDeliveryContactQuestion(
+    surveyKey: string,
+    question: SurveyQuestion,
+) {
+    return (
+        surveyKey === 'delivery_satisfaction' &&
+        question.type === 'contact_info' &&
+        question.key === 'contact_info'
+    );
+}
+
+function visibleIntroDescription(
+    description: string | null,
+    hidesLegacyContactQuestion: boolean,
+) {
+    if (!hidesLegacyContactQuestion) return description;
     return description?.replace(', a kontakt podatke možeš preskočiti.', '.');
+}
+
+function isContactValue(value: AnswerState[string]): value is ContactValue {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function hasContactValue(value: AnswerState[string]) {
+    if (!isContactValue(value)) return false;
+    return Boolean(
+        value.firstName || value.lastName || value.phone || value.email,
+    );
+}
+
+function contactFieldLabel(field: string) {
+    return (
+        {
+            email: 'Email',
+            first_name: 'Ime',
+            last_name: 'Prezime',
+            phone: 'Telefon',
+        }[field] ?? field
+    );
+}
+
+function contactFieldKey(field: string): keyof ContactValue {
+    if (field === 'first_name') return 'firstName';
+    if (field === 'last_name') return 'lastName';
+    if (field === 'phone') return 'phone';
+    return 'email';
 }
 
 export function SurveyResponseClient({
@@ -131,14 +183,19 @@ export function SurveyResponseClient({
         };
     }, [assignmentId]);
 
-    const questions = useMemo(
-        () =>
-            runtime?.questions
-                .filter((question) => question.type !== 'contact_info')
-                .slice()
-                .sort((left, right) => left.sortOrder - right.sortOrder) ?? [],
-        [runtime?.questions],
-    );
+    const questions = useMemo(() => {
+        if (!runtime) return [];
+        return runtime.questions
+            .filter(
+                (question) =>
+                    !isLegacyDeliveryContactQuestion(
+                        runtime.survey.key,
+                        question,
+                    ),
+            )
+            .slice()
+            .sort((left, right) => left.sortOrder - right.sortOrder);
+    }, [runtime]);
 
     function setAnswer(questionId: string, value: AnswerState[string]) {
         setAnswers((current) => ({ ...current, [questionId]: value }));
@@ -159,7 +216,11 @@ export function SurveyResponseClient({
                 answers: questions.map((question) => ({
                     questionId: question.id,
                     questionKey: question.key,
-                    value: answers[question.id] ?? null,
+                    value:
+                        question.type === 'contact_info' &&
+                        !hasContactValue(answers[question.id])
+                            ? null
+                            : (answers[question.id] ?? null),
                 })),
                 metadata: {
                     submittedFrom: 'garden_survey_route',
@@ -249,6 +310,9 @@ export function SurveyResponseClient({
 
     const introDescription = visibleIntroDescription(
         runtime.version.introDescription,
+        runtime.questions.some((question) =>
+            isLegacyDeliveryContactQuestion(runtime.survey.key, question),
+        ),
     );
 
     return (
@@ -386,6 +450,15 @@ function QuestionBlock({
                 />
             ) : null}
 
+            {question.type === 'contact_info' &&
+            question.settings.type === 'contact_info' ? (
+                <ContactFields
+                    fields={question.settings.fields}
+                    value={isContactValue(answer) ? answer : {}}
+                    onChange={setAnswer}
+                />
+            ) : null}
+
             {error ? (
                 <Typography level="body2" className="text-red-700">
                     {error}
@@ -428,6 +501,42 @@ function OpinionScale({
                     {item}
                 </button>
             ))}
+        </div>
+    );
+}
+
+function ContactFields({
+    fields,
+    onChange,
+    value,
+}: {
+    fields: Array<'first_name' | 'last_name' | 'phone' | 'email'>;
+    onChange: (value: ContactValue) => void;
+    value: ContactValue;
+}) {
+    return (
+        <div className="grid gap-3 sm:grid-cols-2">
+            {fields.map((field) => {
+                const key = contactFieldKey(field);
+                return (
+                    <label className="space-y-1" key={field}>
+                        <span className="block text-sm font-medium text-foreground">
+                            {contactFieldLabel(field)}
+                        </span>
+                        <input
+                            className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-hidden focus:border-ring focus:ring-2 focus:ring-ring/30"
+                            type={field === 'email' ? 'email' : 'text'}
+                            value={value[key] ?? ''}
+                            onChange={(event) =>
+                                onChange({
+                                    ...value,
+                                    [key]: event.target.value,
+                                })
+                            }
+                        />
+                    </label>
+                );
+            })}
         </div>
     );
 }
