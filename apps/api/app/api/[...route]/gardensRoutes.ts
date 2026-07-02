@@ -108,7 +108,6 @@ import {
 import { queryBooleanSchema } from '../../../lib/http/queryBoolean';
 import { openAdventGiftBox } from '../../../lib/occasions/adventGiftBox';
 import { getPostHogClient } from '../../../lib/posthog-server';
-import { publicGardensFlag } from '../../flags';
 
 const DEFAULT_TIMEZONE = 'Europe/Paris';
 
@@ -711,13 +710,6 @@ const app = new Hono<{ Variables: AuthVariables }>()
             security: publicSecurity,
         }),
         async (context) => {
-            if (!(await publicGardensFlag())) {
-                return context.json(
-                    { error: 'Public gardens are disabled' },
-                    404,
-                );
-            }
-
             const publicGardens = await getPublicGardens();
 
             return context.json({
@@ -1224,10 +1216,6 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Invalid garden ID' }, 400);
             }
 
-            if (!(await publicGardensFlag())) {
-                return context.json({ error: 'Garden not found' }, 404);
-            }
-
             const [garden, blocks] = await Promise.all([
                 getPublicGarden(gardenIdNumber),
                 getGardenBlocks(gardenIdNumber),
@@ -1284,13 +1272,6 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const gardenIdNumber = parseInt(gardenId, 10);
             if (Number.isNaN(gardenIdNumber)) {
                 return context.json({ error: 'Invalid garden ID' }, 400);
-            }
-
-            if (isPublic !== undefined && !(await publicGardensFlag())) {
-                return context.json(
-                    { error: 'Public gardens are disabled' },
-                    403,
-                );
             }
 
             const { accountId } = context.get('authContext');

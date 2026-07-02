@@ -11,14 +11,12 @@ import { useState, useTransition } from 'react';
 import { updateGardenVisibilityAction } from './actions';
 
 type AdminGardenVisibilityToggleProps = {
-    enabled: boolean;
     gardenId: number;
     isPublic: boolean;
     publicUrl: string;
 };
 
 export function AdminGardenVisibilityToggle({
-    enabled,
     gardenId,
     isPublic,
     publicUrl,
@@ -50,21 +48,19 @@ export function AdminGardenVisibilityToggle({
                         Public visibility
                     </Typography>
                     <Typography level="body3" className="text-muted-foreground">
-                        {enabled
-                            ? checked
-                                ? 'Garden is visible on www.'
-                                : 'Garden is private.'
-                            : 'Feature flag is disabled.'}
+                        {checked
+                            ? 'Garden is visible on www.'
+                            : 'Garden is private.'}
                     </Typography>
                 </Stack>
                 <Switch
                     aria-label="Public garden visibility"
                     checked={checked}
-                    disabled={!enabled || isPending}
+                    disabled={isPending}
                     onCheckedChange={handleChange}
                 />
             </Row>
-            {checked && enabled ? (
+            {checked ? (
                 <Button
                     href={publicUrl}
                     target="_blank"

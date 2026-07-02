@@ -1,7 +1,4 @@
-import {
-    booleanFlagOptions,
-    publicGardensFlagDefinition,
-} from '@gredice/js/featureFlags';
+import { booleanFlagOptions } from '@gredice/js/featureFlags';
 import { flag } from 'flags/next';
 
 function isDevelopmentEnvironment() {
@@ -20,9 +17,4 @@ export const recipesFlag = flag<boolean>({
     description: 'Enable recipes pages and recipe detail routes.',
     decide: () => isDevelopmentEnvironment(),
     options: booleanFlagOptions,
-});
-
-export const publicGardensFlag = flag<boolean>({
-    ...publicGardensFlagDefinition,
-    decide: () => false,
 });

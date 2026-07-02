@@ -21,7 +21,6 @@ import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navig
 import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPageTitle';
 import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
-import { publicGardensFlag } from '../../../flags';
 import { RaisedBedsTableCard } from '../../accounts/[accountId]/RaisedBedsTableCard';
 import { AdminGardenVisibilityToggle } from './AdminGardenVisibilityToggle';
 
@@ -56,10 +55,7 @@ export default async function GardenPage({
 }) {
     const { gardenId } = await params;
     await auth(['admin']);
-    const [garden, publicGardensEnabled] = await Promise.all([
-        getGarden(gardenId),
-        publicGardensFlag(),
-    ]);
+    const garden = await getGarden(gardenId);
 
     if (!garden) {
         notFound();
@@ -117,7 +113,6 @@ export default async function GardenPage({
                 }
             >
                 <AdminGardenVisibilityToggle
-                    enabled={publicGardensEnabled}
                     gardenId={garden.id}
                     isPublic={garden.isPublic}
                     publicUrl={publicGardenUrl}

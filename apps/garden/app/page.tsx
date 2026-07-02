@@ -7,7 +7,6 @@ import {
     enableDebugHudFlag,
     enableSuncokretChatFlag,
     enableSuncokretDebugFlag,
-    publicGardensFlag,
     rainWetOverlayFlag,
 } from './flags';
 
@@ -22,7 +21,6 @@ export default async function Home() {
         enableRainWetOverlayFlag: await rainWetOverlayFlag(),
         enableSuncokretChatFlag: await enableSuncokretChatFlag(),
         enableSuncokretDebugFlag: await enableSuncokretDebugFlag(),
-        publicGardensFlag: await publicGardensFlag(),
     };
 
     return (
