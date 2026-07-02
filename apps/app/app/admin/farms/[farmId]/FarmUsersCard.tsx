@@ -7,7 +7,7 @@ import {
     CardTitle,
 } from '@gredice/ui/Card';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Table } from '@gredice/ui/Table';
+import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
 import { KnownPages } from '../../../../src/KnownPages';
@@ -40,46 +40,56 @@ export async function FarmUsersCard({ farmId }: { farmId: number }) {
                 />
             </CardContent>
             <CardOverflow>
-                <Table>
-                    <Table.Header>
-                        <Table.Row>
-                            <Table.Head>Korisničko ime</Table.Head>
-                            <Table.Head>Prikazano ime</Table.Head>
-                            <Table.Head>Dodano</Table.Head>
-                        </Table.Row>
-                    </Table.Header>
-                    <Table.Body>
-                        {farmUsers.length === 0 && (
-                            <Table.Row>
-                                <Table.Cell colSpan={3}>
-                                    <NoDataPlaceholder>
-                                        Nema dodijeljenih korisnika
-                                    </NoDataPlaceholder>
-                                </Table.Cell>
-                            </Table.Row>
-                        )}
+                {farmUsers.length === 0 ? (
+                    <div className="p-4">
+                        <NoDataPlaceholder>
+                            Nema dodijeljenih korisnika
+                        </NoDataPlaceholder>
+                    </div>
+                ) : (
+                    <ul className="divide-y">
                         {farmUsers.map((farmUser) => (
-                            <Table.Row key={farmUser.id}>
-                                <Table.Cell>
-                                    <Link
-                                        href={KnownPages.User(farmUser.userId)}
+                            <li
+                                key={farmUser.id}
+                                className="px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4"
+                            >
+                                <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                    <div className="min-w-0">
+                                        <Link
+                                            href={KnownPages.User(
+                                                farmUser.userId,
+                                            )}
+                                            className="min-w-0 break-words text-sm font-medium text-primary underline-offset-4 hover:underline"
+                                        >
+                                            {farmUser.user?.userName ??
+                                                farmUser.userId}
+                                        </Link>
+                                        <Typography
+                                            level="body3"
+                                            className="mt-1 text-muted-foreground"
+                                        >
+                                            Prikazano ime:{' '}
+                                            <span className="text-foreground">
+                                                {farmUser.user?.displayName ??
+                                                    '—'}
+                                            </span>
+                                        </Typography>
+                                    </div>
+                                    <Typography
+                                        component="div"
+                                        level="body3"
+                                        className="text-muted-foreground sm:text-right"
                                     >
-                                        {farmUser.user?.userName ??
-                                            farmUser.userId}
-                                    </Link>
-                                </Table.Cell>
-                                <Table.Cell>
-                                    {farmUser.user?.displayName ?? '—'}
-                                </Table.Cell>
-                                <Table.Cell>
-                                    <LocalDateTime>
-                                        {farmUser.createdAt}
-                                    </LocalDateTime>
-                                </Table.Cell>
-                            </Table.Row>
+                                        Dodano:{' '}
+                                        <LocalDateTime>
+                                            {farmUser.createdAt}
+                                        </LocalDateTime>
+                                    </Typography>
+                                </div>
+                            </li>
                         ))}
-                    </Table.Body>
-                </Table>
+                    </ul>
+                )}
             </CardOverflow>
         </Card>
     );

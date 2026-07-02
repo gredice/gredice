@@ -10,7 +10,6 @@ import { Chip } from '@gredice/ui/Chip';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
-import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -267,156 +266,194 @@ export default async function ShoppingCartDetailsPage({
                 <EntityDetailsPropertiesLayout properties={propertiesPanel}>
                     <Card>
                         <CardOverflow>
-                            <Table>
-                                <Table.Header>
-                                    <Table.Row>
-                                        <Table.Head>Entitet</Table.Head>
-                                        <Table.Head>Količina</Table.Head>
-                                        <Table.Head>Cijena/kom</Table.Head>
-                                        <Table.Head>Ukupno</Table.Head>
-                                        <Table.Head>Ruksak</Table.Head>
-                                        <Table.Head>Status</Table.Head>
-                                        <Table.Head>
-                                            Vrt | Gredica | Pozicija
-                                        </Table.Head>
-                                        <Table.Head>Stvoreno</Table.Head>
-                                        <Table.Head>Ažurirano</Table.Head>
-                                    </Table.Row>
-                                </Table.Header>
-                                <Table.Body>
-                                    {enhancedItems.length === 0 && (
-                                        <Table.Row>
-                                            <Table.Cell colSpan={9}>
-                                                <NoDataPlaceholder>
-                                                    Nema stavki u košarici
-                                                </NoDataPlaceholder>
-                                            </Table.Cell>
-                                        </Table.Row>
-                                    )}
+                            {enhancedItems.length === 0 ? (
+                                <div className="p-4">
+                                    <NoDataPlaceholder>
+                                        Nema stavki u košarici
+                                    </NoDataPlaceholder>
+                                </div>
+                            ) : (
+                                <ul className="divide-y">
                                     {enhancedItems.map((item) => (
-                                        <Table.Row key={item.id}>
-                                            <Table.Cell>
-                                                <span>{item.entityName}</span>
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                <span className="font-medium">
-                                                    {item.amount}
-                                                </span>
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                {item.unitPrice > 0 ? (
-                                                    <span className="font-medium">
-                                                        {formatCurrency(
-                                                            item.unitPrice,
-                                                            item.currency,
-                                                        )}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-gray-400">
-                                                        N/A
-                                                    </span>
-                                                )}
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                {item.totalPrice > 0 ? (
-                                                    <span className="font-semibold">
-                                                        {formatCurrency(
-                                                            item.totalPrice,
-                                                            item.currency,
-                                                        )}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-gray-400">
-                                                        N/A
-                                                    </span>
-                                                )}
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                {item.usesInventory ? (
-                                                    <Chip
-                                                        className="w-fit"
-                                                        color={
-                                                            item.inventoryAvailable >=
-                                                            item.amount
-                                                                ? 'success'
-                                                                : 'warning'
-                                                        }
-                                                    >
-                                                        {`Ruksak (${item.inventoryAvailable}/${item.amount})`}
-                                                    </Chip>
-                                                ) : (
+                                        <li
+                                            key={item.id}
+                                            className="px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4"
+                                        >
+                                            <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                                <Stack
+                                                    spacing={1}
+                                                    className="min-w-0"
+                                                >
                                                     <Typography
                                                         level="body2"
-                                                        className="text-gray-500"
+                                                        semiBold
+                                                        className="min-w-0 break-words"
                                                     >
-                                                        Nije
+                                                        {item.entityName}
                                                     </Typography>
-                                                )}
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                <Chip
-                                                    className="w-fit"
-                                                    color={
-                                                        item.status === 'paid'
-                                                            ? 'success'
-                                                            : 'warning'
-                                                    }
-                                                >
-                                                    {item.status === 'paid'
-                                                        ? 'Plaćena'
-                                                        : 'Nova'}
-                                                </Chip>
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                {item.gardenId ? (
-                                                    <Link
-                                                        href={KnownPages.Garden(
-                                                            item.gardenId,
+                                                    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+                                                        {item.gardenId ? (
+                                                            <Link
+                                                                href={KnownPages.Garden(
+                                                                    item.gardenId,
+                                                                )}
+                                                                className="text-primary underline-offset-4 hover:underline"
+                                                            >
+                                                                Vrt{' '}
+                                                                {item.gardenId}
+                                                            </Link>
+                                                        ) : (
+                                                            ''
                                                         )}
-                                                    >
-                                                        Vrt {item.gardenId}
-                                                    </Link>
-                                                ) : (
-                                                    ''
-                                                )}
-                                                {item.raisedBedId ? (
-                                                    <>
-                                                        {' '}
-                                                        |{' '}
-                                                        <Link
-                                                            href={KnownPages.RaisedBed(
-                                                                item.raisedBedId,
-                                                            )}
+                                                        {item.raisedBedId ? (
+                                                            <>
+                                                                <span>|</span>
+                                                                <Link
+                                                                    href={KnownPages.RaisedBed(
+                                                                        item.raisedBedId,
+                                                                    )}
+                                                                    className="text-primary underline-offset-4 hover:underline"
+                                                                >
+                                                                    Gr{' '}
+                                                                    {raisedBedPhysicalIdLookup.get(
+                                                                        item.raisedBedId,
+                                                                    ) ??
+                                                                        item.raisedBedId}
+                                                                </Link>
+                                                            </>
+                                                        ) : (
+                                                            ''
+                                                        )}
+                                                        {typeof item.positionIndex ===
+                                                        'number' ? (
+                                                            <>
+                                                                <span>|</span>
+                                                                <span>
+                                                                    Pozicija{' '}
+                                                                    {item.positionIndex +
+                                                                        1}
+                                                                </span>
+                                                            </>
+                                                        ) : (
+                                                            ''
+                                                        )}
+                                                    </div>
+                                                </Stack>
+                                                <div className="flex min-w-0 flex-col gap-3 lg:items-end">
+                                                    <div className="flex min-w-0 flex-wrap items-center gap-2 lg:justify-end">
+                                                        {item.usesInventory ? (
+                                                            <Chip
+                                                                className="w-fit"
+                                                                color={
+                                                                    item.inventoryAvailable >=
+                                                                    item.amount
+                                                                        ? 'success'
+                                                                        : 'warning'
+                                                                }
+                                                            >
+                                                                {`Ruksak (${item.inventoryAvailable}/${item.amount})`}
+                                                            </Chip>
+                                                        ) : (
+                                                            <Typography
+                                                                level="body2"
+                                                                className="text-gray-500"
+                                                            >
+                                                                Nije
+                                                            </Typography>
+                                                        )}
+                                                        <Chip
+                                                            className="w-fit"
+                                                            color={
+                                                                item.status ===
+                                                                'paid'
+                                                                    ? 'success'
+                                                                    : 'warning'
+                                                            }
                                                         >
-                                                            Gr{' '}
-                                                            {raisedBedPhysicalIdLookup.get(
-                                                                item.raisedBedId,
-                                                            ) ??
-                                                                item.raisedBedId}
-                                                        </Link>
-                                                    </>
-                                                ) : (
-                                                    ''
-                                                )}
-                                                {typeof item.positionIndex ===
-                                                'number'
-                                                    ? ` | Pozicija ${item.positionIndex + 1}`
-                                                    : ''}
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                <LocalDateTime time={false}>
-                                                    {item.createdAt}
-                                                </LocalDateTime>
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                <LocalDateTime time={false}>
-                                                    {item.updatedAt}
-                                                </LocalDateTime>
-                                            </Table.Cell>
-                                        </Table.Row>
+                                                            {item.status ===
+                                                            'paid'
+                                                                ? 'Plaćena'
+                                                                : 'Nova'}
+                                                        </Chip>
+                                                    </div>
+                                                    <dl className="grid min-w-0 gap-x-4 gap-y-2 text-sm sm:grid-cols-3 lg:text-right">
+                                                        <div className="min-w-0">
+                                                            <dt className="text-xs font-medium uppercase text-muted-foreground">
+                                                                Količina
+                                                            </dt>
+                                                            <dd className="mt-1 font-medium">
+                                                                {item.amount}
+                                                            </dd>
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <dt className="text-xs font-medium uppercase text-muted-foreground">
+                                                                Cijena/kom
+                                                            </dt>
+                                                            <dd className="mt-1 font-medium">
+                                                                {item.unitPrice >
+                                                                0 ? (
+                                                                    formatCurrency(
+                                                                        item.unitPrice,
+                                                                        item.currency,
+                                                                    )
+                                                                ) : (
+                                                                    <span className="text-gray-400">
+                                                                        N/A
+                                                                    </span>
+                                                                )}
+                                                            </dd>
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <dt className="text-xs font-medium uppercase text-muted-foreground">
+                                                                Ukupno
+                                                            </dt>
+                                                            <dd className="mt-1 font-semibold">
+                                                                {item.totalPrice >
+                                                                0 ? (
+                                                                    formatCurrency(
+                                                                        item.totalPrice,
+                                                                        item.currency,
+                                                                    )
+                                                                ) : (
+                                                                    <span className="text-gray-400">
+                                                                        N/A
+                                                                    </span>
+                                                                )}
+                                                            </dd>
+                                                        </div>
+                                                    </dl>
+                                                    <div className="flex min-w-0 flex-wrap gap-x-3 gap-y-1 text-left lg:justify-end lg:text-right">
+                                                        <Typography
+                                                            component="div"
+                                                            level="body3"
+                                                            className="whitespace-nowrap text-muted-foreground"
+                                                        >
+                                                            Stvoreno:{' '}
+                                                            <LocalDateTime
+                                                                time={false}
+                                                            >
+                                                                {item.createdAt}
+                                                            </LocalDateTime>
+                                                        </Typography>
+                                                        <Typography
+                                                            component="div"
+                                                            level="body3"
+                                                            className="whitespace-nowrap text-muted-foreground"
+                                                        >
+                                                            Ažurirano:{' '}
+                                                            <LocalDateTime
+                                                                time={false}
+                                                            >
+                                                                {item.updatedAt}
+                                                            </LocalDateTime>
+                                                        </Typography>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </li>
                                     ))}
-                                </Table.Body>
-                            </Table>
+                                </ul>
+                            )}
                         </CardOverflow>
                     </Card>
                 </EntityDetailsPropertiesLayout>

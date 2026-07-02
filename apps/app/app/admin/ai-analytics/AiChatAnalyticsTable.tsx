@@ -6,7 +6,6 @@ import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Markdown } from '@gredice/ui/Markdown';
 import { Modal } from '@gredice/ui/Modal';
 import { Stack } from '@gredice/ui/Stack';
-import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
@@ -251,100 +250,111 @@ export function AiChatAnalyticsTable({ rows }: { rows: AiChatRow[] }) {
         <>
             <Card>
                 <CardOverflow>
-                    <Table>
-                        <Table.Header>
-                            <Table.Row>
-                                <Table.Head>Račun | korisnik</Table.Head>
-                                <Table.Head>Model</Table.Head>
-                                <Table.Head>Status</Table.Head>
-                                <Table.Head className="text-right">
-                                    Poruke
-                                </Table.Head>
-                                <Table.Head className="text-right">
-                                    Alati
-                                </Table.Head>
-                                <Table.Head className="text-right">
-                                    Tokeni
-                                </Table.Head>
-                                <Table.Head className="text-right">
-                                    Trošak
-                                </Table.Head>
-                                <Table.Head>Zadnja poruka</Table.Head>
-                            </Table.Row>
-                        </Table.Header>
-                        <Table.Body>
-                            {rows.length === 0 && (
-                                <Table.Row>
-                                    <Table.Cell colSpan={8}>
-                                        <NoDataPlaceholder>
-                                            Nema Suncokret razgovora
-                                        </NoDataPlaceholder>
-                                    </Table.Cell>
-                                </Table.Row>
-                            )}
+                    {rows.length === 0 ? (
+                        <div className="p-4">
+                            <NoDataPlaceholder>
+                                Nema Suncokret razgovora
+                            </NoDataPlaceholder>
+                        </div>
+                    ) : (
+                        <ul className="divide-y">
                             {rows.map((row) => (
-                                <Table.Row
-                                    key={row.id}
-                                    role="button"
-                                    tabIndex={0}
-                                    className="cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-                                    onClick={() => setSelectedRow(row)}
-                                    onKeyDown={(event) => {
-                                        if (
-                                            event.key === 'Enter' ||
-                                            event.key === ' '
-                                        ) {
-                                            event.preventDefault();
-                                            setSelectedRow(row);
-                                        }
-                                    }}
-                                >
-                                    <Table.Cell>
-                                        <Stack spacing={0}>
-                                            <Typography level="body2" semiBold>
-                                                {row.accountId}
-                                            </Typography>
-                                            <Typography
-                                                level="body3"
-                                                className="text-muted-foreground"
+                                <li key={row.id}>
+                                    <button
+                                        type="button"
+                                        aria-label={`Otvori detalje Suncokret razgovora za račun ${row.accountId}`}
+                                        className="grid w-full gap-3 px-3 py-4 text-left transition-colors hover:bg-muted/40 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:px-4"
+                                        onClick={() => setSelectedRow(row)}
+                                    >
+                                        <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                            <Stack
+                                                spacing={1}
+                                                className="min-w-0"
                                             >
-                                                {row.userLabel}
-                                            </Typography>
-                                        </Stack>
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        <Chip size="sm">
-                                            {row.model ?? '-'}
-                                        </Chip>
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        <Chip size="sm">{row.status}</Chip>
-                                    </Table.Cell>
-                                    <Table.Cell className="text-right">
-                                        {formatTokens(row.messageCount)}
-                                    </Table.Cell>
-                                    <Table.Cell className="text-right">
-                                        {formatTokens(row.toolCallCount)}
-                                    </Table.Cell>
-                                    <Table.Cell className="text-right">
-                                        {formatTokens(row.totalTokens)}
-                                    </Table.Cell>
-                                    <Table.Cell className="text-right">
-                                        {formatAiCostUsd(row.totalCostUsd)}
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        {row.lastMessageAt ? (
-                                            <LocalDateTime>
-                                                {row.lastMessageAt}
-                                            </LocalDateTime>
-                                        ) : (
-                                            '-'
-                                        )}
-                                    </Table.Cell>
-                                </Table.Row>
+                                                <Typography
+                                                    level="body2"
+                                                    semiBold
+                                                    className="min-w-0 break-words [overflow-wrap:anywhere]"
+                                                >
+                                                    {row.accountId}
+                                                </Typography>
+                                                <Typography
+                                                    level="body3"
+                                                    className="min-w-0 break-words text-muted-foreground [overflow-wrap:anywhere]"
+                                                >
+                                                    {row.userLabel}
+                                                </Typography>
+                                            </Stack>
+
+                                            <div className="flex min-w-0 flex-col gap-2 lg:items-end">
+                                                <div className="flex min-w-0 flex-wrap items-center gap-2 lg:justify-end">
+                                                    <Chip size="sm">
+                                                        {row.model ?? '-'}
+                                                    </Chip>
+                                                    <Chip size="sm">
+                                                        {row.status}
+                                                    </Chip>
+                                                </div>
+
+                                                <div className="grid min-w-0 gap-x-4 gap-y-1 text-muted-foreground sm:grid-cols-2 lg:text-right">
+                                                    <Typography level="body3">
+                                                        Poruke:{' '}
+                                                        <span className="font-medium text-foreground tabular-nums">
+                                                            {formatTokens(
+                                                                row.messageCount,
+                                                            )}
+                                                        </span>
+                                                    </Typography>
+                                                    <Typography level="body3">
+                                                        Alati:{' '}
+                                                        <span className="font-medium text-foreground tabular-nums">
+                                                            {formatTokens(
+                                                                row.toolCallCount,
+                                                            )}
+                                                        </span>
+                                                    </Typography>
+                                                    <Typography level="body3">
+                                                        Tokeni:{' '}
+                                                        <span className="font-medium text-foreground tabular-nums">
+                                                            {formatTokens(
+                                                                row.totalTokens,
+                                                            )}
+                                                        </span>
+                                                    </Typography>
+                                                    <Typography level="body3">
+                                                        Trošak:{' '}
+                                                        <span className="font-medium text-foreground tabular-nums">
+                                                            {formatAiCostUsd(
+                                                                row.totalCostUsd,
+                                                            )}
+                                                        </span>
+                                                    </Typography>
+                                                </div>
+
+                                                <Typography
+                                                    level="body3"
+                                                    className="text-muted-foreground lg:text-right"
+                                                >
+                                                    Zadnja poruka:{' '}
+                                                    {row.lastMessageAt ? (
+                                                        <span className="whitespace-nowrap">
+                                                            <LocalDateTime>
+                                                                {
+                                                                    row.lastMessageAt
+                                                                }
+                                                            </LocalDateTime>
+                                                        </span>
+                                                    ) : (
+                                                        '-'
+                                                    )}
+                                                </Typography>
+                                            </div>
+                                        </div>
+                                    </button>
+                                </li>
                             ))}
-                        </Table.Body>
-                    </Table>
+                        </ul>
+                    )}
                 </CardOverflow>
             </Card>
             <Modal
