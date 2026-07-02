@@ -2,11 +2,11 @@ import { userIdToPublicId } from '@gredice/js/publicId';
 import { getUser, getUserWithLogins } from '@gredice/storage';
 import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
 import { Card, CardHeader, CardOverflow, CardTitle } from '@gredice/ui/Card';
+import { Chip } from '@gredice/ui/Chip';
 import { Check, Disabled, Warning } from '@gredice/ui/icons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
-import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -56,6 +56,12 @@ export default async function UserPage({
     } = user;
     const publicProfileUrl = KnownPages.GrediceUser(userIdToPublicId(id));
     const userTitle = displayName ?? userName;
+    const loginHistory = (logins?.usersLogins ?? [])
+        .filter((login) => login.lastLogin)
+        .sort(
+            (a, b) =>
+                (b.lastLogin?.getTime() ?? 0) - (a.lastLogin?.getTime() ?? 0),
+        );
     const propertyItems: EntityDetailsPropertyListItem[] = [
         { id: 'id', label: 'ID korisnika', value: id, mono: true },
         { id: 'username', label: 'Korisničko ime', value: userName },
@@ -134,55 +140,77 @@ export default async function UserPage({
                                 <CardTitle>Računi</CardTitle>
                             </CardHeader>
                             <CardOverflow>
-                                <Table>
-                                    <Table.Header>
-                                        <Table.Row>
-                                            <Table.Head>ID</Table.Head>
-                                            <Table.Head>
-                                                Datum povezivanja
-                                            </Table.Head>
-                                            <Table.Head>
-                                                Datum ažuriranja veze
-                                            </Table.Head>
-                                        </Table.Row>
-                                    </Table.Header>
-                                    <Table.Body>
-                                        {accounts.length === 0 && (
-                                            <Table.Row>
-                                                <Table.Cell colSpan={3}>
-                                                    <NoDataPlaceholder>
-                                                        Nema povezanih računa
-                                                    </NoDataPlaceholder>
-                                                </Table.Cell>
-                                            </Table.Row>
-                                        )}
+                                {accounts.length === 0 ? (
+                                    <div className="p-4">
+                                        <NoDataPlaceholder>
+                                            Nema povezanih računa
+                                        </NoDataPlaceholder>
+                                    </div>
+                                ) : (
+                                    <ul className="divide-y">
                                         {accounts.map((account) => (
-                                            <Table.Row key={account.id}>
-                                                <Table.Cell>
-                                                    <Link
-                                                        href={KnownPages.Account(
-                                                            account.account.id,
-                                                        )}
-                                                    >
-                                                        <Typography mono>
-                                                            {account.account.id}
+                                            <li
+                                                key={account.id}
+                                                className="px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4"
+                                            >
+                                                <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                                    <div className="min-w-0">
+                                                        <Typography
+                                                            level="body3"
+                                                            className="mb-1 text-muted-foreground"
+                                                        >
+                                                            Račun
                                                         </Typography>
-                                                    </Link>
-                                                </Table.Cell>
-                                                <Table.Cell>
-                                                    <LocalDateTime>
-                                                        {account.createdAt}
-                                                    </LocalDateTime>
-                                                </Table.Cell>
-                                                <Table.Cell>
-                                                    <LocalDateTime>
-                                                        {account.updatedAt}
-                                                    </LocalDateTime>
-                                                </Table.Cell>
-                                            </Table.Row>
+                                                        <Link
+                                                            href={KnownPages.Account(
+                                                                account.account
+                                                                    .id,
+                                                            )}
+                                                            className="block min-w-0 break-all text-sm font-medium text-primary underline-offset-4 hover:underline"
+                                                        >
+                                                            <Typography
+                                                                component="span"
+                                                                mono
+                                                            >
+                                                                {
+                                                                    account
+                                                                        .account
+                                                                        .id
+                                                                }
+                                                            </Typography>
+                                                        </Link>
+                                                    </div>
+                                                    <div className="flex min-w-0 flex-col gap-1 text-left sm:items-end sm:text-right">
+                                                        <Typography
+                                                            component="div"
+                                                            level="body3"
+                                                            className="text-muted-foreground"
+                                                        >
+                                                            Povezan:{' '}
+                                                            <LocalDateTime>
+                                                                {
+                                                                    account.createdAt
+                                                                }
+                                                            </LocalDateTime>
+                                                        </Typography>
+                                                        <Typography
+                                                            component="div"
+                                                            level="body3"
+                                                            className="text-muted-foreground"
+                                                        >
+                                                            Ažurirano:{' '}
+                                                            <LocalDateTime>
+                                                                {
+                                                                    account.updatedAt
+                                                                }
+                                                            </LocalDateTime>
+                                                        </Typography>
+                                                    </div>
+                                                </div>
+                                            </li>
                                         ))}
-                                    </Table.Body>
-                                </Table>
+                                    </ul>
+                                )}
                             </CardOverflow>
                         </Card>
                         <Card>
@@ -190,127 +218,189 @@ export default async function UserPage({
                                 <CardTitle>Načini prijave</CardTitle>
                             </CardHeader>
                             <CardOverflow>
-                                <Table>
-                                    <Table.Header>
-                                        <Table.Row>
-                                            <Table.Head>Vrsta</Table.Head>
-                                            <Table.Head>Blokiran</Table.Head>
-                                            <Table.Head>
-                                                Zadnja prijava
-                                            </Table.Head>
-                                            <Table.Head>
-                                                Datum kreiranja
-                                            </Table.Head>
-                                            <Table.Head>
-                                                Datum ažuriranja
-                                            </Table.Head>
-                                        </Table.Row>
-                                    </Table.Header>
-                                    <Table.Body>
-                                        {logins?.usersLogins.length === 0 && (
-                                            <Table.Row>
-                                                <Table.Cell colSpan={3}>
-                                                    <NoDataPlaceholder>
-                                                        Nema načina prijave
-                                                    </NoDataPlaceholder>
-                                                </Table.Cell>
-                                            </Table.Row>
-                                        )}
+                                {logins?.usersLogins.length === 0 ? (
+                                    <div className="p-4">
+                                        <NoDataPlaceholder>
+                                            Nema načina prijave
+                                        </NoDataPlaceholder>
+                                    </div>
+                                ) : (
+                                    <ul className="divide-y">
                                         {logins?.usersLogins.map(
-                                            (userLogin) => (
-                                                <Table.Row key={userLogin.id}>
-                                                    <Table.Cell>
-                                                        <Link
-                                                            href={KnownPages.User(
-                                                                user.id,
-                                                            )}
-                                                        >
-                                                            {
-                                                                userLogin.loginType
-                                                            }
-                                                        </Link>
-                                                    </Table.Cell>
-                                                    <Table.Cell>
-                                                        {userLogin.blockedUntil &&
-                                                        userLogin.blockedUntil >
-                                                            new Date() ? (
-                                                            <Row spacing={2}>
-                                                                <Disabled className="text-red-500" />
-                                                                <Typography>
-                                                                    {
-                                                                        'Blokiran do '
-                                                                    }
-                                                                    <LocalDateTime>
-                                                                        {
-                                                                            userLogin.blockedUntil
-                                                                        }
-                                                                    </LocalDateTime>
-                                                                </Typography>
-                                                                <ServerActionIconButton
-                                                                    onClick={unblockUserLogin.bind(
-                                                                        null,
-                                                                        userLogin.id,
+                                            (userLogin) => {
+                                                const blockedUntil =
+                                                    userLogin.blockedUntil;
+                                                const isBlocked = blockedUntil
+                                                    ? blockedUntil > new Date()
+                                                    : false;
+                                                return (
+                                                    <li
+                                                        key={userLogin.id}
+                                                        className="px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4"
+                                                    >
+                                                        <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                                            <Stack
+                                                                spacing={2}
+                                                                className="min-w-0"
+                                                            >
+                                                                <Link
+                                                                    href={KnownPages.User(
+                                                                        user.id,
                                                                     )}
-                                                                    title="Odblokiraj"
+                                                                    className="min-w-0 break-words text-sm font-medium text-primary underline-offset-4 hover:underline"
                                                                 >
-                                                                    <Check className="size-5" />
-                                                                </ServerActionIconButton>
-                                                            </Row>
-                                                        ) : userLogin.failedAttempts >
-                                                          0 ? (
-                                                            <Row spacing={2}>
-                                                                <Warning className="text-amber-500" />
-                                                                <Stack>
-                                                                    <Typography>
-                                                                        {userLogin.failedAttempts +
-                                                                            ' neuspjelih pokušaja'}
-                                                                    </Typography>
-                                                                    <Typography>
-                                                                        {
-                                                                            'Zadnji '
+                                                                    {
+                                                                        userLogin.loginType
+                                                                    }
+                                                                </Link>
+                                                                {isBlocked ? (
+                                                                    <Row
+                                                                        spacing={
+                                                                            2
                                                                         }
+                                                                        className="min-w-0 flex-wrap"
+                                                                    >
+                                                                        <Disabled className="size-5 shrink-0 text-red-500" />
+                                                                        <Typography
+                                                                            level="body3"
+                                                                            className="text-muted-foreground"
+                                                                        >
+                                                                            {
+                                                                                'Blokiran do '
+                                                                            }
+                                                                            {blockedUntil ? (
+                                                                                <LocalDateTime>
+                                                                                    {
+                                                                                        blockedUntil
+                                                                                    }
+                                                                                </LocalDateTime>
+                                                                            ) : null}
+                                                                        </Typography>
+                                                                        <ServerActionIconButton
+                                                                            onClick={unblockUserLogin.bind(
+                                                                                null,
+                                                                                userLogin.id,
+                                                                            )}
+                                                                            title="Odblokiraj"
+                                                                        >
+                                                                            <Check className="size-5" />
+                                                                        </ServerActionIconButton>
+                                                                    </Row>
+                                                                ) : userLogin.failedAttempts >
+                                                                  0 ? (
+                                                                    <Row
+                                                                        spacing={
+                                                                            2
+                                                                        }
+                                                                        className="min-w-0 items-start"
+                                                                    >
+                                                                        <Warning className="size-5 shrink-0 text-amber-500" />
+                                                                        <Stack
+                                                                            spacing={
+                                                                                1
+                                                                            }
+                                                                        >
+                                                                            <Typography level="body3">
+                                                                                {userLogin.failedAttempts +
+                                                                                    ' neuspjelih pokušaja'}
+                                                                            </Typography>
+                                                                            <Typography
+                                                                                level="body3"
+                                                                                className="text-muted-foreground"
+                                                                            >
+                                                                                {
+                                                                                    'Zadnji '
+                                                                                }
+                                                                                <LocalDateTime>
+                                                                                    {
+                                                                                        userLogin.lastFailedAttempt
+                                                                                    }
+                                                                                </LocalDateTime>
+                                                                            </Typography>
+                                                                        </Stack>
+                                                                    </Row>
+                                                                ) : (
+                                                                    <Typography
+                                                                        level="body3"
+                                                                        className="text-muted-foreground"
+                                                                    >
+                                                                        Nije
+                                                                        blokiran
+                                                                    </Typography>
+                                                                )}
+                                                            </Stack>
+                                                            <div className="flex shrink-0 flex-col gap-2 lg:items-end">
+                                                                <Chip
+                                                                    color={
+                                                                        isBlocked
+                                                                            ? 'error'
+                                                                            : userLogin.failedAttempts >
+                                                                                0
+                                                                              ? 'warning'
+                                                                              : 'neutral'
+                                                                    }
+                                                                    size="sm"
+                                                                    variant="soft"
+                                                                    className="w-fit"
+                                                                >
+                                                                    {isBlocked
+                                                                        ? 'Blokiran'
+                                                                        : userLogin.failedAttempts >
+                                                                            0
+                                                                          ? 'Upozorenje'
+                                                                          : 'Aktivan'}
+                                                                </Chip>
+                                                                <div className="flex flex-col gap-1 text-left lg:items-end lg:text-right">
+                                                                    <Typography
+                                                                        component="div"
+                                                                        level="body3"
+                                                                        className="text-muted-foreground"
+                                                                    >
+                                                                        Zadnja
+                                                                        prijava:{' '}
+                                                                        {userLogin.lastLogin ? (
+                                                                            <LocalDateTime>
+                                                                                {
+                                                                                    userLogin.lastLogin
+                                                                                }
+                                                                            </LocalDateTime>
+                                                                        ) : (
+                                                                            'Nikad'
+                                                                        )}
+                                                                    </Typography>
+                                                                    <Typography
+                                                                        component="div"
+                                                                        level="body3"
+                                                                        className="text-muted-foreground"
+                                                                    >
+                                                                        Kreirano:{' '}
                                                                         <LocalDateTime>
                                                                             {
-                                                                                userLogin.lastFailedAttempt
+                                                                                userLogin.createdAt
                                                                             }
                                                                         </LocalDateTime>
                                                                     </Typography>
-                                                                </Stack>
-                                                            </Row>
-                                                        ) : (
-                                                            'Ne'
-                                                        )}
-                                                    </Table.Cell>
-                                                    <Table.Cell>
-                                                        {userLogin.lastLogin ? (
-                                                            <LocalDateTime>
-                                                                {
-                                                                    userLogin.lastLogin
-                                                                }
-                                                            </LocalDateTime>
-                                                        ) : (
-                                                            'Nikad'
-                                                        )}
-                                                    </Table.Cell>
-                                                    <Table.Cell>
-                                                        <LocalDateTime>
-                                                            {
-                                                                userLogin.createdAt
-                                                            }
-                                                        </LocalDateTime>
-                                                    </Table.Cell>
-                                                    <Table.Cell>
-                                                        <LocalDateTime>
-                                                            {
-                                                                userLogin.updatedAt
-                                                            }
-                                                        </LocalDateTime>
-                                                    </Table.Cell>
-                                                </Table.Row>
-                                            ),
+                                                                    <Typography
+                                                                        component="div"
+                                                                        level="body3"
+                                                                        className="text-muted-foreground"
+                                                                    >
+                                                                        Ažurirano:{' '}
+                                                                        <LocalDateTime>
+                                                                            {
+                                                                                userLogin.updatedAt
+                                                                            }
+                                                                        </LocalDateTime>
+                                                                    </Typography>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </li>
+                                                );
+                                            },
                                         )}
-                                    </Table.Body>
-                                </Table>
+                                    </ul>
+                                )}
                             </CardOverflow>
                         </Card>
                         <Card>
@@ -318,42 +408,33 @@ export default async function UserPage({
                                 <CardTitle>Prijave</CardTitle>
                             </CardHeader>
                             <CardOverflow>
-                                <Table>
-                                    <Table.Header>
-                                        <Table.Row>
-                                            <Table.Head>Vrsta</Table.Head>
-                                            <Table.Head>
-                                                Zadnja prijava
-                                            </Table.Head>
-                                        </Table.Row>
-                                    </Table.Header>
-                                    <Table.Body>
-                                        {logins?.usersLogins.filter(
-                                            (l) => l.lastLogin,
-                                        ).length === 0 && (
-                                            <Table.Row>
-                                                <Table.Cell colSpan={2}>
-                                                    <NoDataPlaceholder>
-                                                        Nema prijava
-                                                    </NoDataPlaceholder>
-                                                </Table.Cell>
-                                            </Table.Row>
-                                        )}
-                                        {logins?.usersLogins
-                                            .filter((l) => l.lastLogin)
-                                            .sort(
-                                                (a, b) =>
-                                                    (b.lastLogin?.getTime() ??
-                                                        0) -
-                                                    (a.lastLogin?.getTime() ??
-                                                        0),
-                                            )
-                                            .map((userLogin) => (
-                                                <Table.Row key={userLogin.id}>
-                                                    <Table.Cell>
+                                {loginHistory.length === 0 ? (
+                                    <div className="p-4">
+                                        <NoDataPlaceholder>
+                                            Nema prijava
+                                        </NoDataPlaceholder>
+                                    </div>
+                                ) : (
+                                    <ul className="divide-y">
+                                        {loginHistory.map((userLogin) => (
+                                            <li
+                                                key={userLogin.id}
+                                                className="px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4"
+                                            >
+                                                <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                                    <Typography
+                                                        level="body2"
+                                                        semiBold
+                                                        className="min-w-0 break-words"
+                                                    >
                                                         {userLogin.loginType}
-                                                    </Table.Cell>
-                                                    <Table.Cell>
+                                                    </Typography>
+                                                    <Typography
+                                                        component="div"
+                                                        level="body3"
+                                                        className="text-muted-foreground sm:text-right"
+                                                    >
+                                                        Zadnja prijava:{' '}
                                                         {userLogin.lastLogin ? (
                                                             <LocalDateTime>
                                                                 {
@@ -363,11 +444,12 @@ export default async function UserPage({
                                                         ) : (
                                                             'Nikad'
                                                         )}
-                                                    </Table.Cell>
-                                                </Table.Row>
-                                            ))}
-                                    </Table.Body>
-                                </Table>
+                                                    </Typography>
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
                             </CardOverflow>
                         </Card>
                     </div>

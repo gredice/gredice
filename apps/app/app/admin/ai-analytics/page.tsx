@@ -11,9 +11,9 @@ import {
 import { Card, CardOverflow } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
 import { Stack } from '@gredice/ui/Stack';
-import { Table } from '@gredice/ui/Table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import { Typography } from '@gredice/ui/Typography';
+import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { auth } from '../../../lib/auth/auth';
 import {
     formatAiCostUsd,
@@ -422,108 +422,128 @@ export default async function AiAnalyticsPage({
                         </Typography>
                         <Card>
                             <CardOverflow>
-                                <Table>
-                                    <Table.Header>
-                                        <Table.Row>
-                                            <Table.Head>Račun</Table.Head>
-                                            <Table.Head>Tip</Table.Head>
-                                            <Table.Head className="text-right">
-                                                Dnevni limit
-                                            </Table.Head>
-                                            <Table.Head className="text-right">
-                                                Iskorišteno
-                                            </Table.Head>
-                                            <Table.Head className="text-right">
-                                                Rezervirano
-                                            </Table.Head>
-                                            <Table.Head className="text-right">
-                                                Preostalo
-                                            </Table.Head>
-                                            <Table.Head>Probni dani</Table.Head>
-                                            <Table.Head>Status</Table.Head>
-                                        </Table.Row>
-                                    </Table.Header>
-                                    <Table.Body>
+                                {accountLimitSummaries.length === 0 ? (
+                                    <div className="p-4">
+                                        <NoDataPlaceholder>
+                                            Nema limita računa
+                                        </NoDataPlaceholder>
+                                    </div>
+                                ) : (
+                                    <ul className="divide-y">
                                         {accountLimitSummaries.map(
-                                            ({ account, limitState }) => (
-                                                <Table.Row key={account.id}>
-                                                    <Table.Cell>
-                                                        <Stack spacing={0}>
-                                                            <Typography
-                                                                level="body2"
-                                                                semiBold
+                                            ({ account, limitState }) => {
+                                                const accountUsers =
+                                                    account.accountUsers
+                                                        .map(
+                                                            (accountUser) =>
+                                                                accountUser.user
+                                                                    .displayName ??
+                                                                accountUser.user
+                                                                    .userName,
+                                                        )
+                                                        .join(', ');
+
+                                                return (
+                                                    <li
+                                                        key={account.id}
+                                                        className="px-3 py-4 transition-colors hover:bg-muted/40 sm:px-4"
+                                                    >
+                                                        <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                                            <Stack
+                                                                spacing={1}
+                                                                className="min-w-0"
                                                             >
-                                                                {account.id}
-                                                            </Typography>
-                                                            <Typography
-                                                                level="body3"
-                                                                className="text-muted-foreground"
-                                                            >
-                                                                {account.accountUsers
-                                                                    .map(
-                                                                        (
-                                                                            accountUser,
-                                                                        ) =>
-                                                                            accountUser
-                                                                                .user
-                                                                                .displayName ??
-                                                                            accountUser
-                                                                                .user
-                                                                                .userName,
-                                                                    )
-                                                                    .join(', ')}
-                                                            </Typography>
-                                                        </Stack>
-                                                    </Table.Cell>
-                                                    <Table.Cell>
-                                                        <Chip size="sm">
-                                                            {limitState.activeRaisedBed
-                                                                ? 'Aktivna gredica'
-                                                                : 'Probni račun'}
-                                                        </Chip>
-                                                    </Table.Cell>
-                                                    <Table.Cell className="text-right">
-                                                        {formatAiCostUsd(
-                                                            microUsdToUsd(
-                                                                limitState.dailyLimitMicroUsd,
-                                                            ),
-                                                        )}
-                                                    </Table.Cell>
-                                                    <Table.Cell className="text-right">
-                                                        {formatAiCostUsd(
-                                                            microUsdToUsd(
-                                                                limitState.usedMicroUsd,
-                                                            ),
-                                                        )}
-                                                    </Table.Cell>
-                                                    <Table.Cell className="text-right">
-                                                        {formatAiCostUsd(
-                                                            microUsdToUsd(
-                                                                limitState.reservedMicroUsd,
-                                                            ),
-                                                        )}
-                                                    </Table.Cell>
-                                                    <Table.Cell className="text-right">
-                                                        {formatAiCostUsd(
-                                                            microUsdToUsd(
-                                                                limitState.remainingMicroUsd,
-                                                            ),
-                                                        )}
-                                                    </Table.Cell>
-                                                    <Table.Cell>
-                                                        {`${limitState.trialChatDaysUsed.toString()}/${limitState.trialChatDaysLimit.toString()}`}
-                                                    </Table.Cell>
-                                                    <Table.Cell>
-                                                        <Chip size="sm">
-                                                            {limitState.blockedReason ??
-                                                                'ok'}
-                                                        </Chip>
-                                                    </Table.Cell>
-                                                </Table.Row>
-                                            ),
+                                                                <Typography
+                                                                    level="body2"
+                                                                    semiBold
+                                                                    className="min-w-0 break-words [overflow-wrap:anywhere]"
+                                                                >
+                                                                    {account.id}
+                                                                </Typography>
+                                                                <Typography
+                                                                    level="body3"
+                                                                    className="min-w-0 break-words text-muted-foreground [overflow-wrap:anywhere]"
+                                                                >
+                                                                    {
+                                                                        accountUsers
+                                                                    }
+                                                                </Typography>
+                                                            </Stack>
+
+                                                            <div className="flex min-w-0 flex-col gap-2 lg:items-end">
+                                                                <div className="flex min-w-0 flex-wrap items-center gap-2 lg:justify-end">
+                                                                    <Chip size="sm">
+                                                                        {limitState.activeRaisedBed
+                                                                            ? 'Aktivna gredica'
+                                                                            : 'Probni račun'}
+                                                                    </Chip>
+                                                                    <Chip size="sm">
+                                                                        {limitState.blockedReason ??
+                                                                            'ok'}
+                                                                    </Chip>
+                                                                </div>
+
+                                                                <div className="grid min-w-0 gap-x-4 gap-y-1 text-muted-foreground sm:grid-cols-2 lg:text-right">
+                                                                    <Typography level="body3">
+                                                                        Dnevni
+                                                                        limit:{' '}
+                                                                        <span className="font-medium text-foreground tabular-nums">
+                                                                            {formatAiCostUsd(
+                                                                                microUsdToUsd(
+                                                                                    limitState.dailyLimitMicroUsd,
+                                                                                ),
+                                                                            )}
+                                                                        </span>
+                                                                    </Typography>
+                                                                    <Typography level="body3">
+                                                                        Iskorišteno:{' '}
+                                                                        <span className="font-medium text-foreground tabular-nums">
+                                                                            {formatAiCostUsd(
+                                                                                microUsdToUsd(
+                                                                                    limitState.usedMicroUsd,
+                                                                                ),
+                                                                            )}
+                                                                        </span>
+                                                                    </Typography>
+                                                                    <Typography level="body3">
+                                                                        Rezervirano:{' '}
+                                                                        <span className="font-medium text-foreground tabular-nums">
+                                                                            {formatAiCostUsd(
+                                                                                microUsdToUsd(
+                                                                                    limitState.reservedMicroUsd,
+                                                                                ),
+                                                                            )}
+                                                                        </span>
+                                                                    </Typography>
+                                                                    <Typography level="body3">
+                                                                        Preostalo:{' '}
+                                                                        <span className="font-medium text-foreground tabular-nums">
+                                                                            {formatAiCostUsd(
+                                                                                microUsdToUsd(
+                                                                                    limitState.remainingMicroUsd,
+                                                                                ),
+                                                                            )}
+                                                                        </span>
+                                                                    </Typography>
+                                                                </div>
+
+                                                                <Typography
+                                                                    level="body3"
+                                                                    className="text-muted-foreground lg:text-right"
+                                                                >
+                                                                    Probni dani:{' '}
+                                                                    <span className="font-medium text-foreground tabular-nums">
+                                                                        {`${limitState.trialChatDaysUsed.toString()}/${limitState.trialChatDaysLimit.toString()}`}
+                                                                    </span>
+                                                                </Typography>
+                                                            </div>
+                                                        </div>
+                                                    </li>
+                                                );
+                                            },
                                         )}
-                                    </Table.Body>
-                                </Table>
+                                    </ul>
+                                )}
                             </CardOverflow>
                         </Card>
                     </Stack>

@@ -13,7 +13,7 @@ import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Row } from '@gredice/ui/Row';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Stack } from '@gredice/ui/Stack';
-import { Table } from '@gredice/ui/Table';
+import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { VerifyOperationModal } from '../../app/admin/schedule/VerifyOperationModal';
 import type { EntityStandardized } from '../../lib/@types/EntityStandardized';
@@ -64,149 +64,112 @@ export async function OperationsTable({
         };
     });
 
+    if (!operationsWithDetails.length) {
+        return (
+            <div className="p-4">
+                <NoDataPlaceholder />
+            </div>
+        );
+    }
+
     return (
-        <Table>
-            <Table.Header>
-                <Table.Row>
-                    <Table.Head>ID</Table.Head>
-                    <Table.Head>Naziv</Table.Head>
-                    <Table.Head>Status</Table.Head>
-                    <Table.Head>Mjesto</Table.Head>
-                    <Table.Head>Datum</Table.Head>
-                    <Table.Head>Datum stvaranja</Table.Head>
-                    <Table.Head>Akcije</Table.Head>
-                </Table.Row>
-            </Table.Header>
-            <Table.Body>
-                {!operationsWithDetails.length && (
-                    <Table.Row>
-                        <Table.Cell colSpan={7}>
-                            <NoDataPlaceholder />
-                        </Table.Cell>
-                    </Table.Row>
-                )}
-                {operationsWithDetails.map((operation) => {
-                    const operationRaisedBed = operation.raisedBedId
-                        ? raisedBeds.find(
-                              (rb) => rb.id === operation.raisedBedId,
+        <ul className="divide-y">
+            {operationsWithDetails.map((operation) => {
+                const operationRaisedBed = operation.raisedBedId
+                    ? raisedBeds.find((rb) => rb.id === operation.raisedBedId)
+                    : null;
+                const operationRaisedBedField =
+                    operationRaisedBed && operation.raisedBedFieldId
+                        ? operationRaisedBed.fields.find(
+                              (field) =>
+                                  field.id === operation.raisedBedFieldId,
                           )
                         : null;
-                    const operationRaisedBedField =
-                        operationRaisedBed && operation.raisedBedFieldId
-                            ? operationRaisedBed.fields.find(
-                                  (field) =>
-                                      field.id === operation.raisedBedFieldId,
-                              )
-                            : null;
+                const accountUserNames =
+                    accounts
+                        .find((account) => account.id === operation.accountId)
+                        ?.accountUsers.map((user) => user.user.userName)
+                        .join(', ') ?? null;
+                const farmName = operation.farmId
+                    ? (farms.find((farm) => farm.id === operation.farmId)
+                          ?.name ?? 'N/A')
+                    : null;
+                const gardenName = operation.gardenId
+                    ? (gardens.find(
+                          (garden) => garden.id === operation.gardenId,
+                      )?.name ?? 'N/A')
+                    : null;
+                const operationLabel =
+                    operation.details.label || operation.entityId.toString();
+                const statusColor =
+                    operation.status === 'completed'
+                        ? 'success'
+                        : operation.status === 'planned'
+                          ? 'info'
+                          : operation.status === 'canceled'
+                            ? 'neutral'
+                            : 'warning';
+                const statusLabel =
+                    operation.status === 'pendingVerification'
+                        ? 'Čeka verifikaciju'
+                        : operation.status;
+                const completedDate = operation.completedAt
+                    ? new Date(operation.completedAt)
+                    : null;
 
-                    return (
-                        <Table.Row key={operation.id}>
-                            <Table.Cell>
-                                <Link href={KnownPages.Operation(operation.id)}>
-                                    {operation.id}
-                                </Link>
-                            </Table.Cell>
-                            <Table.Cell>
-                                {operation.details.label || operation.entityId}
-                            </Table.Cell>
-                            <Table.Cell>
-                                <Stack>
-                                    <Chip
-                                        className="w-fit"
-                                        color={
-                                            operation.status === 'completed'
-                                                ? 'success'
-                                                : operation.status ===
-                                                    'pendingVerification'
-                                                  ? 'warning'
-                                                  : operation.status ===
-                                                      'planned'
-                                                    ? 'info'
-                                                    : operation.status ===
-                                                        'canceled'
-                                                      ? 'neutral'
-                                                      : 'warning'
-                                        }
+                return (
+                    <li
+                        key={operation.id}
+                        className="px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4"
+                    >
+                        <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                            <Stack spacing={1} className="min-w-0 flex-1">
+                                <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+                                    <Link
+                                        href={KnownPages.Operation(
+                                            operation.id,
+                                        )}
+                                        className="min-w-0 font-medium text-primary underline-offset-4 hover:underline"
                                     >
-                                        {operation.status ===
-                                        'pendingVerification'
-                                            ? 'Čeka verifikaciju'
-                                            : operation.status}
-                                    </Chip>
-                                    {operation.status === 'planned' && (
-                                        <Row spacing={2}>
-                                            <Calendar className="size-4 shrink-0" />
-                                            <LocalDateTime time={false}>
-                                                {operation.scheduledDate}
-                                            </LocalDateTime>
-                                        </Row>
-                                    )}
-                                    {operation.status ===
-                                        'pendingVerification' && (
-                                        <Row spacing={2}>
-                                            <LocalDateTime time={false}>
-                                                {operation.completedAt
-                                                    ? new Date(
-                                                          operation.completedAt,
-                                                      )
-                                                    : null}
-                                            </LocalDateTime>
-                                        </Row>
-                                    )}
-                                    {operation.status === 'completed' && (
-                                        <Row spacing={2}>
-                                            {/* <span>{operation.completedBy}</span> */}
-                                            <LocalDateTime time={false}>
-                                                {operation.completedAt
-                                                    ? new Date(
-                                                          operation.completedAt,
-                                                      )
-                                                    : null}
-                                            </LocalDateTime>
-                                        </Row>
-                                    )}
-                                </Stack>
-                            </Table.Cell>
-                            <Table.Cell>
-                                <Stack>
-                                    <span>
-                                        {accounts
-                                            .find(
-                                                (account) =>
-                                                    account.id ===
-                                                    operation.accountId,
-                                            )
-                                            ?.accountUsers.map(
-                                                (user) => user.user.userName,
-                                            )
-                                            .join(', ')}
-                                    </span>
-                                    {operation.farmId && (
-                                        <span>
-                                            {farms.find(
-                                                (farm) =>
-                                                    farm.id ===
-                                                    operation.farmId,
-                                            )?.name ?? 'N/A'}
+                                        ID {operation.id}
+                                    </Link>
+                                    <Typography
+                                        level="body2"
+                                        component="h3"
+                                        semiBold
+                                        className="min-w-0 break-words"
+                                    >
+                                        {operationLabel}
+                                    </Typography>
+                                </div>
+                                <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                                    <Typography
+                                        level="body3"
+                                        component="span"
+                                        className="sr-only"
+                                    >
+                                        Mjesto
+                                    </Typography>
+                                    {accountUserNames && (
+                                        <span className="max-w-full truncate">
+                                            {accountUserNames}
                                         </span>
                                     )}
-                                    {operation.gardenId && (
-                                        <span>
-                                            {gardens.find(
-                                                (garden) =>
-                                                    garden.id ===
-                                                    operation.gardenId,
-                                            )?.name ?? 'N/A'}
+                                    {farmName && (
+                                        <span className="max-w-full truncate">
+                                            {farmName}
+                                        </span>
+                                    )}
+                                    {gardenName && (
+                                        <span className="max-w-full truncate">
+                                            {gardenName}
                                         </span>
                                     )}
                                     {operation.raisedBedId && (
                                         <RaisedBedLabel
                                             physicalId={
-                                                raisedBeds.find(
-                                                    (rb) =>
-                                                        rb.id ===
-                                                        operation.raisedBedId,
-                                                )?.physicalId ?? null
+                                                operationRaisedBed?.physicalId ??
+                                                null
                                             }
                                         />
                                     )}
@@ -216,30 +179,83 @@ export async function OperationsTable({
                                                 1}
                                         </span>
                                     )}
-                                </Stack>
-                            </Table.Cell>
-                            <Table.Cell>
-                                <LocalDateTime time={false}>
-                                    {operation.timestamp}
-                                </LocalDateTime>
-                            </Table.Cell>
-                            <Table.Cell>
-                                <LocalDateTime time={false}>
-                                    {operation.createdAt
-                                        ? new Date(operation.createdAt)
-                                        : null}
-                                </LocalDateTime>
-                            </Table.Cell>
-                            <Table.Cell>
-                                <Row spacing={2}>
+                                </div>
+                            </Stack>
+                            <div className="flex min-w-0 flex-wrap items-center justify-start gap-2 lg:justify-end">
+                                <Chip
+                                    className="w-fit"
+                                    color={statusColor}
+                                    size="sm"
+                                >
+                                    <span className="sr-only">Status: </span>
+                                    {statusLabel}
+                                </Chip>
+                                {operation.status === 'planned' && (
+                                    <Row
+                                        spacing={2}
+                                        className="whitespace-nowrap text-muted-foreground"
+                                    >
+                                        <Calendar className="size-4 shrink-0" />
+                                        <Typography level="body3">
+                                            <LocalDateTime time={false}>
+                                                {operation.scheduledDate}
+                                            </LocalDateTime>
+                                        </Typography>
+                                    </Row>
+                                )}
+                                {operation.status === 'pendingVerification' && (
+                                    <Row
+                                        spacing={2}
+                                        className="whitespace-nowrap text-muted-foreground"
+                                    >
+                                        <Typography level="body3">
+                                            <LocalDateTime time={false}>
+                                                {completedDate}
+                                            </LocalDateTime>
+                                        </Typography>
+                                    </Row>
+                                )}
+                                {operation.status === 'completed' && (
+                                    <Row
+                                        spacing={2}
+                                        className="whitespace-nowrap text-muted-foreground"
+                                    >
+                                        <Typography level="body3">
+                                            <LocalDateTime time={false}>
+                                                {completedDate}
+                                            </LocalDateTime>
+                                        </Typography>
+                                    </Row>
+                                )}
+                                <Chip
+                                    color="neutral"
+                                    size="sm"
+                                    variant="outlined"
+                                >
+                                    Datum:{' '}
+                                    <LocalDateTime time={false}>
+                                        {operation.timestamp}
+                                    </LocalDateTime>
+                                </Chip>
+                                <Typography
+                                    level="body3"
+                                    component="span"
+                                    className="whitespace-nowrap text-muted-foreground"
+                                >
+                                    Datum stvaranja:{' '}
+                                    <LocalDateTime time={false}>
+                                        {operation.createdAt
+                                            ? new Date(operation.createdAt)
+                                            : null}
+                                    </LocalDateTime>
+                                </Typography>
+                                <fieldset className="m-0 flex shrink-0 flex-row items-center gap-2 border-0 p-0">
+                                    <legend className="sr-only">Akcije</legend>
                                     {operation.status ===
                                         'pendingVerification' && (
                                         <VerifyOperationModal
                                             operationId={operation.id}
-                                            label={
-                                                operation.details.label ||
-                                                operation.entityId.toString()
-                                            }
+                                            label={operationLabel}
                                             trigger={
                                                 <IconButton
                                                     variant="plain"
@@ -258,10 +274,7 @@ export async function OperationsTable({
                                                 operation.scheduledDate,
                                             status: operation.status,
                                         }}
-                                        operationLabel={
-                                            operation.details.label ||
-                                            operation.entityId.toString()
-                                        }
+                                        operationLabel={operationLabel}
                                     />
                                     <OperationCancelButton
                                         operation={{
@@ -271,17 +284,14 @@ export async function OperationsTable({
                                                 operation.scheduledDate,
                                             status: operation.status,
                                         }}
-                                        operationLabel={
-                                            operation.details.label ||
-                                            operation.entityId.toString()
-                                        }
+                                        operationLabel={operationLabel}
                                     />
-                                </Row>
-                            </Table.Cell>
-                        </Table.Row>
-                    );
-                })}
-            </Table.Body>
-        </Table>
+                                </fieldset>
+                            </div>
+                        </div>
+                    </li>
+                );
+            })}
+        </ul>
     );
 }

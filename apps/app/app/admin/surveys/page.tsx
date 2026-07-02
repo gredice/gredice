@@ -16,7 +16,6 @@ import { Chip } from '@gredice/ui/Chip';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
-import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { AdminPageHeader } from '../../../components/admin/navigation';
@@ -61,17 +60,19 @@ function statusLabel(status: string) {
     );
 }
 
-function statusColor(status: string) {
+function statusColor(
+    status: string,
+): 'success' | 'warning' | 'neutral' | 'primary' {
     if (status === 'published' || status === 'submitted' || status === 'sent') {
-        return 'success' as const;
+        return 'success';
     }
     if (status === 'draft' || status === 'pending' || status === 'started') {
-        return 'warning' as const;
+        return 'warning';
     }
     if (status === 'archived' || status === 'expired') {
-        return 'neutral' as const;
+        return 'neutral';
     }
-    return 'primary' as const;
+    return 'primary';
 }
 
 function answerValue(answer: SurveyAnswer) {
@@ -201,35 +202,31 @@ export default async function SurveysPage({
                     <CardTitle>Definicije anketa</CardTitle>
                 </CardHeader>
                 <CardOverflow>
-                    <Table>
-                        <Table.Header>
-                            <Table.Row>
-                                <Table.Head>Naziv</Table.Head>
-                                <Table.Head>Ključ</Table.Head>
-                                <Table.Head>Status</Table.Head>
-                                <Table.Head>Verzije</Table.Head>
-                                <Table.Head>Dodjele</Table.Head>
-                                <Table.Head>Odgovori</Table.Head>
-                                <Table.Head>Ažurirano</Table.Head>
-                                <Table.Head>Detalji</Table.Head>
-                            </Table.Row>
-                        </Table.Header>
-                        <Table.Body>
-                            {surveys.length === 0 ? (
-                                <Table.Row>
-                                    <Table.Cell colSpan={8}>
-                                        <NoDataPlaceholder>
-                                            Nema anketa
-                                        </NoDataPlaceholder>
-                                    </Table.Cell>
-                                </Table.Row>
-                            ) : null}
+                    {surveys.length === 0 ? (
+                        <div className="p-4">
+                            <NoDataPlaceholder>Nema anketa</NoDataPlaceholder>
+                        </div>
+                    ) : (
+                        <ul className="divide-y">
                             {surveys.map((item) => (
-                                <Table.Row key={item.survey.id}>
-                                    <Table.Cell>
-                                        <Stack spacing={1}>
-                                            <Typography semiBold>
+                                <li
+                                    key={item.survey.id}
+                                    className="px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4"
+                                >
+                                    <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                        <Stack spacing={1} className="min-w-0">
+                                            <Typography
+                                                semiBold
+                                                className="min-w-0 break-words"
+                                            >
                                                 {item.survey.title}
+                                            </Typography>
+                                            <Typography
+                                                level="body3"
+                                                className="min-w-0 break-all text-muted-foreground"
+                                            >
+                                                Ključ:{' '}
+                                                <code>{item.survey.key}</code>
                                             </Typography>
                                             {item.survey.description ? (
                                                 <Typography
@@ -240,49 +237,65 @@ export default async function SurveysPage({
                                                 </Typography>
                                             ) : null}
                                         </Stack>
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        <code>{item.survey.key}</code>
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        <Chip
-                                            color={statusColor(
-                                                item.survey.status,
-                                            )}
-                                            size="sm"
-                                            variant="soft"
-                                        >
-                                            {statusLabel(item.survey.status)}
-                                        </Chip>
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        {item.versions.length}
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        {item.assignmentCount}
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        {item.responseCount}
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        <LocalDateTime>
-                                            {item.survey.updatedAt}
-                                        </LocalDateTime>
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        <Link
-                                            href={buildSurveyHref(
-                                                item.survey.id,
-                                            )}
-                                            prefetch={false}
-                                        >
-                                            Otvori
-                                        </Link>
-                                    </Table.Cell>
-                                </Table.Row>
+
+                                        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 lg:max-w-[32rem] lg:justify-end lg:text-right">
+                                            <Chip
+                                                color={statusColor(
+                                                    item.survey.status,
+                                                )}
+                                                size="sm"
+                                                variant="soft"
+                                            >
+                                                {statusLabel(
+                                                    item.survey.status,
+                                                )}
+                                            </Chip>
+                                            <Typography
+                                                component="span"
+                                                level="body3"
+                                                className="whitespace-nowrap text-muted-foreground"
+                                            >
+                                                Verzije: {item.versions.length}
+                                            </Typography>
+                                            <Typography
+                                                component="span"
+                                                level="body3"
+                                                className="whitespace-nowrap text-muted-foreground"
+                                            >
+                                                Dodjele: {item.assignmentCount}
+                                            </Typography>
+                                            <Typography
+                                                component="span"
+                                                level="body3"
+                                                className="whitespace-nowrap text-muted-foreground"
+                                            >
+                                                Odgovori: {item.responseCount}
+                                            </Typography>
+                                            <Typography
+                                                component="span"
+                                                level="body3"
+                                                className="whitespace-nowrap text-muted-foreground"
+                                            >
+                                                Ažurirano:{' '}
+                                                <LocalDateTime>
+                                                    {item.survey.updatedAt}
+                                                </LocalDateTime>
+                                            </Typography>
+                                            <Link
+                                                href={buildSurveyHref(
+                                                    item.survey.id,
+                                                )}
+                                                prefetch={false}
+                                                className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+                                            >
+                                                Otvori
+                                            </Link>
+                                        </div>
+                                    </div>
+                                </li>
                             ))}
-                        </Table.Body>
-                    </Table>
+                        </ul>
+                    )}
                 </CardOverflow>
             </Card>
 
@@ -350,24 +363,53 @@ export default async function SurveysPage({
                                 <CardTitle>Verzije i pitanja</CardTitle>
                             </CardHeader>
                             <CardOverflow>
-                                <Table>
-                                    <Table.Header>
-                                        <Table.Row>
-                                            <Table.Head>Verzija</Table.Head>
-                                            <Table.Head>Status</Table.Head>
-                                            <Table.Head>Objavljeno</Table.Head>
-                                            <Table.Head>Pitanja</Table.Head>
-                                            <Table.Head>Radnje</Table.Head>
-                                        </Table.Row>
-                                    </Table.Header>
-                                    <Table.Body>
-                                        {selectedDetails.questionGroups.map(
-                                            ({ questions, version }) => (
-                                                <Table.Row key={version.id}>
-                                                    <Table.Cell>
-                                                        v{version.versionNumber}
-                                                    </Table.Cell>
-                                                    <Table.Cell>
+                                <ul className="divide-y">
+                                    {selectedDetails.questionGroups.map(
+                                        ({ questions, version }) => (
+                                            <li
+                                                key={version.id}
+                                                className="px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4"
+                                            >
+                                                <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                                    <Stack
+                                                        spacing={2}
+                                                        className="min-w-0"
+                                                    >
+                                                        <Typography
+                                                            semiBold
+                                                            className="min-w-0 break-words"
+                                                        >
+                                                            {`v${version.versionNumber}`}
+                                                        </Typography>
+                                                        <Stack spacing={1}>
+                                                            <Typography
+                                                                level="body3"
+                                                                semiBold
+                                                                className="text-muted-foreground"
+                                                            >
+                                                                Pitanja
+                                                            </Typography>
+                                                            <Stack spacing={1}>
+                                                                {questions.map(
+                                                                    (
+                                                                        question,
+                                                                    ) => (
+                                                                        <Typography
+                                                                            key={
+                                                                                question.id
+                                                                            }
+                                                                            level="body3"
+                                                                            className="min-w-0 break-words"
+                                                                        >
+                                                                            {`${question.sortOrder}. ${question.title} (${question.type})`}
+                                                                        </Typography>
+                                                                    ),
+                                                                )}
+                                                            </Stack>
+                                                        </Stack>
+                                                    </Stack>
+
+                                                    <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 lg:max-w-[24rem] lg:justify-end lg:text-right">
                                                         <Chip
                                                             color={statusColor(
                                                                 version.status,
@@ -379,48 +421,24 @@ export default async function SurveysPage({
                                                                 version.status,
                                                             )}
                                                         </Chip>
-                                                    </Table.Cell>
-                                                    <Table.Cell>
                                                         {version.publishedAt ? (
-                                                            <LocalDateTime>
-                                                                {
-                                                                    version.publishedAt
-                                                                }
-                                                            </LocalDateTime>
+                                                            <Typography
+                                                                component="span"
+                                                                level="body3"
+                                                                className="whitespace-nowrap text-muted-foreground"
+                                                            >
+                                                                Objavljeno:{' '}
+                                                                <LocalDateTime>
+                                                                    {
+                                                                        version.publishedAt
+                                                                    }
+                                                                </LocalDateTime>
+                                                            </Typography>
                                                         ) : (
                                                             <NoDataPlaceholder>
                                                                 Nije objavljeno
                                                             </NoDataPlaceholder>
                                                         )}
-                                                    </Table.Cell>
-                                                    <Table.Cell>
-                                                        <Stack spacing={1}>
-                                                            {questions.map(
-                                                                (question) => (
-                                                                    <Typography
-                                                                        key={
-                                                                            question.id
-                                                                        }
-                                                                        level="body3"
-                                                                    >
-                                                                        {
-                                                                            question.sortOrder
-                                                                        }
-                                                                        .{' '}
-                                                                        {
-                                                                            question.title
-                                                                        }{' '}
-                                                                        (
-                                                                        {
-                                                                            question.type
-                                                                        }
-                                                                        )
-                                                                    </Typography>
-                                                                ),
-                                                            )}
-                                                        </Stack>
-                                                    </Table.Cell>
-                                                    <Table.Cell>
                                                         {version.status ===
                                                         'draft' ? (
                                                             <form
@@ -454,12 +472,12 @@ export default async function SurveysPage({
                                                                 -
                                                             </NoDataPlaceholder>
                                                         )}
-                                                    </Table.Cell>
-                                                </Table.Row>
-                                            ),
-                                        )}
-                                    </Table.Body>
-                                </Table>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                        ),
+                                    )}
+                                </ul>
                             </CardOverflow>
                         </Card>
 
@@ -567,105 +585,120 @@ export default async function SurveysPage({
                                     )}
 
                                     <CardOverflow>
-                                        <Table>
-                                            <Table.Header>
-                                                <Table.Row>
-                                                    <Table.Head>
-                                                        Predano
-                                                    </Table.Head>
-                                                    <Table.Head>
-                                                        Račun
-                                                    </Table.Head>
-                                                    <Table.Head>
-                                                        Kontekst
-                                                    </Table.Head>
-                                                    <Table.Head>
-                                                        Odgovori
-                                                    </Table.Head>
-                                                </Table.Row>
-                                            </Table.Header>
-                                            <Table.Body>
-                                                {selectedResults?.responses
-                                                    .length ? null : (
-                                                    <Table.Row>
-                                                        <Table.Cell colSpan={4}>
-                                                            <NoDataPlaceholder>
-                                                                Nema odgovora
-                                                            </NoDataPlaceholder>
-                                                        </Table.Cell>
-                                                    </Table.Row>
-                                                )}
+                                        {selectedResults?.responses.length ? (
+                                            <ul className="divide-y">
                                                 {selectedResults?.responses.map(
                                                     (response) => (
-                                                        <Table.Row
+                                                        <li
                                                             key={
                                                                 response
                                                                     .response.id
                                                             }
+                                                            className="px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4"
                                                         >
-                                                            <Table.Cell>
-                                                                <LocalDateTime>
-                                                                    {
-                                                                        response
-                                                                            .response
-                                                                            .submittedAt
-                                                                    }
-                                                                </LocalDateTime>
-                                                            </Table.Cell>
-                                                            <Table.Cell>
-                                                                {response
-                                                                    .assignment
-                                                                    ?.accountId ??
-                                                                    response
-                                                                        .response
-                                                                        .accountId ??
-                                                                    '-'}
-                                                            </Table.Cell>
-                                                            <Table.Cell>
-                                                                <code>
-                                                                    {response
-                                                                        .assignment
-                                                                        ?.context
-                                                                        .monthKey ??
-                                                                        response
-                                                                            .assignment
-                                                                            ?.contextKey ??
-                                                                        '-'}
-                                                                </code>
-                                                            </Table.Cell>
-                                                            <Table.Cell>
+                                                            <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(12rem,0.8fr)_minmax(0,1.2fr)] lg:items-start">
                                                                 <Stack
                                                                     spacing={1}
+                                                                    className="min-w-0"
                                                                 >
-                                                                    {response.answers.map(
-                                                                        (
-                                                                            answer,
-                                                                        ) => (
-                                                                            <Typography
-                                                                                key={
-                                                                                    answer.id
-                                                                                }
-                                                                                level="body3"
-                                                                            >
-                                                                                <strong>
-                                                                                    {
-                                                                                        answer.questionKey
-                                                                                    }
-                                                                                    :
-                                                                                </strong>{' '}
-                                                                                {answerValue(
-                                                                                    answer,
-                                                                                )}
-                                                                            </Typography>
-                                                                        ),
-                                                                    )}
+                                                                    <Typography
+                                                                        semiBold
+                                                                        className="min-w-0 break-words"
+                                                                    >
+                                                                        Predano:{' '}
+                                                                        <LocalDateTime>
+                                                                            {
+                                                                                response
+                                                                                    .response
+                                                                                    .submittedAt
+                                                                            }
+                                                                        </LocalDateTime>
+                                                                    </Typography>
+                                                                    <Typography
+                                                                        level="body3"
+                                                                        className="min-w-0 break-words text-muted-foreground"
+                                                                    >
+                                                                        Račun:{' '}
+                                                                        {response
+                                                                            .assignment
+                                                                            ?.accountId ??
+                                                                            response
+                                                                                .response
+                                                                                .accountId ??
+                                                                            '-'}
+                                                                    </Typography>
+                                                                    <Typography
+                                                                        level="body3"
+                                                                        className="min-w-0 break-all text-muted-foreground"
+                                                                    >
+                                                                        Kontekst:{' '}
+                                                                        <code>
+                                                                            {response
+                                                                                .assignment
+                                                                                ?.context
+                                                                                .monthKey ??
+                                                                                response
+                                                                                    .assignment
+                                                                                    ?.contextKey ??
+                                                                                '-'}
+                                                                        </code>
+                                                                    </Typography>
                                                                 </Stack>
-                                                            </Table.Cell>
-                                                        </Table.Row>
+
+                                                                <Stack
+                                                                    spacing={1}
+                                                                    className="min-w-0 lg:items-end lg:text-right"
+                                                                >
+                                                                    <Typography
+                                                                        level="body3"
+                                                                        semiBold
+                                                                        className="text-muted-foreground"
+                                                                    >
+                                                                        Odgovori
+                                                                    </Typography>
+                                                                    <Stack
+                                                                        spacing={
+                                                                            1
+                                                                        }
+                                                                        className="min-w-0 lg:items-end"
+                                                                    >
+                                                                        {response.answers.map(
+                                                                            (
+                                                                                answer,
+                                                                            ) => (
+                                                                                <Typography
+                                                                                    key={
+                                                                                        answer.id
+                                                                                    }
+                                                                                    level="body3"
+                                                                                    className="min-w-0 break-words"
+                                                                                >
+                                                                                    <strong>
+                                                                                        {
+                                                                                            answer.questionKey
+                                                                                        }
+                                                                                        :
+                                                                                    </strong>{' '}
+                                                                                    {answerValue(
+                                                                                        answer,
+                                                                                    )}
+                                                                                </Typography>
+                                                                            ),
+                                                                        )}
+                                                                    </Stack>
+                                                                </Stack>
+                                                            </div>
+                                                        </li>
                                                     ),
                                                 )}
-                                            </Table.Body>
-                                        </Table>
+                                            </ul>
+                                        ) : (
+                                            <div className="p-4">
+                                                <NoDataPlaceholder>
+                                                    Nema odgovora
+                                                </NoDataPlaceholder>
+                                            </div>
+                                        )}
                                     </CardOverflow>
                                 </Stack>
                             </CardContent>
@@ -695,68 +728,79 @@ export default async function SurveysPage({
                                     <CardTitle>Povijest slanja</CardTitle>
                                 </CardHeader>
                                 <CardOverflow>
-                                    <Table>
-                                        <Table.Header>
-                                            <Table.Row>
-                                                <Table.Head>Naziv</Table.Head>
-                                                <Table.Head>Status</Table.Head>
-                                                <Table.Head>Dodjele</Table.Head>
-                                                <Table.Head>
-                                                    Duplikati
-                                                </Table.Head>
-                                                <Table.Head>
-                                                    Kreirano
-                                                </Table.Head>
-                                            </Table.Row>
-                                        </Table.Header>
-                                        <Table.Body>
-                                            {selectedDetails.sends.length ===
-                                            0 ? (
-                                                <Table.Row>
-                                                    <Table.Cell colSpan={5}>
-                                                        <NoDataPlaceholder>
-                                                            Nema slanja
-                                                        </NoDataPlaceholder>
-                                                    </Table.Cell>
-                                                </Table.Row>
-                                            ) : null}
+                                    {selectedDetails.sends.length === 0 ? (
+                                        <div className="p-4">
+                                            <NoDataPlaceholder>
+                                                Nema slanja
+                                            </NoDataPlaceholder>
+                                        </div>
+                                    ) : (
+                                        <ul className="divide-y">
                                             {selectedDetails.sends.map(
                                                 (send) => (
-                                                    <Table.Row key={send.id}>
-                                                        <Table.Cell>
-                                                            {send.name}
-                                                        </Table.Cell>
-                                                        <Table.Cell>
-                                                            <Chip
-                                                                color={statusColor(
-                                                                    send.status,
-                                                                )}
-                                                                size="sm"
-                                                                variant="soft"
+                                                    <li
+                                                        key={send.id}
+                                                        className="px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4"
+                                                    >
+                                                        <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                                            <Typography
+                                                                semiBold
+                                                                className="min-w-0 break-words"
                                                             >
-                                                                {statusLabel(
-                                                                    send.status,
-                                                                )}
-                                                            </Chip>
-                                                        </Table.Cell>
-                                                        <Table.Cell>
-                                                            {send.assignedCount}
-                                                        </Table.Cell>
-                                                        <Table.Cell>
-                                                            {
-                                                                send.skippedDuplicateCount
-                                                            }
-                                                        </Table.Cell>
-                                                        <Table.Cell>
-                                                            <LocalDateTime>
-                                                                {send.createdAt}
-                                                            </LocalDateTime>
-                                                        </Table.Cell>
-                                                    </Table.Row>
+                                                                {send.name}
+                                                            </Typography>
+
+                                                            <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 lg:max-w-[24rem] lg:justify-end lg:text-right">
+                                                                <Chip
+                                                                    color={statusColor(
+                                                                        send.status,
+                                                                    )}
+                                                                    size="sm"
+                                                                    variant="soft"
+                                                                >
+                                                                    {statusLabel(
+                                                                        send.status,
+                                                                    )}
+                                                                </Chip>
+                                                                <Typography
+                                                                    component="span"
+                                                                    level="body3"
+                                                                    className="whitespace-nowrap text-muted-foreground"
+                                                                >
+                                                                    Dodjele:{' '}
+                                                                    {
+                                                                        send.assignedCount
+                                                                    }
+                                                                </Typography>
+                                                                <Typography
+                                                                    component="span"
+                                                                    level="body3"
+                                                                    className="whitespace-nowrap text-muted-foreground"
+                                                                >
+                                                                    Duplikati:{' '}
+                                                                    {
+                                                                        send.skippedDuplicateCount
+                                                                    }
+                                                                </Typography>
+                                                                <Typography
+                                                                    component="span"
+                                                                    level="body3"
+                                                                    className="whitespace-nowrap text-muted-foreground"
+                                                                >
+                                                                    Kreirano:{' '}
+                                                                    <LocalDateTime>
+                                                                        {
+                                                                            send.createdAt
+                                                                        }
+                                                                    </LocalDateTime>
+                                                                </Typography>
+                                                            </div>
+                                                        </div>
+                                                    </li>
                                                 ),
                                             )}
-                                        </Table.Body>
-                                    </Table>
+                                        </ul>
+                                    )}
                                 </CardOverflow>
                             </Card>
 

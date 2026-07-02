@@ -1,11 +1,16 @@
 import { getInvoice } from '@gredice/storage';
 import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
-import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardOverflow,
+    CardTitle,
+} from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
-import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -219,42 +224,45 @@ export default async function InvoicePage({
                             <CardHeader>
                                 <CardTitle>Stavke ponude</CardTitle>
                             </CardHeader>
-                            <CardContent>
-                                {invoice.invoiceItems &&
-                                invoice.invoiceItems.length > 0 ? (
-                                    <Table>
-                                        <Table.Header>
-                                            <Table.Row>
-                                                <Table.Head>Opis</Table.Head>
-                                                <Table.Head className="text-right">
-                                                    Količina
-                                                </Table.Head>
-                                                <Table.Head className="text-right">
-                                                    Jedinična cijena
-                                                </Table.Head>
-                                                <Table.Head className="text-right">
-                                                    Ukupno
-                                                </Table.Head>
-                                            </Table.Row>
-                                        </Table.Header>
-                                        <Table.Body>
-                                            {invoice.invoiceItems.map(
-                                                (item) => (
-                                                    <Table.Row key={item.id}>
-                                                        <Table.Cell>
-                                                            <Typography>
-                                                                {
-                                                                    item.description
-                                                                }
+                            {invoice.invoiceItems &&
+                            invoice.invoiceItems.length > 0 ? (
+                                <CardOverflow>
+                                    <ul className="divide-y">
+                                        {invoice.invoiceItems.map((item) => (
+                                            <li
+                                                key={item.id}
+                                                className="px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4"
+                                            >
+                                                <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                                                    <Typography
+                                                        level="body2"
+                                                        semiBold
+                                                        className="min-w-0 break-words"
+                                                    >
+                                                        {item.description}
+                                                    </Typography>
+                                                    <div className="grid min-w-0 gap-x-4 gap-y-2 sm:grid-cols-3 lg:text-right">
+                                                        <div className="min-w-0">
+                                                            <Typography
+                                                                component="div"
+                                                                level="body3"
+                                                                className="text-muted-foreground"
+                                                            >
+                                                                Količina
                                                             </Typography>
-                                                        </Table.Cell>
-                                                        <Table.Cell className="text-right">
                                                             <Typography>
                                                                 {item.quantity}{' '}
                                                                 kom
                                                             </Typography>
-                                                        </Table.Cell>
-                                                        <Table.Cell className="text-right">
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <Typography
+                                                                component="div"
+                                                                level="body3"
+                                                                className="text-muted-foreground"
+                                                            >
+                                                                Jedinična cijena
+                                                            </Typography>
                                                             <Typography>
                                                                 {Number(
                                                                     item.unitPrice,
@@ -264,9 +272,18 @@ export default async function InvoicePage({
                                                                     ? '€'
                                                                     : invoice.currency}
                                                             </Typography>
-                                                        </Table.Cell>
-                                                        <Table.Cell className="text-right">
-                                                            <Typography>
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <Typography
+                                                                component="div"
+                                                                level="body3"
+                                                                className="text-muted-foreground"
+                                                            >
+                                                                Ukupno
+                                                            </Typography>
+                                                            <Typography
+                                                                semiBold
+                                                            >
                                                                 {Number(
                                                                     item.totalPrice,
                                                                 ).toFixed(2)}
@@ -275,18 +292,20 @@ export default async function InvoicePage({
                                                                     ? '€'
                                                                     : invoice.currency}
                                                             </Typography>
-                                                        </Table.Cell>
-                                                    </Table.Row>
-                                                ),
-                                            )}
-                                        </Table.Body>
-                                    </Table>
-                                ) : (
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </CardOverflow>
+                            ) : (
+                                <CardContent>
                                     <NoDataPlaceholder>
                                         Nema stavki ponude
                                     </NoDataPlaceholder>
-                                )}
-                            </CardContent>
+                                </CardContent>
+                            )}
                         </Card>
                     </Stack>
                 </EntityDetailsPropertiesLayout>

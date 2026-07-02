@@ -5,12 +5,11 @@ import {
 } from '@gredice/storage';
 import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
 import { Button } from '@gredice/ui/Button';
-import { Card } from '@gredice/ui/Card';
+import { Card, CardOverflow } from '@gredice/ui/Card';
 import { Input } from '@gredice/ui/Input';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { SelectItems } from '@gredice/ui/SelectItems';
 import { Stack } from '@gredice/ui/Stack';
-import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
 import { notFound } from 'next/navigation';
 import { AdminPageHeader } from '../../../../../../components/admin/navigation';
@@ -65,9 +64,10 @@ export default async function InventoryItemPage({
             };
         }),
     ];
-    const entityLabel = item.entityId
+    const entityId = item.entityId;
+    const entityLabel = entityId
         ? entityItems.find(
-              (entityItem) => entityItem.value === item.entityId.toString(),
+              (entityItem) => entityItem.value === entityId.toString(),
           )?.label
         : null;
     const itemTitle = entityLabel
@@ -371,53 +371,96 @@ export default async function InventoryItemPage({
                         Povijest promjena
                     </Typography>
                 </Stack>
-                <Table>
-                    <Table.Header>
-                        <Table.Row>
-                            <Table.Head>Vrijeme</Table.Head>
-                            <Table.Head>Akcija</Table.Head>
-                            <Table.Head>Količina</Table.Head>
-                            <Table.Head>Stanje</Table.Head>
-                            <Table.Head>Napomena</Table.Head>
-                            <Table.Head />
-                        </Table.Row>
-                    </Table.Header>
-                    <Table.Body>
-                        {events.length === 0 && (
-                            <Table.Row>
-                                <Table.Cell colSpan={6}>
-                                    Nema događaja za ovu stavku.
-                                </Table.Cell>
-                            </Table.Row>
-                        )}
-                        {events.map((event) => (
-                            <Table.Row key={event.id}>
-                                <Table.Cell>
-                                    <LocalDateTime time>
-                                        {event.createdAt}
-                                    </LocalDateTime>
-                                </Table.Cell>
-                                <Table.Cell>{event.action}</Table.Cell>
-                                <Table.Cell>
-                                    {event.previousQuantity ?? '-'} →{' '}
-                                    {event.newQuantity ?? '-'}
-                                </Table.Cell>
-                                <Table.Cell>
-                                    {event.previousState ?? '-'} →{' '}
-                                    {event.newState ?? '-'}
-                                </Table.Cell>
-                                <Table.Cell>{event.notes ?? '-'}</Table.Cell>
-                                <Table.Cell>
-                                    <DeleteInventoryItemEventButton
-                                        inventoryConfigId={inventoryConfigId}
-                                        itemId={id}
-                                        eventId={event.id}
-                                    />
-                                </Table.Cell>
-                            </Table.Row>
-                        ))}
-                    </Table.Body>
-                </Table>
+                <CardOverflow>
+                    {events.length === 0 ? (
+                        <div className="p-4">
+                            <Typography level="body2">
+                                Nema događaja za ovu stavku.
+                            </Typography>
+                        </div>
+                    ) : (
+                        <ul className="divide-y">
+                            {events.map((event) => (
+                                <li
+                                    key={event.id}
+                                    className="px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4"
+                                >
+                                    <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                        <div className="min-w-0 space-y-1">
+                                            <Typography
+                                                level="body2"
+                                                semiBold
+                                                className="min-w-0 break-words"
+                                            >
+                                                {event.action}
+                                            </Typography>
+                                            <Typography
+                                                component="div"
+                                                level="body3"
+                                                className="text-muted-foreground"
+                                            >
+                                                Vrijeme:{' '}
+                                                <LocalDateTime time>
+                                                    {event.createdAt}
+                                                </LocalDateTime>
+                                            </Typography>
+                                            <Typography
+                                                component="div"
+                                                level="body3"
+                                                className="min-w-0 break-words text-muted-foreground"
+                                            >
+                                                Napomena:{' '}
+                                                <span className="text-foreground">
+                                                    {event.notes ?? '-'}
+                                                </span>
+                                            </Typography>
+                                        </div>
+                                        <div className="flex min-w-0 flex-col gap-2 lg:items-end lg:text-right">
+                                            <div className="flex min-w-0 flex-wrap gap-x-4 gap-y-1 lg:justify-end">
+                                                <Typography
+                                                    component="div"
+                                                    level="body3"
+                                                    className="text-muted-foreground"
+                                                >
+                                                    Količina:{' '}
+                                                    <span className="text-foreground">
+                                                        {event.previousQuantity ??
+                                                            '-'}{' '}
+                                                        →{' '}
+                                                        {event.newQuantity ??
+                                                            '-'}
+                                                    </span>
+                                                </Typography>
+                                                <Typography
+                                                    component="div"
+                                                    level="body3"
+                                                    className="text-muted-foreground"
+                                                >
+                                                    Stanje:{' '}
+                                                    <span className="text-foreground">
+                                                        {event.previousState ??
+                                                            '-'}{' '}
+                                                        →{' '}
+                                                        {event.newState ?? '-'}
+                                                    </span>
+                                                </Typography>
+                                            </div>
+                                            <div className="flex justify-start lg:justify-end">
+                                                <DeleteInventoryItemEventButton
+                                                    inventoryConfigId={
+                                                        inventoryConfigId
+                                                    }
+                                                    itemId={id}
+                                                    eventId={event.id}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </CardOverflow>
             </Card>
         </Stack>
     );
