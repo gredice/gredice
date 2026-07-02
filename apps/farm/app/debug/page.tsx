@@ -22,7 +22,7 @@ export default function FarmDebugIndexPage() {
     }
 
     return (
-        <main className="min-h-screen w-full bg-muted px-4 py-6 text-foreground sm:px-6 sm:py-8">
+        <main className="min-h-screen w-full bg-background px-4 py-6 text-foreground sm:px-6 sm:py-8">
             <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
                 <header className="flex flex-col gap-4">
                     <HomeButton />

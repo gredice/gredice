@@ -1,70 +1,120 @@
-import { AuthProtectedSection, SignedOut } from '@gredice/ui/auth/server';
-import { ScheduleDateNavigation } from '@gredice/ui/ScheduleDateNavigation';
 import { Suspense } from 'react';
 import LoginDialog from '../../components/auth/LoginDialog';
-import { HomeButton } from '../../components/HomeButton';
 import { auth } from '../../lib/auth/auth';
 import { FarmScheduleDay } from './FarmScheduleDay';
+import { FarmScheduleNavigationFrame } from './FarmScheduleNavigationFrame';
 import { ScheduleDaySummarySection } from './ScheduleDaySummarySection';
 import { ScheduleDaySummarySkeleton } from './ScheduleDaySummarySkeleton';
 import { ScheduleLabelPrintSection } from './ScheduleLabelPrintSection';
 import {
     getFarmScheduleDayData,
     getFarmScheduleOperationsData,
+    getFarmScheduleOperationsDayData,
+    getFarmSchedulePlantingsDayData,
     getFarmSchedulePlantSorts,
 } from './scheduleData';
 
 export const dynamic = 'force-dynamic';
 
-async function FarmScheduleContent({ date }: { date: Date }) {
-    const { userId } = await auth(['farmer', 'admin']);
+function formatDateParam(date: Date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function parseDateParam(dateParam?: string) {
+    if (!dateParam) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return today;
+    }
+
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateParam);
+    if (!match) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return today;
+    }
+
+    const year = Number.parseInt(match[1], 10);
+    const monthIndex = Number.parseInt(match[2], 10) - 1;
+    const day = Number.parseInt(match[3], 10);
+    const date = new Date(year, monthIndex, day);
+    date.setHours(0, 0, 0, 0);
+
+    if (
+        Number.isNaN(date.getTime()) ||
+        date.getFullYear() !== year ||
+        date.getMonth() !== monthIndex ||
+        date.getDate() !== day
+    ) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return today;
+    }
+
+    return date;
+}
+
+async function getFarmAuth() {
+    try {
+        return await auth(['farmer', 'admin']);
+    } catch {
+        return null;
+    }
+}
+
+function FarmScheduleContent({ date, userId }: { date: Date; userId: string }) {
     const isToday = new Date().toDateString() === date.toDateString();
     const dateKey = date.toISOString();
+    const selectedDateKey = formatDateParam(date);
     const dayDataPromise = getFarmScheduleDayData(userId, dateKey, isToday);
+    const plantingsDayDataPromise = getFarmSchedulePlantingsDayData(
+        userId,
+        dateKey,
+        isToday,
+    );
+    const operationsDayDataPromise = getFarmScheduleOperationsDayData(
+        userId,
+        dateKey,
+        isToday,
+    );
     const operationsDataPromise = getFarmScheduleOperationsData();
     const plantSortsPromise = getFarmSchedulePlantSorts();
 
     return (
-        <div className="max-w-5xl mx-auto w-full space-y-4 px-2 py-4 sm:p-4">
-            <div className="space-y-2">
-                <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-1 sm:gap-2">
-                    <div className="justify-self-start">
-                        <HomeButton className="h-8 sm:h-10" />
-                    </div>
-                    <div className="min-w-0 justify-self-center">
-                        <ScheduleDateNavigation
-                            date={date}
-                            basePath="/schedule"
-                            compact
-                        />
-                    </div>
-                    <div className="min-w-0 justify-self-end">
-                        <Suspense fallback={<ScheduleDaySummarySkeleton />}>
-                            <ScheduleDaySummarySection
-                                dayDataPromise={dayDataPromise}
-                                operationsDataPromise={operationsDataPromise}
-                            />
-                        </Suspense>
-                    </div>
-                </div>
-                <div className="flex min-w-0 justify-end">
-                    <Suspense fallback={null}>
-                        <ScheduleLabelPrintSection
-                            dayDataPromise={dayDataPromise}
-                            operationsDataPromise={operationsDataPromise}
-                            plantSortsPromise={plantSortsPromise}
-                            date={date}
-                        />
-                    </Suspense>
-                </div>
-            </div>
+        <FarmScheduleNavigationFrame
+            selectedDateKey={selectedDateKey}
+            summarySlot={
+                <Suspense fallback={<ScheduleDaySummarySkeleton />}>
+                    <ScheduleDaySummarySection
+                        dayDataPromise={dayDataPromise}
+                        operationsDataPromise={operationsDataPromise}
+                    />
+                </Suspense>
+            }
+            labelPrintSlot={
+                <Suspense fallback={null}>
+                    <ScheduleLabelPrintSection
+                        dayDataPromise={dayDataPromise}
+                        operationsDataPromise={operationsDataPromise}
+                        plantSortsPromise={plantSortsPromise}
+                        date={date}
+                    />
+                </Suspense>
+            }
+        >
             <FarmScheduleDay
+                key={selectedDateKey}
                 dayDataPromise={dayDataPromise}
+                plantingsDayDataPromise={plantingsDayDataPromise}
+                operationsDayDataPromise={operationsDayDataPromise}
                 operationsDataPromise={operationsDataPromise}
                 plantSortsPromise={plantSortsPromise}
                 userId={userId}
             />
-        </div>
+        </FarmScheduleNavigationFrame>
     );
 }
 
@@ -74,23 +124,16 @@ export default async function FarmSchedulePage({
     searchParams: Promise<{ date?: string }>;
 }) {
     const { date: dateParam } = await searchParams;
-    const date = new Date();
-    if (dateParam) {
-        const [year, month, day] = dateParam.split('-').map(Number);
-        date.setFullYear(year, month - 1, day);
-    }
-    date.setHours(0, 0, 0, 0);
-
-    const authFarmer = auth.bind(null, ['farmer', 'admin']);
+    const date = parseDateParam(dateParam);
+    const authContext = await getFarmAuth();
 
     return (
-        <div className="min-h-[100dvh] w-full bg-muted">
-            <AuthProtectedSection auth={authFarmer}>
-                <FarmScheduleContent date={date} />
-            </AuthProtectedSection>
-            <SignedOut auth={authFarmer}>
+        <div className="min-h-[100dvh] w-full bg-background">
+            {authContext ? (
+                <FarmScheduleContent date={date} userId={authContext.userId} />
+            ) : (
                 <LoginDialog />
-            </SignedOut>
+            )}
         </div>
     );
 }
