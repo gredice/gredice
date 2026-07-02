@@ -23,6 +23,7 @@ export type OperationCancelTarget = {
 
 interface BulkCancelRaisedBedButtonProps {
     physicalId: string;
+    targetLabel?: string;
     fields: FieldCancelTarget[];
     operations: OperationCancelTarget[];
     onSubmit?: (formData: FormData) => unknown | Promise<unknown>;
@@ -70,14 +71,16 @@ export function buildOperationCancelFormData(
 
 export function BulkCancelRaisedBedButton({
     physicalId,
+    targetLabel,
     fields,
     operations,
     onSubmit,
 }: BulkCancelRaisedBedButtonProps) {
     const totalItems = fields.length + operations.length;
     const disabled = totalItems === 0;
-    const targetLabel =
-        physicalId === 'dan' ? 'za dan' : `za gredicu ${physicalId}`;
+    const targetText =
+        targetLabel ??
+        (physicalId === 'dan' ? 'za dan' : `za gredicu ${physicalId}`);
 
     async function handleSubmit(formData: FormData) {
         if (totalItems === 0) {
@@ -105,7 +108,7 @@ export function BulkCancelRaisedBedButton({
 
     return (
         <CancelRequestModal
-            label={`sve zadatke (${totalItems}) ${targetLabel}`}
+            label={`sve zadatke (${totalItems}) ${targetText}`}
             onSubmit={handleSubmit}
             hiddenFields={null}
             description={`Svi odabrani zadaci (${totalItems}) bit će otkazani.`}

@@ -19,7 +19,7 @@ test('prompts anonymous users before editing', async ({ mount, page }) => {
     await page.getByTitle('Predloži izmjenu').click();
 
     await expect(
-        page.getByText('Za slanje prijedloga trebaš biti prijavljen.'),
+        page.getByText('Za slanje prijedloga treba se prijaviti.'),
     ).toBeVisible();
 });
 

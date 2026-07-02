@@ -7,6 +7,7 @@ import { GameAnalyticsProvider } from '../../../packages/game/src/analytics/Game
 import { useCurrentGarden } from '../../../packages/game/src/hooks/useCurrentGarden';
 import { favoritesQueryKey } from '../../../packages/game/src/hooks/useFavorites';
 import { gardenOperationsQueryKey } from '../../../packages/game/src/hooks/useGardenOperations';
+import { operationDefinitionsQueryKey } from '../../../packages/game/src/hooks/useOperations';
 import { queryKeys as raisedBedAiHistoryQueryKeys } from '../../../packages/game/src/hooks/useRaisedBedAiHistory';
 import { queryKeys as raisedBedDiaryQueryKeys } from '../../../packages/game/src/hooks/useRaisedBedDiaryEntries';
 import { queryKeys as raisedBedFieldDiaryQueryKeys } from '../../../packages/game/src/hooks/useRaisedBedFieldDiaryEntries';
@@ -85,6 +86,10 @@ function createScenarioQueryClient(
     queryClient.setQueryData(['plants'], scenario.plants ?? allPlants);
     queryClient.setQueryData(['sorts'], scenario.sorts ?? allSorts);
     queryClient.setQueryData(['operations'], scenario.operations ?? []);
+    queryClient.setQueryData(
+        operationDefinitionsQueryKey.all,
+        scenario.operations ?? [],
+    );
     const operationHistoryItems = scenario.operationHistoryItems ?? [];
     const raisedBedOperationDiaryEntries =
         scenario.raisedBedOperationDiaryEntries ?? [];

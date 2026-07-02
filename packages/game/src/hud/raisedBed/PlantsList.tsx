@@ -15,6 +15,7 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { sortFavoritesFirst, useFavoriteIds } from '../../hooks/useFavorites';
+import type { OutletOfferData } from '../../hooks/useOutletOffers';
 import { usePlants } from '../../hooks/usePlants';
 import { KnownPages } from '../../knownPages';
 import { FavoriteToggleButton } from './FavoriteToggleButton';
@@ -61,6 +62,19 @@ function formatNeighborPlantNames(names: string[]) {
         : visibleNames.join(', ');
 }
 
+const outletCurrencyFormatter = new Intl.NumberFormat('hr-HR', {
+    style: 'currency',
+    currency: 'EUR',
+});
+
+function outletOfferBadgeLabel(outletOffers: OutletOfferData[]) {
+    if (outletOffers.length === 1) {
+        return `Outlet ${outletCurrencyFormatter.format(outletOffers[0].outletPrice)}`;
+    }
+
+    return `Outlet ${outletOffers.length} ponude`;
+}
+
 export function PlantRelationshipSignalChips({
     signal,
 }: {
@@ -101,10 +115,12 @@ export function PlantRelationshipSignalChips({
 export function PlantsList({
     neighborPlants = [],
     onChange,
+    outletOffersByPlantId,
     search,
 }: {
     neighborPlants?: NeighborPlantSummary[];
     onChange: (plant: PlantData) => void;
+    outletOffersByPlantId?: Map<number, OutletOfferData[]>;
     search: string;
 }) {
     const { track } = useGameAnalytics();
@@ -181,6 +197,7 @@ export function PlantsList({
                         <PlantListItemSkeleton key={index} />
                     ))}
                 {sortedPlants?.map((plant) => {
+                    const outletOffers = outletOffersByPlantId?.get(plant.id);
                     const relationshipSignal =
                         relationshipSignalsByPlantId.get(plant.id) ??
                         getPlantRelationshipSignal({
@@ -264,6 +281,11 @@ export function PlantsList({
                                 {plant.isRecommended && (
                                     <SeedTimeInformationBadge size="sm" />
                                 )}
+                                {outletOffers?.length ? (
+                                    <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700 dark:bg-green-900/50 dark:text-green-200">
+                                        {outletOfferBadgeLabel(outletOffers)}
+                                    </span>
+                                ) : null}
                                 <PlantRelationshipSignalChips
                                     signal={relationshipSignal}
                                 />

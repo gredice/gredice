@@ -40,15 +40,25 @@ export function RaisedBedDiaryRescheduleAction({
     const actionLabel =
         triggerLabel ?? (hasScheduledDate ? 'Prerasporedi' : 'Zakaži');
     const modalActionLabel = hasScheduledDate ? 'Prerasporedi' : 'Zakaži';
+    const triggerTitle =
+        typeof actionLabel === 'string' ? actionLabel : undefined;
+    const actionLabelContent =
+        typeof actionLabel === 'string' ? (
+            <span className="min-w-0 truncate">{actionLabel}</span>
+        ) : (
+            actionLabel
+        );
     const triggerButton = (
         <Button
             type="button"
             size="xs"
             variant="plain"
             disabled={Boolean(disabledReason)}
+            title={triggerTitle}
+            className="max-w-full shrink"
             startDecorator={<Calendar className="size-3.5 shrink-0" />}
         >
-            {actionLabel}
+            {actionLabelContent}
         </Button>
     );
 

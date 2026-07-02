@@ -11,7 +11,7 @@ import {
     useGardenOperations,
 } from '../../hooks/useGardenOperations';
 import { useLiveTime } from '../../hooks/useLiveTime';
-import { useOperations } from '../../hooks/useOperations';
+import { useOperationDefinitions } from '../../hooks/useOperations';
 import { useSorts } from '../../hooks/usePlantSorts';
 import { useRaisedBedAiHistory } from '../../hooks/useRaisedBedAiHistory';
 import {
@@ -87,7 +87,7 @@ export function RaisedBedOperationHistoryList({
 }) {
     const referenceDate = useLiveTime();
     const { data: currentGarden } = useCurrentGarden();
-    const { data: operationsData } = useOperations();
+    const { data: operationsData } = useOperationDefinitions();
     const shouldLoadAiHistory = Boolean(currentGarden?.id && raisedBedId);
     const { data: aiHistoryEntries } = useRaisedBedAiHistory(
         currentGarden?.id ?? 0,

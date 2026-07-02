@@ -44,7 +44,7 @@ import {
     useGardenOperations,
 } from '../hooks/useGardenOperations';
 import { useLiveTime } from '../hooks/useLiveTime';
-import { useOperations } from '../hooks/useOperations';
+import { useOperationDefinitions } from '../hooks/useOperations';
 import { useSorts } from '../hooks/usePlantSorts';
 import {
     type DiaryRescheduleTarget,
@@ -63,7 +63,7 @@ import { RaisedBedDiaryCancelAction } from './raisedBed/RaisedBedDiaryCancelActi
 import { RaisedBedDiaryRescheduleAction } from './raisedBed/RaisedBedDiaryRescheduleAction';
 
 type OperationData = NonNullable<
-    ReturnType<typeof useOperations>['data']
+    ReturnType<typeof useOperationDefinitions>['data']
 >[number];
 type PlantSortData = NonNullable<ReturnType<typeof useSorts>['data']>[number];
 type CurrentGardenData = NonNullable<
@@ -1327,7 +1327,9 @@ function OperationSchedule({
 }) {
     const scheduledDate = formatDate(operation.scheduledDate);
     const scheduleContent = scheduleAction ? (
-        <div className="min-w-0 max-w-full">{scheduleAction}</div>
+        <div className="min-w-0 max-w-full overflow-hidden">
+            {scheduleAction}
+        </div>
     ) : scheduledDate ? (
         <Row
             spacing={1}
@@ -1347,10 +1349,10 @@ function OperationSchedule({
     return (
         <Row
             spacing={0.5}
-            className="min-w-0 max-w-full flex-wrap items-center justify-end gap-y-0.5"
+            className="min-w-0 max-w-full flex-nowrap items-center justify-end overflow-hidden"
         >
             {scheduleContent}
-            {cancelAction}
+            {cancelAction && <div className="shrink-0">{cancelAction}</div>}
         </Row>
     );
 }
@@ -1614,7 +1616,7 @@ export function GardenOperationCard({
                         </Stack>
                         <Stack
                             spacing={0.25}
-                            className="max-w-[52%] shrink-0 items-end"
+                            className="min-w-0 max-w-[52%] shrink-0 items-end overflow-hidden"
                         >
                             <OperationStatusSummary
                                 operation={operation}
@@ -1833,7 +1835,7 @@ export function GardenOperationsHud() {
     const { track } = useGameAnalytics();
     const referenceDate = useLiveTime();
     const { data: currentGarden } = useCurrentGarden();
-    const { data: operationsData } = useOperations();
+    const { data: operationsData } = useOperationDefinitions();
     const { data: cart } = useShoppingCart();
     const [, setShoppingCartOpen] = useShoppingCartOpenParam();
     const pending = useGardenOperations({

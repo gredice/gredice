@@ -192,9 +192,9 @@ export const qualityHarvestSafetyCmsPage: SourceCmsPage = {
         {
             component: 'TextBlock',
             tagline: 'Model usluge',
-            header: 'Urod ostaje korisnikov urod',
+            header: 'Urod ostaje tvoj urod',
             description:
-                'Gredice pružaju uslugu planiranja, uzgoja, njege, berbe i dostave uroda naručitelju. U trenutnom modelu urod ne predstavljamo kao vlastiti gotov prehrambeni proizvod, nego kao svježe ubrano povrće i bilje koje korisnik preuzima i priprema za vlastitu upotrebu.',
+                'Gredice pružaju uslugu planiranja, uzgoja, njege, berbe i dostave tvojeg uroda. U trenutnom modelu urod ne predstavljamo kao vlastiti gotov prehrambeni proizvod, nego kao svježe ubrano povrće i bilje koje preuzimaš i pripremaš za vlastitu upotrebu.',
         },
         {
             component: 'Feature1',
@@ -231,7 +231,7 @@ export const qualityHarvestSafetyCmsPage: SourceCmsPage = {
                     iconName: 'traceability',
                     header: 'Sljedivost',
                     description:
-                        'Povezivanje korisnika, gredice, sezone, berbe i dostave kako bi se u slučaju pitanja moglo provjeriti što se dogodilo.',
+                        'Povezivanje računa, gredice, sezone, berbe i dostave kako bi se u slučaju pitanja moglo provjeriti što se dogodilo.',
                 },
                 {
                     iconName: 'deviation',
@@ -246,7 +246,7 @@ export const qualityHarvestSafetyCmsPage: SourceCmsPage = {
             tagline: 'Obvezna napomena',
             header: 'Svježi urod treba oprati i pripremiti prije konzumacije',
             description:
-                'Urod je svježe ubrano povrće i bilje. Prije konzumacije korisnik ga treba oprati i pripremiti na uobičajen higijenski način.',
+                'Urod je svježe ubrano povrće i bilje. Prije konzumacije treba ga oprati i pripremiti na uobičajen higijenski način.',
         },
         {
             component: 'MarkdownBlock',
@@ -261,24 +261,24 @@ export const qualityHarvestSafetyCmsPage: SourceCmsPage = {
                 'Najkraći odgovori na pitanja o načinu rada, higijeni i granici javnih tvrdnji.',
             features: [
                 {
-                    header: 'Komunicirate li formalnu HACCP certifikaciju?',
+                    header: 'Postoji li formalna HACCP certifikacija?',
                     description:
                         'Ne. Trenutno govorimo o internim postupcima temeljenima na dobroj praksi, sljedivosti, evidencijama, korektivnim radnjama i načelima HACCP-a.',
                 },
                 {
-                    header: 'Znači li to da ne pratite sigurnost uroda?',
+                    header: 'Znači li to da se sigurnost uroda ne prati?',
                     description:
                         'Ne. Pratimo rizike, čistoću, rukovanje, berbu, dostavu i prigovore kako bi se svaka sumnja mogla procijeniti i zapisati.',
                 },
                 {
                     header: 'Može li se urod jesti bez pranja?',
                     description:
-                        'Ne komuniciramo takvu tvrdnju. Urod je svježe ubrano povrće i bilje koje korisnik prije konzumacije treba oprati i pripremiti.',
+                        'Ne komuniciramo takvu tvrdnju. Urod je svježe ubrano povrće i bilje koje prije konzumacije treba oprati i pripremiti.',
                 },
                 {
                     header: 'Što radite ako postoji sumnja na problem?',
                     description:
-                        'Urod se zadržava ili izdvaja dok se situacija ne procijeni. Problem se zapisuje, provodi se korektivna radnja i po potrebi se korisniku daje jasna uputa.',
+                        'Urod se zadržava ili izdvaja dok se situacija ne procijeni. Problem se zapisuje, provodi se korektivna radnja i po potrebi šaljemo jasnu uputu.',
                 },
             ],
         },

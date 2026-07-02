@@ -52,11 +52,35 @@ async function addNewsFeedPaths({ baseUrl, sitemapPaths }) {
     );
 }
 
+async function addPublicGardenPaths({ baseUrl, sitemapPaths }) {
+    let response;
+    try {
+        response = await fetch(`${baseUrl}/api/gardens/public`);
+    } catch {
+        return;
+    }
+
+    if (!response.ok) {
+        return;
+    }
+
+    /** @type {{ items?: Array<{ id?: number }> }} */
+    const gardens = await response.json();
+    sitemapPaths.add('/vrtovi');
+    for (const garden of gardens.items ?? []) {
+        if (typeof garden.id !== 'number') {
+            continue;
+        }
+
+        sitemapPaths.add(`/vrtovi/${garden.id}`);
+    }
+}
+
 /** @type {import('next-sitemap').IConfig} */
 module.exports = {
     siteUrl: process.env.SITE_URL || 'https://www.gredice.com',
     generateRobotsTxt: true,
-    exclude: ['/trag/*'],
+    exclude: ['/trag/*', '/vrtovi', '/vrtovi/*'],
     robotsTxtOptions: {
         includeHost: false,
         policies: [
@@ -108,6 +132,7 @@ module.exports = {
         }
 
         await addNewsFeedPaths({ baseUrl, sitemapPaths });
+        await addPublicGardenPaths({ baseUrl, sitemapPaths });
 
         const transformedPaths = await Promise.all(
             Array.from(sitemapPaths).map((path) =>

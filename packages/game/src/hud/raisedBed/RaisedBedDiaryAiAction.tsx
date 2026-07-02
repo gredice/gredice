@@ -260,7 +260,7 @@ export function RaisedBedDiaryAiAction({
             <Stack spacing={2} className="items-end">
                 <ButtonGreen
                     size="sm"
-                    className="w-fit self-end px-3"
+                    className="w-fit self-end px-3 dark:from-green-700 dark:to-green-800 dark:text-white dark:hover:from-green-600 dark:hover:to-green-700 dark:hover:text-white"
                     onClick={(event) => {
                         event.stopPropagation();
                         handlePrimaryAction();

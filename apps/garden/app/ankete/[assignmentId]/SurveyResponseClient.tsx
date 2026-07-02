@@ -46,6 +46,7 @@ type SurveyRuntime = {
     questions: SurveyQuestion[];
     response: { id: string } | null;
     survey: {
+        key: string;
         title: string;
     };
     version: {
@@ -76,8 +77,31 @@ async function readJson<T>(response: Response) {
     return (await response.json()) as T;
 }
 
-function hasContactValue(value: ContactValue | undefined) {
-    if (!value) return false;
+function isLegacyDeliveryContactQuestion(
+    surveyKey: string,
+    question: SurveyQuestion,
+) {
+    return (
+        surveyKey === 'delivery_satisfaction' &&
+        question.type === 'contact_info' &&
+        question.key === 'contact_info'
+    );
+}
+
+function visibleIntroDescription(
+    description: string | null,
+    hidesLegacyContactQuestion: boolean,
+) {
+    if (!hidesLegacyContactQuestion) return description;
+    return description?.replace(', a kontakt podatke možeš preskočiti.', '.');
+}
+
+function isContactValue(value: AnswerState[string]): value is ContactValue {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function hasContactValue(value: AnswerState[string]) {
+    if (!isContactValue(value)) return false;
     return Boolean(
         value.firstName || value.lastName || value.phone || value.email,
     );
@@ -159,13 +183,19 @@ export function SurveyResponseClient({
         };
     }, [assignmentId]);
 
-    const questions = useMemo(
-        () =>
-            runtime?.questions
-                .slice()
-                .sort((left, right) => left.sortOrder - right.sortOrder) ?? [],
-        [runtime?.questions],
-    );
+    const questions = useMemo(() => {
+        if (!runtime) return [];
+        return runtime.questions
+            .filter(
+                (question) =>
+                    !isLegacyDeliveryContactQuestion(
+                        runtime.survey.key,
+                        question,
+                    ),
+            )
+            .slice()
+            .sort((left, right) => left.sortOrder - right.sortOrder);
+    }, [runtime]);
 
     function setAnswer(questionId: string, value: AnswerState[string]) {
         setAnswers((current) => ({ ...current, [questionId]: value }));
@@ -188,7 +218,7 @@ export function SurveyResponseClient({
                     questionKey: question.key,
                     value:
                         question.type === 'contact_info' &&
-                        !hasContactValue(answers[question.id] as ContactValue)
+                        !hasContactValue(answers[question.id])
                             ? null
                             : (answers[question.id] ?? null),
                 })),
@@ -278,6 +308,13 @@ export function SurveyResponseClient({
         );
     }
 
+    const introDescription = visibleIntroDescription(
+        runtime.version.introDescription,
+        runtime.questions.some((question) =>
+            isLegacyDeliveryContactQuestion(runtime.survey.key, question),
+        ),
+    );
+
     return (
         <Card className="mx-auto max-w-2xl bg-background">
             <CardHeader>
@@ -288,9 +325,9 @@ export function SurveyResponseClient({
                     <CardTitle>
                         {runtime.version.introTitle ?? runtime.version.title}
                     </CardTitle>
-                    {runtime.version.introDescription ? (
+                    {introDescription ? (
                         <Typography className="text-muted-foreground">
-                            {runtime.version.introDescription}
+                            {introDescription}
                         </Typography>
                     ) : null}
                 </Stack>
@@ -417,11 +454,7 @@ function QuestionBlock({
             question.settings.type === 'contact_info' ? (
                 <ContactFields
                     fields={question.settings.fields}
-                    value={
-                        typeof answer === 'object' && !Array.isArray(answer)
-                            ? (answer as ContactValue)
-                            : {}
-                    }
+                    value={isContactValue(answer) ? answer : {}}
                     onChange={setAnswer}
                 />
             ) : null}

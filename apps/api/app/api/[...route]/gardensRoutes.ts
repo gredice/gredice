@@ -39,6 +39,8 @@ import {
     getGardenStackForUpdate,
     getGardenVisitState,
     getOperationsPage,
+    getPublicGarden,
+    getPublicGardens,
     getRaisedBed,
     getRaisedBedAiHistoryEntries,
     getRaisedBedDiaryEntries,
@@ -73,12 +75,14 @@ import {
 } from '../../../lib/garden/appliedRaisedBedOperations';
 import { resolveGardenBlockPlacement } from '../../../lib/garden/blockPlacementService';
 import { deleteGardenBlock } from '../../../lib/garden/gardenBlocksService';
+import { serializeGardenOperationEvidence } from '../../../lib/garden/gardenOperationsSerialization';
 import { synchronizeGardenStacksAndRaisedBeds } from '../../../lib/garden/gardenStacksSyncService';
 import {
     generateGardenVisitSummaryFacts,
     hashGardenVisitSummaryFacts,
 } from '../../../lib/garden/gardenVisitSummaryService';
 import { isBlockPurchaseAvailableNow } from '../../../lib/garden/nightOnlyBlockPurchases';
+import { serializePublicRaisedBedField } from '../../../lib/garden/publicGardenSerialization';
 import { purchaseGardenBlock } from '../../../lib/garden/purchaseGardenBlockService';
 import {
     AI_REQUEST_QUOTAS,
@@ -104,6 +108,7 @@ import {
 import { queryBooleanSchema } from '../../../lib/http/queryBoolean';
 import { openAdventGiftBox } from '../../../lib/occasions/adventGiftBox';
 import { getPostHogClient } from '../../../lib/posthog-server';
+import { publicGardensFlag } from '../../flags';
 
 const DEFAULT_TIMEZONE = 'Europe/Paris';
 
@@ -335,6 +340,7 @@ function serializeGardenOperation(
         : isAssigned
           ? 'assigned'
           : operation.status;
+    const evidence = serializeGardenOperationEvidence(operation);
 
     const statusHistory = [
         {
@@ -400,8 +406,8 @@ function serializeGardenOperation(
         verifiedAt: operation.verifiedAt?.toISOString() ?? null,
         canceledAt: operation.canceledAt?.toISOString() ?? null,
         cancellationReason: operation.cancelReason ?? null,
-        imageUrls: operation.imageUrls ?? [],
-        completionNotes: operation.completionNotes ?? null,
+        imageUrls: evidence.imageUrls,
+        completionNotes: evidence.completionNotes,
         targetLabel:
             (operation.raisedBedFieldId
                 ? targetsByRaisedBedFieldId.get(operation.raisedBedFieldId)
@@ -457,6 +463,196 @@ function getAbandonReason(data: unknown) {
     return data.reason;
 }
 
+type GardenDetail = NonNullable<Awaited<ReturnType<typeof getGarden>>>;
+type GardenBlocks = Awaited<ReturnType<typeof getGardenBlocks>>;
+type AppliedGardenOperations = Awaited<
+    ReturnType<typeof getAppliedRaisedBedOperationsForGarden>
+>;
+
+function serializeGardenStacks(garden: GardenDetail, blocks: GardenBlocks) {
+    const blocksById = new Map(blocks.map((block) => [block.id, block]));
+
+    return garden.stacks.reduce(
+        (acc, stack) => {
+            if (!acc[stack.positionX]) {
+                acc[stack.positionX] = {};
+            }
+            acc[stack.positionX][stack.positionY] = stack.blocks
+                .map((blockId) => {
+                    const block = blocksById.get(blockId);
+                    if (!block) return null;
+
+                    return {
+                        id: blockId,
+                        name: block.name,
+                        rotation: block.rotation ?? 0,
+                        variant: block.variant,
+                    };
+                })
+                .filter(Boolean) as {
+                id: string;
+                name: string;
+                rotation?: number | null;
+                variant?: number | null;
+            }[];
+            return acc;
+        },
+        {} as Record<
+            string,
+            Record<
+                string,
+                {
+                    id: string;
+                    name: string;
+                    rotation?: number | null;
+                    variant?: number | null;
+                }[]
+            >
+        >,
+    );
+}
+
+function createGardenOperationTargetMaps(garden: GardenDetail) {
+    return {
+        targetsByRaisedBedId: new Map(
+            garden.raisedBeds.map((raisedBed) => [
+                raisedBed.id,
+                `Gredica: ${raisedBed.name}`,
+            ]),
+        ),
+        targetsByRaisedBedFieldId: new Map(
+            garden.raisedBeds.flatMap((raisedBed) =>
+                raisedBed.fields.map((field) => [
+                    field.id,
+                    `Polje ${field.positionIndex + 1} • ${raisedBed.name}`,
+                ]),
+            ),
+        ),
+    };
+}
+
+async function serializeGardenDetails(
+    garden: GardenDetail,
+    blocks: GardenBlocks,
+    operations: AppliedGardenOperations,
+    options: { publicView?: boolean } = {},
+) {
+    const blockNameById = new Map(
+        blocks.map((block) => [block.id, block.name] as const),
+    );
+    const raisedBedsById = new Map(
+        garden.raisedBeds.map((raisedBed) => [raisedBed.id, raisedBed]),
+    );
+    const abandonedRaisedBedAggregateIds = garden.raisedBeds
+        .filter((raisedBed) => isRaisedBedAbandoned(raisedBed.status))
+        .map((raisedBed) => raisedBed.id.toString());
+    const raisedBedAbandonEvents =
+        abandonedRaisedBedAggregateIds.length > 0
+            ? await getAllEvents(
+                  knownEventTypes.raisedBeds.abandon,
+                  abandonedRaisedBedAggregateIds,
+              )
+            : [];
+    const abandonReasonByRaisedBedId = raisedBedAbandonEvents.reduce(
+        (acc, event) => {
+            const raisedBedId = Number(event.aggregateId);
+            if (!Number.isInteger(raisedBedId)) {
+                return acc;
+            }
+
+            acc.set(raisedBedId, getAbandonReason(event.data));
+            return acc;
+        },
+        new Map<number, string | null>(),
+    );
+    const appliedOperationsByRaisedBedId = operations.reduce(
+        (acc, operation) => {
+            if (
+                !operation.raisedBedId ||
+                !isAppliedRaisedBedOperationStatus(operation.status)
+            ) {
+                return acc;
+            }
+
+            const raisedBed = raisedBedsById.get(operation.raisedBedId);
+            if (
+                !raisedBed ||
+                !isAppliedOperationCurrentForRaisedBedFields(
+                    operation,
+                    raisedBed.fields,
+                )
+            ) {
+                return acc;
+            }
+
+            const existing = acc.get(operation.raisedBedId) ?? [];
+            existing.push(serializeAppliedRaisedBedOperation(operation));
+            acc.set(operation.raisedBedId, existing);
+            return acc;
+        },
+        new Map<
+            number,
+            ReturnType<typeof serializeAppliedRaisedBedOperation>[]
+        >(),
+    );
+    const validityMap = calculateRaisedBedsValidity(
+        garden.raisedBeds,
+        garden.stacks,
+        blockNameById,
+    );
+
+    return {
+        id: garden.id,
+        name: garden.name,
+        isSandbox: garden.isSandbox,
+        isPublic: garden.isPublic,
+        backgroundPalette: garden.backgroundPalette,
+        farmId: garden.farmId,
+        latitude: garden.farm.latitude,
+        longitude: garden.farm.longitude,
+        stacks: serializeGardenStacks(garden, blocks),
+        raisedBeds: garden.raisedBeds.map((raisedBed) => ({
+            id: raisedBed.id,
+            name: raisedBed.name,
+            physicalId: raisedBed.physicalId,
+            blockId: raisedBed.blockId,
+            status: raisedBed.status,
+            weedState: raisedBed.weedState,
+            abandonReason: abandonReasonByRaisedBedId.get(raisedBed.id) ?? null,
+            orientation: raisedBed.orientation,
+            fields: options.publicView
+                ? raisedBed.fields.map(serializePublicRaisedBedField)
+                : raisedBed.fields,
+            appliedOperations:
+                appliedOperationsByRaisedBedId.get(raisedBed.id) ?? [],
+            createdAt: raisedBed.createdAt,
+            updatedAt: raisedBed.updatedAt,
+            isValid: validityMap.get(raisedBed.id) ?? false,
+        })),
+        createdAt: garden.createdAt,
+        updatedAt: garden.updatedAt,
+    };
+}
+
+async function getGardenQueuedTasks(garden: GardenDetail) {
+    const operationsPage = await getOperationsPage({
+        accountId: garden.accountId,
+        gardenId: garden.id,
+        includeCompleted: false,
+        limit: 50,
+    });
+    const { targetsByRaisedBedFieldId, targetsByRaisedBedId } =
+        createGardenOperationTargetMaps(garden);
+
+    return operationsPage.items.map((operation) =>
+        serializeGardenOperation(
+            operation,
+            targetsByRaisedBedFieldId,
+            targetsByRaisedBedId,
+        ),
+    );
+}
+
 const app = new Hono<{ Variables: AuthVariables }>()
     .get(
         '/',
@@ -472,6 +668,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     id: garden.id,
                     name: garden.name,
                     isSandbox: garden.isSandbox,
+                    isPublic: garden.isPublic,
                     backgroundPalette: garden.backgroundPalette,
                     createdAt: garden.createdAt,
                 })),
@@ -505,6 +702,34 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 isSandbox,
             });
             return context.json({ id: gardenId }, 201);
+        },
+    )
+    .get(
+        '/public',
+        describeRoute({
+            description: 'Get public gardens visible on the public website',
+            security: publicSecurity,
+        }),
+        async (context) => {
+            if (!(await publicGardensFlag())) {
+                return context.json(
+                    { error: 'Public gardens are disabled' },
+                    404,
+                );
+            }
+
+            const publicGardens = await getPublicGardens();
+
+            return context.json({
+                items: publicGardens.map((garden) => ({
+                    id: garden.id,
+                    name: garden.name,
+                    isSandbox: garden.isSandbox,
+                    backgroundPalette: garden.backgroundPalette,
+                    createdAt: garden.createdAt,
+                    updatedAt: garden.updatedAt,
+                })),
+            });
         },
     )
     .get(
@@ -975,147 +1200,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Garden not found' }, 404);
             }
 
-            const blocksById = new Map(
-                blocks.map((block) => [block.id, block]),
+            return context.json(
+                await serializeGardenDetails(garden, blocks, operations),
             );
-            const blockNameById = new Map(
-                blocks.map((block) => [block.id, block.name] as const),
-            );
-            const raisedBedsById = new Map(
-                garden.raisedBeds.map((raisedBed) => [raisedBed.id, raisedBed]),
-            );
-            const abandonedRaisedBedAggregateIds = garden.raisedBeds
-                .filter((raisedBed) => isRaisedBedAbandoned(raisedBed.status))
-                .map((raisedBed) => raisedBed.id.toString());
-            const raisedBedAbandonEvents =
-                abandonedRaisedBedAggregateIds.length > 0
-                    ? await getAllEvents(
-                          knownEventTypes.raisedBeds.abandon,
-                          abandonedRaisedBedAggregateIds,
-                      )
-                    : [];
-            const abandonReasonByRaisedBedId = raisedBedAbandonEvents.reduce(
-                (acc, event) => {
-                    const raisedBedId = Number(event.aggregateId);
-                    if (!Number.isInteger(raisedBedId)) {
-                        return acc;
-                    }
-
-                    acc.set(raisedBedId, getAbandonReason(event.data));
-                    return acc;
-                },
-                new Map<number, string | null>(),
-            );
-            const appliedOperationsByRaisedBedId = operations.reduce(
-                (acc, operation) => {
-                    if (
-                        !operation.raisedBedId ||
-                        !isAppliedRaisedBedOperationStatus(operation.status)
-                    ) {
-                        return acc;
-                    }
-
-                    const raisedBed = raisedBedsById.get(operation.raisedBedId);
-                    if (
-                        !raisedBed ||
-                        !isAppliedOperationCurrentForRaisedBedFields(
-                            operation,
-                            raisedBed.fields,
-                        )
-                    ) {
-                        return acc;
-                    }
-
-                    const existing = acc.get(operation.raisedBedId) ?? [];
-                    existing.push(
-                        serializeAppliedRaisedBedOperation(operation),
-                    );
-                    acc.set(operation.raisedBedId, existing);
-                    return acc;
-                },
-                new Map<
-                    number,
-                    ReturnType<typeof serializeAppliedRaisedBedOperation>[]
-                >(),
-            );
-
-            // Stacks: group by x then by y
-            const stacks = garden.stacks.reduce(
-                (acc, stack) => {
-                    if (!acc[stack.positionX]) {
-                        acc[stack.positionX] = {};
-                    }
-                    acc[stack.positionX][stack.positionY] = stack.blocks
-                        .map((blockId) => {
-                            const block = blocksById.get(blockId);
-                            if (!block) return null;
-
-                            return {
-                                id: blockId,
-                                name: block?.name ?? 'unknown',
-                                rotation: block?.rotation ?? 0,
-                                variant: block?.variant,
-                            };
-                        })
-                        .filter(Boolean) as {
-                        id: string;
-                        name: string;
-                        rotation?: number | null;
-                        variant?: number | null;
-                    }[];
-                    return acc;
-                },
-                {} as Record<
-                    string,
-                    Record<
-                        string,
-                        {
-                            id: string;
-                            name: string;
-                            rotation?: number | null;
-                            variant?: number | null;
-                        }[]
-                    >
-                >,
-            );
-
-            return context.json({
-                id: garden.id,
-                name: garden.name,
-                isSandbox: garden.isSandbox,
-                backgroundPalette: garden.backgroundPalette,
-                farmId: garden.farmId,
-                latitude: garden.farm.latitude,
-                longitude: garden.farm.longitude,
-                stacks,
-                raisedBeds: (() => {
-                    const validityMap = calculateRaisedBedsValidity(
-                        garden.raisedBeds,
-                        garden.stacks,
-                        blockNameById,
-                    );
-                    return garden.raisedBeds.map((raisedBed) => ({
-                        id: raisedBed.id,
-                        name: raisedBed.name,
-                        physicalId: raisedBed.physicalId,
-                        blockId: raisedBed.blockId,
-                        status: raisedBed.status,
-                        weedState: raisedBed.weedState,
-                        abandonReason:
-                            abandonReasonByRaisedBedId.get(raisedBed.id) ??
-                            null,
-                        orientation: raisedBed.orientation,
-                        fields: raisedBed.fields,
-                        appliedOperations:
-                            appliedOperationsByRaisedBedId.get(raisedBed.id) ??
-                            [],
-                        createdAt: raisedBed.createdAt,
-                        updatedAt: raisedBed.updatedAt,
-                        isValid: validityMap.get(raisedBed.id) ?? false,
-                    }));
-                })(),
-                createdAt: garden.createdAt,
-            });
         },
     )
     .get(
@@ -1137,69 +1224,35 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Invalid garden ID' }, 400);
             }
 
-            // TODO: Refactor to use a single function for public and non-public garden retrieval
-            const [garden, blockPlaceEventsRaw, blocks] = await Promise.all([
-                getGarden(gardenIdNumber),
-                getAllEvents(knownEventTypes.gardens.blockPlace, [gardenId]),
+            if (!(await publicGardensFlag())) {
+                return context.json({ error: 'Garden not found' }, 404);
+            }
+
+            const [garden, blocks] = await Promise.all([
+                getPublicGarden(gardenIdNumber),
                 getGardenBlocks(gardenIdNumber),
             ]);
             if (!garden) {
                 return context.json({ error: 'Garden not found' }, 404);
             }
 
-            // TODO: Check visibility
-
-            const blockPlaceEvents = blockPlaceEventsRaw.map((event) => ({
-                ...event,
-                data: event.data as { id: string; name: string },
-            }));
-            const blockNamesById = new Map(
-                blockPlaceEvents.map((event) => [
-                    event.data.id,
-                    event.data.name,
-                ]),
-            );
-            const blocksById = new Map(
-                blocks.map((block) => [block.id, block]),
-            );
-
-            // Stacks: group by x then by y
-            const stacks = garden.stacks.reduce(
-                (acc, stack) => {
-                    if (!acc[stack.positionX]) {
-                        acc[stack.positionX] = {};
-                    }
-                    acc[stack.positionX][stack.positionY] = stack.blocks.map(
-                        (blockId) => ({
-                            id: blockId,
-                            name: blockNamesById.get(blockId) ?? 'unknown',
-                            rotation: blocksById.get(blockId)?.rotation ?? 0,
-                            variant: blocksById.get(blockId)?.variant,
-                        }),
-                    );
-                    return acc;
-                },
-                {} as Record<
-                    string,
-                    Record<
-                        string,
-                        {
-                            id: string;
-                            name: string;
-                            rotation?: number | null;
-                            variant?: number | null;
-                        }[]
-                    >
-                >,
+            const [operations, queuedTasks] = await Promise.all([
+                getAppliedRaisedBedOperationsForGarden(
+                    garden.accountId,
+                    gardenIdNumber,
+                ),
+                getGardenQueuedTasks(garden),
+            ]);
+            const gardenDetails = await serializeGardenDetails(
+                garden,
+                blocks,
+                operations,
+                { publicView: true },
             );
 
             return context.json({
-                id: garden.id,
-                name: garden.name,
-                latitude: garden.farm.latitude,
-                longitude: garden.farm.longitude,
-                stacks,
-                createdAt: garden.createdAt,
+                ...gardenDetails,
+                queuedTasks,
             });
         },
     )
@@ -1220,15 +1273,24 @@ const app = new Hono<{ Variables: AuthVariables }>()
             z.object({
                 name: z.string().min(1).optional(),
                 backgroundPalette: z.enum(gameBackgroundPaletteKeys).optional(),
+                isPublic: z.boolean().optional(),
             }),
         ),
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId } = context.req.valid('param');
-            const { backgroundPalette, name } = context.req.valid('json');
+            const { backgroundPalette, isPublic, name } =
+                context.req.valid('json');
             const gardenIdNumber = parseInt(gardenId, 10);
             if (Number.isNaN(gardenIdNumber)) {
                 return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            if (isPublic !== undefined && !(await publicGardensFlag())) {
+                return context.json(
+                    { error: 'Public gardens are disabled' },
+                    403,
+                );
             }
 
             const { accountId } = context.get('authContext');
@@ -1238,11 +1300,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             // Update garden with provided fields
-            const updateData: {
-                backgroundPalette?: string;
-                id: number;
-                name?: string;
-            } = {
+            const updateData: Parameters<typeof updateGarden>[0] = {
                 id: gardenIdNumber,
             };
             if (name !== undefined) {
@@ -1250,6 +1308,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
             if (backgroundPalette !== undefined) {
                 updateData.backgroundPalette = backgroundPalette;
+            }
+            if (isPublic !== undefined) {
+                updateData.isPublic = isPublic;
             }
 
             await updateGarden(updateData);
@@ -2606,8 +2667,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Raised bed not found' }, 404);
             }
 
-            const diaryEntries =
-                await getRaisedBedDiaryEntries(raisedBedIdNumber);
+            const diaryEntries = await getRaisedBedDiaryEntries(
+                raisedBedIdNumber,
+                { includeUnverifiedOperationEvidence: false },
+            );
             return context.json(diaryEntries);
         },
     )
@@ -3528,6 +3591,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const diaryEntries = await getRaisedBedFieldDiaryEntries(
                 raisedBedIdNumber,
                 positionIndexNumber,
+                { includeUnverifiedOperationEvidence: false },
             );
             return context.json(diaryEntries);
         },

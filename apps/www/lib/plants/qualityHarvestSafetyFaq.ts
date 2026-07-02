@@ -48,26 +48,26 @@ export const qualityHarvestSafetyFaqEntries: FaqData[] = [
     faqEntry({
         id: -45101,
         slug: 'kvaliteta-haccp-certifikacija',
-        header: 'Komunicirate li formalnu HACCP certifikaciju?',
-        content: `Ne. Gredice u ovom modelu pružaju uslugu planiranja, uzgoja, njege, berbe i dostave korisnikova uroda. Trenutno javno komuniciramo interne postupke temeljene na dobroj praksi, sljedivosti, evidencijama, korektivnim radnjama i načelima HACCP-a. Više: [Kvaliteta i sigurnost uroda](${QUALITY_HARVEST_SAFETY_PATH}).`,
+        header: 'Postoji li formalna HACCP certifikacija?',
+        content: `Ne. Gredice u ovom modelu pružaju uslugu planiranja, uzgoja, njege, berbe i dostave tvojeg uroda. Trenutno javno komuniciramo interne postupke temeljene na dobroj praksi, sljedivosti, evidencijama, korektivnim radnjama i načelima HACCP-a. Više: [Kvaliteta i sigurnost uroda](${QUALITY_HARVEST_SAFETY_PATH}).`,
     }),
     faqEntry({
         id: -45102,
         slug: 'kvaliteta-pracenje-sigurnosti',
-        header: 'Znači li to da ne pratite sigurnost uroda?',
+        header: 'Znači li to da se sigurnost uroda ne prati?',
         content: `Ne. Pratimo rizike, čistoću, rukovanje, berbu, dostavu i prigovore kako bi se svaka sumnja mogla procijeniti i zapisati. Više: [Kvaliteta i sigurnost uroda](${QUALITY_HARVEST_SAFETY_PATH}).`,
     }),
     faqEntry({
         id: -45103,
         slug: 'kvaliteta-dokumentirani-postupci',
-        header: 'Koje postupke imate dokumentirane?',
+        header: 'Koji su postupci dokumentirani?',
         content: `Dokumentirani su postupci za osobnu higijenu, edukaciju, procjenu gredice, vodu, inpute, čišćenje alata i gajbi, berbu, sortiranje, dostavu, sljedivost, prigovore i godišnju reviziju. Više: [Kvaliteta i sigurnost uroda](${QUALITY_HARVEST_SAFETY_PATH}).`,
     }),
     faqEntry({
         id: -45104,
         slug: 'kvaliteta-pranje-uroda',
         header: 'Može li se urod jesti bez pranja?',
-        content: `Ne komuniciramo takvu tvrdnju. Urod je svježe ubrano povrće i bilje koje korisnik prije konzumacije treba oprati i pripremiti na uobičajen higijenski način. Više: [Kvaliteta i sigurnost uroda](${QUALITY_HARVEST_SAFETY_PATH}).`,
+        content: `Ne komuniciramo takvu tvrdnju. Urod je svježe ubrano povrće i bilje koje prije konzumacije treba oprati i pripremiti na uobičajen higijenski način. Više: [Kvaliteta i sigurnost uroda](${QUALITY_HARVEST_SAFETY_PATH}).`,
     }),
     faqEntry({
         id: -45105,

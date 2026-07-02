@@ -1,8 +1,26 @@
 import { expect, test } from '@playwright/experimental-ct-react';
+import type { Locator } from '@playwright/test';
 import {
     DenseGardenOperationsHudStory,
     GardenOperationsHudStory,
 } from './GardenOperationsHudStory';
+
+async function expectSameControlRow(
+    leftControl: Locator,
+    rightControl: Locator,
+) {
+    const leftBox = await leftControl.boundingBox();
+    const rightBox = await rightControl.boundingBox();
+
+    if (!leftBox || !rightBox) {
+        throw new Error('Expected both controls to be visible');
+    }
+
+    const leftCenterY = leftBox.y + leftBox.height / 2;
+    const rightCenterY = rightBox.y + rightBox.height / 2;
+
+    expect(Math.abs(leftCenterY - rightCenterY)).toBeLessThanOrEqual(8);
+}
 
 test.describe('Garden operations HUD', () => {
     test('shows operation items that are still in the shopping cart', async ({
@@ -64,6 +82,14 @@ test.describe('Garden operations HUD', () => {
             name: '22. svibnja 2026.',
         });
         await expect(operationDateButton).toBeVisible();
+        const reschedulableOperationCard = page
+            .locator('[data-garden-operation-card]')
+            .filter({ has: operationDateButton })
+            .first();
+        await expectSameControlRow(
+            operationDateButton,
+            reschedulableOperationCard.getByRole('button', { name: 'Otkaži' }),
+        );
         await expect(
             page.locator('[data-operation-media="plant"]').first(),
         ).toBeVisible();
@@ -98,6 +124,24 @@ test.describe('Garden operations HUD', () => {
         ).toBeVisible();
     });
 
+    test('shows internal operation labels in operation cards', async ({
+        mount,
+        page,
+    }) => {
+        await mount(<GardenOperationsHudStory />);
+
+        await page.getByTitle('Status radnji').click();
+        await page.getByRole('button', { name: 'Prikaži sve radnje' }).click();
+
+        const dialog = page
+            .getByRole('dialog')
+            .filter({ hasText: 'Povijest radnji' });
+        await expect(
+            dialog.getByText('Detaljan pregled gredice'),
+        ).toBeVisible();
+        await expect(dialog.getByText('Radnja #611')).toHaveCount(0);
+    });
+
     test('shows completed sowing tasks in operation history', async ({
         mount,
         page,
@@ -113,11 +157,14 @@ test.describe('Garden operations HUD', () => {
         const reschedulableHistoryCard = dialog
             .locator('[data-garden-operation-card]')
             .filter({ hasText: 'Zalijevanje u košari' });
-        await expect(
-            reschedulableHistoryCard.getByRole('button', {
-                name: '20. svibnja 2026.',
-            }),
-        ).toBeVisible();
+        const historyDateButton = reschedulableHistoryCard.getByRole('button', {
+            name: '20. svibnja 2026.',
+        });
+        await expect(historyDateButton).toBeVisible();
+        await expectSameControlRow(
+            historyDateButton,
+            reschedulableHistoryCard.getByRole('button', { name: 'Otkaži' }),
+        );
         await expect(
             reschedulableHistoryCard.getByRole('button', { name: 'Otkaži' }),
         ).toBeVisible();

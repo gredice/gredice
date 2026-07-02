@@ -127,7 +127,7 @@ export function RaisedBedFieldItemEmpty({
                         data-raised-bed-plant-picker-trigger="true"
                     >
                         {(isLoading || !cartPlantItem) && (
-                            <PlantingSeedIcon className="size-8 text-green-800" />
+                            <PlantingSeedIcon className="size-8 text-green-800 dark:text-lime-200" />
                         )}
                         {!isLoading && cartPlantItem && (
                             <>

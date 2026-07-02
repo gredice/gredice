@@ -15,6 +15,7 @@ import { parseAsString, useQueryState } from 'nuqs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
+import { useShoppingCart } from '../hooks/useShoppingCart';
 import {
     type TutorialChecklistGroup,
     type TutorialChecklistState,
@@ -28,26 +29,18 @@ import { KnownPages } from '../knownPages';
 import { GameModal } from '../shared-ui/game-modal';
 import { useSetRaisedBedCloseupParam } from '../useRaisedBedCloseup';
 import { useBackpackOpenParam, useShoppingCartOpenParam } from '../useUrlState';
-import { getRaisedBedBlockIds } from '../utils/raisedBedBlocks';
-import { isRaisedBedFieldOccupied } from '../utils/raisedBedFields';
 import { formatSunflowers } from '../utils/sunflowerPricing';
 import { HudCard } from './components/HudCard';
 import { RAISED_BED_ONBOARDING_OPEN_EVENT } from './RaisedBedOnboardingModal';
+import {
+    findFirstEmptyRaisedBedField,
+    waitForPlantPickerTrigger,
+} from './raisedBed/plantPickerNavigation';
 import styles from './TutorialChecklistHud.module.css';
 
 const tutorialTaskListIconSrc = '/assets/hud/tutorial-task-list.png';
 const completedChecklistDismissedStorageKey =
     'game:tutorial-checklist:completed-dismissed-v1';
-
-type CurrentGardenData = NonNullable<
-    ReturnType<typeof useCurrentGarden>['data']
->;
-
-type EmptyRaisedBedFieldTarget = {
-    positionIndex: number;
-    raisedBedId: number;
-    raisedBedName: string;
-};
 
 function RewardText({ task }: { task: TutorialChecklistTask }) {
     if (task.rewardLabel) {
@@ -333,87 +326,6 @@ function waitForChecklistClose() {
     });
 }
 
-function waitForPlantPickerTrigger({
-    positionIndex,
-    raisedBedId,
-}: EmptyRaisedBedFieldTarget) {
-    if (typeof document === 'undefined') {
-        return Promise.resolve(null);
-    }
-
-    const selector = [
-        'button[data-raised-bed-plant-picker-trigger="true"]',
-        `[data-raised-bed-id="${raisedBedId.toString()}"]`,
-        `[data-position-index="${positionIndex.toString()}"]`,
-    ].join('');
-
-    return new Promise<HTMLButtonElement | null>((resolve) => {
-        const deadline = Date.now() + 2500;
-
-        function check() {
-            const button = document.querySelector<HTMLButtonElement>(selector);
-            if (button) {
-                resolve(button);
-                return;
-            }
-
-            if (Date.now() >= deadline) {
-                resolve(null);
-                return;
-            }
-
-            window.requestAnimationFrame(check);
-        }
-
-        check();
-    });
-}
-
-function findFirstEmptyRaisedBedField(
-    garden: CurrentGardenData | null | undefined,
-): EmptyRaisedBedFieldTarget | null {
-    if (!garden || garden.isSandbox) {
-        return null;
-    }
-
-    for (const raisedBed of garden.raisedBeds) {
-        const raisedBedName = raisedBed.name?.trim();
-        if (
-            !raisedBedName ||
-            raisedBed.status !== 'active' ||
-            !raisedBed.isValid
-        ) {
-            continue;
-        }
-
-        const blockCount = Math.max(
-            getRaisedBedBlockIds(garden, raisedBed.id).length,
-            1,
-        );
-        const occupiedPositionIndices = new Set(
-            raisedBed.fields
-                .filter(isRaisedBedFieldOccupied)
-                .map((field) => field.positionIndex),
-        );
-
-        for (
-            let positionIndex = 0;
-            positionIndex < blockCount * 9;
-            positionIndex += 1
-        ) {
-            if (!occupiedPositionIndices.has(positionIndex)) {
-                return {
-                    positionIndex,
-                    raisedBedId: raisedBed.id,
-                    raisedBedName,
-                };
-            }
-        }
-    }
-
-    return null;
-}
-
 function openExternalTaskTarget(task: TutorialChecklistTask) {
     switch (task.actionTarget) {
         case 'contact':
@@ -443,13 +355,14 @@ function shouldCloseChecklistBeforeOpen(task: TutorialChecklistTask) {
 
 function useOpenTaskTarget(onChecklistOpenChange: (open: boolean) => void) {
     const { data: currentGarden } = useCurrentGarden();
+    const { data: cart } = useShoppingCart();
     const [, setBackpackOpen] = useBackpackOpenParam();
     const [, setCartOpen] = useShoppingCartOpenParam();
     const [, setOverviewTab] = useQueryState('pregled', parseAsString);
     const { mutate: setRaisedBedCloseupParam } = useSetRaisedBedCloseupParam();
 
     async function openFirstEmptyRaisedBedPlantPicker() {
-        const target = findFirstEmptyRaisedBedField(currentGarden);
+        const target = findFirstEmptyRaisedBedField(currentGarden, cart?.items);
         if (!target) {
             return false;
         }

@@ -13,7 +13,7 @@ import { cx } from '@gredice/ui/utils';
 import { type ReactNode, useEffect, useMemo } from 'react';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useGardenOperations } from '../../hooks/useGardenOperations';
-import { useOperations } from '../../hooks/useOperations';
+import { useOperationDefinitions } from '../../hooks/useOperations';
 import { useRaisedBedAiHistory } from '../../hooks/useRaisedBedAiHistory';
 import { GameModal } from '../../shared-ui/game-modal';
 import { sortOperationTasksNewestFirst } from '../gardenOperationOrdering';
@@ -117,7 +117,7 @@ export function RaisedBedPhotosModal({
     className,
 }: RaisedBedPhotosModalProps) {
     const { data: currentGarden } = useCurrentGarden();
-    const { data: operationsData } = useOperations();
+    const { data: operationsData } = useOperationDefinitions();
     const history = useGardenOperations({
         includeCompleted: true,
         pageSize: PHOTO_PAGE_SIZE,

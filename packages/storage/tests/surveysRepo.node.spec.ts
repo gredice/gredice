@@ -80,7 +80,7 @@ async function createPublishedSurvey() {
     return { surveyId, versionId };
 }
 
-test('delivery satisfaction seed is idempotent and preserves Typeform question contract', async () => {
+test('delivery satisfaction seed is idempotent and skips redundant contact questions', async () => {
     createTestDb();
 
     const first = await seedDeliverySatisfactionSurveyDefinition({
@@ -131,12 +131,6 @@ test('delivery satisfaction seed is idempotent and preserves Typeform question c
                 required: false,
                 sortOrder: 4,
                 type: 'long_text',
-            },
-            {
-                key: 'contact_info',
-                required: false,
-                sortOrder: 5,
-                type: 'contact_info',
             },
         ],
     );

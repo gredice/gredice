@@ -27,6 +27,7 @@ import type {
     OperationAssignPayload,
     OperationCancelPayload,
     OperationCompletePayload,
+    OperationCompletionEvidenceUpdatePayload,
     OperationFailPayload,
     OperationSchedulePayload,
     OperationVerifyPayload,
@@ -358,6 +359,15 @@ export const knownEvents = {
         }),
         completedV1: (aggregateId: string, data: OperationCompletePayload) => ({
             type: knownEventTypes.operations.complete,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        completionEvidenceUpdatedV1: (
+            aggregateId: string,
+            data: OperationCompletionEvidenceUpdatePayload,
+        ) => ({
+            type: knownEventTypes.operations.completionEvidenceUpdate,
             version: 1,
             aggregateId,
             data,

@@ -1,6 +1,10 @@
 import * as ReactQuery from '@tanstack/react-query';
 import { type PropsWithChildren, useMemo } from 'react';
 import { RaisedBedDiary } from '../../../packages/game/src/hud/raisedBed/RaisedBedDiary';
+import {
+    createGameState,
+    GameStateContext,
+} from '../../../packages/game/src/useGameState';
 import { Card, CardOverflow } from '../../../packages/ui/src/Card';
 import { buildOperation } from './raisedBedFieldHudScenarios';
 
@@ -143,10 +147,22 @@ function createRaisedBedDiaryQueryClient() {
 
 function RaisedBedDiaryTestProviders({ children }: PropsWithChildren) {
     const queryClient = useMemo(() => createRaisedBedDiaryQueryClient(), []);
+    const gameStore = useMemo(
+        () =>
+            createGameState({
+                appBaseUrl: 'http://localhost',
+                freezeTime: null,
+                isMock: false,
+                winterMode: 'summer',
+            }),
+        [],
+    );
 
     return (
         <ReactQuery.QueryClientProvider client={queryClient}>
-            {children}
+            <GameStateContext.Provider value={gameStore}>
+                {children}
+            </GameStateContext.Provider>
         </ReactQuery.QueryClientProvider>
     );
 }

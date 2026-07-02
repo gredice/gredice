@@ -23,6 +23,8 @@ import {
     getGardenStack,
     getGardenStacks,
     getGardens,
+    getPublicGarden,
+    getPublicGardens,
     getRaisedBedFieldsWithEvents,
     getRaisedBedFieldsWithEventsForBeds,
     getRaisedBedMetadataByIds,
@@ -134,6 +136,7 @@ test('getAccountGardensMetadata returns account gardens without raised beds', as
     assert.strictEqual(garden.accountId, accountId);
     assert.strictEqual(garden.isDeleted, false);
     assert.strictEqual(typeof garden.isSandbox, 'boolean');
+    assert.strictEqual(typeof garden.isPublic, 'boolean');
     assert.strictEqual(typeof garden.backgroundPalette, 'string');
     assert.ok(garden.createdAt instanceof Date);
     assert.strictEqual(Object.hasOwn(garden, 'raisedBeds'), false);
@@ -145,6 +148,38 @@ test('getAccountGardensMetadata returns account gardens without raised beds', as
         gardens.some((g) => g.accountId !== accountId),
         false,
     );
+});
+
+test('gardens are private by default and public helpers only return public gardens', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const privateGardenId = await createTestGarden({
+        name: 'Private Garden',
+        accountId,
+        farmId,
+    });
+    const publicGardenId = await createTestGarden({
+        name: 'Public Garden',
+        accountId,
+        farmId,
+    });
+
+    const privateGarden = await getGarden(privateGardenId);
+    assert.ok(privateGarden);
+    assert.strictEqual(privateGarden.isPublic, false);
+
+    await updateGarden({ id: publicGardenId, isPublic: true });
+
+    const publicGardens = await getPublicGardens();
+    assert.deepStrictEqual(
+        publicGardens.map((garden) => garden.id),
+        [publicGardenId],
+    );
+    assert.strictEqual(await getPublicGarden(privateGardenId), null);
+    const publicGarden = await getPublicGarden(publicGardenId);
+    assert.ok(publicGarden);
+    assert.strictEqual(publicGarden.name, 'Public Garden');
 });
 
 test('countRaisedBedsByAccount counts active raised beds for account quota', async () => {

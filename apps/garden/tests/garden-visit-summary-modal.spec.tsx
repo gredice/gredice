@@ -6,6 +6,8 @@ import {
     VisitSummaryOpeningFlowFixture,
 } from './GardenVisitSummaryModalStory';
 
+const MOBILE_VIEWPORT = { width: 390, height: 844 };
+
 async function fulfillJson(route: Route, body: unknown, status = 200) {
     await route.fulfill({
         body: JSON.stringify(body),
@@ -14,8 +16,16 @@ async function fulfillJson(route: Route, body: unknown, status = 200) {
     });
 }
 
-async function mockOpeningFlowMutations(page: Page) {
+async function mockOpeningFlowMutations(
+    page: Page,
+    {
+        seenResponseReady,
+    }: {
+        seenResponseReady?: Promise<void>;
+    } = {},
+) {
     const seenRequests: unknown[] = [];
+    const seenResponses: unknown[] = [];
     const claimRequests: string[] = [];
 
     await page.route('**/api/**', async (route) => {
@@ -52,6 +62,7 @@ async function mockOpeningFlowMutations(page: Page) {
         ) {
             const body = request.postDataJSON();
             seenRequests.push(body);
+            await seenResponseReady;
             await fulfillJson(route, {
                 state: {
                     id: 1,
@@ -63,6 +74,7 @@ async function mockOpeningFlowMutations(page: Page) {
                     lastSummaryFactsHash: body.factsHash ?? null,
                 },
             });
+            seenResponses.push(body);
             return;
         }
 
@@ -117,7 +129,7 @@ async function mockOpeningFlowMutations(page: Page) {
         );
     });
 
-    return { claimRequests, seenRequests };
+    return { claimRequests, seenRequests, seenResponses };
 }
 
 test('garden visit summary modal renders facts and closes cleanly', async ({
@@ -242,6 +254,41 @@ test('opening flow shows the visit summary when there is no daily reward', async
         .toEqual([{ factsHash: 'summary-fixture-hash' }]);
 });
 
+test('opening flow advances before visit summary seen request finishes', async ({
+    mount,
+    page,
+}) => {
+    let releaseSeenResponse: () => void = () => undefined;
+    const seenResponseReady = new Promise<void>((resolve) => {
+        releaseSeenResponse = resolve;
+    });
+    const recorded = await mockOpeningFlowMutations(page, {
+        seenResponseReady,
+    });
+
+    await mount(<VisitSummaryOpeningFlowFixture />);
+
+    const dialog = page.getByRole('dialog', { name: 'Od zadnjeg posjeta' });
+    await expect(dialog).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: /Vrt je življi/u }),
+    ).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Kreni u obilazak' }).click();
+
+    await expect(dialog).toHaveCount(0);
+    await expect(
+        page.getByRole('button', { name: /Vrt je življi/u }),
+    ).toBeVisible();
+    await expect
+        .poll(() => recorded.seenRequests)
+        .toEqual([{ factsHash: 'summary-fixture-hash' }]);
+    await expect.poll(() => recorded.seenResponses.length).toBe(0);
+
+    releaseSeenResponse();
+    await expect.poll(() => recorded.seenResponses.length).toBe(1);
+});
+
 test('opening flow skips no-fact summaries after advancing the visit marker', async ({
     mount,
     page,
@@ -286,4 +333,50 @@ test('garden visit summary modal keeps long copy readable on mobile', async ({
     expect(
         Math.max(overflow.bodyScrollWidth, overflow.documentScrollWidth),
     ).toBeLessThanOrEqual(overflow.clientWidth + 1);
+});
+
+test('garden visit summary mobile drawer dismisses via swipe down', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(MOBILE_VIEWPORT);
+
+    await mount(<VisitSummaryModalFixture />);
+
+    const dialog = page.getByRole('dialog', { name: 'Od zadnjeg posjeta' });
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toHaveAttribute('data-vaul-drawer', '');
+    await page.waitForTimeout(700);
+
+    const dialogBox = await dialog.boundingBox();
+    if (!dialogBox) {
+        throw new Error(
+            'Expected visit summary drawer to have a bounding box.',
+        );
+    }
+
+    const cdp = await page.context().newCDPSession(page);
+    const startX = dialogBox.x + dialogBox.width / 2;
+    const startY = dialogBox.y + 16;
+    const endY = MOBILE_VIEWPORT.height + 200;
+    await cdp.send('Input.dispatchTouchEvent', {
+        type: 'touchStart',
+        touchPoints: [{ x: startX, y: startY }],
+    });
+    const steps = 10;
+    for (let i = 1; i <= steps; i += 1) {
+        await cdp.send('Input.dispatchTouchEvent', {
+            type: 'touchMove',
+            touchPoints: [
+                { x: startX, y: startY + ((endY - startY) * i) / steps },
+            ],
+        });
+    }
+    await cdp.send('Input.dispatchTouchEvent', {
+        type: 'touchEnd',
+        touchPoints: [],
+    });
+    await cdp.detach();
+
+    await expect(dialog).toBeHidden();
 });

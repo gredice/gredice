@@ -1562,7 +1562,7 @@ export async function seedDeliverySatisfactionSurveyDefinition({
         category: 'delivery',
         introTitle: 'Anketa zadovoljstva',
         introDescription:
-            'Anketa je o zadovoljstvu dostavom povrća iz digitalnog vrta. Odgovori su povezani s dostavnim razdobljem kako bismo mogli bolje razumjeti povratnu informaciju, a kontakt podatke možeš preskočiti.',
+            'Anketa je o zadovoljstvu dostavom povrća iz digitalnog vrta. Odgovori su povezani s dostavnim razdobljem kako bismo mogli bolje razumjeti povratnu informaciju.',
         thankYouTitle: 'Hvala ti na odgovoru!',
         thankYouDescription:
             'Tvoj odgovor pomaže da sljedeća dostava bude još bolja.',
@@ -1633,18 +1633,6 @@ export async function seedDeliverySatisfactionSurveyDefinition({
                 settings: {
                     type: 'long_text',
                     maxLength: 2000,
-                },
-            },
-            {
-                key: 'contact_info',
-                title: 'Unesi svoje kontakt podatke ako želiš da te kontaktiramo ukoliko budemo imali pitanja.',
-                description: '(neobavezno - možeš preskočiti kontakt podatke)',
-                type: 'contact_info',
-                required: false,
-                settings: {
-                    type: 'contact_info',
-                    fields: ['first_name', 'last_name', 'phone', 'email'],
-                    phoneDefaultCountry: 'HR',
                 },
             },
         ],

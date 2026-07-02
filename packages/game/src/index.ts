@@ -83,7 +83,11 @@ export {
 } from './viewers/PlantViewer';
 export type {
     PublicGardenBlock,
+    PublicGardenDetail,
     PublicGardenStack,
     PublicGardenViewerProps,
 } from './viewers/PublicGardenViewer';
-export { PublicGardenViewer } from './viewers/PublicGardenViewer';
+export {
+    PublicGardenViewer,
+    publicGardenStacksFromResponse,
+} from './viewers/PublicGardenViewer';
