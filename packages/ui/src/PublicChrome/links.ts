@@ -9,6 +9,7 @@ export const PublicPagePaths = {
     Blocks: '/blokovi',
     Sunflowers: '/suncokreti',
     RaisedBeds: '/podignuta-gredica',
+    PublicGardens: '/vrtovi',
     Sowing: '/sjetva',
     Operations: '/radnje',
     FAQ: '/cesta-pitanja',

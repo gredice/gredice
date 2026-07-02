@@ -3,6 +3,7 @@ import { PageHeader } from '@gredice/ui/PageHeader';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
 import { KnownPages } from '../../src/KnownPages';
 import { getPublicGardensForWww } from './publicGardenData';
@@ -25,6 +26,10 @@ export const metadata: Metadata = {
     },
 };
 
+function gardenOgImageUrl(gardenId: number) {
+    return `${KnownPages.GardenApp}${KnownPages.PublicGarden(gardenId)}/opengraph-image`;
+}
+
 export default async function PublicGardensPage() {
     const gardens = await getPublicGardensForWww();
 
@@ -38,9 +43,27 @@ export default async function PublicGardensPage() {
             {gardens.items.length > 0 ? (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {gardens.items.map((garden) => (
-                        <Card key={garden.id} className="h-full rounded-md">
+                        <Card
+                            key={garden.id}
+                            className="h-full overflow-hidden rounded-md"
+                        >
                             <CardContent noHeader>
                                 <Stack spacing={3}>
+                                    <Link
+                                        href={KnownPages.PublicGarden(
+                                            garden.id,
+                                        )}
+                                        className="block overflow-hidden rounded-sm bg-muted"
+                                    >
+                                        <Image
+                                            src={gardenOgImageUrl(garden.id)}
+                                            alt={`Javni prikaz vrta ${garden.name}`}
+                                            width={1200}
+                                            height={630}
+                                            sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                                            className="aspect-[1200/630] w-full object-cover transition-transform duration-300 hover:scale-[1.02]"
+                                        />
+                                    </Link>
                                     <Typography level="h3">
                                         <Link
                                             href={KnownPages.PublicGarden(

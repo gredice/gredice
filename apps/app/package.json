@@ -33,7 +33,6 @@
         "@vvo/tzdb": "6.198.0",
         "@xyflow/react": "12.11.1",
         "drizzle-orm": "0.45.2",
-        "flags": "4.2.0",
         "next": "16.2.9",
         "next-themes": "0.4.6",
         "pg": "8.22.0",

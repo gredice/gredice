@@ -128,6 +128,13 @@ function sectionsData(linkMode: PublicChromeLinkMode): SectionData[] {
                             ),
                         },
                         {
+                            label: 'Vrtovi',
+                            href: publicChromeHref(
+                                PublicPagePaths.PublicGardens,
+                                linkMode,
+                            ),
+                        },
+                        {
                             label: 'Biljke',
                             href: publicChromeHref(
                                 PublicPagePaths.Plants,

@@ -11,6 +11,9 @@ export const dynamic = 'force-dynamic';
 export const contentType = 'image/png';
 export const maxDuration = 10;
 
+const gardenOgImageCacheControl =
+    'public, max-age=86400, s-maxage=86400, stale-while-revalidate=86400';
+
 export default async function GardenOgImage({
     params,
 }: {
@@ -108,6 +111,9 @@ export default async function GardenOgImage({
         {
             width: 1200,
             height: 630,
+            headers: {
+                'Cache-Control': gardenOgImageCacheControl,
+            },
         },
     );
 }

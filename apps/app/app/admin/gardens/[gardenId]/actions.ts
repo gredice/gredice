@@ -4,7 +4,6 @@ import { getGarden, updateGarden } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
 import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
-import { publicGardensFlag } from '../../../flags';
 
 export async function updateGardenVisibilityAction({
     gardenId,
@@ -14,13 +13,6 @@ export async function updateGardenVisibilityAction({
     isPublic: boolean;
 }) {
     await auth(['admin']);
-
-    if (!(await publicGardensFlag())) {
-        return {
-            success: false,
-            message: 'Public gardens feature flag is disabled.',
-        };
-    }
 
     const garden = await getGarden(gardenId);
     if (!garden) {
