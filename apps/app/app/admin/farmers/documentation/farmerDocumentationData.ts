@@ -8,12 +8,17 @@ import {
 import {
     type EntityStandardized,
     entityRevisions,
+    getAllOperationPrices,
     getAttributeDefinitions,
     getEntitiesFormatted,
+    getFarms,
     type SelectEntityRevision,
+    type SelectFarm,
+    type SelectOperationPrice,
     storage,
 } from '@gredice/storage';
 import { and, desc, gte, inArray } from 'drizzle-orm';
+import { isMissingPayoutSchemaError } from '../payoutSchemaStatus';
 
 export type FarmerDocumentationChangeType = 'insert' | 'replace' | 'discard';
 export type FarmerDocumentationEntityTypeName =
@@ -75,6 +80,31 @@ export type FarmerDocumentationDiscard = {
     revisionActions: string[];
 };
 
+export type FarmerDocumentationPayoutPriceRow = {
+    code: string;
+    label: string;
+    sublabel: string | null;
+    userFacingPriceLabel: string;
+    durationLabel: string;
+    farmerPriceLabel: string;
+    farmerPricePerMinuteLabel: string;
+    hasFarmerPrice: boolean;
+};
+
+export type FarmerDocumentationPayoutPriceFarm = {
+    farmId: number;
+    farmName: string;
+    rows: FarmerDocumentationPayoutPriceRow[];
+};
+
+export type FarmerDocumentationPayoutPrices = {
+    schemaAvailable: boolean;
+    farms: FarmerDocumentationPayoutPriceFarm[];
+    totalRows: number;
+    configuredRows: number;
+    missingRows: number;
+};
+
 export type FarmerDocumentationPackage = {
     since: Date | null;
     generatedAt: Date;
@@ -88,6 +118,7 @@ export type FarmerDocumentationPackage = {
     discardedOperations: FarmerDocumentationDiscard[];
     discardedPlants: FarmerDocumentationDiscard[];
     discardedPlantSorts: FarmerDocumentationDiscard[];
+    payoutPrices: FarmerDocumentationPayoutPrices;
 };
 
 export type FarmerDocumentationRevision = Pick<
@@ -207,6 +238,32 @@ const calendarDetails = [
     { key: 'sowing', title: 'Sjetva na otvorenom' },
     { key: 'planting', title: 'Presađivanje' },
     { key: 'harvest', title: 'Berba' },
+];
+
+const payoutPriceSyntheticRows: Array<{
+    code: string;
+    entityTypeName: string;
+    entityId: null;
+    label: string;
+    sublabel: string;
+    userFacingPriceNote: string;
+}> = [
+    {
+        code: 'SOW-DIRECT',
+        entityTypeName: 'sowing',
+        entityId: null,
+        label: 'Sijanje (direktno)',
+        sublabel: 'sowing',
+        userFacingPriceNote: 'prema cijeni biljke',
+    },
+    {
+        code: 'SOW-GREENHOUSE',
+        entityTypeName: 'sowingGreenhouse',
+        entityId: null,
+        label: 'Sijanje (staklenički rasad)',
+        sublabel: 'sowingGreenhouse',
+        userFacingPriceNote: 'prema cijeni biljke',
+    },
 ];
 
 export function getFarmerDocumentationCode(
@@ -353,6 +410,8 @@ export async function getFarmerDocumentationPackage({
         operationAttributeDefinitions,
         plantAttributeDefinitions,
         plantSortAttributeDefinitions,
+        farms,
+        operationPrices,
     ] = await Promise.all([
         getEntitiesFormatted<EntityStandardized>('operation').catch(
             (): EntityStandardized[] => [],
@@ -367,6 +426,8 @@ export async function getFarmerDocumentationPackage({
         getAttributeDefinitions('operation').catch(() => []),
         getAttributeDefinitions('plant').catch(() => []),
         getAttributeDefinitions('plantSort').catch(() => []),
+        getFarms(),
+        getOperationPricesForDocumentation(),
     ]);
 
     return buildFarmerDocumentationPackage({
@@ -386,6 +447,9 @@ export async function getFarmerDocumentationPackage({
         plantSortPlantAttributeDefinitionIds:
             plantSortPlantAttributeDefinitionIds(plantSortAttributeDefinitions),
         generatedAt: new Date(),
+        farms,
+        operationPrices: operationPrices.prices,
+        operationPricesSchemaAvailable: operationPrices.schemaAvailable,
         since,
     });
 }
@@ -393,7 +457,10 @@ export async function getFarmerDocumentationPackage({
 export function buildFarmerDocumentationPackage({
     generatedAt,
     labelAttributeDefinitionIds,
+    farms = [],
     operations,
+    operationPrices = [],
+    operationPricesSchemaAvailable = true,
     plants,
     plantSorts,
     plantSortPlantAttributeDefinitionIds,
@@ -405,7 +472,10 @@ export function buildFarmerDocumentationPackage({
         FarmerDocumentationEntityTypeName,
         ReadonlySet<number>
     >;
+    farms?: SelectFarm[];
     operations: EntityStandardized[];
+    operationPrices?: SelectOperationPrice[];
+    operationPricesSchemaAvailable?: boolean;
     plants: EntityStandardized[];
     plantSorts: EntityStandardized[];
     plantSortPlantAttributeDefinitionIds: ReadonlySet<number>;
@@ -511,7 +581,210 @@ export function buildFarmerDocumentationPackage({
             labelAttributeDefinitionIds: labelAttributeDefinitionIds.plantSort,
             revisionsByEntityKey,
         }),
+        payoutPrices: buildPayoutPriceDocumentation({
+            farms,
+            operations: sortedOperations,
+            operationPrices,
+            plants: sortedPlants,
+            schemaAvailable: operationPricesSchemaAvailable,
+        }),
     };
+}
+
+async function getOperationPricesForDocumentation(): Promise<{
+    prices: SelectOperationPrice[];
+    schemaAvailable: boolean;
+}> {
+    try {
+        return {
+            prices: await getAllOperationPrices(),
+            schemaAvailable: true,
+        };
+    } catch (error) {
+        if (!isMissingPayoutSchemaError(error)) {
+            throw error;
+        }
+
+        console.warn(
+            'Operation price tables are not available for farmer documentation.',
+        );
+        return {
+            prices: [],
+            schemaAvailable: false,
+        };
+    }
+}
+
+function buildPayoutPriceDocumentation({
+    farms,
+    operations,
+    operationPrices,
+    plants,
+    schemaAvailable,
+}: {
+    farms: SelectFarm[];
+    operations: EntityStandardized[];
+    operationPrices: SelectOperationPrice[];
+    plants: EntityStandardized[];
+    schemaAvailable: boolean;
+}): FarmerDocumentationPayoutPrices {
+    if (!schemaAvailable) {
+        return {
+            schemaAvailable: false,
+            farms: [],
+            totalRows: 0,
+            configuredRows: 0,
+            missingRows: 0,
+        };
+    }
+
+    const operationPriceByKey = new Map(
+        operationPrices.map((price) => [
+            operationPriceKey(
+                price.farmId,
+                price.entityTypeName,
+                price.entityId,
+            ),
+            price,
+        ]),
+    );
+    const plantPriceRange = plantPriceRangeLabel(plants);
+    const payoutPriceFarms = farms.map((farm) => {
+        const syntheticRows = payoutPriceSyntheticRows.map((row) =>
+            syntheticPayoutPriceRow({
+                plantPriceRange,
+                price: operationPriceByKey.get(
+                    operationPriceKey(
+                        farm.id,
+                        row.entityTypeName,
+                        row.entityId,
+                    ),
+                ),
+                row,
+            }),
+        );
+        const operationRows = operations.map((operation) =>
+            operationPayoutPriceRow({
+                operation,
+                price: operationPriceByKey.get(
+                    operationPriceKey(farm.id, 'operation', operation.id),
+                ),
+            }),
+        );
+
+        return {
+            farmId: farm.id,
+            farmName: farm.name,
+            rows: [...syntheticRows, ...operationRows],
+        };
+    });
+    const allRows = payoutPriceFarms.flatMap((farm) => farm.rows);
+    const configuredRows = allRows.filter((row) => row.hasFarmerPrice).length;
+
+    return {
+        schemaAvailable: true,
+        farms: payoutPriceFarms,
+        totalRows: allRows.length,
+        configuredRows,
+        missingRows: allRows.length - configuredRows,
+    };
+}
+
+function syntheticPayoutPriceRow({
+    plantPriceRange,
+    price,
+    row,
+}: {
+    plantPriceRange: string | null;
+    price: SelectOperationPrice | undefined;
+    row: (typeof payoutPriceSyntheticRows)[number];
+}): FarmerDocumentationPayoutPriceRow {
+    const farmerPrice = parseDecimalPrice(price?.pricePerUnit);
+
+    return {
+        code: row.code,
+        label: row.label,
+        sublabel: row.sublabel,
+        userFacingPriceLabel: plantPriceRange
+            ? `${plantPriceRange} (${row.userFacingPriceNote})`
+            : row.userFacingPriceNote,
+        durationLabel: 'Nije primjenjivo',
+        farmerPriceLabel:
+            farmerPrice === null
+                ? 'Nije definirano'
+                : formatEuroPrice(farmerPrice, price?.currency),
+        farmerPricePerMinuteLabel: '-',
+        hasFarmerPrice: farmerPrice !== null,
+    };
+}
+
+function operationPayoutPriceRow({
+    operation,
+    price,
+}: {
+    operation: EntityStandardized;
+    price: SelectOperationPrice | undefined;
+}): FarmerDocumentationPayoutPriceRow {
+    const farmerPrice = parseDecimalPrice(price?.pricePerUnit);
+    const durationMinutes = operationDurationMinutes(operation);
+
+    return {
+        code: getFarmerDocumentationCode('operation', operation.id),
+        label: getOperationLabel(operation),
+        sublabel: operation.information?.name?.trim() || null,
+        userFacingPriceLabel: operationPriceLabel(operation),
+        durationLabel: operationDurationLabel(operation),
+        farmerPriceLabel:
+            farmerPrice === null
+                ? 'Nije definirano'
+                : formatEuroPrice(farmerPrice, price?.currency),
+        farmerPricePerMinuteLabel:
+            farmerPrice !== null && durationMinutes !== null
+                ? `${formatEuroPrice(farmerPrice / durationMinutes, price?.currency)} / min`
+                : '-',
+        hasFarmerPrice: farmerPrice !== null,
+    };
+}
+
+function operationPriceKey(
+    farmId: number,
+    entityTypeName: string,
+    entityId: number | null,
+) {
+    return `${farmId}:${entityTypeName}:${entityId ?? 'null'}`;
+}
+
+function plantPriceRangeLabel(plants: EntityStandardized[]) {
+    const prices = plants
+        .map((plant) => plant.prices?.perPlant)
+        .filter((price): price is number => Number.isFinite(price));
+
+    if (prices.length === 0) {
+        return null;
+    }
+
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+
+    return min === max
+        ? formatEuroPrice(min)
+        : `${formatEuroPrice(min)} - ${formatEuroPrice(max)}`;
+}
+
+function parseDecimalPrice(value: string | undefined) {
+    if (!value) {
+        return null;
+    }
+
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
+function formatEuroPrice(value: number, currency = 'eur') {
+    return `${value.toLocaleString('hr-HR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    })} ${currency.toUpperCase()}`;
 }
 
 function getDocumentationRevisionsSince(since: Date | null) {
@@ -1039,16 +1312,26 @@ function entityCoverUrl(entity: EntityStandardized | null | undefined) {
     return typeof url === 'string' && url.trim().length > 0 ? url.trim() : null;
 }
 
-function operationDurationLabel(operation: EntityStandardized) {
+function operationDurationMinutes(operation: EntityStandardized) {
     const duration = operation.attributes?.duration;
     const minutes =
         typeof duration === 'number'
             ? duration
             : typeof duration === 'string'
-              ? Number.parseInt(duration, 10)
+              ? Number.parseFloat(duration)
               : 0;
 
     if (!Number.isFinite(minutes) || minutes <= 0) {
+        return null;
+    }
+
+    return minutes;
+}
+
+function operationDurationLabel(operation: EntityStandardized) {
+    const minutes = operationDurationMinutes(operation);
+
+    if (minutes === null) {
         return 'Nije definirano';
     }
 
@@ -1069,7 +1352,7 @@ function operationPriceLabel(operation: EntityStandardized) {
         return 'Nije definirano';
     }
 
-    return `${price.toFixed(2).replace('.', ',')} EUR`;
+    return formatEuroPrice(price);
 }
 
 function operationPhotoProofLabel(operation: EntityStandardized) {
