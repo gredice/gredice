@@ -19,15 +19,15 @@
         "server-only": "0.0.1"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.4.16",
+        "@biomejs/biome": "2.5.1",
         "@gredice/ui": "workspace:*",
-        "@tailwindcss/postcss": "4.3.0",
+        "@tailwindcss/postcss": "4.3.2",
         "@types/node": "24.12.4",
         "@types/react": "19.2.17",
         "@types/react-dom": "19.2.3",
         "babel-plugin-react-compiler": "19.1.0-rc.3",
-        "postcss": "8.5.15",
-        "tailwindcss": "4.3.0",
+        "postcss": "8.5.16",
+        "tailwindcss": "4.3.2",
         "typescript": "6.0.3"
     }
 }

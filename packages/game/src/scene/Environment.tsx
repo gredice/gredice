@@ -3,7 +3,7 @@
 import { useFrame, useThree } from '@react-three/fiber';
 import chroma from 'chroma-js';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import SunCalc from 'suncalc';
+import * as SunCalc from 'suncalc';
 import { Color, Quaternion, Vector3 } from 'three';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useSnapshotTime } from '../hooks/useSnapshotTime';
@@ -31,6 +31,12 @@ import {
     visualDayNightTimes,
 } from './visualDayNight';
 import { resolveWaterColors } from './waterColors';
+
+const degreesToRadiansScale = Math.PI / 180;
+
+export function degreesToRadians(degrees: number) {
+    return degrees * degreesToRadiansScale;
+}
 
 const backgroundColorScale = chroma
     .scale([
@@ -293,9 +299,14 @@ export function timeOfDayToDate(currentTime: Date, timeOfDay: number) {
     );
 }
 
-// Maps astronomical altitude/azimuth into the stylized scene sky so both the
-// visible sun/moon discs and the directional light share the same trajectory.
-export function altAzToScenePosition(altitude: number, azimuth: number) {
+// Maps SunCalc altitude/azimuth degrees into the stylized scene sky so both
+// the visible sun/moon discs and the directional light share the same trajectory.
+export function altAzToScenePosition(
+    altitudeDegrees: number,
+    azimuthDegrees: number,
+) {
+    const altitude = degreesToRadians(altitudeDegrees);
+    const azimuth = degreesToRadians(azimuthDegrees);
     const pos = new Vector3(5, 20, 0);
     const hinge = new Quaternion();
     const rotator = new Quaternion();

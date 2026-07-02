@@ -1077,6 +1077,8 @@ export interface components {
                 operations: {
                     id: number;
                     attributes: {
+                        /** @description Controls the exact in-game visual reward a completed operation creates. Supported values: watering, weeding, mulch, removeMulch, agrotextile, removeAgrotextile, supports, harvest, photographyUpdate. */
+                        visualReward?: string;
                         /** @description (jedno od: optional, once, periodic, daily, weekly, biweekly, monthly) */
                         frequency?: string;
                         /** @description (na koji stadij biljke se primjenjuje radnja) */
@@ -1174,8 +1176,8 @@ export interface components {
                         /** @description (opis popusta npr. "Za kupnju 18 biljaka") */
                         discountDescription?: string;
                     };
-                    image?: {
-                        cover?: components["schemas"]["image"];
+                    image: {
+                        cover: components["schemas"]["image"];
                     };
                     conditions: {
                         /** @description (da li se mogu proložiti slike za završetak radnje) */
@@ -1314,6 +1316,8 @@ export interface components {
                         operations: {
                             id: number;
                             attributes: {
+                                /** @description Controls the exact in-game visual reward a completed operation creates. Supported values: watering, weeding, mulch, removeMulch, agrotextile, removeAgrotextile, supports, harvest, photographyUpdate. */
+                                visualReward?: string;
                                 /** @description (jedno od: optional, once, periodic, daily, weekly, biweekly, monthly) */
                                 frequency?: string;
                                 /** @description (na koji stadij biljke se primjenjuje radnja) */
@@ -1411,8 +1415,8 @@ export interface components {
                                 /** @description (opis popusta npr. "Za kupnju 18 biljaka") */
                                 discountDescription?: string;
                             };
-                            image?: {
-                                cover?: components["schemas"]["image"];
+                            image: {
+                                cover: components["schemas"]["image"];
                             };
                             conditions: {
                                 /** @description (da li se mogu proložiti slike za završetak radnje) */
@@ -1610,6 +1614,8 @@ export interface components {
                         operations: {
                             id: number;
                             attributes: {
+                                /** @description Controls the exact in-game visual reward a completed operation creates. Supported values: watering, weeding, mulch, removeMulch, agrotextile, removeAgrotextile, supports, harvest, photographyUpdate. */
+                                visualReward?: string;
                                 /** @description (jedno od: optional, once, periodic, daily, weekly, biweekly, monthly) */
                                 frequency?: string;
                                 /** @description (na koji stadij biljke se primjenjuje radnja) */
@@ -1707,8 +1713,8 @@ export interface components {
                                 /** @description (opis popusta npr. "Za kupnju 18 biljaka") */
                                 discountDescription?: string;
                             };
-                            image?: {
-                                cover?: components["schemas"]["image"];
+                            image: {
+                                cover: components["schemas"]["image"];
                             };
                             conditions: {
                                 /** @description (da li se mogu proložiti slike za završetak radnje) */
@@ -1833,6 +1839,8 @@ export interface components {
                                 operations: {
                                     id: number;
                                     attributes: {
+                                        /** @description Controls the exact in-game visual reward a completed operation creates. Supported values: watering, weeding, mulch, removeMulch, agrotextile, removeAgrotextile, supports, harvest, photographyUpdate. */
+                                        visualReward?: string;
                                         /** @description (jedno od: optional, once, periodic, daily, weekly, biweekly, monthly) */
                                         frequency?: string;
                                         /** @description (na koji stadij biljke se primjenjuje radnja) */
@@ -1930,8 +1938,8 @@ export interface components {
                                         /** @description (opis popusta npr. "Za kupnju 18 biljaka") */
                                         discountDescription?: string;
                                     };
-                                    image?: {
-                                        cover?: components["schemas"]["image"];
+                                    image: {
+                                        cover: components["schemas"]["image"];
                                     };
                                     conditions: {
                                         /** @description (da li se mogu proložiti slike za završetak radnje) */
@@ -2141,6 +2149,8 @@ export interface components {
             };
             slug: string;
             attributes: {
+                /** @description Controls the exact in-game visual reward a completed operation creates. Supported values: watering, weeding, mulch, removeMulch, agrotextile, removeAgrotextile, supports, harvest, photographyUpdate. */
+                visualReward?: string;
                 /** @description (jedno od: optional, once, periodic, daily, weekly, biweekly, monthly) */
                 frequency?: string;
                 /** @description (na koji stadij biljke se primjenjuje radnja) */
@@ -2238,8 +2248,8 @@ export interface components {
                 /** @description (opis popusta npr. "Za kupnju 18 biljaka") */
                 discountDescription?: string;
             };
-            image?: {
-                cover?: components["schemas"]["image"];
+            image: {
+                cover: components["schemas"]["image"];
             };
             conditions: {
                 /** @description (da li se mogu proložiti slike za završetak radnje) */
@@ -2337,6 +2347,10 @@ export interface components {
                 label: string;
             };
             slug: string;
+            image?: {
+                /** @description Public block image generated from the in-game block name and used by admin previews, directory cards, search results, and compact block UI. */
+                cover?: components["schemas"]["image"];
+            };
             information: {
                 name: string;
                 shortDescription: string;
@@ -2360,6 +2374,8 @@ export interface components {
                 spanWidth?: number;
                 /** @description Broj vrtnih blokova koje zauzima po dubini. */
                 spanDepth?: number;
+                /** @description Dopušta postavljanje bloka izravno na vodeni blok. */
+                placeableOnWater?: boolean;
             };
             prices: {
                 sunflowers: number;

@@ -18,7 +18,7 @@
         "test": "tsx --test \"src/**/*.unit.ts\""
     },
     "devDependencies": {
-        "@biomejs/biome": "2.4.16",
+        "@biomejs/biome": "2.5.1",
         "@dnd-kit/core": "6.3.1",
         "@dnd-kit/sortable": "10.0.0",
         "@dnd-kit/utilities": "3.2.2",
@@ -28,19 +28,19 @@
         "@gredice/js": "workspace:*",
         "@gredice/stripe": "workspace:*",
         "@gredice/ui": "workspace:*",
-        "@radix-ui/react-progress": "1.1.9",
-        "@radix-ui/react-slider": "1.4.0",
-        "@react-spring/three": "10.1.0",
-        "@react-spring/web": "10.1.0",
+        "@radix-ui/react-progress": "1.1.11",
+        "@radix-ui/react-slider": "1.4.2",
+        "@react-spring/three": "10.1.2",
+        "@react-spring/web": "10.1.2",
         "@react-three/drei": "10.7.7",
         "@react-three/fiber": "9.6.1",
         "@tailwindcss/typography": "0.5.20",
-        "@tanstack/react-query": "5.100.14",
+        "@tanstack/react-query": "5.101.2",
         "@types/chroma-js": "3.1.2",
         "@types/react": "19.2.17",
         "@types/react-dom": "19.2.3",
         "@types/suncalc": "1.9.2",
-        "@types/three": "0.184.1",
+        "@types/three": "0.185.0",
         "@use-gesture/react": "10.3.1",
         "chroma-js": "3.2.0",
         "next": "16.2.9",
@@ -49,16 +49,16 @@
         "react-confetti-boom": "2.0.1",
         "react-dom": "19.2.7",
         "react-markdown": "10.1.0",
-        "recharts": "3.8.1",
-        "suncalc": "1.9.0",
-        "tailwindcss": "4.3.0",
+        "recharts": "3.9.1",
+        "suncalc": "2.0.0",
+        "tailwindcss": "^4.3.2",
         "tailwindcss-animate": "1.0.7",
-        "three": "0.184.0",
+        "three": "0.185.0",
         "three-custom-shader-material": "6.4.0",
         "three-stdlib": "2.36.1",
         "tsx": "4.22.4",
         "typescript": "6.0.3",
-        "uuid": "14.0.0",
+        "uuid": "14.0.1",
         "zustand": "5.0.14"
     },
     "peerDependencies": {
@@ -71,9 +71,9 @@
         "tailwindcss-animate": ">=1"
     },
     "dependencies": {
-        "@ai-sdk/react": "3.0.199",
+        "@ai-sdk/react": "4.0.10",
         "@vvo/tzdb": "6.198.0",
-        "ai": "6.0.199",
-        "nuqs": "2.8.9"
+        "ai": "7.0.9",
+        "nuqs": "2.9.0"
     }
 }
