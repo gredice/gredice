@@ -21,6 +21,8 @@ import {
     documentationPackageContentQueryValue,
     type FarmerDocumentationChangeType,
     type FarmerDocumentationPackageContent,
+    type FarmerDocumentationPayoutPriceFarm,
+    type FarmerDocumentationPayoutPrices,
     formatDocumentationDateTime,
     getFarmerDocumentationPackage,
     includedDocumentationPages,
@@ -211,6 +213,10 @@ export default async function FarmerDocumentationPage({
                 />
             </div>
 
+            <PayoutPriceDocumentationCard
+                payoutPrices={documentationPackage.payoutPrices}
+            />
+
             <Card>
                 <CardHeader>
                     <CardTitle>Sadržaj paketa</CardTitle>
@@ -343,4 +349,142 @@ function packageTableRows(
             }),
         ),
     ].sort((left, right) => left.code.localeCompare(right.code));
+}
+
+function PayoutPriceDocumentationCard({
+    payoutPrices,
+}: {
+    payoutPrices: FarmerDocumentationPayoutPrices;
+}) {
+    if (!payoutPrices.schemaAvailable) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Cjenik isplata farmera</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <Typography level="body2" className="text-muted-foreground">
+                        Tablice za cijene radnji nisu dostupne u ovoj bazi.
+                        Nakon migracije cjenik će se dodavati u dokumentaciju.
+                    </Typography>
+                </CardContent>
+            </Card>
+        );
+    }
+
+    if (payoutPrices.farms.length === 0) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Cjenik isplata farmera</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <Typography level="body2" className="text-muted-foreground">
+                        Nema farmâ u sustavu.
+                    </Typography>
+                </CardContent>
+            </Card>
+        );
+    }
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Cjenik isplata farmera</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <Typography level="body2" className="text-muted-foreground">
+                    Definirano {payoutPrices.configuredRows} od{' '}
+                    {payoutPrices.totalRows} cijena.
+                </Typography>
+            </CardContent>
+            <CardOverflow className="border-t">
+                {payoutPrices.farms.map((farm) => (
+                    <PayoutPriceFarmTable key={farm.farmId} farm={farm} />
+                ))}
+            </CardOverflow>
+        </Card>
+    );
+}
+
+function PayoutPriceFarmTable({
+    farm,
+}: {
+    farm: FarmerDocumentationPayoutPriceFarm;
+}) {
+    const configuredRows = farm.rows.filter((row) => row.hasFarmerPrice).length;
+
+    return (
+        <section className="border-b last:border-b-0">
+            <div className="flex flex-wrap items-center justify-between gap-2 bg-muted/30 px-3 py-3 sm:px-4">
+                <Typography level="body2" semiBold>
+                    {farm.farmName}
+                </Typography>
+                <Typography level="body3" className="text-muted-foreground">
+                    {configuredRows}/{farm.rows.length} definirano
+                </Typography>
+            </div>
+            <div className="overflow-x-auto">
+                <table className="min-w-[860px] w-full text-left text-sm">
+                    <thead className="border-y bg-muted/20 text-xs text-muted-foreground">
+                        <tr>
+                            <th className="px-3 py-2 font-medium sm:px-4">
+                                Kod
+                            </th>
+                            <th className="px-3 py-2 font-medium">Radnja</th>
+                            <th className="px-3 py-2 font-medium">
+                                Korisnička cijena
+                            </th>
+                            <th className="px-3 py-2 font-medium">Trajanje</th>
+                            <th className="px-3 py-2 font-medium">
+                                Farmer cijena
+                            </th>
+                            <th className="px-3 py-2 font-medium sm:pr-4">
+                                Farmer EUR/min
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                        {farm.rows.map((row) => (
+                            <tr key={row.code} className="align-top">
+                                <td className="px-3 py-3 sm:px-4">
+                                    <span className="rounded-md bg-muted px-2 py-1 font-mono text-xs font-medium text-muted-foreground">
+                                        {row.code}
+                                    </span>
+                                </td>
+                                <td className="px-3 py-3">
+                                    <div className="font-medium">
+                                        {row.label}
+                                    </div>
+                                    {row.sublabel && (
+                                        <div className="mt-1 font-mono text-xs text-muted-foreground">
+                                            {row.sublabel}
+                                        </div>
+                                    )}
+                                </td>
+                                <td className="px-3 py-3 text-muted-foreground">
+                                    {row.userFacingPriceLabel}
+                                </td>
+                                <td className="px-3 py-3 text-muted-foreground">
+                                    {row.durationLabel}
+                                </td>
+                                <td
+                                    className={
+                                        row.hasFarmerPrice
+                                            ? 'px-3 py-3 font-medium tabular-nums'
+                                            : 'px-3 py-3 font-medium text-amber-700'
+                                    }
+                                >
+                                    {row.farmerPriceLabel}
+                                </td>
+                                <td className="px-3 py-3 tabular-nums text-muted-foreground sm:pr-4">
+                                    {row.farmerPricePerMinuteLabel}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    );
 }
