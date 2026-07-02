@@ -10,9 +10,10 @@ import {
     CardOverflow,
     CardTitle,
 } from '@gredice/ui/Card';
+import { Chip } from '@gredice/ui/Chip';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Stack } from '@gredice/ui/Stack';
-import { Table } from '@gredice/ui/Table';
+import { Typography } from '@gredice/ui/Typography';
 import {
     scrollableTableCardClassName,
     scrollableTableCardOverflowClassName,
@@ -89,41 +90,63 @@ export async function AccountInventoryCard({
                 </div>
             </CardContent>
             <CardOverflow className={scrollableTableCardOverflowClassName}>
-                <Table>
-                    <Table.Header>
-                        <Table.Row>
-                            <Table.Head>Entitet</Table.Head>
-                            <Table.Head>Tip</Table.Head>
-                            <Table.Head>Količina</Table.Head>
-                            <Table.Head>Ažurirano</Table.Head>
-                        </Table.Row>
-                    </Table.Header>
-                    <Table.Body>
-                        {itemsWithNames.length === 0 && (
-                            <Table.Row>
-                                <Table.Cell colSpan={4}>
-                                    <NoDataPlaceholder>
-                                        Nema predmeta u ruksaku
-                                    </NoDataPlaceholder>
-                                </Table.Cell>
-                            </Table.Row>
-                        )}
+                {itemsWithNames.length === 0 ? (
+                    <div className="p-4">
+                        <NoDataPlaceholder>
+                            Nema predmeta u ruksaku
+                        </NoDataPlaceholder>
+                    </div>
+                ) : (
+                    <ul className="divide-y">
                         {itemsWithNames.map((item) => (
-                            <Table.Row
+                            <li
                                 key={`${item.entityTypeName}-${item.entityId}`}
+                                className="px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4"
                             >
-                                <Table.Cell>{item.label}</Table.Cell>
-                                <Table.Cell>{item.entityTypeName}</Table.Cell>
-                                <Table.Cell>{item.amount}</Table.Cell>
-                                <Table.Cell>
-                                    <LocalDateTime time={false}>
-                                        {item.updatedAt}
-                                    </LocalDateTime>
-                                </Table.Cell>
-                            </Table.Row>
+                                <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                    <Stack spacing={1} className="min-w-0">
+                                        <Typography
+                                            level="body2"
+                                            semiBold
+                                            className="min-w-0 break-words"
+                                        >
+                                            {item.label}
+                                        </Typography>
+                                        <Typography
+                                            level="body3"
+                                            className="text-muted-foreground"
+                                        >
+                                            {item.entityTypeName}
+                                        </Typography>
+                                    </Stack>
+                                    <div className="flex shrink-0 flex-col gap-2 sm:items-end">
+                                        <Chip
+                                            color="neutral"
+                                            size="sm"
+                                            variant="soft"
+                                            className="w-fit"
+                                        >
+                                            {item.amount.toLocaleString(
+                                                'hr-HR',
+                                            )}{' '}
+                                            kom
+                                        </Chip>
+                                        <Typography
+                                            component="div"
+                                            level="body3"
+                                            className="text-muted-foreground"
+                                        >
+                                            Ažurirano:{' '}
+                                            <LocalDateTime time={false}>
+                                                {item.updatedAt}
+                                            </LocalDateTime>
+                                        </Typography>
+                                    </div>
+                                </div>
+                            </li>
                         ))}
-                    </Table.Body>
-                </Table>
+                    </ul>
+                )}
             </CardOverflow>
         </Card>
     );

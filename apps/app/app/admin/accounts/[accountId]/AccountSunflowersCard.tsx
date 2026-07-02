@@ -11,6 +11,7 @@ import {
     CardOverflow,
     CardTitle,
 } from '@gredice/ui/Card';
+import { Chip } from '@gredice/ui/Chip';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Input } from '@gredice/ui/Input';
 import { Add } from '@gredice/ui/icons';
@@ -18,7 +19,6 @@ import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Popper } from '@gredice/ui/Popper';
 import { SelectItems } from '@gredice/ui/SelectItems';
 import { Stack } from '@gredice/ui/Stack';
-import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
 import { revalidatePath } from 'next/cache';
 import {
@@ -97,41 +97,59 @@ export async function AccountSunflowersCard({
                 <Field name="Ukupno suncokreta" value={currentSunflowers} />
             </CardContent>
             <CardOverflow className={scrollableTableCardOverflowClassName}>
-                <Table>
-                    <Table.Header>
-                        <Table.Row>
-                            <Table.Head>Tip</Table.Head>
-                            <Table.Head>Podaci</Table.Head>
-                            <Table.Head>Iznos</Table.Head>
-                            <Table.Head>Datum kreiranja</Table.Head>
-                        </Table.Row>
-                    </Table.Header>
-                    <Table.Body>
-                        {history.length === 0 && (
-                            <Table.Row>
-                                <Table.Cell colSpan={3}>
-                                    <NoDataPlaceholder>
-                                        Nema suncokreta
-                                    </NoDataPlaceholder>
-                                </Table.Cell>
-                            </Table.Row>
-                        )}
+                {history.length === 0 ? (
+                    <div className="p-4">
+                        <NoDataPlaceholder>Nema suncokreta</NoDataPlaceholder>
+                    </div>
+                ) : (
+                    <ul className="divide-y">
                         {history.map((sunflower) => (
-                            <Table.Row key={sunflower.id}>
-                                <Table.Cell>{sunflower.type}</Table.Cell>
-                                <Table.Cell>
-                                    {JSON.stringify(sunflower.data)}
-                                </Table.Cell>
-                                <Table.Cell>{sunflower.amount}</Table.Cell>
-                                <Table.Cell>
-                                    <LocalDateTime>
-                                        {sunflower.createdAt}
-                                    </LocalDateTime>
-                                </Table.Cell>
-                            </Table.Row>
+                            <li
+                                key={sunflower.id}
+                                className="px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4"
+                            >
+                                <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                    <Stack spacing={1} className="min-w-0">
+                                        <Typography
+                                            level="body2"
+                                            semiBold
+                                            className="min-w-0 break-words"
+                                        >
+                                            {sunflower.type}
+                                        </Typography>
+                                        <Typography
+                                            level="body3"
+                                            className="min-w-0 break-all text-muted-foreground"
+                                        >
+                                            {JSON.stringify(sunflower.data)}
+                                        </Typography>
+                                    </Stack>
+                                    <div className="flex shrink-0 flex-col gap-2 sm:items-end">
+                                        <Chip
+                                            size="sm"
+                                            variant="soft"
+                                            className="w-fit"
+                                        >
+                                            {sunflower.amount.toLocaleString(
+                                                'hr-HR',
+                                            )}{' '}
+                                            suncokreta
+                                        </Chip>
+                                        <Typography
+                                            component="div"
+                                            level="body3"
+                                            className="text-muted-foreground"
+                                        >
+                                            <LocalDateTime>
+                                                {sunflower.createdAt}
+                                            </LocalDateTime>
+                                        </Typography>
+                                    </div>
+                                </div>
+                            </li>
                         ))}
-                    </Table.Body>
-                </Table>
+                    </ul>
+                )}
             </CardOverflow>
         </Card>
     );

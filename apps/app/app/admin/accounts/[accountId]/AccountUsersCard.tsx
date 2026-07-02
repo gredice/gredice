@@ -1,7 +1,7 @@
 import { getAccountUsers } from '@gredice/storage';
 import { Card, CardHeader, CardOverflow, CardTitle } from '@gredice/ui/Card';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Table } from '@gredice/ui/Table';
+import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import {
     scrollableTableCardClassName,
@@ -19,45 +19,63 @@ export async function AccountUsersCard({ accountId }: { accountId: string }) {
                 <CardTitle>Korisnici</CardTitle>
             </CardHeader>
             <CardOverflow className={scrollableTableCardOverflowClassName}>
-                <Table>
-                    <Table.Header>
-                        <Table.Row>
-                            <Table.Head>Korisnicko ime</Table.Head>
-                            <Table.Head>Datum povezivanja</Table.Head>
-                            <Table.Head>Datum ažuriranja veze</Table.Head>
-                        </Table.Row>
-                    </Table.Header>
-                    <Table.Body>
-                        {users.length === 0 && (
-                            <Table.Row>
-                                <Table.Cell colSpan={3}>
-                                    <NoDataPlaceholder>
-                                        Nema povezanih korisnika
-                                    </NoDataPlaceholder>
-                                </Table.Cell>
-                            </Table.Row>
-                        )}
+                {users.length === 0 ? (
+                    <div className="p-4">
+                        <NoDataPlaceholder>
+                            Nema povezanih korisnika
+                        </NoDataPlaceholder>
+                    </div>
+                ) : (
+                    <ul className="divide-y">
                         {users.map((user) => (
-                            <Table.Row key={user.id}>
-                                <Table.Cell>
-                                    <Link href={KnownPages.User(user.user.id)}>
-                                        {user.user.userName}
-                                    </Link>
-                                </Table.Cell>
-                                <Table.Cell>
-                                    <LocalDateTime>
-                                        {user.createdAt}
-                                    </LocalDateTime>
-                                </Table.Cell>
-                                <Table.Cell>
-                                    <LocalDateTime>
-                                        {user.updatedAt}
-                                    </LocalDateTime>
-                                </Table.Cell>
-                            </Table.Row>
+                            <li
+                                key={user.id}
+                                className="px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4"
+                            >
+                                <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                    <div className="min-w-0">
+                                        <Link
+                                            href={KnownPages.User(
+                                                user.user.id,
+                                            )}
+                                            className="min-w-0 break-words text-sm font-medium text-primary underline-offset-4 hover:underline"
+                                        >
+                                            {user.user.userName}
+                                        </Link>
+                                        <Typography
+                                            level="body3"
+                                            className="mt-1 text-muted-foreground"
+                                        >
+                                            Korisnik računa
+                                        </Typography>
+                                    </div>
+                                    <div className="flex min-w-0 flex-col gap-1 text-left sm:items-end sm:text-right">
+                                        <Typography
+                                            component="div"
+                                            level="body3"
+                                            className="text-muted-foreground"
+                                        >
+                                            Povezan:{' '}
+                                            <LocalDateTime>
+                                                {user.createdAt}
+                                            </LocalDateTime>
+                                        </Typography>
+                                        <Typography
+                                            component="div"
+                                            level="body3"
+                                            className="text-muted-foreground"
+                                        >
+                                            Ažurirano:{' '}
+                                            <LocalDateTime>
+                                                {user.updatedAt}
+                                            </LocalDateTime>
+                                        </Typography>
+                                    </div>
+                                </div>
+                            </li>
                         ))}
-                    </Table.Body>
-                </Table>
+                    </ul>
+                )}
             </CardOverflow>
         </Card>
     );
