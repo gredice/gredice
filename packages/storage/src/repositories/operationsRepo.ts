@@ -532,6 +532,109 @@ export async function getOperationsPage(
     };
 }
 
+export type RaisedBedPhotoPreview = {
+    raisedBedId: number;
+    imageUrls: string[];
+    photoCount: number;
+};
+
+function getCompletionEventImageUrls(data: unknown) {
+    if (!data || typeof data !== 'object') {
+        return [];
+    }
+
+    const images = Reflect.get(data, 'images');
+    if (!Array.isArray(images)) {
+        return [];
+    }
+
+    return images.filter(
+        (url): url is string =>
+            typeof url === 'string' && url.trim().length > 0,
+    );
+}
+
+export async function getRaisedBedPhotoPreviews(
+    raisedBedIds: number[],
+    imageLimit = 3,
+): Promise<RaisedBedPhotoPreview[]> {
+    const uniqueRaisedBedIds = Array.from(new Set(raisedBedIds)).sort(
+        (left, right) => left - right,
+    );
+
+    if (uniqueRaisedBedIds.length === 0) {
+        return [];
+    }
+
+    const rows = await storage()
+        .select({
+            raisedBedId: operations.raisedBedId,
+            data: events.data,
+        })
+        .from(operations)
+        .innerJoin(events, eq(events.aggregateId, sql`${operations.id}::text`))
+        .where(
+            and(
+                eq(operations.isDeleted, false),
+                inArray(operations.raisedBedId, uniqueRaisedBedIds),
+                eq(events.type, knownEventTypes.operations.complete),
+                sql`jsonb_typeof(${events.data}->'images') = 'array'`,
+                sql`jsonb_array_length(${events.data}->'images') > 0`,
+            ),
+        )
+        .orderBy(
+            asc(operations.raisedBedId),
+            desc(events.createdAt),
+            desc(events.id),
+        );
+
+    const previewByRaisedBedId = new Map<number, RaisedBedPhotoPreview>(
+        uniqueRaisedBedIds.map((raisedBedId) => [
+            raisedBedId,
+            {
+                raisedBedId,
+                imageUrls: [],
+                photoCount: 0,
+            },
+        ]),
+    );
+    const seenImageUrlsByRaisedBedId = new Map<number, Set<string>>();
+    const safeImageLimit = Math.max(1, imageLimit);
+
+    for (const row of rows) {
+        if (row.raisedBedId === null) {
+            continue;
+        }
+
+        const preview = previewByRaisedBedId.get(row.raisedBedId);
+        if (!preview) {
+            continue;
+        }
+
+        const imageUrls = getCompletionEventImageUrls(row.data);
+        preview.photoCount += imageUrls.length;
+
+        let seenImageUrls = seenImageUrlsByRaisedBedId.get(row.raisedBedId);
+        if (!seenImageUrls) {
+            seenImageUrls = new Set();
+            seenImageUrlsByRaisedBedId.set(row.raisedBedId, seenImageUrls);
+        }
+
+        for (const imageUrl of imageUrls) {
+            if (seenImageUrls.has(imageUrl)) {
+                continue;
+            }
+
+            seenImageUrls.add(imageUrl);
+            if (preview.imageUrls.length < safeImageLimit) {
+                preview.imageUrls.push(imageUrl);
+            }
+        }
+    }
+
+    return [...previewByRaisedBedId.values()];
+}
+
 export async function getAppliedRaisedBedOperationsForGarden(
     accountId: string,
     gardenId: number,
@@ -953,6 +1056,60 @@ export async function getFarmUserAcceptedOperationById(
     const operations = await getFarmUserAcceptedOperationsByIds(userId, [id]);
     const [operationWithAggregates] = await fillOperationAggregates(operations);
     return operationWithAggregates ?? null;
+}
+
+export async function getFarmUserAcceptedOperationsByScheduleRange({
+    userId,
+    from,
+    to,
+}: {
+    userId: string;
+    from: Date;
+    to: Date;
+}) {
+    return cacheScheduleRead(
+        scheduleCacheKeys.farmUserScheduledOperations(userId, from, to),
+        async () => {
+            const scheduledDateExpression = sql<string>`${events.data} ->> 'scheduledDate'`;
+            const scheduledRows = await storage()
+                .selectDistinct({ id: operations.id })
+                .from(operations)
+                .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
+                .leftJoin(
+                    gardens,
+                    eq(gardens.id, operationGardenIdExpression()),
+                )
+                .innerJoin(
+                    farmUsers,
+                    eq(farmUsers.farmId, operationFarmIdExpression()),
+                )
+                .innerJoin(
+                    events,
+                    and(
+                        sql`${events.aggregateId} = cast(${operations.id} as text)`,
+                        eq(events.type, knownEventTypes.operations.schedule),
+                    ),
+                )
+                .where(
+                    and(
+                        eq(farmUsers.userId, userId),
+                        eq(operations.isAccepted, true),
+                        eq(operations.isDeleted, false),
+                        operationLocationIntegrityWhere(),
+                        gte(scheduledDateExpression, from.toISOString()),
+                        lte(scheduledDateExpression, to.toISOString()),
+                    ),
+                );
+
+            const acceptedOperations = await getFarmUserAcceptedOperationsByIds(
+                userId,
+                scheduledRows.map((row) => row.id),
+            );
+
+            return fillOperationAggregates(acceptedOperations);
+        },
+        scheduleCacheTtls.operations,
+    );
 }
 
 export async function getAssignableFarmUsersByOperationIds(

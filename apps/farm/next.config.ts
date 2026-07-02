@@ -21,6 +21,12 @@ const nextConfig: NextConfig = {
         remotePatterns: [
             {
                 protocol: 'https',
+                hostname: 'www.gredice.com',
+                port: '',
+                pathname: '/assets/**',
+            },
+            {
+                protocol: 'https',
                 hostname: 'cdn.gredice.com',
             },
             {
@@ -32,6 +38,7 @@ const nextConfig: NextConfig = {
                 hostname: '7ql7fvz1vzzo6adz.public.blob.vercel-storage.com',
             },
         ],
+        qualities: [75, 100],
     },
     productionBrowserSourceMaps: !process.env.CI,
     allowedDevOrigins: getAppAllowedDevOrigins(app),

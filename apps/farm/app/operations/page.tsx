@@ -34,7 +34,7 @@ export default function OperationsHandbookPage() {
     const authFarmer = auth.bind(null, ['farmer', 'admin']);
 
     return (
-        <div className="min-h-[100dvh] w-full bg-muted">
+        <div className="min-h-[100dvh] w-full bg-background">
             <AuthProtectedSection auth={authFarmer}>
                 <OperationsHandbookContent />
             </AuthProtectedSection>

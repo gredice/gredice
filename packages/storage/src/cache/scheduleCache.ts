@@ -85,6 +85,10 @@ export const scheduleCacheKeys = {
         `schedule:farm:user:${safePart(userId)}:operations:${rangePart(input)}:${CACHE_VERSION}`,
     farmUserActiveOperations: (userId: string, from: Date) =>
         `schedule:farm:user:${safePart(userId)}:operations:active:from:${dateTimePart(from)}:${CACHE_VERSION}`,
+    farmUserScheduledOperations: (userId: string, from: Date, to: Date) =>
+        `schedule:farm:user:${safePart(userId)}:operations:scheduled:from:${dateTimePart(from)}:to:${dateTimePart(to)}:${CACHE_VERSION}`,
+    farmRaisedBedPhotoPreviews: (raisedBedIds: number[]) =>
+        `schedule:farm:raisedBedPhotoPreviews:${raisedBedIds.map(safePart).join(',')}:${CACHE_VERSION}`,
     farmUserDay: (userId: string, date: Date | string, isToday: boolean) =>
         `schedule:farm:user:${safePart(userId)}:day:${localDateKey(date)}:today:${isToday ? '1' : '0'}:${CACHE_VERSION}`,
     deliveryRequestsSummary: (input: DeliveryRequestsSummaryCacheInput) =>

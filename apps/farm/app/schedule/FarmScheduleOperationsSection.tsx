@@ -1,17 +1,26 @@
 import type { EntityStandardized } from '@gredice/storage';
 import { Checkbox } from '@gredice/ui/Checkbox';
-import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Row } from '@gredice/ui/Row';
-import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { UserAvatar } from '@gredice/ui/UserAvatar';
+import { cx } from '@gredice/ui/utils';
+import { Suspense } from 'react';
 import { CompleteOperationModal } from './CompleteOperationModal';
 import { OperationCompletionAttachments } from './OperationCompletionAttachments';
+import { OperationRequirementIcons } from './OperationRequirementIcons';
+import { RaisedBedScheduleGroupHeader } from './RaisedBedScheduleGroupHeader';
+import { RaisedBedScheduleGroupHeaderWithPhotos } from './RaisedBedScheduleGroupHeaderWithPhotos';
+import { ScheduleSectionSummaryBadges } from './ScheduleSectionSummaryBadges';
 import { ScheduleTaskAgeIndicatorChip } from './ScheduleTaskAgeIndicatorChip';
-import type { FarmScheduleDayData } from './scheduleData';
+import { ScheduleTaskDateChip } from './ScheduleTaskDateChip';
+import { ScheduleTaskDurationChip } from './ScheduleTaskDurationChip';
+import type {
+    FarmScheduleDayData,
+    FarmScheduleRaisedBedPhotoPreview,
+} from './scheduleData';
 import {
-    formatMinutes,
+    compareScheduleDates,
     getFieldPhysicalPositionIndex,
     getOperationDurationMinutes,
     groupRaisedBedsForSchedule,
@@ -30,6 +39,9 @@ interface FarmScheduleOperationsSectionProps {
     scheduledOperations: FarmScheduleDayData['scheduledOperations'];
     plantSorts: EntityStandardized[] | null | undefined;
     operationsData: EntityStandardized[] | null | undefined;
+    raisedBedPhotoPreviewByIdPromise: Promise<
+        Map<number, FarmScheduleRaisedBedPhotoPreview>
+    >;
     userId: string;
 }
 
@@ -65,6 +77,7 @@ export function FarmScheduleOperationsSection({
     scheduledOperations,
     plantSorts,
     operationsData,
+    raisedBedPhotoPreviewByIdPromise,
     userId,
 }: FarmScheduleOperationsSectionProps) {
     if (scheduledOperations.length === 0) {
@@ -145,23 +158,16 @@ export function FarmScheduleOperationsSection({
         const attachNotesRequired = Boolean(
             operationData?.conditions?.completionAttachNotesRequired,
         );
-        const completionRequirementTexts = [
-            attachImages
-                ? attachImagesRequired
-                    ? 'Slike obavezne'
-                    : 'Slike opcionalne'
-                : null,
-            attachNotes
-                ? attachNotesRequired
-                    ? 'Napomena obavezna'
-                    : 'Napomena opcionalna'
-                : null,
-        ].filter((text): text is string => Boolean(text));
+        const showRequirementIcons =
+            !completed && (attachImages || attachNotes);
 
         return (
             <div
                 key={operation.id}
-                className="rounded-lg border bg-white px-3 py-2"
+                className={cx(
+                    'rounded-lg border px-3 py-2 transition-opacity',
+                    completed ? 'bg-white/70 opacity-70' : 'bg-white',
+                )}
             >
                 <Row
                     spacing={2}
@@ -195,62 +201,32 @@ export function FarmScheduleOperationsSection({
                                 spacing={2}
                                 className="items-center flex-wrap gap-y-1"
                             >
-                                <Typography
-                                    level="body2"
-                                    className={
-                                        completed
-                                            ? 'text-green-600'
-                                            : 'text-muted-foreground'
-                                    }
-                                >
-                                    {completed ? 'Završeno' : 'Potvrđeno'}
-                                </Typography>
-                                {operation.durationMinutes > 0 && (
-                                    <Typography
-                                        level="body2"
-                                        className="text-muted-foreground"
-                                    >
-                                        {formatMinutes(
-                                            operation.durationMinutes,
-                                        )}
-                                    </Typography>
-                                )}
-                                <Typography
-                                    level="body2"
-                                    className="text-muted-foreground"
-                                >
-                                    {operation.scheduledDate ? (
-                                        <>
-                                            Planirano:{' '}
-                                            <LocalDateTime time={false}>
-                                                {operation.scheduledDate}
-                                            </LocalDateTime>
-                                        </>
-                                    ) : (
-                                        'Danas'
-                                    )}
-                                </Typography>
+                                <ScheduleTaskDurationChip
+                                    minutes={operation.durationMinutes}
+                                />
+                                <ScheduleTaskDateChip
+                                    scheduledDate={operation.scheduledDate}
+                                />
                                 {!completed && (
                                     <ScheduleTaskAgeIndicatorChip
                                         scheduledDate={operation.scheduledDate}
                                     />
                                 )}
-                                {!completed &&
-                                    completionRequirementTexts.length > 0 && (
-                                        <Typography
-                                            level="body2"
-                                            className="text-xs text-muted-foreground"
-                                        >
-                                            {completionRequirementTexts.join(
-                                                ' · ',
-                                            )}
-                                        </Typography>
-                                    )}
                             </Row>
                         </Stack>
                     </Row>
-                    {(completed || operation.assignedUser) && (
+                    {(showRequirementIcons ||
+                        completed ||
+                        operation.assignedUser) && (
                         <Row spacing={1} className="shrink-0 items-center">
+                            {showRequirementIcons && (
+                                <OperationRequirementIcons
+                                    attachImages={attachImages}
+                                    attachImagesRequired={attachImagesRequired}
+                                    attachNotes={attachNotes}
+                                    attachNotesRequired={attachNotesRequired}
+                                />
+                            )}
                             {completed && (
                                 <OperationCompletionAttachments
                                     operationId={operation.id}
@@ -283,26 +259,13 @@ export function FarmScheduleOperationsSection({
         );
     }
 
+    const farmTotalDuration = farmOperations.reduce(
+        (sum, operation) => sum + operation.durationMinutes,
+        0,
+    );
+
     return (
-        <Stack spacing={4}>
-            {farmOperations.length > 0 && (
-                <Stack spacing={2}>
-                    <Row spacing={2} className="items-center flex-wrap gap-y-1">
-                        <Typography semiBold>Farma</Typography>
-                        <Typography
-                            level="body2"
-                            className="text-muted-foreground"
-                        >
-                            {farmOperations.length} zadataka
-                        </Typography>
-                    </Row>
-                    <Stack spacing={2}>
-                        {farmOperations.map((operation) =>
-                            renderOperationCard(operation),
-                        )}
-                    </Stack>
-                </Stack>
-            )}
+        <Stack spacing={6}>
             {raisedBedGroups.map(
                 ({ key, physicalId, raisedBeds: groupedRaisedBeds }) => {
                     const dayOperations = scheduledOperations
@@ -331,11 +294,23 @@ export function FarmScheduleOperationsSection({
                                 label,
                             };
                         })
-                        .sort((left, right) =>
-                            left.label.localeCompare(right.label, undefined, {
-                                numeric: true,
-                            }),
-                        );
+                        .sort((left, right) => {
+                            const dateComparison = compareScheduleDates(
+                                left.scheduledDate,
+                                right.scheduledDate,
+                            );
+                            if (dateComparison !== 0) {
+                                return dateComparison;
+                            }
+
+                            return left.label.localeCompare(
+                                right.label,
+                                undefined,
+                                {
+                                    numeric: true,
+                                },
+                            );
+                        });
 
                     const totalDuration = dayOperations.reduce(
                         (sum, operation) => sum + operation.durationMinutes,
@@ -346,38 +321,31 @@ export function FarmScheduleOperationsSection({
                         <Stack key={key} spacing={2}>
                             <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
                                 <div className="min-w-0">
-                                    {physicalId ? (
-                                        <RaisedBedLabel
+                                    <Suspense
+                                        fallback={
+                                            <RaisedBedScheduleGroupHeader
+                                                physicalId={physicalId}
+                                            />
+                                        }
+                                    >
+                                        <RaisedBedScheduleGroupHeaderWithPhotos
                                             physicalId={physicalId}
+                                            raisedBeds={groupedRaisedBeds}
+                                            raisedBedPhotoPreviewByIdPromise={
+                                                raisedBedPhotoPreviewByIdPromise
+                                            }
                                         />
-                                    ) : (
-                                        <Typography
-                                            semiBold
-                                            className="truncate"
-                                        >
-                                            Gredica bez fizičkog ID-a
-                                        </Typography>
-                                    )}
+                                    </Suspense>
                                 </div>
                                 <Row
                                     spacing={2}
                                     className="justify-end text-right"
                                 >
-                                    <Typography
-                                        level="body2"
-                                        className="whitespace-nowrap text-muted-foreground"
-                                    >
-                                        {dayOperations.length} zadataka
-                                    </Typography>
-                                    {totalDuration > 0 && (
-                                        <Typography
-                                            level="body2"
-                                            className="whitespace-nowrap text-muted-foreground"
-                                        >
-                                            Vrijeme:{' '}
-                                            {formatMinutes(totalDuration)}
-                                        </Typography>
-                                    )}
+                                    <ScheduleSectionSummaryBadges
+                                        count={dayOperations.length}
+                                        countLabel="zadataka"
+                                        durationMinutes={totalDuration}
+                                    />
                                 </Row>
                             </div>
                             <Stack spacing={2}>
@@ -413,25 +381,19 @@ export function FarmScheduleOperationsSection({
                                         operationData?.conditions
                                             ?.completionAttachNotesRequired,
                                     );
-                                    const completionRequirementTexts = [
-                                        attachImages
-                                            ? attachImagesRequired
-                                                ? 'Slike obavezne'
-                                                : 'Slike opcionalne'
-                                            : null,
-                                        attachNotes
-                                            ? attachNotesRequired
-                                                ? 'Napomena obavezna'
-                                                : 'Napomena opcionalna'
-                                            : null,
-                                    ].filter((text): text is string =>
-                                        Boolean(text),
-                                    );
+                                    const showRequirementIcons =
+                                        !completed &&
+                                        (attachImages || attachNotes);
 
                                     return (
                                         <div
                                             key={operation.id}
-                                            className="rounded-lg border bg-white px-3 py-2"
+                                            className={cx(
+                                                'rounded-lg border px-3 py-2 transition-opacity',
+                                                completed
+                                                    ? 'bg-white/70 opacity-70'
+                                                    : 'bg-white',
+                                            )}
                                         >
                                             <Row
                                                 spacing={2}
@@ -486,50 +448,16 @@ export function FarmScheduleOperationsSection({
                                                             spacing={2}
                                                             className="items-center flex-wrap gap-y-1"
                                                         >
-                                                            <Typography
-                                                                level="body2"
-                                                                className={
-                                                                    completed
-                                                                        ? 'text-green-600'
-                                                                        : 'text-muted-foreground'
+                                                            <ScheduleTaskDurationChip
+                                                                minutes={
+                                                                    operation.durationMinutes
                                                                 }
-                                                            >
-                                                                {completed
-                                                                    ? 'Završeno'
-                                                                    : 'Potvrđeno'}
-                                                            </Typography>
-                                                            {operation.durationMinutes >
-                                                                0 && (
-                                                                <Typography
-                                                                    level="body2"
-                                                                    className="text-muted-foreground"
-                                                                >
-                                                                    {formatMinutes(
-                                                                        operation.durationMinutes,
-                                                                    )}
-                                                                </Typography>
-                                                            )}
-                                                            <Typography
-                                                                level="body2"
-                                                                className="text-muted-foreground"
-                                                            >
-                                                                {operation.scheduledDate ? (
-                                                                    <>
-                                                                        Planirano:{' '}
-                                                                        <LocalDateTime
-                                                                            time={
-                                                                                false
-                                                                            }
-                                                                        >
-                                                                            {
-                                                                                operation.scheduledDate
-                                                                            }
-                                                                        </LocalDateTime>
-                                                                    </>
-                                                                ) : (
-                                                                    'Danas'
-                                                                )}
-                                                            </Typography>
+                                                            />
+                                                            <ScheduleTaskDateChip
+                                                                scheduledDate={
+                                                                    operation.scheduledDate
+                                                                }
+                                                            />
                                                             {!completed && (
                                                                 <ScheduleTaskAgeIndicatorChip
                                                                     scheduledDate={
@@ -537,27 +465,32 @@ export function FarmScheduleOperationsSection({
                                                                     }
                                                                 />
                                                             )}
-                                                            {!completed &&
-                                                                completionRequirementTexts.length >
-                                                                    0 && (
-                                                                    <Typography
-                                                                        level="body2"
-                                                                        className="text-xs text-muted-foreground"
-                                                                    >
-                                                                        {completionRequirementTexts.join(
-                                                                            ' · ',
-                                                                        )}
-                                                                    </Typography>
-                                                                )}
                                                         </Row>
                                                     </Stack>
                                                 </Row>
-                                                {(completed ||
+                                                {(showRequirementIcons ||
+                                                    completed ||
                                                     operation.assignedUser) && (
                                                     <Row
                                                         spacing={1}
                                                         className="shrink-0 items-center"
                                                     >
+                                                        {showRequirementIcons && (
+                                                            <OperationRequirementIcons
+                                                                attachImages={
+                                                                    attachImages
+                                                                }
+                                                                attachImagesRequired={
+                                                                    attachImagesRequired
+                                                                }
+                                                                attachNotes={
+                                                                    attachNotes
+                                                                }
+                                                                attachNotesRequired={
+                                                                    attachNotesRequired
+                                                                }
+                                                            />
+                                                        )}
                                                         {completed && (
                                                             <OperationCompletionAttachments
                                                                 operationId={
@@ -604,6 +537,23 @@ export function FarmScheduleOperationsSection({
                         </Stack>
                     );
                 },
+            )}
+            {farmOperations.length > 0 && (
+                <Stack spacing={2}>
+                    <Row spacing={2} className="items-center flex-wrap gap-y-1">
+                        <Typography semiBold>Farma</Typography>
+                        <ScheduleSectionSummaryBadges
+                            count={farmOperations.length}
+                            countLabel="zadataka"
+                            durationMinutes={farmTotalDuration}
+                        />
+                    </Row>
+                    <Stack spacing={2}>
+                        {farmOperations.map((operation) =>
+                            renderOperationCard(operation),
+                        )}
+                    </Stack>
+                </Stack>
             )}
         </Stack>
     );
