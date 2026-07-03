@@ -1,11 +1,11 @@
 import type { ThreeEvent } from '@react-three/fiber';
-import { type PropsWithChildren, useRef } from 'react';
+import { type PropsWithChildren, useContext, useRef } from 'react';
 import type { Vector3 } from 'three';
 import { useBlockRotate } from '../hooks/useBlockRotate';
-import { useCurrentGarden } from '../hooks/useCurrentGarden';
+import { useCurrentGardenCache } from '../hooks/useCurrentGarden';
 import type { Block } from '../types/Block';
 import type { Stack } from '../types/Stack';
-import { useGameState } from '../useGameState';
+import { GameStateContext, useGameState } from '../useGameState';
 import { findAttachedRaisedBedBlockId } from '../utils/raisedBedBlocks';
 import { useBlockInteractionTargetRegistration } from './BlockInteractionRegistry';
 
@@ -25,10 +25,9 @@ export function RotatableGroup({
     stack?: Stack;
 }>) {
     const blockRotate = useBlockRotate();
-    const { data: garden } = useCurrentGarden();
+    const getCurrentGarden = useCurrentGardenCache();
+    const gameStateStore = useContext(GameStateContext);
     const effectsAudioMixer = useGameState((state) => state.audio.effects);
-    const isDragging = useGameState((state) => state.isDragging);
-    const pickupBlock = useGameState((state) => state.pickupBlock);
     const swipeSound = effectsAudioMixer.useSoundEffect(
         'https://cdn.gredice.com/sounds/effects/Swipe Generic 01.mp3',
     );
@@ -37,8 +36,10 @@ export function RotatableGroup({
     const firstTapTimeStamp = useRef(0);
 
     function doRotate() {
-        if (isDragging || pickupBlock) return false;
+        const gameState = gameStateStore?.getState();
+        if (gameState?.isDragging || gameState?.pickupBlock) return false;
 
+        const garden = getCurrentGarden();
         const attachedRaisedBedBlockId =
             block.name === 'Raised_Bed' && garden
                 ? findAttachedRaisedBedBlockId(garden.stacks, block.id)

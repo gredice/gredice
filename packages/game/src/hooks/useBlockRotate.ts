@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { handleOptimisticUpdate } from '../helpers/queryHelpers';
 import { persistLocalSandboxGarden } from '../localSandboxGarden';
 import { useGameState } from '../useGameState';
+import { rotateBlocksInStacks } from './optimisticStackUpdates';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
 
 const mutationKey = ['gardens', 'current', 'blockRotate'];
@@ -67,20 +68,10 @@ export function useBlockRotate() {
             const targetBlockIds = new Set(
                 blockIds?.length ? blockIds : [blockId],
             );
-            const updatedStacks = currentGarden.stacks.map((stack) => {
-                const updatedBlocks = stack.blocks.map((candidate) => {
-                    if (targetBlockIds.has(candidate.id)) {
-                        return {
-                            ...candidate,
-                            rotation: rotation,
-                        };
-                    }
-                    return candidate;
-                });
-                return {
-                    ...stack,
-                    blocks: updatedBlocks,
-                };
+            const updatedStacks = rotateBlocksInStacks({
+                blockIds: targetBlockIds,
+                rotation,
+                stacks: currentGarden.stacks,
             });
 
             const previousItem = await handleOptimisticUpdate(

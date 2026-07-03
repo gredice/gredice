@@ -117,19 +117,39 @@ export function replaceOptimisticBlockId<TGarden extends GardenWithStacks>(
     optimisticBlockId: string,
     blockId: string,
 ): TGarden {
+    let changed = false;
+    const stacks = garden.stacks.map((stack) => {
+        let stackChanged = false;
+        const blocks = stack.blocks.map((block) => {
+            if (block.id !== optimisticBlockId) {
+                return block;
+            }
+
+            stackChanged = true;
+            return {
+                ...block,
+                id: blockId,
+            };
+        });
+
+        if (!stackChanged) {
+            return stack;
+        }
+
+        changed = true;
+        return {
+            ...stack,
+            blocks,
+        };
+    });
+
+    if (!changed) {
+        return garden;
+    }
+
     return {
         ...garden,
-        stacks: garden.stacks.map((stack) => ({
-            ...stack,
-            blocks: stack.blocks.map((block) =>
-                block.id === optimisticBlockId
-                    ? {
-                          ...block,
-                          id: blockId,
-                      }
-                    : block,
-            ),
-        })),
+        stacks,
     };
 }
 

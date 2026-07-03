@@ -125,12 +125,87 @@ export function useBlockInteractionTargetRegistration(
     handlers: BlockInteractionHandlers,
 ) {
     const registry = useBlockInteractionRegistry();
+    const targetRef = useRef(target);
+    const handlersRef = useRef(handlers);
+    const hasOnClick = Boolean(handlers.onClick);
+    const hasOnPointerDown = Boolean(handlers.onPointerDown);
+    const hasOnPointerEnter = Boolean(handlers.onPointerEnter);
+    const hasOnPointerLeave = Boolean(handlers.onPointerLeave);
+    const hasOnRotatePointerDown = Boolean(handlers.onRotatePointerDown);
+    const hasOnRotatePointerLeave = Boolean(handlers.onRotatePointerLeave);
+    const hasOnRotatePointerUp = Boolean(handlers.onRotatePointerUp);
+    const hasOnSelectClick = Boolean(handlers.onSelectClick);
+    const hasTarget = Boolean(target);
+    const stableTarget = useMemo<BlockInteractionTarget>(
+        () => ({
+            get block() {
+                return targetRef.current?.block as Block;
+            },
+            get blockIndex() {
+                return targetRef.current?.blockIndex ?? -1;
+            },
+            get stack() {
+                return targetRef.current?.stack as Stack;
+            },
+        }),
+        [],
+    );
+    const stableHandlers = useMemo<BlockInteractionHandlers>(() => {
+        const nextHandlers: BlockInteractionHandlers = {};
+        if (hasOnClick) {
+            nextHandlers.onClick = (event) =>
+                handlersRef.current.onClick?.(event);
+        }
+        if (hasOnPointerDown) {
+            nextHandlers.onPointerDown = (event) =>
+                handlersRef.current.onPointerDown?.(event);
+        }
+        if (hasOnPointerEnter) {
+            nextHandlers.onPointerEnter = (event) =>
+                handlersRef.current.onPointerEnter?.(event);
+        }
+        if (hasOnPointerLeave) {
+            nextHandlers.onPointerLeave = (event) =>
+                handlersRef.current.onPointerLeave?.(event);
+        }
+        if (hasOnRotatePointerDown) {
+            nextHandlers.onRotatePointerDown = (event) =>
+                handlersRef.current.onRotatePointerDown?.(event);
+        }
+        if (hasOnRotatePointerLeave) {
+            nextHandlers.onRotatePointerLeave = (event) =>
+                handlersRef.current.onRotatePointerLeave?.(event);
+        }
+        if (hasOnRotatePointerUp) {
+            nextHandlers.onRotatePointerUp = (event) =>
+                handlersRef.current.onRotatePointerUp?.(event);
+        }
+        if (hasOnSelectClick) {
+            nextHandlers.onSelectClick = (event) =>
+                handlersRef.current.onSelectClick?.(event);
+        }
+        return nextHandlers;
+    }, [
+        hasOnClick,
+        hasOnPointerDown,
+        hasOnPointerEnter,
+        hasOnPointerLeave,
+        hasOnRotatePointerDown,
+        hasOnRotatePointerLeave,
+        hasOnRotatePointerUp,
+        hasOnSelectClick,
+    ]);
 
     useLayoutEffect(() => {
-        if (!key || !target || !registry) {
+        targetRef.current = target;
+        handlersRef.current = handlers;
+    });
+
+    useLayoutEffect(() => {
+        if (!key || !hasTarget || !registry) {
             return;
         }
 
-        return registry.register(key, target, handlers);
-    });
+        return registry.register(key, stableTarget, stableHandlers);
+    }, [key, registry, stableHandlers, stableTarget, hasTarget]);
 }

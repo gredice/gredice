@@ -244,6 +244,67 @@ describe('replaceOptimisticBlockId', () => {
             },
         );
     });
+
+    it('preserves stacks that do not contain the optimistic block', () => {
+        const targetBlock = {
+            id: 'optimistic-shade',
+            name: 'Shade',
+            rotation: 0,
+        };
+        const untouchedBlock = {
+            id: 'grass-a',
+            name: 'Block_Grass',
+            rotation: 0,
+        };
+        const targetStack = {
+            position: new Vector3(0, 0, 0),
+            blocks: [targetBlock],
+        };
+        const untouchedStack = {
+            position: new Vector3(1, 0, 0),
+            blocks: [untouchedBlock],
+        };
+        const garden = {
+            stacks: [targetStack, untouchedStack],
+        };
+
+        const updatedGarden = replaceOptimisticBlockId(
+            garden,
+            'optimistic-shade',
+            'shade-1',
+        );
+
+        assert.notEqual(updatedGarden, garden);
+        assert.notEqual(updatedGarden.stacks, garden.stacks);
+        assert.notEqual(updatedGarden.stacks[0], targetStack);
+        assert.notEqual(updatedGarden.stacks[0]?.blocks, targetStack.blocks);
+        assert.equal(updatedGarden.stacks[0]?.blocks[0]?.id, 'shade-1');
+        assert.equal(updatedGarden.stacks[1], untouchedStack);
+        assert.equal(updatedGarden.stacks[1]?.blocks, untouchedStack.blocks);
+        assert.equal(updatedGarden.stacks[1]?.blocks[0], untouchedBlock);
+    });
+
+    it('returns the original garden when the optimistic block is missing', () => {
+        const garden = {
+            stacks: [
+                {
+                    position: new Vector3(0, 0, 0),
+                    blocks: [
+                        {
+                            id: 'shade-1',
+                            name: 'Shade',
+                            rotation: 0,
+                        },
+                    ],
+                },
+            ],
+        };
+
+        assert.equal(
+            replaceOptimisticBlockId(garden, 'optimistic-shade', 'shade-1'),
+            garden,
+        );
+    });
 });
 
 describe('removeOptimisticBlockId', () => {
