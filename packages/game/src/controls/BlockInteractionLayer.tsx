@@ -204,6 +204,10 @@ export function BlockInteractionLayer({
 
         clearHoveredTarget(event, resolved?.event);
         hoveredTargetKeyRef.current = nextTargetKey;
+        resolved?.target.handlers.onPickupPointerEnter?.(resolved.event);
+        if (resolved && hasStopped(resolved.event)) {
+            return;
+        }
         resolved?.target.handlers.onPointerEnter?.(resolved.event);
     }
 

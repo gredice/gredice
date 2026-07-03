@@ -11,11 +11,11 @@ import type {
     GameCameraRigApi,
     GameCameraSnapshot,
 } from './controls/GameCameraRigApi';
-import type {
-    ActiveDragPreviewTarget,
-    ActiveDragPreviewTargetOffset,
+import {
+    type ActiveDragPreviewTarget,
+    type ActiveDragPreviewTargetOffset,
+    activeDragPreviewTargetMatches,
 } from './dragPreviewIdentity';
-import { activeDragPreviewTargetMatches } from './dragPreviewIdentity';
 import {
     getGameBackgroundPaletteIndexByKey,
     getGameBackgroundPaletteKey,
@@ -270,6 +270,10 @@ export type GameState = {
     // Pickup system
     pickupBlock: Block | null;
     setPickupBlock: (block: Block | null) => void;
+    pickupSelectionTargets: ActiveDragPreviewTarget[];
+    setPickupSelectionTargets: (targets: ActiveDragPreviewTarget[]) => void;
+    addPickupSelectionTarget: (target: ActiveDragPreviewTarget) => boolean;
+    clearPickupSelectionTargets: () => void;
     stationaryPickupOutlineTarget: ActiveDragPreviewTarget | null;
     setStationaryPickupOutlineTarget: (
         target: ActiveDragPreviewTarget | null,
@@ -498,9 +502,28 @@ export function createGameState({
         sunriseTime: sunrise,
         sunsetTime: sunset,
 
-        // Pickaup system
+        // Pickup system
         pickupBlock: null,
         setPickupBlock: (block: Block | null) => set({ pickupBlock: block }),
+        pickupSelectionTargets: [],
+        setPickupSelectionTargets: (pickupSelectionTargets) =>
+            set({ pickupSelectionTargets }),
+        addPickupSelectionTarget: (target) => {
+            const pickupSelectionTargets = get().pickupSelectionTargets;
+            if (
+                pickupSelectionTargets.some((candidate) =>
+                    activeDragPreviewTargetMatches(candidate, target),
+                )
+            ) {
+                return false;
+            }
+
+            set({
+                pickupSelectionTargets: [...pickupSelectionTargets, target],
+            });
+            return true;
+        },
+        clearPickupSelectionTargets: () => set({ pickupSelectionTargets: [] }),
         stationaryPickupOutlineTarget: null,
         setStationaryPickupOutlineTarget: (stationaryPickupOutlineTarget) =>
             set({ stationaryPickupOutlineTarget }),

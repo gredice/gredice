@@ -48,7 +48,11 @@ import {
     getStackHeight,
     useStackHeight,
 } from '../utils/getStackHeight';
-import { triggerPickHaptic, triggerPlaceHaptic } from '../utils/haptics';
+import {
+    triggerPickHaptic,
+    triggerPlaceHaptic,
+    triggerSelectionHaptic,
+} from '../utils/haptics';
 import {
     findAttachedRaisedBedBlockId,
     findRaisedBedByBlockId,
@@ -64,6 +68,7 @@ import {
     type PickupPlacementPreviewResolver,
     type ResolvedPlacementPreview,
 } from './PickupPlacementResolver';
+import { createPickupSelectionMovingSegments } from './pickupSelection';
 import { useHoveredBlockStore } from './useHoveredBlockStore';
 
 const groundPlane = new Plane(new Vector3(0, 1, 0), 0);
@@ -248,6 +253,12 @@ export function PickableGroup({
     );
 
     const setPickupBlock = useGameState((state) => state.setPickupBlock);
+    const setPickupSelectionTargets = useGameState(
+        (state) => state.setPickupSelectionTargets,
+    );
+    const clearPickupSelectionTargets = useGameState(
+        (state) => state.clearPickupSelectionTargets,
+    );
     const disturbAnimals = useGameState((state) => state.disturbAnimals);
     const setActiveDragPreview = useGameState(
         (state) => state.setActiveDragPreview,
@@ -295,6 +306,9 @@ export function PickableGroup({
         activeDragPreview?.source,
         activePreviewTarget,
     );
+    const sourcePickupSelectionTargets = useGameState((state) =>
+        isPreviewSource ? state.pickupSelectionTargets : null,
+    );
     const activePreviewTargetOffset = findActiveDragPreviewTargetOffset(
         activeDragPreview?.targets,
         activePreviewTarget,
@@ -308,6 +322,9 @@ export function PickableGroup({
     });
     const pointerSession = useRef<PointerSession | null>(null);
     const pointerSessionCleanup = useRef<(() => void) | null>(null);
+    const refreshPlacementPreviewFromSessionRef = useRef<
+        ((session: PointerSession) => void) | null
+    >(null);
 
     const stopDragAutopan = useCallback((session: PointerSession) => {
         if (session.dragAutopanFrame !== null) {
@@ -434,7 +451,7 @@ export function PickableGroup({
     function getMovingSegments(
         garden: CurrentGarden | null | undefined = getCurrentGarden(),
     ): MovingSegment[] {
-        if (blockIndex < 0) {
+        if (!garden || blockIndex < 0) {
             return [];
         }
 
@@ -465,27 +482,24 @@ export function PickableGroup({
             sourceBlocks.length === 1 &&
             (!attachedPlacement || attachedBlocks.length === 1);
 
-        return [
-            {
-                sourceStack: stack,
-                sourceStartIndex: blockIndex,
-                blocks: sourceBlocks,
-                baseHeight: currentStackHeight ?? 0,
-                canRecycle: canRecycleSelection,
-            },
-            ...(attachedPlacement && attachedBlocks.length > 0
-                ? [
-                      {
+        return createPickupSelectionMovingSegments({
+            attachedSegment:
+                attachedPlacement && attachedBlocks.length > 0
+                    ? {
                           sourceStack: attachedPlacement.candidateStack,
                           sourceStartIndex:
                               attachedPlacement.candidateBlockIndex,
                           blocks: attachedBlocks,
                           baseHeight: attachedCurrentStackHeight,
-                          canRecycle: false,
-                      },
-                  ]
-                : []),
-        ];
+                      }
+                    : null,
+            blockData: blocksData,
+            canRecyclePrimarySegment: canRecycleSelection,
+            primaryTarget: activePreviewTarget,
+            selectedTargets:
+                gameStateStore?.getState().pickupSelectionTargets ?? [],
+            stacks: garden.stacks,
+        });
     }
 
     function createPlacementPreviewResolver(
@@ -688,6 +702,7 @@ export function PickableGroup({
         setIsOverRecycler(false);
         setPickupOutlineVisible(false);
         setPickupBlock(null);
+        clearPickupSelectionTargets();
         setSandboxBlockTrashDropTargetActive(false);
     }
 
@@ -773,6 +788,17 @@ export function PickableGroup({
         session.latestPreview = preview;
         applyActivePreview(preview);
     }
+    refreshPlacementPreviewFromSessionRef.current =
+        refreshPlacementPreviewFromSession;
+
+    useEffect(() => {
+        const session = pointerSession.current;
+        if (!isPreviewSource || !sourcePickupSelectionTargets || !session) {
+            return;
+        }
+
+        refreshPlacementPreviewFromSessionRef.current?.(session);
+    }, [isPreviewSource, sourcePickupSelectionTargets]);
 
     function startDragAutopan(session: PointerSession) {
         if (session.dragAutopanFrame !== null || !gameCamera) {
@@ -868,6 +894,7 @@ export function PickableGroup({
         setIsDragging(false);
         setPickupOutlineVisible(true);
         setPickupBlock(block);
+        setPickupSelectionTargets([activePreviewTarget]);
         useHoveredBlockStore.getState().setHoveredBlock(null);
         disturbAnimals({
             sourceBlockId: block.id,
@@ -1143,12 +1170,11 @@ export function PickableGroup({
         event.preventDefault();
         suppressBlockInteractions(suppressClickAfterDragMs);
         const preview =
-            session.latestPreview ??
             resolvePlacementPreview(
                 session.lastClientX,
                 session.lastClientY,
                 session.pickupAnchorOffset,
-            );
+            ) ?? session.latestPreview;
         void finishPickup(
             preview,
             isPointerOverSandboxTrash(session.lastClientX, session.lastClientY),
@@ -1166,7 +1192,35 @@ export function PickableGroup({
         cancelPointerSession(true);
     }
 
+    function handlePickupPointerEnter(event: ThreeEvent<PointerEvent>) {
+        if (blockIndex < 0 || !event.nativeEvent.shiftKey || !gameStateStore) {
+            return false;
+        }
+
+        const gameState = gameStateStore.getState();
+        const preview = gameState.activeDragPreview;
+        if (
+            !preview ||
+            activeDragPreviewAffectsTarget(preview, activePreviewTarget)
+        ) {
+            return false;
+        }
+
+        const added = gameState.addPickupSelectionTarget(activePreviewTarget);
+        if (!added) {
+            return false;
+        }
+
+        event.stopPropagation();
+        triggerSelectionHaptic();
+        return true;
+    }
+
     function handlePointerDown(event: ThreeEvent<PointerEvent>) {
+        if (event.button === 0 && handlePickupPointerEnter(event)) {
+            return;
+        }
+
         if (
             event.button !== 0 ||
             pointerSession.current ||
@@ -1261,6 +1315,7 @@ export function PickableGroup({
         },
         {
             onClick: handleClick,
+            onPickupPointerEnter: handlePickupPointerEnter,
             onPointerDown: handlePointerDown,
         },
     );
@@ -1340,6 +1395,7 @@ export function PickableGroup({
         <animated.group
             position={dragPosition}
             scale={dragSprings.scale}
+            onPointerEnter={handlePickupPointerEnter}
             onPointerDown={handlePointerDown}
             onClick={handleClick}
         >
