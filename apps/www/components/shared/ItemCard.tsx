@@ -1,6 +1,5 @@
 import { Card, CardHeader, CardOverflow } from '@gredice/ui/Card';
 import type { Route } from 'next';
-import Link from 'next/link';
 import type { PropsWithChildren, ReactElement } from 'react';
 
 export function ItemCard({
@@ -14,7 +13,7 @@ export function ItemCard({
     mediaViewTransitionName?: string;
 }>) {
     return (
-        <Link
+        <a
             className="group block h-full rounded-lg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
             href={href}
         >
@@ -33,6 +32,6 @@ export function ItemCard({
                     {label}
                 </CardHeader>
             </Card>
-        </Link>
+        </a>
     );
 }

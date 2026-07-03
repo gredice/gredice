@@ -5,7 +5,6 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
-import Link from 'next/link';
 import { KnownPages } from '../../src/KnownPages';
 import { getOperationImageViewTransitionName } from './operationViewTransition';
 
@@ -24,7 +23,7 @@ export function OperationCard({
     const compact = variant === 'compact';
 
     return (
-        <Link
+        <a
             className="group block h-full rounded-lg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
             href={KnownPages.Operation(operation.information.label)}
         >
@@ -75,6 +74,6 @@ export function OperationCard({
                     </Row>
                 </CardContent>
             </Card>
-        </Link>
+        </a>
     );
 }
