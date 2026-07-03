@@ -119,6 +119,94 @@ function chunkInstances(instances: EntityBlockInstance[]) {
         );
 }
 
+function numbersEqual(left: number, right: number) {
+    return Math.abs(left - right) <= 0.0001;
+}
+
+function tuplesEqual(
+    left: [number, number, number],
+    right: [number, number, number],
+) {
+    return (
+        numbersEqual(left[0], right[0]) &&
+        numbersEqual(left[1], right[1]) &&
+        numbersEqual(left[2], right[2])
+    );
+}
+
+function scalesEqual(
+    left: EntityInstancesBlockBaseProps['scale'],
+    right: EntityInstancesBlockBaseProps['scale'],
+) {
+    if (left === right) {
+        return true;
+    }
+    if (Array.isArray(left) && Array.isArray(right)) {
+        return tuplesEqual(left, right);
+    }
+    return false;
+}
+
+function entityBlockInstancesEqual(
+    left: EntityBlockInstance[] | undefined,
+    right: EntityBlockInstance[] | undefined,
+) {
+    if (left === right) {
+        return true;
+    }
+    if (!left || !right || left.length !== right.length) {
+        return false;
+    }
+
+    return left.every((leftInstance, index) => {
+        const rightInstance = right[index];
+        return (
+            Boolean(rightInstance) &&
+            leftInstance.block === rightInstance.block &&
+            leftInstance.blockIndex === rightInstance.blockIndex &&
+            leftInstance.id === rightInstance.id &&
+            leftInstance.pickupOutlineVisible ===
+                rightInstance.pickupOutlineVisible &&
+            tuplesEqual(leftInstance.position, rightInstance.position) &&
+            numbersEqual(leftInstance.rotation, rightInstance.rotation) &&
+            leftInstance.stack === rightInstance.stack &&
+            numbersEqual(leftInstance.stackHeight, rightInstance.stackHeight)
+        );
+    });
+}
+
+function useStableEntityBlockInstances(
+    instances: EntityBlockInstance[] | undefined,
+) {
+    const previous = useRef<EntityBlockInstance[] | undefined>(undefined);
+
+    if (!entityBlockInstancesEqual(previous.current, instances)) {
+        previous.current = instances;
+    }
+
+    return previous.current;
+}
+
+function useStableTuple(tuple: [number, number, number]) {
+    const previous = useRef(tuple);
+
+    if (!tuplesEqual(previous.current, tuple)) {
+        previous.current = tuple;
+    }
+
+    return previous.current;
+}
+
+function useStableScale(scale: EntityInstancesBlockBaseProps['scale']) {
+    const previous = useRef(scale);
+
+    if (!scalesEqual(previous.current, scale)) {
+        previous.current = scale;
+    }
+
+    return previous.current;
+}
+
 function createInstanceMatrix(
     instance: EntityBlockInstance,
     localTransform: {
@@ -264,7 +352,7 @@ export function useEntityBlockInstances({
             : null,
     );
 
-    return stacks
+    const instances = stacks
         ?.filter((stack) =>
             stack.blocks.some((block) =>
                 blockNameMatches(block.name, name, names),
@@ -314,6 +402,8 @@ export function useEntityBlockInstances({
                     };
                 }),
         );
+
+    return useStableEntityBlockInstances(instances);
 }
 
 export function EntityInstancesBlock(
@@ -403,25 +493,49 @@ export function EntityInstancesGeometry(
         (state) => state.blockPlacementDropAnimations,
     );
 
-    if (!instances?.length) {
-        return null;
-    }
-
-    const localTransform = {
-        position: localPosition ?? defaultLocalPosition,
-        rotation: localRotation ?? defaultLocalRotation,
-    };
-    const animatedBlockIds = new Set(Object.keys(placementDropAnimations));
-    const stableInstances = instances.filter(
-        (data) => !animatedBlockIds.has(data.block.id),
+    const stableLocalPosition = useStableTuple(
+        localPosition ?? defaultLocalPosition,
     );
-    const animatedInstances = instances.filter((data) =>
-        animatedBlockIds.has(data.block.id),
+    const stableLocalRotation = useStableTuple(
+        localRotation ?? defaultLocalRotation,
     );
-    const stableChunks = chunkInstances(stableInstances);
+    const stableScale = useStableScale(scale);
+    const localTransform = useMemo(
+        () => ({
+            position: stableLocalPosition,
+            rotation: stableLocalRotation,
+        }),
+        [stableLocalPosition, stableLocalRotation],
+    );
+    const animatedBlockIds = useMemo(
+        () => new Set(Object.keys(placementDropAnimations)),
+        [placementDropAnimations],
+    );
+    const stableInstances = useMemo(
+        () =>
+            (instances ?? []).filter(
+                (data) => !animatedBlockIds.has(data.block.id),
+            ),
+        [animatedBlockIds, instances],
+    );
+    const animatedInstances = useMemo(
+        () =>
+            (instances ?? []).filter((data) =>
+                animatedBlockIds.has(data.block.id),
+            ),
+        [animatedBlockIds, instances],
+    );
+    const stableChunks = useMemo(
+        () => chunkInstances(stableInstances),
+        [stableInstances],
+    );
 
     const material = 'material' in props ? props.material : undefined;
     const materialNode = 'materialNode' in props ? props.materialNode : null;
+
+    if (!instances?.length) {
+        return null;
+    }
 
     const renderAnimatedInstances = (suffix: string) =>
         animatedInstances.map((data) => (
@@ -442,7 +556,7 @@ export function EntityInstancesGeometry(
                         material={material}
                         position={localTransform.position}
                         rotation={localTransform.rotation}
-                        scale={scale}
+                        scale={stableScale}
                         receiveShadow={receiveShadow}
                         castShadow={castShadow}
                         renderOrder={renderOrder}
@@ -476,7 +590,7 @@ export function EntityInstancesGeometry(
                           <group
                               position={localTransform.position}
                               rotation={localTransform.rotation}
-                              scale={scale}
+                              scale={stableScale}
                           >
                               <SnowOverlay
                                   geometry={geometry}
@@ -507,7 +621,7 @@ export function EntityInstancesGeometry(
                           <group
                               position={localTransform.position}
                               rotation={localTransform.rotation}
-                              scale={scale}
+                              scale={stableScale}
                           >
                               <RainWetOverlay geometry={geometry} />
                           </group>
@@ -529,7 +643,7 @@ export function EntityInstancesGeometry(
                     materialNode={materialNode}
                     receiveShadow={receiveShadow}
                     renderOrder={renderOrder}
-                    scale={scale}
+                    scale={stableScale}
                 />
             ))}
             {renderAnimatedInstances('base')}
@@ -548,7 +662,7 @@ export function EntityInstancesGeometry(
                                 geometry={geometry}
                                 position={localTransform.position}
                                 rotation={localTransform.rotation}
-                                scale={scale}
+                                scale={stableScale}
                                 raycast={() => null}
                             >
                                 <meshBasicMaterial visible={false} />
@@ -562,7 +676,7 @@ export function EntityInstancesGeometry(
                     chunks={stableChunks}
                     geometry={geometry}
                     localTransform={localTransform}
-                    scale={scale}
+                    scale={stableScale}
                 />
             )}
             {snow && renderSnow && (
@@ -570,7 +684,7 @@ export function EntityInstancesGeometry(
                     chunks={stableChunks}
                     geometry={geometry}
                     localTransform={localTransform}
-                    scale={scale}
+                    scale={stableScale}
                     snow={snow}
                     snowLift={snowLift}
                     snowOverlayMinCoverage={snowOverlayMinCoverage}

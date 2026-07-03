@@ -1,6 +1,11 @@
 import { Edges } from '@react-three/drei';
 import type { ThreeEvent } from '@react-three/fiber';
-import { type ComponentType, type PropsWithChildren, useEffect } from 'react';
+import {
+    type ComponentType,
+    memo,
+    type PropsWithChildren,
+    useContext,
+} from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import {
     createBlockInteractionTargetKey,
@@ -12,16 +17,14 @@ import { SelectableGroup } from '../controls/SelectableGroup';
 import { useDeferredSingleClick } from '../controls/useDeferredSingleClick';
 import { useHoveredBlockStore } from '../controls/useHoveredBlockStore';
 import { useBlockData } from '../hooks/useBlockData';
-import {
-    useCurrentGarden,
-    useIsSandboxGarden,
-} from '../hooks/useCurrentGarden';
+import { useCurrentGardenCache } from '../hooks/useCurrentGarden';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
-import { useGameState } from '../useGameState';
+import { GameStateContext, useGameState } from '../useGameState';
 import { useSetRaisedBedCloseupParam } from '../useRaisedBedCloseup';
 import { useGiftBoxParam } from '../useUrlState';
 import { useStackHeight } from '../utils/getStackHeight';
 import { findRaisedBedByBlockId } from '../utils/raisedBedBlocks';
+import { areEntityFactoryPropsEqual } from './entityFactoryMemo';
 import { entityNameMap } from './entityNameMap';
 import { QueuedPlacementDropAnimation } from './helpers/PlacementDropAnimation';
 import { UnknownEntityPlaceholder } from './UnknownEntityPlaceholder';
@@ -31,6 +34,8 @@ export type EntityFactoryProps = {
     noControl?: boolean;
     noRenderInView?: string[];
 };
+
+type EntityFactoryComponentProps = EntityFactoryProps & EntityInstanceProps;
 
 const instancedRenderModeDebugColor = '#22c55e';
 const componentRenderModeDebugColor = '#f59e0b';
@@ -115,49 +120,41 @@ function InstancedEntitySelectionRegistration({
     blockIndex: number;
     interactionTargetKey: string | undefined;
 }) {
-    const { data: garden } = useCurrentGarden();
+    const getCurrentGarden = useCurrentGardenCache();
+    const gameStateStore = useContext(GameStateContext);
     const { track } = useGameAnalytics();
-    const hoveredBlock = useHoveredBlockStore((state) => state.hoveredBlock);
     const setHoveredBlock = useHoveredBlockStore(
         (state) => state.setHoveredBlock,
-    );
-    const isSandbox = useIsSandboxGarden();
-    const hasActiveDragPreview = useGameState((state) =>
-        Boolean(state.activeDragPreview),
     );
     const setOpenGardenBoxBlockId = useGameState(
         (state) => state.setOpenGardenBoxBlockId,
     );
     const { mutate: setRaisedBedCloseupParam } = useSetRaisedBedCloseupParam();
     const [, setGiftBoxParam] = useGiftBoxParam();
-    const raisedBed =
-        block.name === 'Raised_Bed'
-            ? findRaisedBedByBlockId(garden, block.id)
-            : null;
     const selectable =
         block.name === 'GardenBox' ||
         block.name.startsWith('GiftBox_') ||
-        Boolean(raisedBed);
-    const selectionHoverEnabled = selectable && !hasActiveDragPreview;
-
-    useEffect(() => {
-        if (hasActiveDragPreview && hoveredBlock === block) {
-            setHoveredBlock(null);
-        }
-    }, [block, hasActiveDragPreview, hoveredBlock, setHoveredBlock]);
+        block.name === 'Raised_Bed';
+    const hasActiveDragPreview = () =>
+        Boolean(gameStateStore?.getState().activeDragPreview);
 
     const handleSelected = useDeferredSingleClick(() => {
-        if (hasActiveDragPreview) {
+        if (hasActiveDragPreview()) {
             return;
         }
 
         if (block.name === 'GardenBox') {
-            if (!isSandbox) {
+            if (!getCurrentGarden()?.isSandbox) {
                 setOpenGardenBoxBlockId(block.id);
             }
             return;
         }
 
+        const garden = getCurrentGarden();
+        const raisedBed =
+            block.name === 'Raised_Bed'
+                ? findRaisedBedByBlockId(garden, block.id)
+                : null;
         if (block.name === 'Raised_Bed' && raisedBed) {
             track('game_raised_bed_opened', {
                 block_id: block.id,
@@ -188,18 +185,19 @@ function InstancedEntitySelectionRegistration({
             },
             ...(selectable
                 ? {
-                      ...(selectionHoverEnabled
-                          ? {
-                                onPointerEnter: (
-                                    event: ThreeEvent<PointerEvent>,
-                                ) => {
-                                    event.stopPropagation();
-                                    setHoveredBlock(block);
-                                },
-                            }
-                          : {}),
+                      onPointerEnter: (event: ThreeEvent<PointerEvent>) => {
+                          if (hasActiveDragPreview()) {
+                              return;
+                          }
+
+                          event.stopPropagation();
+                          setHoveredBlock(block);
+                      },
                       onPointerLeave: (event: ThreeEvent<PointerEvent>) => {
-                          if (hoveredBlock === block) {
+                          if (
+                              useHoveredBlockStore.getState().hoveredBlock ===
+                              block
+                          ) {
                               event.stopPropagation();
                               setHoveredBlock(null);
                           }
@@ -212,14 +210,14 @@ function InstancedEntitySelectionRegistration({
     return null;
 }
 
-export function EntityFactory({
+function EntityFactoryComponent({
     name,
     stack,
     block,
     noControl,
     noRenderInView,
     ...rest
-}: EntityFactoryProps & EntityInstanceProps) {
+}: EntityFactoryComponentProps) {
     const EntityComponent = entityComponents[name];
     const view = useGameState((state) => state.view);
     const isInstancedInView = noRenderInView?.includes(name) ?? false;
@@ -319,3 +317,8 @@ export function EntityFactory({
         </SelectableGroup>
     );
 }
+
+export const EntityFactory = memo(
+    EntityFactoryComponent,
+    areEntityFactoryPropsEqual,
+);

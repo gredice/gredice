@@ -27,7 +27,10 @@ import { useBlockData } from '../hooks/useBlockData';
 import { useBlockDelete } from '../hooks/useBlockDelete';
 import { useBlockMove } from '../hooks/useBlockMove';
 import { useBlockRecycle } from '../hooks/useBlockRecycle';
-import { useCurrentGarden } from '../hooks/useCurrentGarden';
+import {
+    type CurrentGarden,
+    useCurrentGardenCache,
+} from '../hooks/useCurrentGarden';
 import { useGardenBoxStoreBlock } from '../hooks/useGardenBoxStoreBlock';
 import {
     resolveBlockParticleType,
@@ -56,10 +59,12 @@ import {
     suppressBlockInteractions,
 } from './blockInteractionSuppression';
 import {
+    createPickupPlacementPreviewResolver,
     type MovingSegment,
+    type PickupPlacementPreviewResolver,
     type ResolvedPlacementPreview,
-    resolvePickupPlacementPreviewForRelative,
 } from './PickupPlacementResolver';
+import { useHoveredBlockStore } from './useHoveredBlockStore';
 
 const groundPlane = new Plane(new Vector3(0, 1, 0), 0);
 const pickupHintDelayMs = 120;
@@ -146,6 +151,59 @@ function activeDragPreviewAffectsTarget(
     );
 }
 
+const placementPreviewEpsilon = 0.0001;
+
+function placementPreviewNumbersEqual(left: number, right: number) {
+    return Math.abs(left - right) <= placementPreviewEpsilon;
+}
+
+function placementPreviewTargetsEqual(
+    left: ResolvedPlacementPreview['targetOffsets'],
+    right: ResolvedPlacementPreview['targetOffsets'],
+) {
+    if (left.length !== right.length) {
+        return false;
+    }
+
+    return left.every((leftTarget, index) => {
+        const rightTarget = right[index];
+        return (
+            Boolean(rightTarget) &&
+            activeDragPreviewTargetMatches(leftTarget, rightTarget) &&
+            placementPreviewNumbersEqual(
+                leftTarget.hoverHeight,
+                rightTarget?.hoverHeight ?? Number.NaN,
+            )
+        );
+    });
+}
+
+function resolvedPlacementPreviewsEqual(
+    left: ResolvedPlacementPreview | null | undefined,
+    right: ResolvedPlacementPreview | null | undefined,
+) {
+    if (left === right) {
+        return true;
+    }
+    if (!left || !right) {
+        return false;
+    }
+
+    return (
+        placementPreviewNumbersEqual(left.relative.x, right.relative.x) &&
+        placementPreviewNumbersEqual(left.relative.z, right.relative.z) &&
+        placementPreviewNumbersEqual(
+            left.previewHoverHeight,
+            right.previewHoverHeight,
+        ) &&
+        left.hoveredGardenBoxBlockId === right.hoveredGardenBoxBlockId &&
+        left.canStoreInGardenBox === right.canStoreInGardenBox &&
+        left.nextIsOverRecycler === right.nextIsOverRecycler &&
+        left.nextIsBlocked === right.nextIsBlocked &&
+        placementPreviewTargetsEqual(left.targetOffsets, right.targetOffsets)
+    );
+}
+
 export function PickableGroup({
     children,
     interactionTargetKey,
@@ -163,7 +221,7 @@ export function PickableGroup({
         },
     }));
     const { spawn } = useParticles();
-    const { data: garden } = useCurrentGarden();
+    const getCurrentGarden = useCurrentGardenCache();
     const { data: blocksData } = useBlockData();
     const gameStateStore = useContext(GameStateContext);
     const camera = useThree((state) => state.camera);
@@ -212,37 +270,6 @@ export function PickableGroup({
     const recycleBlock = useBlockRecycle();
     const storeBlockInGardenBox = useGardenBoxStoreBlock();
 
-    const raisedBed = findRaisedBedByBlockId(garden, block.id);
-    const canRecycleRaisedBed = (raisedBed?.status ?? 'new') === 'new';
-    const canRecycle = canRecycleRaisedBed;
-
-    const attachedRaisedBedBlockId =
-        block.name === 'Raised_Bed' && garden
-            ? findAttachedRaisedBedBlockId(garden.stacks, block.id)
-            : null;
-    const attachedPlacement = attachedRaisedBedBlockId
-        ? garden?.stacks
-              .flatMap((candidateStack) =>
-                  candidateStack.blocks.map(
-                      (candidateBlock, candidateBlockIndex) => ({
-                          candidateStack,
-                          candidateBlock,
-                          candidateBlockIndex,
-                      }),
-                  ),
-              )
-              .find(
-                  (candidate) =>
-                      candidate.candidateBlock.id === attachedRaisedBedBlockId,
-              )
-        : null;
-    const attachedCurrentStackHeight = attachedPlacement
-        ? getStackHeight(
-              blocksData,
-              attachedPlacement.candidateStack,
-              attachedPlacement.candidateBlock,
-          )
-        : 0;
     const blockIndex = stack.blocks.indexOf(block);
     const activePreviewTarget = useMemo(
         () =>
@@ -375,7 +402,38 @@ export function PickableGroup({
         };
     }, [stopDragAutopan]);
 
-    function getMovingSegments(): MovingSegment[] {
+    function getAttachedPlacement(garden: CurrentGarden | null | undefined) {
+        if (block.name !== 'Raised_Bed' || !garden) {
+            return null;
+        }
+
+        const attachedRaisedBedBlockId = findAttachedRaisedBedBlockId(
+            garden.stacks,
+            block.id,
+        );
+
+        return attachedRaisedBedBlockId
+            ? (garden.stacks
+                  .flatMap((candidateStack) =>
+                      candidateStack.blocks.map(
+                          (candidateBlock, candidateBlockIndex) => ({
+                              candidateStack,
+                              candidateBlock,
+                              candidateBlockIndex,
+                          }),
+                      ),
+                  )
+                  .find(
+                      (candidate) =>
+                          candidate.candidateBlock.id ===
+                          attachedRaisedBedBlockId,
+                  ) ?? null)
+            : null;
+    }
+
+    function getMovingSegments(
+        garden: CurrentGarden | null | undefined = getCurrentGarden(),
+    ): MovingSegment[] {
         if (blockIndex < 0) {
             return [];
         }
@@ -385,6 +443,18 @@ export function PickableGroup({
             return [];
         }
 
+        const raisedBed = findRaisedBedByBlockId(garden, block.id);
+        const canRecycle = garden
+            ? (raisedBed?.status ?? 'new') === 'new'
+            : false;
+        const attachedPlacement = getAttachedPlacement(garden);
+        const attachedCurrentStackHeight = attachedPlacement
+            ? getStackHeight(
+                  blocksData,
+                  attachedPlacement.candidateStack,
+                  attachedPlacement.candidateBlock,
+              )
+            : 0;
         const attachedBlocks = attachedPlacement
             ? attachedPlacement.candidateStack.blocks.slice(
                   attachedPlacement.candidateBlockIndex,
@@ -418,21 +488,22 @@ export function PickableGroup({
         ];
     }
 
-    function resolvePlacementPreviewForRelative(relative: Vector3) {
+    function createPlacementPreviewResolver(
+        garden: CurrentGarden | null | undefined = getCurrentGarden(),
+    ) {
         if (!garden || !blocksData || blockIndex < 0) {
             return null;
         }
 
-        const movingSegments = getMovingSegments();
+        const movingSegments = getMovingSegments(garden);
         if (movingSegments.length === 0) {
             return null;
         }
-        return resolvePickupPlacementPreviewForRelative({
+        return createPickupPlacementPreviewResolver({
             blockData: blocksData,
             gardenIsSandbox: garden.isSandbox,
             localSandboxStorageKey,
             movingSegments,
-            relative,
             stacks: garden.stacks,
         });
     }
@@ -492,17 +563,24 @@ export function PickableGroup({
         return (screenX - clientX) ** 2 + (screenY - clientY) ** 2;
     }
 
-    function resolvePlacementPreviewAtDestination(destination: {
-        x: number;
-        z: number;
-    }) {
+    function resolvePlacementPreviewAtDestination(
+        destination: {
+            x: number;
+            z: number;
+        },
+        resolver?: PickupPlacementPreviewResolver | null,
+    ) {
         const { relative } = dragState.current;
         relative.set(
             destination.x - stack.position.x,
             0,
             destination.z - stack.position.z,
         );
-        return resolvePlacementPreviewForRelative(relative);
+        return (
+            (resolver ?? createPlacementPreviewResolver())?.resolveForRelative(
+                relative,
+            ) ?? null
+        );
     }
 
     function resolvePlacementPreview(
@@ -510,12 +588,17 @@ export function PickableGroup({
         clientY: number,
         pickupAnchorOffset: PickupAnchorOffset,
     ): ResolvedPlacementPreview | null {
+        const garden = getCurrentGarden();
         if (!garden || !blocksData || blockIndex < 0) {
             return null;
         }
 
         const rect = domElement.getBoundingClientRect();
         if (rect.width <= 0 || rect.height <= 0) {
+            return null;
+        }
+        const resolver = createPlacementPreviewResolver(garden);
+        if (!resolver) {
             return null;
         }
 
@@ -549,8 +632,10 @@ export function PickableGroup({
             x: dest.x,
             z: dest.z,
         })) {
-            const preview =
-                resolvePlacementPreviewAtDestination(candidateDestination);
+            const preview = resolvePlacementPreviewAtDestination(
+                candidateDestination,
+                resolver,
+            );
             if (!preview) {
                 continue;
             }
@@ -608,7 +693,7 @@ export function PickableGroup({
 
     function isPointerOverSandboxTrash(clientX: number, clientY: number) {
         return (
-            Boolean(garden?.isSandbox) &&
+            Boolean(getCurrentGarden()?.isSandbox) &&
             isPointOverSandboxBlockTrashDropTarget(clientX, clientY)
         );
     }
@@ -678,6 +763,10 @@ export function PickableGroup({
             session.pickupAnchorOffset,
         );
         if (!preview) {
+            return;
+        }
+
+        if (resolvedPlacementPreviewsEqual(session.latestPreview, preview)) {
             return;
         }
 
@@ -779,6 +868,7 @@ export function PickableGroup({
         setIsDragging(false);
         setPickupOutlineVisible(true);
         setPickupBlock(block);
+        useHoveredBlockStore.getState().setHoveredBlock(null);
         disturbAnimals({
             sourceBlockId: block.id,
             sourceBlockName: block.name,
@@ -803,8 +893,11 @@ export function PickableGroup({
         preview: ResolvedPlacementPreview | null,
         deleteRequested: boolean,
     ) {
+        const garden = getCurrentGarden();
+        const attachedPlacement = getAttachedPlacement(garden);
+        const raisedBed = findRaisedBedByBlockId(garden, block.id);
         const blockIdsToDelete = deleteRequested
-            ? getMovingSegments().flatMap((segment) =>
+            ? getMovingSegments(garden).flatMap((segment) =>
                   segment.blocks.map((segmentBlock) => segmentBlock.id),
               )
             : [];
@@ -937,7 +1030,7 @@ export function PickableGroup({
             return;
         }
 
-        const moveRequests = getMovingSegments().flatMap((segment) =>
+        const moveRequests = getMovingSegments(garden).flatMap((segment) =>
             segment.blocks.map((segmentBlock) => ({
                 sourcePosition: {
                     x: segment.sourceStack.position.x,
@@ -1078,7 +1171,7 @@ export function PickableGroup({
             event.button !== 0 ||
             pointerSession.current ||
             areBlockInteractionsSuppressed() ||
-            !garden ||
+            !getCurrentGarden() ||
             !blocksData ||
             blockIndex < 0
         ) {

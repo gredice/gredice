@@ -4,7 +4,12 @@ import {
     type GameBackgroundPaletteKey,
     isGameBackgroundPaletteKey,
 } from '@gredice/js/gameBackground';
-import { type UseQueryResult, useQuery } from '@tanstack/react-query';
+import {
+    type UseQueryResult,
+    useQuery,
+    useQueryClient,
+} from '@tanstack/react-query';
+import { useCallback, useMemo } from 'react';
 import { Vector3 } from 'three';
 import {
     loadLocalSandboxGarden,
@@ -27,6 +32,7 @@ import {
     type WinterMode,
 } from '../useGameState';
 import { useCurrentGardenIdParam } from '../useUrlState';
+import { shareCurrentGardenQueryData } from './currentGardenStructuralSharing';
 import { useGardens, useGardensKeys } from './useGardens';
 
 const GARDEN_POSITION_X_OFFSET = -1;
@@ -66,6 +72,8 @@ type useCurrentGardenResponse = Omit<
         lon: number;
     };
 };
+
+export type CurrentGarden = useCurrentGardenResponse;
 
 type MockRaisedBed = useCurrentGardenResponse['raisedBeds'][number];
 type MockRaisedBedField = MockRaisedBed['fields'][number];
@@ -1268,10 +1276,56 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
                 raisedBeds: garden.raisedBeds,
             };
         },
+        structuralSharing: shareCurrentGardenQueryData,
         retry: false,
         staleTime: 1000 * 60, // 1m
         enabled: isLocalSandbox || isMock || Boolean(gardens),
     });
+}
+
+export function useCurrentGardenCache() {
+    const queryClient = useQueryClient();
+    const isMock = useGameState((state) => state.isMock);
+    const localSandboxStorageKey = useGameState(
+        (state) => state.localSandboxStorageKey,
+    );
+    const mockGardenProfile = useGameState((state) => state.mockGardenProfile);
+    const winterMode = useGameState((state) => state.winterMode);
+    const isLocalSandbox = localSandboxStorageKey !== null;
+    const { data: gardens } = useGardens(isMock || isLocalSandbox);
+    let selectedGardenId: number | null = null;
+    if (!isMock && !isLocalSandbox) {
+        // biome-ignore lint/correctness/useHookAtTopLevel: store mode is fixed when the game state is created.
+        const [gardenId] = useCurrentGardenIdParam();
+        selectedGardenId = gardenId;
+    }
+    const currentGardenId =
+        (isLocalSandbox ? localSandboxGardenId : selectedGardenId) ??
+        (gardens && gardens.length > 0 ? gardens[0].id : null);
+    const gardenQueryKey = useMemo(
+        () =>
+            currentGardenKeys(
+                winterMode,
+                currentGardenId,
+                isMock ? mockGardenProfile : undefined,
+                localSandboxStorageKey,
+            ),
+        [
+            currentGardenId,
+            isMock,
+            localSandboxStorageKey,
+            mockGardenProfile,
+            winterMode,
+        ],
+    );
+
+    return useCallback(
+        () =>
+            queryClient.getQueryData<useCurrentGardenResponse | null>(
+                gardenQueryKey,
+            ) ?? null,
+        [gardenQueryKey, queryClient],
+    );
 }
 
 /**

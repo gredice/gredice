@@ -49,6 +49,10 @@ export type ResolvedPlacementPreview = {
     targetOffsets: ActiveDragPreviewTargetOffset[];
 };
 
+export type PickupPlacementPreviewResolver = {
+    resolveForRelative: (relative: Vector3) => ResolvedPlacementPreview | null;
+};
+
 function getStack(
     stacks: Stack[] | undefined,
     destination: { x: number; z: number },
@@ -159,6 +163,11 @@ function getSegmentFootprintOffsets(
 
     return Array.from(offsetsByKey.values());
 }
+
+type PreparedMovingSegment = {
+    footprintOffsets: { x: number; y: number }[];
+    segment: MovingSegment;
+};
 
 function createTargetOffsets(
     placementPreviews: PlacementPreview[],
@@ -341,6 +350,30 @@ export function resolvePickupPlacementPreviewForRelative({
     relative: Vector3;
     stacks: Stack[] | undefined;
 }): ResolvedPlacementPreview | null {
+    return (
+        createPickupPlacementPreviewResolver({
+            blockData,
+            gardenIsSandbox,
+            localSandboxStorageKey,
+            movingSegments,
+            stacks,
+        })?.resolveForRelative(relative) ?? null
+    );
+}
+
+export function createPickupPlacementPreviewResolver({
+    blockData,
+    gardenIsSandbox,
+    localSandboxStorageKey,
+    movingSegments,
+    stacks,
+}: {
+    blockData: BlockData[] | null | undefined;
+    gardenIsSandbox: boolean;
+    localSandboxStorageKey: string | null;
+    movingSegments: MovingSegment[];
+    stacks: Stack[] | undefined;
+}): PickupPlacementPreviewResolver | null {
     if (!blockData || movingSegments.length === 0) {
         return null;
     }
@@ -355,9 +388,49 @@ export function resolvePickupPlacementPreviewForRelative({
         movingBlockIds,
         stacks,
     });
+    const preparedMovingSegments: PreparedMovingSegment[] = movingSegments.map(
+        (segment) => ({
+            footprintOffsets: getSegmentFootprintOffsets(blockData, segment),
+            segment,
+        }),
+    );
 
-    const placementPreviews: PlacementPreview[] = movingSegments.flatMap(
-        (segment) => {
+    return {
+        resolveForRelative: (relative) =>
+            resolvePickupPlacementPreviewFromPreparedState({
+                blockData,
+                gardenIsSandbox,
+                localSandboxStorageKey,
+                movingBlockIds,
+                occupiedCells,
+                preparedMovingSegments,
+                relative,
+                stacks,
+            }),
+    };
+}
+
+function resolvePickupPlacementPreviewFromPreparedState({
+    blockData,
+    gardenIsSandbox,
+    localSandboxStorageKey,
+    movingBlockIds,
+    occupiedCells,
+    preparedMovingSegments,
+    relative,
+    stacks,
+}: {
+    blockData: BlockData[];
+    gardenIsSandbox: boolean;
+    localSandboxStorageKey: string | null;
+    movingBlockIds: Set<string>;
+    occupiedCells: Map<string, OccupiedCell[]>;
+    preparedMovingSegments: PreparedMovingSegment[];
+    relative: Vector3;
+    stacks: Stack[] | undefined;
+}): ResolvedPlacementPreview | null {
+    const placementPreviews: PlacementPreview[] =
+        preparedMovingSegments.flatMap(({ footprintOffsets, segment }) => {
             if (!segment.blocks[0]) {
                 return [];
             }
@@ -366,10 +439,6 @@ export function resolvePickupPlacementPreviewForRelative({
                 x: segment.sourceStack.position.x + relative.x,
                 z: segment.sourceStack.position.z + relative.z,
             };
-            const footprintOffsets = getSegmentFootprintOffsets(
-                blockData,
-                segment,
-            );
             const anchorOccupiedCell = getTopOccupiedCell(
                 occupiedCells,
                 destination,
@@ -458,8 +527,7 @@ export function resolvePickupPlacementPreviewForRelative({
                     segment,
                 },
             ];
-        },
-    );
+        });
 
     const movedRaisedBedPreviews = placementPreviews.filter((preview) =>
         preview.segment.blocks.some(

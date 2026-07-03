@@ -5,6 +5,7 @@ import { Vector3 } from 'three';
 import type { Block } from '../types/Block';
 import type { Stack } from '../types/Stack';
 import {
+    createPickupPlacementPreviewResolver,
     type MovingSegment,
     resolvePickupPlacementPreviewForRelative,
 } from './PickupPlacementResolver';
@@ -354,5 +355,56 @@ describe('resolvePickupPlacementPreviewForRelative', () => {
         });
 
         assert.equal(preview?.nextIsBlocked, false);
+    });
+
+    it('matches the single-resolution path when reusing prepared placement state', () => {
+        const stand = createBlock('LemonadeStand', 'stand');
+        const sourceStack = createStack(0, 0, [stand]);
+        const supportStack = createStack(1, 0, [createBlock('Tree', 'tree')]);
+        const blockedStack = createStack(2, 0, [
+            createBlock('WaterWell', 'water-well'),
+        ]);
+        const movingSegments = [
+            createMovingSegment({ block: stand, sourceStack }),
+        ];
+        const resolver = createPickupPlacementPreviewResolver({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments,
+            stacks: [sourceStack, supportStack, blockedStack],
+        });
+        if (!resolver) {
+            throw new Error('Expected placement resolver');
+        }
+
+        const relative = new Vector3(1, 0, 0);
+        const preparedPreview = resolver.resolveForRelative(relative);
+        const directPreview = resolvePickupPlacementPreviewForRelative({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments,
+            relative,
+            stacks: [sourceStack, supportStack, blockedStack],
+        });
+
+        assert.deepEqual(
+            {
+                hoveredGardenBoxBlockId:
+                    preparedPreview?.hoveredGardenBoxBlockId,
+                nextIsBlocked: preparedPreview?.nextIsBlocked,
+                nextIsOverRecycler: preparedPreview?.nextIsOverRecycler,
+                previewHoverHeight: preparedPreview?.previewHoverHeight,
+                targetOffsets: preparedPreview?.targetOffsets,
+            },
+            {
+                hoveredGardenBoxBlockId: directPreview?.hoveredGardenBoxBlockId,
+                nextIsBlocked: directPreview?.nextIsBlocked,
+                nextIsOverRecycler: directPreview?.nextIsOverRecycler,
+                previewHoverHeight: directPreview?.previewHoverHeight,
+                targetOffsets: directPreview?.targetOffsets,
+            },
+        );
     });
 });
