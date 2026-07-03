@@ -2,18 +2,12 @@ import {
     cloneElement,
     isValidElement,
     type ReactNode,
+    useEffect,
     useLayoutEffect,
     useMemo,
     useRef,
 } from 'react';
-import {
-    Euler,
-    type InstancedMesh,
-    type Material,
-    Matrix4,
-    Quaternion,
-    Vector3,
-} from 'three';
+import type { InstancedMesh, Material } from 'three';
 import type { BufferGeometry } from 'three/src/Three.Core.js';
 import {
     type ActiveDragPreviewTarget,
@@ -38,13 +32,19 @@ import type { Block } from '../types/Block';
 import type { Stack } from '../types/Stack';
 import { type ActiveDragPreview, useGameState } from '../useGameState';
 import { getStackHeight } from '../utils/getStackHeight';
+import {
+    chunkMeshInstances,
+    createMergedChunkGeometry,
+    createMeshInstanceMatrix,
+    type MeshInstanceChunk,
+    type MeshInstanceLocalTransform,
+} from './chunkedMeshGeometry';
 import { blockPickupOutlineStyle } from './helpers/blockPickupOutlineStyle';
 import { HoverOutline } from './helpers/HoverOutline';
 import { PlacementDropAnimation } from './helpers/PlacementDropAnimation';
 
 const defaultLocalPosition: [number, number, number] = [0, 0, 0];
 const defaultLocalRotation: [number, number, number] = [0, 0, 0];
-const instanceChunkSize = 8;
 
 export type EntityInstancesBlockBaseProps = {
     stacks: Stack[] | undefined;
@@ -59,6 +59,7 @@ export type EntityInstancesBlockBaseProps = {
     geometry: BufferGeometry;
     snow?: SnowMaterialOptions;
     renderRainWetOverlay?: boolean;
+    renderStableChunksAsMergedGeometry?: boolean;
     castShadow?: boolean;
     receiveShadow?: boolean;
     renderOrder?: number;
@@ -84,40 +85,6 @@ export type EntityBlockInstance = {
     stack: Stack;
     stackHeight: number;
 };
-
-type InstanceChunk = {
-    key: string;
-    instances: EntityBlockInstance[];
-};
-
-function chunkInstanceKey(position: [number, number, number]) {
-    return `${Math.floor(position[0] / instanceChunkSize)}:${Math.floor(
-        position[2] / instanceChunkSize,
-    )}`;
-}
-
-function chunkInstances(instances: EntityBlockInstance[]) {
-    const chunkByKey = new Map<string, EntityBlockInstance[]>();
-
-    for (const instance of instances) {
-        const key = chunkInstanceKey(instance.position);
-        const chunk = chunkByKey.get(key);
-        if (chunk) {
-            chunk.push(instance);
-            continue;
-        }
-        chunkByKey.set(key, [instance]);
-    }
-
-    return [...chunkByKey.entries()]
-        .sort(([left], [right]) => left.localeCompare(right))
-        .map(
-            ([key, chunk]): InstanceChunk => ({
-                key,
-                instances: chunk,
-            }),
-        );
-}
 
 function numbersEqual(left: number, right: number) {
     return Math.abs(left - right) <= 0.0001;
@@ -205,41 +172,6 @@ function useStableScale(scale: EntityInstancesBlockBaseProps['scale']) {
     }
 
     return previous.current;
-}
-
-function createInstanceMatrix(
-    instance: EntityBlockInstance,
-    localTransform: {
-        position: [number, number, number];
-        rotation: [number, number, number];
-    },
-    scale: EntityInstancesBlockBaseProps['scale'],
-) {
-    const rootPosition = new Vector3(...instance.position);
-    const rootQuaternion = new Quaternion().setFromAxisAngle(
-        new Vector3(0, 1, 0),
-        instance.rotation * (Math.PI / 2),
-    );
-    const rootScale = new Vector3(1, 1, 1);
-    const rootMatrix = new Matrix4().compose(
-        rootPosition,
-        rootQuaternion,
-        rootScale,
-    );
-    const localPosition = new Vector3(...localTransform.position);
-    const localQuaternion = new Quaternion().setFromEuler(
-        new Euler(...localTransform.rotation),
-    );
-    const localScale = Array.isArray(scale)
-        ? new Vector3(scale[0], scale[1], scale[2])
-        : new Vector3(scale ?? 1, scale ?? 1, scale ?? 1);
-    const localMatrix = new Matrix4().compose(
-        localPosition,
-        localQuaternion,
-        localScale,
-    );
-
-    return rootMatrix.multiply(localMatrix);
 }
 
 function cloneMaterialNode(materialNode: ReactNode) {
@@ -422,6 +354,7 @@ export function EntityInstancesBlock(
         geometry,
         snow,
         renderRainWetOverlay = false,
+        renderStableChunksAsMergedGeometry,
         castShadow = true,
         receiveShadow = true,
         renderOrder,
@@ -442,6 +375,7 @@ export function EntityInstancesBlock(
         receiveShadow,
         renderOrder,
         renderRainWetOverlay,
+        renderStableChunksAsMergedGeometry,
         renderSnow,
         scale,
         snow,
@@ -485,6 +419,7 @@ export function EntityInstancesGeometry(
         snowLift = 0,
         snowOverlayMinCoverage,
         renderRainWetOverlay = false,
+        renderStableChunksAsMergedGeometry = false,
         castShadow = true,
         receiveShadow = true,
         renderOrder,
@@ -526,7 +461,7 @@ export function EntityInstancesGeometry(
         [animatedBlockIds, instances],
     );
     const stableChunks = useMemo(
-        () => chunkInstances(stableInstances),
+        () => chunkMeshInstances(stableInstances),
         [stableInstances],
     );
 
@@ -631,21 +566,37 @@ export function EntityInstancesGeometry(
 
     return (
         <>
-            {stableChunks.map((chunk) => (
-                <ChunkedInstancedMesh
-                    key={`${instanceKey}:${chunk.key}`}
-                    castShadow={castShadow}
-                    chunk={chunk}
-                    debugName={`BlockInstances:${instanceKey}:chunk:${chunk.key}:count:${chunk.instances.length}`}
-                    geometry={geometry}
-                    localTransform={localTransform}
-                    material={material}
-                    materialNode={materialNode}
-                    receiveShadow={receiveShadow}
-                    renderOrder={renderOrder}
-                    scale={stableScale}
-                />
-            ))}
+            {stableChunks.map((chunk) =>
+                renderStableChunksAsMergedGeometry ? (
+                    <ChunkedMergedMesh
+                        key={`${instanceKey}:${chunk.key}`}
+                        castShadow={castShadow}
+                        chunk={chunk}
+                        debugName={`MergedBlockChunk:${instanceKey}:chunk:${chunk.key}:count:${chunk.instances.length}`}
+                        geometry={geometry}
+                        localTransform={localTransform}
+                        material={material}
+                        materialNode={materialNode}
+                        receiveShadow={receiveShadow}
+                        renderOrder={renderOrder}
+                        scale={stableScale}
+                    />
+                ) : (
+                    <ChunkedInstancedMesh
+                        key={`${instanceKey}:${chunk.key}`}
+                        castShadow={castShadow}
+                        chunk={chunk}
+                        debugName={`BlockInstances:${instanceKey}:chunk:${chunk.key}:count:${chunk.instances.length}`}
+                        geometry={geometry}
+                        localTransform={localTransform}
+                        material={material}
+                        materialNode={materialNode}
+                        receiveShadow={receiveShadow}
+                        renderOrder={renderOrder}
+                        scale={stableScale}
+                    />
+                ),
+            )}
             {renderAnimatedInstances('base')}
             {(instances ?? []).map((data) =>
                 data.pickupOutlineVisible ? (
@@ -709,13 +660,10 @@ function ChunkedInstancedMesh({
     scale,
 }: {
     castShadow: boolean;
-    chunk: InstanceChunk;
+    chunk: MeshInstanceChunk<EntityBlockInstance>;
     debugName: string;
     geometry: BufferGeometry;
-    localTransform: {
-        position: [number, number, number];
-        rotation: [number, number, number];
-    };
+    localTransform: MeshInstanceLocalTransform;
     material: Material | Material[] | undefined;
     materialNode: ReactNode;
     receiveShadow: boolean;
@@ -733,7 +681,7 @@ function ChunkedInstancedMesh({
         chunk.instances.forEach((instance, index) => {
             mesh.setMatrixAt(
                 index,
-                createInstanceMatrix(instance, localTransform, scale),
+                createMeshInstanceMatrix(instance, localTransform, scale),
             );
         });
         mesh.count = chunk.instances.length;
@@ -756,6 +704,60 @@ function ChunkedInstancedMesh({
     );
 }
 
+function ChunkedMergedMesh({
+    castShadow,
+    chunk,
+    debugName,
+    geometry,
+    localTransform,
+    material,
+    materialNode,
+    receiveShadow,
+    renderOrder,
+    scale,
+}: {
+    castShadow: boolean;
+    chunk: MeshInstanceChunk<EntityBlockInstance>;
+    debugName: string;
+    geometry: BufferGeometry;
+    localTransform: MeshInstanceLocalTransform;
+    material: Material | Material[] | undefined;
+    materialNode: ReactNode;
+    receiveShadow: boolean;
+    renderOrder?: number;
+    scale: EntityInstancesBlockBaseProps['scale'];
+}) {
+    const mergedGeometry = useMemo(
+        () =>
+            createMergedChunkGeometry({
+                geometry,
+                instances: chunk.instances,
+                localTransform,
+                scale,
+            }),
+        [chunk.instances, geometry, localTransform, scale],
+    );
+
+    useEffect(() => () => mergedGeometry.dispose(), [mergedGeometry]);
+
+    if (!mergedGeometry.getAttribute('position')) {
+        return null;
+    }
+
+    return (
+        <mesh
+            name={debugName}
+            castShadow={castShadow}
+            receiveShadow={receiveShadow}
+            renderOrder={renderOrder}
+            geometry={mergedGeometry}
+            material={material}
+        >
+            {cloneMaterialNode(materialNode)}
+        </mesh>
+    );
+}
+
 function InstancedSnowOverlays({
     chunks,
     geometry,
@@ -765,12 +767,9 @@ function InstancedSnowOverlays({
     snowLift,
     snowOverlayMinCoverage,
 }: {
-    chunks: InstanceChunk[];
+    chunks: MeshInstanceChunk<EntityBlockInstance>[];
     geometry: BufferGeometry;
-    localTransform: {
-        position: [number, number, number];
-        rotation: [number, number, number];
-    };
+    localTransform: MeshInstanceLocalTransform;
     scale: EntityInstancesBlockBaseProps['scale'];
     snow: SnowMaterialOptions;
     snowLift: number;
@@ -840,12 +839,9 @@ function InstancedRainWetOverlays({
     localTransform,
     scale,
 }: {
-    chunks: InstanceChunk[];
+    chunks: MeshInstanceChunk<EntityBlockInstance>[];
     geometry: BufferGeometry;
-    localTransform: {
-        position: [number, number, number];
-        rotation: [number, number, number];
-    };
+    localTransform: MeshInstanceLocalTransform;
     scale: EntityInstancesBlockBaseProps['scale'];
 }) {
     const visible = useRainWetOverlayVisible();

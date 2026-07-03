@@ -26,6 +26,10 @@ import { useGameGLTF } from '../utils/useGameGLTF';
 import { useWaterBlockMaterial } from './BlockWater';
 import { getCactusVariantConfig } from './Cactus';
 import {
+    chunkMeshInstances,
+    type MeshInstanceChunk,
+} from './chunkedMeshGeometry';
+import {
     type EntityBlockInstance,
     EntityInstancesBlock,
     type EntityInstancesBlockBaseProps,
@@ -47,18 +51,30 @@ import {
     resolveRaisedBedWateringVisualRewards,
 } from './raisedBed/raisedBedSoilWetPatches';
 import {
+    getWaterBlockColumnSurfaceY,
+    getWaterBlockDepthSamples,
+    type WaterBlockDepthSamples,
+} from './waterBlockDepth';
+import {
     resolveWaterFoamCorners,
     resolveWaterFoamEdges,
 } from './waterBlockFoam';
-import {
-    createMergedWaterSideGeometry,
-    createWaterBlockGeometry,
-} from './waterBlockGeometry';
+import { createMergedWaterSideGeometry } from './waterBlockGeometry';
 import {
     getWaterBlockCenterY,
     getWaterBlockVisualHeight,
 } from './waterBlockHeight';
 import { isWaterBlockTopSurfaceVisible } from './waterBlockSurface';
+import {
+    chunkWaterTopInstances,
+    createWaterTopChunkGeometry,
+    type WaterTopChunkInstance,
+} from './waterChunkGeometry';
+import { smoothWaterTopDepthSamples } from './waterDepthSmoothing';
+import {
+    resolveWaterShoreDepthSamples,
+    resolveWaterShoreDepths,
+} from './waterShoreDepth';
 
 type CommonWeatherProps = Pick<
     EntityInstancesBlockBaseProps,
@@ -95,8 +111,14 @@ type LoadedAssetBlockMaterialProps = Omit<
     material: (gltf: GLTFResult) => Material | Material[];
 };
 type WaterBlockInstance = EntityBlockInstance & {
+    depth: number;
+    depthSamples: WaterBlockDepthSamples;
+    shoreDepthSamples?: WaterBlockDepthSamples;
+    surfaceY: number;
     waterHeight: number;
 };
+
+const emptyWaterDepthSamples: WaterBlockDepthSamples = [0, 0, 0, 0];
 
 const gardenBoxTooltipDurationMs = 3600;
 const gardenBoxTooltipYOffset = 1.25;
@@ -386,6 +408,7 @@ function BlockGroundInstances({
                     slopeExponent: 3.2,
                     noiseScale: 1.7,
                 }}
+                renderStableChunksAsMergedGeometry
                 {...commonSnowProps}
             />
             <EntityInstancesGeometry
@@ -398,6 +421,7 @@ function BlockGroundInstances({
                     slopeExponent: 3.2,
                     noiseScale: 1.7,
                 }}
+                renderStableChunksAsMergedGeometry
                 {...commonSnowProps}
             />
         </>
@@ -421,8 +445,21 @@ function WaterBlockInstances({ stacks }: { stacks: Stack[] | undefined }) {
                 const previewYOffset =
                     instance.position[1] - instance.stackHeight;
 
+                const depthSamples = getWaterBlockDepthSamples({
+                    block: instance.block,
+                    blockData,
+                    stack: instance.stack,
+                });
+
                 return {
                     ...instance,
+                    depth: Math.max(...depthSamples),
+                    depthSamples,
+                    surfaceY: getWaterBlockColumnSurfaceY({
+                        block: instance.block,
+                        blockData,
+                        stack: instance.stack,
+                    }),
                     position: [
                         instance.position[0],
                         getWaterBlockCenterY({
@@ -437,162 +474,200 @@ function WaterBlockInstances({ stacks }: { stacks: Stack[] | undefined }) {
             }),
         [baseWaterInstances, blockData],
     );
+    const topSurfaceInstances = useMemo(() => {
+        const topInstances =
+            waterInstances
+                ?.filter(isWaterBlockTopSurfaceVisible)
+                .map((instance): WaterTopChunkInstance => {
+                    const foamEdges = resolveWaterFoamEdges({
+                        block: instance.block,
+                        blockData,
+                        stack: instance.stack,
+                        stacks,
+                    });
+                    const foamCorners = resolveWaterFoamCorners({
+                        block: instance.block,
+                        blockData,
+                        stack: instance.stack,
+                        stacks,
+                    });
+
+                    return {
+                        foamCorners,
+                        foamEdges,
+                        depthSamples: instance.depthSamples,
+                        position: instance.position,
+                        rotation: 0,
+                        shoreDepth: 0,
+                        surfaceY: instance.surfaceY,
+                        waterHeight: instance.waterHeight,
+                    };
+                }) ?? [];
+        const shoreDepths = resolveWaterShoreDepths(topInstances);
+        const smoothedTopInstances = smoothWaterTopDepthSamples(
+            topInstances.map((instance, index) => ({
+                ...instance,
+                shoreDepth: shoreDepths[index] ?? 0,
+            })),
+        );
+        const shoreDepthSamples =
+            resolveWaterShoreDepthSamples(smoothedTopInstances);
+
+        return smoothedTopInstances.map((instance, index) => ({
+            ...instance,
+            shoreDepthSamples:
+                shoreDepthSamples[index] ?? emptyWaterDepthSamples,
+        }));
+    }, [blockData, stacks, waterInstances]);
+    const sideSurfaceInstances = useMemo(() => {
+        const samplesByColumn = new Map<string, WaterTopChunkInstance>();
+
+        for (const instance of topSurfaceInstances) {
+            samplesByColumn.set(waterColumnSampleKey(instance), instance);
+        }
+
+        return (
+            waterInstances?.map((instance): WaterBlockInstance => {
+                const sampledSurface = samplesByColumn.get(
+                    waterColumnSampleKey(instance),
+                );
+
+                return sampledSurface
+                    ? {
+                          ...instance,
+                          depthSamples: sampledSurface.depthSamples,
+                          shoreDepthSamples: sampledSurface.shoreDepthSamples,
+                      }
+                    : instance;
+            }) ?? []
+        );
+    }, [topSurfaceInstances, waterInstances]);
 
     if (!waterInstances?.length) {
         return null;
     }
 
-    const topSurfaceInstances = waterInstances.filter(
-        isWaterBlockTopSurfaceVisible,
-    );
-    const groupedInstances = resolveWaterBlockInstanceGroups({
-        blockData,
-        instances: topSurfaceInstances,
-        stacks,
-    });
-
     return (
         <>
-            {groupedInstances.map((mask) => (
-                <WaterBlockMaskInstances
-                    key={`Block_Water-${mask.key}`}
-                    foamCorners={mask.foamCorners}
-                    foamEdges={mask.foamEdges}
-                    instances={mask.instances}
-                    maskKey={mask.key}
-                    waterHeight={mask.waterHeight}
-                />
-            ))}
-            <WaterBlockMergedSides instances={waterInstances} />
+            <WaterBlockTopChunks instances={topSurfaceInstances} />
+            <WaterBlockMergedSides instances={sideSurfaceInstances} />
         </>
     );
 }
 
-function foamEdgeKey(foamEdges: Vector4) {
-    return `${foamEdges.x}${foamEdges.y}${foamEdges.z}${foamEdges.w}`;
+function waterColumnSampleKey({
+    position,
+    surfaceY,
+}: Pick<WaterTopChunkInstance, 'position' | 'surfaceY'>) {
+    return `${position[0]}|${position[2]}|${surfaceY.toFixed(6)}`;
 }
 
-function waterFoamMaskKey({
-    foamCorners,
-    foamEdges,
-    waterHeight,
-}: {
-    foamCorners: Vector4;
-    foamEdges: Vector4;
-    waterHeight: number;
-}) {
-    return `${foamEdgeKey(foamEdges)}-${foamEdgeKey(foamCorners)}-${waterHeight}`;
-}
+const mergedWaterSideFoamEdges = new Vector4(0, 0, 0, 0);
+const mergedWaterTopFoamEdges = new Vector4(0, 0, 0, 0);
+const mergedWaterTopFoamCorners = new Vector4(0, 0, 0, 0);
 
-function resolveWaterBlockInstanceGroups({
-    blockData,
+function WaterBlockTopChunks({
     instances,
-    stacks,
 }: {
-    blockData: Parameters<typeof resolveWaterFoamEdges>[0]['blockData'];
-    instances: WaterBlockInstance[];
-    stacks: Stack[] | undefined;
+    instances: WaterTopChunkInstance[];
 }) {
-    const groupedInstances = new Map<
-        string,
+    const chunks = useMemo(
+        () => chunkWaterTopInstances(instances),
+        [instances],
+    );
+    const material = useWaterBlockMaterial(
+        mergedWaterTopFoamEdges,
+        false,
+        mergedWaterTopFoamCorners,
         {
-            foamCorners: Vector4;
-            foamEdges: Vector4;
-            instances: WaterBlockInstance[];
-            key: string;
-            waterHeight: number;
-        }
-    >();
+            useFoamAttributes: true,
+            useWaterDepthAttribute: true,
+            useShoreDepthAttribute: true,
+            useLocalPositionAttribute: true,
+        },
+    );
 
-    for (const instance of instances) {
-        const { waterHeight } = instance;
-        const foamEdges = resolveWaterFoamEdges({
-            block: instance.block,
-            blockData,
-            stack: instance.stack,
-            stacks,
-        });
-        const foamCorners = resolveWaterFoamCorners({
-            block: instance.block,
-            blockData,
-            stack: instance.stack,
-            stacks,
-        });
-        const key = waterFoamMaskKey({
-            foamCorners,
-            foamEdges,
-            waterHeight,
-        });
-        const group = groupedInstances.get(key);
-
-        if (group) {
-            group.instances.push(instance);
-        } else {
-            groupedInstances.set(key, {
-                foamCorners,
-                foamEdges,
-                instances: [instance],
-                key,
-                waterHeight,
-            });
-        }
-    }
-
-    return [...groupedInstances.values()];
+    return chunks.map((chunk) => (
+        <WaterBlockTopChunk
+            key={`Block_Water_Top:${chunk.key}`}
+            chunk={chunk}
+            material={material}
+        />
+    ));
 }
 
-function WaterBlockMaskInstances({
-    foamCorners,
-    foamEdges,
-    instances,
-    maskKey,
-    waterHeight,
+function WaterBlockTopChunk({
+    chunk,
+    material,
 }: {
-    foamCorners: Vector4;
-    foamEdges: Vector4;
-    instances: WaterBlockInstance[];
-    maskKey: string;
-    waterHeight: number;
+    chunk: MeshInstanceChunk<WaterTopChunkInstance>;
+    material: ReturnType<typeof useWaterBlockMaterial>;
 }) {
-    const material = useWaterBlockMaterial(foamEdges, true, foamCorners);
     const geometry = useMemo(
-        () =>
-            createWaterBlockGeometry(foamEdges, {
-                height: waterHeight,
-                includeSides: false,
-            }),
-        [foamEdges, waterHeight],
+        () => createWaterTopChunkGeometry(chunk.instances),
+        [chunk.instances],
     );
 
     useEffect(() => () => geometry.dispose(), [geometry]);
 
-    if (instances.length === 0) {
+    if ((geometry.getIndex()?.count ?? 0) === 0) {
         return null;
     }
 
     return (
-        <EntityInstancesGeometry
-            instanceKey={`Block_Water-${maskKey}`}
-            instances={instances}
+        <mesh
+            castShadow={false}
+            receiveShadow
             geometry={geometry}
             material={material}
-            castShadow={false}
+            name={`WaterTopChunk:${chunk.key}:count:${chunk.instances.length}`}
             renderOrder={1}
+            raycast={() => null}
         />
     );
 }
-
-const mergedWaterSideFoamEdges = new Vector4(0, 0, 0, 0);
 
 function WaterBlockMergedSides({
     instances,
 }: {
     instances: WaterBlockInstance[];
 }) {
-    const material = useWaterBlockMaterial(mergedWaterSideFoamEdges, false);
+    const material = useWaterBlockMaterial(
+        mergedWaterSideFoamEdges,
+        false,
+        undefined,
+        {
+            useWaterDepthAttribute: true,
+            useShoreDepthAttribute: true,
+        },
+    );
+    const chunks = useMemo(() => chunkMeshInstances(instances), [instances]);
+
+    return chunks.map((chunk) => (
+        <WaterBlockMergedSideChunk
+            key={`Block_Water_Sides:${chunk.key}`}
+            allInstances={instances}
+            chunk={chunk}
+            material={material}
+        />
+    ));
+}
+
+function WaterBlockMergedSideChunk({
+    allInstances,
+    chunk,
+    material,
+}: {
+    allInstances: WaterBlockInstance[];
+    chunk: MeshInstanceChunk<WaterBlockInstance>;
+    material: ReturnType<typeof useWaterBlockMaterial>;
+}) {
     const geometry = useMemo(
-        () => createMergedWaterSideGeometry(instances),
-        [instances],
+        () =>
+            createMergedWaterSideGeometry(chunk.instances, {
+                neighborInstances: allInstances,
+            }),
+        [allInstances, chunk.instances],
     );
     const hasSideFaces = (geometry.getIndex()?.count ?? 0) > 0;
 
@@ -608,6 +683,7 @@ function WaterBlockMergedSides({
             receiveShadow={false}
             geometry={geometry}
             material={material}
+            name={`WaterSideChunk:${chunk.key}:count:${chunk.instances.length}`}
             renderOrder={1}
             raycast={() => null}
         />
@@ -2336,6 +2412,7 @@ function SimpleAdditionalInstances({
                     slopeExponent: 2.2,
                     noiseScale: 1.8,
                 }}
+                renderStableChunksAsMergedGeometry
                 {...commonSnowProps}
             />
             <AssetBlock
@@ -2351,6 +2428,7 @@ function SimpleAdditionalInstances({
                     slopeExponent: 2.2,
                     noiseScale: 1.8,
                 }}
+                renderStableChunksAsMergedGeometry
                 {...commonSnowProps}
             />
             <AssetBlock
@@ -2370,6 +2448,7 @@ function SimpleAdditionalInstances({
                     slopeExponent: 2.2,
                     noiseScale: 1.8,
                 }}
+                renderStableChunksAsMergedGeometry
                 {...commonSnowProps}
             />
             <AssetBlock

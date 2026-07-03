@@ -15,9 +15,9 @@ export type WaterColors = {
 };
 
 export const defaultWaterColors: WaterColors = {
-    deep: '#8fcfc4',
-    shallow: '#d6eee3',
-    foam: '#f8fff8',
+    deep: '#1f6ea7',
+    shallow: '#8eddd3',
+    foam: '#fbfffb',
 };
 
 function clamp01(value: number) {

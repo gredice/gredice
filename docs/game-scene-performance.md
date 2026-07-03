@@ -59,6 +59,23 @@ not accidentally based on `next dev`.
   overlay meshes. Instanced block control wrappers are skipped for no-control
   profile scenes and for covered instanced blocks, so stacked scenes no longer
   mount buried grass controls under every top block.
+- The 2026-07-03 terrain/water chunk pass added merged geometry output for
+  stable grass, sand, snow, and dirt terrain chunks while preserving the
+  existing instanced path for animated or interactive blocks. Water tops now
+  batch many foam-edge variants inside chunk meshes with per-vertex foam
+  and shore-depth attributes, and merged water side walls are partitioned by
+  chunk while still checking all water neighbors to avoid chunk-boundary side
+  seams. Water meshes carry sampled depth-map attributes: top surfaces grade by
+  water-column depth plus shaped terrain angle/corner depth under the surface,
+  then smooth those samples across adjacent top surfaces so flat stepped
+  columns shade as a continuous depth field instead of abrupt per-block bands.
+  Shore-distance color also uses smoothed per-vertex samples so flat water near
+  banks, islands, and garden edges fades toward deeper color gradually. Side
+  faces receive the same smoothed top-edge depth and shore samples, matching the
+  top color at the bend before easing darker down the wall. Shore foam still
+  follows exposed edges, and color/opacity ease continuously with depth instead
+  of snapping at a fixed block threshold. Production profile runs should be used
+  for before/after budget decisions.
 - Snow and rain overlays are optimized for repeated instanced blocks, but many
   non-instanced entities can still mount per-block `SnowOverlay` or
   `RainWetOverlay` meshes when weather makes them visible, so snow/rain profiles
