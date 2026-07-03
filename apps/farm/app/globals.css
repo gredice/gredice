@@ -5,7 +5,7 @@
 @layer base {
     :root {
         interpolate-size: allow-keywords;
-        --background: 36 43% 93%;
+        --background: 28 76.5% 98%;
         --foreground: 32 22% 10%;
 
         --muted: 35 38% 88%;
@@ -104,6 +104,12 @@
         font-feature-settings:
             "rlig" 1,
             "calt" 1;
+    }
+
+    @media (max-width: 767px) {
+        html {
+            font-size: 17px;
+        }
     }
 
     button,

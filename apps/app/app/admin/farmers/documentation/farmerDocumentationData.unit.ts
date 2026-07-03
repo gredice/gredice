@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { inflateSync } from 'node:zlib';
-import type { EntityStandardized } from '@gredice/storage';
+import type {
+    EntityStandardized,
+    SelectFarm,
+    SelectOperationPrice,
+} from '@gredice/storage';
 import {
     buildFarmerDocumentationPackage,
     currentDocumentationPages,
@@ -233,6 +237,114 @@ test('builds insert, replace, and discard instructions from manual revisions', (
     );
 });
 
+test('builds farmer payout price tables per farm', () => {
+    const documentationPackage = buildFarmerDocumentationPackage({
+        generatedAt,
+        since: null,
+        labelAttributeDefinitionIds: {
+            operation: new Set(),
+            plant: new Set(),
+            plantSort: new Set(),
+        },
+        farms: [farmFixture({ id: 7, name: 'Testna farma' })],
+        operations: [
+            operationFixture(
+                4,
+                'Zalijevanje',
+                {
+                    duration: 25,
+                    application: 'raisedBedFull',
+                },
+                { perOperation: 2.5 },
+            ),
+            operationFixture(6, 'Okopavanje', {
+                duration: 30,
+                application: 'raisedBed',
+            }),
+        ],
+        operationPrices: [
+            operationPriceFixture({
+                id: 1,
+                farmId: 7,
+                entityTypeName: 'sowing',
+                entityId: null,
+                pricePerUnit: '0.40',
+            }),
+            operationPriceFixture({
+                id: 2,
+                farmId: 7,
+                entityTypeName: 'operation',
+                entityId: 4,
+                pricePerUnit: '1.25',
+            }),
+        ],
+        plants: [
+            plantFixture({ prices: { perPlant: 1.25 } }),
+            plantFixture({
+                id: 2020,
+                label: 'Paprika',
+                prices: { perPlant: 2.5 },
+            }),
+        ],
+        plantSorts: [],
+        plantSortPlantAttributeDefinitionIds: new Set(),
+        revisions: [],
+    });
+
+    assert.equal(documentationPackage.payoutPrices.totalRows, 4);
+    assert.equal(documentationPackage.payoutPrices.configuredRows, 2);
+    assert.equal(documentationPackage.payoutPrices.missingRows, 2);
+    assert.deepEqual(
+        documentationPackage.payoutPrices.farms[0]?.rows.map((row) => [
+            row.code,
+            row.label,
+            row.userFacingPriceLabel,
+            row.durationLabel,
+            row.farmerPriceLabel,
+            row.farmerPricePerMinuteLabel,
+            row.hasFarmerPrice,
+        ]),
+        [
+            [
+                'SOW-DIRECT',
+                'Sijanje (direktno)',
+                '1,25 EUR - 2,50 EUR (prema cijeni biljke)',
+                'Nije primjenjivo',
+                '0,40 EUR',
+                '-',
+                true,
+            ],
+            [
+                'SOW-GREENHOUSE',
+                'Sijanje (staklenički rasad)',
+                '1,25 EUR - 2,50 EUR (prema cijeni biljke)',
+                'Nije primjenjivo',
+                'Nije definirano',
+                '-',
+                false,
+            ],
+            [
+                'OP-0004',
+                'Zalijevanje',
+                '2,50 EUR',
+                '25 min',
+                '1,25 EUR',
+                '0,05 EUR / min',
+                true,
+            ],
+            [
+                'OP-0006',
+                'Okopavanje',
+                'Nije definirano',
+                '30 min',
+                'Nije definirano',
+                '-',
+                false,
+            ],
+        ],
+    );
+});
+
 test('regenerates the previous plant page when a sort moves plants', () => {
     const tomato = plantFixture();
     const pepper = plantFixture({
@@ -312,6 +424,7 @@ test('generates a guide-first PDF without page numbering text', async () => {
             plant: new Set(),
             plantSort: new Set(),
         },
+        farms: [farmFixture({ id: 7, name: 'Testna farma' })],
         plantSortPlantAttributeDefinitionIds: new Set(),
         operations: [
             operationFixture(
@@ -330,6 +443,22 @@ test('generates a guide-first PDF without page numbering text', async () => {
             operationFixture(8, 'Berba', {
                 duration: 35,
                 application: 'raisedBed',
+            }),
+        ],
+        operationPrices: [
+            operationPriceFixture({
+                id: 1,
+                farmId: 7,
+                entityTypeName: 'sowing',
+                entityId: null,
+                pricePerUnit: '0.40',
+            }),
+            operationPriceFixture({
+                id: 2,
+                farmId: 7,
+                entityTypeName: 'operation',
+                entityId: 4,
+                pricePerUnit: '1.25',
             }),
         ],
         plants: [plantFixture()],
@@ -386,6 +515,11 @@ test('generates a guide-first PDF without page numbering text', async () => {
     assertPdfText(content, 'Cherry rajčica');
     assertPdfText(content, 'Rajčica');
     assertPdfText(content, 'Vlažno tlo');
+    assertPdfText(content, 'CJENIK ISPLATA FARMERA');
+    assertPdfText(content, 'Testna farma');
+    assertPdfText(content, 'SOW-DIRECT');
+    assertPdfText(content, '0,40 EUR');
+    assertPdfText(content, '0,05 EUR / min');
     assert.match(
         content,
         /\/Differences \[128 \/Ccaron \/ccaron \/Cacute \/cacute \/Dcroat \/dcroat \/Scaron \/scaron \/Zcaron \/zcaron\]/,
@@ -735,6 +869,51 @@ function operationFixture(
     };
 }
 
+function farmFixture({
+    id = 1,
+    name = 'Farma',
+}: {
+    id?: number;
+    name?: string;
+} = {}): SelectFarm {
+    return {
+        id,
+        name,
+        latitude: 45.8,
+        longitude: 16,
+        slackChannelId: null,
+        snowAccumulation: 0,
+        createdAt: generatedAt,
+        updatedAt: generatedAt,
+        isDeleted: false,
+    };
+}
+
+function operationPriceFixture({
+    entityId,
+    entityTypeName,
+    farmId,
+    id,
+    pricePerUnit,
+}: {
+    entityId: number | null;
+    entityTypeName: string;
+    farmId: number;
+    id: number;
+    pricePerUnit: string;
+}): SelectOperationPrice {
+    return {
+        id,
+        farmId,
+        entityTypeName,
+        entityId,
+        pricePerUnit,
+        currency: 'eur',
+        createdAt: generatedAt,
+        updatedAt: generatedAt,
+    };
+}
+
 function plantSortFixture(
     id: number,
     label: string,
@@ -759,23 +938,30 @@ function plantFixture({
     id = 1014,
     label = 'Rajčica',
     origin = 'Južna Amerika',
+    prices,
     storage,
 }: {
     description?: string;
     id?: number;
     label?: string;
     origin?: string;
+    prices?: EntityStandardized['prices'];
     storage?: string;
 } = {}): EntityStandardized {
+    const information: NonNullable<EntityStandardized['information']> & {
+        origin?: string;
+        storage?: string;
+    } = {
+        label,
+        name: label,
+        description,
+        origin,
+        ...(storage ? { storage } : {}),
+    };
+
     return {
         id,
-        information: {
-            label,
-            name: label,
-            description,
-            origin,
-            ...(storage ? { storage } : {}),
-        },
+        information,
         image: { cover: { url: plantImageDataUrl } },
         attributes: {
             seedingDistance: 30,
@@ -789,6 +975,7 @@ function plantFixture({
             yieldType: 'perPlant',
             cleanHarvest: false,
         },
+        ...(prices === undefined ? {} : { prices }),
     };
 }
 

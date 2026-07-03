@@ -122,7 +122,7 @@ export async function OperationsTable({
                         key={operation.id}
                         className="px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4"
                     >
-                        <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="flex min-w-0 flex-col gap-3">
                             <Stack spacing={1} className="min-w-0 flex-1">
                                 <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
                                     <Link
@@ -151,37 +151,39 @@ export async function OperationsTable({
                                         Mjesto
                                     </Typography>
                                     {accountUserNames && (
-                                        <span className="max-w-full truncate">
+                                        <span className="max-w-full break-words">
                                             {accountUserNames}
                                         </span>
                                     )}
                                     {farmName && (
-                                        <span className="max-w-full truncate">
+                                        <span className="max-w-full break-words">
                                             {farmName}
                                         </span>
                                     )}
                                     {gardenName && (
-                                        <span className="max-w-full truncate">
+                                        <span className="max-w-full break-words">
                                             {gardenName}
                                         </span>
                                     )}
                                     {operation.raisedBedId && (
                                         <RaisedBedLabel
+                                            name={operationRaisedBed?.name}
                                             physicalId={
                                                 operationRaisedBed?.physicalId ??
                                                 null
                                             }
+                                            size="compact"
                                         />
                                     )}
                                     {operationRaisedBedField && (
-                                        <span>
+                                        <span className="shrink-0">
                                             {operationRaisedBedField.positionIndex +
                                                 1}
                                         </span>
                                     )}
                                 </div>
                             </Stack>
-                            <div className="flex min-w-0 flex-wrap items-center justify-start gap-2 lg:justify-end">
+                            <div className="flex min-w-0 flex-wrap items-center justify-start gap-2">
                                 <Chip
                                     className="w-fit"
                                     color={statusColor}
@@ -240,7 +242,7 @@ export async function OperationsTable({
                                 <Typography
                                     level="body3"
                                     component="span"
-                                    className="whitespace-nowrap text-muted-foreground"
+                                    className="text-muted-foreground"
                                 >
                                     Datum stvaranja:{' '}
                                     <LocalDateTime time={false}>

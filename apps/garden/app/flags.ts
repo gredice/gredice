@@ -1,7 +1,4 @@
-import {
-    booleanFlagOptions,
-    publicGardensFlagDefinition,
-} from '@gredice/js/featureFlags';
+import { booleanFlagOptions } from '@gredice/js/featureFlags';
 import { flag } from 'flags/next';
 
 export const deliveryChargeAtCheckoutFlag = flag<boolean>({
@@ -51,9 +48,4 @@ export const enableSuncokretDebugFlag = flag<boolean>({
     description: 'Show Suncokret AI debug metadata in chat conversations.',
     decide: () => false,
     options: booleanFlagOptions,
-});
-
-export const publicGardensFlag = flag<boolean>({
-    ...publicGardensFlagDefinition,
-    decide: () => false,
 });

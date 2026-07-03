@@ -5,17 +5,27 @@ import type {
 } from '@gredice/storage';
 import { Checkbox } from '@gredice/ui/Checkbox';
 import { Chip } from '@gredice/ui/Chip';
-import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Row } from '@gredice/ui/Row';
-import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
+import { Skeleton } from '@gredice/ui/Skeleton';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import { UserAvatar } from '@gredice/ui/UserAvatar';
+import { cx } from '@gredice/ui/utils';
+import { Suspense } from 'react';
 import { CompletePlantingModal } from './CompletePlantingModal';
+import { PlantingAssignedUserAvatar } from './PlantingAssignedUserAvatar';
+import { RaisedBedScheduleGroupHeader } from './RaisedBedScheduleGroupHeader';
+import { RaisedBedScheduleGroupHeaderWithPhotos } from './RaisedBedScheduleGroupHeaderWithPhotos';
+import { SchedulePlantVisual } from './SchedulePlantVisual';
+import { ScheduleSectionSummaryBadges } from './ScheduleSectionSummaryBadges';
 import { ScheduleTaskAgeIndicatorChip } from './ScheduleTaskAgeIndicatorChip';
-import type { FarmScheduleDayData } from './scheduleData';
+import { ScheduleTaskDateChip } from './ScheduleTaskDateChip';
+import { ScheduleTaskDurationChip } from './ScheduleTaskDurationChip';
+import type {
+    FarmScheduleDayData,
+    FarmScheduleRaisedBedPhotoPreview,
+} from './scheduleData';
 import {
-    formatMinutes,
+    compareScheduleDates,
     getFieldPhysicalPositionIndex,
     groupRaisedBedsForSchedule,
     isFieldApproved,
@@ -30,7 +40,12 @@ interface FarmSchedulePlantingsSectionProps {
     scheduledFields: FarmScheduleDayData['scheduledFields'];
     plantSorts: EntityStandardized[] | null | undefined;
     userId: string;
-    assignedUserByFieldId: Map<number, RaisedBedFieldAssignableFarmUser>;
+    assignedUserByFieldIdPromise: Promise<
+        Map<number, RaisedBedFieldAssignableFarmUser>
+    >;
+    raisedBedPhotoPreviewByIdPromise: Promise<
+        Map<number, FarmScheduleRaisedBedPhotoPreview>
+    >;
 }
 
 function buildFieldLabel(
@@ -68,7 +83,8 @@ export function FarmSchedulePlantingsSection({
     scheduledFields,
     plantSorts,
     userId,
-    assignedUserByFieldId,
+    assignedUserByFieldIdPromise,
+    raisedBedPhotoPreviewByIdPromise,
 }: FarmSchedulePlantingsSectionProps) {
     if (scheduledFields.length === 0) {
         return null;
@@ -90,7 +106,7 @@ export function FarmSchedulePlantingsSection({
     );
 
     return (
-        <Stack spacing={4}>
+        <Stack spacing={6}>
             {raisedBedGroups.map(
                 ({ key, physicalId, raisedBeds: groupedRaisedBeds }) => {
                     const dayFields = scheduledFields
@@ -99,10 +115,6 @@ export function FarmSchedulePlantingsSection({
                                 (raisedBed) =>
                                     raisedBed.id === field.raisedBedId,
                             ),
-                        )
-                        .sort(
-                            (left, right) =>
-                                left.positionIndex - right.positionIndex,
                         )
                         .map((field) => {
                             const physicalPositionIndex =
@@ -120,6 +132,20 @@ export function FarmSchedulePlantingsSection({
                                     physicalPositionIndex,
                                 ),
                             };
+                        })
+                        .sort((left, right) => {
+                            const dateComparison = compareScheduleDates(
+                                left.plantScheduledDate,
+                                right.plantScheduledDate,
+                            );
+                            if (dateComparison !== 0) {
+                                return dateComparison;
+                            }
+
+                            return (
+                                left.physicalPositionIndex -
+                                right.physicalPositionIndex
+                            );
                         });
                     const totalDuration =
                         dayFields.length * PLANTING_TASK_DURATION_MINUTES;
@@ -128,38 +154,31 @@ export function FarmSchedulePlantingsSection({
                         <Stack key={key} spacing={2}>
                             <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
                                 <div className="min-w-0">
-                                    {physicalId ? (
-                                        <RaisedBedLabel
+                                    <Suspense
+                                        fallback={
+                                            <RaisedBedScheduleGroupHeader
+                                                physicalId={physicalId}
+                                            />
+                                        }
+                                    >
+                                        <RaisedBedScheduleGroupHeaderWithPhotos
                                             physicalId={physicalId}
+                                            raisedBeds={groupedRaisedBeds}
+                                            raisedBedPhotoPreviewByIdPromise={
+                                                raisedBedPhotoPreviewByIdPromise
+                                            }
                                         />
-                                    ) : (
-                                        <Typography
-                                            semiBold
-                                            className="truncate"
-                                        >
-                                            Gredica bez fizičkog ID-a
-                                        </Typography>
-                                    )}
+                                    </Suspense>
                                 </div>
                                 <Row
                                     spacing={2}
                                     className="justify-end text-right"
                                 >
-                                    <Typography
-                                        level="body2"
-                                        className="whitespace-nowrap text-muted-foreground"
-                                    >
-                                        {dayFields.length} sijanja
-                                    </Typography>
-                                    {totalDuration > 0 && (
-                                        <Typography
-                                            level="body2"
-                                            className="whitespace-nowrap text-muted-foreground"
-                                        >
-                                            Vrijeme:{' '}
-                                            {formatMinutes(totalDuration)}
-                                        </Typography>
-                                    )}
+                                    <ScheduleSectionSummaryBadges
+                                        count={dayFields.length}
+                                        countLabel="sijanja"
+                                        durationMinutes={totalDuration}
+                                    />
                                 </Row>
                             </div>
                             <Stack spacing={2}>
@@ -176,15 +195,28 @@ export function FarmSchedulePlantingsSection({
                                         field.assignedUserId !== userId;
                                     const canComplete =
                                         !completed && !lockedByAssignment;
-                                    const assignedUser =
-                                        assignedUserByFieldId.get(field.id);
                                     const greenhouseSowing =
                                         field.sowingLocation === 'greenhouse';
+                                    const plantSort = field.plantSortId
+                                        ? plantSortById.get(field.plantSortId)
+                                        : undefined;
+                                    const statusText =
+                                        !completed && !approved
+                                            ? 'Nije potvrđeno'
+                                            : null;
 
                                     return (
                                         <div
                                             key={field.id}
-                                            className={`rounded-lg border bg-white px-3 py-2 ${lockedByAssignment ? 'opacity-70' : ''}`}
+                                            className={cx(
+                                                'rounded-lg border px-3 py-2 transition-opacity',
+                                                completed
+                                                    ? 'bg-white/70 opacity-70'
+                                                    : 'bg-white',
+                                                lockedByAssignment &&
+                                                    !completed &&
+                                                    'opacity-70',
+                                            )}
                                         >
                                             <Row
                                                 spacing={2}
@@ -218,6 +250,10 @@ export function FarmSchedulePlantingsSection({
                                                             />
                                                         </div>
                                                     )}
+                                                    <SchedulePlantVisual
+                                                        plantSort={plantSort}
+                                                        label={field.label}
+                                                    />
                                                     <Stack
                                                         spacing={1}
                                                         className="min-w-0 grow"
@@ -235,29 +271,19 @@ export function FarmSchedulePlantingsSection({
                                                             spacing={2}
                                                             className="items-center flex-wrap gap-y-1"
                                                         >
-                                                            <Typography
-                                                                level="body2"
-                                                                className={
-                                                                    completed ||
-                                                                    approved
-                                                                        ? 'text-green-600'
-                                                                        : 'text-muted-foreground'
+                                                            {statusText && (
+                                                                <Typography
+                                                                    level="body2"
+                                                                    className="text-muted-foreground"
+                                                                >
+                                                                    {statusText}
+                                                                </Typography>
+                                                            )}
+                                                            <ScheduleTaskDurationChip
+                                                                minutes={
+                                                                    PLANTING_TASK_DURATION_MINUTES
                                                                 }
-                                                            >
-                                                                {completed
-                                                                    ? 'Završeno'
-                                                                    : approved
-                                                                      ? 'Potvrđeno'
-                                                                      : 'Nije potvrđeno'}
-                                                            </Typography>
-                                                            <Typography
-                                                                level="body2"
-                                                                className="text-muted-foreground"
-                                                            >
-                                                                {formatMinutes(
-                                                                    PLANTING_TASK_DURATION_MINUTES,
-                                                                )}
-                                                            </Typography>
+                                                            />
                                                             {greenhouseSowing && (
                                                                 <Chip
                                                                     size="sm"
@@ -267,27 +293,11 @@ export function FarmSchedulePlantingsSection({
                                                                     Staklenik
                                                                 </Chip>
                                                             )}
-                                                            <Typography
-                                                                level="body2"
-                                                                className="text-muted-foreground"
-                                                            >
-                                                                {field.plantScheduledDate ? (
-                                                                    <>
-                                                                        Planirano:{' '}
-                                                                        <LocalDateTime
-                                                                            time={
-                                                                                false
-                                                                            }
-                                                                        >
-                                                                            {
-                                                                                field.plantScheduledDate
-                                                                            }
-                                                                        </LocalDateTime>
-                                                                    </>
-                                                                ) : (
-                                                                    'Danas'
-                                                                )}
-                                                            </Typography>
+                                                            <ScheduleTaskDateChip
+                                                                scheduledDate={
+                                                                    field.plantScheduledDate
+                                                                }
+                                                            />
                                                             {!completed && (
                                                                 <ScheduleTaskAgeIndicatorChip
                                                                     scheduledDate={
@@ -298,22 +308,19 @@ export function FarmSchedulePlantingsSection({
                                                         </Row>
                                                     </Stack>
                                                 </Row>
-                                                {assignedUser && (
-                                                    <div
-                                                        className="shrink-0"
-                                                        title={`Dodijeljeno: ${assignedUser.displayName ?? assignedUser.userName}`}
+                                                {field.assignedUserId && (
+                                                    <Suspense
+                                                        fallback={
+                                                            <Skeleton className="size-7 shrink-0 rounded-full" />
+                                                        }
                                                     >
-                                                        <UserAvatar
-                                                            avatarUrl={
-                                                                assignedUser.avatarUrl
+                                                        <PlantingAssignedUserAvatar
+                                                            assignedUserByFieldIdPromise={
+                                                                assignedUserByFieldIdPromise
                                                             }
-                                                            displayName={
-                                                                assignedUser.displayName ??
-                                                                assignedUser.userName
-                                                            }
-                                                            className="size-7 rounded-full"
+                                                            fieldId={field.id}
                                                         />
-                                                    </div>
+                                                    </Suspense>
                                                 )}
                                             </Row>
                                         </div>

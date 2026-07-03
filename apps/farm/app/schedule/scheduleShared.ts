@@ -102,6 +102,57 @@ export function formatMinutes(minutes: number) {
     return `${Math.ceil(Math.max(0, minutes))} min`;
 }
 
+export function getScheduleDateFormat(
+    scheduledDate: Date | string | null | undefined,
+    referenceDate = new Date(),
+): Intl.DateTimeFormatOptions {
+    const parsedScheduledDate = parseScheduleDate(scheduledDate);
+    const includeYear =
+        !parsedScheduledDate ||
+        parsedScheduledDate.getFullYear() !== referenceDate.getFullYear();
+
+    return includeYear
+        ? {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+          }
+        : {
+              day: '2-digit',
+              month: '2-digit',
+          };
+}
+
+export function isScheduleDatePast(
+    scheduledDate: Date | string | null | undefined,
+    referenceDate = new Date(),
+) {
+    const parsedScheduledDate = parseScheduleDate(scheduledDate);
+    if (!parsedScheduledDate) {
+        return false;
+    }
+
+    return (
+        getLocalDayNumber(parsedScheduledDate) <
+        getLocalDayNumber(referenceDate)
+    );
+}
+
+function getScheduleDateSortValue(date: Date | string | null | undefined) {
+    const parsedDate = parseScheduleDate(date);
+
+    return parsedDate
+        ? getLocalDayNumber(parsedDate)
+        : Number.POSITIVE_INFINITY;
+}
+
+export function compareScheduleDates(
+    left: Date | string | null | undefined,
+    right: Date | string | null | undefined,
+) {
+    return getScheduleDateSortValue(left) - getScheduleDateSortValue(right);
+}
+
 export function getOperationDurationMinutes(
     operationData: EntityStandardized | undefined,
 ) {

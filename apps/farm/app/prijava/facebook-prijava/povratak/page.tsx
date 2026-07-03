@@ -8,7 +8,7 @@ import { UrlAuthForward } from '../../UrlAuthForward';
 
 export default function FacebookCallbackPage() {
     return (
-        <div className="min-h-[100dvh] flex items-center justify-center bg-muted p-4">
+        <div className="min-h-[100dvh] flex items-center justify-center bg-background p-4">
             <Card className="w-full max-w-[350px] p-6 sm:p-12">
                 <CardHeader>
                     <svg

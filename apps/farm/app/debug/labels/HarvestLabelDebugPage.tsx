@@ -79,7 +79,7 @@ export function HarvestLabelDebugPage() {
     const scaledHeight = Math.round((canvasSize.height * zoom) / 100);
 
     return (
-        <div className="min-h-[100dvh] w-full bg-muted">
+        <div className="min-h-[100dvh] w-full bg-background">
             <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4">
                 <Row spacing={4} justifyContent="space-between">
                     <Row spacing={2} className="items-start">
