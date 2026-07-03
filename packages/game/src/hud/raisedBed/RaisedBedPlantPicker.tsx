@@ -261,6 +261,10 @@ export function PlantPicker({
     const [search, setSearch] = useState('');
     const searchInputId = useId();
     const sowingModeName = useId();
+    const plantDateInputId = useId();
+    const plantDateLabelId = useId();
+    const greenhouseSowingSwitchId = useId();
+    const greenhouseSowingLabelId = useId();
     const shouldRestoreSearchFocusRef = useRef(false);
 
     let currentStep = 0;
@@ -985,46 +989,68 @@ export function PlantPicker({
                                             kratko nakon dodavanja u košaru.
                                         </div>
                                     ) : selectedOutletOfferUnavailable ? null : (
-                                        <div
-                                            className={cx(
-                                                'grid gap-2 rounded-lg border p-3 transition-colors md:grid-cols-[minmax(0,1fr)_auto] md:items-end',
-                                                sowInGreenhouse
-                                                    ? 'border-green-500 bg-green-50 text-green-950 dark:border-green-700 dark:bg-green-950/40 dark:text-green-100'
-                                                    : 'border-green-200 bg-green-50/70 dark:border-green-900 dark:bg-green-950/30',
-                                            )}
-                                        >
-                                            <Input
-                                                type="date"
-                                                label="Datum sijanja"
-                                                name="plantDate"
-                                                className="w-full border-green-200 bg-card dark:border-green-900"
-                                                fullWidth
-                                                startDecorator={
-                                                    <Calendar className="ml-3 size-4 shrink-0 text-green-700 dark:text-green-300" />
-                                                }
-                                                value={plantDate}
-                                                onChange={(e) =>
-                                                    handlePlantDateChange(
-                                                        e.target.value,
-                                                    )
-                                                }
-                                                min={min}
-                                                max={max}
-                                            />
-                                            <Switch
-                                                checked={sowInGreenhouse}
-                                                className="data-[state=checked]:border-green-700 data-[state=checked]:bg-green-700"
-                                                label={
-                                                    <span className="inline-flex items-center gap-1.5">
-                                                        <Sprout className="size-4 text-green-700 dark:text-green-300" />
+                                        <div className="grid grid-cols-[minmax(0,1fr)_minmax(6.75rem,auto)] items-end gap-2 rounded-lg border border-green-200 bg-green-50/70 p-3 dark:border-green-900 dark:bg-green-950/30">
+                                            <div className="min-w-0 space-y-1.5">
+                                                <label
+                                                    className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"
+                                                    htmlFor={plantDateInputId}
+                                                    id={plantDateLabelId}
+                                                >
+                                                    <Calendar className="size-4 shrink-0 text-green-700 dark:text-green-300" />
+                                                    <span className="min-w-0">
+                                                        Datum sijanja
+                                                    </span>
+                                                </label>
+                                                <Input
+                                                    aria-labelledby={
+                                                        plantDateLabelId
+                                                    }
+                                                    className="w-full border-green-200 bg-card dark:border-green-900"
+                                                    fullWidth
+                                                    id={plantDateInputId}
+                                                    max={max}
+                                                    min={min}
+                                                    name="plantDate"
+                                                    onChange={(e) =>
+                                                        handlePlantDateChange(
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    type="date"
+                                                    value={plantDate}
+                                                />
+                                            </div>
+                                            <div className="min-w-0 space-y-1.5">
+                                                <label
+                                                    className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"
+                                                    htmlFor={
+                                                        greenhouseSowingSwitchId
+                                                    }
+                                                    id={greenhouseSowingLabelId}
+                                                >
+                                                    <Sprout className="size-4 shrink-0 text-green-700 dark:text-green-300" />
+                                                    <span className="min-w-0">
                                                         Sijanje u stakleniku
                                                     </span>
-                                                }
-                                                onCheckedChange={
-                                                    handleGreenhouseSowingChange
-                                                }
-                                                size="sm"
-                                            />
+                                                </label>
+                                                <div className="flex h-10 items-center justify-center rounded-md border border-green-200 bg-card px-3 dark:border-green-900">
+                                                    <Switch
+                                                        aria-labelledby={
+                                                            greenhouseSowingLabelId
+                                                        }
+                                                        checked={
+                                                            sowInGreenhouse
+                                                        }
+                                                        id={
+                                                            greenhouseSowingSwitchId
+                                                        }
+                                                        onCheckedChange={
+                                                            handleGreenhouseSowingChange
+                                                        }
+                                                        size="sm"
+                                                    />
+                                                </div>
+                                            </div>
                                         </div>
                                     )}
                                 </>
