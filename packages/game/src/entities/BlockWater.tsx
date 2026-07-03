@@ -199,8 +199,8 @@ void main() {
         mix(1.1, 0.7, depth01);
     float tonalShift = surfacePattern;
 
-    // Edge foam — only on edges facing non-water neighbours, animated
-    // along the edge so it looks like the water is breaking against the bank.
+    // Edge foam follows the global shore-distance field on chunked water, so
+    // the pattern can cross tile boundaries and softly fade away from banks.
     float edgeWidth = mix(0.5, 0.32, smoothstep(0.12, 1.45, shoreDepth));
     float negXBand = 1.0 - smoothstep(0.0, edgeWidth, vLocalPosition.x + 0.5);
     float posXBand = 1.0 - smoothstep(0.0, edgeWidth, 0.5 - vLocalPosition.x);
@@ -211,26 +211,33 @@ void main() {
     float posXCornerBand = 1.0 - smoothstep(0.0, cornerWidth, 0.5 - vLocalPosition.x);
     float negZCornerBand = 1.0 - smoothstep(0.0, cornerWidth, vLocalPosition.z + 0.5);
     float posZCornerBand = 1.0 - smoothstep(0.0, cornerWidth, 0.5 - vLocalPosition.z);
-    float negXEdge = negXBand * foamEdges.x * foamMotion(topUv + vec2(-1.3, 0.2), 0.0);
-    float posXEdge = posXBand * foamEdges.y * foamMotion(topUv + vec2(1.1, -0.4), 1.7);
-    float negZEdge = negZBand * foamEdges.z * foamMotion(topUv + vec2(0.4, -1.2), 3.4);
-    float posZEdge = posZBand * foamEdges.w * foamMotion(topUv + vec2(-0.2, 1.4), 5.1);
-    float edgeFoam = max(max(negXEdge, posXEdge), max(negZEdge, posZEdge));
-
-    float negXNegZCorner = negXCornerBand * negZCornerBand * foamCorners.x * foamMotion(topUv + vec2(-1.0, -1.0), 6.8);
-    float posXNegZCorner = posXCornerBand * negZCornerBand * foamCorners.y * foamMotion(topUv + vec2(1.0, -1.0), 8.5);
-    float negXPosZCorner = negXCornerBand * posZCornerBand * foamCorners.z * foamMotion(topUv + vec2(-1.0, 1.0), 10.2);
-    float posXPosZCorner = posXCornerBand * posZCornerBand * foamCorners.w * foamMotion(topUv + vec2(1.0, 1.0), 11.9);
-    float cornerFoam = max(max(negXNegZCorner, posXNegZCorner), max(negXPosZCorner, posXPosZCorner));
+    float localEdgeBand = max(
+        max(negXBand * foamEdges.x, posXBand * foamEdges.y),
+        max(negZBand * foamEdges.z, posZBand * foamEdges.w)
+    );
+    float localCornerBand = max(
+        max(negXCornerBand * negZCornerBand * foamCorners.x, posXCornerBand * negZCornerBand * foamCorners.y),
+        max(negXCornerBand * posZCornerBand * foamCorners.z, posXCornerBand * posZCornerBand * foamCorners.w)
+    );
+    float shoreFoamFade = max(localEdgeBand, localCornerBand);
+    float shoreFoamCore = shoreFoamFade;
+#ifdef USE_WATER_SHORE_DEPTH_ATTRIBUTE
+    shoreFoamFade = 1.0 - smoothstep(0.08, 1.05, shoreDepth);
+    shoreFoamCore = 1.0 - smoothstep(0.0, 0.34, shoreDepth);
+#endif
+    float globalFoam = max(
+        foamMotion(topUv, 0.0),
+        foamMotion(topUv + vec2(3.7, -2.4), 4.2) * 0.82
+    );
     float foamNoise = valueNoise(topUv * 3.2 + vec2(uTime * 0.119, -uTime * 0.085));
     float shoreFoamBreakup = 0.96 + 0.28 * smoothstep(0.12, 0.66, foamNoise);
-    edgeFoam =
-        max(edgeFoam, cornerFoam * 1.18) *
-        shoreFoamBreakup *
-        (1.18 + shoreInfluence * 1.35);
+    float shoreFoamField =
+        max(globalFoam, shoreFoamCore * 0.58) *
+        shoreFoamFade *
+        shoreFoamBreakup;
 
-    float topFoam = smoothstep(0.06, 0.42, edgeFoam) * topness * mix(1.1, 1.75, shoreInfluence);
-    float fallingFoam = edgeFoam * sideness * 0.18;
+    float topFoam = smoothstep(0.08, 0.4, shoreFoamField) * topness * mix(0.95, 1.55, shoreFoamCore);
+    float fallingFoam = smoothstep(0.1, 0.55, shoreFoamField) * sideness * 0.16;
     float foam = clamp(max(topFoam, fallingFoam), 0.0, 1.0);
 
     vec3 shallowWater = mix(uShallowColor, uFoamColor, shoreInfluence * topness * 0.08);
