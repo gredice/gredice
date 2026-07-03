@@ -170,9 +170,16 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     400,
                 );
             }
-            if (outletOfferId && currency && currency !== 'eur') {
+            if (
+                outletOfferId &&
+                currency &&
+                currency !== 'eur' &&
+                currency !== 'sunflower'
+            ) {
                 return context.json(
-                    { error: 'Outlet offers can only be paid in euros' },
+                    {
+                        error: 'Outlet offers can only be paid in euros or sunflowers',
+                    },
                     400,
                 );
             }

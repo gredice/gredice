@@ -204,15 +204,38 @@ test('shopping cart outlet item shows a live reservation countdown', async ({
     mount,
     page,
 }) => {
+    let resolvePayload:
+        | ((payload: Record<string, unknown>) => void)
+        | undefined;
+    const postedPayload = new Promise<Record<string, unknown>>((resolve) => {
+        resolvePayload = resolve;
+    });
+
+    await page.route('**/api/gredice/**/shopping-cart', async (route) => {
+        if (route.request().method() !== 'POST') {
+            await route.fallback();
+            return;
+        }
+
+        const payload: unknown = route.request().postDataJSON();
+        if (isRecord(payload)) {
+            resolvePayload?.(payload);
+        }
+        await route.fulfill({
+            body: JSON.stringify({ success: true }),
+            contentType: 'application/json',
+            status: 200,
+        });
+    });
+
     await mount(<ShoppingCartOutletCountdownStory />);
 
     await expect(page.getByText('Outlet sadnica').first()).toBeVisible();
     await expect(page.getByText(/Istječe za 1:[0-5]\d/u)).toBeVisible();
-    await expect(
-        page.getByRole('switch', {
-            name: /Plaćanje eurima, prebaci na 1\.200 suncokreta/u,
-        }),
-    ).toBeVisible();
+    const paymentSwitch = page.getByRole('switch', {
+        name: /Plaćanje eurima, prebaci na 1\.200 suncokreta/u,
+    });
+    await expect(paymentSwitch).toBeVisible();
 
     const badges = page.locator('[data-shopping-cart-item-badges]');
     await expect(badges).toContainText('Outlet sadnica');
@@ -221,4 +244,9 @@ test('shopping cart outlet item shows a live reservation countdown', async ({
     await expect(badges).toContainText('Staklenik');
     await expect(page.getByText('Nova gredica')).toBeVisible();
     await expect(page.getByText('Poz.1')).toBeVisible();
+
+    await paymentSwitch.click();
+    const payload = await postedPayload;
+    expect(payload.currency).toBe('sunflower');
+    expect(payload.outletOfferId).toBe(1);
 });

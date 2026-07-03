@@ -20,6 +20,7 @@ import { Typography } from '@gredice/ui/Typography';
 import { useQueryClient } from '@tanstack/react-query';
 import { type CSSProperties, useEffect, useState } from 'react';
 import { useGameAnalytics } from '../../../analytics/GameAnalyticsContext';
+import { getCartItemOutletOfferId } from '../../../hooks/shoppingCartPositionPayload';
 import { useCurrentAccount } from '../../../hooks/useCurrentAccount';
 import { useCurrentGarden } from '../../../hooks/useCurrentGarden';
 import { useInventory } from '../../../hooks/useInventory';
@@ -283,6 +284,8 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const hasAvailableInventory = (availableFromInventory ?? 0) > 0;
 
     async function handleChangePaymentType(isSunflower: boolean) {
+        const outletOfferId = getCartItemOutletOfferId(item);
+
         track('game_cart_payment_method_changed', {
             entity_id: item.entityId,
             entity_type: item.entityTypeName,
@@ -298,6 +301,7 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
             positionIndex: item.positionIndex ?? undefined,
             gardenId: item.gardenId ?? undefined,
             raisedBedId: item.raisedBedId ?? undefined,
+            outletOfferId,
         });
     }
 
