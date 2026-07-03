@@ -5,7 +5,7 @@ import { accounts, accountUsers, ensureAccountAchievement, storage } from '..';
 import {
     createEvent,
     getAllEvents,
-    getEvents,
+    getLatestEvents,
     knownEvents,
     knownEventTypes,
 } from './eventsRepo';
@@ -151,7 +151,7 @@ export async function getSunflowersHistory(
     offset: number = 0,
     limit: number = 10,
 ) {
-    const earnEvents = await getEvents(
+    const earnEvents = await getLatestEvents(
         [
             knownEventTypes.accounts.earnSunflowers,
             knownEventTypes.accounts.earnSunflowerDrop,
@@ -161,7 +161,7 @@ export async function getSunflowersHistory(
         offset,
         limit,
     );
-    return earnEvents.reverse().map((event) => {
+    return earnEvents.map((event) => {
         const { amount, reason } = parseSunflowerEventData(event.data);
         return {
             ...event,

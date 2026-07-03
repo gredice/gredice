@@ -227,3 +227,23 @@ test('getSunflowersHistory returns correct history', async () => {
     assert.ok(history.some((e) => e.reason === 'test-earn'));
     assert.ok(history.some((e) => e.reason === 'test-spend'));
 });
+
+test('getSunflowersHistory returns newest events first when limited', async () => {
+    createTestDb();
+    const accountId = await createTestAccount();
+    await earnSunflowers(accountId, 1, 'history-old');
+    await earnSunflowers(accountId, 2, 'history-middle');
+    await earnSunflowers(accountId, 3, 'history-newest');
+
+    const firstPage = await getSunflowersHistory(accountId, 0, 2);
+    assert.deepStrictEqual(
+        firstPage.map((event) => event.reason),
+        ['history-newest', 'history-middle'],
+    );
+
+    const secondPage = await getSunflowersHistory(accountId, 2, 1);
+    assert.deepStrictEqual(
+        secondPage.map((event) => event.reason),
+        ['history-old'],
+    );
+});
