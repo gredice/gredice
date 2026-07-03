@@ -22,6 +22,10 @@ function colorDistance(
     );
 }
 
+function colorLuminance(color: { b: number; g: number; r: number }) {
+    return color.r * 0.2126 + color.g * 0.7152 + color.b * 0.0722;
+}
+
 function resolveGradient({
     moonlight = 0,
     paletteIndex = defaultGameBackgroundPaletteIndex,
@@ -63,6 +67,29 @@ test('neutral daytime sky resolves to a visible gradient', () => {
     assert.ok(colorDistance(gradient.upper, gradient.horizon) > 0.015);
     assert.ok(colorDistance(gradient.lower, gradient.horizon) < 0.001);
     assert.ok(gradient.sunGlowIntensity > 0.4);
+});
+
+test('neutral post-sunset sky darkens the lower background', () => {
+    const gradient = resolveGradient({
+        moonlight: 0.45,
+        timeOfDay: 0.87,
+    });
+
+    assert.ok(
+        colorLuminance(gradient.lower) <
+            colorLuminance(gradient.horizon) - 0.025,
+    );
+    assert.ok(colorLuminance(gradient.lower) < 0.35);
+});
+
+test('neutral after-midnight sky keeps the lower background dark', () => {
+    const gradient = resolveGradient({
+        moonlight: 0.45,
+        timeOfDay: 0.04,
+    });
+
+    assert.ok(colorLuminance(gradient.horizon) < 0.16);
+    assert.ok(colorLuminance(gradient.lower) < 0.12);
 });
 
 test('background palettes tint the same time of day differently', () => {
