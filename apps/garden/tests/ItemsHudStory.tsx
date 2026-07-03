@@ -130,6 +130,7 @@ const blockNames = [
 
 type ItemsHudStoryOptions = {
     accountSunflowers?: number;
+    cameraTarget?: [x: number, y: number, z: number];
     closeup?: boolean;
     isSandbox?: boolean;
     localSandboxStorageKey?: string;
@@ -173,6 +174,7 @@ function createItemsHudQueryClient({
 function ItemsHudTestProviders({
     children,
     accountSunflowers,
+    cameraTarget,
     isSandbox = false,
     localSandboxStorageKey,
     closeup = false,
@@ -204,8 +206,24 @@ function ItemsHudTestProviders({
         if (closeup) {
             store.setState({ view: 'closeup' });
         }
+        if (cameraTarget) {
+            store.setState({
+                gameCameraSnapshot: {
+                    position: [cameraTarget[0] - 10, 10, cameraTarget[2] - 10],
+                    target: cameraTarget,
+                    version: 1,
+                    zoom: 100,
+                },
+            });
+        }
         return store;
-    }, [closeup, localSandboxStorageKey, pickupBlock, trashTargetActive]);
+    }, [
+        cameraTarget,
+        closeup,
+        localSandboxStorageKey,
+        pickupBlock,
+        trashTargetActive,
+    ]);
 
     return (
         <NuqsTestingAdapter>
@@ -253,6 +271,22 @@ function ItemsHudTestFrame({ closeup = false }: { closeup?: boolean }) {
 export function ItemsHudAlignmentStory() {
     return (
         <ItemsHudTestProviders>
+            <div className="relative h-screen w-screen overflow-hidden">
+                <div
+                    data-testid="bottom-hud"
+                    className={gameHudBottomBarClassName}
+                >
+                    <BottomControlsTestFrame />
+                    <ItemsHudTestFrame />
+                </div>
+            </div>
+        </ItemsHudTestProviders>
+    );
+}
+
+export function ItemsHudCameraTargetStory() {
+    return (
+        <ItemsHudTestProviders cameraTarget={[12.4, 0, -7.6]}>
             <div className="relative h-screen w-screen overflow-hidden">
                 <div
                     data-testid="bottom-hud"
