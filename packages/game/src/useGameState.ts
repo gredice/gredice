@@ -68,6 +68,61 @@ export type ActiveDragPreview = {
     isOverRecycler: boolean;
 };
 
+const activeDragPreviewEpsilon = 0.0001;
+
+function activeDragPreviewNumbersEqual(left: number, right: number) {
+    return Math.abs(left - right) <= activeDragPreviewEpsilon;
+}
+
+function activeDragPreviewTargetOffsetsEqual(
+    left: ActiveDragPreviewTargetOffset,
+    right: ActiveDragPreviewTargetOffset,
+) {
+    return (
+        activeDragPreviewTargetMatches(left, right) &&
+        activeDragPreviewNumbersEqual(left.hoverHeight, right.hoverHeight)
+    );
+}
+
+function activeDragPreviewTargetOffsetListsEqual(
+    left: ActiveDragPreviewTargetOffset[],
+    right: ActiveDragPreviewTargetOffset[],
+) {
+    if (left.length !== right.length) {
+        return false;
+    }
+
+    return left.every((leftTarget, index) => {
+        const rightTarget = right[index];
+        return (
+            Boolean(rightTarget) &&
+            activeDragPreviewTargetOffsetsEqual(leftTarget, rightTarget)
+        );
+    });
+}
+
+export function activeDragPreviewsEqual(
+    left: ActiveDragPreview | null,
+    right: ActiveDragPreview | null,
+) {
+    if (left === right) {
+        return true;
+    }
+    if (!left || !right) {
+        return false;
+    }
+
+    return (
+        activeDragPreviewTargetMatches(left.source, right.source) &&
+        activeDragPreviewTargetOffsetListsEqual(left.targets, right.targets) &&
+        left.hoveredGardenBoxBlockId === right.hoveredGardenBoxBlockId &&
+        activeDragPreviewNumbersEqual(left.relative.x, right.relative.x) &&
+        activeDragPreviewNumbersEqual(left.relative.z, right.relative.z) &&
+        left.isBlocked === right.isBlocked &&
+        left.isOverRecycler === right.isOverRecycler
+    );
+}
+
 export type GardenBoxTooltip = {
     blockId: string;
     createdAt: number;
@@ -475,9 +530,23 @@ export function createGameState({
         sandboxBlockTrashDropTargetActive: false,
         setSandboxBlockTrashDropTargetActive: (
             sandboxBlockTrashDropTargetActive,
-        ) => set({ sandboxBlockTrashDropTargetActive }),
+        ) =>
+            set((state) =>
+                state.sandboxBlockTrashDropTargetActive ===
+                sandboxBlockTrashDropTargetActive
+                    ? state
+                    : { sandboxBlockTrashDropTargetActive },
+            ),
         activeDragPreview: null,
-        setActiveDragPreview: (activeDragPreview) => set({ activeDragPreview }),
+        setActiveDragPreview: (activeDragPreview) =>
+            set((state) =>
+                activeDragPreviewsEqual(
+                    state.activeDragPreview,
+                    activeDragPreview,
+                )
+                    ? state
+                    : { activeDragPreview },
+            ),
         openGardenBoxBlockId: null,
         setOpenGardenBoxBlockId: (openGardenBoxBlockId) =>
             set({ openGardenBoxBlockId }),
