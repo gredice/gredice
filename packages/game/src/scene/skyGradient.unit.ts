@@ -123,6 +123,7 @@ test('moonlight and cloud cover tune glow strength at night', () => {
     assert.ok(
         moonlitGradient.moonGlowIntensity > moonlessGradient.moonGlowIntensity,
     );
+    assert.ok(moonlitGradient.moonGlowIntensity < 0.16);
     assert.ok(
         overcastGradient.moonGlowIntensity < moonlitGradient.moonGlowIntensity,
     );

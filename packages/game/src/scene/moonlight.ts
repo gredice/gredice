@@ -3,6 +3,8 @@ import { getVisualNightAmount, smoothstep } from './visualDayNight';
 
 const MOONLESS_NIGHT_LIGHT_SCALE = 0.32;
 const MOONLESS_NIGHT_SKY_SCALE = 0.6;
+const MOONLIT_NIGHT_LIGHT_SCALE = 0.78;
+const MOONLIT_NIGHT_SKY_SCALE = 0.82;
 
 const MOON_HORIZON_FADE = {
     start: -0.05,
@@ -33,10 +35,11 @@ export function resolveMoonlitNightScales({
     const visibleMoonlight = clamp01(moonlight);
     const moonNightLightScale =
         MOONLESS_NIGHT_LIGHT_SCALE +
-        (1 - MOONLESS_NIGHT_LIGHT_SCALE) * visibleMoonlight;
+        (MOONLIT_NIGHT_LIGHT_SCALE - MOONLESS_NIGHT_LIGHT_SCALE) *
+            visibleMoonlight;
     const moonNightSkyScale =
         MOONLESS_NIGHT_SKY_SCALE +
-        (1 - MOONLESS_NIGHT_SKY_SCALE) * visibleMoonlight;
+        (MOONLIT_NIGHT_SKY_SCALE - MOONLESS_NIGHT_SKY_SCALE) * visibleMoonlight;
 
     return {
         lightScale: mix(1, moonNightLightScale, nightAmount),

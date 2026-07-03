@@ -18,8 +18,8 @@ test('moonlit night scales darken low-moon nights', () => {
 
     assert.ok(moonless.lightScale < fullMoon.lightScale);
     assert.ok(moonless.skyScale < fullMoon.skyScale);
-    assert.equal(round(fullMoon.lightScale), 1);
-    assert.equal(round(fullMoon.skyScale), 1);
+    assert.equal(round(fullMoon.lightScale), 0.78);
+    assert.equal(round(fullMoon.skyScale), 0.82);
 });
 
 test('moonlit night scales leave daylight unchanged', () => {

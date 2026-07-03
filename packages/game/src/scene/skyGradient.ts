@@ -329,21 +329,21 @@ export function resolveSkyGradientColors({
         .lerp(colorFromHex('#6f8fb7'), night * visibleMoonlight * 0.08);
 
     const horizon = shiftHsl(base, {
-        lightnessOffset: 0.035 + daylight * 0.035 - nightFloorDarkening * 0.045,
+        lightnessOffset: 0.035 + daylight * 0.035 - nightFloorDarkening * 0.07,
         saturationScale: 1.02 + twilight * 0.2,
     })
         .lerp(
             theme.light,
-            (0.28 + daylight * 0.16) * (1 - nightFloorDarkening * 0.72),
+            (0.28 + daylight * 0.16) * (1 - nightFloorDarkening * 0.82),
         )
         .lerp(colorFromHex(twilightWarmth), twilight * 0.35)
-        .lerp(theme.night, nightFloorDarkening * 0.28 + night * 0.18)
-        .lerp(colorFromHex('#9fb4d4'), night * visibleMoonlight * 0.1);
+        .lerp(theme.night, nightFloorDarkening * 0.34 + night * 0.2)
+        .lerp(colorFromHex('#9fb4d4'), night * visibleMoonlight * 0.05);
 
     const lower = horizon
         .clone()
-        .lerp(theme.night, nightFloorDarkening * 0.5 + night * 0.16)
-        .lerp(zenith, nightFloorDarkening * 0.1);
+        .lerp(theme.night, nightFloorDarkening * 0.62 + night * 0.2)
+        .lerp(zenith, nightFloorDarkening * 0.06);
 
     const weatherTone = {
         cloudy: overcast,
@@ -373,7 +373,7 @@ export function resolveSkyGradientColors({
         moonGlow: applyWeatherTone(moonGlow, weatherTone),
         moonGlowIntensity:
             night *
-            (0.06 + visibleMoonlight * 0.22) *
+            (0.035 + visibleMoonlight * 0.13) *
             (1 - overcast * 0.68) *
             (1 - storm * 0.15),
     };
