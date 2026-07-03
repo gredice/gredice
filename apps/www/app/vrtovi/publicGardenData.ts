@@ -22,8 +22,15 @@ export async function getPublicGardensForWww() {
     const publicGardens = await response.json();
     const items = await Promise.all(
         publicGardens.items.map(async (garden) => {
+            const likeCount = Number.isFinite(garden.likeCount)
+                ? garden.likeCount
+                : 0;
+
             if (Number.isFinite(garden.activePlantCount)) {
-                return garden;
+                return {
+                    ...garden,
+                    likeCount,
+                };
             }
 
             // Support mixed deployments where www expects the new summary field
@@ -32,12 +39,16 @@ export async function getPublicGardensForWww() {
                 garden.id,
             );
             if (typeof activePlantCount !== 'number') {
-                return garden;
+                return {
+                    ...garden,
+                    likeCount,
+                };
             }
 
             return {
                 ...garden,
                 activePlantCount,
+                likeCount,
             };
         }),
     );
@@ -56,5 +67,9 @@ export async function getPublicGardenForWww(gardenId: number) {
         notFound();
     }
 
-    return response.json();
+    const garden = await response.json();
+    return {
+        ...garden,
+        likeCount: Number.isFinite(garden.likeCount) ? garden.likeCount : 0,
+    };
 }

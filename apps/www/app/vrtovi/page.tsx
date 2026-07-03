@@ -6,6 +6,7 @@ import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import { KnownPages } from '../../src/KnownPages';
+import { PublicGardenLikeButton } from './PublicGardenLikeButton';
 import { PublicGardenTransitionLink } from './PublicGardenTransitionLink';
 import { getPublicGardensForWww } from './publicGardenData';
 import { formatGardenDate, formatGardenNumber } from './publicGardenFormatting';
@@ -45,7 +46,7 @@ export default async function PublicGardensPage() {
                     {gardens.items.map((garden, gardenIndex) => (
                         <Card
                             key={garden.id}
-                            className="public-garden-card-view-transition h-full overflow-hidden p-0 transition-shadow hover:shadow-sm"
+                            className="public-garden-card-view-transition group relative h-full overflow-hidden p-0 transition-shadow hover:shadow-sm"
                             style={{
                                 viewTransitionName:
                                     getPublicGardenCardViewTransitionName(
@@ -55,9 +56,14 @@ export default async function PublicGardensPage() {
                         >
                             <PublicGardenTransitionLink
                                 href={KnownPages.PublicGarden(garden.id)}
-                                className="group block h-full text-card-foreground no-underline"
+                                className="absolute inset-0 z-10 rounded-lg"
                                 ariaLabel={`Otvori vrt ${garden.name}`}
                             >
+                                <span className="sr-only">
+                                    Otvori vrt {garden.name}
+                                </span>
+                            </PublicGardenTransitionLink>
+                            <div className="relative h-full text-card-foreground">
                                 <div className="overflow-hidden bg-muted">
                                     <Image
                                         src={getPublicGardenOgImageUrl(
@@ -71,7 +77,7 @@ export default async function PublicGardensPage() {
                                         className="aspect-[1200/630] w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                                     />
                                 </div>
-                                <div className="grid grid-cols-2 divide-x border-t bg-card">
+                                <div className="grid grid-cols-3 divide-x border-t bg-card">
                                     <div className="flex items-center gap-2 px-3 py-3">
                                         <Calendar
                                             aria-hidden
@@ -116,8 +122,12 @@ export default async function PublicGardensPage() {
                                             </Typography>
                                         </div>
                                     </div>
+                                    <PublicGardenLikeButton
+                                        gardenId={garden.id}
+                                        initialLikeCount={garden.likeCount}
+                                    />
                                 </div>
-                            </PublicGardenTransitionLink>
+                            </div>
                         </Card>
                     ))}
                 </div>

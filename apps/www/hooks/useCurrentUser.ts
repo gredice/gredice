@@ -9,6 +9,8 @@ export type CurrentUser = {
     avatarUrl?: string | null;
 };
 
+export const currentUserQueryKey = ['currentUser'];
+
 async function fetchCurrentUser(): Promise<CurrentUser | null> {
     try {
         const response = await fetch('/api/gredice/api/auth/current-claims', {
@@ -25,7 +27,7 @@ async function fetchCurrentUser(): Promise<CurrentUser | null> {
 
 export function useCurrentUser() {
     return useQuery({
-        queryKey: ['currentUser'],
+        queryKey: currentUserQueryKey,
         queryFn: fetchCurrentUser,
         retry: false,
         staleTime: 5 * 60 * 1000,

@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
     accountHasActiveRaisedBed,
+    CannotLikeOwnGardenError,
     countActiveRaisedBedsForGarden,
     countRaisedBedsByAccount,
     createAccount,
@@ -20,6 +22,7 @@ import {
     getGarden,
     getGardenBlock,
     getGardenBlocks,
+    getGardenLikeCounts,
     getGardenStack,
     getGardenStacks,
     getGardens,
@@ -29,13 +32,19 @@ import {
     getRaisedBedFieldsWithEventsForBeds,
     getRaisedBedMetadataByIds,
     getRaisedBeds,
+    getUserLikedGardenIds,
     knownEvents,
+    listUserGardenLikes,
+    PublicGardenLikeTargetNotFoundError,
     RAISED_BED_PHOTO_OPERATION_ID,
+    setGardenLike,
+    storage,
     updateGarden,
     updateGardenBlock,
     updateGardenStack,
     updateRaisedBed,
     upsertRaisedBedField,
+    users,
 } from '@gredice/storage';
 import { and, eq } from 'drizzle-orm';
 import { gardenStacks } from '../src/schema';
@@ -46,6 +55,18 @@ import {
     ensureFarmId,
 } from './helpers/testHelpers';
 import { createTestDb } from './testDb';
+
+async function createTestUser() {
+    const userId = randomUUID();
+    await storage()
+        .insert(users)
+        .values({
+            id: userId,
+            userName: `${userId}@example.com`,
+            role: 'user',
+        });
+    return userId;
+}
 
 test('can create and retrieve a garden', async () => {
     createTestDb();
@@ -180,6 +201,107 @@ test('gardens are private by default and public helpers only return public garde
     const publicGarden = await getPublicGarden(publicGardenId);
     assert.ok(publicGarden);
     assert.strictEqual(publicGarden.name, 'Public Garden');
+});
+
+test('garden likes are limited to visible gardens owned by other accounts', async () => {
+    createTestDb();
+    const ownerAccountId = await createAccount();
+    const otherAccountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const userId = await createTestUser();
+    const otherUserId = await createTestUser();
+    const publicGardenId = await createTestGarden({
+        name: 'Liked Garden',
+        accountId: ownerAccountId,
+        farmId,
+    });
+    const privateGardenId = await createTestGarden({
+        name: 'Private Garden',
+        accountId: ownerAccountId,
+        farmId,
+    });
+    await updateGarden({ id: publicGardenId, isPublic: true });
+
+    await assert.rejects(
+        () =>
+            setGardenLike({
+                accountIds: [ownerAccountId],
+                gardenId: publicGardenId,
+                liked: true,
+                userId,
+            }),
+        CannotLikeOwnGardenError,
+    );
+    await assert.rejects(
+        () =>
+            setGardenLike({
+                accountIds: [otherAccountId],
+                gardenId: privateGardenId,
+                liked: true,
+                userId,
+            }),
+        PublicGardenLikeTargetNotFoundError,
+    );
+
+    assert.deepStrictEqual(
+        await setGardenLike({
+            accountIds: [otherAccountId],
+            gardenId: publicGardenId,
+            liked: true,
+            userId,
+        }),
+        {
+            liked: true,
+            likeCount: 1,
+        },
+    );
+    assert.deepStrictEqual(
+        await setGardenLike({
+            accountIds: [otherAccountId],
+            gardenId: publicGardenId,
+            liked: true,
+            userId,
+        }),
+        {
+            liked: true,
+            likeCount: 1,
+        },
+    );
+    assert.deepStrictEqual(
+        await setGardenLike({
+            accountIds: [otherAccountId],
+            gardenId: publicGardenId,
+            liked: true,
+            userId: otherUserId,
+        }),
+        {
+            liked: true,
+            likeCount: 2,
+        },
+    );
+
+    const likeCounts = await getGardenLikeCounts([publicGardenId]);
+    assert.strictEqual(likeCounts.get(publicGardenId), 2);
+    assert.deepStrictEqual(
+        (await listUserGardenLikes({ userId })).map((like) => like.gardenId),
+        [publicGardenId],
+    );
+    assert.deepStrictEqual(
+        Array.from(await getUserLikedGardenIds({ userId })),
+        [publicGardenId],
+    );
+    assert.deepStrictEqual(
+        await setGardenLike({
+            accountIds: [otherAccountId],
+            gardenId: publicGardenId,
+            liked: false,
+            userId,
+        }),
+        {
+            liked: false,
+            likeCount: 1,
+        },
+    );
 });
 
 test('countRaisedBedsByAccount counts active raised beds for account quota', async () => {

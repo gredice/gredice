@@ -45,6 +45,32 @@ export const gardens = pgTable(
     ],
 );
 
+export const gardenLikes = pgTable(
+    'garden_likes',
+    {
+        id: serial('id').primaryKey(),
+        userId: text('user_id')
+            .notNull()
+            .references(() => users.id, { onDelete: 'cascade' }),
+        gardenId: integer('garden_id')
+            .notNull()
+            .references(() => gardens.id, { onDelete: 'cascade' }),
+        createdAt: timestamp('created_at').notNull().defaultNow(),
+        updatedAt: timestamp('updated_at')
+            .notNull()
+            .defaultNow()
+            .$onUpdate(() => new Date()),
+    },
+    (table) => [
+        uniqueIndex('garden_likes_user_garden_uq').on(
+            table.userId,
+            table.gardenId,
+        ),
+        index('garden_likes_user_id_idx').on(table.userId),
+        index('garden_likes_garden_id_idx').on(table.gardenId),
+    ],
+);
+
 export const gardenRelations = relations(gardens, ({ one, many }) => ({
     account: one(accounts, {
         fields: [gardens.accountId],
@@ -61,6 +87,22 @@ export const gardenRelations = relations(gardens, ({ one, many }) => ({
     }),
     raisedBeds: many(raisedBeds, {
         relationName: 'raisedBedsGarden',
+    }),
+    likes: many(gardenLikes, {
+        relationName: 'gardenLikes',
+    }),
+}));
+
+export const gardenLikesRelations = relations(gardenLikes, ({ one }) => ({
+    garden: one(gardens, {
+        fields: [gardenLikes.gardenId],
+        references: [gardens.id],
+        relationName: 'gardenLikes',
+    }),
+    user: one(users, {
+        fields: [gardenLikes.userId],
+        references: [users.id],
+        relationName: 'gardenLikes',
     }),
 }));
 
@@ -79,6 +121,7 @@ export type UpdateGarden = Partial<
 > &
     Pick<typeof gardens.$inferSelect, 'id'>;
 export type SelectGarden = typeof gardens.$inferSelect;
+export type SelectGardenLike = typeof gardenLikes.$inferSelect;
 
 export const gardenVisitStates = pgTable(
     'garden_visit_states',

@@ -1,5 +1,6 @@
 export * from './directories-api';
 export * from './favorites';
+export * from './garden-likes';
 export * from './harvest-traces';
 export type {
     ClientMode,

@@ -1,14 +1,16 @@
 import 'server-only';
-import { and, asc, count, desc, eq } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray } from 'drizzle-orm';
 import { v4 as uuidV4 } from 'uuid';
 import { storage } from '..';
 import { bustScheduleCache } from '../cache/scheduleCache';
 import {
     gardenBlocks,
+    gardenLikes,
     gardenStacks,
     gardens,
     type InsertGarden,
     raisedBeds,
+    type SelectGardenLike,
     type UpdateGarden,
     type UpdateGardenBlock,
     type UpdateGardenStack,
@@ -30,6 +32,25 @@ type TransactionClient = Parameters<
     Parameters<StorageClient['transaction']>[0]
 >[0];
 type DatabaseClient = TransactionClient | StorageClient;
+
+export class PublicGardenLikeTargetNotFoundError extends Error {
+    constructor(gardenId: number) {
+        super(`Public garden was not found: ${gardenId.toString()}`);
+        this.name = 'PublicGardenLikeTargetNotFoundError';
+    }
+}
+
+export class CannotLikeOwnGardenError extends Error {
+    constructor(gardenId: number) {
+        super(`Cannot like own garden: ${gardenId.toString()}`);
+        this.name = 'CannotLikeOwnGardenError';
+    }
+}
+
+export type GardenLikeState = {
+    liked: boolean;
+    likeCount: number;
+};
 
 export async function createGarden(garden: InsertGarden) {
     const createdGarden = (
@@ -252,6 +273,155 @@ export async function getPublicGarden(gardenId: number) {
     return {
         ...garden,
         raisedBeds,
+    };
+}
+
+export async function listUserGardenLikes({
+    userId,
+}: {
+    userId: string;
+}): Promise<SelectGardenLike[]> {
+    return storage()
+        .select({
+            id: gardenLikes.id,
+            userId: gardenLikes.userId,
+            gardenId: gardenLikes.gardenId,
+            createdAt: gardenLikes.createdAt,
+            updatedAt: gardenLikes.updatedAt,
+        })
+        .from(gardenLikes)
+        .innerJoin(gardens, eq(gardenLikes.gardenId, gardens.id))
+        .where(
+            and(
+                eq(gardenLikes.userId, userId),
+                eq(gardens.isDeleted, false),
+                eq(gardens.isPublic, true),
+            ),
+        )
+        .orderBy(
+            desc(gardenLikes.updatedAt),
+            desc(gardenLikes.createdAt),
+            desc(gardenLikes.id),
+        );
+}
+
+export async function getUserLikedGardenIds({
+    gardenIds,
+    userId,
+}: {
+    gardenIds?: number[];
+    userId: string;
+}) {
+    const filters = [eq(gardenLikes.userId, userId)];
+    if (gardenIds) {
+        if (gardenIds.length === 0) {
+            return new Set<number>();
+        }
+        filters.push(inArray(gardenLikes.gardenId, gardenIds));
+    }
+
+    const likes = await storage()
+        .select({ gardenId: gardenLikes.gardenId })
+        .from(gardenLikes)
+        .innerJoin(gardens, eq(gardenLikes.gardenId, gardens.id))
+        .where(
+            and(
+                ...filters,
+                eq(gardens.isDeleted, false),
+                eq(gardens.isPublic, true),
+            ),
+        );
+
+    return new Set(likes.map((like) => like.gardenId));
+}
+
+export async function getGardenLikeCounts(gardenIds: number[]) {
+    if (gardenIds.length === 0) {
+        return new Map<number, number>();
+    }
+
+    const rows = await storage()
+        .select({
+            gardenId: gardenLikes.gardenId,
+            count: count(),
+        })
+        .from(gardenLikes)
+        .innerJoin(gardens, eq(gardenLikes.gardenId, gardens.id))
+        .where(
+            and(
+                inArray(gardenLikes.gardenId, gardenIds),
+                eq(gardens.isDeleted, false),
+                eq(gardens.isPublic, true),
+            ),
+        )
+        .groupBy(gardenLikes.gardenId);
+
+    return new Map(rows.map((row) => [row.gardenId, row.count]));
+}
+
+export async function setGardenLike({
+    accountIds,
+    gardenId,
+    liked,
+    userId,
+}: {
+    accountIds: string[];
+    gardenId: number;
+    liked: boolean;
+    userId: string;
+}): Promise<GardenLikeState> {
+    const publicGarden = await storage().query.gardens.findFirst({
+        where: and(
+            eq(gardens.id, gardenId),
+            eq(gardens.isDeleted, false),
+            eq(gardens.isPublic, true),
+        ),
+    });
+
+    if (!publicGarden) {
+        throw new PublicGardenLikeTargetNotFoundError(gardenId);
+    }
+
+    if (accountIds.includes(publicGarden.accountId)) {
+        throw new CannotLikeOwnGardenError(gardenId);
+    }
+
+    if (!liked) {
+        await storage()
+            .delete(gardenLikes)
+            .where(
+                and(
+                    eq(gardenLikes.userId, userId),
+                    eq(gardenLikes.gardenId, gardenId),
+                ),
+            );
+
+        const likeCounts = await getGardenLikeCounts([gardenId]);
+        return {
+            liked: false,
+            likeCount: likeCounts.get(gardenId) ?? 0,
+        };
+    }
+
+    const now = new Date();
+    await storage()
+        .insert(gardenLikes)
+        .values({
+            gardenId,
+            userId,
+            updatedAt: now,
+        })
+        .onConflictDoUpdate({
+            target: [gardenLikes.userId, gardenLikes.gardenId],
+            set: {
+                updatedAt: now,
+            },
+        });
+
+    const likeCounts = await getGardenLikeCounts([gardenId]);
+    return {
+        liked: true,
+        likeCount: likeCounts.get(gardenId) ?? 0,
     };
 }
 
