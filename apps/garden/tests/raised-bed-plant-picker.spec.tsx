@@ -205,6 +205,7 @@ test('plant list shows outlet availability before sort selection', async ({
     const basilRow = page.locator('[data-plant-picker-plant-id="2"]');
 
     await expect(tomatoRow).toContainText('Outlet 2 ponude');
+    await expect(tomatoRow.locator('[data-outlet-badge] svg')).toHaveCount(1);
     await expect(basilRow).not.toContainText('Outlet');
 });
 
@@ -227,6 +228,7 @@ test('outlet sorts keep planned sowing selected by default', async ({
         sowingMode.getByRole('radio', { name: /Planirano sijanje/ }),
     ).toBeChecked();
     await expect(sowingMode.getByText('Outlet sadnica')).toHaveCount(2);
+    await expect(sowingMode.locator('svg').first()).toBeVisible();
     await expect(
         page.getByRole('textbox', { name: 'Datum sijanja' }),
     ).toBeVisible();

@@ -18,6 +18,7 @@ import { sortFavoritesFirst, useFavoriteIds } from '../../hooks/useFavorites';
 import type { OutletOfferData } from '../../hooks/useOutletOffers';
 import { usePlants } from '../../hooks/usePlants';
 import { KnownPages } from '../../knownPages';
+import { OutletBadge } from '../components/OutletBadge';
 import { FavoriteToggleButton } from './FavoriteToggleButton';
 import { PlantListItemSkeleton } from './PlantListItemSkeleton';
 import {
@@ -282,9 +283,9 @@ export function PlantsList({
                                     <SeedTimeInformationBadge size="sm" />
                                 )}
                                 {outletOffers?.length ? (
-                                    <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700 dark:bg-green-900/50 dark:text-green-200">
+                                    <OutletBadge>
                                         {outletOfferBadgeLabel(outletOffers)}
-                                    </span>
+                                    </OutletBadge>
                                 ) : null}
                                 <PlantRelationshipSignalChips
                                     signal={relationshipSignal}

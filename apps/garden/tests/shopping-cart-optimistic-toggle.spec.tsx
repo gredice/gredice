@@ -231,6 +231,7 @@ test('shopping cart outlet item shows a live reservation countdown', async ({
     await mount(<ShoppingCartOutletCountdownStory />);
 
     await expect(page.getByText('Outlet sadnica').first()).toBeVisible();
+    await expect(page.locator('[data-outlet-badge] svg')).toBeVisible();
     await expect(page.getByText(/Istječe za 1:[0-5]\d/u)).toBeVisible();
     const paymentSwitch = page.getByRole('switch', {
         name: /Plaćanje eurima, prebaci na 1\.200 suncokreta/u,

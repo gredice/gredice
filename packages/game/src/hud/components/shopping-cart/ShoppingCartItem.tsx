@@ -30,6 +30,7 @@ import {
     useShoppingCartQueryKey,
 } from '../../../hooks/useShoppingCart';
 import { RaisedBedWateringCalendar } from '../../raisedBed/RaisedBedWateringCalendar';
+import { OutletBadge } from '../OutletBadge';
 import { ButtonPricePickPaymentMethod } from './ButtonPricePickPaymentMethod';
 import { GreenhouseSowingToggle } from './GreenhouseSowingToggle';
 
@@ -203,12 +204,12 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                 },
             )}.`
           : undefined;
-    const outletReservationChipClassName = outletReservationExpired
-        ? 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-100'
+    const outletReservationChipColor = outletReservationExpired
+        ? 'error'
         : (outletReservationRemainingMs ?? Number.POSITIVE_INFINITY) <=
             urgentOutletReservationThresholdMs
-          ? 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-100'
-          : 'bg-muted';
+          ? 'warning'
+          : 'neutral';
     const changeCurrencyShoppingCartItem = useSetShoppingCartItem();
     const removeShoppingCartItem = useSetShoppingCartItem();
     const changeScheduledDateShoppingCartItem = useSetShoppingCartItem();
@@ -427,10 +428,12 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
 
         return (
             <Chip
-                className="bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-100"
+                color="success"
+                size="sm"
                 startDecorator={<Sprout />}
+                variant="soft"
             >
-                <Typography level="body3">Staklenik</Typography>
+                Staklenik
             </Chip>
         );
     }
@@ -452,14 +455,14 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                 trigger={
                     <Chip
                         startDecorator={<Timer className="size-4" />}
-                        className="bg-muted"
+                        color="neutral"
                         disabled={changeScheduledDateShoppingCartItem.isPending}
                         onClick={() => setDatePickerError(null)}
+                        size="sm"
                         title={`Promijeni datum: ${scheduledDateLabel}`}
+                        variant="soft"
                     >
-                        <Typography level="body3" secondary>
-                            {scheduledDateLabel}
-                        </Typography>
+                        {scheduledDateLabel}
                     </Chip>
                 }
             >
@@ -497,16 +500,16 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
         ) : (
             <Chip
                 startDecorator={<Timer className="size-4" />}
-                className="bg-muted"
+                color="neutral"
+                size="sm"
                 title={
                     scheduledDateInfo.source === 'outlet'
                         ? 'Datum sjetve outlet sadnice'
                         : 'Datum'
                 }
+                variant="soft"
             >
-                <Typography level="body3" secondary>
-                    {scheduledDateLabel}
-                </Typography>
+                {scheduledDateLabel}
             </Chip>
         );
     }
@@ -518,16 +521,14 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
 
         return (
             <>
-                <Chip className="bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-100">
-                    <Typography level="body3">Outlet sadnica</Typography>
-                </Chip>
+                <OutletBadge>Outlet sadnica</OutletBadge>
                 <Chip
-                    className={outletReservationChipClassName}
+                    color={outletReservationChipColor}
+                    size="sm"
                     title={outletReservationTitle}
+                    variant="soft"
                 >
-                    <Typography level="body3">
-                        {outletReservationText}
-                    </Typography>
+                    {outletReservationText}
                 </Chip>
             </>
         );
