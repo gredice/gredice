@@ -154,7 +154,12 @@ jobs:
 
       - name: 📦️ Install playwright browsers
         if: steps.playwright.outputs.enabled == 'true' && steps.playwright-cache.outputs.cache-hit != 'true'
-        run: pnpm exec playwright install --with-deps chromium
+        run: |
+          mapfile -t microsoft_sources < <(grep -rl 'packages.microsoft.com' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null || true)
+          if [ "${#microsoft_sources[@]}" -gt 0 ]; then
+            sudo rm -f "${microsoft_sources[@]}"
+          fi
+          pnpm exec playwright install --with-deps chromium
         working-directory: ${{ inputs.path }}/
 
       - name: ⚒️ Test app
