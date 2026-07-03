@@ -20,7 +20,7 @@ import {
     altAzToScenePosition,
     degreesToRadians,
     timeOfDayToDate,
-} from './Environment';
+} from './sunPosition';
 import { visualDayNightTimes } from './visualDayNight';
 
 // World-space size of the billboard planes. The visible disc is a fraction of
