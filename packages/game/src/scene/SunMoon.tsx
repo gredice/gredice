@@ -16,6 +16,7 @@ import {
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useSnapshotTime } from '../hooks/useSnapshotTime';
 import { useGameState } from '../useGameState';
+import { getMoonVisualPhase } from './moonPhase';
 import {
     altAzToScenePosition,
     degreesToRadians,
@@ -153,35 +154,33 @@ const sunFragment = /* glsl */ `
 const moonFragment = /* glsl */ `
     varying vec2 vUv;
     uniform float uPhase;
-    uniform float uAngle;
+    uniform float uBrightLimbAngle;
     uniform vec3 uColor;
     uniform float uOpacity;
 
     const float DISC_R = 0.42;
     const float GLOW_R = 0.95;
+    const float TAU = 6.2831853;
 
     void main() {
         vec2 p = vUv * 2.0 - 1.0;
         float d = length(p);
 
-        // Terminator math in disc-local coords (rescale so disc edge is at 1).
+        // Terminator math in disc-local coords (rescale so disc edge is at 1)
+        // with x aligned to the observer-relative bright limb direction.
         vec2 rp = p / DISC_R;
-        float s = sin(uAngle);
-        float c = cos(uAngle);
-        rp = vec2(rp.x * c - rp.y * s, rp.x * s + rp.y * c);
+        float s = sin(uBrightLimbAngle);
+        float c = cos(uBrightLimbAngle);
+        float brightAxis = dot(rp, vec2(c, s));
+        float crossAxis = dot(rp, vec2(-s, c));
 
-        float term = cos(uPhase * 6.2831853) * sqrt(max(0.0, 1.0 - rp.y * rp.y));
-        float lit;
-        if (uPhase < 0.5) {
-            lit = smoothstep(term - 0.04, term + 0.04, rp.x);
-        } else {
-            lit = smoothstep(-term + 0.04, -term - 0.04, rp.x);
-        }
+        float term = cos(uPhase * TAU) * sqrt(max(0.0, 1.0 - crossAxis * crossAxis));
+        float lit = smoothstep(term - 0.04, term + 0.04, brightAxis);
 
         float discEdge = smoothstep(DISC_R + 0.01, DISC_R - 0.01, d);
         // Glow follows the illuminated fraction so a thin crescent doesn't
         // project a full-moon halo.
-        float illumFraction = 0.5 * (1.0 - cos(uPhase * 6.2831853));
+        float illumFraction = 0.5 * (1.0 - cos(uPhase * TAU));
         float glow = smoothstep(GLOW_R, DISC_R, d) * 0.18 * illumFraction;
 
         float alpha = (lit * discEdge + glow) * uOpacity;
@@ -214,6 +213,7 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
         }),
         [garden],
     );
+    const { lat, lon } = location;
 
     const sunMesh = useRef<Mesh>(null);
     const moonMesh = useRef<Mesh>(null);
@@ -245,7 +245,7 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
                 side: DoubleSide,
                 uniforms: {
                     uPhase: { value: 0 },
-                    uAngle: { value: 0 },
+                    uBrightLimbAngle: { value: 0 },
                     uColor: { value: new Color('#c8d8f2') },
                     uOpacity: { value: 0 },
                 },
@@ -288,9 +288,9 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
         moonMesh.current.scale.setScalar(screenScale);
 
         const date = timeOfDayToDate(currentTime, timeOfDay);
-        const sun = SunCalc.getPosition(date, location.lat, location.lon);
-        const moon = SunCalc.getMoonPosition(date, location.lat, location.lon);
-        const illumination = SunCalc.getMoonIllumination(date);
+        const sun = SunCalc.getPosition(date, lat, lon);
+        const moon = SunCalc.getMoonPosition(date, lat, lon);
+        const moonVisualPhase = getMoonVisualPhase(date, { lat, lon });
         const sunAltitude = degreesToRadians(sun.altitude);
         const moonAltitude = degreesToRadians(moon.altitude);
 
@@ -361,10 +361,9 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
                 .addScaledVector(viewUpRef.current, my * skyRadius);
             moonMesh.current.lookAt(camera.position);
 
-            moonMaterial.uniforms.uPhase.value = illumination.phase;
-            moonMaterial.uniforms.uAngle.value = degreesToRadians(
-                illumination.angle,
-            );
+            moonMaterial.uniforms.uPhase.value = moonVisualPhase.phase;
+            moonMaterial.uniforms.uBrightLimbAngle.value =
+                moonVisualPhase.brightLimbAngle;
             moonMaterial.uniforms.uOpacity.value = moonOpacity;
             // Warm the tint toward white as the sun rises so the daytime moon
             // doesn't read as a cool blue spot against a bright sky.
@@ -383,8 +382,8 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
         camera,
         currentTime,
         dayNightCycleDisabled,
-        location.lat,
-        location.lon,
+        lat,
+        lon,
         moonMaterial,
         sunMaterial,
         sunViewportTuning.horizontalOffsetMultiplier,
