@@ -29,14 +29,28 @@ export type GardenDisplay2DProps = {
      * @default 128
      */
     blockSize?: number;
+    blockImageSrcByKey?: ReadonlyMap<string, string>;
 } & HTMLAttributes<HTMLDivElement>;
 
+export function getGardenDisplayRotationSuffix(rotation?: number | null) {
+    return ((((rotation ?? 0) % 4) + 4) % 4) + 1;
+}
+
+export function getGardenDisplayBlockImageKey(
+    blockName: string,
+    rotationSuffix: number | string,
+) {
+    return `${blockName}:${rotationSuffix.toString()}`;
+}
+
 export function GardenDisplay2D({
+    blockImageSrcByKey,
     garden,
     blockData,
     viewportSize = 600,
     viewportOffset,
     blockSize = 128,
+    style,
     ...rest
 }: GardenDisplay2DProps) {
     // Block snapshots have margins so we need to adjust the size
@@ -124,13 +138,20 @@ export function GardenDisplay2D({
                 ? -((realizedBlockSize - blockSize) / 2)
                 : 0;
 
-            const rotationIndex = (((block.rotation ?? 0) % 4) + 4) % 4;
-            const rotationSuffix = rotationIndex + 1;
+            const rotationSuffix = getGardenDisplayRotationSuffix(
+                block.rotation,
+            );
+            const blockImageKey = getGardenDisplayBlockImageKey(
+                block.name,
+                rotationSuffix,
+            );
 
             return {
                 id: block.id,
                 name: block.name,
-                src: getBlockImageUrl(block.name, { rotationSuffix }),
+                src:
+                    blockImageSrcByKey?.get(blockImageKey) ??
+                    getBlockImageUrl(block.name, { rotationSuffix }),
                 realizedBlockSize,
                 horizontalOffset,
                 underStackHeight: currentUnderStackHeight,
@@ -145,7 +166,7 @@ export function GardenDisplay2D({
     });
 
     return (
-        <div {...rest}>
+        <div {...rest} style={{ position: 'relative', ...style }}>
             {renderedStacks.map((stack) => (
                 <div
                     key={stack.key}

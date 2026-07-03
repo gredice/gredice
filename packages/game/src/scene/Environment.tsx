@@ -810,6 +810,7 @@ export function Environment({
     const hasWeatherOverride = Boolean(gameWeather ?? weather);
     const { data: weatherNow } = useWeatherNow(
         !weatherDisabled && !hasWeatherOverride,
+        garden?.farmId,
     );
     const overrideWeather = weatherDisabled
         ? undefined

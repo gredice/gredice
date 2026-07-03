@@ -4,8 +4,9 @@ import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { KnownPages } from '../../../src/KnownPages';
-import { PublicGardenViewerDynamic } from '../PublicGardenViewerDynamic';
+import { PublicGardenExplorer } from '../PublicGardenExplorer';
 import { getPublicGardenForWww } from '../publicGardenData';
+import { getPublicGardenOgImageUrl } from '../publicGardenUrls';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,9 +31,10 @@ export async function generateMetadata({
     }
 
     const garden = await getPublicGardenForWww(gardenId);
-    const title = `${garden.name} - javni vrt`;
-    const description = `Readonly prikaz javnog Gredice vrta ${garden.name}.`;
+    const title = garden.name;
+    const description = `Zaviri u Gredice vrt ${garden.name}: prošetaj među gredicama, biljkama i malim vrtnim detaljima.`;
     const path = KnownPages.PublicGarden(garden.id);
+    const ogImageUrl = getPublicGardenOgImageUrl(garden.id);
 
     return {
         title,
@@ -44,6 +46,20 @@ export async function generateMetadata({
             title,
             description,
             url: path,
+            images: [
+                {
+                    url: ogImageUrl,
+                    width: 1200,
+                    height: 630,
+                    alt: `Prikaz vrta ${garden.name}`,
+                },
+            ],
+        },
+        twitter: {
+            card: 'summary_large_image',
+            title,
+            description,
+            images: [ogImageUrl],
         },
     };
 }
@@ -62,18 +78,20 @@ export default async function PublicGardenPage({
     const garden = await getPublicGardenForWww(gardenId);
 
     return (
-        <Stack spacing={6} className="py-8">
+        <Stack spacing={4} className="py-6">
             <PageHeader
-                padded
                 header={garden.name}
-                subHeader="Javni prikaz vrta. Možeš istraživati gredice, biljke i planirane radnje bez uređivanja."
+                subHeader="Prošetaj među gredicama, biljkama i malim vrtnim detaljima iz ovog zelenog kutka."
             />
-            <div className="h-[min(76vh,760px)] min-h-[520px] overflow-hidden rounded-md border border-black/10 bg-background">
-                <PublicGardenViewerDynamic className="h-full" garden={garden} />
-            </div>
-            <Typography level="body2" className="px-2 text-muted-foreground">
-                Prikaz je samo za gledanje.
-            </Typography>
+            <Stack spacing={1}>
+                <PublicGardenExplorer garden={garden} />
+                <Typography
+                    level="body3"
+                    className="px-1 italic text-muted-foreground"
+                >
+                    Prikaz je samo za gledanje.
+                </Typography>
+            </Stack>
         </Stack>
     );
 }

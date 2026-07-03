@@ -60,3 +60,17 @@ export function serializePublicRaisedBedField(
         plantCycles: plantCycles.map(serializePublicPlantCycle),
     };
 }
+
+export function countPublicGardenActivePlants(
+    raisedBeds: Array<{ fields: RaisedBedFieldWithEvents[] }>,
+): number {
+    return raisedBeds.reduce(
+        (total, raisedBed) =>
+            total +
+            raisedBed.fields.filter(
+                (field) =>
+                    field.active && typeof field.plantSortId === 'number',
+            ).length,
+        0,
+    );
+}

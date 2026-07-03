@@ -1,6 +1,13 @@
 import { clientPublic, directoriesClient } from '@gredice/client';
+import { getBlockImageUrl } from '@gredice/ui/BlockImage';
 import { ImageResponse } from 'next/og';
-import { GardenDisplay2D } from '../../../components/GardenDisplay2D';
+import sharp from 'sharp';
+import {
+    GardenDisplay2D,
+    type GardenDisplay2DProps,
+    getGardenDisplayBlockImageKey,
+    getGardenDisplayRotationSuffix,
+} from '../../../components/GardenDisplay2D';
 import { Logotype } from '../../../components/Logotype';
 
 export const size = {
@@ -10,9 +17,86 @@ export const size = {
 export const dynamic = 'force-dynamic';
 export const contentType = 'image/png';
 export const maxDuration = 10;
+export const runtime = 'nodejs';
 
 const gardenOgImageCacheControl =
     'public, max-age=86400, s-maxage=86400, stale-while-revalidate=86400';
+const gardenOgImageAssetBaseUrl = 'https://vrt.gredice.com';
+
+type GardenOgStacks = GardenDisplay2DProps['garden']['stacks'];
+
+const spritePngDataUrlBySrc = new Map<string, Promise<string>>();
+
+export function getGardenOgBlockSpriteRequests(stacks: GardenOgStacks) {
+    const requests = new Map<string, string>();
+
+    for (const rows of Object.values(stacks)) {
+        for (const blocks of Object.values(rows)) {
+            for (const block of blocks) {
+                const rotationSuffix = getGardenDisplayRotationSuffix(
+                    block.rotation,
+                );
+                const key = getGardenDisplayBlockImageKey(
+                    block.name,
+                    rotationSuffix,
+                );
+                const src = getBlockImageUrl(block.name, { rotationSuffix });
+                if (src) {
+                    requests.set(key, src);
+                }
+            }
+        }
+    }
+
+    return [...requests].map(([key, src]) => ({ key, src }));
+}
+
+async function getPngDataUrlForSprite(src: string) {
+    const absoluteSrc = new URL(src, gardenOgImageAssetBaseUrl).toString();
+
+    if (!spritePngDataUrlBySrc.has(absoluteSrc)) {
+        spritePngDataUrlBySrc.set(
+            absoluteSrc,
+            (async () => {
+                const response = await fetch(absoluteSrc);
+                if (!response.ok) {
+                    throw new Error(
+                        `Failed to fetch garden OG sprite ${absoluteSrc}: ${response.status.toString()}`,
+                    );
+                }
+
+                const png = await sharp(
+                    Buffer.from(await response.arrayBuffer()),
+                )
+                    .png()
+                    .toBuffer();
+
+                return `data:image/png;base64,${png.toString('base64')}`;
+            })(),
+        );
+    }
+
+    const sprite = spritePngDataUrlBySrc.get(absoluteSrc);
+    if (!sprite) {
+        return absoluteSrc;
+    }
+
+    return sprite.catch((error: unknown) => {
+        console.error(error);
+        return absoluteSrc;
+    });
+}
+
+async function getGardenOgBlockImageSrcByKey(stacks: GardenOgStacks) {
+    return new Map(
+        await Promise.all(
+            getGardenOgBlockSpriteRequests(stacks).map(
+                async ({ key, src }) =>
+                    [key, await getPngDataUrlForSprite(src)] as const,
+            ),
+        ),
+    );
+}
 
 export default async function GardenOgImage({
     params,
@@ -42,6 +126,9 @@ export default async function GardenOgImage({
         console.error(`Block data not found`);
         return null;
     }
+    const blockImageSrcByKey = await getGardenOgBlockImageSrcByKey(
+        garden.stacks,
+    );
 
     return new ImageResponse(
         <div
@@ -73,6 +160,7 @@ export default async function GardenOgImage({
                 <GardenDisplay2D
                     garden={garden}
                     blockData={blockData}
+                    blockImageSrcByKey={blockImageSrcByKey}
                     viewportSize={1200}
                     viewportOffset={{ x: 24, y: 630 / 2 + 24 * 2 + 106 / 2 }}
                     style={{

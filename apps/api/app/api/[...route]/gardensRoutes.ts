@@ -47,6 +47,7 @@ import {
     getRaisedBedFieldDiaryEntries,
     getRaisedBedIdsByAccount,
     getRaisedBedSensors,
+    getRaisedBedsForGardens,
     getSandboxGardenDeletionCandidate,
     knownEvents,
     knownEventTypes,
@@ -82,7 +83,10 @@ import {
     hashGardenVisitSummaryFacts,
 } from '../../../lib/garden/gardenVisitSummaryService';
 import { isBlockPurchaseAvailableNow } from '../../../lib/garden/nightOnlyBlockPurchases';
-import { serializePublicRaisedBedField } from '../../../lib/garden/publicGardenSerialization';
+import {
+    countPublicGardenActivePlants,
+    serializePublicRaisedBedField,
+} from '../../../lib/garden/publicGardenSerialization';
 import { purchaseGardenBlock } from '../../../lib/garden/purchaseGardenBlockService';
 import {
     AI_REQUEST_QUOTAS,
@@ -711,16 +715,26 @@ const app = new Hono<{ Variables: AuthVariables }>()
         }),
         async (context) => {
             const publicGardens = await getPublicGardens();
+            const raisedBedsByGardenId = await getRaisedBedsForGardens(
+                publicGardens.map((garden) => garden.id),
+            );
 
             return context.json({
-                items: publicGardens.map((garden) => ({
-                    id: garden.id,
-                    name: garden.name,
-                    isSandbox: garden.isSandbox,
-                    backgroundPalette: garden.backgroundPalette,
-                    createdAt: garden.createdAt,
-                    updatedAt: garden.updatedAt,
-                })),
+                items: publicGardens.map((garden) => {
+                    const raisedBeds =
+                        raisedBedsByGardenId.get(garden.id) ?? [];
+
+                    return {
+                        id: garden.id,
+                        name: garden.name,
+                        isSandbox: garden.isSandbox,
+                        backgroundPalette: garden.backgroundPalette,
+                        activePlantCount:
+                            countPublicGardenActivePlants(raisedBeds),
+                        createdAt: garden.createdAt,
+                        updatedAt: garden.updatedAt,
+                    };
+                }),
             });
         },
     )
