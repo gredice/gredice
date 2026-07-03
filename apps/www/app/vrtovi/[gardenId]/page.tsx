@@ -1,3 +1,4 @@
+import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
 import { Card } from '@gredice/ui/Card';
 import { Calendar, Sprout } from '@gredice/ui/icons';
 import { Stack } from '@gredice/ui/Stack';
@@ -88,6 +89,13 @@ export default async function PublicGardenPage({
 
     return (
         <Stack spacing={2} className="py-6">
+            <Breadcrumbs
+                className="px-1"
+                items={[
+                    { label: 'Vrtovi', href: KnownPages.PublicGardens },
+                    { label: garden.name },
+                ]}
+            />
             <Card
                 className="public-garden-card-view-transition overflow-hidden p-0"
                 style={{
