@@ -4,7 +4,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import chroma from 'chroma-js';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as SunCalc from 'suncalc';
-import { Color, Quaternion, Vector3 } from 'three';
+import { Color, type Vector3 } from 'three';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useSnapshotTime } from '../hooks/useSnapshotTime';
 import { useWeatherNow } from '../hooks/useWeatherNow';
@@ -24,6 +24,7 @@ import { ShadowMapController } from './ShadowMapController';
 import Snow from './Snow/Snow';
 import { Stars } from './Stars';
 import { SunMoon } from './SunMoon';
+import { altAzToScenePosition, timeOfDayToDate } from './sunPosition';
 import {
     getVisualDaylightAmount,
     getVisualNightAmount,
@@ -31,12 +32,6 @@ import {
     visualDayNightTimes,
 } from './visualDayNight';
 import { resolveWaterColors } from './waterColors';
-
-const degreesToRadiansScale = Math.PI / 180;
-
-export function degreesToRadians(degrees: number) {
-    return degrees * degreesToRadiansScale;
-}
 
 const backgroundColorScale = chroma
     .scale([
@@ -284,38 +279,6 @@ function useBlendedWeather(
     });
 
     return blendedWeather;
-}
-
-export function timeOfDayToDate(currentTime: Date, timeOfDay: number) {
-    const hours = Math.trunc(timeOfDay * 24);
-    const minutes = Math.trunc((timeOfDay * 24 - hours) * 60);
-    return new Date(
-        currentTime.getFullYear(),
-        currentTime.getMonth(),
-        currentTime.getDate(),
-        hours,
-        minutes,
-        0,
-    );
-}
-
-// Maps SunCalc altitude/azimuth degrees into the stylized scene sky so both
-// the visible sun/moon discs and the directional light share the same trajectory.
-export function altAzToScenePosition(
-    altitudeDegrees: number,
-    azimuthDegrees: number,
-) {
-    const altitude = degreesToRadians(altitudeDegrees);
-    const azimuth = degreesToRadians(azimuthDegrees);
-    const pos = new Vector3(5, 20, 0);
-    const hinge = new Quaternion();
-    const rotator = new Quaternion();
-    rotator.setFromAxisAngle(new Vector3(0, -1, 0), altitude);
-    hinge.premultiply(rotator);
-    rotator.setFromAxisAngle(new Vector3(0.8, 0, 0), azimuth);
-    hinge.premultiply(rotator);
-    pos.applyQuaternion(hinge);
-    return pos;
 }
 
 function getSunPosition(

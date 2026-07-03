@@ -78,6 +78,18 @@ const internalOperation = {
     },
 } satisfies OperationData;
 
+const longLabelOperation = {
+    ...cartOperation,
+    id: 999_003,
+    slug: 'mock-surface-raised-bed-watering',
+    information: {
+        ...cartOperation.information,
+        name: 'surface-raised-bed-watering',
+        label: 'Površinsko zalijevanje gredice',
+        shortDescription: 'Dugačak naziv radnje za provjeru prikaza.',
+    },
+} satisfies OperationData;
+
 function buildGarden() {
     return {
         id: TEST_GARDEN_ID,
@@ -271,6 +283,8 @@ function createQueryClient({
         ? Array.from({ length: 14 }, (_, index) =>
               buildHudOperationItem({
                   id: 700 + index,
+                  entityId:
+                      index === 0 ? longLabelOperation.id : cartOperation.id,
                   status: index % 2 === 0 ? 'confirmed' : 'assigned',
               }),
           )
@@ -354,6 +368,7 @@ function createQueryClient({
     queryClient.setQueryData(operationDefinitionsQueryKey.all, [
         cartOperation,
         internalOperation,
+        longLabelOperation,
     ]);
     queryClient.setQueryData(['shopping-cart'], {
         id: 1,
