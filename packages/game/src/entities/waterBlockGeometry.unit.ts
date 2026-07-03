@@ -107,6 +107,25 @@ describe('createMergedWaterSideGeometry', () => {
         geometry.dispose();
     });
 
+    it('uses neighbor instances to hide side walls across chunk boundaries', () => {
+        const geometry = createMergedWaterSideGeometry(
+            [{ position: [0, 0, 0] }],
+            {
+                neighborInstances: [
+                    { position: [0, 0, 0] },
+                    { position: [1, 0, 0] },
+                ],
+            },
+        );
+        const positionAttribute = geometry.getAttribute('position');
+        const indexAttribute = geometry.getIndex();
+
+        assert.equal(positionAttribute.count, 12);
+        assert.equal(indexAttribute?.count, 18);
+
+        geometry.dispose();
+    });
+
     it('keeps side walls when adjacent water blocks are on different levels', () => {
         const geometry = createMergedWaterSideGeometry([
             { position: [0, 0, 0] },
@@ -165,6 +184,61 @@ describe('createMergedWaterSideGeometry', () => {
         ]);
 
         assert.deepEqual(geometryYExtents(geometry), [-0.06, 0.19]);
+
+        geometry.dispose();
+    });
+
+    it('stores depth-map attributes for merged side walls', () => {
+        const geometry = createMergedWaterSideGeometry([
+            {
+                depth: 3,
+                position: [0, getWaterBlockYOffset(0.4), 0],
+                surfaceY: 1.2,
+                waterHeight: 0.4,
+            },
+        ]);
+        const position = geometry.getAttribute('position');
+        const waterDepth = geometry.getAttribute('waterDepth');
+        const waterSurfaceY = geometry.getAttribute('waterSurfaceY');
+
+        assert.equal(waterDepth.count, position.count);
+        assert.equal(waterSurfaceY.count, position.count);
+        assert.equal(waterDepth.getX(0), 3);
+        assert.equal(Number(waterSurfaceY.getX(0).toFixed(6)), 1.2);
+
+        geometry.dispose();
+    });
+
+    it('stores per-edge top depth and shore samples for merged side walls', () => {
+        const geometry = createMergedWaterSideGeometry([
+            {
+                depth: 4,
+                depthSamples: [1, 2, 3, 4],
+                position: [0, getWaterBlockYOffset(0.4), 0],
+                shoreDepthSamples: [0, 1, 2, 3],
+                surfaceY: 1.2,
+                waterHeight: 0.4,
+            },
+        ]);
+        const normal = geometry.getAttribute('normal');
+        const waterDepth = geometry.getAttribute('waterDepth');
+        const waterShoreDepth = geometry.getAttribute('waterShoreDepth');
+        const negativeXDepths: number[] = [];
+        const negativeXShoreDepths: number[] = [];
+
+        for (let index = 0; index < normal.count; index += 1) {
+            if (
+                normal.getX(index) === -1 &&
+                normal.getY(index) === 0 &&
+                normal.getZ(index) === 0
+            ) {
+                negativeXDepths.push(waterDepth.getX(index));
+                negativeXShoreDepths.push(waterShoreDepth.getX(index));
+            }
+        }
+
+        assert.deepEqual(negativeXDepths, [2, 2, 1, 1]);
+        assert.deepEqual(negativeXShoreDepths, [1, 1, 0, 0]);
 
         geometry.dispose();
     });

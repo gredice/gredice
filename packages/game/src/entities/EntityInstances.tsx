@@ -278,6 +278,9 @@ export function EntityInstances({
         renderSnow: snowOverlaysVisible,
         snowOverlayMinCoverage: qualityProfile.snowOverlayMinCoverage,
     };
+    const mergedTerrainChunkProps = {
+        renderStableChunksAsMergedGeometry: true,
+    };
 
     return (
         <>
@@ -292,6 +295,7 @@ export function EntityInstances({
                 material={(gltf) => gltf.nodes.Block_Grass_1_2.material}
                 snow={snowPresets.grassFlat}
                 snowLift={0.01}
+                {...mergedTerrainChunkProps}
                 {...commonSnowProps}
             />
             <EntityInstancesAssetBlock
@@ -305,6 +309,7 @@ export function EntityInstances({
                 material={(gltf) => gltf.nodes.Block_Grass_Angle_1_2.material}
                 snow={snowPresets.grassAngle}
                 snowLift={0.003}
+                {...mergedTerrainChunkProps}
                 {...commonSnowProps}
             />
             <EntityInstancesAssetBlock
@@ -315,6 +320,7 @@ export function EntityInstances({
                 yOffset={0.2}
                 geometry={(gltf) => gltf.nodes.Block_Grass_Corner_1_1.geometry}
                 material={(gltf) => gltf.nodes.Block_Grass_Corner_1_2.material}
+                {...mergedTerrainChunkProps}
                 {...commonSnowProps}
             />
             <EntityInstancesAssetBlock
@@ -328,6 +334,7 @@ export function EntityInstances({
                 material={(gltf) => gltf.nodes.Block_Grass_Corner_1_2.material}
                 snow={snowPresets.grassCorner}
                 snowLift={0.003}
+                {...mergedTerrainChunkProps}
                 {...commonSnowProps}
             />
             <EntityInstancesAssetBlock
@@ -342,6 +349,7 @@ export function EntityInstances({
                 material={(gltf) =>
                     gltf.nodes.Block_Grass_Reverse_Corner_1_2.material
                 }
+                {...mergedTerrainChunkProps}
                 {...commonSnowProps}
             />
             <EntityInstancesAssetBlock
@@ -359,6 +367,7 @@ export function EntityInstances({
                 }
                 snow={snowPresets.grassReverseCorner}
                 snowLift={0.003}
+                {...mergedTerrainChunkProps}
                 {...commonSnowProps}
             />
             <EntityInstancesAssetBlock
@@ -372,6 +381,7 @@ export function EntityInstances({
                 material={(gltf) => gltf.nodes.Block_Sand_1.material}
                 snow={snowPresets.sand}
                 snowLift={0.003}
+                {...mergedTerrainChunkProps}
                 {...commonSnowProps}
             />
             <EntityInstancesAssetBlock
@@ -385,6 +395,7 @@ export function EntityInstances({
                 material={(gltf) => gltf.nodes.Block_Sand_Angle_1.material}
                 snow={snowPresets.sandAngle}
                 snowLift={0.003}
+                {...mergedTerrainChunkProps}
                 {...commonSnowProps}
             />
             <EntityInstancesAssetBlock
@@ -398,6 +409,7 @@ export function EntityInstances({
                 material={(gltf) => gltf.nodes.Block_Sand_Corner_1.material}
                 snow={snowPresets.sandCorner}
                 snowLift={0.003}
+                {...mergedTerrainChunkProps}
                 {...commonSnowProps}
             />
             <EntityInstancesAssetBlock
@@ -415,6 +427,7 @@ export function EntityInstances({
                 }
                 snow={snowPresets.sandReverseCorner}
                 snowLift={0.003}
+                {...mergedTerrainChunkProps}
                 {...commonSnowProps}
             />
             <EntityInstancesAssetBlock
@@ -427,6 +440,7 @@ export function EntityInstances({
                 material={() => snowMaterial}
                 snow={snowPresets.snow}
                 snowLift={0.003}
+                {...mergedTerrainChunkProps}
                 {...commonSnowProps}
             />
             <EntityInstancesAssetBlock
@@ -439,6 +453,7 @@ export function EntityInstances({
                 material={() => snowMaterial}
                 snow={snowPresets.snowAngle}
                 snowLift={0.003}
+                {...mergedTerrainChunkProps}
                 {...commonSnowProps}
             />
             <EntityInstancesAssetBlock
@@ -451,6 +466,7 @@ export function EntityInstances({
                 material={() => snowMaterial}
                 snow={snowPresets.snowCorner}
                 snowLift={0.003}
+                {...mergedTerrainChunkProps}
                 {...commonSnowProps}
             />
             <EntityInstancesAssetBlock
@@ -465,6 +481,7 @@ export function EntityInstances({
                 material={() => snowMaterial}
                 snow={snowPresets.snowReverseCorner}
                 snowLift={0.003}
+                {...mergedTerrainChunkProps}
                 {...commonSnowProps}
             />
             {shouldRenderGroundDecorations && (
