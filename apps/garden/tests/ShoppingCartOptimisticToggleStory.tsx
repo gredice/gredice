@@ -46,10 +46,15 @@ const cartItem = {
 } as unknown as ShoppingCartItemData;
 
 function createOutletCartItem() {
+    const plantSortItem = createPlantSortCartItem();
+
     return {
-        ...cartItem,
+        ...plantSortItem,
+        raisedBedId: 2,
+        positionIndex: 0,
+        additionalData: null,
         shopData: {
-            ...cartItem.shopData,
+            ...plantSortItem.shopData,
             discountDescription: 'Outlet sadnica',
             discountPrice: 1.2,
         },
