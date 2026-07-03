@@ -10,7 +10,7 @@ import { useSnapshotTime } from '../hooks/useSnapshotTime';
 import { useWeatherNow } from '../hooks/useWeatherNow';
 import type { Stack } from '../types/Stack';
 import { type GameState, useGameState } from '../useGameState';
-import { getGameBackgroundPalette } from './backgroundPalettes';
+import { defaultGameBackgroundPaletteIndex } from './backgroundPalettes';
 import { CloudLayer } from './CloudLayer';
 import { updateGameProfileMetadata } from './gameProfileMetadata';
 import {
@@ -21,9 +21,15 @@ import { getMoonlitNightScales } from './moonlight';
 import { Drops } from './Rain/Drops';
 import { useSceneTimeInvalidation } from './SceneTime';
 import { ShadowMapController } from './ShadowMapController';
+import { SkyGradientBackground } from './SkyGradientBackground';
 import Snow from './Snow/Snow';
 import { Stars } from './Stars';
 import { SunMoon } from './SunMoon';
+import {
+    resolveEnvironmentSkyBackgroundColors,
+    resolveSkyBackgroundColor,
+    resolveThemedSkyBackgroundColors,
+} from './skyGradient';
 import { altAzToScenePosition, timeOfDayToDate } from './sunPosition';
 import {
     getVisualDaylightAmount,
@@ -33,27 +39,6 @@ import {
 } from './visualDayNight';
 import { resolveWaterColors } from './waterColors';
 
-const backgroundColorScale = chroma
-    .scale([
-        '#2D3947',
-        '#6f8cac',
-        '#BADDf6',
-        '#E7E2CC',
-        '#E7E2CC',
-        '#f8b195',
-        '#6c5b7b',
-        '#2D3947',
-    ])
-    .domain([
-        visualDayNightTimes.dawnNightEnd,
-        visualDayNightTimes.sunrise,
-        visualDayNightTimes.dayStart - 0.03,
-        visualDayNightTimes.dayStart,
-        visualDayNightTimes.lateDayStart,
-        visualDayNightTimes.sunset,
-        0.84,
-        visualDayNightTimes.nightStart,
-    ]);
 const sunTemperatureScale = chroma
     .scale([
         chroma.temperature(20000),
@@ -71,24 +56,6 @@ const sunTemperatureScale = chroma
         visualDayNightTimes.duskNightStart,
         visualDayNightTimes.nightStart,
     ]);
-const hemisphereSkyColorScale = chroma
-    .scale([
-        chroma.temperature(20000),
-        chroma.temperature(2000),
-        chroma.temperature(20000),
-        chroma.temperature(20000),
-        chroma.temperature(2000),
-        chroma.temperature(20000),
-    ])
-    .domain([
-        visualDayNightTimes.dawnNightEnd,
-        visualDayNightTimes.dawnLightEnd,
-        visualDayNightTimes.dayStart,
-        visualDayNightTimes.lateDayStart,
-        visualDayNightTimes.duskNightStart,
-        visualDayNightTimes.nightStart,
-    ]);
-
 type WeatherBlendConfig = {
     transitionSeconds: number;
 };
@@ -291,41 +258,20 @@ function getSunPosition(
     return altAzToScenePosition(altitude, azimuth);
 }
 
-function resolveThemedBackground({
-    backgroundPaletteIndex,
-    timeOfDay,
-}: {
-    backgroundPaletteIndex: number;
-    timeOfDay: number;
-}) {
-    const palette = getGameBackgroundPalette(backgroundPaletteIndex);
-
-    if (palette.kind === 'current') {
-        return null;
-    }
-
-    const daylight = getVisualDaylightAmount(timeOfDay);
-
-    return {
-        background: chroma
-            .mix(palette.nightColor, palette.dayColor, daylight, 'rgb')
-            .rgb(),
-        hemisphereSkyColor: chroma
-            .mix(palette.nightColor, palette.lightColor, daylight, 'rgb')
-            .rgb(),
-    };
-}
-
 export function environmentState(
     { lat, lon }: { lat: number; lon: number },
     currentTime: Date,
     timeOfDay: number,
 ) {
     const sunPosition = getSunPosition({ lat, lon }, currentTime, timeOfDay);
+    const skyBackgroundColors = resolveEnvironmentSkyBackgroundColors({
+        backgroundPaletteIndex: defaultGameBackgroundPaletteIndex,
+        timeOfDay,
+    });
     const colors = {
-        background: backgroundColorScale(timeOfDay).rgb(),
+        background: skyBackgroundColors.background,
         sunTemperature: sunTemperatureScale(timeOfDay).rgb(),
-        hemisphereSkyColor: hemisphereSkyColorScale(timeOfDay).rgb(),
+        hemisphereSkyColor: skyBackgroundColors.hemisphereSkyColor,
     };
     const intensities = {
         sun: getVisualDaylightAmount(timeOfDay),
@@ -396,7 +342,7 @@ function useEnvironmentElements({
 }) {
     const {
         sunPosition,
-        colors: { background, sunTemperature, hemisphereSkyColor },
+        colors: { sunTemperature },
         intensities: { sun: sunIntensity },
     } = environmentState(location, currentTime, timeOfDay);
     const sceneDate = timeOfDayToDate(currentTime, timeOfDay);
@@ -405,10 +351,16 @@ function useEnvironmentElements({
         location,
         timeOfDay,
     });
-    const themedBackground = resolveThemedBackground({
+    const themedBackground = resolveThemedSkyBackgroundColors({
         backgroundPaletteIndex,
         timeOfDay,
     });
+    const skyBackgroundColors =
+        themedBackground ??
+        resolveEnvironmentSkyBackgroundColors({
+            backgroundPaletteIndex,
+            timeOfDay,
+        });
     const hasThemedBackground = themedBackground !== null;
 
     // Directional light
@@ -442,47 +394,25 @@ function useEnvironmentElements({
         moonlitNightScales.lightScale;
 
     // Background color
-    const effectiveBackground = themedBackground?.background ?? background;
-    const backgroundRed = effectiveBackground[0] / 255;
-    const backgroundGreen = effectiveBackground[1] / 255;
-    const backgroundBlue = effectiveBackground[2] / 255;
-    const cloudy = weather?.cloudy ?? 0;
-    const foggy = weather?.foggy ?? 0;
-    const backgroundColor = useMemo(() => {
-        const color = new Color().setRGB(
-            backgroundRed,
-            backgroundGreen,
+    const effectiveBackground = skyBackgroundColors.background;
+    const backgroundRed = effectiveBackground[0];
+    const backgroundGreen = effectiveBackground[1];
+    const backgroundBlue = effectiveBackground[2];
+    const backgroundColor = useMemo(
+        () =>
+            resolveSkyBackgroundColor({
+                background: [backgroundRed, backgroundGreen, backgroundBlue],
+                moonlitSkyScale: moonlitNightScales.skyScale,
+                weather,
+            }),
+        [
             backgroundBlue,
-            'srgb',
-        );
-        const moonlitBackground = { h: 0, s: 0, l: 0 };
-        color.getHSL(moonlitBackground);
-        color.setHSL(
-            moonlitBackground.h,
-            moonlitBackground.s,
-            moonlitBackground.l * moonlitNightScales.skyScale,
-        );
-
-        // Set background color based on weather
-        if (cloudy > 0 || foggy > 0) {
-            const rainyBackground = { h: 0, s: 0, l: 0 };
-            color.getHSL(rainyBackground);
-            color.setHSL(
-                rainyBackground.h,
-                rainyBackground.s * (1 - Math.min(0.7, cloudy + foggy)), // * (weather.cloudy > 0.5 || weather.foggy > 0.5 ? 0.3 : 0.8),
-                rainyBackground.l * (1 - Math.min(0.1, cloudy + foggy)),
-            ); // * (weather.cloudy > 0.9 ? 0.8 : (weather.cloudy > 0.4 ? 0.9 : 0.95)));
-        }
-
-        return color;
-    }, [
-        backgroundBlue,
-        backgroundGreen,
-        backgroundRed,
-        cloudy,
-        foggy,
-        moonlitNightScales.skyScale,
-    ]);
+            backgroundGreen,
+            backgroundRed,
+            moonlitNightScales.skyScale,
+            weather,
+        ],
+    );
 
     const waterColors = resolveWaterColors({
         skyColor: backgroundColor,
@@ -490,8 +420,7 @@ function useEnvironmentElements({
         weather: weather ?? undefined,
     });
 
-    const effectiveHemisphereSkyColor =
-        themedBackground?.hemisphereSkyColor ?? hemisphereSkyColor;
+    const effectiveHemisphereSkyColor = skyBackgroundColors.hemisphereSkyColor;
     const hemisphereSkyRed = effectiveHemisphereSkyColor[0] / 255;
     const hemisphereSkyGreen = effectiveHemisphereSkyColor[1] / 255;
     const hemisphereSkyBlue = effectiveHemisphereSkyColor[2] / 255;
@@ -544,6 +473,9 @@ function useEnvironmentElements({
             color: directionalLightColor,
             position: directionalLightPosition,
             intensity: directionalLightIntensity,
+        },
+        sky: {
+            moonlight: moonlitNightScales.visibleMoonlight,
         },
         waterColors,
     };
@@ -627,14 +559,20 @@ export function StaticEnvironment({
         (state) => state.backgroundPaletteIndex,
     );
     const setWaterColors = useGameState((state) => state.setWaterColors);
-    const { background, ambient, hemisphere, directionalLight, waterColors } =
-        useEnvironmentElements({
-            backgroundPaletteIndex,
-            location: defaultLocation,
-            currentTime,
-            timeOfDay,
-            weather: undefined,
-        });
+    const {
+        background,
+        ambient,
+        hemisphere,
+        directionalLight,
+        sky,
+        waterColors,
+    } = useEnvironmentElements({
+        backgroundPaletteIndex,
+        location: defaultLocation,
+        currentTime,
+        timeOfDay,
+        weather: undefined,
+    });
     const shadowInvalidationKey = useMemo(
         () =>
             buildLightShadowSignature({
@@ -673,7 +611,18 @@ export function StaticEnvironment({
                 invalidationKey={shadowInvalidationKey}
             />
             {!noBackground && (
-                <SceneBackgroundColor animate={false} color={background} />
+                <>
+                    <SceneBackgroundColor animate={false} color={background} />
+                    <SkyGradientBackground
+                        animate={false}
+                        backgroundColor={background}
+                        backgroundPaletteIndex={backgroundPaletteIndex}
+                        currentTime={currentTime}
+                        location={defaultLocation}
+                        moonlight={sky.moonlight}
+                        timeOfDay={timeOfDay}
+                    />
+                </>
             )}
             <ambientLight intensity={ambient.intensity} />
             <hemisphereLight
@@ -906,14 +855,20 @@ export function Environment({
         blendConfig,
     );
 
-    const { background, ambient, hemisphere, directionalLight, waterColors } =
-        useEnvironmentElements({
-            backgroundPaletteIndex,
-            location,
-            currentTime,
-            timeOfDay,
-            weather: blendedWeather,
-        });
+    const {
+        background,
+        ambient,
+        hemisphere,
+        directionalLight,
+        sky,
+        waterColors,
+    } = useEnvironmentElements({
+        backgroundPaletteIndex,
+        location,
+        currentTime,
+        timeOfDay,
+        weather: blendedWeather,
+    });
     const waterDeep = waterColors.deep;
     const waterFoam = waterColors.foam;
     const waterShallow = waterColors.shallow;
@@ -1151,7 +1106,19 @@ export function Environment({
                 invalidationKey={shadowInvalidationKey}
             />
             {!noBackground && (
-                <SceneBackgroundColor animate color={background} />
+                <>
+                    <SceneBackgroundColor animate color={background} />
+                    <SkyGradientBackground
+                        animate
+                        backgroundColor={background}
+                        backgroundPaletteIndex={backgroundPaletteIndex}
+                        currentTime={currentTime}
+                        location={location}
+                        moonlight={sky.moonlight}
+                        timeOfDay={timeOfDay}
+                        weather={blendedWeather}
+                    />
+                </>
             )}
             <ambientLight
                 name="Environment:AmbientLight"

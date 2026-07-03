@@ -51,7 +51,26 @@ export {
     resolveOperationVisualRewardKind,
     resolveOperationVisualRewards,
 } from './operationVisualRewards';
+export type {
+    GameBackgroundPalette,
+    GameBackgroundPaletteKey,
+} from './scene/backgroundPalettes';
+export {
+    gameBackgroundPalettes,
+    getGameBackgroundPaletteIndexByKey,
+} from './scene/backgroundPalettes';
 export type { GameQualitySetting, GameQualityTier } from './scene/gameQuality';
+export { resolveMoonlitNightScales } from './scene/moonlight';
+export type {
+    SkyBackgroundColors,
+    SkyGradientColors,
+    SkyGradientWeather,
+} from './scene/skyGradient';
+export {
+    resolveEnvironmentSkyBackgroundColors,
+    resolveSkyBackgroundColor,
+    resolveSkyGradientColors,
+} from './scene/skyGradient';
 export { resolveSpriteAtlasAssetPaths } from './sprites/resolveSpriteAtlasAssetPaths';
 export { SpriteAtlasBillboard } from './sprites/SpriteAtlasBillboard';
 export type {

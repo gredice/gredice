@@ -9,14 +9,19 @@ import {
     Color,
     DoubleSide,
     type Mesh,
-    type OrthographicCamera,
     ShaderMaterial,
-    Vector3,
 } from 'three';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useSnapshotTime } from '../hooks/useSnapshotTime';
 import { useGameState } from '../useGameState';
 import { getMoonVisualPhase } from './moonPhase';
+import {
+    createSkyViewBasis,
+    getSunViewportTuning,
+    SKY_FORWARD_DISTANCE,
+    SUN_SCREEN_OFFSET_MULTIPLIER,
+    updateSkyViewBasis,
+} from './skyProjection';
 import {
     altAzToScenePosition,
     degreesToRadians,
@@ -34,66 +39,11 @@ const MOON_PLANE_SIZE = 0.85;
 const HORIZON_FADE_START = -0.05;
 const HORIZON_FADE_END = 0.18;
 
-// Distance in front of the camera along its forward axis. Large enough that
-// the discs sit deeper than scene geometry, so depthTest lets blocks occlude
-// them naturally.
-const FORWARD_DISTANCE = 500;
-
-// Fraction of the viewport half-height used as the "sky" radius; zenith lands
-// slightly above the top edge, horizon sits near the middle where the ground
-// meets the sky in our isometric view.
-const SKY_SCREEN_FRACTION = 1.05;
-
 // Canvas-pixel size stays constant across zoom levels by counter-scaling the
 // mesh by (REFERENCE_ZOOM / camera.zoom). REFERENCE_ZOOM matches the default
 // game camera zoom so on-screen size matches the plane size at default zoom.
-const REFERENCE_ZOOM = 100;
 const SIZE_MULTIPLIER = 1.5;
 const SUN_SIZE_MULTIPLIER = 0.8;
-const SUN_SCREEN_OFFSET_MULTIPLIER = 0.8;
-
-// Renderer `size` is reported in CSS pixels. These breakpoints map the sun
-// tuning to our mobile/tablet/desktop layout ranges so responsive adjustments
-// stay aligned with the rest of the UI.
-const MOBILE_MAX_WIDTH = 767;
-const TABLET_MAX_WIDTH = 1023;
-
-type SunViewportTuning = {
-    // Multiplies the default billboard scale and camera-space offsets for the
-    // sun so smaller viewports keep it fully visible without affecting the moon.
-    sizeMultiplier: number;
-    horizontalOffsetMultiplier: number;
-    verticalOffsetMultiplier: number;
-};
-
-function getSunViewportTuning(
-    viewportWidth: number,
-    viewportHeight: number,
-): SunViewportTuning {
-    const isPortrait = viewportHeight > viewportWidth;
-
-    if (viewportWidth <= MOBILE_MAX_WIDTH) {
-        return {
-            sizeMultiplier: 0.6,
-            horizontalOffsetMultiplier: isPortrait ? 0.7 : 1,
-            verticalOffsetMultiplier: isPortrait ? 1 : 0.8,
-        };
-    }
-
-    if (viewportWidth <= TABLET_MAX_WIDTH) {
-        return {
-            sizeMultiplier: 0.9,
-            horizontalOffsetMultiplier: isPortrait ? 1 : 0.9,
-            verticalOffsetMultiplier: isPortrait ? 1 : 0.9,
-        };
-    }
-
-    return {
-        sizeMultiplier: 1,
-        horizontalOffsetMultiplier: isPortrait ? 0.9 : 1.6,
-        verticalOffsetMultiplier: isPortrait ? 1.1 : 1,
-    };
-}
 
 const MOON_NIGHT_COLOR = new Color('#c8d8f2');
 const MOON_DAY_COLOR = new Color('#f4f2ec');
@@ -258,28 +208,15 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
         [viewportHeight, viewportWidth],
     );
 
-    const forwardRef = useRef(new Vector3());
-    const rightRef = useRef(new Vector3());
-    const viewUpRef = useRef(new Vector3());
+    const skyBasisRef = useRef(createSkyViewBasis());
 
     const updateSunMoon = useCallback(() => {
         if (!sunMesh.current || !moonMesh.current) return;
 
-        const orthographic = camera as OrthographicCamera;
-        if (!orthographic.isOrthographicCamera) return;
+        if (!updateSkyViewBasis(camera, skyBasisRef.current)) return;
 
-        camera.getWorldDirection(forwardRef.current);
-        rightRef.current
-            .crossVectors(forwardRef.current, camera.up)
-            .normalize();
-        viewUpRef.current
-            .crossVectors(rightRef.current, forwardRef.current)
-            .normalize();
-
-        const halfHeight = orthographic.top / orthographic.zoom;
-        const skyRadius = halfHeight * SKY_SCREEN_FRACTION;
-        const screenScale =
-            (REFERENCE_ZOOM / orthographic.zoom) * SIZE_MULTIPLIER;
+        const basis = skyBasisRef.current;
+        const screenScale = basis.screenScale * SIZE_MULTIPLIER;
         sunMesh.current.scale.setScalar(
             screenScale *
                 SUN_SIZE_MULTIPLIER *
@@ -302,23 +239,23 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
                 sun.altitude,
                 sun.azimuth,
             ).normalize();
-            const sx = sunDir.dot(rightRef.current);
-            const sy = sunDir.dot(viewUpRef.current);
+            const sx = sunDir.dot(basis.right);
+            const sy = sunDir.dot(basis.viewUp);
 
             sunMesh.current.position
                 .copy(camera.position)
-                .addScaledVector(forwardRef.current, FORWARD_DISTANCE)
+                .addScaledVector(basis.forward, SKY_FORWARD_DISTANCE)
                 .addScaledVector(
-                    rightRef.current,
+                    basis.right,
                     sx *
-                        skyRadius *
+                        basis.skyRadius *
                         SUN_SCREEN_OFFSET_MULTIPLIER *
                         sunViewportTuning.horizontalOffsetMultiplier,
                 )
                 .addScaledVector(
-                    viewUpRef.current,
+                    basis.viewUp,
                     sy *
-                        skyRadius *
+                        basis.skyRadius *
                         SUN_SCREEN_OFFSET_MULTIPLIER *
                         sunViewportTuning.verticalOffsetMultiplier,
                 );
@@ -351,14 +288,14 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
                 moon.altitude,
                 moon.azimuth,
             ).normalize();
-            const mx = moonDir.dot(rightRef.current);
-            const my = moonDir.dot(viewUpRef.current);
+            const mx = moonDir.dot(basis.right);
+            const my = moonDir.dot(basis.viewUp);
 
             moonMesh.current.position
                 .copy(camera.position)
-                .addScaledVector(forwardRef.current, FORWARD_DISTANCE)
-                .addScaledVector(rightRef.current, mx * skyRadius)
-                .addScaledVector(viewUpRef.current, my * skyRadius);
+                .addScaledVector(basis.forward, SKY_FORWARD_DISTANCE)
+                .addScaledVector(basis.right, mx * basis.skyRadius)
+                .addScaledVector(basis.viewUp, my * basis.skyRadius);
             moonMesh.current.lookAt(camera.position);
 
             moonMaterial.uniforms.uPhase.value = moonVisualPhase.phase;
