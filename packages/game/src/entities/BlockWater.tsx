@@ -201,7 +201,7 @@ void main() {
 
     // Edge foam follows the global shore-distance field on chunked water, so
     // the pattern can cross tile boundaries and softly fade away from banks.
-    float edgeWidth = mix(0.5, 0.32, smoothstep(0.12, 1.45, shoreDepth));
+    float edgeWidth = mix(0.34, 0.22, smoothstep(0.08, 0.9, shoreDepth));
     float negXBand = 1.0 - smoothstep(0.0, edgeWidth, vLocalPosition.x + 0.5);
     float posXBand = 1.0 - smoothstep(0.0, edgeWidth, 0.5 - vLocalPosition.x);
     float negZBand = 1.0 - smoothstep(0.0, edgeWidth, vLocalPosition.z + 0.5);
@@ -222,8 +222,8 @@ void main() {
     float shoreFoamFade = max(localEdgeBand, localCornerBand);
     float shoreFoamCore = shoreFoamFade;
 #ifdef USE_WATER_SHORE_DEPTH_ATTRIBUTE
-    shoreFoamFade = 1.0 - smoothstep(0.08, 1.05, shoreDepth);
-    shoreFoamCore = 1.0 - smoothstep(0.0, 0.34, shoreDepth);
+    shoreFoamFade = 1.0 - smoothstep(0.03, 0.62, shoreDepth);
+    shoreFoamCore = 1.0 - smoothstep(0.0, 0.22, shoreDepth);
 #endif
     float globalFoam = max(
         foamMotion(topUv, 0.0),
