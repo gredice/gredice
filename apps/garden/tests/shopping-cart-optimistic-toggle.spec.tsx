@@ -208,4 +208,17 @@ test('shopping cart outlet item shows a live reservation countdown', async ({
 
     await expect(page.getByText('Outlet sadnica').first()).toBeVisible();
     await expect(page.getByText(/Istječe za 1:[0-5]\d/u)).toBeVisible();
+    await expect(
+        page.getByRole('switch', {
+            name: /Plaćanje eurima, prebaci na 1\.200 suncokreta/u,
+        }),
+    ).toBeVisible();
+
+    const badges = page.locator('[data-shopping-cart-item-badges]');
+    await expect(badges).toContainText('Outlet sadnica');
+    await expect(badges).toContainText(/Istječe za 1:[0-5]\d/u);
+    await expect(badges).toContainText('15. 04. 2026.');
+    await expect(badges).toContainText('Staklenik');
+    await expect(page.getByText('Nova gredica')).toBeVisible();
+    await expect(page.getByText('Poz.1')).toBeVisible();
 });

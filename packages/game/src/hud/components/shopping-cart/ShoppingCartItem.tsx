@@ -5,7 +5,6 @@ import { Input } from '@gredice/ui/Input';
 import {
     Close,
     Delete,
-    Euro,
     Hammer,
     Navigate,
     Sprout,
@@ -281,6 +280,7 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
             invItem.entityTypeName === item.entityTypeName &&
             invItem.entityId === item.entityId,
     )?.amount;
+    const hasAvailableInventory = (availableFromInventory ?? 0) > 0;
 
     async function handleChangePaymentType(isSunflower: boolean) {
         track('game_cart_payment_method_changed', {
@@ -507,6 +507,28 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
         );
     }
 
+    function renderOutletReservationBadges() {
+        if (!item.outlet) {
+            return null;
+        }
+
+        return (
+            <>
+                <Chip className="bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-100">
+                    <Typography level="body3">Outlet sadnica</Typography>
+                </Chip>
+                <Chip
+                    className={outletReservationChipClassName}
+                    title={outletReservationTitle}
+                >
+                    <Typography level="body3">
+                        {outletReservationText}
+                    </Typography>
+                </Chip>
+            </>
+        );
+    }
+
     return (
         <Row spacing={4} alignItems="start">
             {plantSort ? (
@@ -540,38 +562,12 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                 />
             )}
             <Stack className="grow">
-                <div className="grid grid-cols-[1fr_auto] items-center">
+                <div className="grid grid-cols-[1fr_auto] items-center gap-2">
                     <Typography level="body1" noWrap>
                         {item.shopData.name}
                     </Typography>
-                    {!hasDiscount && (
-                        <Row spacing={2}>
-                            {!usesInventory && availableFromInventory && (
-                                <IconButton
-                                    title="Iskoristi iz ruksaka"
-                                    size="sm"
-                                    variant="solid"
-                                    onClick={handleToggleInventory}
-                                >
-                                    <BackpackIcon className="size-5 shrink-0" />
-                                </IconButton>
-                            )}
-                            <ButtonPricePickPaymentMethod
-                                price={item.shopData.price}
-                                isSunflower={item.currency === 'sunflower'}
-                                onChange={handleChangePaymentType}
-                                availableSunflowers={
-                                    account?.sunflowers.amount ?? 0
-                                }
-                                discountPrice={item.shopData.discountPrice}
-                                disabled={
-                                    changeCurrencyShoppingCartItem.isPending
-                                }
-                            />
-                        </Row>
-                    )}
-                    <Row spacing={2} className="flex-wrap justify-end">
-                        {usesInventory && (
+                    <Row spacing={2} className="justify-end">
+                        {usesInventory ? (
                             <Row spacing={1}>
                                 <BackpackIcon className="size-4 shrink-0" />
                                 <Typography level="body2">
@@ -586,50 +582,45 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                                     <Close className="size-4 shrink-0" />
                                 </IconButton>
                             </Row>
+                        ) : (
+                            <>
+                                {hasAvailableInventory && (
+                                    <IconButton
+                                        title="Iskoristi iz ruksaka"
+                                        size="sm"
+                                        variant="solid"
+                                        onClick={handleToggleInventory}
+                                    >
+                                        <BackpackIcon className="size-5 shrink-0" />
+                                    </IconButton>
+                                )}
+                                <ButtonPricePickPaymentMethod
+                                    price={item.shopData.price}
+                                    isSunflower={item.currency === 'sunflower'}
+                                    onChange={handleChangePaymentType}
+                                    availableSunflowers={
+                                        account?.sunflowers.amount ?? 0
+                                    }
+                                    discountPrice={item.shopData.discountPrice}
+                                    disabled={
+                                        changeCurrencyShoppingCartItem.isPending
+                                    }
+                                />
+                            </>
                         )}
                     </Row>
                 </div>
                 {hasDiscount &&
                     typeof item.shopData.discountPrice === 'number' &&
                     typeof item.shopData.price === 'number' && (
-                        <Row justifyContent="space-between" spacing={2}>
-                            <Typography
-                                level="body3"
-                                secondary
-                                className="text-green-600"
-                            >
-                                {`Popust: ${(100 - (item.shopData.discountPrice / item.shopData.price) * 100).toFixed(0)}% - ${item.shopData.discountDescription}`}
-                            </Typography>
-                            <Row spacing={1}>
-                                <Typography
-                                    level="body1"
-                                    bold
-                                    className="text-green-600"
-                                >
-                                    {item.shopData.discountPrice?.toFixed(2) ??
-                                        'Nevaljan iznos'}
-                                </Typography>
-                                <Euro className="size-4 stroke-green-600" />
-                            </Row>
-                        </Row>
-                    )}
-                {item.outlet ? (
-                    <Row className="flex-wrap" spacing={1}>
-                        <Chip className="bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-100">
-                            <Typography level="body3">
-                                Outlet sadnica
-                            </Typography>
-                        </Chip>
-                        <Chip
-                            className={outletReservationChipClassName}
-                            title={outletReservationTitle}
+                        <Typography
+                            level="body3"
+                            secondary
+                            className="text-green-600"
                         >
-                            <Typography level="body3">
-                                {outletReservationText}
-                            </Typography>
-                        </Chip>
-                    </Row>
-                ) : null}
+                            {`Popust: ${(100 - (item.shopData.discountPrice / item.shopData.price) * 100).toFixed(0)}% - ${item.shopData.discountDescription}`}
+                        </Typography>
+                    )}
                 <Row justifyContent="space-between">
                     <Stack spacing={1}>
                         <Row spacing={2}>
@@ -667,7 +658,12 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                                 )}
                             </Row>
                         </Row>
-                        <Row spacing={1} className="flex-wrap">
+                        <Row
+                            spacing={1}
+                            className="flex-wrap"
+                            data-shopping-cart-item-badges
+                        >
+                            {renderOutletReservationBadges()}
                             {renderScheduledDateControl()}
                             {renderGreenhouseSowingControl()}
                         </Row>
