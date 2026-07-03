@@ -266,6 +266,39 @@ test.describe('Garden operations HUD', () => {
         await expect(topFade).toHaveAttribute('data-visible', 'true');
     });
 
+    test('lets operation names use the space before the status badge', async ({
+        mount,
+        page,
+    }) => {
+        await page.setViewportSize({ width: 448, height: 720 });
+        await mount(<DenseGardenOperationsHudStory />);
+
+        await page.getByTitle('Status radnji').click();
+
+        const card = page
+            .locator('[data-garden-operation-card]')
+            .filter({ hasText: 'Površinsko zalijevanje gredice' })
+            .first();
+        const operationName = card.getByText('Površinsko zalijevanje gredice');
+        const statusButton = card
+            .getByRole('button', { name: /Status radnje:/ })
+            .first();
+
+        await expect(operationName).toBeVisible();
+        await expect(statusButton).toBeVisible();
+
+        const nameBox = await operationName.boundingBox();
+        const statusBox = await statusButton.boundingBox();
+
+        if (!nameBox || !statusBox) {
+            throw new Error('Expected operation name and status to be visible');
+        }
+
+        const gapBeforeStatus = statusBox.x - (nameBox.x + nameBox.width);
+
+        expect(gapBeforeStatus).toBeLessThanOrEqual(16);
+    });
+
     test('keeps history operation cards full height in scrollable modal', async ({
         mount,
         page,

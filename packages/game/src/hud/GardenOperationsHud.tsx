@@ -1596,39 +1596,46 @@ export function GardenOperationCard({
                     spacing={1.5}
                     className="min-w-0 max-w-full flex-1 overflow-hidden"
                 >
-                    <Row
-                        spacing={1}
-                        alignItems="start"
-                        className="min-w-0 max-w-full gap-y-1"
-                    >
-                        <Stack spacing={0.5} className="min-w-0 flex-1">
+                    <Stack spacing={0.5} className="min-w-0 max-w-full">
+                        <Row
+                            spacing={1}
+                            alignItems="start"
+                            className="min-w-0 max-w-full"
+                        >
                             <Typography
                                 level="body2"
                                 semiBold
                                 noWrap
-                                className="min-w-0"
+                                className="min-w-0 flex-1"
                             >
                                 {resolvedOperationName}
                             </Typography>
-                            <OperationTargetLabel
-                                targetDetails={targetDetails}
-                            />
-                        </Stack>
-                        <Stack
-                            spacing={0.25}
-                            className="min-w-0 max-w-[52%] shrink-0 items-end overflow-hidden"
+                            <div className="min-w-0 max-w-[45%] shrink-0 overflow-hidden">
+                                <OperationStatusSummary
+                                    operation={operation}
+                                    status={displayStatus}
+                                />
+                            </div>
+                        </Row>
+                        <Row
+                            spacing={1}
+                            alignItems="start"
+                            className="min-w-0 max-w-full gap-y-1"
                         >
-                            <OperationStatusSummary
-                                operation={operation}
-                                status={displayStatus}
-                            />
-                            <OperationSchedule
-                                operation={operation}
-                                cancelAction={cancelAction}
-                                scheduleAction={scheduleAction}
-                            />
-                        </Stack>
-                    </Row>
+                            <div className="min-w-0 flex-1">
+                                <OperationTargetLabel
+                                    targetDetails={targetDetails}
+                                />
+                            </div>
+                            <div className="min-w-0 max-w-[58%] shrink-0 overflow-hidden">
+                                <OperationSchedule
+                                    operation={operation}
+                                    cancelAction={cancelAction}
+                                    scheduleAction={scheduleAction}
+                                />
+                            </div>
+                        </Row>
+                    </Stack>
                     <OperationEvidence operation={operation} />
                     {action && <div className="flex justify-end">{action}</div>}
                 </Stack>
