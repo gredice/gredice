@@ -6,7 +6,6 @@ import {
     isGameBackgroundPaletteKey,
 } from '@gredice/js/gameBackground';
 import { cx } from '@gredice/ui/utils';
-import { OrbitControls } from '@react-three/drei';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
     type HTMLAttributes,
@@ -17,7 +16,8 @@ import {
     useRef,
     useState,
 } from 'react';
-import { MOUSE, Vector3 } from 'three';
+import { Vector3 } from 'three';
+import { GameCameraRig } from '../controls/GameCameraRig';
 import { Bees } from '../entities/bees/Bees';
 import { Birds } from '../entities/birds/Birds';
 import { Cats } from '../entities/cats/Cats';
@@ -242,19 +242,9 @@ function PublicGardenScene({
                                 )}
                             </group>
                         </Suspense>
-                        <OrbitControls
-                            enableDamping
-                            enableRotate={false}
-                            screenSpacePanning={false}
-                            enablePan
-                            minZoom={50}
-                            maxZoom={500}
-                            target={sceneCenter}
-                            mouseButtons={{
-                                LEFT: MOUSE.PAN,
-                                MIDDLE: MOUSE.DOLLY,
-                                RIGHT: MOUSE.PAN,
-                            }}
+                        <GameCameraRig
+                            controlsEnabled
+                            initialTarget={sceneCenter}
                         />
                     </ParticleSystemProvider>
                 </Scene>

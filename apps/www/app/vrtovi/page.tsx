@@ -5,10 +5,12 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import Image from 'next/image';
-import Link from 'next/link';
 import { KnownPages } from '../../src/KnownPages';
+import { PublicGardenTransitionLink } from './PublicGardenTransitionLink';
 import { getPublicGardensForWww } from './publicGardenData';
+import { formatGardenDate, formatGardenNumber } from './publicGardenFormatting';
 import { getPublicGardenOgImageUrl } from './publicGardenUrls';
+import { getPublicGardenCardViewTransitionName } from './publicGardenViewTransition';
 
 const pageDescription =
     'Pregledaj Gredice vrtove koje su vlasnici učinili vidljivima i zaviri u biljke, gredice i planirane radnje.';
@@ -28,27 +30,6 @@ export const metadata: Metadata = {
     },
 };
 
-const gardenDateFormatter = new Intl.DateTimeFormat('hr-HR', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    timeZone: 'Europe/Zagreb',
-});
-
-const gardenNumberFormatter = new Intl.NumberFormat('hr-HR');
-
-function formatGardenDate(value: Date | string) {
-    return gardenDateFormatter.format(new Date(value));
-}
-
-function formatGardenNumber(value: unknown) {
-    if (typeof value !== 'number' || !Number.isFinite(value)) {
-        return '—';
-    }
-
-    return gardenNumberFormatter.format(value);
-}
-
 export default async function PublicGardensPage() {
     const gardens = await getPublicGardensForWww();
 
@@ -64,12 +45,18 @@ export default async function PublicGardensPage() {
                     {gardens.items.map((garden, gardenIndex) => (
                         <Card
                             key={garden.id}
-                            className="h-full overflow-hidden p-0 transition-shadow hover:shadow-sm"
+                            className="public-garden-card-view-transition h-full overflow-hidden p-0 transition-shadow hover:shadow-sm"
+                            style={{
+                                viewTransitionName:
+                                    getPublicGardenCardViewTransitionName(
+                                        garden.id,
+                                    ),
+                            }}
                         >
-                            <Link
+                            <PublicGardenTransitionLink
                                 href={KnownPages.PublicGarden(garden.id)}
                                 className="group block h-full text-card-foreground no-underline"
-                                aria-label={`Otvori vrt ${garden.name}`}
+                                ariaLabel={`Otvori vrt ${garden.name}`}
                             >
                                 <div className="overflow-hidden bg-muted">
                                     <Image
@@ -130,7 +117,7 @@ export default async function PublicGardensPage() {
                                         </div>
                                     </div>
                                 </div>
-                            </Link>
+                            </PublicGardenTransitionLink>
                         </Card>
                     ))}
                 </div>

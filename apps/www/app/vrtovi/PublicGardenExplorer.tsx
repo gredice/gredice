@@ -18,9 +18,15 @@ type SceneRect = {
 };
 
 export function PublicGardenExplorer({
+    className,
+    framed = true,
     garden,
+    size = 'default',
 }: {
+    className?: string;
+    framed?: boolean;
     garden: PublicGardenViewerProps['garden'];
+    size?: 'card' | 'default';
 }) {
     const anchorRef = useRef<HTMLDivElement>(null);
     const [isMobile, setIsMobile] = useState(false);
@@ -145,7 +151,14 @@ export function PublicGardenExplorer({
     return (
         <div
             ref={anchorRef}
-            className="relative h-[min(76vh,760px)] min-h-[520px] overflow-hidden rounded-md border border-black/10 bg-background"
+            className={cx(
+                'relative overflow-hidden bg-background',
+                size === 'card'
+                    ? 'h-[min(58vh,620px)] min-h-[360px]'
+                    : 'h-[min(76vh,760px)] min-h-[520px]',
+                framed && 'rounded-md border border-black/10',
+                className,
+            )}
         >
             <div
                 className={cx(

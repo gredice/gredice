@@ -1,17 +1,6 @@
-import { clientPublic, type PublicGardenResponse } from '@gredice/client';
+import { clientPublic } from '@gredice/client';
 import { notFound } from 'next/navigation';
-
-function countActivePlantsFromPublicGarden(garden: PublicGardenResponse) {
-    return garden.raisedBeds.reduce(
-        (total, raisedBed) =>
-            total +
-            raisedBed.fields.filter(
-                (field) =>
-                    field.active && typeof field.plantSortId === 'number',
-            ).length,
-        0,
-    );
-}
+import { countActivePlantsFromPublicGarden } from './publicGardenFormatting';
 
 async function getActivePlantCountFallback(gardenId: number) {
     const response = await clientPublic().api.gardens[':gardenId'].public.$get({

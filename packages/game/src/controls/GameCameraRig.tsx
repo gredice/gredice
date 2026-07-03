@@ -158,8 +158,10 @@ function toSnapshot({
 
 export function GameCameraRig({
     controlsEnabled,
+    initialTarget,
 }: {
     controlsEnabled: boolean;
+    initialTarget?: Vector3;
 }) {
     const { camera, gl, size } = useThree();
     const isOrthographicCamera = camera instanceof OrthographicCamera;
@@ -178,7 +180,11 @@ export function GameCameraRig({
     );
     const { data: garden } = useCurrentGarden();
 
-    const targetRef = useRef(new Vector3(...defaultGameCameraTarget));
+    const resolvedInitialTarget = useMemo(
+        () => initialTarget?.clone() ?? new Vector3(...defaultGameCameraTarget),
+        [initialTarget],
+    );
+    const targetRef = useRef(resolvedInitialTarget.clone());
     const animationRef = useRef<CameraAnimation | null>(null);
     const apiRef = useRef<GameCameraRigApi | null>(null);
     const cameraListenersRef = useRef(
@@ -526,7 +532,7 @@ export function GameCameraRig({
             return;
         }
 
-        targetRef.current.set(...defaultGameCameraTarget);
+        targetRef.current.copy(resolvedInitialTarget);
         normalCameraRef.current = {
             position: camera.position.clone(),
             target: targetRef.current.clone(),
@@ -544,6 +550,7 @@ export function GameCameraRig({
         camera,
         flushSnapshot,
         isOrthographicCamera,
+        resolvedInitialTarget,
         setGameCamera,
     ]);
 
