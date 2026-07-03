@@ -9,14 +9,16 @@ import {
 import {
     type HTMLAttributes,
     type PropsWithChildren,
+    useCallback,
     useEffect,
     useRef,
 } from 'react';
-import { PCFShadowMap } from 'three';
+import { Material, type Object3D, PCFShadowMap } from 'three';
 import {
     HoverOutlineEffect,
     HoverOutlineProvider,
 } from '../entities/helpers/HoverOutline';
+import { useOptionalGameState } from '../useGameState';
 import { updateGameProfileMetadata } from './gameProfileMetadata';
 import {
     type GameQualityProfile,
@@ -33,6 +35,74 @@ export type SceneProps = HTMLAttributes<HTMLDivElement> &
     }>;
 
 const rendererStatsUpdateMs = 500;
+const wireframeOverrideRefreshMs = 250;
+
+type WireframeMaterial = Material & { wireframe: boolean };
+type WireframeMaterialState = {
+    material: WireframeMaterial;
+    wireframe: boolean;
+};
+
+function isMaterial(value: unknown): value is Material {
+    return value instanceof Material;
+}
+
+function isWireframeMaterial(
+    material: Material,
+): material is WireframeMaterial {
+    return 'wireframe' in material && typeof material.wireframe === 'boolean';
+}
+
+function getObjectMaterials(object: Object3D) {
+    if (!('material' in object)) {
+        return [];
+    }
+
+    const { material } = object;
+    if (Array.isArray(material)) {
+        return material.filter(isMaterial);
+    }
+
+    return isMaterial(material) ? [material] : [];
+}
+
+function applyWireframeOverride(
+    scene: Object3D,
+    previousStates: Map<string, WireframeMaterialState>,
+) {
+    scene.traverse((object) => {
+        for (const material of getObjectMaterials(object)) {
+            if (!isWireframeMaterial(material)) {
+                continue;
+            }
+
+            if (!previousStates.has(material.uuid)) {
+                previousStates.set(material.uuid, {
+                    material,
+                    wireframe: material.wireframe,
+                });
+            }
+
+            if (!material.wireframe) {
+                material.wireframe = true;
+                material.needsUpdate = true;
+            }
+        }
+    });
+}
+
+function restoreWireframeOverride(
+    previousStates: Map<string, WireframeMaterialState>,
+) {
+    for (const { material, wireframe } of previousStates.values()) {
+        if (material.wireframe !== wireframe) {
+            material.wireframe = wireframe;
+            material.needsUpdate = true;
+        }
+    }
+
+    previousStates.clear();
+}
 
 function RendererStatsReporter() {
     const lastUpdateRef = useRef(0);
@@ -58,6 +128,42 @@ function RendererStatsReporter() {
     return null;
 }
 
+function SceneWireframeMode({ enabled }: { enabled: boolean }) {
+    const scene = useThree((state) => state.scene);
+    const previousStatesRef = useRef(new Map<string, WireframeMaterialState>());
+    const lastApplyRef = useRef(0);
+
+    const applyOverride = useCallback(() => {
+        applyWireframeOverride(scene, previousStatesRef.current);
+    }, [scene]);
+
+    useEffect(() => {
+        const previousStates = previousStatesRef.current;
+
+        if (!enabled) {
+            restoreWireframeOverride(previousStates);
+            return;
+        }
+
+        applyOverride();
+        return () => restoreWireframeOverride(previousStates);
+    }, [applyOverride, enabled]);
+
+    useFrame(() => {
+        if (enabled) {
+            const now = performance.now();
+            if (now - lastApplyRef.current < wireframeOverrideRefreshMs) {
+                return;
+            }
+
+            lastApplyRef.current = now;
+            applyOverride();
+        }
+    });
+
+    return null;
+}
+
 function SceneDebugName() {
     const scene = useThree((state) => state.scene);
 
@@ -77,6 +183,10 @@ export function Scene({
     ...rest
 }: SceneProps) {
     const qualityProfile = quality ?? resolveGameQualityProfile();
+    const wireframeDebugVisible = useOptionalGameState(
+        (state) => state.wireframeDebugVisible,
+        false,
+    );
 
     useEffect(() => {
         updateGameProfileMetadata({
@@ -113,6 +223,9 @@ export function Scene({
                 <HoverOutlineProvider>
                     <SceneDebugName />
                     {debugStats && <RendererStatsReporter />}
+                    <SceneWireframeMode
+                        enabled={Boolean(debugStats && wireframeDebugVisible)}
+                    />
                     {children}
                     <HoverOutlineEffect />
                 </HoverOutlineProvider>
