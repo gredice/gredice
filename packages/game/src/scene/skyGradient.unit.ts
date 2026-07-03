@@ -82,6 +82,16 @@ test('neutral post-sunset sky darkens the lower background', () => {
     assert.ok(colorLuminance(gradient.lower) < 0.35);
 });
 
+test('neutral after-midnight sky keeps the lower background dark', () => {
+    const gradient = resolveGradient({
+        moonlight: 0.45,
+        timeOfDay: 0.04,
+    });
+
+    assert.ok(colorLuminance(gradient.horizon) < 0.16);
+    assert.ok(colorLuminance(gradient.lower) < 0.12);
+});
+
 test('background palettes tint the same time of day differently', () => {
     const blueGradient = resolveGradient({
         paletteIndex: getGameBackgroundPaletteIndexByKey('light-blue'),
