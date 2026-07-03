@@ -14,6 +14,7 @@ import {
     Ghost,
     Graph,
     Layers,
+    LayoutGrid,
     Lightning,
     MapPin,
     Moon,
@@ -28,6 +29,7 @@ import {
 import { Row } from '@gredice/ui/Row';
 import { Slider } from '@gredice/ui/Slider';
 import { Stack } from '@gredice/ui/Stack';
+import { Switch } from '@gredice/ui/Switch';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import type {
@@ -300,6 +302,10 @@ export function DebugHud() {
     );
     const setEntityRenderModeDebugVisible = useGameState(
         (s) => s.setEntityRenderModeDebugVisible,
+    );
+    const wireframeDebugVisible = useGameState((s) => s.wireframeDebugVisible);
+    const setWireframeDebugVisible = useGameState(
+        (s) => s.setWireframeDebugVisible,
     );
     const animalPathfindingDebugVisible = useGameState(
         (s) => s.animalPathfindingDebugVisible,
@@ -1057,6 +1063,20 @@ export function DebugHud() {
                             )}
                         </DebugPanelSection>
                         <DebugPanelSection title="Scene" icon={Layers}>
+                            <div className="flex items-center justify-between gap-2 rounded-md border border-border/50 bg-card/60 px-2 py-1.5">
+                                <span className="inline-flex min-w-0 items-center gap-1.5 text-xs">
+                                    <LayoutGrid className="size-3.5 shrink-0 text-muted-foreground" />
+                                    <span className="truncate">
+                                        Wireframe view
+                                    </span>
+                                </span>
+                                <Switch
+                                    aria-label="Wireframe view"
+                                    checked={wireframeDebugVisible}
+                                    onCheckedChange={setWireframeDebugVisible}
+                                    size="sm"
+                                />
+                            </div>
                             <Row spacing={1} className="flex-wrap">
                                 <Button
                                     size="xs"

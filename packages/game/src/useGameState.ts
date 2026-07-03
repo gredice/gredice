@@ -329,6 +329,8 @@ export type GameState = {
     setEditHitboxDebugVisible: (visible: boolean) => void;
     entityRenderModeDebugVisible: boolean;
     setEntityRenderModeDebugVisible: (visible: boolean) => void;
+    wireframeDebugVisible: boolean;
+    setWireframeDebugVisible: (visible: boolean) => void;
     animalPathfindingDebugVisible: boolean;
     setAnimalPathfindingDebugVisible: (visible: boolean) => void;
     animalTargetsDebugVisible: boolean;
@@ -731,6 +733,9 @@ export function createGameState({
         entityRenderModeDebugVisible: false,
         setEntityRenderModeDebugVisible: (entityRenderModeDebugVisible) =>
             set({ entityRenderModeDebugVisible }),
+        wireframeDebugVisible: false,
+        setWireframeDebugVisible: (wireframeDebugVisible) =>
+            set({ wireframeDebugVisible }),
         animalPathfindingDebugVisible: false,
         setAnimalPathfindingDebugVisible: (animalPathfindingDebugVisible) =>
             set({ animalPathfindingDebugVisible }),
