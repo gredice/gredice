@@ -69,7 +69,7 @@ const skyGradientFragment = /* glsl */ `
         vec2 p = vUv * 2.0 - 1.0;
         float sunGlow = glowAt(p, uSunPosition, 0.95);
         float sunCore = glowAt(p, uSunPosition, 0.36);
-        float moonGlow = glowAt(p, uMoonPosition, 0.72);
+        float moonGlow = glowAt(p, uMoonPosition, 0.58);
 
         color = mix(color, uSunGlowColor, clamp(sunGlow * uSunGlowIntensity, 0.0, 1.0));
         color = mix(color, vec3(1.0), clamp(sunCore * uSunGlowIntensity * 0.62, 0.0, 1.0));

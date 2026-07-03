@@ -131,7 +131,7 @@ const moonFragment = /* glsl */ `
         // Glow follows the illuminated fraction so a thin crescent doesn't
         // project a full-moon halo.
         float illumFraction = 0.5 * (1.0 - cos(uPhase * TAU));
-        float glow = smoothstep(GLOW_R, DISC_R, d) * 0.18 * illumFraction;
+        float glow = smoothstep(GLOW_R, DISC_R, d) * 0.11 * illumFraction;
 
         float alpha = (lit * discEdge + glow) * uOpacity;
         if (alpha < 0.001) discard;
