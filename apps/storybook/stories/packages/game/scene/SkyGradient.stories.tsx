@@ -169,7 +169,7 @@ function buildSkyGradientCss({
         `linear-gradient(180deg, ${colorToCss(gradient.zenith)} 0%, ${colorToCss(
             gradient.upper,
         )} 28%, ${colorToCss(gradient.horizon)} 68%, ${colorToCss(
-            gradient.horizon,
+            gradient.lower,
         )} 100%)`,
     ].join(', ');
 }

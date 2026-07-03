@@ -46,6 +46,7 @@ const skyGradientFragment = /* glsl */ `
     uniform vec3 uZenithColor;
     uniform vec3 uUpperColor;
     uniform vec3 uHorizonColor;
+    uniform vec3 uLowerColor;
     uniform vec3 uSunGlowColor;
     uniform vec3 uMoonGlowColor;
     uniform float uSunGlowIntensity;
@@ -61,7 +62,7 @@ const skyGradientFragment = /* glsl */ `
 
     void main() {
         float y = clamp(vUv.y, 0.0, 1.0);
-        vec3 color = uHorizonColor;
+        vec3 color = mix(uLowerColor, uHorizonColor, smoothstep(0.0, 0.42, y));
         color = mix(color, uUpperColor, smoothstep(0.38, 0.84, y));
         color = mix(color, uZenithColor, smoothstep(0.76, 1.0, y));
 
@@ -123,6 +124,7 @@ function applyGradientUniforms(
     copyColorUniform(material, 'uZenithColor', gradient.zenith);
     copyColorUniform(material, 'uUpperColor', gradient.upper);
     copyColorUniform(material, 'uHorizonColor', gradient.horizon);
+    copyColorUniform(material, 'uLowerColor', gradient.lower);
     copyColorUniform(material, 'uSunGlowColor', gradient.sunGlow);
     copyColorUniform(material, 'uMoonGlowColor', gradient.moonGlow);
     material.uniforms.uSunGlowIntensity.value = gradient.sunGlowIntensity;
@@ -166,6 +168,7 @@ export function SkyGradientBackground({
                     uZenithColor: { value: new Color('#e6f6ff') },
                     uUpperColor: { value: new Color('#f1f3ea') },
                     uHorizonColor: { value: new Color('#fff9ea') },
+                    uLowerColor: { value: new Color('#fff9ea') },
                     uSunGlowColor: { value: new Color('#fff1bd') },
                     uMoonGlowColor: { value: new Color('#d9e8ff') },
                     uSunGlowIntensity: { value: 0 },
