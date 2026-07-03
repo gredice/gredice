@@ -20,6 +20,7 @@ export type BlockInteractionTarget = {
 
 export type BlockInteractionHandlers = {
     onClick?: (event: ThreeEvent<MouseEvent>) => void;
+    onPickupPointerEnter?: (event: ThreeEvent<PointerEvent>) => void;
     onPointerDown?: (event: ThreeEvent<PointerEvent>) => void;
     onPointerEnter?: (event: ThreeEvent<PointerEvent>) => void;
     onPointerLeave?: (event: ThreeEvent<PointerEvent>) => void;
