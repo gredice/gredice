@@ -3,6 +3,10 @@ import { cx } from '@gredice/ui/utils';
 import * as ReactQuery from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { type PropsWithChildren, useMemo } from 'react';
+import type {
+    GameCameraRigApi,
+    GameCameraSnapshot,
+} from '../../../packages/game/src/controls/GameCameraRigApi';
 import {
     gameHudBottomBarClassName,
     gameHudBottomControlsClassName,
@@ -46,6 +50,27 @@ function createBlockData(name: string, index: number) {
         createdAt: now,
         updatedAt: now,
     } satisfies BlockData;
+}
+
+function createMockGameCamera(
+    target: [x: number, y: number, z: number],
+): GameCameraRigApi {
+    const snapshot: GameCameraSnapshot = {
+        position: [target[0] - 10, 10, target[2] - 10],
+        target,
+        version: 1,
+        zoom: 100,
+    };
+
+    return {
+        focus: () => undefined,
+        getCamera: () => null,
+        getDomElement: () => null,
+        getSnapshot: () => snapshot,
+        panByDragEdge: () => false,
+        projectToScreen: () => null,
+        subscribe: () => () => undefined,
+    };
 }
 
 const blockNames = [
@@ -130,6 +155,7 @@ const blockNames = [
 
 type ItemsHudStoryOptions = {
     accountSunflowers?: number;
+    cameraTarget?: [x: number, y: number, z: number];
     closeup?: boolean;
     isSandbox?: boolean;
     localSandboxStorageKey?: string;
@@ -173,6 +199,7 @@ function createItemsHudQueryClient({
 function ItemsHudTestProviders({
     children,
     accountSunflowers,
+    cameraTarget,
     isSandbox = false,
     localSandboxStorageKey,
     closeup = false,
@@ -204,8 +231,19 @@ function ItemsHudTestProviders({
         if (closeup) {
             store.setState({ view: 'closeup' });
         }
+        if (cameraTarget) {
+            store.setState({
+                gameCamera: createMockGameCamera(cameraTarget),
+            });
+        }
         return store;
-    }, [closeup, localSandboxStorageKey, pickupBlock, trashTargetActive]);
+    }, [
+        cameraTarget,
+        closeup,
+        localSandboxStorageKey,
+        pickupBlock,
+        trashTargetActive,
+    ]);
 
     return (
         <NuqsTestingAdapter>
@@ -253,6 +291,22 @@ function ItemsHudTestFrame({ closeup = false }: { closeup?: boolean }) {
 export function ItemsHudAlignmentStory() {
     return (
         <ItemsHudTestProviders>
+            <div className="relative h-screen w-screen overflow-hidden">
+                <div
+                    data-testid="bottom-hud"
+                    className={gameHudBottomBarClassName}
+                >
+                    <BottomControlsTestFrame />
+                    <ItemsHudTestFrame />
+                </div>
+            </div>
+        </ItemsHudTestProviders>
+    );
+}
+
+export function ItemsHudCameraTargetStory() {
+    return (
+        <ItemsHudTestProviders cameraTarget={[12.4, 0, -7.6]}>
             <div className="relative h-screen w-screen overflow-hidden">
                 <div
                     data-testid="bottom-hud"

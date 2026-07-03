@@ -16,6 +16,30 @@ type GardenWithStacks = {
     stacks: Stack[];
 };
 
+export type BlockPlacementPosition = {
+    x: number;
+    y: number;
+};
+
+type CameraSnapshotLike = {
+    target: [x: number, y: number, z: number];
+};
+
+export function getPreferredBlockPlacementPosition(
+    snapshot: CameraSnapshotLike | null | undefined,
+): BlockPlacementPosition | undefined {
+    if (!snapshot) {
+        return undefined;
+    }
+
+    const [x, , z] = snapshot.target;
+    if (!Number.isFinite(x) || !Number.isFinite(z)) {
+        return undefined;
+    }
+
+    return { x, y: z };
+}
+
 function createBlockDataByName(blockData: PlacementBlockData[]) {
     const blockDataByName = new Map<string, GardenBlockDataLike>();
     for (const block of blockData) {
@@ -62,6 +86,9 @@ export function createOptimisticBlockPlacement<
     blockData: PlacementBlockData[] | null | undefined,
     blockName: string,
     blockId: string,
+    options: {
+        preferredPosition?: BlockPlacementPosition | null;
+    } = {},
 ) {
     if (!blockData) {
         return null;
@@ -73,6 +100,7 @@ export function createOptimisticBlockPlacement<
         blockNameById: createBlockNameById(garden.stacks),
         blockRotationById: createBlockRotationById(garden.stacks),
         blockDataByName: createBlockDataByName(blockData),
+        preferredPosition: options.preferredPosition ?? undefined,
     });
     if (!placement.valid) {
         return null;

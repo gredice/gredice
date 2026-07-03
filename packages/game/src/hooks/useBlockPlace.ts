@@ -7,6 +7,7 @@ import {
 import { useGameState } from '../useGameState';
 import {
     createOptimisticBlockPlacement,
+    getPreferredBlockPlacementPosition,
     removeOptimisticBlockId,
     replaceOptimisticBlockId,
 } from './optimisticBlockPlacement';
@@ -115,6 +116,7 @@ export function useBlockPlace() {
     const queryClient = useQueryClient();
     const { data: garden } = useCurrentGarden();
     const { data: blockData } = useBlockData();
+    const gameCamera = useGameState((state) => state.gameCamera);
     const localSandboxStorageKey = useGameState(
         (state) => state.localSandboxStorageKey,
     );
@@ -201,6 +203,12 @@ export function useBlockPlace() {
                         blockData,
                         variables.blockName,
                         optimisticBlockId,
+                        {
+                            preferredPosition:
+                                getPreferredBlockPlacementPosition(
+                                    gameCamera?.getSnapshot(),
+                                ),
+                        },
                     );
                     if (!optimisticPlacement) {
                         return;
