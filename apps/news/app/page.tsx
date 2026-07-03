@@ -15,6 +15,7 @@ import {
     getPrimaryNewsTags,
     uniqueNewsValues,
 } from '../lib/news';
+import { getNewsArticleViewTransitionName } from '../lib/viewTransitions';
 
 export const dynamic = 'force-dynamic';
 
@@ -161,6 +162,10 @@ export default async function NewsHomePage({
                             entry={item.entry}
                             href={item.href}
                             kind={item.kind}
+                            viewTransitionName={getNewsArticleViewTransitionName(
+                                item.kind,
+                                item.entry.slug,
+                            )}
                         />
                     ))}
                 </section>

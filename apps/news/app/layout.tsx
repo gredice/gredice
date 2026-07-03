@@ -44,6 +44,7 @@ export default function RootLayout({
     return (
         <html lang="hr" translate="no" suppressHydrationWarning>
             <body className={`${montserrat.variable} min-h-dvh antialiased`}>
+                <style>{'@view-transition { navigation: auto; }'}</style>
                 <PublicChromeProvider apiBasePath="/novosti/api/gredice">
                     <div className="flex min-h-dvh flex-col">
                         <PublicHeader

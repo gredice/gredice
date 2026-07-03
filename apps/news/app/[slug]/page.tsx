@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { NewsDetail } from '../../components/NewsDetail';
 import { getBlogPost } from '../../lib/news';
+import { getNewsArticleViewTransitionName } from '../../lib/viewTransitions';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,7 +17,12 @@ export default async function BlogPostPage({
         notFound();
     }
 
-    return <NewsDetail entry={entry} />;
+    return (
+        <NewsDetail
+            entry={entry}
+            viewTransitionName={getNewsArticleViewTransitionName('blog', slug)}
+        />
+    );
 }
 
 export async function generateMetadata({
