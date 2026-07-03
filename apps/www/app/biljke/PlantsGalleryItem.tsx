@@ -9,12 +9,14 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { ItemCard } from '../../components/shared/ItemCard';
 import { KnownPages } from '../../src/KnownPages';
+import { getPlantImageViewTransitionName } from './plantViewTransition';
 
 export type PlantsGalleryItemProps = Pick<
     PlantData,
     'information' | 'attributes' | 'image'
 > &
     Partial<Pick<PlantData, 'prices'>> & {
+        id: string;
         isRecommended?: boolean;
         matchingAlternativeName?: string;
         matchingSortName?: string;
@@ -22,6 +24,7 @@ export type PlantsGalleryItemProps = Pick<
 
 export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
     const {
+        id,
         information,
         prices,
         attributes,
@@ -62,6 +65,7 @@ export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
                 </Stack>
             }
             href={KnownPages.Plant(information.name)}
+            mediaViewTransitionName={getPlantImageViewTransitionName(id)}
         >
             <PlantOrSortImage
                 plant={props}

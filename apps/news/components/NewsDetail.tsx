@@ -3,10 +3,19 @@ import type { NewsDetail as NewsDetailEntry } from '../lib/news';
 import { formatNewsDate } from '../lib/news';
 import { sectionsComponentRegistry } from './shared/sectionsComponentRegistry';
 
-export function NewsDetail({ entry }: { entry: NewsDetailEntry }) {
+export function NewsDetail({
+    entry,
+    viewTransitionName,
+}: {
+    entry: NewsDetailEntry;
+    viewTransitionName?: string;
+}) {
     return (
         <article className="grid gap-8">
-            <header className="mx-auto grid w-full max-w-4xl gap-4 px-4 pt-10 sm:px-6 lg:px-8">
+            <header
+                className="news-card-view-transition mx-auto grid w-full max-w-4xl gap-4 px-4 pt-10 sm:px-6 lg:px-8"
+                style={viewTransitionName ? { viewTransitionName } : undefined}
+            >
                 <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
                     {entry.category ? <span>{entry.category}</span> : null}
                     {entry.publishedAt ? (

@@ -183,7 +183,8 @@
         color: hsl(var(--foreground));
     }
 
-    .public-garden-card-view-transition {
+    .public-garden-card-view-transition,
+    .public-content-card-view-transition {
         contain: layout;
     }
 }

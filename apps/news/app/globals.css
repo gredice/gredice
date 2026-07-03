@@ -175,10 +175,36 @@ svg.lucide {
     .site-footer .text-tertiary-foreground {
         color: hsl(var(--foreground));
     }
+
+    .news-card-view-transition {
+        contain: layout;
+    }
+}
+
+@supports (view-transition-name: none) {
+    ::view-transition-group(*) {
+        animation-duration: 520ms;
+        animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    ::view-transition-old(*),
+    ::view-transition-new(*) {
+        animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    ::view-transition-group(root) {
+        animation-duration: 220ms;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
     .animate-scale-in {
+        animation: none;
+    }
+
+    ::view-transition-group(*),
+    ::view-transition-old(*),
+    ::view-transition-new(*) {
         animation: none;
     }
 }

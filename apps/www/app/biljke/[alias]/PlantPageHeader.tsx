@@ -15,6 +15,7 @@ import { AttributeCard } from '../../../components/attributes/DetailCard';
 import { CommunityEditButton } from '../../../components/community-edits/CommunityEditButton';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { KnownPages } from '../../../src/KnownPages';
+import { getPlantImageViewTransitionName } from '../plantViewTransition';
 import { getPlantInforationSections } from './getPlantInforationSections';
 import { PlantCalendarPicker } from './PlantCalendarPicker';
 import { hasPlantHealth } from './PlantHealthSection';
@@ -119,19 +120,37 @@ export function PlantPageHeader({
         <PageHeader
             visual={
                 sort ? (
-                    <PlantOrSortImage
-                        plantSort={sort}
-                        preload
-                        width={192}
-                        height={192}
-                    />
+                    <span
+                        className="public-content-card-view-transition inline-flex size-48 items-center justify-center overflow-hidden"
+                        style={{
+                            viewTransitionName: getPlantImageViewTransitionName(
+                                plant.id,
+                            ),
+                        }}
+                    >
+                        <PlantOrSortImage
+                            plantSort={sort}
+                            preload
+                            width={192}
+                            height={192}
+                        />
+                    </span>
                 ) : (
-                    <PlantOrSortImage
-                        plant={plant}
-                        preload
-                        width={192}
-                        height={192}
-                    />
+                    <span
+                        className="public-content-card-view-transition inline-flex size-48 items-center justify-center overflow-hidden"
+                        style={{
+                            viewTransitionName: getPlantImageViewTransitionName(
+                                plant.id,
+                            ),
+                        }}
+                    >
+                        <PlantOrSortImage
+                            plant={plant}
+                            preload
+                            width={192}
+                            height={192}
+                        />
+                    </span>
                 )
             }
             header={sort?.information?.name ?? plant.information.name}

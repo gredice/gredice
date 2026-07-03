@@ -19,6 +19,7 @@ import { getOperationsData } from '../../../lib/plants/getOperationsData';
 import { KnownPages } from '../../../src/KnownPages';
 import { merchantReturnPolicy } from '../../../src/merchantReturnPolicy';
 import { matchesPageAlias, toPageAlias } from '../../../src/pageAliases';
+import { getOperationImageViewTransitionName } from '../operationViewTransition';
 import { OperationApplicationsList } from './OperationApplicationsList';
 import { OperationAttributesCards } from './OperationAttributesCards';
 
@@ -110,7 +111,19 @@ export default async function OperationPage(
                     ]}
                 />
                 <PageHeader
-                    visual={<OperationImage operation={operation} size={192} />}
+                    visual={
+                        <span
+                            className="public-content-card-view-transition inline-flex size-48 items-center justify-center overflow-hidden"
+                            style={{
+                                viewTransitionName:
+                                    getOperationImageViewTransitionName(
+                                        operation.id,
+                                    ),
+                            }}
+                        >
+                            <OperationImage operation={operation} size={192} />
+                        </span>
+                    }
                     header={operation.information.label}
                     subHeader={operation.information.shortDescription}
                 >

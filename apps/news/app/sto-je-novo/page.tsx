@@ -10,6 +10,7 @@ import {
     getPrimaryNewsTags,
     uniqueNewsValues,
 } from '../../lib/news';
+import { getNewsArticleViewTransitionName } from '../../lib/viewTransitions';
 
 export const dynamic = 'force-dynamic';
 
@@ -148,6 +149,10 @@ export default async function WhatsNewPage({
                                             kind="changelog"
                                             showDate={false}
                                             showKindLabel={false}
+                                            viewTransitionName={getNewsArticleViewTransitionName(
+                                                'changelog',
+                                                entry.slug,
+                                            )}
                                         />
                                     </TimelineEntry>
                                 );
