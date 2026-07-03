@@ -117,9 +117,6 @@ export function useBlockPlace() {
     const { data: garden } = useCurrentGarden();
     const { data: blockData } = useBlockData();
     const gameCamera = useGameState((state) => state.gameCamera);
-    const gameCameraSnapshot = useGameState(
-        (state) => state.gameCameraSnapshot,
-    );
     const localSandboxStorageKey = useGameState(
         (state) => state.localSandboxStorageKey,
     );
@@ -209,8 +206,7 @@ export function useBlockPlace() {
                         {
                             preferredPosition:
                                 getPreferredBlockPlacementPosition(
-                                    gameCameraSnapshot ??
-                                        gameCamera?.getSnapshot(),
+                                    gameCamera?.getSnapshot(),
                                 ),
                         },
                     );

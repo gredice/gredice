@@ -3,6 +3,10 @@ import { cx } from '@gredice/ui/utils';
 import * as ReactQuery from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { type PropsWithChildren, useMemo } from 'react';
+import type {
+    GameCameraRigApi,
+    GameCameraSnapshot,
+} from '../../../packages/game/src/controls/GameCameraRigApi';
 import {
     gameHudBottomBarClassName,
     gameHudBottomControlsClassName,
@@ -46,6 +50,27 @@ function createBlockData(name: string, index: number) {
         createdAt: now,
         updatedAt: now,
     } satisfies BlockData;
+}
+
+function createMockGameCamera(
+    target: [x: number, y: number, z: number],
+): GameCameraRigApi {
+    const snapshot: GameCameraSnapshot = {
+        position: [target[0] - 10, 10, target[2] - 10],
+        target,
+        version: 1,
+        zoom: 100,
+    };
+
+    return {
+        focus: () => undefined,
+        getCamera: () => null,
+        getDomElement: () => null,
+        getSnapshot: () => snapshot,
+        panByDragEdge: () => false,
+        projectToScreen: () => null,
+        subscribe: () => () => undefined,
+    };
 }
 
 const blockNames = [
@@ -208,12 +233,7 @@ function ItemsHudTestProviders({
         }
         if (cameraTarget) {
             store.setState({
-                gameCameraSnapshot: {
-                    position: [cameraTarget[0] - 10, 10, cameraTarget[2] - 10],
-                    target: cameraTarget,
-                    version: 1,
-                    zoom: 100,
-                },
+                gameCamera: createMockGameCamera(cameraTarget),
             });
         }
         return store;
