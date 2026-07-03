@@ -114,6 +114,20 @@ function spiral(step: number): Position {
     }
 }
 
+function addPositions(left: Position, right: Position): Position {
+    return {
+        x: left.x + right.x,
+        y: left.y + right.y,
+    };
+}
+
+function toGridPosition(position: Position): Position {
+    return {
+        x: Math.round(position.x),
+        y: Math.round(position.y),
+    };
+}
+
 function findStackAtPosition(stacks: GardenBlockStack[], position: Position) {
     return stacks.find(
         (stack) =>
@@ -543,12 +557,86 @@ function validatePlacementAtPosition(params: {
     };
 }
 
+function resolveAutomaticGardenBlockPlacement(params: {
+    blockName: string;
+    occupiedCells: Map<string, OccupiedCell[]>;
+    searchOrigin: Position;
+    stacks: GardenBlockStack[];
+    blockNameById: Map<string, string>;
+    blockDataByName: Map<string, GardenBlockDataLike>;
+}): GardenBlockPlacementResult {
+    const {
+        blockName,
+        occupiedCells,
+        searchOrigin,
+        stacks,
+        blockNameById,
+        blockDataByName,
+    } = params;
+    let waterPlacementFallback: GardenBlockPlacementResult | null = null;
+
+    const validateCandidate = (
+        candidatePosition: Position,
+    ): GardenBlockPlacementResult | null => {
+        const placement = validatePlacementAtPosition({
+            blockName,
+            occupiedCells,
+            position: candidatePosition,
+            stacks,
+            blockNameById,
+            blockDataByName,
+        });
+        if (!placement.valid) {
+            return null;
+        }
+
+        if (
+            isWaterPlacement({
+                blockName,
+                placement: placement.placement,
+                stacks,
+                blockNameById,
+                blockDataByName,
+            })
+        ) {
+            waterPlacementFallback ??= placement;
+            return null;
+        }
+
+        return placement;
+    };
+
+    const searchOriginPlacement = validateCandidate(searchOrigin);
+    if (searchOriginPlacement) {
+        return searchOriginPlacement;
+    }
+
+    for (let step = 0; step < MAX_SPIRAL_STEPS; step++) {
+        const placement = validateCandidate(
+            addPositions(searchOrigin, spiral(step)),
+        );
+        if (placement) {
+            return placement;
+        }
+    }
+
+    if (waterPlacementFallback) {
+        return waterPlacementFallback;
+    }
+
+    return {
+        valid: false,
+        error: 'No valid placement position found',
+    };
+}
+
 export function resolveGardenBlockPlacement(params: {
     blockName: string;
     stacks: GardenBlockStack[];
     blockNameById: Map<string, string>;
     blockDataByName: Map<string, GardenBlockDataLike>;
     blockRotationById?: Map<string, number | null | undefined>;
+    preferredPosition?: Position;
     requestedPosition?: Position;
 }): GardenBlockPlacementResult {
     const {
@@ -557,6 +645,7 @@ export function resolveGardenBlockPlacement(params: {
         blockNameById,
         blockDataByName,
         blockRotationById,
+        preferredPosition,
         requestedPosition,
     } = params;
     const occupiedCells = createOccupiedCells({
@@ -577,68 +666,14 @@ export function resolveGardenBlockPlacement(params: {
         });
     }
 
-    let waterPlacementFallback: GardenBlockPlacementResult | null = null;
-
-    const originPlacement = validatePlacementAtPosition({
+    return resolveAutomaticGardenBlockPlacement({
         blockName,
         occupiedCells,
-        position: { x: 0, y: 0 },
         stacks,
         blockNameById,
         blockDataByName,
+        searchOrigin: preferredPosition
+            ? toGridPosition(preferredPosition)
+            : { x: 0, y: 0 },
     });
-    if (originPlacement.valid) {
-        if (
-            isWaterPlacement({
-                blockName,
-                placement: originPlacement.placement,
-                stacks,
-                blockNameById,
-                blockDataByName,
-            })
-        ) {
-            waterPlacementFallback = originPlacement;
-        } else {
-            return originPlacement;
-        }
-    }
-
-    for (let step = 0; step < MAX_SPIRAL_STEPS; step++) {
-        const candidatePosition = spiral(step);
-        const placement = validatePlacementAtPosition({
-            blockName,
-            occupiedCells,
-            position: candidatePosition,
-            stacks,
-            blockNameById,
-            blockDataByName,
-        });
-        if (!placement.valid) {
-            continue;
-        }
-
-        if (
-            isWaterPlacement({
-                blockName,
-                placement: placement.placement,
-                stacks,
-                blockNameById,
-                blockDataByName,
-            })
-        ) {
-            waterPlacementFallback ??= placement;
-            continue;
-        }
-
-        return placement;
-    }
-
-    if (waterPlacementFallback) {
-        return waterPlacementFallback;
-    }
-
-    return {
-        valid: false,
-        error: 'No valid placement position found',
-    };
 }

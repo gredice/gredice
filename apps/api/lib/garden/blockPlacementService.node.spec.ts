@@ -93,6 +93,46 @@ describe('resolveGardenBlockPlacement', () => {
         });
     });
 
+    it('starts automatic placement near the preferred position', () => {
+        const placement = resolveGardenBlockPlacement({
+            blockName: 'Shade',
+            preferredPosition: { x: 12.4, y: -7.6 },
+            stacks: [],
+            blockNameById: new Map(),
+            blockDataByName,
+        });
+
+        assert.deepStrictEqual(placement, {
+            valid: true,
+            placement: {
+                x: 12,
+                y: -8,
+                index: 0,
+                existingBlocks: [],
+            },
+        });
+    });
+
+    it('searches outward from the preferred position when that cell is blocked', () => {
+        const placement = resolveGardenBlockPlacement({
+            blockName: 'Shade',
+            preferredPosition: { x: 12, y: -8 },
+            stacks: [{ positionX: 12, positionY: -8, blocks: ['shade-a'] }],
+            blockNameById: new Map([['shade-a', 'Shade']]),
+            blockDataByName,
+        });
+
+        assert.deepStrictEqual(placement, {
+            valid: true,
+            placement: {
+                x: 12,
+                y: -9,
+                index: 0,
+                existingBlocks: [],
+            },
+        });
+    });
+
     it('rejects explicitly requested raised-bed positions that the backend would not allow', () => {
         const placement = resolveGardenBlockPlacement({
             blockName: 'Raised_Bed',

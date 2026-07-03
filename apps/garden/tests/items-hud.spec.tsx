@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/experimental-ct-react';
 import {
     CloseupBottomHudStory,
     ItemsHudAlignmentStory,
+    ItemsHudCameraTargetStory,
     ItemsHudControlsTooltipStory,
     LocalSandboxItemsHudStory,
     LowSunflowerBalanceItemsHudStory,
@@ -412,6 +413,43 @@ test('item details place button keeps the soft color treatment', async ({
 
     const pricePill = placeButton.locator('div').filter({ hasText: '10' });
     await expect(pricePill).toHaveClass(/bg-primary\/15/u);
+});
+
+test('item placement starts near the current camera target', async ({
+    mount,
+    page,
+}) => {
+    const placeRequestPositions: Array<{ x: number; y: number }> = [];
+
+    await page.route(
+        /\/api(?:\/gredice)?\/gardens\/1\/blocks$/u,
+        async (route) => {
+            const position = getPlacementRequestPosition(
+                route.request().postDataJSON(),
+            );
+            if (position) {
+                placeRequestPositions.push(position);
+            }
+
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    id: 'placed-block-1',
+                    position: { x: 12, y: -8 },
+                }),
+            });
+        },
+    );
+
+    await mount(<ItemsHudCameraTargetStory />);
+
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await page.getByRole('button', { name: 'Stool' }).click();
+    await page.getByRole('button', { name: /Postavi.*10/u }).click();
+
+    await expect.poll(() => placeRequestPositions.length).toBe(1);
+    expect(placeRequestPositions).toEqual([{ x: 12, y: -8 }]);
 });
 
 test('item placement reserves local positions while requests are pending', async ({

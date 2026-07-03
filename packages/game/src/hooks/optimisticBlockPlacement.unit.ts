@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import { Vector3 } from 'three';
 import {
     createOptimisticBlockPlacement,
+    getPreferredBlockPlacementPosition,
     type PlacementBlockData,
     removeOptimisticBlockId,
     replaceOptimisticBlockId,
@@ -206,6 +207,37 @@ describe('createOptimisticBlockPlacement', () => {
                 },
             ],
         });
+    });
+
+    it('uses the preferred position when placing a new block', () => {
+        const placement = createOptimisticBlockPlacement(
+            {
+                stacks: [],
+            },
+            blockData,
+            'Shade',
+            'optimistic-shade',
+            {
+                preferredPosition: getPreferredBlockPlacementPosition({
+                    target: [12.4, 0, -7.6],
+                }),
+            },
+        );
+
+        assert.ok(placement);
+        assert.deepStrictEqual(placement.position, new Vector3(12, 0, -8));
+        assert.deepStrictEqual(placement.stacks, [
+            {
+                position: new Vector3(12, 0, -8),
+                blocks: [
+                    {
+                        id: 'optimistic-shade',
+                        name: 'Shade',
+                        rotation: 0,
+                    },
+                ],
+            },
+        ]);
     });
 });
 
