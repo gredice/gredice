@@ -54,10 +54,10 @@ export function GardenVisibilityCard({
                                 className="justify-between gap-4"
                             >
                                 <Typography level="body1" semiBold>
-                                    Javni vrt
+                                    Vidljivost vrta
                                 </Typography>
                                 <Switch
-                                    aria-label={`Javna vidljivost vrta ${gardenName}`}
+                                    aria-label={`Vidljivost vrta ${gardenName}`}
                                     checked={isPublic}
                                     disabled={updateVisibility.isPending}
                                     onCheckedChange={handleVisibilityChange}
@@ -65,8 +65,8 @@ export function GardenVisibilityCard({
                             </Row>
                             <Typography level="body2">
                                 {isPublic
-                                    ? 'Svatko s poveznicom može pregledati vrt bez uređivanja.'
-                                    : 'Vrt je privatan i nije dostupan na javnim stranicama.'}
+                                    ? 'Vrt je vidljiv na popisu i svatko s poveznicom može ga pregledati bez uređivanja.'
+                                    : 'Vrt je privatan i nije vidljiv na popisu vrtova.'}
                             </Typography>
                         </Stack>
                     </Row>
@@ -79,7 +79,7 @@ export function GardenVisibilityCard({
                             size="sm"
                             startDecorator={<ExternalLink className="size-4" />}
                         >
-                            Otvori javni vrt
+                            Otvori prikaz vrta
                         </Button>
                     ) : null}
                     {error ? (
