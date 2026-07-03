@@ -222,21 +222,21 @@ void main() {
     float shoreFoamFade = max(localEdgeBand, localCornerBand);
     float shoreFoamCore = shoreFoamFade;
 #ifdef USE_WATER_SHORE_DEPTH_ATTRIBUTE
-    shoreFoamFade = 1.0 - smoothstep(0.03, 0.62, shoreDepth);
-    shoreFoamCore = 1.0 - smoothstep(0.0, 0.22, shoreDepth);
+    shoreFoamFade = 1.0 - smoothstep(0.02, 0.5, shoreDepth);
+    shoreFoamCore = 1.0 - smoothstep(0.0, 0.16, shoreDepth);
 #endif
     float globalFoam = max(
         foamMotion(topUv, 0.0),
         foamMotion(topUv + vec2(3.7, -2.4), 4.2) * 0.82
     );
     float foamNoise = valueNoise(topUv * 3.2 + vec2(uTime * 0.119, -uTime * 0.085));
-    float shoreFoamBreakup = 0.96 + 0.28 * smoothstep(0.12, 0.66, foamNoise);
+    float shoreFoamBreakup = 0.84 + 0.34 * smoothstep(0.22, 0.74, foamNoise);
     float shoreFoamField =
-        max(globalFoam, shoreFoamCore * 0.58) *
+        max(globalFoam, shoreFoamCore * 0.42) *
         shoreFoamFade *
         shoreFoamBreakup;
 
-    float topFoam = smoothstep(0.08, 0.4, shoreFoamField) * topness * mix(0.95, 1.55, shoreFoamCore);
+    float topFoam = smoothstep(0.14, 0.46, shoreFoamField) * topness * mix(0.86, 1.28, shoreFoamCore);
     float fallingFoam = smoothstep(0.1, 0.55, shoreFoamField) * sideness * 0.16;
     float foam = clamp(max(topFoam, fallingFoam), 0.0, 1.0);
 
