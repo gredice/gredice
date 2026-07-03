@@ -21,6 +21,7 @@ import {
     useAnimateFlyToShoppingCart,
 } from '../../indicators/AnimateFlyTo';
 import { KnownPages } from '../../knownPages';
+import { OutletBadge } from '../components/OutletBadge';
 import { FavoriteToggleButton } from './FavoriteToggleButton';
 import { PlantListItemSkeleton } from './PlantListItemSkeleton';
 import { PlantRelationshipSignalChips } from './PlantsList';
@@ -170,9 +171,9 @@ function PlantSortListItem({
             >
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     {outletOffers?.length ? (
-                        <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700 dark:bg-green-900/50 dark:text-green-200">
+                        <OutletBadge>
                             {outletOfferBadgeLabel(outletOffers)}
-                        </span>
+                        </OutletBadge>
                     ) : null}
                     {relationshipSignal ? (
                         <PlantRelationshipSignalChips

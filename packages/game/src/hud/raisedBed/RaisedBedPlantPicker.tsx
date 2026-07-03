@@ -6,6 +6,7 @@ import {
     Calendar,
     Check,
     Close,
+    Discount,
     Left,
     Search,
     ShoppingCart,
@@ -924,8 +925,14 @@ export function PlantPicker({
                                                                             level="body2"
                                                                             semiBold
                                                                         >
-                                                                            Outlet
-                                                                            sadnica
+                                                                            <span className="inline-flex items-center gap-1.5">
+                                                                                <Discount
+                                                                                    aria-hidden
+                                                                                    className="size-4 shrink-0"
+                                                                                />
+                                                                                Outlet
+                                                                                sadnica
+                                                                            </span>
                                                                         </Typography>
                                                                         <Typography
                                                                             level="body3"
