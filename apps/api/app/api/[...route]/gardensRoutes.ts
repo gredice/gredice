@@ -11,6 +11,7 @@ import {
     abandonRaisedBed,
     addGardenBoxInventoryItem,
     buildRaisedBedFieldPlantUpdatePayload,
+    CannotLikeOwnGardenError,
     cancelGardenDiaryOperation,
     cancelGardenDiaryRaisedBedField,
     clearSandboxField,
@@ -35,6 +36,7 @@ import {
     getEntitiesFormatted,
     getGarden,
     getGardenBlocks,
+    getGardenLikeCounts,
     getGardenStack,
     getGardenStackForUpdate,
     getGardenVisitState,
@@ -49,11 +51,14 @@ import {
     getRaisedBedSensors,
     getRaisedBedsForGardens,
     getSandboxGardenDeletionCandidate,
+    getUserLikedGardenIds,
     knownEvents,
     knownEventTypes,
     markGardenVisitSummarySeen,
+    PublicGardenLikeTargetNotFoundError,
     rescheduleGardenDiaryOperation,
     rescheduleGardenDiaryRaisedBedField,
+    setGardenLike,
     sowSandboxField,
     spendSunflowers,
     storage,
@@ -114,6 +119,12 @@ import { openAdventGiftBox } from '../../../lib/occasions/adventGiftBox';
 import { getPostHogClient } from '../../../lib/posthog-server';
 
 const DEFAULT_TIMEZONE = 'Europe/Paris';
+
+const gardenLikeBodySchema = z
+    .object({
+        liked: z.boolean(),
+    })
+    .strict();
 
 const analyzeImageBodySchema = z
     .object({
@@ -715,9 +726,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
         }),
         async (context) => {
             const publicGardens = await getPublicGardens();
-            const raisedBedsByGardenId = await getRaisedBedsForGardens(
-                publicGardens.map((garden) => garden.id),
-            );
+            const publicGardenIds = publicGardens.map((garden) => garden.id);
+            const raisedBedsByGardenId =
+                await getRaisedBedsForGardens(publicGardenIds);
+            const likeCounts = await getGardenLikeCounts(publicGardenIds);
 
             return context.json({
                 items: publicGardens.map((garden) => {
@@ -731,11 +743,80 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         backgroundPalette: garden.backgroundPalette,
                         activePlantCount:
                             countPublicGardenActivePlants(raisedBeds),
+                        likeCount: likeCounts.get(garden.id) ?? 0,
                         createdAt: garden.createdAt,
                         updatedAt: garden.updatedAt,
                     };
                 }),
             });
+        },
+    )
+    .get(
+        '/likes',
+        describeRoute({
+            description:
+                'List visible gardens liked by the current authenticated user.',
+            security: authSecurity,
+        }),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { userId } = context.get('authContext');
+            const likedGardenIds = await getUserLikedGardenIds({ userId });
+
+            return context.json(
+                {
+                    gardenIds: Array.from(likedGardenIds),
+                },
+                200,
+            );
+        },
+    )
+    .put(
+        '/:gardenId/like',
+        describeRoute({
+            description:
+                'Set the like state for a visible garden for the current authenticated user.',
+            security: authSecurity,
+        }),
+        authValidator(['user', 'admin']),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+            }),
+        ),
+        zValidator('json', gardenLikeBodySchema),
+        async (context) => {
+            const { gardenId } = context.req.valid('param');
+            const gardenIdNumber = Number.parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            const { liked } = context.req.valid('json');
+            const { user, userId } = context.get('authContext');
+
+            try {
+                return context.json(
+                    await setGardenLike({
+                        accountIds: user.accountIds,
+                        gardenId: gardenIdNumber,
+                        liked,
+                        userId,
+                    }),
+                    200,
+                );
+            } catch (error) {
+                if (error instanceof PublicGardenLikeTargetNotFoundError) {
+                    return context.json({ error: error.message }, 404);
+                }
+
+                if (error instanceof CannotLikeOwnGardenError) {
+                    return context.json({ error: error.message }, 403);
+                }
+
+                throw error;
+            }
         },
     )
     .get(
@@ -1251,9 +1332,11 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 operations,
                 { publicView: true },
             );
+            const likeCounts = await getGardenLikeCounts([garden.id]);
 
             return context.json({
                 ...gardenDetails,
+                likeCount: likeCounts.get(garden.id) ?? 0,
                 queuedTasks,
             });
         },

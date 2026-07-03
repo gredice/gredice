@@ -6,6 +6,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { KnownPages } from '../../../src/KnownPages';
 import { PublicGardenExplorer } from '../PublicGardenExplorer';
+import { PublicGardenLikeButton } from '../PublicGardenLikeButton';
 import { getPublicGardenForWww } from '../publicGardenData';
 import {
     countActivePlantsFromPublicGarden,
@@ -116,7 +117,7 @@ export default async function PublicGardenPage({
                             </Typography>
                         </div>
                     </div>
-                    <div className="grid grid-cols-2 divide-x border-t bg-card">
+                    <div className="grid grid-cols-3 divide-x border-t bg-card">
                         <div className="flex items-center gap-2 px-4 py-3 sm:px-5">
                             <Calendar
                                 aria-hidden
@@ -157,6 +158,11 @@ export default async function PublicGardenPage({
                                 </Typography>
                             </div>
                         </div>
+                        <PublicGardenLikeButton
+                            className="sm:px-2"
+                            gardenId={garden.id}
+                            initialLikeCount={garden.likeCount}
+                        />
                     </div>
                 </div>
             </Card>

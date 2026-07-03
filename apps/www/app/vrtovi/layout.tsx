@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { PublicGardenViewTransitionProvider } from './PublicGardenViewTransitionProvider';
 
 export default function PublicGardensLayout({
     children,
@@ -8,7 +7,7 @@ export default function PublicGardensLayout({
 }) {
     return (
         <>
-            <PublicGardenViewTransitionProvider />
+            <style>{'@view-transition { navigation: auto; }'}</style>
             {children}
         </>
     );
