@@ -1003,10 +1003,15 @@ export interface components {
             attributePath: string;
             dataType: string;
             /** @enum {string} */
-            controlType: "boolean" | "json" | "markdown" | "number" | "range" | "reference" | "text";
+            controlType: "boolean" | "json" | "markdown" | "number" | "range" | "reference" | "select" | "text";
             multiple: boolean;
             publicLabel: string;
             helpText?: string;
+            options?: {
+                value: string;
+                label: string;
+                helpText?: string;
+            }[];
             currentValue: string | null;
             baseValueHash: string;
         };

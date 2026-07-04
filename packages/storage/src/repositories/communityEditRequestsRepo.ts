@@ -78,6 +78,7 @@ export type CommunityEditableFieldSnapshot = {
     multiple: boolean;
     publicLabel: string;
     helpText?: string;
+    options?: CommunityEditableFieldDefinition['options'];
     currentValue: string | null;
     baseValueHash: string;
 };
@@ -190,6 +191,12 @@ function controlTypeMatchesDataType(
             return dataType === 'range' || dataType.startsWith('range|');
         case 'reference':
             return dataType.startsWith('ref:');
+        case 'select':
+            return (
+                dataType === 'boolean' ||
+                dataType === 'number' ||
+                dataType === 'text'
+            );
         case 'text':
             return dataType === 'text';
     }
@@ -210,6 +217,13 @@ function assertFieldDataTypeSupported(
         throw new CommunityEditRequestError(
             'unsupported_data_type',
             `Field ${field.fieldKey} does not allow JSON submissions.`,
+        );
+    }
+
+    if (field.controlType === 'select' && !field.options?.length) {
+        throw new CommunityEditRequestError(
+            'unsupported_data_type',
+            `Field ${field.fieldKey} is registered as select but has no options.`,
         );
     }
 }
@@ -239,6 +253,12 @@ function resolveFieldSnapshot(
     }
 
     assertFieldDataTypeSupported(field, definition);
+    if (field.controlType === 'select' && definition.multiple) {
+        throw new CommunityEditRequestError(
+            'unsupported_data_type',
+            `Field ${field.fieldKey} cannot use select for multiple values.`,
+        );
+    }
 
     const values = activeAttributeValues(entity, definition.id);
     const currentValue = serializedCurrentValue(values, definition.multiple);
@@ -256,6 +276,7 @@ function resolveFieldSnapshot(
         multiple: definition.multiple,
         publicLabel: field.publicLabel,
         helpText: field.helpText,
+        options: field.options,
         currentValue,
         baseValueHash: stableValueHash(currentValue),
     };
@@ -499,6 +520,42 @@ function normalizeJsonValue(
     return JSON.stringify(value);
 }
 
+function normalizeSelectValue(
+    value: unknown,
+    field: CommunityEditableFieldDefinition,
+    snapshot: CommunityEditableFieldSnapshot,
+) {
+    if (value === null || value === '') {
+        return null;
+    }
+
+    const textValue =
+        typeof value === 'boolean' || typeof value === 'number'
+            ? String(value)
+            : typeof value === 'string'
+              ? value
+              : null;
+
+    if (
+        !textValue ||
+        !field.options?.some((option) => option.value === textValue)
+    ) {
+        throw new CommunityEditRequestError(
+            'invalid_value',
+            `Field ${field.fieldKey} expects one of the configured options.`,
+        );
+    }
+
+    switch (snapshot.dataType) {
+        case 'boolean':
+            return normalizeBooleanValue(textValue, field);
+        case 'number':
+            return normalizeNumberValue(textValue, field);
+        default:
+            return normalizeNullableString(textValue, field.maxLength);
+    }
+}
+
 function normalizeProposedValue(
     value: unknown,
     field: CommunityEditableFieldDefinition,
@@ -518,6 +575,8 @@ function normalizeProposedValue(
             return normalizeRangeValue(value, field);
         case 'reference':
             return normalizeReferenceValue(value, field, snapshot.multiple);
+        case 'select':
+            return normalizeSelectValue(value, field, snapshot);
     }
 }
 

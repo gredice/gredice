@@ -35,7 +35,14 @@ type CommunityEditControlType =
     | 'number'
     | 'range'
     | 'reference'
+    | 'select'
     | 'text';
+
+type CommunityEditableFieldOption = {
+    value: string;
+    label: string;
+    helpText?: string;
+};
 
 type CommunityEditableField = {
     entityTypeName: string;
@@ -50,6 +57,7 @@ type CommunityEditableField = {
     multiple: boolean;
     publicLabel: string;
     helpText?: string;
+    options?: CommunityEditableFieldOption[];
     currentValue: string | null;
     baseValueHash: string;
 };
@@ -211,7 +219,19 @@ function isCommunityEditableField(
         (typeof value.currentValue === 'string' ||
             value.currentValue === null) &&
         'baseValueHash' in value &&
-        typeof value.baseValueHash === 'string'
+        typeof value.baseValueHash === 'string' &&
+        (!('options' in value) ||
+            value.options === undefined ||
+            (Array.isArray(value.options) &&
+                value.options.every(
+                    (option) =>
+                        typeof option === 'object' &&
+                        option !== null &&
+                        'value' in option &&
+                        typeof option.value === 'string' &&
+                        'label' in option &&
+                        typeof option.label === 'string',
+                )))
     );
 }
 
@@ -313,6 +333,24 @@ function FieldInput({
                 <option value="">Nije određeno</option>
                 <option value="true">Da</option>
                 <option value="false">Ne</option>
+            </select>
+        );
+    }
+
+    if (field.controlType === 'select') {
+        return (
+            <select
+                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                id={id}
+                onChange={(event) => onChange(event.currentTarget.value)}
+                value={typeof value === 'string' ? value : ''}
+            >
+                <option value="">Nije određeno</option>
+                {(field.options ?? []).map((option) => (
+                    <option key={option.value} value={option.value}>
+                        {option.label}
+                    </option>
+                ))}
             </select>
         );
     }
