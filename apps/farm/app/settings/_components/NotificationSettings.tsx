@@ -339,12 +339,30 @@ export function NotificationSettings({
             ? pushOnboarding.error
             : null;
 
+    function isCurrentPushDevice(device: NotificationDeviceListItem) {
+        return Boolean(
+            currentPushDeviceId && device.deviceId === currentPushDeviceId,
+        );
+    }
+
+    async function handleDeviceEnabledChange(
+        device: NotificationDeviceListItem,
+        enabled: boolean,
+    ) {
+        if (enabled && isCurrentPushDevice(device)) {
+            await handleEnablePush();
+            return;
+        }
+
+        updateDeviceMutation.mutate({
+            enabled,
+            id: device.id,
+        });
+    }
+
     function handleCurrentDeviceToggle(checked: boolean) {
         if (currentNotificationDevice) {
-            updateDeviceMutation.mutate({
-                enabled: checked,
-                id: currentNotificationDevice.id,
-            });
+            void handleDeviceEnabledChange(currentNotificationDevice, checked);
             return;
         }
 
@@ -553,9 +571,19 @@ export function NotificationSettings({
                             activeDevices.map((device) => {
                                 const label = deviceDisplayName(device);
                                 const deliverable = isDeliverableDevice(device);
+                                const currentDevice =
+                                    isCurrentPushDevice(device);
+                                const cannotEnableCurrentDevice =
+                                    currentDevice &&
+                                    !deliverable &&
+                                    pushOnboarding.status !== 'subscribed' &&
+                                    !canRequestPush;
                                 const toggleDisabled =
                                     deviceMutationBusy ||
-                                    device.permissionState === 'denied';
+                                    device.permissionState === 'denied' ||
+                                    (currentDevice &&
+                                        pushOnboarding.isRequesting) ||
+                                    cannotEnableCurrentDevice;
 
                                 return (
                                     <div
@@ -577,8 +605,7 @@ export function NotificationSettings({
                                                     <Typography semiBold>
                                                         {label}
                                                     </Typography>
-                                                    {device.deviceId ===
-                                                        currentPushDeviceId && (
+                                                    {currentDevice && (
                                                         <Chip
                                                             color="info"
                                                             size="sm"
@@ -636,11 +663,9 @@ export function NotificationSettings({
                                                 checked={deliverable}
                                                 disabled={toggleDisabled}
                                                 onCheckedChange={(enabled) =>
-                                                    updateDeviceMutation.mutate(
-                                                        {
-                                                            enabled,
-                                                            id: device.id,
-                                                        },
+                                                    void handleDeviceEnabledChange(
+                                                        device,
+                                                        enabled,
                                                     )
                                                 }
                                             />

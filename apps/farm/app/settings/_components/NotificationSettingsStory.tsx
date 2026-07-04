@@ -56,6 +56,16 @@ export function NotificationSettingsStory({
                                 : null,
                         isRequesting: false,
                         requestPermission: async () => {
+                            const requestCount = Number.parseInt(
+                                window.localStorage.getItem(
+                                    'farm:test:push-request-count',
+                                ) ?? '0',
+                                10,
+                            );
+                            window.localStorage.setItem(
+                                'farm:test:push-request-count',
+                                String(requestCount + 1),
+                            );
                             if (requestResult === 'default') {
                                 setStatus('prompt-dismissed');
                                 return 'prompt-dismissed';

@@ -42,6 +42,11 @@ const currentDevice: MockDevice = {
     updatedAt: '2026-07-04T09:30:00.000Z',
     userAgent: 'Chrome farm settings test',
 };
+const disabledCurrentDevice: MockDevice = {
+    ...currentDevice,
+    enabled: false,
+    updatedAt: '2026-07-04T09:45:00.000Z',
+};
 
 async function fulfillJson(route: Route, body: unknown, status = 200) {
     await route.fulfill({
@@ -282,19 +287,6 @@ test('notification settings toggles, revokes, and sends test notifications', asy
     ).toBeVisible();
     await expect(page.getByText('ovaj uređaj', { exact: true })).toBeVisible();
 
-    await page.getByRole('switch', { name: 'Isključi Ovaj uređaj' }).click();
-    await expect.poll(() => recorded.devicePatches.length).toBe(1);
-    expect(recorded.devicePatches[0]).toEqual({ enabled: false });
-    await expect(page.getByText('Status: isključeno')).toBeVisible();
-
-    await page
-        .getByRole('switch', {
-            name: 'Uključi obavijesti na ovom uređaju',
-        })
-        .click();
-    await expect.poll(() => recorded.devicePatches.length).toBe(2);
-    expect(recorded.devicePatches[1]).toEqual({ enabled: true });
-
     await page
         .getByRole('button', { name: 'Pošalji probnu obavijest' })
         .click();
@@ -304,6 +296,28 @@ test('notification settings toggles, revokes, and sends test notifications', asy
             'Probna obavijest je poslana. Ciljano: 1 · Prihvaćeno: 1 · Neuspjelo: 0',
         ),
     ).toBeVisible();
+
+    await page.getByRole('switch', { name: 'Isključi Ovaj uređaj' }).click();
+    await expect.poll(() => recorded.devicePatches.length).toBe(1);
+    expect(recorded.devicePatches[0]).toEqual({ enabled: false });
+    await expect(page.getByText('Status: isključeno')).toBeVisible();
+    await page.evaluate(() =>
+        window.localStorage.removeItem('farm:test:push-request-count'),
+    );
+
+    await page
+        .getByRole('switch', {
+            name: 'Uključi obavijesti na ovom uređaju',
+        })
+        .click();
+    await expect
+        .poll(() =>
+            page.evaluate(() =>
+                window.localStorage.getItem('farm:test:push-request-count'),
+            ),
+        )
+        .toBe('1');
+    expect(recorded.devicePatches).toEqual([{ enabled: false }]);
 
     await page.getByRole('button', { name: 'Ukloni Ovaj uređaj' }).click();
     await expect.poll(() => recorded.deviceDeletes).toEqual(['device-1']);
@@ -319,6 +333,38 @@ test('notification settings toggles, revokes, and sends test notifications', asy
             ),
         )
         .toBe('1');
+});
+
+test('notification settings re-subscribes before re-enabling the current device', async ({
+    mount,
+    page,
+}) => {
+    const recorded = await mockNotificationSettingsApi(page, {
+        devices: [disabledCurrentDevice],
+    });
+
+    await mount(
+        <NotificationSettingsStory
+            currentDeviceId="current-device"
+            initialStatus="granted"
+        />,
+    );
+
+    await page
+        .getByRole('switch', {
+            name: 'Uključi obavijesti na ovom uređaju',
+        })
+        .click();
+
+    await expect
+        .poll(() =>
+            page.evaluate(() =>
+                window.localStorage.getItem('farm:test:push-request-count'),
+            ),
+        )
+        .toBe('1');
+    expect(recorded.devicePatches).toEqual([]);
+    await expect(page.getByText('Dozvola: uključeno')).toBeVisible();
 });
 
 test('notification settings keeps API errors visible and recoverable', async ({
