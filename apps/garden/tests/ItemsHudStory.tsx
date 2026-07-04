@@ -25,24 +25,69 @@ import {
 
 const now = '2026-05-13T00:00:00.000Z';
 
+const mulchBlockFixtures: Record<
+    string,
+    {
+        label: string;
+        shortDescription: string;
+        sunflowers: number;
+        height: number;
+        stackable: boolean;
+    }
+> = {
+    MulchWood: {
+        label: 'Malč - kora drveta',
+        shortDescription:
+            'Malč od kore drveta koristi se za zadržavanje vlage, zaštitu tla i smanjenje rasta korova.',
+        sunflowers: 20,
+        height: 0.01,
+        stackable: true,
+    },
+    MulchCoconut: {
+        label: 'Malč - kokosova kora',
+        shortDescription:
+            'Malč od kokosove kore koristi se za zaštitu tla, očuvanje vlage i dekorativni izgled gredice.',
+        sunflowers: 20,
+        height: 0.01,
+        stackable: true,
+    },
+    MulchHey: {
+        label: 'Malč - slama',
+        shortDescription:
+            'Malč od slame koristi se za zaštitu tla, zadržavanje vlage i sprječavanje rasta korova.',
+        sunflowers: 20,
+        height: 0.01,
+        stackable: true,
+    },
+};
+
 function createBlockData(name: string, index: number) {
+    const mulchFixture = mulchBlockFixtures[name];
+
     return {
         id: index + 1,
         entityType: { id: 8, name: 'block', label: 'Blok' },
         slug: name.toLowerCase().replaceAll('_', '-'),
         information: {
             name,
-            label: name.replaceAll('_', ' '),
-            shortDescription: 'Mock block for HUD layout tests.',
-            fullDescription: 'Mock block for HUD layout tests.',
+            label: mulchFixture?.label ?? name.replaceAll('_', ' '),
+            shortDescription:
+                mulchFixture?.shortDescription ??
+                'Mock block for HUD layout tests.',
+            fullDescription:
+                mulchFixture?.shortDescription ??
+                'Mock block for HUD layout tests.',
         },
         attributes: {
-            height: 1,
+            height: mulchFixture?.height ?? 1,
             nightOnlyPurchase: name === 'FireflyJar',
-            stackable: true,
+            stackable: mulchFixture?.stackable ?? true,
             type: name === 'Raised_Bed' ? 'raisedBed' : 'decoration',
         },
-        prices: { sunflowers: name === 'PaintRoller' ? 100 : 10 },
+        prices: {
+            sunflowers:
+                mulchFixture?.sunflowers ?? (name === 'PaintRoller' ? 100 : 10),
+        },
         functions: {
             recycler: false,
             raisedBed: name === 'Raised_Bed',
@@ -97,6 +142,9 @@ const blockNames = [
     'StoneSmall',
     'StoneMedium',
     'StoneLarge',
+    'MulchWood',
+    'MulchCoconut',
+    'MulchHey',
     'WaterWell',
     'LemonadeStand',
     'IceCreamCart',
