@@ -7,27 +7,102 @@ import {
     getEntitiesFormatted,
     getFarms,
     getGardens,
+    getUsers,
 } from '@gredice/storage';
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
 import { serializeOperationDefinitionForList } from './operationListDefinitionVisual';
 import { defaultOperationsListSort } from './operationsListConfig';
 import type {
     OperationsListOperation,
+    OperationsListOperationDefinition,
+    OperationsListOperationRow,
     OperationsListPage,
     OperationsListSort,
     OperationsListSortDirection,
     OperationsListSortKey,
+    OperationsListSowingTask,
+    OperationsListStatus,
 } from './operationsListTypes';
 
-type RawOperations = Awaited<ReturnType<typeof getAllOperations>>;
-type RawOperation = RawOperations[number];
+type RawOperation = {
+    id: number;
+    entityId: number;
+    entityTypeName: string;
+    status: OperationsListStatus;
+    accountId?: string | null;
+    farmId?: number | null;
+    gardenId?: number | null;
+    raisedBedId?: number | null;
+    raisedBedFieldId?: number | null;
+    timestamp: Date | string;
+    createdAt?: Date | string | null;
+    scheduledDate?: Date | string | null;
+    completedAt?: Date | string | null;
+    assignedUsers?: Array<{
+        userName: string | null;
+        displayName: string | null;
+    }>;
+};
+type RawOperations = RawOperation[];
+type RawUser = {
+    id: string;
+    userName: string | null;
+    displayName: string | null;
+};
+type RawRaisedBedFieldPlantCycle = {
+    plantPlaceEventId: number;
+    positionIndex: number;
+    active: boolean;
+    plantStatus?: string;
+    plantSortId?: number;
+    plantScheduledDate?: Date;
+    sowingLocation: OperationsListSowingTask['sowingLocation'];
+    plantSowDate?: Date;
+    stoppedDate?: Date;
+    startedAt: Date;
+    endedAt: Date;
+    assignedUserIds?: string[];
+};
+type RawRaisedBedField = {
+    id: number;
+    positionIndex: number;
+    plantCycles: RawRaisedBedFieldPlantCycle[];
+};
+type RawRaisedBed = {
+    id: number;
+    accountId?: string | null;
+    gardenId?: number | null;
+    physicalId?: string | null;
+    name?: string | null;
+    fields: RawRaisedBedField[];
+};
 
-type OperationsListContext = {
-    accounts: Awaited<ReturnType<typeof getAccounts>>;
-    farms: Awaited<ReturnType<typeof getFarms>>;
-    gardens: Awaited<ReturnType<typeof getGardens>>;
+type RawAccount = {
+    id: string;
+    accountUsers: Array<{
+        user: {
+            userName: string | null;
+        };
+    }>;
+};
+type RawFarm = {
+    id: number;
+    name: string;
+};
+type RawGarden = {
+    id: number;
+    farmId: number;
+    name: string;
+};
+
+export type OperationsListContext = {
+    accounts: RawAccount[];
+    farms: RawFarm[];
+    gardens: RawGarden[];
     operationDefinitions: EntityStandardized[];
-    raisedBeds: Awaited<ReturnType<typeof getAllRaisedBeds>>;
+    plantSorts: EntityStandardized[];
+    raisedBeds: RawRaisedBed[];
+    users: RawUser[];
 };
 
 export const operationsListPageSize = 40;
@@ -80,11 +155,51 @@ function operationDefinitionForOperation(
     );
 }
 
+function entityLabel(entity: EntityStandardized | undefined, fallback: string) {
+    return entity?.information?.label ?? entity?.information?.name ?? fallback;
+}
+
 function operationDefinitionLabel(
     operation: RawOperation,
     operationDefinition: EntityStandardized | undefined,
 ) {
-    return operationDefinition?.information?.label ?? `Radnja ${operation.id}`;
+    return entityLabel(operationDefinition, `Radnja ${operation.id}`);
+}
+
+function userDisplayName(user: RawUser | undefined) {
+    return user?.displayName ?? user?.userName ?? null;
+}
+
+function isNonEmptyString(value: string | null | undefined): value is string {
+    return typeof value === 'string' && value.length > 0;
+}
+
+function assignedUserNamesFromIds(
+    assignedUserIds: string[] | undefined,
+    usersById: Map<string, RawUser>,
+) {
+    return (assignedUserIds ?? [])
+        .map((userId) => userDisplayName(usersById.get(userId)) ?? userId)
+        .filter(isNonEmptyString);
+}
+
+function operationAssignedUserNames(operation: RawOperation) {
+    return (operation.assignedUsers ?? [])
+        .map((user) => user.displayName ?? user.userName)
+        .filter(isNonEmptyString);
+}
+
+function sowingTaskOperationDefinition(
+    label: string,
+): OperationsListOperationDefinition {
+    return {
+        image: null,
+        information: { label },
+        attributes: {
+            category: { information: { name: 'sowing' } },
+            stage: null,
+        },
+    };
 }
 
 function operationPlaceLabel(operation: OperationsListOperation) {
@@ -150,7 +265,10 @@ function compareOperations(
     );
 
     if (compared === 0) {
-        return right.id - left.id;
+        return right.rowId.localeCompare(left.rowId, 'hr', {
+            numeric: true,
+            sensitivity: 'base',
+        });
     }
 
     return sort.direction === 'asc' ? compared : -compared;
@@ -159,7 +277,7 @@ function compareOperations(
 function serializeOperation(
     operation: RawOperation,
     context: OperationsListContext,
-): OperationsListOperation {
+): OperationsListOperationRow {
     const operationDefinition = operationDefinitionForOperation(
         operation,
         context.operationDefinitions,
@@ -185,6 +303,8 @@ function serializeOperation(
             : undefined;
 
     return {
+        kind: 'operation',
+        rowId: `operation:${operation.id}`,
         id: operation.id,
         entityId: operation.entityId,
         entityTypeName: operation.entityTypeName,
@@ -197,7 +317,8 @@ function serializeOperation(
         accountUserNames:
             account?.accountUsers
                 .map((accountUser) => accountUser.user.userName)
-                .filter(Boolean) ?? [],
+                .filter(isNonEmptyString) ?? [],
+        assignedUserNames: operationAssignedUserNames(operation),
         farmName: farm?.name ?? null,
         gardenName: garden?.name ?? null,
         raisedBedPhysicalId: raisedBed?.physicalId ?? null,
@@ -214,22 +335,228 @@ function serializeOperation(
     };
 }
 
+function sowingTaskName(
+    sowingLocation: RawRaisedBedFieldPlantCycle['sowingLocation'],
+) {
+    return sowingLocation === 'greenhouse' ? 'Sijanje u stakleniku' : 'Sijanje';
+}
+
+function sowingTaskEntityTypeName(
+    sowingLocation: RawRaisedBedFieldPlantCycle['sowingLocation'],
+): OperationsListSowingTask['entityTypeName'] {
+    return sowingLocation === 'greenhouse' ? 'sowingGreenhouse' : 'sowing';
+}
+
+function sowingTaskStatus(
+    cycle: RawRaisedBedFieldPlantCycle,
+): OperationsListStatus {
+    if (cycle.plantStatus === 'pendingVerification') {
+        return 'pendingVerification';
+    }
+
+    if (cycle.plantSowDate) {
+        return 'completed';
+    }
+
+    if (cycle.plantStatus === 'deleted' || !cycle.active) {
+        return 'canceled';
+    }
+
+    if (cycle.plantStatus === 'planned') {
+        return 'planned';
+    }
+
+    return 'new';
+}
+
+function sowingTaskRelevantDate(
+    cycle: RawRaisedBedFieldPlantCycle,
+    status: OperationsListStatus,
+) {
+    if (status === 'pendingVerification' || status === 'completed') {
+        return cycle.plantSowDate ?? cycle.endedAt;
+    }
+
+    if (status === 'canceled') {
+        return cycle.stoppedDate ?? cycle.endedAt;
+    }
+
+    return cycle.plantScheduledDate ?? cycle.startedAt;
+}
+
+function serializeSowingTask({
+    context,
+    cycle,
+    field,
+    raisedBed,
+    usersById,
+}: {
+    context: OperationsListContext;
+    cycle: RawRaisedBedFieldPlantCycle;
+    field: RawRaisedBedField;
+    raisedBed: RawRaisedBed;
+    usersById: Map<string, RawUser>;
+}): OperationsListSowingTask | null {
+    if (typeof cycle.plantSortId !== 'number') {
+        return null;
+    }
+
+    const status = sowingTaskStatus(cycle);
+    const relevantDate = sowingTaskRelevantDate(cycle, status);
+    const account = raisedBed.accountId
+        ? context.accounts.find((item) => item.id === raisedBed.accountId)
+        : undefined;
+    const garden = raisedBed.gardenId
+        ? context.gardens.find((item) => item.id === raisedBed.gardenId)
+        : undefined;
+    const farm = garden
+        ? context.farms.find((item) => item.id === garden.farmId)
+        : undefined;
+    const plantSortName = entityLabel(
+        context.plantSorts.find(
+            (plantSort) => plantSort.id === cycle.plantSortId,
+        ),
+        `Sorta ${cycle.plantSortId}`,
+    );
+    const label = `${sowingTaskName(cycle.sowingLocation)}: ${plantSortName}`;
+
+    return {
+        kind: 'sowing',
+        rowId: `sowing:${field.id}:${cycle.plantPlaceEventId}`,
+        id: field.id,
+        entityId: null,
+        entityTypeName: sowingTaskEntityTypeName(cycle.sowingLocation),
+        plantSortId: cycle.plantSortId,
+        plantCycleEventId: cycle.plantPlaceEventId,
+        sowingLocation: cycle.sowingLocation,
+        label,
+        operationDefinition: sowingTaskOperationDefinition(label),
+        status,
+        accountUserNames:
+            account?.accountUsers
+                .map((accountUser) => accountUser.user.userName)
+                .filter(isNonEmptyString) ?? [],
+        assignedUserNames: assignedUserNamesFromIds(
+            cycle.assignedUserIds,
+            usersById,
+        ),
+        farmName: farm?.name ?? null,
+        gardenName: garden?.name ?? null,
+        raisedBedPhysicalId: raisedBed.physicalId ?? null,
+        raisedBedName: raisedBed.name ?? null,
+        raisedBedFieldPosition: cycle.positionIndex + 1,
+        timestamp: toIsoString(relevantDate) ?? new Date(0).toISOString(),
+        createdAt: toIsoString(cycle.startedAt),
+        scheduledDate: toIsoString(cycle.plantScheduledDate),
+        completedAt:
+            status === 'pendingVerification' || status === 'completed'
+                ? toIsoString(cycle.plantSowDate ?? relevantDate)
+                : null,
+    };
+}
+
+function serializeSowingTasks(context: OperationsListContext) {
+    const usersById = new Map(context.users.map((user) => [user.id, user]));
+
+    return context.raisedBeds.flatMap((raisedBed) =>
+        raisedBed.fields.flatMap((field) =>
+            field.plantCycles
+                .map((cycle) =>
+                    serializeSowingTask({
+                        context,
+                        cycle,
+                        field,
+                        raisedBed,
+                        usersById,
+                    }),
+                )
+                .filter((operation): operation is OperationsListSowingTask =>
+                    Boolean(operation),
+                ),
+        ),
+    );
+}
+
+function operationIsOnOrAfterFromDate(
+    operation: OperationsListOperation,
+    fromDate: Date | undefined,
+) {
+    if (!fromDate) {
+        return true;
+    }
+
+    return new Date(operation.timestamp) >= fromDate;
+}
+
 export async function getOperationsListContext(): Promise<OperationsListContext> {
-    const [operationDefinitions, accounts, farms, gardens, raisedBeds] =
-        await Promise.all([
-            getEntitiesFormatted<EntityStandardized>('operation'),
-            getAccounts(),
-            getFarms(),
-            getGardens(),
-            getAllRaisedBeds(),
-        ]);
+    const [
+        operationDefinitions,
+        plantSorts,
+        accounts,
+        farms,
+        gardens,
+        raisedBeds,
+        users,
+    ] = await Promise.all([
+        getEntitiesFormatted<EntityStandardized>('operation'),
+        getEntitiesFormatted<EntityStandardized>('plantSort'),
+        getAccounts(),
+        getFarms(),
+        getGardens(),
+        getAllRaisedBeds(),
+        getUsers(),
+    ]);
 
     return {
         accounts,
         farms,
         gardens,
         operationDefinitions: operationDefinitions ?? [],
+        plantSorts: plantSorts ?? [],
         raisedBeds,
+        users,
+    };
+}
+
+export function buildOperationsListPage({
+    context,
+    fromDate,
+    limit,
+    offset = 0,
+    operations,
+    sort = defaultOperationsListSort,
+}: {
+    context: OperationsListContext;
+    fromDate?: Date;
+    limit?: number;
+    offset?: number;
+    operations: RawOperations;
+    sort?: OperationsListSort;
+}): OperationsListPage {
+    const pageSize = normalizeLimit(limit);
+    const serializedOperations = [
+        ...operations.map((operation) =>
+            serializeOperation(operation, context),
+        ),
+        ...serializeSowingTasks(context),
+    ]
+        .filter((operation) =>
+            operationIsOnOrAfterFromDate(operation, fromDate),
+        )
+        .toSorted((left, right) => compareOperations(left, right, sort));
+    const safeOffset = Math.max(0, Math.trunc(offset));
+    const pageOperations = serializedOperations.slice(
+        safeOffset,
+        safeOffset + pageSize + 1,
+    );
+    const hasMore = pageOperations.length > pageSize;
+
+    return {
+        operations: pageOperations.slice(0, pageSize),
+        hasMore,
+        nextOffset: hasMore ? safeOffset + pageSize : null,
+        pageSize,
+        totalCount: serializedOperations.length,
     };
 }
 
@@ -246,27 +573,18 @@ export async function listOperationsPageFromContext({
     offset?: number;
     sort?: OperationsListSort;
 }): Promise<OperationsListPage> {
-    const pageSize = normalizeLimit(limit);
     const operations = await getAllOperations(
         fromDate ? { from: fromDate } : undefined,
     );
-    const serializedOperations = operations
-        .map((operation) => serializeOperation(operation, context))
-        .toSorted((left, right) => compareOperations(left, right, sort));
-    const safeOffset = Math.max(0, Math.trunc(offset));
-    const pageOperations = serializedOperations.slice(
-        safeOffset,
-        safeOffset + pageSize + 1,
-    );
-    const hasMore = pageOperations.length > pageSize;
 
-    return {
-        operations: pageOperations.slice(0, pageSize),
-        hasMore,
-        nextOffset: hasMore ? safeOffset + pageSize : null,
-        pageSize,
-        totalCount: serializedOperations.length,
-    };
+    return buildOperationsListPage({
+        context,
+        fromDate,
+        limit,
+        offset,
+        operations,
+        sort,
+    });
 }
 
 export async function listOperationsPage({

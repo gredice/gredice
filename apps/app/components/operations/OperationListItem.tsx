@@ -10,7 +10,10 @@ import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
-import type { OperationsListOperation } from '../../app/admin/operations/operationsListTypes';
+import type {
+    OperationsListOperation,
+    OperationsListOperationRow,
+} from '../../app/admin/operations/operationsListTypes';
 import { VerifyOperationModal } from '../../app/admin/schedule/VerifyOperationModal';
 import { KnownPages } from '../../src/KnownPages';
 import { OperationCancelButton } from './OperationCancelButton';
@@ -36,6 +39,38 @@ function statusLabel(status: OperationsListOperation['status']) {
     return status === 'pendingVerification' ? 'Čeka verifikaciju' : status;
 }
 
+function sowingStatusLabel(status: OperationsListOperation['status']) {
+    if (status === 'new') {
+        return 'Čeka sijanje';
+    }
+
+    if (status === 'planned') {
+        return 'Planirano';
+    }
+
+    if (status === 'pendingVerification') {
+        return 'Čeka verifikaciju';
+    }
+
+    if (status === 'completed') {
+        return 'Posijano';
+    }
+
+    if (status === 'canceled') {
+        return 'Otkazano';
+    }
+
+    return status;
+}
+
+function rowStatusLabel(operation: OperationsListOperation) {
+    if (operation.kind === 'sowing') {
+        return sowingStatusLabel(operation.status);
+    }
+
+    return statusLabel(operation.status);
+}
+
 function statusDate(operation: OperationsListOperation) {
     if (operation.status === 'planned') {
         return operation.scheduledDate;
@@ -55,7 +90,7 @@ function dateForAction(value: string | null) {
     return value ? new Date(value) : undefined;
 }
 
-function operationActionPayload(operation: OperationsListOperation) {
+function operationActionPayload(operation: OperationsListOperationRow) {
     return {
         id: operation.id,
         entityId: operation.entityId,
@@ -64,13 +99,25 @@ function operationActionPayload(operation: OperationsListOperation) {
     };
 }
 
+function sowingLocationLabel(operation: OperationsListOperation) {
+    if (operation.kind !== 'sowing') {
+        return null;
+    }
+
+    return operation.sowingLocation === 'greenhouse' ? 'Staklenik' : 'Direktno';
+}
+
 export function OperationListItem({
     operation,
 }: {
     operation: OperationsListOperation;
 }) {
-    const actionPayload = operationActionPayload(operation);
+    const actionPayload =
+        operation.kind === 'operation'
+            ? operationActionPayload(operation)
+            : null;
     const currentStatusDate = statusDate(operation);
+    const locationLabel = sowingLocationLabel(operation);
 
     return (
         <li className="group px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4">
@@ -87,12 +134,34 @@ export function OperationListItem({
                         />
                     </span>
                     <Stack spacing={1} className="min-w-0 flex-1 pt-0.5">
-                        <Link
-                            href={KnownPages.Operation(operation.id)}
-                            className="min-w-0 truncate font-medium text-primary underline-offset-4 hover:underline"
-                        >
-                            {operation.label}
-                        </Link>
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                            {operation.kind === 'operation' ? (
+                                <Link
+                                    href={KnownPages.Operation(operation.id)}
+                                    className="min-w-0 truncate font-medium text-primary underline-offset-4 hover:underline"
+                                >
+                                    {operation.label}
+                                </Link>
+                            ) : (
+                                <span className="min-w-0 truncate font-medium">
+                                    {operation.label}
+                                </span>
+                            )}
+                            {operation.kind === 'sowing' && locationLabel ? (
+                                <Chip
+                                    color={
+                                        operation.sowingLocation ===
+                                        'greenhouse'
+                                            ? 'success'
+                                            : 'neutral'
+                                    }
+                                    size="sm"
+                                    variant="outlined"
+                                >
+                                    {locationLabel}
+                                </Chip>
+                            ) : null}
+                        </div>
                         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                             {operation.accountUserNames.length ? (
                                 <span className="max-w-full truncate">
@@ -120,6 +189,12 @@ export function OperationListItem({
                             {operation.raisedBedFieldPosition ? (
                                 <span>{operation.raisedBedFieldPosition}</span>
                             ) : null}
+                            {operation.assignedUserNames.length ? (
+                                <span className="max-w-full truncate">
+                                    Dodijeljeno:{' '}
+                                    {operation.assignedUserNames.join(', ')}
+                                </span>
+                            ) : null}
                         </div>
                     </Stack>
                 </div>
@@ -129,7 +204,7 @@ export function OperationListItem({
                         color={statusColor(operation.status)}
                         size="sm"
                     >
-                        {statusLabel(operation.status)}
+                        {rowStatusLabel(operation)}
                     </Chip>
                     {currentStatusDate ? (
                         <Row
@@ -161,28 +236,32 @@ export function OperationListItem({
                             {operation.createdAt}
                         </LocalDateTime>
                     </Typography>
-                    {operation.status === 'pendingVerification' ? (
-                        <VerifyOperationModal
-                            operationId={operation.id}
-                            label={operation.label}
-                            trigger={
-                                <IconButton
-                                    variant="plain"
-                                    title="Verificiraj operaciju"
-                                >
-                                    <Check className="size-4 shrink-0" />
-                                </IconButton>
-                            }
-                        />
+                    {operation.kind === 'operation' && actionPayload ? (
+                        <>
+                            {operation.status === 'pendingVerification' ? (
+                                <VerifyOperationModal
+                                    operationId={operation.id}
+                                    label={operation.label}
+                                    trigger={
+                                        <IconButton
+                                            variant="plain"
+                                            title="Verificiraj operaciju"
+                                        >
+                                            <Check className="size-4 shrink-0" />
+                                        </IconButton>
+                                    }
+                                />
+                            ) : null}
+                            <OperationRescheduleButton
+                                operation={actionPayload}
+                                operationLabel={operation.label}
+                            />
+                            <OperationCancelButton
+                                operation={actionPayload}
+                                operationLabel={operation.label}
+                            />
+                        </>
                     ) : null}
-                    <OperationRescheduleButton
-                        operation={actionPayload}
-                        operationLabel={operation.label}
-                    />
-                    <OperationCancelButton
-                        operation={actionPayload}
-                        operationLabel={operation.label}
-                    />
                 </div>
             </div>
         </li>
