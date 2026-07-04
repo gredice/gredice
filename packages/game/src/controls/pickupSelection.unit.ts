@@ -5,7 +5,10 @@ import { Vector3 } from 'three';
 import { createActiveDragPreviewTarget } from '../dragPreviewIdentity';
 import type { Block } from '../types/Block';
 import type { Stack } from '../types/Stack';
-import { createPickupSelectionMovingSegments } from './pickupSelection';
+import {
+    createPickupSelectionMoveRequests,
+    createPickupSelectionMovingSegments,
+} from './pickupSelection';
 
 function createBlock(name: string, id = name): Block {
     return {
@@ -117,6 +120,57 @@ describe('createPickupSelectionMovingSegments', () => {
         );
         assert.equal(segments[0]?.canRecycle, false);
         assert.equal(segments[1]?.canRecycle, false);
+    });
+
+    it('creates move requests for the primary block and additional selected blocks', () => {
+        const primaryBlock = createBlock('Tree', 'primary');
+        const extraBlock = createBlock('Raised_Bed', 'extra');
+        const upperBlock = createBlock('Tree', 'upper');
+        const primaryStack = createStack(0, 0, [primaryBlock]);
+        const extraStack = createStack(2, 1, [extraBlock, upperBlock]);
+        const primaryTarget = createActiveDragPreviewTarget({
+            blockId: primaryBlock.id,
+            blockIndex: 0,
+            stackPosition: primaryStack.position,
+        });
+        const extraTarget = createActiveDragPreviewTarget({
+            blockId: extraBlock.id,
+            blockIndex: 0,
+            stackPosition: extraStack.position,
+        });
+
+        const segments = createPickupSelectionMovingSegments({
+            blockData,
+            canRecyclePrimarySegment: true,
+            primaryTarget,
+            selectedTargets: [primaryTarget, extraTarget],
+            stacks: [primaryStack, extraStack],
+        });
+        const moveRequests = createPickupSelectionMoveRequests(segments, {
+            x: 1,
+            z: -1,
+        });
+
+        assert.deepEqual(moveRequests, [
+            {
+                sourcePosition: { x: 0, z: 0 },
+                destinationPosition: { x: 1, z: -1 },
+                blockIndex: 0,
+                sourceBlockId: 'primary',
+            },
+            {
+                sourcePosition: { x: 2, z: 1 },
+                destinationPosition: { x: 3, z: 0 },
+                blockIndex: 0,
+                sourceBlockId: 'extra',
+            },
+            {
+                sourcePosition: { x: 2, z: 1 },
+                destinationPosition: { x: 3, z: 0 },
+                blockIndex: 0,
+                sourceBlockId: 'upper',
+            },
+        ]);
     });
 
     it('dedupes one stack by the lowest selected block', () => {

@@ -15,6 +15,13 @@ export type AttachedPickupSegment = {
     baseHeight: number;
 };
 
+export type PickupSelectionMoveRequest = {
+    sourcePosition: { x: number; z: number };
+    destinationPosition: { x: number; z: number };
+    blockIndex: number;
+    sourceBlockId: string;
+};
+
 type SelectedSegmentCandidate = {
     target: ActiveDragPreviewTarget;
     sourceStack: Stack;
@@ -167,4 +174,24 @@ export function createPickupSelectionMovingSegments({
             canRecycle: false,
         },
     ];
+}
+
+export function createPickupSelectionMoveRequests(
+    movingSegments: MovingSegment[],
+    relative: { x: number; z: number },
+): PickupSelectionMoveRequest[] {
+    return movingSegments.flatMap((segment) =>
+        segment.blocks.map((segmentBlock) => ({
+            sourcePosition: {
+                x: segment.sourceStack.position.x,
+                z: segment.sourceStack.position.z,
+            },
+            destinationPosition: {
+                x: segment.sourceStack.position.x + relative.x,
+                z: segment.sourceStack.position.z + relative.z,
+            },
+            blockIndex: segment.sourceStartIndex,
+            sourceBlockId: segmentBlock.id,
+        })),
+    );
 }

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { createActiveDragPreviewTarget } from './dragPreviewIdentity';
 import type { ActiveDragPreview } from './useGameState';
 import { activeDragPreviewsEqual, createGameState } from './useGameState';
 
@@ -92,6 +93,74 @@ test('setActiveDragPreview skips equivalent drag preview updates', () => {
         assert.equal(updateCount, 2);
     } finally {
         unsubscribe();
+        store.getState().audio.dispose();
+    }
+});
+
+test('addPickupSelectionTarget appends new targets and prevents duplicates', () => {
+    const store = createGameState({
+        appBaseUrl: '',
+        freezeTime: new Date('2026-01-01T12:00:00.000Z'),
+        isMock: true,
+    });
+    const primaryTarget = createActiveDragPreviewTarget({
+        blockId: 'primary',
+        blockIndex: 0,
+        stackPosition: { x: 0, z: 0 },
+    });
+    const extraTarget = createActiveDragPreviewTarget({
+        blockId: 'extra',
+        blockIndex: 0,
+        stackPosition: { x: 1, z: 0 },
+    });
+
+    try {
+        assert.equal(
+            store.getState().addPickupSelectionTarget(primaryTarget),
+            true,
+        );
+        assert.equal(
+            store.getState().addPickupSelectionTarget(primaryTarget),
+            false,
+        );
+        assert.equal(
+            store.getState().addPickupSelectionTarget(extraTarget),
+            true,
+        );
+        assert.deepEqual(store.getState().pickupSelectionTargets, [
+            primaryTarget,
+            extraTarget,
+        ]);
+    } finally {
+        store.getState().audio.dispose();
+    }
+});
+
+test('clearPickupSelectionTargets resets every active pickup target', () => {
+    const store = createGameState({
+        appBaseUrl: '',
+        freezeTime: new Date('2026-01-01T12:00:00.000Z'),
+        isMock: true,
+    });
+
+    try {
+        store.getState().setPickupSelectionTargets([
+            createActiveDragPreviewTarget({
+                blockId: 'primary',
+                blockIndex: 0,
+                stackPosition: { x: 0, z: 0 },
+            }),
+            createActiveDragPreviewTarget({
+                blockId: 'extra',
+                blockIndex: 0,
+                stackPosition: { x: 1, z: 0 },
+            }),
+        ]);
+
+        store.getState().clearPickupSelectionTargets();
+
+        assert.deepEqual(store.getState().pickupSelectionTargets, []);
+    } finally {
         store.getState().audio.dispose();
     }
 });
