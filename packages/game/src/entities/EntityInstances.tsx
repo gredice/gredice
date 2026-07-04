@@ -24,6 +24,7 @@ import {
     type GroundPatchSurface,
     useGroundPatchMaterial,
 } from './helpers/groundPatchMaterial';
+import { MulchPatchInstances } from './raisedBed/MulchPatch';
 import { tulipBouquetStems } from './tulipBouquet';
 
 export const instancedBlockNames = [
@@ -545,39 +546,7 @@ export function EntityInstances({
                 snowLift={0.002}
                 {...commonSnowProps}
             />
-            <EntityInstancesAssetBlock
-                assetName="MulchHey"
-                stacks={stacks}
-                name="MulchHey"
-                scale={[3, 3, 3]}
-                geometry={(gltf) => gltf.nodes.Mulch_Hey.geometry}
-                material={(gltf) => gltf.nodes.Mulch_Hey.material}
-                snow={snowPresets.mulch}
-                snowLift={0.002}
-                {...commonSnowProps}
-            />
-            <EntityInstancesAssetBlock
-                assetName="MulchCoconut"
-                stacks={stacks}
-                name="MulchCoconut"
-                scale={[3, 3, 3]}
-                geometry={(gltf) => gltf.nodes.Mulch_Coconut.geometry}
-                material={(gltf) => gltf.nodes.Mulch_Coconut.material}
-                snow={snowPresets.mulch}
-                snowLift={0.002}
-                {...commonSnowProps}
-            />
-            <EntityInstancesAssetBlock
-                assetName="MulchWood"
-                stacks={stacks}
-                name="MulchWood"
-                scale={[3, 3, 3]}
-                geometry={(gltf) => gltf.nodes.Mulch_Wood.geometry}
-                material={(gltf) => gltf.nodes.Mulch_Wood.material}
-                snow={snowPresets.mulch}
-                snowLift={0.002}
-                {...commonSnowProps}
-            />
+            <MulchPatchInstances stacks={stacks} {...commonSnowProps} />
             {tulipBouquetStems.map((stem) => (
                 <EntityInstancesAssetBlock
                     key={`Tulip-${stem.key}`}
