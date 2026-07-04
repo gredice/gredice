@@ -40,10 +40,12 @@ export function CommunityMarkdownInput({
                 className={cx(
                     markdownEditorClassNames,
                     "[&_[class*='contentEditable']]:min-h-32",
+                    "[&_[class*='contentEditable']]:max-h-72",
+                    "[&_[class*='contentEditable']]:overflow-y-auto",
                 )}
                 contentEditableClassName={cx(
                     markdownEditorContentEditableClassName,
-                    'min-h-32 bg-card',
+                    'min-h-32 max-h-72 overflow-y-auto bg-card',
                 )}
                 markdown={value}
                 onChange={onChange}

@@ -4,14 +4,30 @@ import { clientAuthenticated } from '@gredice/client';
 import { Button } from '@gredice/ui/Button';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Input } from '@gredice/ui/Input';
-import { Check, Edit, Send } from '@gredice/ui/icons';
+import {
+    ArrowDownToLine,
+    Check,
+    Droplet,
+    Edit,
+    Leaf,
+    Ruler,
+    Send,
+    ShoppingCart,
+    Sprout,
+    Store,
+    Sun,
+    SunMoon,
+    Tally3,
+    Thermometer,
+    Timer,
+} from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import dynamic from 'next/dynamic';
-import { useEffect, useId, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useId, useMemo, useState } from 'react';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { InlineLoginDialog } from '../auth/InlineLoginDialog';
 
@@ -122,6 +138,91 @@ const selectControlClassName =
     'h-10 w-full rounded-md border border-border/80 bg-card px-3 text-sm text-foreground shadow-sm ring-offset-background transition-colors hover:border-primary/40 focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-muted/70 disabled:text-muted-foreground';
 const textareaControlClassName =
     'w-full rounded-md border border-border/80 bg-card px-3 py-2 text-sm text-foreground shadow-sm ring-offset-background transition-colors placeholder:text-muted-foreground/70 hover:border-primary/40 focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-muted/70 disabled:text-muted-foreground';
+const attributeIconClassName = 'size-4';
+
+type CommunityEditFieldGroup = 'attributes' | 'content' | 'operations';
+
+const communityEditFieldGroups = [
+    'content',
+    'attributes',
+    'operations',
+] satisfies CommunityEditFieldGroup[];
+
+function communityEditFieldGroup(
+    field: CommunityEditableField,
+): CommunityEditFieldGroup {
+    if (field.controlType === 'operationSuggestion') {
+        return 'operations';
+    }
+
+    if (field.attributePath.startsWith('attributes.')) {
+        return 'attributes';
+    }
+
+    return 'content';
+}
+
+function communityEditFieldGroupLabel(group: CommunityEditFieldGroup) {
+    switch (group) {
+        case 'attributes':
+            return 'Svojstva';
+        case 'operations':
+            return 'Radnje';
+        case 'content':
+            return 'Sadržaj';
+    }
+}
+
+function attributeFieldIcon(field: CommunityEditableField): ReactNode {
+    switch (field.fieldKey) {
+        case 'plant.seeding-distance':
+            return <Ruler aria-hidden className={attributeIconClassName} />;
+        case 'plant.seeding-depth':
+            return (
+                <ArrowDownToLine
+                    aria-hidden
+                    className={attributeIconClassName}
+                />
+            );
+        case 'plant.germination-type':
+            return <Sprout aria-hidden className={attributeIconClassName} />;
+        case 'plant.germination-temperature':
+            return (
+                <Thermometer aria-hidden className={attributeIconClassName} />
+            );
+        case 'plant.germination-window-min':
+        case 'plant.germination-window-max':
+            return <Timer aria-hidden className={attributeIconClassName} />;
+        case 'plant.light':
+            return <Sun aria-hidden className={attributeIconClassName} />;
+        case 'plant.soil':
+            return (
+                <Tally3
+                    aria-hidden
+                    className={cx(attributeIconClassName, 'rotate-90')}
+                />
+            );
+        case 'plant.nutrients':
+            return <Leaf aria-hidden className={attributeIconClassName} />;
+        case 'plant.growth-window-min':
+        case 'plant.growth-window-max':
+            return <SunMoon aria-hidden className={attributeIconClassName} />;
+        case 'plant.water':
+            return <Droplet aria-hidden className={attributeIconClassName} />;
+        case 'plant.harvest-window-min':
+        case 'plant.harvest-window-max':
+        case 'plant.clean-harvest':
+            return <Store aria-hidden className={attributeIconClassName} />;
+        case 'plant.yield-min':
+        case 'plant.yield-max':
+        case 'plant.yield-type':
+            return (
+                <ShoppingCart aria-hidden className={attributeIconClassName} />
+            );
+        default:
+            return null;
+    }
+}
 
 function initialFieldValue(field: CommunityEditableField): FieldValue {
     if (field.controlType === 'operationSuggestion') {
@@ -340,6 +441,8 @@ function isCommunityEditableField(
         value !== null &&
         'fieldKey' in value &&
         typeof value.fieldKey === 'string' &&
+        'attributePath' in value &&
+        typeof value.attributePath === 'string' &&
         'publicLabel' in value &&
         typeof value.publicLabel === 'string' &&
         'controlType' in value &&
@@ -827,6 +930,18 @@ export function CommunityEditButton({
         [fields, values],
     );
 
+    const fieldsByGroup = {
+        content: fields.filter(
+            (field) => communityEditFieldGroup(field) === 'content',
+        ),
+        attributes: fields.filter(
+            (field) => communityEditFieldGroup(field) === 'attributes',
+        ),
+        operations: fields.filter(
+            (field) => communityEditFieldGroup(field) === 'operations',
+        ),
+    };
+
     async function handleSubmit() {
         setError(null);
         setIsSubmitting(true);
@@ -901,9 +1016,98 @@ export function CommunityEditButton({
             </IconButton>
         );
 
+    function renderEditableField(field: CommunityEditableField) {
+        const id = fieldInputId(fieldIdPrefix, field);
+        const group = communityEditFieldGroup(field);
+        const icon = group === 'attributes' ? attributeFieldIcon(field) : null;
+        const label = (
+            <label
+                className={cx('block min-w-0 space-y-1', icon && 'flex-1')}
+                htmlFor={id}
+            >
+                <Typography level="body2" semiBold>
+                    {field.publicLabel}
+                </Typography>
+                {field.helpText ? (
+                    <Typography level="body3" className="text-muted-foreground">
+                        {field.helpText}
+                    </Typography>
+                ) : null}
+            </label>
+        );
+
+        return (
+            <Stack
+                className={cx(
+                    fieldPanelClassName,
+                    group === 'attributes' && 'h-full min-w-0',
+                )}
+                data-field-group={group}
+                data-field-key={field.fieldKey}
+                key={field.fieldKey}
+                spacing={2}
+            >
+                {icon ? (
+                    <Row spacing={3} alignItems="start">
+                        <span
+                            className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border/70 bg-background text-muted-foreground shadow-xs"
+                            data-field-icon={field.fieldKey}
+                        >
+                            {icon}
+                        </span>
+                        {label}
+                    </Row>
+                ) : (
+                    label
+                )}
+                <FieldInput
+                    field={field}
+                    id={id}
+                    onChange={(nextValue) =>
+                        setValues((current) => ({
+                            ...current,
+                            [field.fieldKey]: nextValue,
+                        }))
+                    }
+                    value={values[field.fieldKey] ?? initialFieldValue(field)}
+                />
+            </Stack>
+        );
+    }
+
+    function renderEditableFieldGroup(group: CommunityEditFieldGroup) {
+        const groupFields = fieldsByGroup[group];
+        if (groupFields.length === 0) {
+            return null;
+        }
+
+        const headingId = `${fieldIdPrefix}-${group}-heading`;
+        return (
+            <section
+                aria-labelledby={headingId}
+                className="space-y-3"
+                data-community-edit-group={group}
+                key={group}
+            >
+                <Typography id={headingId} level="body2" semiBold>
+                    {communityEditFieldGroupLabel(group)}
+                </Typography>
+                <div
+                    className={
+                        group === 'attributes'
+                            ? 'grid gap-3 md:grid-cols-2'
+                            : 'space-y-3'
+                    }
+                >
+                    {groupFields.map(renderEditableField)}
+                </div>
+            </section>
+        );
+    }
+
     return (
         <Modal
-            className="max-w-3xl border-border/70 shadow-xl"
+            className="max-w-4xl border-border/70 shadow-xl"
             onOpenChange={setOpen}
             open={open}
             title={triggerLabel}
@@ -989,47 +1193,11 @@ export function CommunityEditButton({
                                 </Typography>
                             </div>
                         ) : (
-                            fields.map((field) => {
-                                const id = fieldInputId(fieldIdPrefix, field);
-                                return (
-                                    <Stack
-                                        className={fieldPanelClassName}
-                                        key={field.fieldKey}
-                                        spacing={2}
-                                    >
-                                        <label
-                                            className="space-y-1"
-                                            htmlFor={id}
-                                        >
-                                            <Typography level="body2" semiBold>
-                                                {field.publicLabel}
-                                            </Typography>
-                                            {field.helpText ? (
-                                                <Typography
-                                                    level="body3"
-                                                    className="text-muted-foreground"
-                                                >
-                                                    {field.helpText}
-                                                </Typography>
-                                            ) : null}
-                                        </label>
-                                        <FieldInput
-                                            field={field}
-                                            id={id}
-                                            onChange={(nextValue) =>
-                                                setValues((current) => ({
-                                                    ...current,
-                                                    [field.fieldKey]: nextValue,
-                                                }))
-                                            }
-                                            value={
-                                                values[field.fieldKey] ??
-                                                initialFieldValue(field)
-                                            }
-                                        />
-                                    </Stack>
-                                );
-                            })
+                            <Stack spacing={4}>
+                                {communityEditFieldGroups.map(
+                                    renderEditableFieldGroup,
+                                )}
+                            </Stack>
                         )}
 
                         <label className="space-y-1">
