@@ -151,5 +151,5 @@ export function formatGardenSunflowerPrice(value: unknown) {
         return '—';
     }
 
-    return `${gardenNumberFormatter.format(value)} suncokreta`;
+    return `${gardenNumberFormatter.format(value)} 🌻`;
 }

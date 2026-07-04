@@ -68,6 +68,6 @@ test('calculatePublicGardenStackStats falls back to stack cells when block direc
 
 test('garden stat formatters include Croatian units and unknown fallbacks', () => {
     assert.equal(formatGardenAreaSquareMeters(6), '6 m²');
-    assert.equal(formatGardenSunflowerPrice(1440), '1.440 suncokreta');
+    assert.equal(formatGardenSunflowerPrice(1440), '1.440 🌻');
     assert.equal(formatGardenSunflowerPrice(null), '—');
 });
