@@ -1,5 +1,4 @@
 import type { BlockData } from '@gredice/client';
-import { isNightOnlyBlockPurchase, isNightTimeOfDay } from '@gredice/js/blocks';
 import { BlockImage } from '@gredice/ui/BlockImage';
 import { Button } from '@gredice/ui/Button';
 import { Divider } from '@gredice/ui/Divider';
@@ -12,7 +11,15 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import Image from 'next/image';
-import { useMemo, useState } from 'react';
+import {
+    type MouseEvent as ReactMouseEvent,
+    type PointerEvent as ReactPointerEvent,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
 import { useBlockData } from '../hooks/useBlockData';
 import { useBlockPlace } from '../hooks/useBlockPlace';
 import { useCurrentAccount } from '../hooks/useCurrentAccount';
@@ -24,6 +31,10 @@ import {
 import { KnownPages } from '../knownPages';
 import { useGameState } from '../useGameState';
 import { HudCard } from './components/HudCard';
+import {
+    getHudEntityPlacementAvailability,
+    type HudEntityPlacementAvailability,
+} from './itemPlacementAvailability';
 
 type HudItemEntity = {
     type: 'entity';
@@ -195,6 +206,248 @@ const sandboxHiddenEntityNames = new Set(['GardenBox']);
 const sandboxPickerImageSrcByLabel = new Map([
     ['Alat', 'https://www.gredice.com/assets/blocks/WateringCan.webp'],
 ]);
+const mouseHudDragStartDistance = 6;
+const touchHudDragStartDistance = 12;
+
+function hudDragStartDistance(pointerType: string) {
+    return pointerType === 'touch'
+        ? touchHudDragStartDistance
+        : mouseHudDragStartDistance;
+}
+
+type HudEntityPlacementState = {
+    availability: HudEntityPlacementAvailability;
+    block: BlockData;
+};
+
+function useHudEntityPlacementState(
+    name: string,
+): HudEntityPlacementState | null {
+    const { data: blockData } = useBlockData();
+    const timeOfDay = useGameState((state) => state.timeOfDay);
+    const { data: account, isLoading: isAccountLoading } = useCurrentAccount();
+    const isSandbox = useIsSandboxGarden();
+    const block = blockData?.find((block) => block.information.name === name);
+    if (!block) {
+        return null;
+    }
+
+    return {
+        availability: getHudEntityPlacementAvailability({
+            accountSunflowers: account?.sunflowers.amount,
+            block,
+            isAccountLoading,
+            isSandbox,
+            timeOfDay,
+        }),
+        block,
+    };
+}
+
+type HudDragSession = {
+    activated: boolean;
+    element: HTMLElement;
+    pointerId: number;
+    pointerType: string;
+    startClientX: number;
+    startClientY: number;
+};
+
+function releasePointerCapture(element: HTMLElement, pointerId: number) {
+    try {
+        if (element.hasPointerCapture(pointerId)) {
+            element.releasePointerCapture(pointerId);
+        }
+    } catch {
+        // Synthetic test events do not always create a browser pointer capture.
+    }
+}
+
+function useHudEntityDragPlacement({
+    blockName,
+    enabled,
+}: {
+    blockName: string;
+    enabled: boolean;
+}) {
+    const sessionRef = useRef<HudDragSession | null>(null);
+    const listenerCleanupRef = useRef<(() => void) | null>(null);
+    const suppressNextClick = useRef(false);
+    const beginHudPlacementDrag = useGameState(
+        (state) => state.beginHudPlacementDrag,
+    );
+    const updateHudPlacementDragPointer = useGameState(
+        (state) => state.updateHudPlacementDragPointer,
+    );
+    const requestHudPlacementDrop = useGameState(
+        (state) => state.requestHudPlacementDrop,
+    );
+    const clearHudPlacementDrag = useGameState(
+        (state) => state.clearHudPlacementDrag,
+    );
+
+    const cleanupSession = useCallback(() => {
+        const session = sessionRef.current;
+        if (session) {
+            releasePointerCapture(session.element, session.pointerId);
+        }
+
+        listenerCleanupRef.current?.();
+        listenerCleanupRef.current = null;
+        sessionRef.current = null;
+    }, []);
+
+    const handlePointerMove = useCallback(
+        (event: PointerEvent) => {
+            const session = sessionRef.current;
+            if (!session || event.pointerId !== session.pointerId) {
+                return;
+            }
+
+            const pointer = {
+                clientX: event.clientX,
+                clientY: event.clientY,
+                pointerId: event.pointerId,
+            };
+
+            if (!session.activated) {
+                const distance = Math.hypot(
+                    event.clientX - session.startClientX,
+                    event.clientY - session.startClientY,
+                );
+                if (distance <= hudDragStartDistance(session.pointerType)) {
+                    return;
+                }
+
+                session.activated = true;
+                suppressNextClick.current = true;
+                beginHudPlacementDrag({
+                    blockName,
+                    pointerType: session.pointerType,
+                    ...pointer,
+                });
+            } else {
+                updateHudPlacementDragPointer(pointer);
+            }
+
+            event.preventDefault();
+        },
+        [beginHudPlacementDrag, blockName, updateHudPlacementDragPointer],
+    );
+
+    const handlePointerUp = useCallback(
+        (event: PointerEvent) => {
+            const session = sessionRef.current;
+            if (!session || event.pointerId !== session.pointerId) {
+                return;
+            }
+
+            if (session.activated) {
+                event.preventDefault();
+                requestHudPlacementDrop({
+                    clientX: event.clientX,
+                    clientY: event.clientY,
+                    pointerId: event.pointerId,
+                });
+            }
+
+            cleanupSession();
+        },
+        [cleanupSession, requestHudPlacementDrop],
+    );
+
+    const handlePointerCancel = useCallback(
+        (event: PointerEvent) => {
+            const session = sessionRef.current;
+            if (!session || event.pointerId !== session.pointerId) {
+                return;
+            }
+
+            if (session.activated) {
+                clearHudPlacementDrag();
+            }
+
+            cleanupSession();
+        },
+        [cleanupSession, clearHudPlacementDrag],
+    );
+
+    const addSessionListeners = useCallback(() => {
+        listenerCleanupRef.current?.();
+
+        const handleWindowPointerMove = (event: PointerEvent) =>
+            handlePointerMove(event);
+        const handleWindowPointerUp = (event: PointerEvent) =>
+            handlePointerUp(event);
+        const handleWindowPointerCancel = (event: PointerEvent) =>
+            handlePointerCancel(event);
+
+        window.addEventListener('pointermove', handleWindowPointerMove, {
+            passive: false,
+        });
+        window.addEventListener('pointerup', handleWindowPointerUp);
+        window.addEventListener('pointercancel', handleWindowPointerCancel);
+
+        listenerCleanupRef.current = () => {
+            window.removeEventListener('pointermove', handleWindowPointerMove);
+            window.removeEventListener('pointerup', handleWindowPointerUp);
+            window.removeEventListener(
+                'pointercancel',
+                handleWindowPointerCancel,
+            );
+        };
+    }, [handlePointerCancel, handlePointerMove, handlePointerUp]);
+
+    useEffect(() => cleanupSession, [cleanupSession]);
+
+    const handlePointerDown = useCallback(
+        (event: ReactPointerEvent<HTMLElement>) => {
+            if (
+                !enabled ||
+                event.button !== 0 ||
+                event.isPrimary === false ||
+                sessionRef.current
+            ) {
+                return;
+            }
+
+            try {
+                event.currentTarget.setPointerCapture(event.pointerId);
+            } catch {
+                // Pointer capture is best-effort for browser-driven drags.
+            }
+
+            sessionRef.current = {
+                activated: false,
+                element: event.currentTarget,
+                pointerId: event.pointerId,
+                pointerType: event.pointerType,
+                startClientX: event.clientX,
+                startClientY: event.clientY,
+            };
+            addSessionListeners();
+        },
+        [addSessionListeners, enabled],
+    );
+
+    const handleClick = useCallback((event: ReactMouseEvent<HTMLElement>) => {
+        if (!suppressNextClick.current) {
+            return;
+        }
+
+        suppressNextClick.current = false;
+        event.preventDefault();
+        event.stopPropagation();
+    }, []);
+
+    return {
+        className: enabled
+            ? 'cursor-grab touch-none active:cursor-grabbing'
+            : '',
+        onClick: handleClick,
+        onPointerDown: handlePointerDown,
+    };
+}
 
 function collectEntityNames(hudItems: HudItem[], names = new Set<string>()) {
     for (const item of hudItems) {
@@ -406,33 +659,25 @@ function PlaceEntityButton({
     name: string;
     simple?: boolean;
 }) {
-    const { data: blockData } = useBlockData();
     const placeBlock = useBlockPlace();
-    const timeOfDay = useGameState((state) => state.timeOfDay);
-    const { data: account, isLoading: isAccountLoading } = useCurrentAccount();
-    // Sandbox ("play") gardens build for free — every block is placeable
-    // regardless of price or night-only availability.
+    const entityPlacement = useHudEntityPlacementState(name);
     const isSandbox = useIsSandboxGarden();
 
-    const block = blockData?.find((block) => block.information.name === name);
-    if (!block) return null;
-    const sunflowerPrice = block.prices.sunflowers ?? 0;
-    const hasSunflowerPrice = sunflowerPrice > 0;
-    const isAvailableNow =
-        isSandbox ||
-        !isNightOnlyBlockPurchase(block) ||
-        isNightTimeOfDay(timeOfDay);
-    const accountSunflowers = account?.sunflowers.amount;
-    const hasEnoughSunflowers =
-        isSandbox ||
-        !hasSunflowerPrice ||
-        (typeof accountSunflowers === 'number' &&
-            accountSunflowers >= sunflowerPrice);
-    const isPlaceable = isSandbox || hasSunflowerPrice;
+    if (!entityPlacement) return null;
+
+    const {
+        availabilityMessage,
+        hasEnoughSunflowers,
+        hasSunflowerPrice,
+        insufficientSunflowersMessage,
+        isAvailableNow,
+        isPlaceable,
+        sunflowerPrice,
+        canPlace,
+    } = entityPlacement.availability;
 
     function placeEntity() {
-        if (!blockData) {
-            console.warn('Cannot place entity, missing data');
+        if (!canPlace) {
             return;
         }
 
@@ -445,14 +690,6 @@ function PlaceEntityButton({
 
     const errorMessage =
         placeBlock.error instanceof Error ? placeBlock.error.message : null;
-    const availabilityMessage =
-        !isAvailableNow && hasSunflowerPrice ? 'Dostupno samo noću.' : null;
-    const insufficientSunflowersMessage =
-        !hasEnoughSunflowers &&
-        !isAccountLoading &&
-        typeof accountSunflowers === 'number'
-            ? 'Nedovoljno suncokreta.'
-            : null;
 
     return (
         <Stack spacing={1}>
@@ -508,10 +745,15 @@ function PlaceEntityButton({
 
 function EntityItem({ name }: HudItemEntity) {
     const [open, setOpen] = useState(false);
-    const { data: blockData } = useBlockData();
+    const entityPlacement = useHudEntityPlacementState(name);
+    const dragPlacement = useHudEntityDragPlacement({
+        blockName: name,
+        enabled: entityPlacement?.availability.canPlace ?? false,
+    });
 
-    const block = blockData?.find((block) => block.information.name === name);
-    if (!block) return null;
+    if (!entityPlacement) return null;
+
+    const { block } = entityPlacement;
 
     return (
         <Stack spacing={2}>
@@ -519,13 +761,17 @@ function EntityItem({ name }: HudItemEntity) {
                 open={open}
                 sideOffset={12}
                 onOpenChange={(open) => setOpen(open)}
+                data-items-hud-surface="true"
                 className="w-fit p-2 max-w-xs md:w-80 border-tertiary border-b-4"
                 trigger={
                     <IconButton
                         aria-label={block.information.label}
                         size="lg"
-                        className="size-16"
+                        className={cx('size-16', dragPlacement.className)}
                         variant="plain"
+                        data-items-hud-entity={name}
+                        onClick={dragPlacement.onClick}
+                        onPointerDown={dragPlacement.onPointerDown}
                     >
                         <BlockImage
                             blockName={name}
@@ -626,6 +872,7 @@ function PickerItem({ label, items, imageSrc }: HudItemPicker) {
             onOpenChange={(open) => {
                 if (!open) setActiveSubPicker(null);
             }}
+            data-items-hud-surface="true"
             trigger={
                 <IconButton
                     aria-label={label}
@@ -706,6 +953,7 @@ export function ItemsHud() {
     return (
         <HudCard
             data-items-hud
+            data-items-hud-surface="true"
             {...(dropTargetVisible
                 ? {
                       [itemsHudDropTargetAttribute]: 'true',

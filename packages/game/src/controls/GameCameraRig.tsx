@@ -175,8 +175,9 @@ export function GameCameraRig({
     const worldRotate = useGameState((state) => state.worldRotate);
     const view = useGameState((state) => state.view);
     const closeupBlock = useGameState((state) => state.closeupBlock);
-    const isBlockPlacementActive = useGameState((state) =>
-        Boolean(state.pickupBlock),
+    const isBlockPlacementActive = useGameState(
+        (state) =>
+            Boolean(state.pickupBlock) || Boolean(state.hudPlacementDrag),
     );
     const { data: garden } = useCurrentGarden();
 

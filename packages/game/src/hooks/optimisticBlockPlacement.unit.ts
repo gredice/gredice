@@ -239,6 +239,62 @@ describe('createOptimisticBlockPlacement', () => {
             },
         ]);
     });
+
+    it('uses a requested position exactly for dropped HUD items', () => {
+        const placement = createOptimisticBlockPlacement(
+            {
+                stacks: [],
+            },
+            blockData,
+            'Shade',
+            'optimistic-shade',
+            {
+                requestedPosition: { x: 4, y: -2 },
+            },
+        );
+
+        assert.ok(placement);
+        assert.deepStrictEqual(placement.position, new Vector3(4, 0, -2));
+        assert.deepStrictEqual(placement.stacks, [
+            {
+                position: new Vector3(4, 0, -2),
+                blocks: [
+                    {
+                        id: 'optimistic-shade',
+                        name: 'Shade',
+                        rotation: 0,
+                    },
+                ],
+            },
+        ]);
+    });
+
+    it('does not fall back when a requested HUD drop position is invalid', () => {
+        const placement = createOptimisticBlockPlacement(
+            {
+                stacks: [
+                    {
+                        position: new Vector3(0, 0, 0),
+                        blocks: [
+                            {
+                                id: 'water-a',
+                                name: 'Block_Water',
+                                rotation: 0,
+                            },
+                        ],
+                    },
+                ],
+            },
+            blockData,
+            'Shade',
+            'optimistic-shade',
+            {
+                requestedPosition: { x: 0, y: 0 },
+            },
+        );
+
+        assert.equal(placement, null);
+    });
 });
 
 describe('replaceOptimisticBlockId', () => {

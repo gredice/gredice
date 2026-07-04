@@ -12,6 +12,7 @@ import {
 import { BlockInteractionLayer } from './controls/BlockInteractionLayer';
 import { BlockInteractionRegistryProvider } from './controls/BlockInteractionRegistry';
 import { GameCameraRig } from './controls/GameCameraRig';
+import { HudPlacementDragPreview } from './controls/HudPlacementDragPreview';
 import { Bees } from './entities/bees/Bees';
 import { Birds } from './entities/birds/Birds';
 import { Cats } from './entities/cats/Cats';
@@ -289,6 +290,7 @@ export function GameScene({
                     <ParticleSystemProvider>
                         <BlockInteractionRegistryProvider>
                             <PlacementGrid />
+                            <HudPlacementDragPreview />
                             <Environment
                                 noBackground={noBackground}
                                 noWeather={weatherDisabled}

@@ -68,6 +68,32 @@ export type ActiveDragPreview = {
     isOverRecycler: boolean;
 };
 
+export type HudPlacementDropRequest = {
+    clientX: number;
+    clientY: number;
+    sequence: number;
+};
+
+export type HudPlacementDrag = {
+    blockName: string;
+    clientX: number;
+    clientY: number;
+    dropRequest: HudPlacementDropRequest | null;
+    pointerId: number;
+    pointerType: string;
+    startedAt: number;
+};
+
+export type HudPlacementDragStart = Pick<
+    HudPlacementDrag,
+    'blockName' | 'clientX' | 'clientY' | 'pointerId' | 'pointerType'
+>;
+
+export type HudPlacementPointerUpdate = Pick<
+    HudPlacementDrag,
+    'clientX' | 'clientY' | 'pointerId'
+>;
+
 const activeDragPreviewEpsilon = 0.0001;
 
 function activeDragPreviewNumbersEqual(left: number, right: number) {
@@ -284,6 +310,11 @@ export type GameState = {
     setItemsHudDropTargetActive: (active: boolean) => void;
     activeDragPreview: ActiveDragPreview | null;
     setActiveDragPreview: (dragPreview: ActiveDragPreview | null) => void;
+    hudPlacementDrag: HudPlacementDrag | null;
+    beginHudPlacementDrag: (drag: HudPlacementDragStart) => void;
+    updateHudPlacementDragPointer: (pointer: HudPlacementPointerUpdate) => void;
+    requestHudPlacementDrop: (pointer: HudPlacementPointerUpdate) => void;
+    clearHudPlacementDrag: () => void;
     openGardenBoxBlockId: string | null;
     setOpenGardenBoxBlockId: (blockId: string | null) => void;
     gardenBoxTooltip: GardenBoxTooltip | null;
@@ -558,6 +589,60 @@ export function createGameState({
                     ? state
                     : { activeDragPreview },
             ),
+        hudPlacementDrag: null,
+        beginHudPlacementDrag: (drag) =>
+            set({
+                hudPlacementDrag: {
+                    ...drag,
+                    dropRequest: null,
+                    startedAt: Date.now(),
+                },
+            }),
+        updateHudPlacementDragPointer: (pointer) =>
+            set((state) => {
+                const drag = state.hudPlacementDrag;
+                if (!drag || drag.pointerId !== pointer.pointerId) {
+                    return state;
+                }
+
+                if (
+                    drag.clientX === pointer.clientX &&
+                    drag.clientY === pointer.clientY &&
+                    drag.dropRequest === null
+                ) {
+                    return state;
+                }
+
+                return {
+                    hudPlacementDrag: {
+                        ...drag,
+                        clientX: pointer.clientX,
+                        clientY: pointer.clientY,
+                        dropRequest: null,
+                    },
+                };
+            }),
+        requestHudPlacementDrop: (pointer) =>
+            set((state) => {
+                const drag = state.hudPlacementDrag;
+                if (!drag || drag.pointerId !== pointer.pointerId) {
+                    return state;
+                }
+
+                return {
+                    hudPlacementDrag: {
+                        ...drag,
+                        clientX: pointer.clientX,
+                        clientY: pointer.clientY,
+                        dropRequest: {
+                            clientX: pointer.clientX,
+                            clientY: pointer.clientY,
+                            sequence: (drag.dropRequest?.sequence ?? 0) + 1,
+                        },
+                    },
+                };
+            }),
+        clearHudPlacementDrag: () => set({ hudPlacementDrag: null }),
         openGardenBoxBlockId: null,
         setOpenGardenBoxBlockId: (openGardenBoxBlockId) =>
             set({ openGardenBoxBlockId }),

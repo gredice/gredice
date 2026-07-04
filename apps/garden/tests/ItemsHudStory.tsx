@@ -21,6 +21,7 @@ import { defaultLocalSandboxStorageKey } from '../../../packages/game/src/localS
 import {
     createGameState,
     GameStateContext,
+    useGameState,
 } from '../../../packages/game/src/useGameState';
 
 const now = '2026-05-13T00:00:00.000Z';
@@ -340,10 +341,56 @@ function ItemsHudTestFrame({ closeup = false }: { closeup?: boolean }) {
     );
 }
 
+function HudPlacementDragStateProbe() {
+    const drag = useGameState((state) => state.hudPlacementDrag);
+
+    return (
+        <output data-testid="hud-placement-drag-state">
+            {drag
+                ? `${drag.blockName}:${drag.dropRequest ? 'drop' : 'drag'}`
+                : 'idle'}
+        </output>
+    );
+}
+
 export function ItemsHudAlignmentStory() {
     return (
         <ItemsHudTestProviders>
             <div className="relative h-screen w-screen overflow-hidden">
+                <div
+                    data-testid="bottom-hud"
+                    className={gameHudBottomBarClassName}
+                >
+                    <BottomControlsTestFrame />
+                    <ItemsHudTestFrame />
+                </div>
+            </div>
+        </ItemsHudTestProviders>
+    );
+}
+
+export function ItemsHudDragStateStory() {
+    return (
+        <ItemsHudTestProviders>
+            <div className="relative h-screen w-screen overflow-hidden">
+                <HudPlacementDragStateProbe />
+                <div
+                    data-testid="bottom-hud"
+                    className={gameHudBottomBarClassName}
+                >
+                    <BottomControlsTestFrame />
+                    <ItemsHudTestFrame />
+                </div>
+            </div>
+        </ItemsHudTestProviders>
+    );
+}
+
+export function LowSunflowerBalanceItemsHudDragStateStory() {
+    return (
+        <ItemsHudTestProviders accountSunflowers={20}>
+            <div className="relative h-screen w-screen overflow-hidden">
+                <HudPlacementDragStateProbe />
                 <div
                     data-testid="bottom-hud"
                     className={gameHudBottomBarClassName}

@@ -79,6 +79,30 @@ function createPlacementStacks(stacks: Stack[]): GardenBlockStack[] {
     }));
 }
 
+export function resolveBlockPlacement<TGarden extends GardenWithStacks>(
+    garden: TGarden,
+    blockData: PlacementBlockData[] | null | undefined,
+    blockName: string,
+    options: {
+        preferredPosition?: BlockPlacementPosition | null;
+        requestedPosition?: BlockPlacementPosition | null;
+    } = {},
+) {
+    if (!blockData) {
+        return null;
+    }
+
+    return resolveGardenBlockPlacement({
+        blockName,
+        stacks: createPlacementStacks(garden.stacks),
+        blockNameById: createBlockNameById(garden.stacks),
+        blockRotationById: createBlockRotationById(garden.stacks),
+        blockDataByName: createBlockDataByName(blockData),
+        preferredPosition: options.preferredPosition ?? undefined,
+        requestedPosition: options.requestedPosition ?? undefined,
+    });
+}
+
 export function createOptimisticBlockPlacement<
     TGarden extends GardenWithStacks,
 >(
@@ -88,21 +112,14 @@ export function createOptimisticBlockPlacement<
     blockId: string,
     options: {
         preferredPosition?: BlockPlacementPosition | null;
+        requestedPosition?: BlockPlacementPosition | null;
     } = {},
 ) {
-    if (!blockData) {
-        return null;
-    }
-
-    const placement = resolveGardenBlockPlacement({
-        blockName,
-        stacks: createPlacementStacks(garden.stacks),
-        blockNameById: createBlockNameById(garden.stacks),
-        blockRotationById: createBlockRotationById(garden.stacks),
-        blockDataByName: createBlockDataByName(blockData),
-        preferredPosition: options.preferredPosition ?? undefined,
+    const placement = resolveBlockPlacement(garden, blockData, blockName, {
+        preferredPosition: options.preferredPosition,
+        requestedPosition: options.requestedPosition,
     });
-    if (!placement.valid) {
+    if (!placement?.valid) {
         return null;
     }
 

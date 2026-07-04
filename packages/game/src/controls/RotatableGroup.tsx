@@ -37,7 +37,13 @@ export function RotatableGroup({
 
     function doRotate() {
         const gameState = gameStateStore?.getState();
-        if (gameState?.isDragging || gameState?.pickupBlock) return false;
+        if (
+            gameState?.isDragging ||
+            gameState?.pickupBlock ||
+            gameState?.hudPlacementDrag
+        ) {
+            return false;
+        }
 
         const garden = getCurrentGarden();
         const attachedRaisedBedBlockId =
