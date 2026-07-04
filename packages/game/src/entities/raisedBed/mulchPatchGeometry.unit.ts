@@ -56,6 +56,71 @@ function hasBottomEdgeAtX(geometry: BufferGeometry, x: number) {
     return false;
 }
 
+function hasTopEdgeShadeAtX(
+    geometry: BufferGeometry,
+    x: number,
+    edgeShade: number,
+) {
+    const position = geometry.getAttribute('position');
+    const mulchEdge = geometry.getAttribute('mulchEdge');
+
+    for (let index = 0; index < position.count; index += 3) {
+        const triangle = [index, index + 1, index + 2];
+
+        for (const firstIndex of triangle) {
+            for (const secondIndex of triangle) {
+                if (firstIndex >= secondIndex) {
+                    continue;
+                }
+
+                if (
+                    rounded(position.getX(firstIndex)) === rounded(x) &&
+                    rounded(position.getX(secondIndex)) === rounded(x) &&
+                    rounded(position.getY(firstIndex)) === 0.018 &&
+                    rounded(position.getY(secondIndex)) === 0.018 &&
+                    rounded(mulchEdge.getX(firstIndex)) === edgeShade &&
+                    rounded(mulchEdge.getX(secondIndex)) === edgeShade
+                ) {
+                    return true;
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
+function getMulchEdgeRange(geometry: BufferGeometry) {
+    const position = geometry.getAttribute('position');
+    const mulchEdge = geometry.getAttribute('mulchEdge');
+    assert.equal(mulchEdge.count, position.count);
+
+    const values = Array.from({ length: mulchEdge.count }, (_, index) =>
+        rounded(mulchEdge.getX(index)),
+    );
+
+    return {
+        max: Math.max(...values),
+        min: Math.min(...values),
+    };
+}
+
+function hasRoundedOuterCornerPoint(geometry: BufferGeometry) {
+    const position = geometry.getAttribute('position');
+
+    for (let index = 0; index < position.count; index += 1) {
+        const x = rounded(position.getX(index));
+        const y = rounded(position.getY(index));
+        const z = rounded(position.getZ(index));
+
+        if (y === 0.018 && x > 0.32 && x < 0.38 && z > 0.32 && z < 0.38) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 test('mulch patch target resolver connects neighbors on the same height only', () => {
     const target = {
         position: [0, 1, 0],
@@ -108,6 +173,8 @@ test('isolated mulch patch keeps an inset rounded footprint', () => {
         minY: 0,
         minZ: -0.39,
     });
+    assert.equal(hasRoundedOuterCornerPoint(geometry), true);
+    assert.deepEqual(getMulchEdgeRange(geometry), { max: 1, min: 0 });
 
     geometry.dispose();
 });
@@ -133,6 +200,7 @@ test('connected mulch patch reaches neighbor edges without internal walls', () =
         minZ: -0.39,
     });
     assert.equal(hasBottomEdgeAtX(northConnected, 0.5), false);
+    assert.equal(hasTopEdgeShadeAtX(northConnected, 0.5, 0), true);
 
     northConnected.dispose();
 });

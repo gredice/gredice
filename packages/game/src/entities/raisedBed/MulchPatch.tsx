@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { type BufferGeometry, DoubleSide } from 'three';
+import { type BufferGeometry, DoubleSide, MeshStandardMaterial } from 'three';
 import { useBlockData } from '../../hooks/useBlockData';
 import { SnowOverlay } from '../../snow/SnowOverlay';
 import { snowPresets } from '../../snow/snowPresets';
@@ -30,6 +30,49 @@ const mulchPatchColors = {
     MulchWood: '#4f3524',
 } satisfies Record<MulchBlockName, string>;
 
+const mulchPatchVertexParameters = `
+attribute float mulchEdge;
+attribute vec4 mulchBounds;
+attribute vec4 mulchExposedEdges;
+varying vec3 vMulchPatchPosition;
+varying float vMulchEdge;
+varying vec4 vMulchBounds;
+varying vec4 vMulchExposedEdges;
+`;
+
+const mulchPatchVertex = `
+vMulchPatchPosition = position;
+vMulchEdge = mulchEdge;
+vMulchBounds = mulchBounds;
+vMulchExposedEdges = mulchExposedEdges;
+`;
+
+const mulchPatchFragmentParameters = `
+varying vec3 vMulchPatchPosition;
+varying float vMulchEdge;
+varying vec4 vMulchBounds;
+varying vec4 vMulchExposedEdges;
+`;
+
+const mulchPatchColorFragment = `
+float mulchPatchEdgeDistance = 1000.0;
+if (vMulchExposedEdges.x > 0.5) {
+    mulchPatchEdgeDistance = min(mulchPatchEdgeDistance, abs(vMulchPatchPosition.x - vMulchBounds.y));
+}
+if (vMulchExposedEdges.y > 0.5) {
+    mulchPatchEdgeDistance = min(mulchPatchEdgeDistance, abs(vMulchPatchPosition.z - vMulchBounds.z));
+}
+if (vMulchExposedEdges.z > 0.5) {
+    mulchPatchEdgeDistance = min(mulchPatchEdgeDistance, abs(vMulchPatchPosition.x - vMulchBounds.x));
+}
+if (vMulchExposedEdges.w > 0.5) {
+    mulchPatchEdgeDistance = min(mulchPatchEdgeDistance, abs(vMulchPatchPosition.z - vMulchBounds.w));
+}
+float mulchPatchEdgeBand = 1.0 - smoothstep(0.0, 0.14, mulchPatchEdgeDistance);
+float mulchPatchShade = max(vMulchEdge, mulchPatchEdgeBand * 0.82);
+diffuseColor.rgb *= mix(1.0, 0.78, mulchPatchShade);
+`;
+
 type StackMulchPatchTarget = MulchPatchTarget & {
     blockId: string;
     stackX: number;
@@ -42,20 +85,54 @@ type MulchPatchRenderGroup = {
     mask: number;
 };
 
+function createMulchPatchMaterial(blockName: MulchBlockName) {
+    const material = new MeshStandardMaterial({
+        color: mulchPatchColors[blockName],
+        flatShading: true,
+        metalness: 0,
+        roughness: 0.96,
+        side: DoubleSide,
+    });
+
+    material.onBeforeCompile = (shader) => {
+        shader.vertexShader = shader.vertexShader
+            .replace(
+                '#include <common>',
+                `#include <common>\n${mulchPatchVertexParameters}`,
+            )
+            .replace(
+                '#include <begin_vertex>',
+                `#include <begin_vertex>\n${mulchPatchVertex}`,
+            );
+        shader.fragmentShader = shader.fragmentShader
+            .replace(
+                '#include <common>',
+                `#include <common>\n${mulchPatchFragmentParameters}`,
+            )
+            .replace(
+                '#include <color_fragment>',
+                `#include <color_fragment>\n${mulchPatchColorFragment}`,
+            );
+    };
+    material.customProgramCacheKey = () => 'mulch-patch-edge-shading-v1';
+    material.needsUpdate = true;
+
+    return material;
+}
+
 export function MulchPatchMaterial({
     blockName,
 }: {
     blockName: MulchBlockName;
 }) {
-    return (
-        <meshStandardMaterial
-            color={mulchPatchColors[blockName]}
-            flatShading
-            metalness={0}
-            roughness={0.96}
-            side={DoubleSide}
-        />
+    const material = useMemo(
+        () => createMulchPatchMaterial(blockName),
+        [blockName],
     );
+
+    useEffect(() => () => material.dispose(), [material]);
+
+    return <primitive attach="material" object={material} />;
 }
 
 export function useMulchPatchGeometry(mask: number) {

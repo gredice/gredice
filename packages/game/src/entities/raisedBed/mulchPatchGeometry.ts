@@ -31,6 +31,13 @@ type MulchPatchPoint = {
     z: number;
 };
 
+type MulchPatchBounds = {
+    maxX: number;
+    maxZ: number;
+    minX: number;
+    minZ: number;
+};
+
 export const mulchPatchConnectionMasks = Array.from(
     { length: 16 },
     (_, mask) => mask,
@@ -131,30 +138,93 @@ function getMulchPatchPerimeter(connections: MulchPatchConnections) {
     const maxX = connections.n ? connectedHalfSize : isolatedHalfSize;
     const minZ = connections.e ? -connectedHalfSize : -isolatedHalfSize;
     const maxZ = connections.w ? connectedHalfSize : isolatedHalfSize;
-    const cornerInset = Math.min(0.08, (maxX - minX) / 3, (maxZ - minZ) / 3);
-    const southEastCorner = !connections.s && !connections.e ? cornerInset : 0;
-    const northEastCorner = !connections.n && !connections.e ? cornerInset : 0;
-    const northWestCorner = !connections.n && !connections.w ? cornerInset : 0;
-    const southWestCorner = !connections.s && !connections.w ? cornerInset : 0;
-    const points: MulchPatchPoint[] = [
-        { x: minX + southEastCorner, z: minZ },
-        { x: maxX - northEastCorner, z: minZ },
-        { x: maxX, z: minZ + northEastCorner },
-        { x: maxX, z: maxZ - northWestCorner },
-        { x: maxX - northWestCorner, z: maxZ },
-        { x: minX + southWestCorner, z: maxZ },
-        { x: minX, z: maxZ - southWestCorner },
-        { x: minX, z: minZ + southEastCorner },
-    ];
+    const cornerRadius = Math.min(0.15, (maxX - minX) / 3, (maxZ - minZ) / 3);
+    const southEastCorner = !connections.s && !connections.e ? cornerRadius : 0;
+    const northEastCorner = !connections.n && !connections.e ? cornerRadius : 0;
+    const northWestCorner = !connections.n && !connections.w ? cornerRadius : 0;
+    const southWestCorner = !connections.s && !connections.w ? cornerRadius : 0;
+    const perimeter: MulchPatchPoint[] = [];
 
-    const perimeter = points.filter((point, index) => {
-        const previous = points[index - 1];
-        return (
-            !previous ||
-            !nearlyEqual(point.x, previous.x) ||
-            !nearlyEqual(point.z, previous.z)
-        );
+    function addPoint(point: MulchPatchPoint) {
+        const previous = perimeter[perimeter.length - 1];
+        if (
+            previous &&
+            nearlyEqual(point.x, previous.x) &&
+            nearlyEqual(point.z, previous.z)
+        ) {
+            return;
+        }
+
+        perimeter.push(point);
+    }
+
+    function addCornerArc({
+        center,
+        endAngle,
+        radius,
+        startAngle,
+    }: {
+        center: MulchPatchPoint;
+        endAngle: number;
+        radius: number;
+        startAngle: number;
+    }) {
+        const segmentCount = 5;
+
+        if (radius <= 0) {
+            return;
+        }
+
+        for (let index = 1; index <= segmentCount; index += 1) {
+            const progress = index / segmentCount;
+            const angle = startAngle + (endAngle - startAngle) * progress;
+            addPoint({
+                x: center.x + Math.cos(angle) * radius,
+                z: center.z + Math.sin(angle) * radius,
+            });
+        }
+    }
+
+    addPoint({ x: minX + southEastCorner, z: minZ });
+    addPoint({ x: maxX - northEastCorner, z: minZ });
+    addCornerArc({
+        center: { x: maxX - northEastCorner, z: minZ + northEastCorner },
+        endAngle: 0,
+        radius: northEastCorner,
+        startAngle: -Math.PI / 2,
     });
+    addPoint({ x: maxX, z: maxZ - northWestCorner });
+    addCornerArc({
+        center: { x: maxX - northWestCorner, z: maxZ - northWestCorner },
+        endAngle: Math.PI / 2,
+        radius: northWestCorner,
+        startAngle: 0,
+    });
+    addPoint({ x: minX + southWestCorner, z: maxZ });
+    addCornerArc({
+        center: { x: minX + southWestCorner, z: maxZ - southWestCorner },
+        endAngle: Math.PI,
+        radius: southWestCorner,
+        startAngle: Math.PI / 2,
+    });
+    addPoint({ x: minX, z: minZ + southEastCorner });
+    addCornerArc({
+        center: { x: minX + southEastCorner, z: minZ + southEastCorner },
+        endAngle: (Math.PI * 3) / 2,
+        radius: southEastCorner,
+        startAngle: Math.PI,
+    });
+
+    const last = perimeter[perimeter.length - 1];
+    const first = perimeter[0];
+    if (
+        first &&
+        last &&
+        nearlyEqual(first.x, last.x) &&
+        nearlyEqual(first.z, last.z)
+    ) {
+        perimeter.pop();
+    }
 
     return {
         bounds: {
@@ -168,7 +238,7 @@ function getMulchPatchPerimeter(connections: MulchPatchConnections) {
 }
 
 function shouldRenderMulchPatchSide(input: {
-    bounds: ReturnType<typeof getMulchPatchPerimeter>['bounds'];
+    bounds: MulchPatchBounds;
     connections: MulchPatchConnections;
     current: MulchPatchPoint;
     next: MulchPatchPoint;
@@ -208,23 +278,43 @@ export function createMulchPatchGeometry({
     const topEdgeY = 0.018;
     const bottomY = 0;
     const positions: number[] = [];
+    const edgeShades: number[] = [];
+    const boundsAttributes: number[] = [];
+    const exposedEdgeAttributes: number[] = [];
     const { bounds, perimeter } = getMulchPatchPerimeter(connections);
+    const exposedEdges = [
+        connections.n ? 0 : 1,
+        connections.e ? 0 : 1,
+        connections.s ? 0 : 1,
+        connections.w ? 0 : 1,
+    ];
 
-    function addVertex(point: MulchPatchPoint, y: number) {
+    function addVertex(point: MulchPatchPoint, y: number, edgeShade: number) {
         positions.push(point.x, y, point.z);
+        edgeShades.push(edgeShade);
+        boundsAttributes.push(
+            bounds.minX,
+            bounds.maxX,
+            bounds.minZ,
+            bounds.maxZ,
+        );
+        exposedEdgeAttributes.push(...exposedEdges);
     }
 
     function addTriangle(
         first: MulchPatchPoint,
         firstY: number,
+        firstEdgeShade: number,
         second: MulchPatchPoint,
         secondY: number,
+        secondEdgeShade: number,
         third: MulchPatchPoint,
         thirdY: number,
+        thirdEdgeShade: number,
     ) {
-        addVertex(first, firstY);
-        addVertex(second, secondY);
-        addVertex(third, thirdY);
+        addVertex(first, firstY, firstEdgeShade);
+        addVertex(second, secondY, secondEdgeShade);
+        addVertex(third, thirdY, thirdEdgeShade);
     }
 
     const center = { x: 0, z: 0 };
@@ -234,7 +324,17 @@ export function createMulchPatchGeometry({
             continue;
         }
 
-        addTriangle(center, topCenterY, next, topEdgeY, current, topEdgeY);
+        addTriangle(
+            center,
+            topCenterY,
+            0,
+            next,
+            topEdgeY,
+            0,
+            current,
+            topEdgeY,
+            0,
+        );
 
         if (
             shouldRenderMulchPatchSide({
@@ -244,13 +344,45 @@ export function createMulchPatchGeometry({
                 next,
             })
         ) {
-            addTriangle(current, topEdgeY, next, topEdgeY, next, bottomY);
-            addTriangle(current, topEdgeY, next, bottomY, current, bottomY);
+            addTriangle(
+                current,
+                topEdgeY,
+                1,
+                next,
+                topEdgeY,
+                1,
+                next,
+                bottomY,
+                1,
+            );
+            addTriangle(
+                current,
+                topEdgeY,
+                1,
+                next,
+                bottomY,
+                1,
+                current,
+                bottomY,
+                1,
+            );
         }
     }
 
     const geometry = new BufferGeometry();
     geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
+    geometry.setAttribute(
+        'mulchEdge',
+        new Float32BufferAttribute(edgeShades, 1),
+    );
+    geometry.setAttribute(
+        'mulchBounds',
+        new Float32BufferAttribute(boundsAttributes, 4),
+    );
+    geometry.setAttribute(
+        'mulchExposedEdges',
+        new Float32BufferAttribute(exposedEdgeAttributes, 4),
+    );
     geometry.computeVertexNormals();
     geometry.computeBoundingBox();
     geometry.computeBoundingSphere();
