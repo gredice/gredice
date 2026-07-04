@@ -17,6 +17,7 @@ import type { EntityStandardized } from '../../../lib/@types/EntityStandardized'
 import { auth } from '../../../lib/auth/auth';
 import { KnownPages } from '../../../src/KnownPages';
 import { formatDate, formatDateTime, formatPrice } from './format';
+import { OutletOfferPreviewImages } from './OutletOfferPreviewImages';
 import { OutletOfferStatusBadge } from './OutletStatusBadge';
 
 export const dynamic = 'force-dynamic';
@@ -153,9 +154,10 @@ export default async function OutletAdminPage() {
                                 );
                                 const offerEditHref =
                                     KnownPages.OutletOfferEdit(offer.id);
-                                const plantSortName = plantSortLabel(
-                                    plantSortsById.get(offer.plantSortId),
+                                const plantSort = plantSortsById.get(
+                                    offer.plantSortId,
                                 );
+                                const plantSortName = plantSortLabel(plantSort);
 
                                 return (
                                     <li
@@ -163,26 +165,37 @@ export default async function OutletAdminPage() {
                                         className="px-3 py-4 transition-colors hover:bg-muted/40 sm:px-4"
                                     >
                                         <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                                            <Stack
-                                                spacing={1}
-                                                className="min-w-0 flex-1"
-                                            >
-                                                <Link
-                                                    className="min-w-0 truncate text-sm font-medium text-primary underline-offset-4 hover:underline"
-                                                    href={offerHref}
+                                            <div className="flex min-w-0 flex-1 items-start gap-3">
+                                                <OutletOfferPreviewImages
+                                                    offerHref={offerHref}
+                                                    offerId={offer.id}
+                                                    imageUrls={offer.imageUrls}
+                                                    plantSort={plantSort}
+                                                    plantSortName={
+                                                        plantSortName
+                                                    }
+                                                />
+                                                <Stack
+                                                    spacing={1}
+                                                    className="min-w-0 flex-1"
                                                 >
-                                                    Outlet #{offer.id}
-                                                </Link>
-                                                <Typography
-                                                    level="body3"
-                                                    className="text-muted-foreground"
-                                                >
-                                                    Sorta:{' '}
-                                                    <span className="text-foreground">
-                                                        {plantSortName}
-                                                    </span>
-                                                </Typography>
-                                            </Stack>
+                                                    <Link
+                                                        className="min-w-0 truncate text-sm font-medium text-primary underline-offset-4 hover:underline"
+                                                        href={offerHref}
+                                                    >
+                                                        Outlet #{offer.id}
+                                                    </Link>
+                                                    <Typography
+                                                        level="body3"
+                                                        className="text-muted-foreground"
+                                                    >
+                                                        Sorta:{' '}
+                                                        <span className="text-foreground">
+                                                            {plantSortName}
+                                                        </span>
+                                                    </Typography>
+                                                </Stack>
+                                            </div>
 
                                             <div className="flex min-w-0 flex-col gap-3 lg:items-end">
                                                 <div className="flex min-w-0 flex-wrap items-center gap-2 lg:justify-end">
