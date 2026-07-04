@@ -13,7 +13,7 @@ import { cx } from '@gredice/ui/utils';
 import dynamic from 'next/dynamic';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
-import { KnownPages } from '../../src/KnownPages';
+import { InlineLoginDialog } from '../auth/InlineLoginDialog';
 
 const CommunityMarkdownInput = dynamic(
     () =>
@@ -24,6 +24,9 @@ const CommunityMarkdownInput = dynamic(
         ssr: false,
     },
 );
+
+const communityEditEntityParam = 'communityEditEntity';
+const communityEditSectionParam = 'communityEditSection';
 
 type CommunityEditControlType =
     | 'boolean'
@@ -233,6 +236,51 @@ function isSubmitResponse(value: unknown): value is { requestId: number } {
     );
 }
 
+function communityEditReturnPath({
+    entityKey,
+    fallbackPath,
+    sectionKey,
+}: {
+    entityKey: string;
+    fallbackPath: string;
+    sectionKey: string;
+}) {
+    const url =
+        typeof window === 'undefined'
+            ? new URL(fallbackPath, 'https://www.gredice.com')
+            : new URL(window.location.href);
+
+    url.searchParams.set(communityEditEntityParam, entityKey);
+    if (sectionKey) {
+        url.searchParams.set(communityEditSectionParam, sectionKey);
+    } else {
+        url.searchParams.delete(communityEditSectionParam);
+    }
+
+    return `${url.pathname}${url.search}${url.hash}`;
+}
+
+function currentCommunityEditReturnRequest() {
+    if (typeof window === 'undefined') {
+        return null;
+    }
+
+    const url = new URL(window.location.href);
+    return {
+        entityKey: url.searchParams.get(communityEditEntityParam),
+        sectionKey: url.searchParams.get(communityEditSectionParam) ?? '',
+        clear() {
+            url.searchParams.delete(communityEditEntityParam);
+            url.searchParams.delete(communityEditSectionParam);
+            window.history.replaceState(
+                window.history.state,
+                '',
+                `${url.pathname}${url.search}${url.hash}`,
+            );
+        },
+    };
+}
+
 function FieldInput({
     field,
     id,
@@ -354,6 +402,7 @@ export function CommunityEditButton({
     sectionKey,
 }: CommunityEditButtonProps) {
     const [open, setOpen] = useState(false);
+    const [loginOpen, setLoginOpen] = useState(false);
     const [fields, setFields] = useState<CommunityEditableField[]>([]);
     const [values, setValues] = useState<Record<string, FieldValue>>({});
     const [submitterNote, setSubmitterNote] = useState('');
@@ -365,6 +414,38 @@ export function CommunityEditButton({
     );
     const fieldIdPrefix = useId();
     const { data: user, isLoading: isLoadingUser } = useCurrentUser();
+    const communityEditEntityKey = `${entityTypeName}:${entityId}`;
+    const communityEditSectionKey = sectionKey ?? '';
+    const communityEditReturnTo = useMemo(
+        () =>
+            communityEditReturnPath({
+                entityKey: communityEditEntityKey,
+                fallbackPath: publicPath,
+                sectionKey: communityEditSectionKey,
+            }),
+        [communityEditEntityKey, communityEditSectionKey, publicPath],
+    );
+
+    useEffect(() => {
+        const returnRequest = currentCommunityEditReturnRequest();
+        if (
+            !returnRequest ||
+            returnRequest.entityKey !== communityEditEntityKey ||
+            returnRequest.sectionKey !== communityEditSectionKey
+        ) {
+            return;
+        }
+
+        setOpen(true);
+        setLoginOpen(false);
+        returnRequest.clear();
+    }, [communityEditEntityKey, communityEditSectionKey]);
+
+    useEffect(() => {
+        if (!open) {
+            setLoginOpen(false);
+        }
+    }, [open]);
 
     useEffect(() => {
         if (!open || !user) {
@@ -543,9 +624,23 @@ export function CommunityEditButton({
                         <Typography level="body2">
                             Za slanje prijedloga treba se prijaviti.
                         </Typography>
-                        <Button href={KnownPages.GardenApp} variant="outlined">
-                            Prijavi se u vrt
+                        <Button
+                            onClick={() => setLoginOpen(true)}
+                            type="button"
+                            variant="outlined"
+                        >
+                            Prijavi se i nastavi
                         </Button>
+                        <InlineLoginDialog
+                            description="Prijavi se za slanje prijedloga i nastavi uređivati ovu sekciju."
+                            onAuthenticated={() => {
+                                setLoginOpen(false);
+                                setOpen(true);
+                            }}
+                            onOpenChange={setLoginOpen}
+                            open={loginOpen}
+                            returnTo={communityEditReturnTo}
+                        />
                     </Stack>
                 ) : successRequestId ? (
                     <Stack spacing={2}>

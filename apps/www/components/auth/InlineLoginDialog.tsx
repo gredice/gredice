@@ -26,6 +26,7 @@ type InlineLoginDialogProps = {
     onAuthenticated?: () => void;
     onOpenChange: (open: boolean) => void;
     open: boolean;
+    returnTo?: string;
 };
 
 const oauthCallbackPaths: Record<OAuthProvider, string> = {
@@ -148,6 +149,7 @@ export function InlineLoginDialog({
     onAuthenticated,
     onOpenChange,
     open,
+    returnTo,
 }: InlineLoginDialogProps) {
     const queryClient = useQueryClient();
     const [activeTab, setActiveTab] = useState<AuthTab>('login');
@@ -243,7 +245,10 @@ export function InlineLoginDialog({
             oauthCallbackPaths[provider],
             window.location.origin,
         );
-        callbackUrl.searchParams.set('returnTo', currentReturnPath());
+        callbackUrl.searchParams.set(
+            'returnTo',
+            returnTo ?? currentReturnPath(),
+        );
 
         const authUrl = new URL(
             `/api/auth/${provider}`,
