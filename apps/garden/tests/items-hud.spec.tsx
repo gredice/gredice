@@ -188,7 +188,7 @@ test('sandbox trash target appears centered above item picker while dragging', a
     await expect(trashTarget).toHaveClass(/bg-red-600/u);
 });
 
-test('pots are listed under the decoration picker without mulch blocks', async ({
+test('pots and mulch are listed under the decoration picker', async ({
     mount,
     page,
 }) => {
@@ -213,7 +213,7 @@ test('pots are listed under the decoration picker without mulch blocks', async (
         page
             .locator('[data-items-picker-group-label]')
             .filter({ hasText: 'Malč' }),
-    ).toHaveCount(0);
+    ).toBeVisible();
 
     await page.getByRole('button', { name: 'Posude' }).click();
 
@@ -222,6 +222,34 @@ test('pots are listed under the decoration picker without mulch blocks', async (
     ).toBeVisible();
     await expect(
         page.getByRole('button', { name: 'PotWideLippedCup' }),
+    ).toBeVisible();
+
+    await page.getByRole('button', { name: 'Natrag' }).click();
+    await page.getByRole('button', { name: 'Malč' }).click();
+
+    await expect(
+        page.getByRole('button', { name: 'Malč - kora drveta' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Malč - kokosova kora' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Malč - slama' }),
+    ).toBeVisible();
+
+    await expect(
+        page.getByRole('img', { name: 'Malč - kora drveta' }).first(),
+    ).toHaveAttribute('src', /MulchWood\.webp/u);
+
+    await page.getByRole('button', { name: 'Malč - kora drveta' }).click();
+
+    await expect(
+        page.getByText(
+            'Malč od kore drveta koristi se za zadržavanje vlage, zaštitu tla i smanjenje rasta korova.',
+        ),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: /Postavi.*20/u }),
     ).toBeVisible();
 });
 
@@ -344,7 +372,7 @@ test('sandbox decoration picker includes special blocks', async ({
     ).toBeVisible();
 });
 
-test('local sandbox decoration picker includes sunflower', async ({
+test('local sandbox decoration picker includes sunflower and mulch', async ({
     mount,
     page,
 }) => {
@@ -354,6 +382,15 @@ test('local sandbox decoration picker includes sunflower', async ({
     await page.getByRole('button', { name: 'Dekoracija' }).click();
 
     await expect(page.getByRole('button', { name: 'Sunflower' })).toBeVisible();
+    await expect(
+        page
+            .locator('[data-items-picker-group-label]')
+            .filter({ hasText: 'Malč' }),
+    ).toBeVisible();
+
+    await page.getByRole('button', { name: 'Malč' }).click();
+
+    await expect(page.getByRole('button', { name: 'MulchWood' })).toBeVisible();
 });
 
 test('item picker price buttons use the soft surface', async ({

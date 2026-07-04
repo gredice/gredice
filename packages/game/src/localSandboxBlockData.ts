@@ -24,6 +24,9 @@ export const localSandboxBlockNames = [
     'DesertStoneSmall',
     'DesertStoneMedium',
     'DesertStoneLarge',
+    'MulchWood',
+    'MulchCoconut',
+    'MulchHey',
     'GiftBox_RedWhite',
     'GiftBox_GreenGold',
     'GiftBox_BlueWhite',
@@ -110,6 +113,9 @@ const localSandboxStackHeights: Partial<Record<LocalSandboxBlockName, number>> =
         GiftBox_PurpleSilver: 0.62,
         GiftBox_RedWhite: 0.62,
         GiftBox_WhiteGreen: 0.62,
+        MulchCoconut: 0.01,
+        MulchHey: 0.01,
+        MulchWood: 0.01,
         PaintRoller: 0.9,
         BeachUmbrella: 1.8,
         LemonadeStand: 1.9,
@@ -138,6 +144,21 @@ type LocalSandboxHitboxAttributes = Partial<
 >;
 
 const localSandboxHitboxAttributes: LocalSandboxHitboxAttributes = {
+    MulchCoconut: {
+        hitboxDepth: 0.96,
+        hitboxHeight: 0.08,
+        hitboxWidth: 0.96,
+    },
+    MulchHey: {
+        hitboxDepth: 0.96,
+        hitboxHeight: 0.08,
+        hitboxWidth: 0.96,
+    },
+    MulchWood: {
+        hitboxDepth: 0.96,
+        hitboxHeight: 0.08,
+        hitboxWidth: 0.96,
+    },
     SummerHat: {
         hitboxDepth: 0.64,
         hitboxHeight: 0.2,

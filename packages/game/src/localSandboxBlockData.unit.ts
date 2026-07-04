@@ -84,14 +84,23 @@ test('local sandbox exposes flower decorations used by the item HUD', () => {
     assert.equal(sunflower?.attributes.height, 1);
 });
 
-test('local sandbox does not expose mulch as placeable blocks', () => {
+test('local sandbox exposes mulch blocks used by the item HUD', () => {
     const blockData = getLocalSandboxBlockData();
     const blockNames = new Set(
         blockData.map((block) => block.information.name),
     );
 
     assert.equal(blockNames.has('BaleHey'), false);
-    assert.equal(blockNames.has('MulchHey'), false);
-    assert.equal(blockNames.has('MulchCoconut'), false);
-    assert.equal(blockNames.has('MulchWood'), false);
+    for (const blockName of ['MulchHey', 'MulchCoconut', 'MulchWood']) {
+        const block = blockData.find(
+            (item) => item.information.name === blockName,
+        );
+
+        assert.ok(block);
+        assert.equal(block.prices.sunflowers, 0);
+        assert.equal(block.attributes.height, 0.01);
+        assert.equal(block.attributes.hitboxDepth, 0.96);
+        assert.equal(block.attributes.hitboxHeight, 0.08);
+        assert.equal(block.attributes.hitboxWidth, 0.96);
+    }
 });
