@@ -4,6 +4,7 @@ import {
     getScheduledFieldsForDay,
     getScheduledOperationsForDay,
 } from './scheduleDayFilters.ts';
+import { getScheduleOperationHref } from './scheduleOperationLinks.ts';
 import {
     isDayBulkFieldApprovalTargetVisible,
     isDayBulkFieldAssignmentTargetVisible,
@@ -115,6 +116,10 @@ test('pending verification operation remains visible today until verified', () =
         ]).map((operation) => operation.id),
         [1],
     );
+});
+
+test('schedule operation links point to internal operation details', () => {
+    assert.equal(getScheduleOperationHref(123), '/admin/operations/123');
 });
 
 test('day operation bulk actions honor optimistic terminal statuses', () => {
