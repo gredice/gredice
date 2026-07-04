@@ -188,7 +188,7 @@ test('sandbox trash target appears centered above item picker while dragging', a
     await expect(trashTarget).toHaveClass(/bg-red-600/u);
 });
 
-test('pots are listed under the decoration picker without mulch blocks', async ({
+test('pots and mulch blocks are listed under separate decoration pickers', async ({
     mount,
     page,
 }) => {
@@ -213,7 +213,7 @@ test('pots are listed under the decoration picker without mulch blocks', async (
         page
             .locator('[data-items-picker-group-label]')
             .filter({ hasText: 'Malč' }),
-    ).toHaveCount(0);
+    ).toBeVisible();
 
     await page.getByRole('button', { name: 'Posude' }).click();
 
@@ -222,6 +222,24 @@ test('pots are listed under the decoration picker without mulch blocks', async (
     ).toBeVisible();
     await expect(
         page.getByRole('button', { name: 'PotWideLippedCup' }),
+    ).toBeVisible();
+
+    await page.getByRole('button', { name: 'Natrag' }).click();
+    await page.getByRole('button', { name: 'Malč' }).click();
+
+    await expect(page.getByRole('button', { name: 'MulchHey' })).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'MulchCoconut' }),
+    ).toBeVisible();
+    await expect(page.getByRole('button', { name: 'MulchWood' })).toBeVisible();
+
+    await page.getByRole('button', { name: 'MulchHey' }).click();
+
+    await expect(
+        page.getByText('Mock block for HUD layout tests.').first(),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: /Postavi.*10/u }),
     ).toBeVisible();
 });
 
