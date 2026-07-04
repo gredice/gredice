@@ -1,7 +1,12 @@
 'use client';
 
-import { clientPublic } from '@gredice/client';
+import { clientPublic, getBrowserGrediceAppOrigin } from '@gredice/client';
 import { Alert } from '@gredice/ui/Alert';
+import {
+    FacebookLoginButton,
+    GoogleLoginButton,
+    useLastLoginProvider,
+} from '@gredice/ui/auth';
 import { Button } from '@gredice/ui/Button';
 import { Input } from '@gredice/ui/Input';
 import { Mail } from '@gredice/ui/icons';
@@ -10,16 +15,22 @@ import { Stack } from '@gredice/ui/Stack';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import { Typography } from '@gredice/ui/Typography';
 import { useQueryClient } from '@tanstack/react-query';
-import { type FormEvent, useEffect, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { currentUserQueryKey } from '../../hooks/useCurrentUser';
 
 type AuthTab = 'login' | 'register';
+type OAuthProvider = 'google' | 'facebook';
 
 type InlineLoginDialogProps = {
     description?: string;
     onAuthenticated?: () => void;
     onOpenChange: (open: boolean) => void;
     open: boolean;
+};
+
+const oauthCallbackPaths: Record<OAuthProvider, string> = {
+    facebook: '/prijava/facebook-prijava/povratak',
+    google: '/prijava/google-prijava/povratak',
 };
 
 function responseMessage(value: unknown, fallback: string) {
@@ -33,6 +44,10 @@ function responseMessage(value: unknown, fallback: string) {
     }
 
     return fallback;
+}
+
+function currentReturnPath() {
+    return `${window.location.pathname}${window.location.search}${window.location.hash}`;
 }
 
 function EmailPasswordForm({
@@ -50,6 +65,7 @@ function EmailPasswordForm({
     const [password, setPassword] = useState('');
     const [repeatPassword, setRepeatPassword] = useState('');
     const passwordsMatch = password === repeatPassword;
+    const fieldIdPrefix = registration ? 'inline-register' : 'inline-login';
 
     function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -66,7 +82,7 @@ function EmailPasswordForm({
                 <Input
                     autoComplete="email"
                     fullWidth
-                    id="inline-login-email"
+                    id={`${fieldIdPrefix}-email`}
                     label="Email"
                     onChange={(event) => setEmail(event.currentTarget.value)}
                     required
@@ -78,7 +94,7 @@ function EmailPasswordForm({
                         registration ? 'new-password' : 'current-password'
                     }
                     fullWidth
-                    id="inline-login-password"
+                    id={`${fieldIdPrefix}-password`}
                     label="Zaporka"
                     onChange={(event) => setPassword(event.currentTarget.value)}
                     required
@@ -90,7 +106,7 @@ function EmailPasswordForm({
                         <Input
                             autoComplete="new-password"
                             fullWidth
-                            id="inline-login-repeat-password"
+                            id={`${fieldIdPrefix}-repeat-password`}
                             label="Ponovi zaporku"
                             onChange={(event) =>
                                 setRepeatPassword(event.currentTarget.value)
@@ -135,21 +151,29 @@ export function InlineLoginDialog({
 }: InlineLoginDialogProps) {
     const queryClient = useQueryClient();
     const [activeTab, setActiveTab] = useState<AuthTab>('login');
+    const [emailExpanded, setEmailExpanded] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [registrationSent, setRegistrationSent] = useState(false);
+    const fetchLastLogin = useCallback(
+        () => clientPublic().api.auth['last-login'].$get(),
+        [],
+    );
+    const lastLoginProvider = useLastLoginProvider(fetchLastLogin);
 
     useEffect(() => {
         if (!open) {
             setError(null);
             setRegistrationSent(false);
             setActiveTab('login');
+            setEmailExpanded(false);
         }
     }, [open]);
 
     function handleTabChange(value: string) {
         if (value === 'login' || value === 'register') {
             setActiveTab(value);
+            setEmailExpanded(false);
             setError(null);
             setRegistrationSent(false);
         }
@@ -214,6 +238,28 @@ export function InlineLoginDialog({
         }
     }
 
+    function handleOAuthLogin(provider: OAuthProvider) {
+        const callbackUrl = new URL(
+            oauthCallbackPaths[provider],
+            window.location.origin,
+        );
+        callbackUrl.searchParams.set('returnTo', currentReturnPath());
+
+        const authUrl = new URL(
+            `/api/auth/${provider}`,
+            getBrowserGrediceAppOrigin('api'),
+        );
+        authUrl.searchParams.set('redirect', callbackUrl.toString());
+        authUrl.searchParams.set(
+            'timeZone',
+            Intl.DateTimeFormat().resolvedOptions().timeZone,
+        );
+
+        window.location.href = authUrl.toString();
+    }
+
+    const authActionLabel = activeTab === 'login' ? 'prijava' : 'registracija';
+
     return (
         <Modal
             className="max-w-md rounded-lg border-tertiary border-b-4 bg-card shadow-2xl"
@@ -241,21 +287,52 @@ export function InlineLoginDialog({
                     </TabsList>
 
                     <Stack spacing={4} className="mt-4">
-                        <TabsContent className="mt-0" value="login">
-                            <EmailPasswordForm
-                                loading={isSubmitting}
-                                onSubmit={handleLogin}
-                                submitText="Prijavi se"
-                            />
-                        </TabsContent>
-                        <TabsContent className="mt-0" value="register">
-                            <EmailPasswordForm
-                                loading={isSubmitting}
-                                onSubmit={handleRegister}
-                                registration
-                                submitText="Registriraj se"
-                            />
-                        </TabsContent>
+                        {!emailExpanded ? (
+                            <Stack spacing={2}>
+                                <GoogleLoginButton
+                                    lastUsed={lastLoginProvider === 'google'}
+                                    onClick={() => handleOAuthLogin('google')}
+                                >
+                                    Google {authActionLabel}
+                                </GoogleLoginButton>
+                                <FacebookLoginButton
+                                    lastUsed={lastLoginProvider === 'facebook'}
+                                    onClick={() => handleOAuthLogin('facebook')}
+                                >
+                                    Facebook {authActionLabel}
+                                </FacebookLoginButton>
+                                <Button
+                                    color="neutral"
+                                    fullWidth
+                                    onClick={() => setEmailExpanded(true)}
+                                    startDecorator={
+                                        <Mail className="size-4 shrink-0" />
+                                    }
+                                    type="button"
+                                    variant="outlined"
+                                >
+                                    Email {authActionLabel}
+                                </Button>
+                            </Stack>
+                        ) : (
+                            <>
+                                <TabsContent className="mt-0" value="login">
+                                    <EmailPasswordForm
+                                        loading={isSubmitting}
+                                        onSubmit={handleLogin}
+                                        submitText="Prijavi se"
+                                    />
+                                </TabsContent>
+                                <TabsContent className="mt-0" value="register">
+                                    <EmailPasswordForm
+                                        loading={isSubmitting}
+                                        onSubmit={handleRegister}
+                                        registration
+                                        submitText="Registriraj se"
+                                    />
+                                </TabsContent>
+                            </>
+                        )}
 
                         {registrationSent ? (
                             <Alert color="success">
