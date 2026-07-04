@@ -30,11 +30,14 @@ type CommunityEditFixture = {
     plantGerminationTypeDefinitionId: number;
     plantOperationsDefinitionId: number;
     plantSeedingDistanceDefinitionId: number;
+    plantStorageDefinitionId: number;
     plantSortLatinNameDefinitionId: number;
     operationNameDefinitionId: number;
     operationStageDefinitionId: number;
     operationApplicationDefinitionId: number;
     stageEntityId: number;
+    stageNameDefinitionId: number;
+    stageLabelDefinitionId: number;
     submitterId: string;
     reviewerId: string;
 };
@@ -79,6 +82,13 @@ async function createFixture(): Promise<CommunityEditFixture> {
         category: 'information',
         name: 'description',
         label: 'Opis',
+        entityTypeName: 'plant',
+        dataType: 'markdown',
+    });
+    const plantStorageDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'storage',
+        label: 'Skladištenje',
         entityTypeName: 'plant',
         dataType: 'markdown',
     });
@@ -168,11 +178,14 @@ async function createFixture(): Promise<CommunityEditFixture> {
         plantGerminationTypeDefinitionId,
         plantOperationsDefinitionId,
         plantSeedingDistanceDefinitionId,
+        plantStorageDefinitionId,
         plantSortLatinNameDefinitionId,
         operationNameDefinitionId,
         operationStageDefinitionId,
         operationApplicationDefinitionId,
         stageEntityId,
+        stageNameDefinitionId,
+        stageLabelDefinitionId,
         submitterId,
         reviewerId,
     };
@@ -183,6 +196,7 @@ async function createPublishedPlant(input?: {
     germinationType?: string;
     operationIds?: number[];
     seedingDistance?: string;
+    storage?: string;
 }) {
     const data = await fixture();
     const entityId = await createEntity('plant');
@@ -205,6 +219,12 @@ async function createPublishedPlant(input?: {
         entityId,
         value: input?.germinationType ?? 'Klijanje u mraku',
     });
+    await upsertAttributeValue({
+        attributeDefinitionId: data.plantStorageDefinitionId,
+        entityTypeName: 'plant',
+        entityId,
+        value: input?.storage ?? 'Čuvati na hladnom mjestu.',
+    });
     for (const [index, operationId] of (input?.operationIds ?? []).entries()) {
         await upsertAttributeValue({
             attributeDefinitionId: data.plantOperationsDefinitionId,
@@ -214,6 +234,28 @@ async function createPublishedPlant(input?: {
             order: String(index),
         });
     }
+    return entityId;
+}
+
+async function createPublishedPlantStage(input: {
+    name: string;
+    label: string;
+}) {
+    const data = await fixture();
+    const entityId = await createEntity('plantStage');
+    await updateEntity({ id: entityId, state: 'published' });
+    await upsertAttributeValue({
+        attributeDefinitionId: data.stageNameDefinitionId,
+        entityTypeName: 'plantStage',
+        entityId,
+        value: input.name,
+    });
+    await upsertAttributeValue({
+        attributeDefinitionId: data.stageLabelDefinitionId,
+        entityTypeName: 'plantStage',
+        entityId,
+        value: input.label,
+    });
     return entityId;
 }
 
@@ -309,6 +351,18 @@ test('community editable registry resolves allowed plant and operation fields', 
             ?.fields.some((field) => field.fieldKey === 'plant.yield-type'),
     );
     assert.ok(
+        plantSections
+            .find((section) => section.key === 'storage')
+            ?.fields.some((field) => field.fieldKey === 'plant.storage'),
+    );
+    assert.ok(
+        plantSections
+            .find((section) => section.key === 'storage')
+            ?.fields.some(
+                (field) => field.fieldKey === 'plant.stage-operations.storage',
+            ),
+    );
+    assert.ok(
         getCommunityEditableSections('plantSort')
             .find((section) => section.key === 'overview')
             ?.fields.some((field) => field.fieldKey === 'plant-sort.name'),
@@ -356,6 +410,28 @@ test('community editable registry resolves allowed plant and operation fields', 
     assert.equal(
         plantFields.some((field) => field.fieldKey.includes('price')),
         false,
+    );
+
+    const storageFields = await getCommunityEditableFieldsForEntity({
+        entityTypeName: 'plant',
+        entityId: plantId,
+        sectionKey: 'storage',
+    });
+    assert.ok(
+        storageFields.some(
+            (field) =>
+                field.fieldKey === 'plant.storage' &&
+                field.controlType === 'markdown' &&
+                field.currentValue === 'Čuvati na hladnom mjestu.',
+        ),
+    );
+    assert.ok(
+        storageFields.some(
+            (field) =>
+                field.fieldKey === 'plant.stage-operations.storage' &&
+                field.controlType === 'operationSuggestion' &&
+                field.operationSuggestionStage?.name === 'storage',
+        ),
     );
 
     const plantSortId = await createPublishedPlantSort();
@@ -409,6 +485,98 @@ test('community editable registry resolves allowed plant and operation fields', 
                 field.options?.some((option) => option.value === 'farm') &&
                 field.options?.some((option) => option.value === 'garden'),
         ),
+    );
+});
+
+test('community edit requests submit storage content and operation suggestions together', async () => {
+    const data = await fixture();
+    const storageStageId = await createPublishedPlantStage({
+        name: 'storage',
+        label: 'Skladištenje',
+    });
+    const operationId = await createPublishedPlantOperation({
+        name: 'Uklanjanje biljke',
+        stageEntityId: storageStageId,
+    });
+    const plantId = await createPublishedPlant({
+        storage: 'Listove čuvati u hladnjaku.',
+    });
+    const storageFields = await getCommunityEditableFieldsForEntity({
+        entityTypeName: 'plant',
+        entityId: plantId,
+        sectionKey: 'storage',
+    });
+    const storageContentField = storageFields.find(
+        (field) => field.fieldKey === 'plant.storage',
+    );
+    const operationField = storageFields.find(
+        (field) => field.fieldKey === 'plant.stage-operations.storage',
+    );
+    assert.ok(storageContentField);
+    assert.ok(operationField);
+    assert.equal(storageContentField.controlType, 'markdown');
+    assert.equal(operationField.controlType, 'operationSuggestion');
+    assert.equal(operationField.operationSuggestionStage?.name, 'storage');
+    assert.ok(
+        operationField.options?.some(
+            (option) =>
+                option.value === String(operationId) &&
+                option.label === 'Uklanjanje biljke',
+        ),
+    );
+
+    const request = await createCommunityEditRequest({
+        entityTypeName: 'plant',
+        entityId: plantId,
+        publicPath: '/biljke/blitva',
+        sectionKey: 'storage',
+        submitter: { id: data.submitterId, name: 'Community Submitter' },
+        changes: [
+            {
+                fieldKey: 'plant.storage',
+                baseValueHash: storageContentField.baseValueHash,
+                proposedValue: 'Listove čuvati u vlažnoj krpi u hladnjaku.',
+            },
+            {
+                fieldKey: 'plant.stage-operations.storage',
+                baseValueHash: operationField.baseValueHash,
+                proposedValue: {
+                    intent: 'add',
+                    operationId,
+                    stageName: 'storage',
+                    source: 'Upute proizvođača',
+                    note: 'Korisno je prikazati uklanjanje nakon berbe.',
+                },
+            },
+        ],
+    });
+
+    assert.equal(request.status, 'pending');
+    assert.equal(request.changes.length, 2);
+    assert.match(
+        request.changes[0]?.proposedValue ?? '',
+        /vlažnoj krpi u hladnjaku/,
+    );
+    assert.match(
+        request.changes[1]?.proposedValue ?? '',
+        /community-operation-suggestion-v1/,
+    );
+
+    const applied = await approveCommunityEditRequest({
+        id: request.id,
+        reviewer: { id: data.reviewerId, name: 'Community Reviewer' },
+    });
+    assert.equal(applied.status, 'applied');
+
+    const entity = await getEntityRaw(plantId);
+    assert.ok(entity);
+    assert.equal(
+        attributeValue(entity, data.plantStorageDefinitionId),
+        'Listove čuvati u vlažnoj krpi u hladnjaku.',
+    );
+    assert.deepEqual(
+        attributeValues(entity, data.plantOperationsDefinitionId),
+        [String(operationId)],
     );
 });
 

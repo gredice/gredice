@@ -35,7 +35,7 @@ export function CommunityMarkdownInput({
     value: string;
 }) {
     return (
-        <div className="overflow-hidden rounded-md border border-input bg-background">
+        <div className="overflow-hidden rounded-md border border-border/80 bg-card shadow-sm ring-offset-background transition-colors hover:border-primary/40 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
             <MDXEditor
                 className={cx(
                     markdownEditorClassNames,
@@ -43,7 +43,7 @@ export function CommunityMarkdownInput({
                 )}
                 contentEditableClassName={cx(
                     markdownEditorContentEditableClassName,
-                    'min-h-32',
+                    'min-h-32 bg-card',
                 )}
                 markdown={value}
                 onChange={onChange}

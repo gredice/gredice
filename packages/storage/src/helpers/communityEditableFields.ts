@@ -49,6 +49,7 @@ export const communityEditablePlantOperationStages: CommunityEditableOperationSu
         { name: 'growth', label: 'Rast' },
         { name: 'watering', label: 'Zalijevanje' },
         { name: 'harvest', label: 'Berba' },
+        { name: 'storage', label: 'Skladištenje' },
     ];
 
 const communityEditablePlantOperationFields: CommunityEditableFieldDefinition[] =
@@ -160,6 +161,18 @@ const communityEditableFieldRegistry: CommunityEditableFieldDefinition[] = [
         category: 'information',
         name: 'harvest',
         publicLabel: 'Berba',
+        controlType: 'markdown',
+        pageLevel: true,
+        inline: true,
+        maxLength: 16000,
+    },
+    {
+        entityTypeName: 'plant',
+        fieldKey: 'plant.storage',
+        sectionKey: 'storage',
+        category: 'information',
+        name: 'storage',
+        publicLabel: 'Skladištenje',
         controlType: 'markdown',
         pageLevel: true,
         inline: true,

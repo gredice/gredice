@@ -114,6 +114,15 @@ export type CommunityEditButtonProps = {
     className?: string;
 };
 
+const fieldPanelClassName =
+    'rounded-lg border border-border/70 bg-muted/30 p-3 shadow-sm';
+const inputControlClassName =
+    'w-full border-border/80 bg-card shadow-sm transition-colors hover:border-primary/40 focus-within:border-primary/50';
+const selectControlClassName =
+    'h-10 w-full rounded-md border border-border/80 bg-card px-3 text-sm text-foreground shadow-sm ring-offset-background transition-colors hover:border-primary/40 focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-muted/70 disabled:text-muted-foreground';
+const textareaControlClassName =
+    'w-full rounded-md border border-border/80 bg-card px-3 py-2 text-sm text-foreground shadow-sm ring-offset-background transition-colors placeholder:text-muted-foreground/70 hover:border-primary/40 focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-muted/70 disabled:text-muted-foreground';
+
 function initialFieldValue(field: CommunityEditableField): FieldValue {
     if (field.controlType === 'operationSuggestion') {
         return {
@@ -445,33 +454,57 @@ function FieldInput({
             field,
             suggestionValue.intent,
         );
+        const intentOptions: {
+            value: OperationSuggestionIntent;
+            label: string;
+        }[] = [
+            { value: 'add', label: 'Dodaj' },
+            { value: 'remove', label: 'Ukloni' },
+        ];
 
         return (
-            <Stack spacing={2}>
-                <div className="grid gap-2 sm:grid-cols-2">
-                    <label className="space-y-1" htmlFor={`${id}-intent`}>
-                        <Typography level="body3">Namjera</Typography>
-                        <select
-                            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                            id={`${id}-intent`}
-                            onChange={(event) =>
-                                onChange({
-                                    ...suggestionValue,
-                                    intent: event.currentTarget
-                                        .value as OperationSuggestionIntent,
-                                    operationId: '',
-                                })
-                            }
-                            value={suggestionValue.intent}
-                        >
-                            <option value="add">Dodaj radnju</option>
-                            <option value="remove">Ukloni radnju</option>
-                        </select>
-                    </label>
+            <Stack spacing={3}>
+                <fieldset className="space-y-1">
+                    <legend className="text-sm text-foreground">
+                        Vrsta prijedloga
+                    </legend>
+                    <div className="grid grid-cols-2 gap-1 rounded-md border border-border/80 bg-card p-1 shadow-sm">
+                        {intentOptions.map((option) => (
+                            <label
+                                className={cx(
+                                    'flex h-9 cursor-pointer items-center justify-center rounded-sm px-3 text-sm font-medium transition-colors',
+                                    suggestionValue.intent === option.value
+                                        ? 'bg-primary text-primary-foreground shadow-sm'
+                                        : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+                                )}
+                                key={option.value}
+                            >
+                                <input
+                                    checked={
+                                        suggestionValue.intent === option.value
+                                    }
+                                    className="sr-only"
+                                    name={`${id}-intent`}
+                                    onChange={() =>
+                                        onChange({
+                                            ...suggestionValue,
+                                            intent: option.value,
+                                            operationId: '',
+                                        })
+                                    }
+                                    type="radio"
+                                    value={option.value}
+                                />
+                                {option.label}
+                            </label>
+                        ))}
+                    </div>
+                </fieldset>
+                <Stack spacing={2}>
                     <label className="space-y-1" htmlFor={`${id}-operation`}>
                         <Typography level="body3">Radnja</Typography>
                         <select
-                            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                            className={selectControlClassName}
                             disabled={operationOptions.length === 0}
                             id={`${id}-operation`}
                             onChange={(event) =>
@@ -502,8 +535,18 @@ function FieldInput({
                             ))}
                         </select>
                     </label>
-                </div>
+                    {operationOptions.length === 0 ? (
+                        <Typography
+                            level="body3"
+                            className="text-muted-foreground"
+                        >
+                            Nema radnji za ovu namjeru u ovoj fazi.
+                        </Typography>
+                    ) : null}
+                </Stack>
                 <Input
+                    className={inputControlClassName}
+                    fullWidth
                     id={`${id}-source`}
                     label="Izvor"
                     onChange={(event) =>
@@ -518,7 +561,7 @@ function FieldInput({
                 <label className="space-y-1" htmlFor={`${id}-note`}>
                     <Typography level="body3">Napomena</Typography>
                     <textarea
-                        className="min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        className={cx(textareaControlClassName, 'min-h-20')}
                         id={`${id}-note`}
                         onChange={(event) =>
                             onChange({
@@ -547,7 +590,7 @@ function FieldInput({
     if (field.controlType === 'boolean') {
         return (
             <select
-                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                className={selectControlClassName}
                 id={id}
                 onChange={(event) => onChange(event.currentTarget.value)}
                 value={typeof value === 'string' ? value : ''}
@@ -562,7 +605,7 @@ function FieldInput({
     if (field.controlType === 'select') {
         return (
             <select
-                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                className={selectControlClassName}
                 id={id}
                 onChange={(event) => onChange(event.currentTarget.value)}
                 value={typeof value === 'string' ? value : ''}
@@ -580,6 +623,8 @@ function FieldInput({
     if (field.controlType === 'number' || field.controlType === 'reference') {
         return (
             <Input
+                className={inputControlClassName}
+                fullWidth
                 id={id}
                 inputMode={
                     field.controlType === 'reference' ? 'numeric' : 'decimal'
@@ -604,6 +649,8 @@ function FieldInput({
         return (
             <div className="grid gap-2 sm:grid-cols-2">
                 <Input
+                    className={inputControlClassName}
+                    fullWidth
                     id={`${id}-min`}
                     inputMode="decimal"
                     label="Najmanje"
@@ -617,6 +664,8 @@ function FieldInput({
                     value={rangeValue.min}
                 />
                 <Input
+                    className={inputControlClassName}
+                    fullWidth
                     id={`${id}-max`}
                     inputMode="decimal"
                     label="Najviše"
@@ -636,7 +685,7 @@ function FieldInput({
     if (field.controlType === 'json') {
         return (
             <textarea
-                className="min-h-32 w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm"
+                className={cx(textareaControlClassName, 'min-h-32 font-mono')}
                 id={id}
                 onChange={(event) => onChange(event.currentTarget.value)}
                 value={typeof value === 'string' ? value : ''}
@@ -646,7 +695,7 @@ function FieldInput({
 
     return (
         <textarea
-            className="min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            className={cx(textareaControlClassName, 'min-h-24')}
             id={id}
             onChange={(event) => onChange(event.currentTarget.value)}
             value={typeof value === 'string' ? value : ''}
@@ -854,13 +903,13 @@ export function CommunityEditButton({
 
     return (
         <Modal
-            className="max-w-3xl"
+            className="max-w-3xl border-border/70 shadow-xl"
             onOpenChange={setOpen}
             open={open}
             title={triggerLabel}
             trigger={trigger}
         >
-            <Stack spacing={4}>
+            <Stack spacing={5}>
                 <Row spacing={2} className="items-start justify-between gap-4">
                     <Stack spacing={1}>
                         <Typography level="h3">{triggerLabel}</Typography>
@@ -882,7 +931,10 @@ export function CommunityEditButton({
                         Provjeravam prijavu...
                     </Typography>
                 ) : !user ? (
-                    <Stack spacing={3}>
+                    <Stack
+                        spacing={3}
+                        className="rounded-lg border border-border/70 bg-muted/30 p-4"
+                    >
                         <Typography level="body2">
                             Za slanje prijedloga treba se prijaviti.
                         </Typography>
@@ -905,7 +957,10 @@ export function CommunityEditButton({
                         />
                     </Stack>
                 ) : successRequestId ? (
-                    <Stack spacing={2}>
+                    <Stack
+                        spacing={2}
+                        className="rounded-lg border border-green-700/20 bg-green-700/10 p-4"
+                    >
                         <Typography>
                             Prijedlog #{successRequestId} je poslan na
                             odobrenje.
@@ -921,19 +976,31 @@ export function CommunityEditButton({
                 ) : (
                     <Stack spacing={4}>
                         {isLoadingFields ? (
-                            <Typography level="body2">
-                                Učitavam polja...
-                            </Typography>
+                            <div className="rounded-lg border border-border/70 bg-muted/30 p-4">
+                                <Typography level="body2">
+                                    Učitavam polja...
+                                </Typography>
+                            </div>
                         ) : fields.length === 0 ? (
-                            <Typography level="body2">
-                                Ova sekcija trenutno nema javno uređivih polja.
-                            </Typography>
+                            <div className="rounded-lg border border-border/70 bg-muted/30 p-4">
+                                <Typography level="body2">
+                                    Ova sekcija trenutno nema javno uređivih
+                                    polja.
+                                </Typography>
+                            </div>
                         ) : (
                             fields.map((field) => {
                                 const id = fieldInputId(fieldIdPrefix, field);
                                 return (
-                                    <Stack key={field.fieldKey} spacing={2}>
-                                        <label htmlFor={id}>
+                                    <Stack
+                                        className={fieldPanelClassName}
+                                        key={field.fieldKey}
+                                        spacing={2}
+                                    >
+                                        <label
+                                            className="space-y-1"
+                                            htmlFor={id}
+                                        >
                                             <Typography level="body2" semiBold>
                                                 {field.publicLabel}
                                             </Typography>
@@ -970,7 +1037,10 @@ export function CommunityEditButton({
                                 Napomena za administratora
                             </Typography>
                             <textarea
-                                className="min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                className={cx(
+                                    textareaControlClassName,
+                                    'min-h-20',
+                                )}
                                 onChange={(event) =>
                                     setSubmitterNote(event.currentTarget.value)
                                 }
@@ -980,9 +1050,14 @@ export function CommunityEditButton({
                         </label>
 
                         {error ? (
-                            <Typography level="body2" className="text-red-700">
-                                {error}
-                            </Typography>
+                            <div className="rounded-md border border-red-700/20 bg-red-700/10 p-3">
+                                <Typography
+                                    level="body2"
+                                    className="text-red-700"
+                                >
+                                    {error}
+                                </Typography>
+                            </div>
                         ) : null}
 
                         <Row spacing={2} className="justify-end">
