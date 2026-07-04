@@ -1,5 +1,6 @@
 import 'server-only';
 import { createHash } from 'node:crypto';
+import { PLANT_STAGE_LABELS, type PlantStageName } from '@gredice/js/plants';
 import { and, asc, count, desc, eq } from 'drizzle-orm';
 import {
     type CommunityEditableFieldDefinition,
@@ -107,7 +108,7 @@ export type CommunityOperationSuggestionValue = {
     intent: CommunityOperationSuggestionIntent;
     operationId: number;
     operationLabel: string;
-    stageName: string;
+    stageName: PlantStageName;
     stageLabel: string;
     currentState: 'absent' | 'present';
     note?: string;
@@ -164,6 +165,10 @@ function stableValueHash(value: string | null) {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null;
+}
+
+function isPlantStageName(value: unknown): value is PlantStageName {
+    return typeof value === 'string' && value in PLANT_STAGE_LABELS;
 }
 
 function rawAttributeValue(entity: EntityRaw, category: string, name: string) {
@@ -782,7 +787,7 @@ async function resolveOperationSuggestionTarget(input: {
 
     return {
         operationLabel: entityLabel(operation),
-        stageName: stage.name,
+        stageName: input.stage.name,
         stageLabel: stage.label,
     };
 }
@@ -1466,7 +1471,7 @@ function parseCommunityOperationSuggestion(
             typeof parsed.operationId !== 'number' ||
             !Number.isInteger(parsed.operationId) ||
             typeof parsed.operationLabel !== 'string' ||
-            typeof parsed.stageName !== 'string' ||
+            !isPlantStageName(parsed.stageName) ||
             typeof parsed.stageLabel !== 'string' ||
             (parsed.currentState !== 'absent' &&
                 parsed.currentState !== 'present') ||
@@ -1480,7 +1485,23 @@ function parseCommunityOperationSuggestion(
             return null;
         }
 
-        return parsed as CommunityOperationSuggestionValue;
+        const suggestion: CommunityOperationSuggestionValue = {
+            format: 'community-operation-suggestion-v1',
+            intent: parsed.intent,
+            operationId: parsed.operationId,
+            operationLabel: parsed.operationLabel,
+            stageName: parsed.stageName,
+            stageLabel: parsed.stageLabel,
+            currentState: parsed.currentState,
+        };
+        if (typeof parsed.note === 'string') {
+            suggestion.note = parsed.note;
+        }
+        if (typeof parsed.source === 'string') {
+            suggestion.source = parsed.source;
+        }
+
+        return suggestion;
     } catch {
         return null;
     }

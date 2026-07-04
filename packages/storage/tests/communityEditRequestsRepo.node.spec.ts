@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';
+import { PLANT_STAGES } from '@gredice/js/plants';
 import {
     accountUsers,
     approveCommunityEditRequest,
@@ -26,12 +27,18 @@ import {
 import { createTestDb } from './testDb';
 
 type CommunityEditFixture = {
+    plantAntagonistsDefinitionId: number;
+    plantCompanionsDefinitionId: number;
     plantDescriptionDefinitionId: number;
     plantGerminationTypeDefinitionId: number;
+    plantMaintenanceDefinitionId: number;
     plantOperationsDefinitionId: number;
     plantSeedingDistanceDefinitionId: number;
     plantStorageDefinitionId: number;
+    plantSortAntagonistsDefinitionId: number;
+    plantSortCompanionsDefinitionId: number;
     plantSortLatinNameDefinitionId: number;
+    plantSortMaintenanceDefinitionId: number;
     operationNameDefinitionId: number;
     operationStageDefinitionId: number;
     operationApplicationDefinitionId: number;
@@ -92,6 +99,13 @@ async function createFixture(): Promise<CommunityEditFixture> {
         entityTypeName: 'plant',
         dataType: 'markdown',
     });
+    const plantMaintenanceDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'maintenance',
+        label: 'Održavanje',
+        entityTypeName: 'plant',
+        dataType: 'markdown',
+    });
     const plantSeedingDistanceDefinitionId = await createAttributeDefinition({
         category: 'attributes',
         name: 'seedingDistance',
@@ -114,6 +128,22 @@ async function createFixture(): Promise<CommunityEditFixture> {
         dataType: 'ref:operation',
         multiple: true,
     });
+    const plantCompanionsDefinitionId = await createAttributeDefinition({
+        category: 'relationships',
+        name: 'companions',
+        label: 'Dobri susjedi',
+        entityTypeName: 'plant',
+        dataType: 'ref:plant',
+        multiple: true,
+    });
+    const plantAntagonistsDefinitionId = await createAttributeDefinition({
+        category: 'relationships',
+        name: 'antagonists',
+        label: 'Loši susjedi',
+        entityTypeName: 'plant',
+        dataType: 'ref:plant',
+        multiple: true,
+    });
     await upsertEntityType({ name: 'plantSort', label: 'Sorta biljke' });
     const plantSortLatinNameDefinitionId = await createAttributeDefinition({
         category: 'information',
@@ -121,6 +151,29 @@ async function createFixture(): Promise<CommunityEditFixture> {
         label: 'Latinski naziv',
         entityTypeName: 'plantSort',
         dataType: 'text',
+    });
+    const plantSortMaintenanceDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'maintenance',
+        label: 'Održavanje sorte',
+        entityTypeName: 'plantSort',
+        dataType: 'markdown',
+    });
+    const plantSortCompanionsDefinitionId = await createAttributeDefinition({
+        category: 'relationships',
+        name: 'companions',
+        label: 'Dobri susjedi sorte',
+        entityTypeName: 'plantSort',
+        dataType: 'ref:plant',
+        multiple: true,
+    });
+    const plantSortAntagonistsDefinitionId = await createAttributeDefinition({
+        category: 'relationships',
+        name: 'antagonists',
+        label: 'Loši susjedi sorte',
+        entityTypeName: 'plantSort',
+        dataType: 'ref:plant',
+        multiple: true,
     });
     const stageNameDefinitionId = await createAttributeDefinition({
         category: 'information',
@@ -174,12 +227,18 @@ async function createFixture(): Promise<CommunityEditFixture> {
     });
 
     return {
+        plantAntagonistsDefinitionId,
+        plantCompanionsDefinitionId,
         plantDescriptionDefinitionId,
         plantGerminationTypeDefinitionId,
+        plantMaintenanceDefinitionId,
         plantOperationsDefinitionId,
         plantSeedingDistanceDefinitionId,
         plantStorageDefinitionId,
+        plantSortAntagonistsDefinitionId,
+        plantSortCompanionsDefinitionId,
         plantSortLatinNameDefinitionId,
+        plantSortMaintenanceDefinitionId,
         operationNameDefinitionId,
         operationStageDefinitionId,
         operationApplicationDefinitionId,
@@ -192,8 +251,11 @@ async function createFixture(): Promise<CommunityEditFixture> {
 }
 
 async function createPublishedPlant(input?: {
+    antagonistIds?: number[];
+    companionIds?: number[];
     description?: string;
     germinationType?: string;
+    maintenance?: string;
     operationIds?: number[];
     seedingDistance?: string;
     storage?: string;
@@ -225,12 +287,38 @@ async function createPublishedPlant(input?: {
         entityId,
         value: input?.storage ?? 'Čuvati na hladnom mjestu.',
     });
+    await upsertAttributeValue({
+        attributeDefinitionId: data.plantMaintenanceDefinitionId,
+        entityTypeName: 'plant',
+        entityId,
+        value: input?.maintenance ?? 'Redovito uklanjati korov.',
+    });
     for (const [index, operationId] of (input?.operationIds ?? []).entries()) {
         await upsertAttributeValue({
             attributeDefinitionId: data.plantOperationsDefinitionId,
             entityTypeName: 'plant',
             entityId,
             value: String(operationId),
+            order: String(index),
+        });
+    }
+    for (const [index, companionId] of (input?.companionIds ?? []).entries()) {
+        await upsertAttributeValue({
+            attributeDefinitionId: data.plantCompanionsDefinitionId,
+            entityTypeName: 'plant',
+            entityId,
+            value: String(companionId),
+            order: String(index),
+        });
+    }
+    for (const [index, antagonistId] of (
+        input?.antagonistIds ?? []
+    ).entries()) {
+        await upsertAttributeValue({
+            attributeDefinitionId: data.plantAntagonistsDefinitionId,
+            entityTypeName: 'plant',
+            entityId,
+            value: String(antagonistId),
             order: String(index),
         });
     }
@@ -259,7 +347,12 @@ async function createPublishedPlantStage(input: {
     return entityId;
 }
 
-async function createPublishedPlantSort(input?: { latinName?: string }) {
+async function createPublishedPlantSort(input?: {
+    antagonistIds?: number[];
+    companionIds?: number[];
+    latinName?: string;
+    maintenance?: string;
+}) {
     const data = await fixture();
     const entityId = await createEntity('plantSort');
     await updateEntity({ id: entityId, state: 'published' });
@@ -269,6 +362,32 @@ async function createPublishedPlantSort(input?: { latinName?: string }) {
         entityId,
         value: input?.latinName ?? 'Solanum sortum',
     });
+    await upsertAttributeValue({
+        attributeDefinitionId: data.plantSortMaintenanceDefinitionId,
+        entityTypeName: 'plantSort',
+        entityId,
+        value: input?.maintenance ?? 'Sortu redovito pregledavati.',
+    });
+    for (const [index, companionId] of (input?.companionIds ?? []).entries()) {
+        await upsertAttributeValue({
+            attributeDefinitionId: data.plantSortCompanionsDefinitionId,
+            entityTypeName: 'plantSort',
+            entityId,
+            value: String(companionId),
+            order: String(index),
+        });
+    }
+    for (const [index, antagonistId] of (
+        input?.antagonistIds ?? []
+    ).entries()) {
+        await upsertAttributeValue({
+            attributeDefinitionId: data.plantSortAntagonistsDefinitionId,
+            entityTypeName: 'plantSort',
+            entityId,
+            value: String(antagonistId),
+            order: String(index),
+        });
+    }
     return entityId;
 }
 
@@ -363,9 +482,64 @@ test('community editable registry resolves allowed plant and operation fields', 
             ),
     );
     assert.ok(
-        getCommunityEditableSections('plantSort')
+        plantSections
+            .find((section) => section.key === 'relationships')
+            ?.fields.some(
+                (field) => field.fieldKey === 'plant.relationships.companions',
+            ),
+    );
+    assert.ok(
+        plantSections
+            .find((section) => section.key === 'relationships')
+            ?.fields.some(
+                (field) => field.fieldKey === 'plant.relationships.antagonists',
+            ),
+    );
+
+    for (const stage of PLANT_STAGES) {
+        const sectionFields =
+            plantSections.find((section) => section.key === stage.name)
+                ?.fields ?? [];
+        assert.ok(
+            sectionFields.some(
+                (field) => field.fieldKey === `plant.${stage.name}`,
+            ),
+            `Expected plant ${stage.name} content field.`,
+        );
+        assert.ok(
+            sectionFields.some(
+                (field) =>
+                    field.fieldKey === `plant.stage-operations.${stage.name}`,
+            ),
+            `Expected plant ${stage.name} operation suggestion field.`,
+        );
+    }
+
+    const plantSortSections = getCommunityEditableSections('plantSort');
+    for (const stage of PLANT_STAGES) {
+        const sectionFields =
+            plantSortSections.find((section) => section.key === stage.name)
+                ?.fields ?? [];
+        assert.ok(
+            sectionFields.some(
+                (field) => field.fieldKey === `plant-sort.${stage.name}`,
+            ),
+            `Expected plant sort ${stage.name} content field.`,
+        );
+    }
+
+    assert.ok(
+        plantSortSections
             .find((section) => section.key === 'overview')
             ?.fields.some((field) => field.fieldKey === 'plant-sort.name'),
+    );
+    assert.ok(
+        plantSortSections
+            .find((section) => section.key === 'relationships')
+            ?.fields.some(
+                (field) =>
+                    field.fieldKey === 'plant-sort.relationships.companions',
+            ),
     );
     assert.ok(
         getCommunityEditableSections('operation')
@@ -434,6 +608,62 @@ test('community editable registry resolves allowed plant and operation fields', 
         ),
     );
 
+    const maintenanceFields = await getCommunityEditableFieldsForEntity({
+        entityTypeName: 'plant',
+        entityId: plantId,
+        sectionKey: 'maintenance',
+    });
+    assert.ok(
+        maintenanceFields.some(
+            (field) =>
+                field.fieldKey === 'plant.maintenance' &&
+                field.controlType === 'markdown' &&
+                field.currentValue === 'Redovito uklanjati korov.',
+        ),
+    );
+    assert.ok(
+        maintenanceFields.some(
+            (field) =>
+                field.fieldKey === 'plant.stage-operations.maintenance' &&
+                field.controlType === 'operationSuggestion' &&
+                field.operationSuggestionStage?.name === 'maintenance',
+        ),
+    );
+
+    const companionId = await createPublishedPlant({
+        description: 'Prijateljska biljka.',
+    });
+    const antagonistId = await createPublishedPlant({
+        description: 'Biljka za odvajanje.',
+    });
+    const relationshipPlantId = await createPublishedPlant({
+        companionIds: [companionId],
+        antagonistIds: [antagonistId],
+    });
+    const relationshipFields = await getCommunityEditableFieldsForEntity({
+        entityTypeName: 'plant',
+        entityId: relationshipPlantId,
+        sectionKey: 'relationships',
+    });
+    assert.ok(
+        relationshipFields.some(
+            (field) =>
+                field.fieldKey === 'plant.relationships.companions' &&
+                field.controlType === 'reference' &&
+                field.multiple &&
+                field.currentValue === JSON.stringify([String(companionId)]),
+        ),
+    );
+    assert.ok(
+        relationshipFields.some(
+            (field) =>
+                field.fieldKey === 'plant.relationships.antagonists' &&
+                field.controlType === 'reference' &&
+                field.multiple &&
+                field.currentValue === JSON.stringify([String(antagonistId)]),
+        ),
+    );
+
     const plantSortId = await createPublishedPlantSort();
     const plantSortFields = await getCommunityEditableFieldsForEntity({
         entityTypeName: 'plantSort',
@@ -446,6 +676,40 @@ test('community editable registry resolves allowed plant and operation fields', 
                 field.fieldKey === 'plant-sort.latin-name' &&
                 field.controlType === 'text' &&
                 field.currentValue === 'Solanum sortum',
+        ),
+    );
+
+    const plantSortMaintenanceFields =
+        await getCommunityEditableFieldsForEntity({
+            entityTypeName: 'plantSort',
+            entityId: plantSortId,
+            sectionKey: 'maintenance',
+        });
+    assert.ok(
+        plantSortMaintenanceFields.some(
+            (field) =>
+                field.fieldKey === 'plant-sort.maintenance' &&
+                field.controlType === 'markdown' &&
+                field.currentValue === 'Sortu redovito pregledavati.',
+        ),
+    );
+
+    const plantSortRelationshipId = await createPublishedPlantSort({
+        companionIds: [companionId],
+    });
+    const plantSortRelationshipFields =
+        await getCommunityEditableFieldsForEntity({
+            entityTypeName: 'plantSort',
+            entityId: plantSortRelationshipId,
+            sectionKey: 'relationships',
+        });
+    assert.ok(
+        plantSortRelationshipFields.some(
+            (field) =>
+                field.fieldKey === 'plant-sort.relationships.companions' &&
+                field.controlType === 'reference' &&
+                field.multiple &&
+                field.currentValue === JSON.stringify([String(companionId)]),
         ),
     );
 
@@ -577,6 +841,88 @@ test('community edit requests submit storage content and operation suggestions t
     assert.deepEqual(
         attributeValues(entity, data.plantOperationsDefinitionId),
         [String(operationId)],
+    );
+});
+
+test('community edit requests submit plant relationship references', async () => {
+    const data = await fixture();
+    const basilId = await createPublishedPlant({
+        description: 'Dobro se slaže s rajčicom.',
+    });
+    const calendulaId = await createPublishedPlant({
+        description: 'Koristan cvijet u blizini.',
+    });
+    const fennelId = await createPublishedPlant({
+        description: 'Bolje ga je odvojiti.',
+    });
+    const plantId = await createPublishedPlant({
+        companionIds: [basilId],
+    });
+    const relationshipFields = await getCommunityEditableFieldsForEntity({
+        entityTypeName: 'plant',
+        entityId: plantId,
+        sectionKey: 'relationships',
+    });
+    const companionsField = relationshipFields.find(
+        (field) => field.fieldKey === 'plant.relationships.companions',
+    );
+    const antagonistsField = relationshipFields.find(
+        (field) => field.fieldKey === 'plant.relationships.antagonists',
+    );
+    assert.ok(companionsField);
+    assert.ok(antagonistsField);
+    assert.equal(companionsField.controlType, 'reference');
+    assert.equal(companionsField.multiple, true);
+    assert.equal(
+        companionsField.currentValue,
+        JSON.stringify([String(basilId)]),
+    );
+    assert.equal(antagonistsField.currentValue, '[]');
+
+    const request = await createCommunityEditRequest({
+        entityTypeName: 'plant',
+        entityId: plantId,
+        publicPath: '/biljke/rajcica',
+        sectionKey: 'relationships',
+        submitter: { id: data.submitterId, name: 'Community Submitter' },
+        changes: [
+            {
+                fieldKey: 'plant.relationships.companions',
+                baseValueHash: companionsField.baseValueHash,
+                proposedValue: [String(basilId), String(calendulaId)],
+            },
+            {
+                fieldKey: 'plant.relationships.antagonists',
+                baseValueHash: antagonistsField.baseValueHash,
+                proposedValue: [String(fennelId)],
+            },
+        ],
+    });
+
+    assert.equal(request.status, 'pending');
+    assert.deepEqual(
+        request.changes.map((change) => change.proposedValue),
+        [
+            JSON.stringify([String(basilId), String(calendulaId)]),
+            JSON.stringify([String(fennelId)]),
+        ],
+    );
+
+    const applied = await approveCommunityEditRequest({
+        id: request.id,
+        reviewer: { id: data.reviewerId, name: 'Community Reviewer' },
+    });
+    assert.equal(applied.status, 'applied');
+
+    const entity = await getEntityRaw(plantId);
+    assert.ok(entity);
+    assert.deepEqual(
+        attributeValues(entity, data.plantCompanionsDefinitionId),
+        [String(basilId), String(calendulaId)],
+    );
+    assert.deepEqual(
+        attributeValues(entity, data.plantAntagonistsDefinitionId),
+        [String(fennelId)],
     );
 });
 
