@@ -206,11 +206,13 @@ function EntityInstancesAssetBlock(props: EntityInstancesAssetBlockProps) {
 }
 
 export function EntityInstances({
+    farmId,
     quality,
     renderGroundDecorations,
     stacks,
     renderDetails = true,
 }: {
+    farmId?: number | null;
     quality?: GameQualityProfile;
     renderGroundDecorations?: boolean;
     stacks: Stack[] | undefined;
@@ -487,6 +489,7 @@ export function EntityInstances({
             {shouldRenderGroundDecorations && (
                 <GroundBlockDecorations
                     density={qualityProfile.groundDecorationDensity}
+                    farmId={farmId}
                     stacks={stacks}
                 />
             )}

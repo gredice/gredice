@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import * as SunCalc from 'suncalc';
 import { Color, type Vector3 } from 'three';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
+import { useLiveTime } from '../hooks/useLiveTime';
 import { useSnapshotTime } from '../hooks/useSnapshotTime';
 import { useWeatherNow } from '../hooks/useWeatherNow';
 import type { Stack } from '../types/Stack';
@@ -666,8 +667,9 @@ export function Environment({
 }: EnvironmentProps) {
     const qualityProfile = quality ?? resolveGameQualityProfile();
 
-    const currentTime = useSnapshotTime();
+    const currentTime = useLiveTime();
     const timeOfDay = useGameState((state) => state.timeOfDay);
+    const syncTimeOfDay = useGameState((state) => state.syncTimeOfDay);
     const backgroundPaletteIndex = useGameState(
         (state) => state.backgroundPaletteIndex,
     );
@@ -693,15 +695,16 @@ export function Environment({
     const weatherDisabled = noWeather || weatherVisualizationDisabled;
 
     const { data: garden } = useCurrentGarden();
-    const location = garden
-        ? {
-              lat: garden.location.lat ?? 0,
-              lon: garden.location.lon ?? 0,
-          }
-        : {
-              lat: 45.739,
-              lon: 16.572,
-          };
+    const location = useMemo(
+        () => ({
+            lat: garden?.location.lat ?? defaultLocation.lat,
+            lon: garden?.location.lon ?? defaultLocation.lon,
+        }),
+        [garden?.location.lat, garden?.location.lon],
+    );
+    useEffect(() => {
+        syncTimeOfDay(location, currentTime);
+    }, [currentTime, location, syncTimeOfDay]);
     const shadowCameraSize = useMemo(() => {
         const stacks = garden?.stacks;
         if (!stacks?.length) {
@@ -721,7 +724,7 @@ export function Environment({
     const gameWeather = useGameState((state) => state.weather);
     const hasWeatherOverride = Boolean(gameWeather ?? weather);
     const { data: weatherNow } = useWeatherNow(
-        !weatherDisabled && !hasWeatherOverride,
+        !weatherDisabled && !hasWeatherOverride && garden !== undefined,
         garden?.farmId,
     );
     const overrideWeather = weatherDisabled

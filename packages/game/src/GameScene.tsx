@@ -241,7 +241,10 @@ export function GameScene({
     );
     const gardenBackgroundPalette = garden?.backgroundPalette;
     useClearSandboxEnvironmentOverrides(garden);
-    useWeatherNow(!isLocalSandbox && !weatherDisabled && !weather);
+    useWeatherNow(
+        !isLocalSandbox && !weatherDisabled && !weather && garden !== undefined,
+        garden?.farmId,
+    );
     const isLoading = gardenLoading;
 
     useEffect(() => {
@@ -356,6 +359,7 @@ export function GameScene({
                                     </Suspense>
                                 )}
                                 <EntityInstances
+                                    farmId={garden?.farmId}
                                     quality={qualityProfile}
                                     renderGroundDecorations={
                                         renderDetails && zoom !== 'far'
@@ -386,6 +390,7 @@ export function GameScene({
                                 {renderDetails && zoom !== 'far' && (
                                     <Suspense fallback={null}>
                                         <Cats
+                                            farmId={garden?.farmId}
                                             stacks={garden?.stacks}
                                             weather={weather}
                                             weatherDisabled={weatherDisabled}
@@ -395,6 +400,7 @@ export function GameScene({
                                 {renderDetails && zoom !== 'far' && (
                                     <Suspense fallback={null}>
                                         <Dogs
+                                            farmId={garden?.farmId}
                                             stacks={garden?.stacks}
                                             weather={weather}
                                             weatherDisabled={weatherDisabled}
@@ -404,6 +410,7 @@ export function GameScene({
                                 {renderDetails && zoom !== 'far' && (
                                     <Suspense fallback={null}>
                                         <Bees
+                                            farmId={garden?.farmId}
                                             garden={garden}
                                             groundDecorationDensity={
                                                 qualityProfile.groundDecorationDensity

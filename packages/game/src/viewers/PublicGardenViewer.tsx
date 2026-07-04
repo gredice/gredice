@@ -44,6 +44,7 @@ import {
     type GameStateStore,
     useDisposeGameStateStore,
 } from '../useGameState';
+import type { GameLocation } from '../utils/timeOfDay';
 
 export type PublicGardenBlock = Block;
 
@@ -153,6 +154,26 @@ function publicGardenForGameState(
     };
 }
 
+function publicGardenTimeLocation(
+    garden: PublicGardenDetail | undefined,
+): GameLocation | undefined {
+    if (!garden) {
+        return undefined;
+    }
+
+    if (
+        !Number.isFinite(garden.latitude) ||
+        !Number.isFinite(garden.longitude)
+    ) {
+        return undefined;
+    }
+
+    return {
+        lat: garden.latitude,
+        lon: garden.longitude,
+    };
+}
+
 function PublicGardenScene({
     cameraPosition,
     className,
@@ -208,6 +229,7 @@ function PublicGardenScene({
                                     )),
                                 )}
                                 <EntityInstances
+                                    farmId={garden?.farmId}
                                     quality={qualityProfile}
                                     renderGroundDecorations={
                                         renderLivingDetails
@@ -222,17 +244,24 @@ function PublicGardenScene({
                                 )}
                                 {renderLivingDetails && (
                                     <Suspense fallback={null}>
-                                        <Cats stacks={normalizedStacks} />
+                                        <Cats
+                                            farmId={garden?.farmId}
+                                            stacks={normalizedStacks}
+                                        />
                                     </Suspense>
                                 )}
                                 {renderLivingDetails && (
                                     <Suspense fallback={null}>
-                                        <Dogs stacks={normalizedStacks} />
+                                        <Dogs
+                                            farmId={garden?.farmId}
+                                            stacks={normalizedStacks}
+                                        />
                                     </Suspense>
                                 )}
                                 {renderLivingDetails && garden && (
                                     <Suspense fallback={null}>
                                         <Bees
+                                            farmId={garden.farmId}
                                             garden={garden}
                                             groundDecorationDensity={
                                                 qualityProfile.groundDecorationDensity
@@ -304,13 +333,15 @@ export function PublicGardenViewer({
 }: PublicGardenViewerProps) {
     const resolvedAppBaseUrl = appBaseUrl || 'https://vrt.gredice.com';
     const resolvedSpriteBaseUrl = spriteBaseUrl ?? resolvedAppBaseUrl;
+    const initialTimeLocation = publicGardenTimeLocation(garden);
     const storeRef = useRef<GameStateStore>(null);
     if (!storeRef.current) {
         storeRef.current = createGameState({
             appBaseUrl: resolvedAppBaseUrl,
             spriteBaseUrl: resolvedSpriteBaseUrl,
-            freezeTime: new Date(2024, 5, 21, 12, 0, 0),
+            freezeTime: null,
             isMock: false,
+            timeLocation: initialTimeLocation,
             winterMode: 'summer',
         });
     }

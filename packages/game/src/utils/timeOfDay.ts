@@ -77,10 +77,11 @@ export function getGameTimeOfDay(location: GameLocation, currentTime: Date) {
 export function resolveGameTimeOfDay(
     currentTime: Date,
     dayNightCycleDisabled: boolean,
+    location: GameLocation = defaultGameLocation,
 ) {
     return dayNightCycleDisabled
         ? ALWAYS_DAY_TIME
-        : getGameTimeOfDay(defaultGameLocation, currentTime);
+        : getGameTimeOfDay(location, currentTime);
 }
 
 export function createDateForGameTimeOfDay(
