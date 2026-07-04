@@ -1,6 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
 import { Container } from '@gredice/ui/Container';
+import { OperationImage } from '@gredice/ui/OperationImage';
 import { PageHeader } from '@gredice/ui/PageHeader';
+import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
@@ -9,8 +11,15 @@ import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { formatPrice } from '../../lib/formatPrice';
 import { getHqLocationsData } from '../../lib/getHqLocationsData';
 import { getOperationsData } from '../../lib/plants/getOperationsData';
+import { getPlantSortsData } from '../../lib/plants/getPlantSortsData';
 import { getPlantsData } from '../../lib/plants/getPlantsData';
 import { KnownPages } from '../../src/KnownPages';
+import {
+    getPlantSortParentName,
+    getPricedOperationRows,
+    getPricedPlantRows,
+    getPricedPlantSortRows,
+} from './pricingRows';
 
 export const metadata: Metadata = {
     title: 'Cjenik',
@@ -19,25 +28,17 @@ export const metadata: Metadata = {
 };
 
 export default async function PricingPage() {
-    const [plantsData, operationsData, hqLocations] = await Promise.all([
-        getPlantsData(),
-        getOperationsData(),
-        getHqLocationsData(),
-    ]);
+    const [plantsData, plantSortsData, operationsData, hqLocations] =
+        await Promise.all([
+            getPlantsData(),
+            getPlantSortsData(),
+            getOperationsData(),
+            getHqLocationsData(),
+        ]);
 
-    const plantsWithPrices = plantsData
-        .filter((plant) => typeof plant.prices?.perPlant === 'number')
-        .sort((a, b) =>
-            a.information.name.localeCompare(b.information.name, 'hr-HR'),
-        );
-
-    const operationsWithPrices = operationsData
-        .filter(
-            (operation) => typeof operation.prices?.perOperation === 'number',
-        )
-        .sort((a, b) =>
-            a.information.label.localeCompare(b.information.label, 'hr-HR'),
-        );
+    const plantsWithPrices = getPricedPlantRows(plantsData);
+    const plantSortsWithPrices = getPricedPlantSortRows(plantSortsData);
+    const operationsWithPrices = getPricedOperationRows(operationsData);
 
     const sortedHqLocations = [...hqLocations].sort((a, b) =>
         a.information.label.localeCompare(b.information.label, 'hr-HR'),
@@ -54,7 +55,9 @@ export default async function PricingPage() {
 
                 <Card>
                     <CardHeader className="flex-row items-center justify-between">
-                        <CardTitle>Cijene biljaka (po biljci)</CardTitle>
+                        <CardTitle>
+                            Cijene biljaka i sorti (po biljci)
+                        </CardTitle>
                         <FeedbackModal topic="www/pricing/plants" />
                     </CardHeader>
                     <CardContent>
@@ -63,7 +66,7 @@ export default async function PricingPage() {
                                 <thead>
                                     <tr className="border-b">
                                         <th className="text-left py-2 pr-4">
-                                            Biljka
+                                            Biljka ili sorta
                                         </th>
                                         <th className="text-right py-2">
                                             Cijena
@@ -73,15 +76,72 @@ export default async function PricingPage() {
                                 <tbody>
                                     {plantsWithPrices.map((plant) => (
                                         <tr
-                                            key={plant.id}
+                                            key={`plant-${plant.id}`}
                                             className="border-b last:border-b-0"
                                         >
-                                            <td className="py-2 pr-4">
-                                                {plant.information.name}
+                                            <td className="py-2 pr-4 align-middle">
+                                                <div className="flex min-w-56 items-center gap-3">
+                                                    <PlantOrSortImage
+                                                        plant={plant}
+                                                        alt={`Slika biljke ${plant.information.name}`}
+                                                        width={40}
+                                                        height={40}
+                                                        className="size-10 rounded-md object-cover"
+                                                    />
+                                                    <span className="min-w-0">
+                                                        <span className="block truncate font-medium">
+                                                            {
+                                                                plant
+                                                                    .information
+                                                                    .name
+                                                            }
+                                                        </span>
+                                                        <span className="block text-xs text-muted-foreground">
+                                                            Biljka
+                                                        </span>
+                                                    </span>
+                                                </div>
                                             </td>
                                             <td className="py-2 text-right font-medium">
                                                 {formatPrice(
                                                     plant.prices.perPlant,
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {plantSortsWithPrices.map((sort) => (
+                                        <tr
+                                            key={`plant-sort-${sort.id}`}
+                                            className="border-b last:border-b-0"
+                                        >
+                                            <td className="py-2 pr-4 align-middle">
+                                                <div className="flex min-w-56 items-center gap-3">
+                                                    <PlantOrSortImage
+                                                        plantSort={sort}
+                                                        alt={`Slika sorte ${sort.information.name}`}
+                                                        width={40}
+                                                        height={40}
+                                                        className="size-10 rounded-md object-cover"
+                                                    />
+                                                    <span className="min-w-0">
+                                                        <span className="block truncate font-medium">
+                                                            {
+                                                                sort.information
+                                                                    .name
+                                                            }
+                                                        </span>
+                                                        <span className="block truncate text-xs text-muted-foreground">
+                                                            Sorta -{' '}
+                                                            {getPlantSortParentName(
+                                                                sort,
+                                                            )}
+                                                        </span>
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td className="py-2 text-right font-medium">
+                                                {formatPrice(
+                                                    sort.prices.perPlant,
                                                 )}
                                             </td>
                                         </tr>
@@ -126,8 +186,21 @@ export default async function PricingPage() {
                                             key={operation.id}
                                             className="border-b last:border-b-0"
                                         >
-                                            <td className="py-2 pr-4">
-                                                {operation.information.label}
+                                            <td className="py-2 pr-4 align-middle">
+                                                <div className="flex min-w-56 items-center gap-3">
+                                                    <OperationImage
+                                                        operation={operation}
+                                                        size={40}
+                                                        className="rounded-md bg-muted text-muted-foreground"
+                                                    />
+                                                    <span className="block min-w-0 truncate font-medium">
+                                                        {
+                                                            operation
+                                                                .information
+                                                                .label
+                                                        }
+                                                    </span>
+                                                </div>
                                             </td>
                                             <td className="py-2 text-right font-medium">
                                                 {formatPrice(
