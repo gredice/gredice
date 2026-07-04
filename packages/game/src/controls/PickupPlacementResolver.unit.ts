@@ -184,6 +184,38 @@ describe('resolvePickupPlacementPreviewForRelative', () => {
         assert.equal(preview?.nextIsBlocked, true);
     });
 
+    it('keeps GardenBox storage blocked for multi-selection previews', () => {
+        const primaryTree = createBlock('Tree', 'primary-tree');
+        const extraTree = createBlock('Tree', 'extra-tree');
+        const gardenBox = createBlock('GardenBox', 'garden-box');
+        const primaryStack = createStack(0, 0, [primaryTree]);
+        const extraStack = createStack(0, 1, [extraTree]);
+        const gardenBoxStack = createStack(1, 0, [gardenBox]);
+
+        const preview = resolvePickupPlacementPreviewForRelative({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments: [
+                createMovingSegment({
+                    block: primaryTree,
+                    sourceStack: primaryStack,
+                }),
+                createMovingSegment({
+                    block: extraTree,
+                    sourceStack: extraStack,
+                }),
+            ],
+            relative: new Vector3(1, 0, 0),
+            stacks: [primaryStack, extraStack, gardenBoxStack],
+        });
+
+        assert.equal(preview?.hoveredGardenBoxBlockId, 'garden-box');
+        assert.equal(preview?.canStoreInGardenBox, false);
+        assert.equal(preview?.nextIsBlocked, true);
+        assert.equal(preview?.targetOffsets.length, 2);
+    });
+
     it('routes recyclable selections to recycler targets instead of blocking', () => {
         const raisedBed = createBlock('Raised_Bed', 'raised-bed');
         const recycler = createBlock('RecyclingBin', 'recycler');
@@ -207,6 +239,38 @@ describe('resolvePickupPlacementPreviewForRelative', () => {
 
         assert.equal(preview?.nextIsOverRecycler, true);
         assert.equal(preview?.nextIsBlocked, false);
+        assert.equal(preview?.canStoreInGardenBox, false);
+    });
+
+    it('keeps recycler drops blocked when a raised bed is part of a multi-selection', () => {
+        const raisedBed = createBlock('Raised_Bed', 'raised-bed');
+        const extraTree = createBlock('Tree', 'extra-tree');
+        const recycler = createBlock('RecyclingBin', 'recycler');
+        const raisedBedStack = createStack(0, 0, [raisedBed]);
+        const extraStack = createStack(0, 1, [extraTree]);
+        const recyclerStack = createStack(1, 0, [recycler]);
+
+        const preview = resolvePickupPlacementPreviewForRelative({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments: [
+                createMovingSegment({
+                    block: raisedBed,
+                    canRecycle: false,
+                    sourceStack: raisedBedStack,
+                }),
+                createMovingSegment({
+                    block: extraTree,
+                    sourceStack: extraStack,
+                }),
+            ],
+            relative: new Vector3(1, 0, 0),
+            stacks: [raisedBedStack, extraStack, recyclerStack],
+        });
+
+        assert.equal(preview?.nextIsOverRecycler, false);
+        assert.equal(preview?.nextIsBlocked, true);
         assert.equal(preview?.canStoreInGardenBox, false);
     });
 

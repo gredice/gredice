@@ -30,6 +30,22 @@ export type BlockInteractionHandlers = {
     onSelectClick?: (event: ThreeEvent<MouseEvent>) => void;
 };
 
+export type BlockInteractionHandlersRef = {
+    current: BlockInteractionHandlers;
+};
+
+export type BlockInteractionHandlerPresence = {
+    hasOnClick: boolean;
+    hasOnPickupPointerEnter: boolean;
+    hasOnPointerDown: boolean;
+    hasOnPointerEnter: boolean;
+    hasOnPointerLeave: boolean;
+    hasOnRotatePointerDown: boolean;
+    hasOnRotatePointerLeave: boolean;
+    hasOnRotatePointerUp: boolean;
+    hasOnSelectClick: boolean;
+};
+
 type RegisteredBlockInteractionTarget = BlockInteractionTarget & {
     handlers: BlockInteractionHandlers;
 };
@@ -120,6 +136,51 @@ export function useBlockInteractionRegistry() {
     return useContext(BlockInteractionRegistryContext);
 }
 
+export function createStableBlockInteractionHandlers(
+    handlersRef: BlockInteractionHandlersRef,
+    presence: BlockInteractionHandlerPresence,
+): BlockInteractionHandlers {
+    const nextHandlers: BlockInteractionHandlers = {};
+
+    if (presence.hasOnClick) {
+        nextHandlers.onClick = (event) => handlersRef.current.onClick?.(event);
+    }
+    if (presence.hasOnPickupPointerEnter) {
+        nextHandlers.onPickupPointerEnter = (event) =>
+            handlersRef.current.onPickupPointerEnter?.(event);
+    }
+    if (presence.hasOnPointerDown) {
+        nextHandlers.onPointerDown = (event) =>
+            handlersRef.current.onPointerDown?.(event);
+    }
+    if (presence.hasOnPointerEnter) {
+        nextHandlers.onPointerEnter = (event) =>
+            handlersRef.current.onPointerEnter?.(event);
+    }
+    if (presence.hasOnPointerLeave) {
+        nextHandlers.onPointerLeave = (event) =>
+            handlersRef.current.onPointerLeave?.(event);
+    }
+    if (presence.hasOnRotatePointerDown) {
+        nextHandlers.onRotatePointerDown = (event) =>
+            handlersRef.current.onRotatePointerDown?.(event);
+    }
+    if (presence.hasOnRotatePointerLeave) {
+        nextHandlers.onRotatePointerLeave = (event) =>
+            handlersRef.current.onRotatePointerLeave?.(event);
+    }
+    if (presence.hasOnRotatePointerUp) {
+        nextHandlers.onRotatePointerUp = (event) =>
+            handlersRef.current.onRotatePointerUp?.(event);
+    }
+    if (presence.hasOnSelectClick) {
+        nextHandlers.onSelectClick = (event) =>
+            handlersRef.current.onSelectClick?.(event);
+    }
+
+    return nextHandlers;
+}
+
 export function useBlockInteractionTargetRegistration(
     key: string | undefined,
     target: BlockInteractionTarget | undefined,
@@ -129,6 +190,7 @@ export function useBlockInteractionTargetRegistration(
     const targetRef = useRef(target);
     const handlersRef = useRef(handlers);
     const hasOnClick = Boolean(handlers.onClick);
+    const hasOnPickupPointerEnter = Boolean(handlers.onPickupPointerEnter);
     const hasOnPointerDown = Boolean(handlers.onPointerDown);
     const hasOnPointerEnter = Boolean(handlers.onPointerEnter);
     const hasOnPointerLeave = Boolean(handlers.onPointerLeave);
@@ -151,51 +213,31 @@ export function useBlockInteractionTargetRegistration(
         }),
         [],
     );
-    const stableHandlers = useMemo<BlockInteractionHandlers>(() => {
-        const nextHandlers: BlockInteractionHandlers = {};
-        if (hasOnClick) {
-            nextHandlers.onClick = (event) =>
-                handlersRef.current.onClick?.(event);
-        }
-        if (hasOnPointerDown) {
-            nextHandlers.onPointerDown = (event) =>
-                handlersRef.current.onPointerDown?.(event);
-        }
-        if (hasOnPointerEnter) {
-            nextHandlers.onPointerEnter = (event) =>
-                handlersRef.current.onPointerEnter?.(event);
-        }
-        if (hasOnPointerLeave) {
-            nextHandlers.onPointerLeave = (event) =>
-                handlersRef.current.onPointerLeave?.(event);
-        }
-        if (hasOnRotatePointerDown) {
-            nextHandlers.onRotatePointerDown = (event) =>
-                handlersRef.current.onRotatePointerDown?.(event);
-        }
-        if (hasOnRotatePointerLeave) {
-            nextHandlers.onRotatePointerLeave = (event) =>
-                handlersRef.current.onRotatePointerLeave?.(event);
-        }
-        if (hasOnRotatePointerUp) {
-            nextHandlers.onRotatePointerUp = (event) =>
-                handlersRef.current.onRotatePointerUp?.(event);
-        }
-        if (hasOnSelectClick) {
-            nextHandlers.onSelectClick = (event) =>
-                handlersRef.current.onSelectClick?.(event);
-        }
-        return nextHandlers;
-    }, [
-        hasOnClick,
-        hasOnPointerDown,
-        hasOnPointerEnter,
-        hasOnPointerLeave,
-        hasOnRotatePointerDown,
-        hasOnRotatePointerLeave,
-        hasOnRotatePointerUp,
-        hasOnSelectClick,
-    ]);
+    const stableHandlers = useMemo(
+        () =>
+            createStableBlockInteractionHandlers(handlersRef, {
+                hasOnClick,
+                hasOnPickupPointerEnter,
+                hasOnPointerDown,
+                hasOnPointerEnter,
+                hasOnPointerLeave,
+                hasOnRotatePointerDown,
+                hasOnRotatePointerLeave,
+                hasOnRotatePointerUp,
+                hasOnSelectClick,
+            }),
+        [
+            hasOnClick,
+            hasOnPickupPointerEnter,
+            hasOnPointerDown,
+            hasOnPointerEnter,
+            hasOnPointerLeave,
+            hasOnRotatePointerDown,
+            hasOnRotatePointerLeave,
+            hasOnRotatePointerUp,
+            hasOnSelectClick,
+        ],
+    );
 
     useLayoutEffect(() => {
         targetRef.current = target;

@@ -68,7 +68,10 @@ import {
     type PickupPlacementPreviewResolver,
     type ResolvedPlacementPreview,
 } from './PickupPlacementResolver';
-import { createPickupSelectionMovingSegments } from './pickupSelection';
+import {
+    createPickupSelectionMoveRequests,
+    createPickupSelectionMovingSegments,
+} from './pickupSelection';
 import { useHoveredBlockStore } from './useHoveredBlockStore';
 
 const groundPlane = new Plane(new Vector3(0, 1, 0), 0);
@@ -1057,19 +1060,9 @@ export function PickableGroup({
             return;
         }
 
-        const moveRequests = getMovingSegments(garden).flatMap((segment) =>
-            segment.blocks.map((segmentBlock) => ({
-                sourcePosition: {
-                    x: segment.sourceStack.position.x,
-                    z: segment.sourceStack.position.z,
-                },
-                destinationPosition: {
-                    x: segment.sourceStack.position.x + relative.x,
-                    z: segment.sourceStack.position.z + relative.z,
-                },
-                blockIndex: segment.sourceStartIndex,
-                sourceBlockId: segmentBlock.id,
-            })),
+        const moveRequests = createPickupSelectionMoveRequests(
+            getMovingSegments(garden),
+            relative,
         );
         const [primaryMoveRequest, ...additionalBlockMoves] = moveRequests;
         if (!primaryMoveRequest) {
