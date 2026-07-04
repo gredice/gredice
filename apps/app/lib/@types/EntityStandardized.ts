@@ -13,6 +13,16 @@ export type EntityStandardized = {
         seedingDistance?: number; // in cm
         duration?: number | string;
         application?: string; // farm, garden, raisedBedFull, raisedBed1m, plant
+        category?: {
+            information?: {
+                name?: string | null;
+            } | null;
+        } | null;
+        stage?: {
+            information?: {
+                name?: string | null;
+            } | null;
+        } | null;
     };
     images?: {
         cover?: { url?: string };
