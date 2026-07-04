@@ -3,6 +3,7 @@ export type CommunityEditControlType =
     | 'json'
     | 'markdown'
     | 'number'
+    | 'operationSuggestion'
     | 'range'
     | 'reference'
     | 'select'
@@ -27,6 +28,7 @@ export type CommunityEditableFieldDefinition = {
     inline: boolean;
     allowJson?: boolean;
     maxLength?: number;
+    operationSuggestionStage?: CommunityEditableOperationSuggestionStage;
     options?: CommunityEditableFieldOption[];
 };
 
@@ -35,6 +37,35 @@ export type CommunityEditableSection = {
     label: string;
     fields: CommunityEditableFieldDefinition[];
 };
+
+export type CommunityEditableOperationSuggestionStage = {
+    name: string;
+    label: string;
+};
+
+export const communityEditablePlantOperationStages: CommunityEditableOperationSuggestionStage[] =
+    [
+        { name: 'sowing', label: 'Sjetva' },
+        { name: 'growth', label: 'Rast' },
+        { name: 'watering', label: 'Zalijevanje' },
+        { name: 'harvest', label: 'Berba' },
+    ];
+
+const communityEditablePlantOperationFields: CommunityEditableFieldDefinition[] =
+    communityEditablePlantOperationStages.map((stage) => ({
+        entityTypeName: 'plant',
+        fieldKey: `plant.stage-operations.${stage.name}`,
+        sectionKey: stage.name,
+        category: 'information',
+        name: 'operations',
+        publicLabel: `Radnje: ${stage.label}`,
+        helpText:
+            'Predloži dodavanje ili uklanjanje radnje koja se prikazuje u ovoj fazi biljke.',
+        controlType: 'operationSuggestion',
+        pageLevel: true,
+        inline: true,
+        operationSuggestionStage: stage,
+    }));
 
 const communityEditableFieldRegistry: CommunityEditableFieldDefinition[] = [
     {
@@ -383,6 +414,7 @@ const communityEditableFieldRegistry: CommunityEditableFieldDefinition[] = [
         pageLevel: true,
         inline: true,
     },
+    ...communityEditablePlantOperationFields,
     {
         entityTypeName: 'plantSort',
         fieldKey: 'plant-sort.name',
