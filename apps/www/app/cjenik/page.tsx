@@ -15,10 +15,9 @@ import { getPlantSortsData } from '../../lib/plants/getPlantSortsData';
 import { getPlantsData } from '../../lib/plants/getPlantsData';
 import { KnownPages } from '../../src/KnownPages';
 import {
-    getPlantSortParentName,
-    getPricedOperationRows,
-    getPricedPlantRows,
-    getPricedPlantSortRows,
+    buildDeliveryPricingRows,
+    buildOperationPricingRows,
+    buildPlantPricingRows,
 } from './pricingRows';
 
 export const metadata: Metadata = {
@@ -36,12 +35,11 @@ export default async function PricingPage() {
             getHqLocationsData(),
         ]);
 
-    const plantsWithPrices = getPricedPlantRows(plantsData);
-    const plantSortsWithPrices = getPricedPlantSortRows(plantSortsData);
-    const operationsWithPrices = getPricedOperationRows(operationsData);
-
-    const sortedHqLocations = [...hqLocations].sort((a, b) =>
-        a.information.label.localeCompare(b.information.label, 'hr-HR'),
+    const plantPricingRows = buildPlantPricingRows(plantsData, plantSortsData);
+    const operationPricingRows = buildOperationPricingRows(operationsData);
+    const deliveryPricingRows = buildDeliveryPricingRows(
+        hqLocations,
+        KnownPages.Delivery,
     );
 
     return (
@@ -74,75 +72,50 @@ export default async function PricingPage() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {plantsWithPrices.map((plant) => (
+                                    {plantPricingRows.map((row) => (
                                         <tr
-                                            key={`plant-${plant.id}`}
+                                            key={row.id}
                                             className="border-b last:border-b-0"
                                         >
                                             <td className="py-2 pr-4 align-middle">
                                                 <div className="flex min-w-56 items-center gap-3">
-                                                    <PlantOrSortImage
-                                                        plant={plant}
-                                                        alt={`Slika biljke ${plant.information.name}`}
-                                                        width={40}
-                                                        height={40}
-                                                        className="size-10 rounded-md object-cover"
-                                                    />
-                                                    <span className="min-w-0">
-                                                        <span className="block truncate font-medium">
-                                                            {
-                                                                plant
-                                                                    .information
-                                                                    .name
+                                                    {row.kind === 'plant' ? (
+                                                        <PlantOrSortImage
+                                                            plant={row.plant}
+                                                            alt={`Slika biljke ${row.label}`}
+                                                            width={40}
+                                                            height={40}
+                                                            className="size-10 rounded-md object-cover"
+                                                        />
+                                                    ) : (
+                                                        <PlantOrSortImage
+                                                            plantSort={
+                                                                row.plantSort
                                                             }
-                                                        </span>
-                                                        <span className="block text-xs text-muted-foreground">
-                                                            Biljka
-                                                        </span>
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            <td className="py-2 text-right font-medium">
-                                                {formatPrice(
-                                                    plant.prices.perPlant,
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {plantSortsWithPrices.map((sort) => (
-                                        <tr
-                                            key={`plant-sort-${sort.id}`}
-                                            className="border-b last:border-b-0"
-                                        >
-                                            <td className="py-2 pr-4 align-middle">
-                                                <div className="flex min-w-56 items-center gap-3">
-                                                    <PlantOrSortImage
-                                                        plantSort={sort}
-                                                        alt={`Slika sorte ${sort.information.name}`}
-                                                        width={40}
-                                                        height={40}
-                                                        className="size-10 rounded-md object-cover"
-                                                    />
+                                                            alt={`Slika sorte ${row.label}`}
+                                                            width={40}
+                                                            height={40}
+                                                            className="size-10 rounded-md object-cover"
+                                                        />
+                                                    )}
                                                     <span className="min-w-0">
-                                                        <span className="block truncate font-medium">
-                                                            {
-                                                                sort.information
-                                                                    .name
-                                                            }
-                                                        </span>
+                                                        <Link
+                                                            className="block truncate font-medium underline underline-offset-2"
+                                                            href={row.href}
+                                                        >
+                                                            {row.label}
+                                                        </Link>
                                                         <span className="block truncate text-xs text-muted-foreground">
-                                                            Sorta -{' '}
-                                                            {getPlantSortParentName(
-                                                                sort,
-                                                            )}
+                                                            {row.kind ===
+                                                            'plant'
+                                                                ? 'Biljka'
+                                                                : `Sorta - ${row.parentLabel}`}
                                                         </span>
                                                     </span>
                                                 </div>
                                             </td>
                                             <td className="py-2 text-right font-medium">
-                                                {formatPrice(
-                                                    sort.prices.perPlant,
-                                                )}
+                                                {formatPrice(row.price)}
                                             </td>
                                         </tr>
                                     ))}
@@ -181,32 +154,30 @@ export default async function PricingPage() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {operationsWithPrices.map((operation) => (
+                                    {operationPricingRows.map((row) => (
                                         <tr
-                                            key={operation.id}
+                                            key={row.id}
                                             className="border-b last:border-b-0"
                                         >
                                             <td className="py-2 pr-4 align-middle">
                                                 <div className="flex min-w-56 items-center gap-3">
                                                     <OperationImage
-                                                        operation={operation}
+                                                        operation={
+                                                            row.operation
+                                                        }
                                                         size={40}
                                                         className="rounded-md bg-muted text-muted-foreground"
                                                     />
-                                                    <span className="block min-w-0 truncate font-medium">
-                                                        {
-                                                            operation
-                                                                .information
-                                                                .label
-                                                        }
-                                                    </span>
+                                                    <Link
+                                                        className="block min-w-0 truncate font-medium underline underline-offset-2"
+                                                        href={row.href}
+                                                    >
+                                                        {row.label}
+                                                    </Link>
                                                 </div>
                                             </td>
                                             <td className="py-2 text-right font-medium">
-                                                {formatPrice(
-                                                    operation.prices
-                                                        .perOperation,
-                                                )}
+                                                {formatPrice(row.price)}
                                             </td>
                                         </tr>
                                     ))}
@@ -251,26 +222,28 @@ export default async function PricingPage() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {sortedHqLocations.map((location) => (
+                                    {deliveryPricingRows.map((row) => (
                                         <tr
-                                            key={location.id}
+                                            key={row.id}
                                             className="border-b last:border-b-0"
                                         >
                                             <td className="py-2 pr-4">
-                                                {location.information.label}
+                                                <Link
+                                                    className="font-medium underline underline-offset-2"
+                                                    href={row.href}
+                                                >
+                                                    {row.label}
+                                                </Link>
                                             </td>
                                             <td className="py-2 text-right pr-4">
-                                                {location.delivery.freeRadius}{' '}
-                                                km
+                                                {row.freeRadius} km
                                             </td>
                                             <td className="py-2 text-right pr-4">
-                                                {location.delivery.zoneRadius}{' '}
-                                                km
+                                                {row.zoneRadius} km
                                             </td>
                                             <td className="py-2 text-right font-medium">
                                                 {formatPrice(
-                                                    location.prices
-                                                        .pricePerKilometer,
+                                                    row.pricePerKilometer,
                                                 )}
                                             </td>
                                         </tr>
