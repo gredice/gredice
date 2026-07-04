@@ -7,6 +7,7 @@ import { Input } from '@gredice/ui/Input';
 import {
     ArrowDownToLine,
     Check,
+    Delete,
     Droplet,
     Edit,
     Leaf,
@@ -22,6 +23,7 @@ import {
     Timer,
 } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
+import { OperationCategoryIcon } from '@gredice/ui/OperationImage';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -59,6 +61,8 @@ type CommunityEditableFieldOption = {
     value: string;
     label: string;
     helpText?: string;
+    description?: string;
+    iconKey?: string;
 };
 
 type CommunityEditableField = {
@@ -84,18 +88,25 @@ type CommunityEditableField = {
 };
 
 type OperationSuggestionIntent = 'add' | 'remove';
+type OperationSuggestionMode = 'existing' | 'new';
 
 type OperationSuggestionFieldValue = {
     intent: OperationSuggestionIntent;
+    operationMode: OperationSuggestionMode;
     operationId: string;
+    newOperationName: string;
+    newOperationDescription: string;
     note: string;
     source: string;
 };
 
 type OperationSuggestionSubmitValue = {
     intent: OperationSuggestionIntent;
-    operationId: number;
+    operationMode: OperationSuggestionMode;
     stageName: string;
+    operationId?: number;
+    newOperationName?: string | null;
+    newOperationDescription?: string | null;
     note?: string | null;
     source?: string | null;
 };
@@ -240,7 +251,10 @@ function initialFieldValue(field: CommunityEditableField): FieldValue {
     if (field.controlType === 'operationSuggestion') {
         return {
             intent: 'add',
+            operationMode: 'existing',
             operationId: '',
+            newOperationName: '',
+            newOperationDescription: '',
             note: '',
             source: '',
         };
@@ -290,8 +304,14 @@ function isOperationSuggestionValue(
         value !== null &&
         'intent' in value &&
         (value.intent === 'add' || value.intent === 'remove') &&
+        'operationMode' in value &&
+        (value.operationMode === 'existing' || value.operationMode === 'new') &&
         'operationId' in value &&
-        typeof value.operationId === 'string'
+        typeof value.operationId === 'string' &&
+        'newOperationName' in value &&
+        typeof value.newOperationName === 'string' &&
+        'newOperationDescription' in value &&
+        typeof value.newOperationDescription === 'string'
     );
 }
 
@@ -329,6 +349,14 @@ function operationSuggestionOptionsForIntent(
             ? !currentOperationIds.has(option.value)
             : currentOperationIds.has(option.value),
     );
+}
+
+function currentOperationOptions(field: CommunityEditableField) {
+    return operationSuggestionOptionsForIntent(field, 'remove');
+}
+
+function availableOperationOptions(field: CommunityEditableField) {
+    return operationSuggestionOptionsForIntent(field, 'add');
 }
 
 function normalizeJsonValue(value: string) {
@@ -379,18 +407,76 @@ function serializeFieldValue(
     value: FieldValue,
 ): { comparisonValue: string | null; submitValue: SubmitValue } {
     if (field.controlType === 'operationSuggestion') {
-        if (!isOperationSuggestionValue(value) || !value.operationId) {
+        if (!isOperationSuggestionValue(value)) {
             return {
                 comparisonValue: field.currentValue,
                 submitValue: null,
             };
         }
 
+        const stageName =
+            field.operationSuggestionStage?.name ?? field.sectionKey;
+        const note = value.note.trim() || null;
+        const source = value.source.trim() || null;
+
+        if (value.intent === 'remove') {
+            const operationId = Number.parseInt(value.operationId, 10);
+            const selectedOption = currentOperationOptions(field).some(
+                (option) => option.value === value.operationId,
+            );
+            if (!Number.isInteger(operationId) || !selectedOption) {
+                return {
+                    comparisonValue: field.currentValue,
+                    submitValue: null,
+                };
+            }
+
+            const submitValue: OperationSuggestionSubmitValue = {
+                intent: value.intent,
+                operationMode: 'existing',
+                operationId,
+                stageName,
+                note,
+                source,
+            };
+
+            return {
+                comparisonValue: JSON.stringify(submitValue),
+                submitValue,
+            };
+        }
+
+        if (value.operationMode === 'new') {
+            const newOperationName = value.newOperationName.trim();
+            const newOperationDescription =
+                value.newOperationDescription.trim();
+            if (!newOperationName || !newOperationDescription) {
+                return {
+                    comparisonValue: field.currentValue,
+                    submitValue: null,
+                };
+            }
+
+            const submitValue: OperationSuggestionSubmitValue = {
+                intent: value.intent,
+                operationMode: value.operationMode,
+                stageName,
+                newOperationName,
+                newOperationDescription,
+                note,
+                source,
+            };
+
+            return {
+                comparisonValue: JSON.stringify(submitValue),
+                submitValue,
+            };
+        }
+
         const operationId = Number.parseInt(value.operationId, 10);
-        const selectedOption = operationSuggestionOptionsForIntent(
-            field,
-            value.intent,
-        ).some((option) => option.value === value.operationId);
+        const selectedOption = availableOperationOptions(field).some(
+            (option) => option.value === value.operationId,
+        );
         if (!Number.isInteger(operationId) || !selectedOption) {
             return {
                 comparisonValue: field.currentValue,
@@ -400,10 +486,11 @@ function serializeFieldValue(
 
         const submitValue: OperationSuggestionSubmitValue = {
             intent: value.intent,
+            operationMode: value.operationMode,
             operationId,
-            stageName: field.operationSuggestionStage?.name ?? field.sectionKey,
-            note: value.note.trim() || null,
-            source: value.source.trim() || null,
+            stageName,
+            note,
+            source,
         };
 
         return {
@@ -487,6 +574,339 @@ function fieldInputId(prefix: string, field: CommunityEditableField) {
     return `${prefix}-${field.fieldKey.replace(/[^a-z0-9_-]/giu, '-')}`;
 }
 
+function OperationOptionIcon({
+    option,
+}: {
+    option: CommunityEditableFieldOption;
+}) {
+    return (
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-md border border-border/70 bg-background text-foreground">
+            <OperationCategoryIcon
+                aria-hidden
+                categoryName={option.iconKey}
+                className="size-5"
+            />
+        </span>
+    );
+}
+
+function OperationOptionSummary({
+    option,
+}: {
+    option: CommunityEditableFieldOption;
+}) {
+    return (
+        <Row spacing={2} className="min-w-0 items-start">
+            <OperationOptionIcon option={option} />
+            <Stack spacing={0.5} className="min-w-0">
+                <Typography semiBold className="break-words">
+                    {option.label}
+                </Typography>
+                {option.description || option.helpText ? (
+                    <Typography
+                        level="body3"
+                        className="text-pretty text-muted-foreground"
+                    >
+                        {option.description ?? option.helpText}
+                    </Typography>
+                ) : null}
+            </Stack>
+        </Row>
+    );
+}
+
+function OperationSuggestionInput({
+    field,
+    id,
+    onChange,
+    value,
+}: {
+    field: CommunityEditableField;
+    id: string;
+    onChange: (value: FieldValue) => void;
+    value: FieldValue;
+}) {
+    const suggestionValue = isOperationSuggestionValue(value)
+        ? value
+        : {
+              intent: 'add' as const,
+              operationMode: 'existing' as const,
+              operationId: '',
+              newOperationName: '',
+              newOperationDescription: '',
+              note: '',
+              source: '',
+          };
+    const currentOperations = currentOperationOptions(field);
+    const availableOperations = availableOperationOptions(field);
+    const selectedExistingOperation = availableOperations.find(
+        (option) => option.value === suggestionValue.operationId,
+    );
+    const selectedRemovalOperation = currentOperations.find(
+        (option) => option.value === suggestionValue.operationId,
+    );
+    const operationModeOptions: {
+        value: OperationSuggestionMode;
+        label: string;
+    }[] = [
+        { value: 'existing', label: 'Postojeća radnja' },
+        { value: 'new', label: 'Nova radnja' },
+    ];
+
+    return (
+        <Stack spacing={4}>
+            <section className="space-y-2">
+                <Typography level="body3" semiBold>
+                    Trenutne radnje
+                </Typography>
+                {currentOperations.length > 0 ? (
+                    <Stack spacing={2}>
+                        {currentOperations.map((option) => {
+                            const selected =
+                                suggestionValue.intent === 'remove' &&
+                                suggestionValue.operationId === option.value;
+                            return (
+                                <div
+                                    className={cx(
+                                        'grid gap-3 rounded-md border border-border/80 bg-card p-3 shadow-sm sm:grid-cols-[1fr_auto]',
+                                        selected && 'border-primary/70',
+                                    )}
+                                    key={option.value}
+                                >
+                                    <OperationOptionSummary option={option} />
+                                    <Button
+                                        color={selected ? 'primary' : 'danger'}
+                                        onClick={() =>
+                                            onChange({
+                                                ...suggestionValue,
+                                                intent: 'remove',
+                                                operationMode: 'existing',
+                                                operationId: option.value,
+                                            })
+                                        }
+                                        type="button"
+                                        variant={selected ? 'soft' : 'outlined'}
+                                    >
+                                        {selected ? (
+                                            <Check
+                                                aria-hidden
+                                                className="size-4"
+                                            />
+                                        ) : (
+                                            <Delete
+                                                aria-hidden
+                                                className="size-4"
+                                            />
+                                        )}
+                                        {selected ? 'Odabrano' : 'Ukloni'}
+                                    </Button>
+                                </div>
+                            );
+                        })}
+                    </Stack>
+                ) : (
+                    <Typography
+                        level="body3"
+                        className="rounded-md border border-dashed border-border/80 bg-card p-3 text-muted-foreground"
+                    >
+                        Nema trenutno povezanih radnji za ovu fazu.
+                    </Typography>
+                )}
+                {selectedRemovalOperation ? (
+                    <Typography level="body3" className="text-primary">
+                        Prijedlog će tražiti uklanjanje radnje “
+                        {selectedRemovalOperation.label}”.
+                    </Typography>
+                ) : null}
+            </section>
+
+            <section className="space-y-3 rounded-md border border-border/70 bg-card p-3">
+                <Typography level="body3" semiBold>
+                    Predloži dodavanje
+                </Typography>
+                <div className="grid grid-cols-2 gap-1 rounded-md border border-border/80 bg-background p-1 shadow-sm">
+                    {operationModeOptions.map((option) => (
+                        <label
+                            className={cx(
+                                'flex min-h-9 cursor-pointer items-center justify-center rounded-sm px-3 text-center text-sm font-medium transition-colors',
+                                suggestionValue.intent === 'add' &&
+                                    suggestionValue.operationMode ===
+                                        option.value
+                                    ? 'bg-primary text-primary-foreground shadow-sm'
+                                    : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+                            )}
+                            key={option.value}
+                        >
+                            <input
+                                checked={
+                                    suggestionValue.intent === 'add' &&
+                                    suggestionValue.operationMode ===
+                                        option.value
+                                }
+                                className="sr-only"
+                                name={`${id}-operation-mode`}
+                                onChange={() =>
+                                    onChange({
+                                        ...suggestionValue,
+                                        intent: 'add',
+                                        operationMode: option.value,
+                                        operationId:
+                                            option.value === 'new'
+                                                ? ''
+                                                : suggestionValue.operationId,
+                                    })
+                                }
+                                type="radio"
+                                value={option.value}
+                            />
+                            {option.label}
+                        </label>
+                    ))}
+                </div>
+
+                {suggestionValue.intent !== 'add' ||
+                suggestionValue.operationMode === 'existing' ? (
+                    <Stack spacing={2}>
+                        <label
+                            className="space-y-1"
+                            htmlFor={`${id}-operation`}
+                        >
+                            <Typography level="body3">Radnja</Typography>
+                            <select
+                                className={selectControlClassName}
+                                disabled={availableOperations.length === 0}
+                                id={`${id}-operation`}
+                                onChange={(event) =>
+                                    onChange({
+                                        ...suggestionValue,
+                                        intent: 'add',
+                                        operationMode: 'existing',
+                                        operationId: event.currentTarget.value,
+                                    })
+                                }
+                                value={
+                                    availableOperations.some(
+                                        (option) =>
+                                            option.value ===
+                                            suggestionValue.operationId,
+                                    )
+                                        ? suggestionValue.operationId
+                                        : ''
+                                }
+                            >
+                                <option value="">
+                                    {availableOperations.length > 0
+                                        ? 'Odaberi radnju'
+                                        : 'Nema dostupnih radnji'}
+                                </option>
+                                {availableOperations.map((option) => (
+                                    <option
+                                        key={option.value}
+                                        value={option.value}
+                                    >
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                        {selectedExistingOperation ? (
+                            <div className="rounded-md border border-border/80 bg-background p-3">
+                                <OperationOptionSummary
+                                    option={selectedExistingOperation}
+                                />
+                            </div>
+                        ) : (
+                            <Typography
+                                level="body3"
+                                className="text-muted-foreground"
+                            >
+                                {availableOperations.length > 0
+                                    ? 'Odaberi postojeću radnju koju želiš dodati.'
+                                    : 'Sve postojeće radnje za ovu fazu već su povezane.'}
+                            </Typography>
+                        )}
+                    </Stack>
+                ) : (
+                    <Stack spacing={3}>
+                        <Input
+                            className={inputControlClassName}
+                            fullWidth
+                            id={`${id}-new-operation-name`}
+                            label="Naziv nove radnje"
+                            onChange={(event) =>
+                                onChange({
+                                    ...suggestionValue,
+                                    intent: 'add',
+                                    operationMode: 'new',
+                                    newOperationName: event.currentTarget.value,
+                                })
+                            }
+                            placeholder="Npr. Provjera vlage supstrata"
+                            value={suggestionValue.newOperationName}
+                        />
+                        <label
+                            className="space-y-1"
+                            htmlFor={`${id}-new-operation-description`}
+                        >
+                            <Typography level="body3">
+                                Što očekuješ od radnje?
+                            </Typography>
+                            <textarea
+                                className={cx(
+                                    textareaControlClassName,
+                                    'min-h-24',
+                                )}
+                                id={`${id}-new-operation-description`}
+                                onChange={(event) =>
+                                    onChange({
+                                        ...suggestionValue,
+                                        intent: 'add',
+                                        operationMode: 'new',
+                                        newOperationDescription:
+                                            event.currentTarget.value,
+                                    })
+                                }
+                                placeholder="Opiši kada se radi, što korisnik dobiva i zašto pripada ovoj fazi."
+                                value={suggestionValue.newOperationDescription}
+                            />
+                        </label>
+                    </Stack>
+                )}
+            </section>
+
+            <Input
+                className={inputControlClassName}
+                fullWidth
+                id={`${id}-source`}
+                label="Izvor"
+                onChange={(event) =>
+                    onChange({
+                        ...suggestionValue,
+                        source: event.currentTarget.value,
+                    })
+                }
+                placeholder="Poveznica, knjiga ili opažanje..."
+                value={suggestionValue.source}
+            />
+            <label className="space-y-1" htmlFor={`${id}-note`}>
+                <Typography level="body3">Napomena</Typography>
+                <textarea
+                    className={cx(textareaControlClassName, 'min-h-20')}
+                    id={`${id}-note`}
+                    onChange={(event) =>
+                        onChange({
+                            ...suggestionValue,
+                            note: event.currentTarget.value,
+                        })
+                    }
+                    placeholder="Zašto predlažeš ovu promjenu?"
+                    value={suggestionValue.note}
+                />
+            </label>
+        </Stack>
+    );
+}
+
 function isCommunityEditableField(
     value: unknown,
 ): value is CommunityEditableField {
@@ -516,7 +936,13 @@ function isCommunityEditableField(
                         'value' in option &&
                         typeof option.value === 'string' &&
                         'label' in option &&
-                        typeof option.label === 'string',
+                        typeof option.label === 'string' &&
+                        (!('description' in option) ||
+                            typeof option.description === 'undefined' ||
+                            typeof option.description === 'string') &&
+                        (!('iconKey' in option) ||
+                            typeof option.iconKey === 'undefined' ||
+                            typeof option.iconKey === 'string'),
                 )))
     );
 }
@@ -599,138 +1025,13 @@ function FieldInput({
     value: FieldValue;
 }) {
     if (field.controlType === 'operationSuggestion') {
-        const suggestionValue = isOperationSuggestionValue(value)
-            ? value
-            : {
-                  intent: 'add' as const,
-                  operationId: '',
-                  note: '',
-                  source: '',
-              };
-        const operationOptions = operationSuggestionOptionsForIntent(
-            field,
-            suggestionValue.intent,
-        );
-        const intentOptions: {
-            value: OperationSuggestionIntent;
-            label: string;
-        }[] = [
-            { value: 'add', label: 'Dodaj' },
-            { value: 'remove', label: 'Ukloni' },
-        ];
-
         return (
-            <Stack spacing={3}>
-                <fieldset className="space-y-1">
-                    <legend className="text-sm text-foreground">
-                        Vrsta prijedloga
-                    </legend>
-                    <div className="grid grid-cols-2 gap-1 rounded-md border border-border/80 bg-card p-1 shadow-sm">
-                        {intentOptions.map((option) => (
-                            <label
-                                className={cx(
-                                    'flex h-9 cursor-pointer items-center justify-center rounded-sm px-3 text-sm font-medium transition-colors',
-                                    suggestionValue.intent === option.value
-                                        ? 'bg-primary text-primary-foreground shadow-sm'
-                                        : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
-                                )}
-                                key={option.value}
-                            >
-                                <input
-                                    checked={
-                                        suggestionValue.intent === option.value
-                                    }
-                                    className="sr-only"
-                                    name={`${id}-intent`}
-                                    onChange={() =>
-                                        onChange({
-                                            ...suggestionValue,
-                                            intent: option.value,
-                                            operationId: '',
-                                        })
-                                    }
-                                    type="radio"
-                                    value={option.value}
-                                />
-                                {option.label}
-                            </label>
-                        ))}
-                    </div>
-                </fieldset>
-                <Stack spacing={2}>
-                    <label className="space-y-1" htmlFor={`${id}-operation`}>
-                        <Typography level="body3">Radnja</Typography>
-                        <select
-                            className={selectControlClassName}
-                            disabled={operationOptions.length === 0}
-                            id={`${id}-operation`}
-                            onChange={(event) =>
-                                onChange({
-                                    ...suggestionValue,
-                                    operationId: event.currentTarget.value,
-                                })
-                            }
-                            value={
-                                operationOptions.some(
-                                    (option) =>
-                                        option.value ===
-                                        suggestionValue.operationId,
-                                )
-                                    ? suggestionValue.operationId
-                                    : ''
-                            }
-                        >
-                            <option value="">
-                                {operationOptions.length > 0
-                                    ? 'Odaberi radnju'
-                                    : 'Nema dostupnih radnji'}
-                            </option>
-                            {operationOptions.map((option) => (
-                                <option key={option.value} value={option.value}>
-                                    {option.label}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
-                    {operationOptions.length === 0 ? (
-                        <Typography
-                            level="body3"
-                            className="text-muted-foreground"
-                        >
-                            Nema radnji za ovu namjeru u ovoj fazi.
-                        </Typography>
-                    ) : null}
-                </Stack>
-                <Input
-                    className={inputControlClassName}
-                    fullWidth
-                    id={`${id}-source`}
-                    label="Izvor"
-                    onChange={(event) =>
-                        onChange({
-                            ...suggestionValue,
-                            source: event.currentTarget.value,
-                        })
-                    }
-                    placeholder="Poveznica, knjiga ili opažanje..."
-                    value={suggestionValue.source}
-                />
-                <label className="space-y-1" htmlFor={`${id}-note`}>
-                    <Typography level="body3">Napomena</Typography>
-                    <textarea
-                        className={cx(textareaControlClassName, 'min-h-20')}
-                        id={`${id}-note`}
-                        onChange={(event) =>
-                            onChange({
-                                ...suggestionValue,
-                                note: event.currentTarget.value,
-                            })
-                        }
-                        placeholder="Zašto predlažeš ovu promjenu?"
-                        value={suggestionValue.note}
-                    />
-                </label>
-            </Stack>
+            <OperationSuggestionInput
+                field={field}
+                id={id}
+                onChange={onChange}
+                value={value}
+            />
         );
     }
 

@@ -20,6 +20,8 @@ export type CommunityEditableFieldOption = {
     value: string;
     label: string;
     helpText?: string;
+    description?: string;
+    iconKey?: string;
 };
 
 export type CommunityEditableFieldDefinition = {

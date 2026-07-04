@@ -40,6 +40,7 @@ type CommunityEditFixture = {
     plantSortLatinNameDefinitionId: number;
     plantSortMaintenanceDefinitionId: number;
     operationNameDefinitionId: number;
+    operationShortDescriptionDefinitionId: number;
     operationStageDefinitionId: number;
     operationApplicationDefinitionId: number;
     stageEntityId: number;
@@ -196,6 +197,14 @@ async function createFixture(): Promise<CommunityEditFixture> {
         entityTypeName: 'operation',
         dataType: 'text',
     });
+    const operationShortDescriptionDefinitionId =
+        await createAttributeDefinition({
+            category: 'information',
+            name: 'shortDescription',
+            label: 'Kratki opis',
+            entityTypeName: 'operation',
+            dataType: 'text',
+        });
     const operationStageDefinitionId = await createAttributeDefinition({
         category: 'attributes',
         name: 'stage',
@@ -240,6 +249,7 @@ async function createFixture(): Promise<CommunityEditFixture> {
         plantSortLatinNameDefinitionId,
         plantSortMaintenanceDefinitionId,
         operationNameDefinitionId,
+        operationShortDescriptionDefinitionId,
         operationStageDefinitionId,
         operationApplicationDefinitionId,
         stageEntityId,
@@ -394,6 +404,7 @@ async function createPublishedPlantSort(input?: {
 async function createPublishedPlantOperation(input?: {
     application?: string;
     name?: string;
+    shortDescription?: string;
     stageEntityId?: number;
 }) {
     const data = await fixture();
@@ -405,6 +416,14 @@ async function createPublishedPlantOperation(input?: {
         entityId,
         value: input?.name ?? 'Malčiranje',
     });
+    if (input?.shortDescription) {
+        await upsertAttributeValue({
+            attributeDefinitionId: data.operationShortDescriptionDefinitionId,
+            entityTypeName: 'operation',
+            entityId,
+            value: input.shortDescription,
+        });
+    }
     await upsertAttributeValue({
         attributeDefinitionId: data.operationStageDefinitionId,
         entityTypeName: 'operation',
@@ -760,6 +779,7 @@ test('community edit requests submit storage content and operation suggestions t
     });
     const operationId = await createPublishedPlantOperation({
         name: 'Uklanjanje biljke',
+        shortDescription: 'Uklanjanje cijele biljke iz gredice.',
         stageEntityId: storageStageId,
     });
     const plantId = await createPublishedPlant({
@@ -785,7 +805,9 @@ test('community edit requests submit storage content and operation suggestions t
         operationField.options?.some(
             (option) =>
                 option.value === String(operationId) &&
-                option.label === 'Uklanjanje biljke',
+                option.label === 'Uklanjanje biljke' &&
+                option.description === 'Uklanjanje cijele biljke iz gredice.' &&
+                option.iconKey === 'storage',
         ),
     );
 
@@ -806,6 +828,7 @@ test('community edit requests submit storage content and operation suggestions t
                 baseValueHash: operationField.baseValueHash,
                 proposedValue: {
                     intent: 'add',
+                    operationMode: 'existing',
                     operationId,
                     stageName: 'storage',
                     source: 'Upute proizvođača',
@@ -1076,6 +1099,10 @@ test('community edit requests create and apply plant operation add suggestions',
     assert.match(request.changes[0]?.proposedValue ?? '', /"intent":"add"/);
     assert.match(
         request.changes[0]?.proposedValue ?? '',
+        /"operationMode":"existing"/,
+    );
+    assert.match(
+        request.changes[0]?.proposedValue ?? '',
         /"currentState":"absent"/,
     );
 
@@ -1131,6 +1158,7 @@ test('community edit requests create and apply plant operation remove suggestion
                 baseValueHash: operationField.baseValueHash,
                 proposedValue: {
                     intent: 'remove',
+                    operationMode: 'existing',
                     operationId,
                     stageName: 'sowing',
                     note: 'Ova radnja ne pripada ovoj biljci.',
@@ -1140,6 +1168,10 @@ test('community edit requests create and apply plant operation remove suggestion
     });
 
     assert.match(request.changes[0]?.proposedValue ?? '', /"intent":"remove"/);
+    assert.match(
+        request.changes[0]?.proposedValue ?? '',
+        /"operationMode":"existing"/,
+    );
     assert.match(
         request.changes[0]?.proposedValue ?? '',
         /"currentState":"present"/,
@@ -1166,6 +1198,69 @@ test('community edit requests create and apply plant operation remove suggestion
             (operation) => operation.id === operationId,
         ) ?? false,
         false,
+    );
+});
+
+test('community edit requests can propose a new plant operation', async () => {
+    const data = await fixture();
+    const plantId = await createPublishedPlant();
+    const operationField = (
+        await getCommunityEditableFieldsForEntity({
+            entityTypeName: 'plant',
+            entityId: plantId,
+            sectionKey: 'sowing',
+        })
+    ).find((field) => field.fieldKey === 'plant.stage-operations.sowing');
+    assert.ok(operationField);
+
+    const request = await createCommunityEditRequest({
+        entityTypeName: 'plant',
+        entityId: plantId,
+        publicPath: '/biljke/test',
+        sectionKey: 'sowing',
+        submitter: { id: data.submitterId, name: 'Community Submitter' },
+        changes: [
+            {
+                fieldKey: 'plant.stage-operations.sowing',
+                baseValueHash: operationField.baseValueHash,
+                proposedValue: {
+                    intent: 'add',
+                    operationMode: 'new',
+                    stageName: 'sowing',
+                    newOperationName: 'Provjera vlage supstrata',
+                    newOperationDescription:
+                        'Korisnik očekuje podsjetnik za provjeru vlage prije klijanja.',
+                    note: 'Nema odgovarajuće postojeće radnje.',
+                },
+            },
+        ],
+    });
+
+    assert.equal(request.status, 'pending');
+    assert.match(
+        request.changes[0]?.proposedValue ?? '',
+        /"operationMode":"new"/,
+    );
+    assert.match(
+        request.changes[0]?.proposedValue ?? '',
+        /"newOperationName":"Provjera vlage supstrata"/,
+    );
+    assert.match(
+        request.changes[0]?.proposedValue ?? '',
+        /"newOperationDescription":"Korisnik očekuje podsjetnik/,
+    );
+
+    const applied = await approveCommunityEditRequest({
+        id: request.id,
+        reviewer: { id: data.reviewerId, name: 'Community Reviewer' },
+    });
+    assert.equal(applied.status, 'applied');
+
+    const entity = await getEntityRaw(plantId);
+    assert.ok(entity);
+    assert.deepEqual(
+        attributeValues(entity, data.plantOperationsDefinitionId),
+        [],
     );
 });
 
