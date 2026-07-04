@@ -1,5 +1,5 @@
 import { IconButton } from '@gredice/ui/IconButton';
-import { MoreHorizontal, Search, Settings } from '@gredice/ui/icons';
+import { Add, MoreHorizontal, Search, Settings } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
@@ -111,6 +111,14 @@ export const Colors: Story = {
                 </IconButton>
             </Row>
         </Stack>
+    ),
+};
+
+export const LinkUsage: Story = {
+    render: () => (
+        <IconButton aria-label="Nova stavka" href="#" variant="solid">
+            <Add className="size-4" />
+        </IconButton>
     ),
 };
 

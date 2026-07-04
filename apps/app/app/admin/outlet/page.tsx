@@ -7,6 +7,7 @@ import {
     CardOverflow,
     CardTitle,
 } from '@gredice/ui/Card';
+import { IconButton } from '@gredice/ui/IconButton';
 import { Add, Discount } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -63,12 +64,14 @@ export default async function OutletAdminPage() {
         <Stack spacing={4}>
             <AdminPageHeader
                 actions={
-                    <Button
+                    <IconButton
+                        aria-label="Nova outlet ponuda"
                         href={KnownPages.OutletCreate}
-                        startDecorator={<Add className="size-4" />}
+                        title="Nova outlet ponuda"
+                        variant="solid"
                     >
-                        Nova outlet ponuda
-                    </Button>
+                        <Add className="size-5" />
+                    </IconButton>
                 }
                 heading="Outlet"
             />

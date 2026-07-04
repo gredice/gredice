@@ -3,8 +3,8 @@ import {
     getInventoryStatusItemsByConfigIds,
 } from '@gredice/storage';
 import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
+import { IconButton } from '@gredice/ui/IconButton';
 import { Add, File } from '@gredice/ui/icons';
-import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
@@ -37,15 +37,14 @@ export default async function InventoryPage() {
         <Stack spacing={4}>
             <AdminPageHeader
                 actions={
-                    <Link href={KnownPages.InventoryCreate}>
-                        <Row
-                            spacing={2}
-                            className="text-sm font-medium px-3 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                        >
-                            <Add className="size-4" />
-                            <span>Nova zaliha</span>
-                        </Row>
-                    </Link>
+                    <IconButton
+                        aria-label="Nova zaliha"
+                        href={KnownPages.InventoryCreate}
+                        title="Nova zaliha"
+                        variant="solid"
+                    >
+                        <Add className="size-5" />
+                    </IconButton>
                 }
             />
 

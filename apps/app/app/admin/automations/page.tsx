@@ -7,8 +7,8 @@ import {
     listAutomationDefinitionRunSummaries,
     listAutomationDefinitions,
 } from '@gredice/storage';
-import { Button } from '@gredice/ui/Button';
 import { Card, CardContent } from '@gredice/ui/Card';
+import { IconButton } from '@gredice/ui/IconButton';
 import { Add } from '@gredice/ui/icons';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -167,12 +167,14 @@ export default async function AutomationsPage({
             <AdminPageHeader
                 heading="Automatizacije"
                 actions={
-                    <Button
+                    <IconButton
+                        aria-label="Nova automatizacija"
                         href={KnownPages.AutomationCreate}
-                        startDecorator={<Add className="size-4" />}
+                        title="Nova automatizacija"
+                        variant="solid"
                     >
-                        Nova automatizacija
-                    </Button>
+                        <Add className="size-5" />
+                    </IconButton>
                 }
             />
 
