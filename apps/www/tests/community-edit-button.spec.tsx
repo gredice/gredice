@@ -431,6 +431,9 @@ test('shows storage content and operation suggestions in the edit modal', async 
                                 {
                                     value: '987',
                                     label: 'Uklanjanje biljke',
+                                    description:
+                                        'Uklanjanje cijele biljke iz gredice.',
+                                    iconKey: 'storage',
                                 },
                             ],
                         },
@@ -457,6 +460,7 @@ test('shows storage content and operation suggestions in the edit modal', async 
                         fieldKey: 'plant.stage-operations.storage',
                         proposedValue: {
                             intent: 'add',
+                            operationMode: 'existing',
                             operationId: 987,
                             stageName: 'storage',
                             source: 'Terenska bilješka',
@@ -493,6 +497,7 @@ test('shows storage content and operation suggestions in the edit modal', async 
         page.getByText('Ova sekcija trenutno nema javno uređivih polja.'),
     ).toHaveCount(0);
     await expect(page.getByText('Radnje: Skladištenje')).toBeVisible();
+    await expect(page.getByText('Trenutne radnje')).toBeVisible();
 
     const dialogBackground = await page
         .getByRole('dialog')
@@ -503,7 +508,10 @@ test('shows storage content and operation suggestions in the edit modal', async 
     expect(fieldBackground).not.toBe(dialogBackground);
 
     await page.getByLabel('Skladištenje').fill('Zamotati u vlažnu krpu.');
-    await page.getByLabel('Radnja').selectOption('987');
+    await page.getByRole('combobox', { name: /Radnja/u }).selectOption('987');
+    await expect(
+        page.getByText('Uklanjanje cijele biljke iz gredice.'),
+    ).toBeVisible();
     await page.getByLabel('Izvor').fill('Terenska bilješka');
     await page
         .getByRole('textbox', { name: 'Napomena', exact: true })
@@ -512,6 +520,240 @@ test('shows storage content and operation suggestions in the edit modal', async 
 
     await expect(
         page.getByText('Prijedlog #44 je poslan na odobrenje.'),
+    ).toBeVisible();
+});
+
+test('submits operation removal suggestions from current operation cards', async ({
+    mount,
+    page,
+}) => {
+    await page.route('**/api/gredice/api/auth/current-claims', (route) =>
+        route.fulfill({
+            status: 200,
+            json: {
+                id: 'user-1',
+                userName: 'ana',
+                displayName: 'Ana',
+            },
+        }),
+    );
+    await page.route(
+        '**/api/gredice/api/directories/community-edits/entities/plant/1/fields**',
+        (route) =>
+            route.fulfill({
+                status: 200,
+                json: {
+                    entityTypeName: 'plant',
+                    entityId: 1,
+                    sectionKey: 'storage',
+                    fields: [
+                        {
+                            entityTypeName: 'plant',
+                            entityId: 1,
+                            fieldKey: 'plant.stage-operations.storage',
+                            sectionKey: 'storage',
+                            attributeDefinitionId: 13,
+                            attributeValueId: null,
+                            attributePath: 'information.operations',
+                            dataType: 'ref:operation',
+                            controlType: 'operationSuggestion',
+                            multiple: true,
+                            publicLabel: 'Radnje: Skladištenje',
+                            operationSuggestionStage: {
+                                name: 'storage',
+                                label: 'Skladištenje',
+                            },
+                            currentValue: JSON.stringify(['987']),
+                            baseValueHash: 'hash-operations',
+                            options: [
+                                {
+                                    value: '987',
+                                    label: 'Uklanjanje biljke',
+                                    description:
+                                        'Uklanjanje cijele biljke iz gredice.',
+                                    iconKey: 'storage',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            }),
+    );
+    await page.route(
+        '**/api/gredice/api/directories/community-edits',
+        async (route) => {
+            const body = route.request().postDataJSON();
+            expect(body).toMatchObject({
+                entityTypeName: 'plant',
+                entityId: 1,
+                publicPath: '/biljke/blitva',
+                sectionKey: 'storage',
+                changes: [
+                    {
+                        fieldKey: 'plant.stage-operations.storage',
+                        proposedValue: {
+                            intent: 'remove',
+                            operationMode: 'existing',
+                            operationId: 987,
+                            stageName: 'storage',
+                            source: null,
+                            note: 'Ne treba se prikazivati u skladištenju.',
+                        },
+                        baseValueHash: 'hash-operations',
+                    },
+                ],
+            });
+
+            await route.fulfill({
+                status: 201,
+                json: {
+                    status: 'pending_admin_approval',
+                    requestId: 46,
+                    requestStatus: 'pending',
+                    changeCount: 1,
+                },
+            });
+        },
+    );
+
+    await mount(
+        <CommunityEditButtonHarness
+            entityTypeName="plant"
+            entityId={1}
+            publicPath="/biljke/blitva"
+            sectionKey="storage"
+        />,
+    );
+
+    await page.getByTitle('Predloži izmjenu').click();
+    await expect(page.getByText('Uklanjanje biljke')).toBeVisible();
+    await expect(
+        page.getByText('Uklanjanje cijele biljke iz gredice.'),
+    ).toBeVisible();
+
+    await page.getByRole('button', { name: /Ukloni/u }).click();
+    await expect(page.getByText(/Prijedlog će tražiti/u)).toBeVisible();
+    await page
+        .getByRole('textbox', { name: 'Napomena', exact: true })
+        .fill('Ne treba se prikazivati u skladištenju.');
+    await page.getByRole('button', { name: 'Pošalji' }).click();
+
+    await expect(
+        page.getByText('Prijedlog #46 je poslan na odobrenje.'),
+    ).toBeVisible();
+});
+
+test('submits new operation suggestions with name and expectation', async ({
+    mount,
+    page,
+}) => {
+    await page.route('**/api/gredice/api/auth/current-claims', (route) =>
+        route.fulfill({
+            status: 200,
+            json: {
+                id: 'user-1',
+                userName: 'ana',
+                displayName: 'Ana',
+            },
+        }),
+    );
+    await page.route(
+        '**/api/gredice/api/directories/community-edits/entities/plant/1/fields**',
+        (route) =>
+            route.fulfill({
+                status: 200,
+                json: {
+                    entityTypeName: 'plant',
+                    entityId: 1,
+                    sectionKey: 'watering',
+                    fields: [
+                        {
+                            entityTypeName: 'plant',
+                            entityId: 1,
+                            fieldKey: 'plant.stage-operations.watering',
+                            sectionKey: 'watering',
+                            attributeDefinitionId: 13,
+                            attributeValueId: null,
+                            attributePath: 'information.operations',
+                            dataType: 'ref:operation',
+                            controlType: 'operationSuggestion',
+                            multiple: true,
+                            publicLabel: 'Radnje: Zalijevanje',
+                            operationSuggestionStage: {
+                                name: 'watering',
+                                label: 'Zalijevanje',
+                            },
+                            currentValue: '[]',
+                            baseValueHash: 'hash-operations',
+                            options: [],
+                        },
+                    ],
+                },
+            }),
+    );
+    await page.route(
+        '**/api/gredice/api/directories/community-edits',
+        async (route) => {
+            const body = route.request().postDataJSON();
+            expect(body).toMatchObject({
+                entityTypeName: 'plant',
+                entityId: 1,
+                publicPath: '/biljke/blitva',
+                sectionKey: 'watering',
+                changes: [
+                    {
+                        fieldKey: 'plant.stage-operations.watering',
+                        proposedValue: {
+                            intent: 'add',
+                            operationMode: 'new',
+                            stageName: 'watering',
+                            newOperationName: 'Provjera vlage supstrata',
+                            newOperationDescription:
+                                'Korisnik očekuje podsjetnik za provjeru vlage prije zalijevanja.',
+                            source: null,
+                            note: 'Nema odgovarajuće postojeće radnje.',
+                        },
+                        baseValueHash: 'hash-operations',
+                    },
+                ],
+            });
+
+            await route.fulfill({
+                status: 201,
+                json: {
+                    status: 'pending_admin_approval',
+                    requestId: 47,
+                    requestStatus: 'pending',
+                    changeCount: 1,
+                },
+            });
+        },
+    );
+
+    await mount(
+        <CommunityEditButtonHarness
+            entityTypeName="plant"
+            entityId={1}
+            publicPath="/biljke/blitva"
+            sectionKey="watering"
+        />,
+    );
+
+    await page.getByTitle('Predloži izmjenu').click();
+    await page.getByText('Nova radnja', { exact: true }).click();
+    await page.getByLabel('Naziv nove radnje').fill('Provjera vlage supstrata');
+    await page
+        .getByLabel('Što očekuješ od radnje?')
+        .fill(
+            'Korisnik očekuje podsjetnik za provjeru vlage prije zalijevanja.',
+        );
+    await page
+        .getByRole('textbox', { name: 'Napomena', exact: true })
+        .fill('Nema odgovarajuće postojeće radnje.');
+    await page.getByRole('button', { name: 'Pošalji' }).click();
+
+    await expect(
+        page.getByText('Prijedlog #47 je poslan na odobrenje.'),
     ).toBeVisible();
 });
 

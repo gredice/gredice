@@ -37,10 +37,10 @@ type CompactTextDiff = {
     added: string;
 };
 
-type CommunityOperationSuggestionValue = {
+type CommunityOperationSuggestionBaseValue = {
     format: 'community-operation-suggestion-v1';
     intent: 'add' | 'remove';
-    operationId: number;
+    operationMode: 'existing' | 'new';
     operationLabel: string;
     stageName: string;
     stageLabel: string;
@@ -48,6 +48,19 @@ type CommunityOperationSuggestionValue = {
     note?: string;
     source?: string;
 };
+
+type CommunityOperationSuggestionValue =
+    | (CommunityOperationSuggestionBaseValue & {
+          operationMode: 'existing';
+          operationId: number;
+      })
+    | (CommunityOperationSuggestionBaseValue & {
+          intent: 'add';
+          operationMode: 'new';
+          currentState: 'absent';
+          newOperationName: string;
+          newOperationDescription: string;
+      });
 
 function statusLabel(status: CommunityEditRequestStatus) {
     switch (status) {
@@ -138,23 +151,48 @@ function parseCompactTextDiff(reviewDiff: string | null) {
 function isCommunityOperationSuggestion(
     value: unknown,
 ): value is CommunityOperationSuggestionValue {
+    if (
+        typeof value !== 'object' ||
+        value === null ||
+        !('format' in value) ||
+        value.format !== 'community-operation-suggestion-v1' ||
+        !('intent' in value) ||
+        (value.intent !== 'add' && value.intent !== 'remove') ||
+        !('operationLabel' in value) ||
+        typeof value.operationLabel !== 'string' ||
+        !('stageName' in value) ||
+        typeof value.stageName !== 'string' ||
+        !('stageLabel' in value) ||
+        typeof value.stageLabel !== 'string' ||
+        !('currentState' in value) ||
+        (value.currentState !== 'absent' && value.currentState !== 'present') ||
+        ('note' in value &&
+            typeof value.note !== 'undefined' &&
+            typeof value.note !== 'string') ||
+        ('source' in value &&
+            typeof value.source !== 'undefined' &&
+            typeof value.source !== 'string')
+    ) {
+        return false;
+    }
+
+    const operationMode =
+        'operationMode' in value ? value.operationMode : 'existing';
+    if (operationMode === 'new') {
+        return (
+            value.intent === 'add' &&
+            value.currentState === 'absent' &&
+            'newOperationName' in value &&
+            typeof value.newOperationName === 'string' &&
+            'newOperationDescription' in value &&
+            typeof value.newOperationDescription === 'string'
+        );
+    }
+
     return (
-        typeof value === 'object' &&
-        value !== null &&
-        'format' in value &&
-        value.format === 'community-operation-suggestion-v1' &&
-        'intent' in value &&
-        (value.intent === 'add' || value.intent === 'remove') &&
+        operationMode === 'existing' &&
         'operationId' in value &&
-        typeof value.operationId === 'number' &&
-        'operationLabel' in value &&
-        typeof value.operationLabel === 'string' &&
-        'stageName' in value &&
-        typeof value.stageName === 'string' &&
-        'stageLabel' in value &&
-        typeof value.stageLabel === 'string' &&
-        'currentState' in value &&
-        (value.currentState === 'absent' || value.currentState === 'present')
+        typeof value.operationId === 'number'
     );
 }
 
@@ -165,7 +203,32 @@ function parseCommunityOperationSuggestion(value: string | null) {
 
     try {
         const parsed: unknown = JSON.parse(value);
-        return isCommunityOperationSuggestion(parsed) ? parsed : null;
+        if (!isCommunityOperationSuggestion(parsed)) {
+            return null;
+        }
+
+        if (parsed.operationMode === 'new') {
+            return parsed;
+        }
+
+        const suggestion: CommunityOperationSuggestionValue = {
+            format: parsed.format,
+            intent: parsed.intent,
+            operationMode: 'existing',
+            operationId: parsed.operationId,
+            operationLabel: parsed.operationLabel,
+            stageName: parsed.stageName,
+            stageLabel: parsed.stageLabel,
+            currentState: parsed.currentState,
+        };
+        if (parsed.note) {
+            suggestion.note = parsed.note;
+        }
+        if (parsed.source) {
+            suggestion.source = parsed.source;
+        }
+
+        return suggestion;
     } catch {
         return null;
     }
@@ -230,9 +293,21 @@ function OperationSuggestionBlock({
                     </Typography>
                 </DetailItem>
                 <DetailItem label="Radnja">
-                    <Typography>
-                        {suggestion.operationLabel} #{suggestion.operationId}
-                    </Typography>
+                    {suggestion.operationMode === 'new' ? (
+                        <Stack spacing={1}>
+                            <Chip color="info" variant="soft">
+                                Nova radnja
+                            </Chip>
+                            <Typography>
+                                {suggestion.newOperationName}
+                            </Typography>
+                        </Stack>
+                    ) : (
+                        <Typography>
+                            {suggestion.operationLabel} #
+                            {suggestion.operationId}
+                        </Typography>
+                    )}
                 </DetailItem>
                 <DetailItem label="Stanje pri slanju">
                     <Typography>
@@ -240,6 +315,13 @@ function OperationSuggestionBlock({
                     </Typography>
                 </DetailItem>
             </div>
+            {suggestion.operationMode === 'new' ? (
+                <DetailItem label="Opis očekivanja">
+                    <Typography className="whitespace-pre-line break-words">
+                        {suggestion.newOperationDescription}
+                    </Typography>
+                </DetailItem>
+            ) : null}
             {suggestion.source ? (
                 <DetailItem label="Izvor">
                     <Typography className="whitespace-pre-line break-words">

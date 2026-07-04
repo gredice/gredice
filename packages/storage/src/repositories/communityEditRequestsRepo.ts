@@ -102,11 +102,12 @@ export type CreateCommunityEditRequestInput = {
 type EntityRaw = NonNullable<Awaited<ReturnType<typeof getEntityRaw>>>;
 
 export type CommunityOperationSuggestionIntent = 'add' | 'remove';
+export type CommunityOperationSuggestionMode = 'existing' | 'new';
 
-export type CommunityOperationSuggestionValue = {
+type CommunityOperationSuggestionBaseValue = {
     format: 'community-operation-suggestion-v1';
     intent: CommunityOperationSuggestionIntent;
-    operationId: number;
+    operationMode: CommunityOperationSuggestionMode;
     operationLabel: string;
     stageName: PlantStageName;
     stageLabel: string;
@@ -114,6 +115,19 @@ export type CommunityOperationSuggestionValue = {
     note?: string;
     source?: string;
 };
+
+export type CommunityOperationSuggestionValue =
+    | (CommunityOperationSuggestionBaseValue & {
+          operationMode: 'existing';
+          operationId: number;
+      })
+    | (CommunityOperationSuggestionBaseValue & {
+          intent: 'add';
+          operationMode: 'new';
+          currentState: 'absent';
+          newOperationName: string;
+          newOperationDescription: string;
+      });
 
 type ResolvedCommunityEditChange = {
     fieldKey: string;
@@ -441,6 +455,17 @@ async function operationSuggestionOptions(
             value: String(operation.id),
             label: entityLabel(operation),
             helpText: field.operationSuggestionStage?.label,
+            description:
+                rawAttributeValue(
+                    operation,
+                    'information',
+                    'shortDescription',
+                ) ??
+                rawAttributeValue(operation, 'information', 'description') ??
+                undefined,
+            iconKey:
+                operationStageInfo(operation, stagesById)?.name ??
+                field.operationSuggestionStage?.name,
         }))
         .sort((left, right) => left.label.localeCompare(right.label, 'hr'));
 }
@@ -730,6 +755,22 @@ function normalizeOperationSuggestionIntent(
     );
 }
 
+function normalizeOperationSuggestionMode(
+    value: unknown,
+): CommunityOperationSuggestionMode {
+    if (value === 'new' || value === 'existing') {
+        return value;
+    }
+    if (typeof value === 'undefined') {
+        return 'existing';
+    }
+
+    throw new CommunityEditRequestError(
+        'invalid_value',
+        'Operation suggestion must choose an existing or new operation.',
+    );
+}
+
 function normalizeOperationSuggestionOperationId(value: unknown) {
     const normalized = normalizeReferenceId(value);
     if (!normalized) {
@@ -740,6 +781,26 @@ function normalizeOperationSuggestionOperationId(value: unknown) {
     }
 
     return Number.parseInt(normalized, 10);
+}
+
+function normalizeRequiredSuggestionText(
+    value: unknown,
+    fieldLabel: string,
+    maxLength: number,
+) {
+    const normalized = normalizeOptionalSuggestionText(
+        value,
+        fieldLabel,
+        maxLength,
+    );
+    if (!normalized) {
+        throw new CommunityEditRequestError(
+            'invalid_value',
+            `${fieldLabel} is required.`,
+        );
+    }
+
+    return normalized;
 }
 
 async function resolveOperationSuggestionTarget(input: {
@@ -830,6 +891,50 @@ async function normalizeOperationSuggestionValue(
     }
 
     const intent = normalizeOperationSuggestionIntent(value.intent);
+    const operationMode = normalizeOperationSuggestionMode(value.operationMode);
+    const note = normalizeOptionalSuggestionText(value.note, 'Note', 1000);
+    const source = normalizeOptionalSuggestionText(value.source, 'Source', 500);
+
+    if (operationMode === 'new') {
+        if (intent !== 'add') {
+            throw new CommunityEditRequestError(
+                'invalid_value',
+                'New operation suggestions can only be added.',
+            );
+        }
+
+        const newOperationName = normalizeRequiredSuggestionText(
+            value.newOperationName,
+            'New operation name',
+            160,
+        );
+        const newOperationDescription = normalizeRequiredSuggestionText(
+            value.newOperationDescription,
+            'New operation description',
+            2000,
+        );
+
+        const suggestion: CommunityOperationSuggestionValue = {
+            format: 'community-operation-suggestion-v1',
+            intent,
+            operationMode,
+            operationLabel: newOperationName,
+            stageName: field.operationSuggestionStage.name,
+            stageLabel: field.operationSuggestionStage.label,
+            currentState: 'absent',
+            newOperationName,
+            newOperationDescription,
+        };
+        if (note) {
+            suggestion.note = note;
+        }
+        if (source) {
+            suggestion.source = source;
+        }
+
+        return JSON.stringify(suggestion);
+    }
+
     const operationId = normalizeOperationSuggestionOperationId(
         value.operationId,
     );
@@ -859,14 +964,13 @@ async function normalizeOperationSuggestionValue(
     const suggestion: CommunityOperationSuggestionValue = {
         format: 'community-operation-suggestion-v1',
         intent,
+        operationMode,
         operationId,
         operationLabel: target.operationLabel,
         stageName: target.stageName,
         stageLabel: target.stageLabel,
         currentState,
     };
-    const note = normalizeOptionalSuggestionText(value.note, 'Note', 1000);
-    const source = normalizeOptionalSuggestionText(value.source, 'Source', 500);
     if (note) {
         suggestion.note = note;
     }
@@ -1468,8 +1572,6 @@ function parseCommunityOperationSuggestion(
             !isRecord(parsed) ||
             parsed.format !== 'community-operation-suggestion-v1' ||
             (parsed.intent !== 'add' && parsed.intent !== 'remove') ||
-            typeof parsed.operationId !== 'number' ||
-            !Number.isInteger(parsed.operationId) ||
             typeof parsed.operationLabel !== 'string' ||
             !isPlantStageName(parsed.stageName) ||
             typeof parsed.stageLabel !== 'string' ||
@@ -1485,9 +1587,59 @@ function parseCommunityOperationSuggestion(
             return null;
         }
 
+        const operationMode =
+            parsed.operationMode === 'new'
+                ? 'new'
+                : parsed.operationMode === 'existing' ||
+                    typeof parsed.operationMode === 'undefined'
+                  ? 'existing'
+                  : null;
+        if (!operationMode) {
+            return null;
+        }
+
+        if (operationMode === 'new') {
+            if (
+                parsed.intent !== 'add' ||
+                parsed.currentState !== 'absent' ||
+                typeof parsed.newOperationName !== 'string' ||
+                typeof parsed.newOperationDescription !== 'string'
+            ) {
+                return null;
+            }
+
+            const suggestion: CommunityOperationSuggestionValue = {
+                format: 'community-operation-suggestion-v1',
+                intent: parsed.intent,
+                operationMode,
+                operationLabel: parsed.operationLabel,
+                stageName: parsed.stageName,
+                stageLabel: parsed.stageLabel,
+                currentState: parsed.currentState,
+                newOperationName: parsed.newOperationName,
+                newOperationDescription: parsed.newOperationDescription,
+            };
+            if (typeof parsed.note === 'string') {
+                suggestion.note = parsed.note;
+            }
+            if (typeof parsed.source === 'string') {
+                suggestion.source = parsed.source;
+            }
+
+            return suggestion;
+        }
+
+        if (
+            typeof parsed.operationId !== 'number' ||
+            !Number.isInteger(parsed.operationId)
+        ) {
+            return null;
+        }
+
         const suggestion: CommunityOperationSuggestionValue = {
             format: 'community-operation-suggestion-v1',
             intent: parsed.intent,
+            operationMode,
             operationId: parsed.operationId,
             operationLabel: parsed.operationLabel,
             stageName: parsed.stageName,
@@ -1618,6 +1770,9 @@ async function applyOperationSuggestionChange(input: {
             'invalid_value',
             'Operation suggestion change is not valid.',
         );
+    }
+    if (suggestion.operationMode === 'new') {
+        return;
     }
 
     const currentValues = await getCurrentPersistedValues(

@@ -1024,6 +1024,8 @@ export async function openApiDocs(
                             value: { type: 'string' },
                             label: { type: 'string' },
                             helpText: { type: 'string' },
+                            description: { type: 'string' },
+                            iconKey: { type: 'string' },
                         },
                     },
                 },
@@ -1061,7 +1063,7 @@ export async function openApiDocs(
                 fieldKey: { type: 'string' },
                 proposedValue: {
                     description:
-                        'Serialized proposed value. Type is validated against the editable field registry. Text and markdown submissions are stored with replayable patches so non-overlapping edits on the same attribute can be approved later. Operation suggestions use a structured add/remove intent for a plant-stage operation.',
+                        'Serialized proposed value. Type is validated against the editable field registry. Text and markdown submissions are stored with replayable patches so non-overlapping edits on the same attribute can be approved later. Operation suggestions use a structured add/remove intent for existing plant-stage operations and can also propose a new operation name and description.',
                 },
                 baseValueHash: {
                     type: ['string', 'null'],
