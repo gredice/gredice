@@ -1,6 +1,7 @@
 import { getAllTimeSlots, getPickupLocations } from '@gredice/storage';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardOverflow } from '@gredice/ui/Card';
+import { IconButton } from '@gredice/ui/IconButton';
 import { Add, Calendar } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -47,12 +48,13 @@ export default async function AdminTimeSlotsPage({
                         />
                         <CreateTimeSlotModal
                             trigger={
-                                <Button
+                                <IconButton
+                                    aria-label="Kreiraj slot"
+                                    title="Kreiraj slot"
                                     variant="solid"
-                                    startDecorator={<Add className="size-4" />}
                                 >
-                                    Kreiraj slot
-                                </Button>
+                                    <Add className="size-5" />
+                                </IconButton>
                             }
                             locations={pickupLocations}
                         />

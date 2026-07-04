@@ -12,6 +12,7 @@ import { getEntities } from '../../../components/shared/attributes/actions/entit
 import { UserPickerField } from '../../../components/shared/fields/UserPickerField';
 import { bulkCreateOperationsAction } from '../../(actions)/operationActions';
 import { SelectEntity } from '../raised-beds/[raisedBedId]/SelectEntity';
+import { OperationCreateTrigger } from './OperationCreateTrigger';
 import {
     type TargetSelectionMode,
     TargetsSelectionList,
@@ -115,7 +116,7 @@ export function BulkOperationCreateModal({
     return (
         <Modal
             title={'Nova radnja'}
-            trigger={<Button variant="outlined">Dodaj više</Button>}
+            trigger={<OperationCreateTrigger mode="bulk" />}
             open={open}
             onOpenChange={setOpen}
         >

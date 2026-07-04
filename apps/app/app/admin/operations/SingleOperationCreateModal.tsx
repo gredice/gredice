@@ -13,6 +13,7 @@ import {
     singleCreateOperationAction,
 } from '../../(actions)/operationActions';
 import { SelectEntity } from '../raised-beds/[raisedBedId]/SelectEntity';
+import { OperationCreateTrigger } from './OperationCreateTrigger';
 import {
     type TargetSelectionMode,
     TargetsSelectionList,
@@ -96,7 +97,7 @@ export function SingleOperationCreateModal({
     return (
         <Modal
             title={'Nova radnja'}
-            trigger={<Button variant="outlined">Dodaj jednu</Button>}
+            trigger={<OperationCreateTrigger mode="single" />}
             open={open}
             onOpenChange={setOpen}
         >

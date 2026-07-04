@@ -6,6 +6,7 @@ import {
 } from '@gredice/storage';
 import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
 import { Card, CardOverflow } from '@gredice/ui/Card';
+import { IconButton } from '@gredice/ui/IconButton';
 import { Add, Edit, Printer } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -143,15 +144,14 @@ export default async function InventoryConfigPage({
                                     <span>Preuzmi PDF</span>
                                 </Row>
                             </Link>
-                            <Link href={KnownPages.InventoryItemCreate(id)}>
-                                <Row
-                                    spacing={2}
-                                    className="text-sm font-medium px-3 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                                >
-                                    <Add className="size-4" />
-                                    <span>Dodaj stavku</span>
-                                </Row>
-                            </Link>
+                            <IconButton
+                                aria-label="Dodaj stavku"
+                                href={KnownPages.InventoryItemCreate(id)}
+                                title="Dodaj stavku"
+                                variant="solid"
+                            >
+                                <Add className="size-5" />
+                            </IconButton>
                             <Link href={KnownPages.InventoryConfigEdit(id)}>
                                 <Row
                                     spacing={2}
