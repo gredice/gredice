@@ -30,7 +30,11 @@ export async function updateFeedback(id: string, feedback: UpdateFeedback) {
         .update(feedbacks)
         .set(feedback)
         .where(eq(feedbacks.id, id))
-        .returning({ id: feedbacks.id });
+        .returning({
+            id: feedbacks.id,
+            score: feedbacks.score,
+            topic: feedbacks.topic,
+        });
 
-    return updated[0]?.id ?? null;
+    return updated[0] ?? null;
 }

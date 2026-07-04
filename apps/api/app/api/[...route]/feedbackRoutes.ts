@@ -76,13 +76,24 @@ const app = new Hono<{ Variables: AuthVariables }>()
         async (context) => {
             const { feedbackId } = context.req.valid('param');
             const feedback = context.req.valid('json');
-            const id = await updateFeedback(feedbackId, feedback);
+            const updatedFeedback = await updateFeedback(feedbackId, feedback);
 
-            if (!id) {
+            if (!updatedFeedback) {
                 return context.json({ error: 'Feedback not found' }, 404);
             }
 
-            return context.json({ id });
+            if (Object.hasOwn(feedback, 'score')) {
+                (await getPostHogClient()).capture({
+                    distinctId: 'anonymous',
+                    event: 'feedback_updated',
+                    properties: {
+                        topic: updatedFeedback.topic,
+                        score: updatedFeedback.score ?? undefined,
+                    },
+                });
+            }
+
+            return context.json({ id: updatedFeedback.id });
         },
     );
 

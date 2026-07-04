@@ -20,12 +20,16 @@ test('updateFeedback changes rating and comment without creating another row', a
         comment: null,
     });
 
-    const updatedId = await updateFeedback(id, {
+    const updatedFeedback = await updateFeedback(id, {
         score: '-1',
         comment: 'Nedostaje detalja.',
     });
 
-    assert.equal(updatedId, id);
+    assert.deepEqual(updatedFeedback, {
+        id,
+        topic,
+        score: '-1',
+    });
 
     const rows = await storage()
         .select({
@@ -50,11 +54,11 @@ test('updateFeedback changes rating and comment without creating another row', a
 test('updateFeedback returns null for an unknown feedback id', async () => {
     createTestDb();
 
-    const updatedId = await updateFeedback(randomUUID(), {
+    const updatedFeedback = await updateFeedback(randomUUID(), {
         score: '0',
     });
 
-    assert.equal(updatedId, null);
+    assert.equal(updatedFeedback, null);
 });
 
 test('updateFeedback preserves omitted fields', async () => {
@@ -67,11 +71,15 @@ test('updateFeedback preserves omitted fields', async () => {
         comment: 'Jasno.',
     });
 
-    const updatedId = await updateFeedback(id, {
+    const updatedFeedback = await updateFeedback(id, {
         score: '-1',
     });
 
-    assert.equal(updatedId, id);
+    assert.deepEqual(updatedFeedback, {
+        id,
+        topic,
+        score: '-1',
+    });
 
     const rows = await storage()
         .select({
