@@ -1098,7 +1098,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     ? 'denied'
                     : 'disabled';
             return context.json(
-                { status, hasDevices: subscriptions.length > 0 },
+                { status, hasDevices: hasNonRevokedSubscription },
                 200,
             );
         },
