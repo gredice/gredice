@@ -33,6 +33,7 @@ type CommunityEditControlType =
     | 'json'
     | 'markdown'
     | 'number'
+    | 'operationSuggestion'
     | 'range'
     | 'reference'
     | 'select'
@@ -58,8 +59,29 @@ type CommunityEditableField = {
     publicLabel: string;
     helpText?: string;
     options?: CommunityEditableFieldOption[];
+    operationSuggestionStage?: {
+        name: string;
+        label: string;
+    };
     currentValue: string | null;
     baseValueHash: string;
+};
+
+type OperationSuggestionIntent = 'add' | 'remove';
+
+type OperationSuggestionFieldValue = {
+    intent: OperationSuggestionIntent;
+    operationId: string;
+    note: string;
+    source: string;
+};
+
+type OperationSuggestionSubmitValue = {
+    intent: OperationSuggestionIntent;
+    operationId: number;
+    stageName: string;
+    note?: string | null;
+    source?: string | null;
 };
 
 type FieldValue =
@@ -68,6 +90,7 @@ type FieldValue =
           min: string;
           max: string;
       }
+    | OperationSuggestionFieldValue
     | null;
 
 type SubmitValue =
@@ -76,6 +99,7 @@ type SubmitValue =
           min: number;
           max: number;
       }
+    | OperationSuggestionSubmitValue
     | null;
 
 type ButtonStyle = 'button' | 'icon';
@@ -91,6 +115,15 @@ export type CommunityEditButtonProps = {
 };
 
 function initialFieldValue(field: CommunityEditableField): FieldValue {
+    if (field.controlType === 'operationSuggestion') {
+        return {
+            intent: 'add',
+            operationId: '',
+            note: '',
+            source: '',
+        };
+    }
+
     if (field.controlType === 'range') {
         if (!field.currentValue) {
             return { min: '', max: '' };
@@ -123,6 +156,55 @@ function initialFieldValue(field: CommunityEditableField): FieldValue {
     return field.currentValue ?? '';
 }
 
+function isOperationSuggestionValue(
+    value: FieldValue,
+): value is OperationSuggestionFieldValue {
+    return (
+        typeof value === 'object' &&
+        value !== null &&
+        'intent' in value &&
+        (value.intent === 'add' || value.intent === 'remove') &&
+        'operationId' in value &&
+        typeof value.operationId === 'string'
+    );
+}
+
+function operationIdsFromCurrentValue(field: CommunityEditableField) {
+    if (!field.currentValue) {
+        return new Set<string>();
+    }
+
+    try {
+        const parsed: unknown = JSON.parse(field.currentValue);
+        if (!Array.isArray(parsed)) {
+            return new Set<string>();
+        }
+
+        return new Set(
+            parsed
+                .filter(
+                    (entry): entry is string | number =>
+                        typeof entry === 'string' || typeof entry === 'number',
+                )
+                .map(String),
+        );
+    } catch {
+        return new Set<string>();
+    }
+}
+
+function operationSuggestionOptionsForIntent(
+    field: CommunityEditableField,
+    intent: OperationSuggestionIntent,
+) {
+    const currentOperationIds = operationIdsFromCurrentValue(field);
+    return (field.options ?? []).filter((option) =>
+        intent === 'add'
+            ? !currentOperationIds.has(option.value)
+            : currentOperationIds.has(option.value),
+    );
+}
+
 function normalizeJsonValue(value: string) {
     const trimmed = value.trim();
     if (!trimmed) {
@@ -140,8 +222,46 @@ function serializeFieldValue(
     field: CommunityEditableField,
     value: FieldValue,
 ): { comparisonValue: string | null; submitValue: SubmitValue } {
+    if (field.controlType === 'operationSuggestion') {
+        if (!isOperationSuggestionValue(value) || !value.operationId) {
+            return {
+                comparisonValue: field.currentValue,
+                submitValue: null,
+            };
+        }
+
+        const operationId = Number.parseInt(value.operationId, 10);
+        const selectedOption = operationSuggestionOptionsForIntent(
+            field,
+            value.intent,
+        ).some((option) => option.value === value.operationId);
+        if (!Number.isInteger(operationId) || !selectedOption) {
+            return {
+                comparisonValue: field.currentValue,
+                submitValue: null,
+            };
+        }
+
+        const submitValue: OperationSuggestionSubmitValue = {
+            intent: value.intent,
+            operationId,
+            stageName: field.operationSuggestionStage?.name ?? field.sectionKey,
+            note: value.note.trim() || null,
+            source: value.source.trim() || null,
+        };
+
+        return {
+            comparisonValue: JSON.stringify(submitValue),
+            submitValue,
+        };
+    }
+
     if (field.controlType === 'range') {
-        if (!value || typeof value === 'string') {
+        if (
+            !value ||
+            typeof value === 'string' ||
+            isOperationSuggestionValue(value)
+        ) {
             return { comparisonValue: null, submitValue: null };
         }
 
@@ -312,6 +432,108 @@ function FieldInput({
     onChange: (value: FieldValue) => void;
     value: FieldValue;
 }) {
+    if (field.controlType === 'operationSuggestion') {
+        const suggestionValue = isOperationSuggestionValue(value)
+            ? value
+            : {
+                  intent: 'add' as const,
+                  operationId: '',
+                  note: '',
+                  source: '',
+              };
+        const operationOptions = operationSuggestionOptionsForIntent(
+            field,
+            suggestionValue.intent,
+        );
+
+        return (
+            <Stack spacing={2}>
+                <div className="grid gap-2 sm:grid-cols-2">
+                    <label className="space-y-1" htmlFor={`${id}-intent`}>
+                        <Typography level="body3">Namjera</Typography>
+                        <select
+                            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                            id={`${id}-intent`}
+                            onChange={(event) =>
+                                onChange({
+                                    ...suggestionValue,
+                                    intent: event.currentTarget
+                                        .value as OperationSuggestionIntent,
+                                    operationId: '',
+                                })
+                            }
+                            value={suggestionValue.intent}
+                        >
+                            <option value="add">Dodaj radnju</option>
+                            <option value="remove">Ukloni radnju</option>
+                        </select>
+                    </label>
+                    <label className="space-y-1" htmlFor={`${id}-operation`}>
+                        <Typography level="body3">Radnja</Typography>
+                        <select
+                            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                            disabled={operationOptions.length === 0}
+                            id={`${id}-operation`}
+                            onChange={(event) =>
+                                onChange({
+                                    ...suggestionValue,
+                                    operationId: event.currentTarget.value,
+                                })
+                            }
+                            value={
+                                operationOptions.some(
+                                    (option) =>
+                                        option.value ===
+                                        suggestionValue.operationId,
+                                )
+                                    ? suggestionValue.operationId
+                                    : ''
+                            }
+                        >
+                            <option value="">
+                                {operationOptions.length > 0
+                                    ? 'Odaberi radnju'
+                                    : 'Nema dostupnih radnji'}
+                            </option>
+                            {operationOptions.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                    {option.label}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+                </div>
+                <Input
+                    id={`${id}-source`}
+                    label="Izvor"
+                    onChange={(event) =>
+                        onChange({
+                            ...suggestionValue,
+                            source: event.currentTarget.value,
+                        })
+                    }
+                    placeholder="Poveznica, knjiga ili opažanje..."
+                    value={suggestionValue.source}
+                />
+                <label className="space-y-1" htmlFor={`${id}-note`}>
+                    <Typography level="body3">Napomena</Typography>
+                    <textarea
+                        className="min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        id={`${id}-note`}
+                        onChange={(event) =>
+                            onChange({
+                                ...suggestionValue,
+                                note: event.currentTarget.value,
+                            })
+                        }
+                        placeholder="Zašto predlažeš ovu promjenu?"
+                        value={suggestionValue.note}
+                    />
+                </label>
+            </Stack>
+        );
+    }
+
     if (field.controlType === 'markdown') {
         return (
             <CommunityMarkdownInput
@@ -371,7 +593,9 @@ function FieldInput({
 
     if (field.controlType === 'range') {
         const rangeValue =
-            value && typeof value !== 'string'
+            value &&
+            typeof value !== 'string' &&
+            !isOperationSuggestionValue(value)
                 ? value
                 : {
                       min: '',

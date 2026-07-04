@@ -37,6 +37,18 @@ type CompactTextDiff = {
     added: string;
 };
 
+type CommunityOperationSuggestionValue = {
+    format: 'community-operation-suggestion-v1';
+    intent: 'add' | 'remove';
+    operationId: number;
+    operationLabel: string;
+    stageName: string;
+    stageLabel: string;
+    currentState: 'absent' | 'present';
+    note?: string;
+    source?: string;
+};
+
 function statusLabel(status: CommunityEditRequestStatus) {
     switch (status) {
         case 'pending':
@@ -123,6 +135,60 @@ function parseCompactTextDiff(reviewDiff: string | null) {
     }
 }
 
+function isCommunityOperationSuggestion(
+    value: unknown,
+): value is CommunityOperationSuggestionValue {
+    return (
+        typeof value === 'object' &&
+        value !== null &&
+        'format' in value &&
+        value.format === 'community-operation-suggestion-v1' &&
+        'intent' in value &&
+        (value.intent === 'add' || value.intent === 'remove') &&
+        'operationId' in value &&
+        typeof value.operationId === 'number' &&
+        'operationLabel' in value &&
+        typeof value.operationLabel === 'string' &&
+        'stageName' in value &&
+        typeof value.stageName === 'string' &&
+        'stageLabel' in value &&
+        typeof value.stageLabel === 'string' &&
+        'currentState' in value &&
+        (value.currentState === 'absent' || value.currentState === 'present')
+    );
+}
+
+function parseCommunityOperationSuggestion(value: string | null) {
+    if (!value) {
+        return null;
+    }
+
+    try {
+        const parsed: unknown = JSON.parse(value);
+        return isCommunityOperationSuggestion(parsed) ? parsed : null;
+    } catch {
+        return null;
+    }
+}
+
+function operationSuggestionIntentLabel(intent: 'add' | 'remove') {
+    switch (intent) {
+        case 'add':
+            return 'Dodaj radnju';
+        case 'remove':
+            return 'Ukloni radnju';
+    }
+}
+
+function operationSuggestionStateLabel(state: 'absent' | 'present') {
+    switch (state) {
+        case 'absent':
+            return 'Radnja nije bila povezana';
+        case 'present':
+            return 'Radnja je bila povezana';
+    }
+}
+
 function ValueBlock({ label, value }: { label: string; value: string | null }) {
     return (
         <Stack spacing={1} className="min-w-0">
@@ -136,6 +202,58 @@ function ValueBlock({ label, value }: { label: string; value: string | null }) {
                     {value}
                 </pre>
             )}
+        </Stack>
+    );
+}
+
+function OperationSuggestionBlock({
+    suggestion,
+}: {
+    suggestion: CommunityOperationSuggestionValue;
+}) {
+    return (
+        <Stack spacing={3}>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <DetailItem label="Namjera">
+                    <Chip
+                        color={
+                            suggestion.intent === 'add' ? 'success' : 'warning'
+                        }
+                        variant="soft"
+                    >
+                        {operationSuggestionIntentLabel(suggestion.intent)}
+                    </Chip>
+                </DetailItem>
+                <DetailItem label="Stadij">
+                    <Typography>
+                        {suggestion.stageLabel} ({suggestion.stageName})
+                    </Typography>
+                </DetailItem>
+                <DetailItem label="Radnja">
+                    <Typography>
+                        {suggestion.operationLabel} #{suggestion.operationId}
+                    </Typography>
+                </DetailItem>
+                <DetailItem label="Stanje pri slanju">
+                    <Typography>
+                        {operationSuggestionStateLabel(suggestion.currentState)}
+                    </Typography>
+                </DetailItem>
+            </div>
+            {suggestion.source ? (
+                <DetailItem label="Izvor">
+                    <Typography className="whitespace-pre-line break-words">
+                        {suggestion.source}
+                    </Typography>
+                </DetailItem>
+            ) : null}
+            {suggestion.note ? (
+                <DetailItem label="Napomena">
+                    <Typography className="whitespace-pre-line">
+                        {suggestion.note}
+                    </Typography>
+                </DetailItem>
+            ) : null}
         </Stack>
     );
 }
@@ -173,6 +291,25 @@ function DiffBlock({ change }: { change: CommunityEditChange }) {
                 Zajednički početak: {diff.prefixLength} znakova, zajednički
                 kraj: {diff.suffixLength} znakova.
             </Typography>
+        </Stack>
+    );
+}
+
+function ChangeBody({ change }: { change: CommunityEditChange }) {
+    const operationSuggestion = parseCommunityOperationSuggestion(
+        change.proposedValue,
+    );
+    if (operationSuggestion) {
+        return <OperationSuggestionBlock suggestion={operationSuggestion} />;
+    }
+
+    return (
+        <Stack spacing={4}>
+            <div className="grid gap-4 lg:grid-cols-2">
+                <ValueBlock label="Trenutno" value={change.previousValue} />
+                <ValueBlock label="Predloženo" value={change.proposedValue} />
+            </div>
+            <DiffBlock change={change} />
         </Stack>
     );
 }
@@ -430,19 +567,7 @@ export default async function CommunityEditDetailPage({
                             </Typography>
                         </CardHeader>
                         <CardContent>
-                            <Stack spacing={4}>
-                                <div className="grid gap-4 lg:grid-cols-2">
-                                    <ValueBlock
-                                        label="Trenutno"
-                                        value={change.previousValue}
-                                    />
-                                    <ValueBlock
-                                        label="Predloženo"
-                                        value={change.proposedValue}
-                                    />
-                                </div>
-                                <DiffBlock change={change} />
-                            </Stack>
+                            <ChangeBody change={change} />
                         </CardContent>
                     </Card>
                 ))}
