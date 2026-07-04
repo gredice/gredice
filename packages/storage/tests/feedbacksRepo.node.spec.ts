@@ -56,3 +56,35 @@ test('updateFeedback returns null for an unknown feedback id', async () => {
 
     assert.equal(updatedId, null);
 });
+
+test('updateFeedback preserves omitted fields', async () => {
+    createTestDb();
+    const topic = `www/test-feedback/${randomUUID()}`;
+    const id = await createFeedback({
+        topic,
+        data: { page: 'pricing' },
+        score: '1',
+        comment: 'Jasno.',
+    });
+
+    const updatedId = await updateFeedback(id, {
+        score: '-1',
+    });
+
+    assert.equal(updatedId, id);
+
+    const rows = await storage()
+        .select({
+            score: feedbacks.score,
+            comment: feedbacks.comment,
+        })
+        .from(feedbacks)
+        .where(eq(feedbacks.id, id));
+
+    assert.deepEqual(rows, [
+        {
+            score: '-1',
+            comment: 'Jasno.',
+        },
+    ]);
+});
