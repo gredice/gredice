@@ -1,4 +1,4 @@
-import { clientPublic } from '@gredice/client';
+import { clientPublic, directoriesClient } from '@gredice/client';
 import { notFound } from 'next/navigation';
 import { countActivePlantsFromPublicGarden } from './publicGardenFormatting';
 
@@ -57,6 +57,22 @@ export async function getPublicGardensForWww() {
         ...publicGardens,
         items,
     };
+}
+
+export async function getPublicGardenBlockDataForWww() {
+    try {
+        const { data, error } =
+            await directoriesClient().GET('/entities/block');
+        if (error) {
+            console.error('Failed to fetch public garden block data', error);
+            return undefined;
+        }
+
+        return data ?? [];
+    } catch (error) {
+        console.error('Failed to fetch public garden block data', error);
+        return undefined;
+    }
 }
 
 export async function getPublicGardenForWww(gardenId: number) {
