@@ -30,6 +30,7 @@ import {
     validateHostedImageUrl,
 } from '../../../lib/http/safeUrls';
 import { notificationRolloutFlags } from '../../../lib/notifications/notificationRollout';
+import { notificationCenterRoles } from '../../../lib/notifications/notificationRouteRoles';
 import {
     pushDeviceResponse,
     pushDeviceUpsertSchema,
@@ -559,7 +560,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             description:
                 'Get notifications for a user. This will return a list of notifications for the specified user and current account.',
         }),
-        authValidator(['user', 'admin']),
+        authValidator([...notificationCenterRoles]),
         zValidator(
             'query',
             z.object({
@@ -625,7 +626,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
     .put(
         '/',
         describeRoute({ description: 'Update notifications read status' }),
-        authValidator(['user', 'admin']),
+        authValidator([...notificationCenterRoles]),
         zValidator(
             'json',
             z.object({
@@ -675,7 +676,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
     .patch(
         '/:id',
         describeRoute({ description: 'Change notification' }),
-        authValidator(['user', 'admin']),
+        authValidator([...notificationCenterRoles]),
         zValidator('param', z.object({ id: z.string() })),
         zValidator(
             'json',
