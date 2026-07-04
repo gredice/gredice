@@ -251,6 +251,154 @@ test('submits a changed section edit for authenticated users', async ({
     ).toBeVisible();
 });
 
+test('shows storage content and operation suggestions in the edit modal', async ({
+    mount,
+    page,
+}) => {
+    await page.route('**/api/gredice/api/auth/current-claims', (route) =>
+        route.fulfill({
+            status: 200,
+            json: {
+                id: 'user-1',
+                userName: 'ana',
+                displayName: 'Ana',
+            },
+        }),
+    );
+    await page.route(
+        '**/api/gredice/api/directories/community-edits/entities/plant/1/fields**',
+        (route) =>
+            route.fulfill({
+                status: 200,
+                json: {
+                    entityTypeName: 'plant',
+                    entityId: 1,
+                    sectionKey: 'storage',
+                    fields: [
+                        {
+                            entityTypeName: 'plant',
+                            entityId: 1,
+                            fieldKey: 'plant.storage',
+                            sectionKey: 'storage',
+                            attributeDefinitionId: 12,
+                            attributeValueId: 22,
+                            attributePath: 'information.storage',
+                            dataType: 'markdown',
+                            controlType: 'text',
+                            multiple: false,
+                            publicLabel: 'Skladištenje',
+                            helpText: 'Savjeti za čuvanje nakon berbe.',
+                            currentValue: 'Čuvati na hladnom.',
+                            baseValueHash: 'hash-storage',
+                        },
+                        {
+                            entityTypeName: 'plant',
+                            entityId: 1,
+                            fieldKey: 'plant.stage-operations.storage',
+                            sectionKey: 'storage',
+                            attributeDefinitionId: 13,
+                            attributeValueId: null,
+                            attributePath: 'information.operations',
+                            dataType: 'ref:operation',
+                            controlType: 'operationSuggestion',
+                            multiple: true,
+                            publicLabel: 'Radnje: Skladištenje',
+                            helpText:
+                                'Predloži dodavanje ili uklanjanje radnje.',
+                            operationSuggestionStage: {
+                                name: 'storage',
+                                label: 'Skladištenje',
+                            },
+                            currentValue: '[]',
+                            baseValueHash: 'hash-operations',
+                            options: [
+                                {
+                                    value: '987',
+                                    label: 'Uklanjanje biljke',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            }),
+    );
+    await page.route(
+        '**/api/gredice/api/directories/community-edits',
+        async (route) => {
+            const body = route.request().postDataJSON();
+            expect(body).toMatchObject({
+                entityTypeName: 'plant',
+                entityId: 1,
+                publicPath: '/biljke/blitva',
+                sectionKey: 'storage',
+                changes: [
+                    {
+                        fieldKey: 'plant.storage',
+                        proposedValue: 'Zamotati u vlažnu krpu.',
+                        baseValueHash: 'hash-storage',
+                    },
+                    {
+                        fieldKey: 'plant.stage-operations.storage',
+                        proposedValue: {
+                            intent: 'add',
+                            operationId: 987,
+                            stageName: 'storage',
+                            source: 'Terenska bilješka',
+                            note: 'Radnja pripada skladištenju.',
+                        },
+                        baseValueHash: 'hash-operations',
+                    },
+                ],
+            });
+
+            await route.fulfill({
+                status: 201,
+                json: {
+                    status: 'pending_admin_approval',
+                    requestId: 44,
+                    requestStatus: 'pending',
+                    changeCount: 2,
+                },
+            });
+        },
+    );
+
+    await mount(
+        <CommunityEditButtonHarness
+            entityTypeName="plant"
+            entityId={1}
+            publicPath="/biljke/blitva"
+            sectionKey="storage"
+        />,
+    );
+
+    await page.getByTitle('Predloži izmjenu').click();
+    await expect(
+        page.getByText('Ova sekcija trenutno nema javno uređivih polja.'),
+    ).toHaveCount(0);
+    await expect(page.getByText('Radnje: Skladištenje')).toBeVisible();
+
+    const dialogBackground = await page
+        .getByRole('dialog')
+        .evaluate((element) => getComputedStyle(element).backgroundColor);
+    const fieldBackground = await page
+        .getByLabel('Skladištenje')
+        .evaluate((element) => getComputedStyle(element).backgroundColor);
+    expect(fieldBackground).not.toBe(dialogBackground);
+
+    await page.getByLabel('Skladištenje').fill('Zamotati u vlažnu krpu.');
+    await page.getByLabel('Radnja').selectOption('987');
+    await page.getByLabel('Izvor').fill('Terenska bilješka');
+    await page
+        .getByRole('textbox', { name: 'Napomena', exact: true })
+        .fill('Radnja pripada skladištenju.');
+    await page.getByRole('button', { name: 'Pošalji' }).click();
+
+    await expect(
+        page.getByText('Prijedlog #44 je poslan na odobrenje.'),
+    ).toBeVisible();
+});
+
 test('submits select field edits for authenticated users', async ({
     mount,
     page,

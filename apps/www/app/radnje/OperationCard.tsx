@@ -24,12 +24,12 @@ export function OperationCard({
 
     return (
         <a
-            className="group block h-full rounded-lg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+            className="group/operation-card block h-full rounded-lg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
             href={KnownPages.Operation(operation.information.label)}
         >
             <Card
                 className={cx(
-                    'h-full border-tertiary border-b-4 transition-colors group-hover:bg-accent group-hover:text-accent-foreground',
+                    'h-full border-tertiary border-b-4 transition-colors group-hover/operation-card:bg-accent group-hover/operation-card:text-accent-foreground',
                     compact && 'p-1',
                 )}
             >
