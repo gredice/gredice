@@ -9,6 +9,7 @@ import {
     getGardens,
 } from '@gredice/storage';
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
+import { serializeOperationDefinitionForList } from './operationListDefinitionVisual';
 import { defaultOperationsListSort } from './operationsListConfig';
 import type {
     OperationsListOperation,
@@ -70,14 +71,19 @@ function toIsoString(value: Date | string | null | undefined) {
     return typeof value === 'string' ? value : value.toISOString();
 }
 
-function operationDefinitionLabel(
+function operationDefinitionForOperation(
     operation: RawOperation,
     operationDefinitions: EntityStandardized[],
 ) {
-    const operationDefinition = operationDefinitions.find(
+    return operationDefinitions.find(
         (definition) => definition.id === operation.entityId,
     );
+}
 
+function operationDefinitionLabel(
+    operation: RawOperation,
+    operationDefinition: EntityStandardized | undefined,
+) {
     return operationDefinition?.information?.label ?? `Radnja ${operation.id}`;
 }
 
@@ -154,6 +160,11 @@ function serializeOperation(
     operation: RawOperation,
     context: OperationsListContext,
 ): OperationsListOperation {
+    const operationDefinition = operationDefinitionForOperation(
+        operation,
+        context.operationDefinitions,
+    );
+    const label = operationDefinitionLabel(operation, operationDefinition);
     const account = operation.accountId
         ? context.accounts.find((item) => item.id === operation.accountId)
         : undefined;
@@ -177,9 +188,10 @@ function serializeOperation(
         id: operation.id,
         entityId: operation.entityId,
         entityTypeName: operation.entityTypeName,
-        label: operationDefinitionLabel(
-            operation,
-            context.operationDefinitions,
+        label,
+        operationDefinition: serializeOperationDefinitionForList(
+            operationDefinition,
+            label,
         ),
         status: operation.status,
         accountUserNames:

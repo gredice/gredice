@@ -1,3 +1,5 @@
+import type { OperationImageProps } from '@gredice/ui/OperationImage';
+
 export type OperationsListSortDirection = 'asc' | 'desc';
 
 export type OperationsListSortKey =
@@ -20,11 +22,15 @@ export type OperationsListStatus =
     | 'failed'
     | 'canceled';
 
+export type OperationsListOperationDefinition =
+    OperationImageProps['operation'];
+
 export type OperationsListOperation = {
     id: number;
     entityId: number;
     entityTypeName: string;
     label: string;
+    operationDefinition: OperationsListOperationDefinition;
     status: OperationsListStatus;
     accountUserNames: string[];
     farmName: string | null;
