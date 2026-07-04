@@ -165,6 +165,11 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                 )}
                 <PlantHealthSection health={plant.health} />
                 <PlantRelationshipsSection
+                    editTarget={{
+                        entityTypeName: 'plant',
+                        entityId: plant.id,
+                        publicPath: KnownPages.Plant(alias),
+                    }}
                     relationships={plant.relationships}
                 />
                 <PlantSortsList

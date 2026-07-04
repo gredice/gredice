@@ -304,7 +304,14 @@ export default async function PlantSortPage(
                     <PlantTips plant={basePlantData} />
                 )}
                 <PlantHealthSection health={health} />
-                <PlantRelationshipsSection relationships={relationships} />
+                <PlantRelationshipsSection
+                    editTarget={{
+                        entityTypeName: 'plantSort',
+                        entityId: sortData.id,
+                        publicPath: sortPath,
+                    }}
+                    relationships={relationships}
+                />
                 <Row spacing={4}>
                     <Typography level="body1">
                         Jesu li ti informacije o ovoj biljci korisne?

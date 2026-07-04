@@ -111,6 +111,7 @@ type FieldValue =
 
 type SubmitValue =
     | string
+    | string[]
     | {
           min: number;
           max: number;
@@ -140,10 +141,15 @@ const textareaControlClassName =
     'w-full rounded-md border border-border/80 bg-card px-3 py-2 text-sm text-foreground shadow-sm ring-offset-background transition-colors placeholder:text-muted-foreground/70 hover:border-primary/40 focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-muted/70 disabled:text-muted-foreground';
 const attributeIconClassName = 'size-4';
 
-type CommunityEditFieldGroup = 'attributes' | 'content' | 'operations';
+type CommunityEditFieldGroup =
+    | 'attributes'
+    | 'content'
+    | 'operations'
+    | 'relationships';
 
 const communityEditFieldGroups = [
     'content',
+    'relationships',
     'attributes',
     'operations',
 ] satisfies CommunityEditFieldGroup[];
@@ -159,6 +165,10 @@ function communityEditFieldGroup(
         return 'attributes';
     }
 
+    if (field.attributePath.startsWith('relationships.')) {
+        return 'relationships';
+    }
+
     return 'content';
 }
 
@@ -168,6 +178,8 @@ function communityEditFieldGroupLabel(group: CommunityEditFieldGroup) {
             return 'Svojstva';
         case 'operations':
             return 'Radnje';
+        case 'relationships':
+            return 'Biljni susjedi';
         case 'content':
             return 'Sadržaj';
     }
@@ -263,6 +275,10 @@ function initialFieldValue(field: CommunityEditableField): FieldValue {
         }
     }
 
+    if (field.controlType === 'reference' && field.multiple) {
+        return referenceListTextFromCurrentValue(field.currentValue);
+    }
+
     return field.currentValue ?? '';
 }
 
@@ -328,6 +344,36 @@ function normalizeJsonValue(value: string) {
     }
 }
 
+function referenceListTextFromCurrentValue(value: string | null) {
+    if (!value) {
+        return '';
+    }
+
+    try {
+        const parsed: unknown = JSON.parse(value);
+        if (!Array.isArray(parsed)) {
+            return value;
+        }
+
+        return parsed
+            .filter(
+                (entry): entry is string | number =>
+                    typeof entry === 'string' || typeof entry === 'number',
+            )
+            .map(String)
+            .join('\n');
+    } catch {
+        return value;
+    }
+}
+
+function referenceListFromText(value: string) {
+    return value
+        .split(/[\s,;]+/)
+        .map((entry) => entry.trim())
+        .filter(Boolean);
+}
+
 function serializeFieldValue(
     field: CommunityEditableField,
     value: FieldValue,
@@ -391,6 +437,14 @@ function serializeFieldValue(
     }
 
     const textValue = typeof value === 'string' ? value : '';
+    if (field.controlType === 'reference' && field.multiple) {
+        const references = referenceListFromText(textValue);
+        return {
+            comparisonValue: JSON.stringify(references),
+            submitValue: references,
+        };
+    }
+
     if (field.controlType === 'json') {
         const normalized = normalizeJsonValue(textValue);
         return { comparisonValue: normalized, submitValue: textValue || null };
@@ -723,6 +777,18 @@ function FieldInput({
         );
     }
 
+    if (field.controlType === 'reference' && field.multiple) {
+        return (
+            <textarea
+                className={cx(textareaControlClassName, 'min-h-24')}
+                id={id}
+                onChange={(event) => onChange(event.currentTarget.value)}
+                placeholder="Npr. 12, 34, 56"
+                value={typeof value === 'string' ? value : ''}
+            />
+        );
+    }
+
     if (field.controlType === 'number' || field.controlType === 'reference') {
         return (
             <Input
@@ -939,6 +1005,9 @@ export function CommunityEditButton({
         ),
         operations: fields.filter(
             (field) => communityEditFieldGroup(field) === 'operations',
+        ),
+        relationships: fields.filter(
+            (field) => communityEditFieldGroup(field) === 'relationships',
         ),
     };
 

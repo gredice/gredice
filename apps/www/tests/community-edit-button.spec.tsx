@@ -251,6 +251,122 @@ test('submits a changed section edit for authenticated users', async ({
     ).toBeVisible();
 });
 
+test('submits multiple reference edits for plant relationships', async ({
+    mount,
+    page,
+}) => {
+    await page.route('**/api/gredice/api/auth/current-claims', (route) =>
+        route.fulfill({
+            status: 200,
+            json: {
+                id: 'user-1',
+                userName: 'ana',
+                displayName: 'Ana',
+            },
+        }),
+    );
+    await page.route(
+        '**/api/gredice/api/directories/community-edits/entities/plant/1/fields**',
+        (route) =>
+            route.fulfill({
+                status: 200,
+                json: {
+                    entityTypeName: 'plant',
+                    entityId: 1,
+                    sectionKey: 'relationships',
+                    fields: [
+                        {
+                            entityTypeName: 'plant',
+                            entityId: 1,
+                            fieldKey: 'plant.relationships.companions',
+                            sectionKey: 'relationships',
+                            attributeDefinitionId: 30,
+                            attributeValueId: 40,
+                            attributePath: 'relationships.companions',
+                            dataType: 'ref:plant',
+                            controlType: 'reference',
+                            multiple: true,
+                            publicLabel: 'Dobri susjedi',
+                            helpText:
+                                'ID-jeve biljaka unesi odvojene zarezom ili svaki u novi red.',
+                            currentValue: JSON.stringify(['12', '34']),
+                            baseValueHash: 'hash-companions',
+                        },
+                        {
+                            entityTypeName: 'plant',
+                            entityId: 1,
+                            fieldKey: 'plant.relationships.antagonists',
+                            sectionKey: 'relationships',
+                            attributeDefinitionId: 31,
+                            attributeValueId: null,
+                            attributePath: 'relationships.antagonists',
+                            dataType: 'ref:plant',
+                            controlType: 'reference',
+                            multiple: true,
+                            publicLabel: 'Izbjegavati blizinu',
+                            currentValue: '[]',
+                            baseValueHash: 'hash-antagonists',
+                        },
+                    ],
+                },
+            }),
+    );
+    await page.route(
+        '**/api/gredice/api/directories/community-edits',
+        async (route) => {
+            const body = route.request().postDataJSON();
+            expect(body).toMatchObject({
+                entityTypeName: 'plant',
+                entityId: 1,
+                publicPath: '/biljke/rajcica',
+                sectionKey: 'relationships',
+                changes: [
+                    {
+                        fieldKey: 'plant.relationships.companions',
+                        proposedValue: ['12', '34', '56'],
+                        baseValueHash: 'hash-companions',
+                    },
+                    {
+                        fieldKey: 'plant.relationships.antagonists',
+                        proposedValue: ['78'],
+                        baseValueHash: 'hash-antagonists',
+                    },
+                ],
+            });
+
+            await route.fulfill({
+                status: 201,
+                json: {
+                    status: 'pending_admin_approval',
+                    requestId: 45,
+                    requestStatus: 'pending',
+                    changeCount: 2,
+                },
+            });
+        },
+    );
+
+    await mount(
+        <CommunityEditButtonHarness
+            entityTypeName="plant"
+            entityId={1}
+            publicPath="/biljke/rajcica"
+            sectionKey="relationships"
+        />,
+    );
+
+    await page.getByTitle('Predloži izmjenu').click();
+    await expect(page.getByLabel('Dobri susjedi')).toHaveValue('12\n34');
+
+    await page.getByLabel('Dobri susjedi').fill('12\n34\n56');
+    await page.getByLabel('Izbjegavati blizinu').fill('78');
+    await page.getByRole('button', { name: 'Pošalji' }).click();
+
+    await expect(
+        page.getByText('Prijedlog #45 je poslan na odobrenje.'),
+    ).toBeVisible();
+});
+
 test('shows storage content and operation suggestions in the edit modal', async ({
     mount,
     page,

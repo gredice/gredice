@@ -3,6 +3,7 @@ import {
     PLANT_STAGES,
     type PlantStageName,
 } from '@gredice/js/plants';
+import { plantRelationshipAttributeNames } from './plantRelationships';
 
 export type CommunityEditControlType =
     | 'boolean'
@@ -96,6 +97,58 @@ const communityEditablePlantOperationFields: CommunityEditableFieldDefinition[] 
         operationSuggestionStage: stage,
     }));
 
+const communityEditablePlantRelationshipFields: CommunityEditableFieldDefinition[] =
+    [
+        {
+            fieldKey: 'plant.relationships.companions',
+            name: plantRelationshipAttributeNames.companions,
+            publicLabel: 'Dobri susjedi',
+            helpText:
+                'ID-jeve biljaka unesi odvojene zarezom ili svaki u novi red.',
+        },
+        {
+            fieldKey: 'plant.relationships.antagonists',
+            name: plantRelationshipAttributeNames.antagonists,
+            publicLabel: 'Izbjegavati blizinu',
+            helpText:
+                'ID-jeve biljaka unesi odvojene zarezom ili svaki u novi red.',
+        },
+    ].map((field) => ({
+        entityTypeName: 'plant',
+        sectionKey: 'relationships',
+        category: 'relationships',
+        controlType: 'reference',
+        pageLevel: true,
+        inline: true,
+        ...field,
+    }));
+
+const communityEditablePlantSortRelationshipFields: CommunityEditableFieldDefinition[] =
+    [
+        {
+            fieldKey: 'plant-sort.relationships.companions',
+            name: plantRelationshipAttributeNames.companions,
+            publicLabel: 'Dobri susjedi sorte',
+            helpText:
+                'ID-jeve biljaka unesi odvojene zarezom ili svaki u novi red.',
+        },
+        {
+            fieldKey: 'plant-sort.relationships.antagonists',
+            name: plantRelationshipAttributeNames.antagonists,
+            publicLabel: 'Izbjegavati blizinu sorte',
+            helpText:
+                'ID-jeve biljaka unesi odvojene zarezom ili svaki u novi red.',
+        },
+    ].map((field) => ({
+        entityTypeName: 'plantSort',
+        sectionKey: 'relationships',
+        category: 'relationships',
+        controlType: 'reference',
+        pageLevel: true,
+        inline: true,
+        ...field,
+    }));
+
 const communityEditableFieldRegistry: CommunityEditableFieldDefinition[] = [
     {
         entityTypeName: 'plant',
@@ -147,6 +200,7 @@ const communityEditableFieldRegistry: CommunityEditableFieldDefinition[] = [
         maxLength: 12000,
     },
     ...communityEditablePlantStageInformationFields,
+    ...communityEditablePlantRelationshipFields,
     {
         entityTypeName: 'plant',
         fieldKey: 'plant.seeding-distance',
@@ -458,6 +512,7 @@ const communityEditableFieldRegistry: CommunityEditableFieldDefinition[] = [
         maxLength: 12000,
     },
     ...communityEditablePlantSortStageInformationFields,
+    ...communityEditablePlantSortRelationshipFields,
     {
         entityTypeName: 'operation',
         fieldKey: 'operation.label',
@@ -679,6 +734,8 @@ export function communityEditableSectionLabel(sectionKey: string) {
             return 'Postupak';
         case 'overview':
             return 'Pregled';
+        case 'relationships':
+            return 'Biljni susjedi';
         default:
             return sectionKey;
     }
