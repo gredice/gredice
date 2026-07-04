@@ -14,6 +14,7 @@ import {
     Calendar,
     Euro,
     Fence,
+    Inbox,
     MapPinHouse,
     Settings,
     Shield,
@@ -157,6 +158,16 @@ async function FarmerDashboard() {
                                 href="/schedule"
                             >
                                 Dnevni zadaci
+                            </Button>
+                            <Button
+                                variant="soft"
+                                size="lg"
+                                fullWidth
+                                className="h-24 flex-col text-center text-base"
+                                startDecorator={<Inbox className="size-6" />}
+                                href="/notifications"
+                            >
+                                Obavijesti
                             </Button>
                             <Button
                                 variant="soft"
