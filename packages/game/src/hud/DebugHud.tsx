@@ -327,7 +327,7 @@ export function DebugHud() {
 
     const { data: blockData } = useBlockData();
     const { data: garden } = useCurrentGarden();
-    const { data: weather } = useWeatherNow();
+    const { data: weather } = useWeatherNow(true, garden?.farmId);
     const specialEntityDebugEntries = useMemo(
         () =>
             getSpecialEntityDebugEntries({

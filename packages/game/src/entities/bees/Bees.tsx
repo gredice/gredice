@@ -1480,11 +1480,13 @@ function resolveBeeWeather({
 }
 
 export function Bees({
+    farmId,
     garden,
     groundDecorationDensity = 1,
     weather,
     weatherDisabled = false,
 }: {
+    farmId?: number | null;
     garden: BeeGarden | null | undefined;
     groundDecorationDensity?: number;
     weather?: BeeWeatherOverride;
@@ -1493,7 +1495,10 @@ export function Bees({
     const { data: blockData } = useBlockData();
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const gameWeather = useGameState((state) => state.weather);
-    const { data: weatherNow } = useWeatherNow(!weatherDisabled && !weather);
+    const { data: weatherNow } = useWeatherNow(
+        !weatherDisabled && !weather,
+        farmId,
+    );
     const beeWeather = resolveBeeWeather({
         gameWeather,
         weatherDisabled,

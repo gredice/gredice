@@ -22,6 +22,7 @@ import { getGroundDecorationBlocks } from './groundDecorationBlocks';
 const blockSurfaceYOffset = 0.2;
 type GroundBlockDecorationsProps = {
     density: number;
+    farmId?: number | null;
     stacks: Stack[] | undefined;
 };
 
@@ -81,6 +82,7 @@ function useStableDecorationInstances(instances: GroundDecorationInstance[]) {
 
 export function GroundBlockDecorations({
     density,
+    farmId,
     stacks,
 }: GroundBlockDecorationsProps) {
     const { data: blockData } = useBlockData();
@@ -222,5 +224,10 @@ export function GroundBlockDecorations({
         return null;
     }
 
-    return <GroundDecorationInstances instances={decorationInstances} />;
+    return (
+        <GroundDecorationInstances
+            farmId={farmId}
+            instances={decorationInstances}
+        />
+    );
 }

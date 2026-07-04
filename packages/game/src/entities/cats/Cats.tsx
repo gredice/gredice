@@ -1763,10 +1763,12 @@ function resolveCatWeather({
 }
 
 export function Cats({
+    farmId,
     stacks,
     weather,
     weatherDisabled = false,
 }: {
+    farmId?: number | null;
     stacks: Stack[] | undefined;
     weather?: CatWeatherOverride;
     weatherDisabled?: boolean;
@@ -1791,7 +1793,10 @@ export function Cats({
         () => animalPresenceEntries.filter((entry) => entry.species === 'Dog'),
         [animalPresenceEntries],
     );
-    const { data: weatherNow } = useWeatherNow(!weatherDisabled && !weather);
+    const { data: weatherNow } = useWeatherNow(
+        !weatherDisabled && !weather,
+        farmId,
+    );
     const catWeather = resolveCatWeather({
         gameWeather,
         weatherDisabled,

@@ -41,6 +41,7 @@ import {
 import { triggerSelectionHaptic } from './utils/haptics';
 import {
     defaultGameLocation,
+    type GameLocation,
     getGameSunriseSunset,
     resolveGameTimeOfDay,
 } from './utils/timeOfDay';
@@ -289,6 +290,8 @@ export type GameState = {
     ) => GameBackgroundPaletteKey;
     weatherVisualizationDisabled: boolean;
     setWeatherVisualizationDisabled: (disabled: boolean) => void;
+    timeLocation: GameLocation;
+    syncTimeOfDay: (location?: GameLocation, currentTime?: Date) => void;
     timeOfDay: number;
     sunsetTime: Date | null;
     sunriseTime: Date | null;
@@ -405,6 +408,7 @@ export function createGameState({
     localSandboxStorageKey,
     localSandboxInitialStacks,
     mockGardenProfile,
+    timeLocation: initialTimeLocation,
     winterMode,
 }: {
     appBaseUrl: string;
@@ -417,6 +421,7 @@ export function createGameState({
     localSandboxStorageKey?: string;
     localSandboxInitialStacks?: Stack[];
     mockGardenProfile?: MockGardenProfile;
+    timeLocation?: GameLocation;
     winterMode?: WinterMode;
 }) {
     const dayNightCycleDisabled =
@@ -430,9 +435,14 @@ export function createGameState({
         initialBackgroundPaletteIndex,
     );
     const weatherVisualizationDisabled = isWeatherVisualizationDisabled();
+    const timeLocation = initialTimeLocation ?? defaultGameLocation;
     const now = freezeTime ?? new Date();
-    const timeOfDay = resolveGameTimeOfDay(now, dayNightCycleDisabled);
-    const { sunrise, sunset } = getGameSunriseSunset(defaultGameLocation, now);
+    const timeOfDay = resolveGameTimeOfDay(
+        now,
+        dayNightCycleDisabled,
+        timeLocation,
+    );
+    const { sunrise, sunset } = getGameSunriseSunset(timeLocation, now);
     return createStore<GameState>((set, get) => ({
         isMock: isMock,
         mockGardenProfile: mockGardenProfile ?? 'default',
@@ -446,8 +456,9 @@ export function createGameState({
         freezeTime,
         setFreezeTime: (freezeTime) => {
             const referenceTime = freezeTime ?? new Date();
+            const timeLocation = get().timeLocation;
             const { sunrise, sunset } = getGameSunriseSunset(
-                defaultGameLocation,
+                timeLocation,
                 referenceTime,
             );
             set({
@@ -455,6 +466,7 @@ export function createGameState({
                 timeOfDay: resolveGameTimeOfDay(
                     referenceTime,
                     get().dayNightCycleDisabled,
+                    timeLocation,
                 ),
                 sunriseTime: sunrise,
                 sunsetTime: sunset,
@@ -468,6 +480,7 @@ export function createGameState({
                 timeOfDay: resolveGameTimeOfDay(
                     get().freezeTime ?? new Date(),
                     disabled,
+                    get().timeLocation,
                 ),
             });
         },
@@ -531,6 +544,25 @@ export function createGameState({
             persistWeatherVisualizationDisabled(disabled);
             set({
                 weatherVisualizationDisabled: disabled,
+            });
+        },
+        timeLocation,
+        syncTimeOfDay: (location, currentTime) => {
+            const timeLocation = location ?? get().timeLocation;
+            const referenceTime = get().freezeTime ?? currentTime ?? new Date();
+            const { sunrise, sunset } = getGameSunriseSunset(
+                timeLocation,
+                referenceTime,
+            );
+            set({
+                timeLocation,
+                timeOfDay: resolveGameTimeOfDay(
+                    referenceTime,
+                    get().dayNightCycleDisabled,
+                    timeLocation,
+                ),
+                sunriseTime: sunrise,
+                sunsetTime: sunset,
             });
         },
         timeOfDay,
@@ -862,8 +894,9 @@ export function createGameState({
         setWeather: (weather) => set({ weather }),
         clearEnvironmentOverrides: () => {
             const referenceTime = new Date();
+            const timeLocation = get().timeLocation;
             const { sunrise, sunset } = getGameSunriseSunset(
-                defaultGameLocation,
+                timeLocation,
                 referenceTime,
             );
             set({
@@ -872,6 +905,7 @@ export function createGameState({
                 timeOfDay: resolveGameTimeOfDay(
                     referenceTime,
                     get().dayNightCycleDisabled,
+                    timeLocation,
                 ),
                 sunriseTime: sunrise,
                 sunsetTime: sunset,

@@ -312,8 +312,10 @@ if ( diffuseColor.a < vGroundDecorationAlphaTest ) discard;
 }
 
 export function GroundDecorationInstances({
+    farmId,
     instances,
 }: {
+    farmId?: number | null;
     instances: GroundDecorationInstance[];
 }) {
     const profileBatchesRef = useRef(
@@ -419,6 +421,7 @@ export function GroundDecorationInstances({
                         <GroundDecorationPageInstances
                             key={pageIndex}
                             atlasPage={page}
+                            farmId={farmId}
                             instances={pageInstances}
                             manifestSprites={manifest.sprites}
                             recordProfileBatch={recordProfileBatch}
@@ -432,11 +435,13 @@ export function GroundDecorationInstances({
 
 function GroundDecorationPageInstances({
     atlasPage,
+    farmId,
     instances,
     manifestSprites,
     recordProfileBatch,
 }: {
     atlasPage: SpriteAtlasPage;
+    farmId?: number | null;
     instances: GroundDecorationInstance[];
     manifestSprites: Record<string, SpriteAtlasSprite>;
     recordProfileBatch: RecordGroundDecorationProfileBatch;
@@ -497,6 +502,7 @@ function GroundDecorationPageInstances({
     return (
         <GroundDecorationInstancedBatch
             batch={batch}
+            farmId={farmId}
             recordProfileBatch={recordProfileBatch}
             texture={texture}
         />
@@ -505,10 +511,12 @@ function GroundDecorationPageInstances({
 
 function GroundDecorationInstancedBatch({
     batch,
+    farmId,
     recordProfileBatch,
     texture,
 }: {
     batch: GroundDecorationBatch;
+    farmId?: number | null;
     recordProfileBatch: RecordGroundDecorationProfileBatch;
     texture: NonNullable<ReturnType<typeof useSpriteAtlasTexture>['texture']>;
 }) {
@@ -531,7 +539,7 @@ function GroundDecorationInstancedBatch({
     const gameCamera = useGameState((state) => state.gameCamera);
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const weather = useGameState((state) => state.weather);
-    const { data: weatherNow } = useWeatherNow();
+    const { data: weatherNow } = useWeatherNow(true, farmId);
     const windSpeed =
         typeof weather?.windSpeed === 'number'
             ? weather.windSpeed

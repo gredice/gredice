@@ -3,6 +3,7 @@ import test from 'node:test';
 import { createActiveDragPreviewTarget } from './dragPreviewIdentity';
 import type { ActiveDragPreview } from './useGameState';
 import { activeDragPreviewsEqual, createGameState } from './useGameState';
+import { getGameSunriseSunset, getGameTimeOfDay } from './utils/timeOfDay';
 
 function createPreview(): ActiveDragPreview {
     return {
@@ -160,6 +161,68 @@ test('clearPickupSelectionTargets resets every active pickup target', () => {
         store.getState().clearPickupSelectionTargets();
 
         assert.deepEqual(store.getState().pickupSelectionTargets, []);
+    } finally {
+        store.getState().audio.dispose();
+    }
+});
+
+test('createGameState resolves time of day from the provided location', () => {
+    const referenceTime = new Date('2026-07-04T20:15:00.000Z');
+    const timeLocation = { lat: 64.1466, lon: -21.9426 };
+    const store = createGameState({
+        appBaseUrl: '',
+        freezeTime: referenceTime,
+        isMock: true,
+        timeLocation,
+    });
+
+    try {
+        const { sunrise, sunset } = getGameSunriseSunset(
+            timeLocation,
+            referenceTime,
+        );
+
+        assert.equal(
+            store.getState().timeOfDay,
+            getGameTimeOfDay(timeLocation, referenceTime),
+        );
+        assert.equal(
+            store.getState().sunriseTime?.getTime(),
+            sunrise.getTime(),
+        );
+        assert.equal(store.getState().sunsetTime?.getTime(), sunset.getTime());
+    } finally {
+        store.getState().audio.dispose();
+    }
+});
+
+test('syncTimeOfDay refreshes time of day for a new garden location', () => {
+    const referenceTime = new Date('2026-07-04T20:15:00.000Z');
+    const timeLocation = { lat: 45.9, lon: 16.84 };
+    const store = createGameState({
+        appBaseUrl: '',
+        freezeTime: null,
+        isMock: true,
+    });
+
+    try {
+        const { sunrise, sunset } = getGameSunriseSunset(
+            timeLocation,
+            referenceTime,
+        );
+
+        store.getState().syncTimeOfDay(timeLocation, referenceTime);
+
+        assert.deepEqual(store.getState().timeLocation, timeLocation);
+        assert.equal(
+            store.getState().timeOfDay,
+            getGameTimeOfDay(timeLocation, referenceTime),
+        );
+        assert.equal(
+            store.getState().sunriseTime?.getTime(),
+            sunrise.getTime(),
+        );
+        assert.equal(store.getState().sunsetTime?.getTime(), sunset.getTime());
     } finally {
         store.getState().audio.dispose();
     }
