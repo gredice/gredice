@@ -321,6 +321,7 @@ test('community editable registry resolves allowed plant and operation fields', 
                 field.fieldKey === 'operation.application' &&
                 field.controlType === 'select' &&
                 field.currentValue === 'plant' &&
+                field.options?.some((option) => option.value === 'farm') &&
                 field.options?.some((option) => option.value === 'garden'),
         ),
     );

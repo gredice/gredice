@@ -563,6 +563,7 @@ const communityEditableFieldRegistry: CommunityEditableFieldDefinition[] = [
         pageLevel: true,
         inline: true,
         options: [
+            { value: 'farm', label: 'Farma' },
             { value: 'garden', label: 'Vrt' },
             { value: 'raisedBedFull', label: 'Cijela gredica' },
             { value: 'raisedBed1m', label: 'Gredica 1 m²' },
