@@ -56,6 +56,14 @@ export type PublicGardenStack = {
 
 export type PublicGardenDetail = PublicGardenResponse;
 
+type PublicGardenHomeCamera = NonNullable<PublicGardenDetail['homeCamera']>;
+
+export type PublicGardenInitialView = {
+    cameraPosition: Vector3;
+    cameraTarget: Vector3;
+    cameraZoom: number;
+};
+
 export type PublicGardenViewerProps = HTMLAttributes<HTMLDivElement> & {
     garden?: PublicGardenDetail;
     stacks?: PublicGardenStack[];
@@ -118,6 +126,34 @@ export function getPublicGardenStacksCenter(stacks: Stack[]) {
     );
 }
 
+export function getPublicGardenInitialView({
+    homeCamera,
+    stacks,
+}: {
+    homeCamera?: PublicGardenHomeCamera | null;
+    stacks: Stack[];
+}): PublicGardenInitialView {
+    if (homeCamera) {
+        return {
+            cameraPosition: new Vector3(...homeCamera.position),
+            cameraTarget: new Vector3(...homeCamera.target),
+            cameraZoom: homeCamera.zoom,
+        };
+    }
+
+    const sceneCenter = getPublicGardenStacksCenter(stacks);
+
+    return {
+        cameraPosition: new Vector3(
+            sceneCenter.x - 100,
+            sceneCenter.y + 100,
+            sceneCenter.z - 100,
+        ),
+        cameraTarget: sceneCenter,
+        cameraZoom: 90,
+    };
+}
+
 function normalizePublicGardenBackgroundPalette(value: unknown) {
     return isGameBackgroundPaletteKey(value)
         ? value
@@ -144,6 +180,7 @@ function publicGardenForGameState(
         backgroundPalette: normalizePublicGardenBackgroundPalette(
             garden.backgroundPalette,
         ),
+        homeCamera: garden.homeCamera ?? null,
         farmId: garden.farmId,
         stacks: normalizedStacks,
         location: {
@@ -175,21 +212,19 @@ function publicGardenTimeLocation(
 }
 
 function PublicGardenScene({
-    cameraPosition,
+    initialView,
     className,
     garden,
     gardenCacheReady,
     normalizedStacks,
     renderDetails,
-    sceneCenter,
 }: {
-    cameraPosition: Vector3;
+    initialView: PublicGardenInitialView;
     className?: string;
     garden?: ReturnType<typeof publicGardenForGameState>;
     gardenCacheReady: boolean;
     normalizedStacks: Stack[];
     renderDetails: boolean;
-    sceneCenter: Vector3;
 }) {
     const blockDataQuery = useBlockData();
     const blockDataLoaded = Boolean(blockDataQuery.data);
@@ -200,9 +235,9 @@ function PublicGardenScene({
         <div className={cx('relative h-full w-full', className)}>
             {blockDataLoaded && gardenCacheReady ? (
                 <Scene
-                    position={cameraPosition}
+                    position={initialView.cameraPosition}
                     quality={qualityProfile}
-                    zoom={90}
+                    zoom={initialView.cameraZoom}
                     className="h-full w-full"
                 >
                     <ParticleSystemProvider>
@@ -273,7 +308,9 @@ function PublicGardenScene({
                         </Suspense>
                         <GameCameraRig
                             controlsEnabled
-                            initialTarget={sceneCenter}
+                            initialSnapshot={garden?.homeCamera ?? undefined}
+                            initialTarget={initialView.cameraTarget}
+                            initialViewKey={garden?.id ?? 'stacks'}
                         />
                     </ParticleSystemProvider>
                 </Scene>
@@ -369,18 +406,13 @@ export function PublicGardenViewer({
                 : undefined,
         [garden, normalizedStacks],
     );
-    const sceneCenter = useMemo(
-        () => getPublicGardenStacksCenter(normalizedStacks),
-        [normalizedStacks],
-    );
-    const cameraPosition = useMemo(
+    const initialView = useMemo(
         () =>
-            new Vector3(
-                sceneCenter.x - 100,
-                sceneCenter.y + 100,
-                sceneCenter.z - 100,
-            ),
-        [sceneCenter],
+            getPublicGardenInitialView({
+                homeCamera: garden?.homeCamera,
+                stacks: normalizedStacks,
+            }),
+        [garden?.homeCamera, normalizedStacks],
     );
     const renderDetails = useDeferredSceneDetails(deferDetails);
     const cacheKey = getPublicGardenCacheKey(garden);
@@ -402,13 +434,12 @@ export function PublicGardenViewer({
                     >
                         {(gardenCacheReady) => (
                             <PublicGardenScene
-                                cameraPosition={cameraPosition}
                                 className={className}
                                 garden={gameGarden}
                                 gardenCacheReady={gardenCacheReady}
+                                initialView={initialView}
                                 normalizedStacks={normalizedStacks}
                                 renderDetails={renderDetails}
-                                sceneCenter={sceneCenter}
                             />
                         )}
                     </SeedPublicGardenQueryCache>

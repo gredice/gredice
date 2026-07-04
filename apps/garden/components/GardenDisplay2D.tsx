@@ -43,6 +43,47 @@ export function getGardenDisplayBlockImageKey(
     return `${blockName}:${rotationSuffix.toString()}`;
 }
 
+export function getGardenDisplayProjectedPosition({
+    blockSize = 128,
+    position,
+    viewportSize = 600,
+}: {
+    blockSize?: number;
+    position: { x: number; y: number };
+    viewportSize?: number;
+}) {
+    const ySize = blockSize - blockSize * 0.538;
+    const xSize = blockSize - blockSize * 0.154;
+
+    return {
+        top: viewportSize / 2 + (-position.y - position.x) * (ySize / 2),
+        left: viewportSize / 2 - (-position.y + position.x) * (xSize / 2),
+    };
+}
+
+export function getGardenDisplayViewportOffset({
+    blockSize,
+    focus,
+    viewportCenter,
+    viewportSize,
+}: {
+    blockSize?: number;
+    focus: { x: number; y: number };
+    viewportCenter: { x: number; y: number };
+    viewportSize?: number;
+}) {
+    const projected = getGardenDisplayProjectedPosition({
+        blockSize,
+        position: focus,
+        viewportSize,
+    });
+
+    return {
+        x: projected.left - viewportCenter.x,
+        y: projected.top - viewportCenter.y,
+    };
+}
+
 export function GardenDisplay2D({
     blockImageSrcByKey,
     garden,
@@ -81,15 +122,16 @@ export function GardenDisplay2D({
             const blocks = garden.stacks[x][y];
             const positionX = Number(x);
             const positionY = Number(y);
-            const projectedTop =
-                viewportSize / 2 + (-positionY - positionX) * (ySize / 2);
-            const projectedLeft =
-                viewportSize / 2 - (-positionY + positionX) * (xSize / 2);
+            const projected = getGardenDisplayProjectedPosition({
+                blockSize,
+                position: { x: positionX, y: positionY },
+                viewportSize,
+            });
             stacks.push({
                 key: `${positionX}_${positionY}`,
                 position: { x: positionX, y: positionY },
-                projectedTop,
-                projectedLeft,
+                projectedTop: projected.top,
+                projectedLeft: projected.left,
                 blocks: blocks
                     ? blocks.map((block) => {
                           return {

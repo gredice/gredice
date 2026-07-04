@@ -3,6 +3,7 @@ import {
     boolean,
     index,
     integer,
+    jsonb,
     pgTable,
     serial,
     text,
@@ -11,6 +12,12 @@ import {
 } from 'drizzle-orm/pg-core';
 import { farms } from './farmsSchema';
 import { accounts, users } from './usersSchema';
+
+export type GardenHomeCamera = {
+    position: [x: number, y: number, z: number];
+    target: [x: number, y: number, z: number];
+    zoom: number;
+};
 
 export const gardens = pgTable(
     'gardens',
@@ -26,6 +33,7 @@ export const gardens = pgTable(
         backgroundPalette: text('background_palette')
             .notNull()
             .default('current'),
+        homeCamera: jsonb('home_camera').$type<GardenHomeCamera>(),
         // Sandbox ("play") gardens have no economy: free building, no inventory,
         // no plant-status lifecycle and no weather. Decoration only.
         isSandbox: boolean('is_sandbox').notNull().default(false),

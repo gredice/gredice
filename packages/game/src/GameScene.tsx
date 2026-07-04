@@ -7,8 +7,10 @@ import {
     Suspense,
     useEffect,
     useMemo,
+    useRef,
     useState,
 } from 'react';
+import { Vector3 } from 'three';
 import { BlockInteractionLayer } from './controls/BlockInteractionLayer';
 import { BlockInteractionRegistryProvider } from './controls/BlockInteractionRegistry';
 import { GameCameraRig } from './controls/GameCameraRig';
@@ -40,7 +42,7 @@ import {
 } from './gameCamera';
 import { useBlockData } from './hooks/useBlockData';
 import { useClearSandboxEnvironmentOverrides } from './hooks/useClearSandboxEnvironmentOverrides';
-import { useCurrentGarden } from './hooks/useCurrentGarden';
+import { type CurrentGarden, useCurrentGarden } from './hooks/useCurrentGarden';
 import { useDeferredSceneDetails } from './hooks/useDeferredSceneDetails';
 import { useFocusPlacedBlock } from './hooks/useFocusPlacedBlock';
 import { useWeatherNow } from './hooks/useWeatherNow';
@@ -236,6 +238,30 @@ export function GameScene({
     // Start non-critical metadata early, but don't block the first scene frame.
     useBlockData();
     const { data: garden, isLoading: gardenLoading } = useCurrentGarden();
+    const gardenInitialViewKey = garden?.id ?? 'default';
+    const gardenInitialHomeCameraRef = useRef<{
+        key: string | number;
+        homeCamera: CurrentGarden['homeCamera'];
+    } | null>(null);
+    if (gardenInitialHomeCameraRef.current?.key !== gardenInitialViewKey) {
+        gardenInitialHomeCameraRef.current = {
+            key: gardenInitialViewKey,
+            homeCamera: garden?.homeCamera ?? null,
+        };
+    }
+    const gardenHomeCamera =
+        gardenInitialHomeCameraRef.current.homeCamera ?? undefined;
+    const sceneCameraPosition = gardenHomeCamera?.position ?? cameraPosition;
+    const sceneCameraTarget = useMemo(
+        () =>
+            gardenHomeCamera
+                ? new Vector3(...gardenHomeCamera.target)
+                : undefined,
+        [gardenHomeCamera],
+    );
+    const sceneCameraZoom =
+        gardenHomeCamera?.zoom ??
+        (zoom === 'far' ? farGameCameraZoom : defaultGameCameraZoom);
     const setBackgroundPaletteKey = useGameState(
         (state) => state.setBackgroundPaletteKey,
     );
@@ -281,13 +307,9 @@ export function GameScene({
             <GameSceneDetailContext.Provider value={{ renderDetails }}>
                 <Scene
                     debugStats={showDebugHud}
-                    position={cameraPosition}
+                    position={sceneCameraPosition}
                     quality={qualityProfile}
-                    zoom={
-                        zoom === 'far'
-                            ? farGameCameraZoom
-                            : defaultGameCameraZoom
-                    }
+                    zoom={sceneCameraZoom}
                     className="!absolute"
                 >
                     <ParticleSystemProvider>
@@ -421,7 +443,12 @@ export function GameScene({
                                     </Suspense>
                                 )}
                             </group>
-                            <GameCameraRig controlsEnabled={!noControls} />
+                            <GameCameraRig
+                                controlsEnabled={!noControls}
+                                initialSnapshot={gardenHomeCamera}
+                                initialTarget={sceneCameraTarget}
+                                initialViewKey={gardenInitialViewKey}
+                            />
                         </BlockInteractionRegistryProvider>
                     </ParticleSystemProvider>
                 </Scene>

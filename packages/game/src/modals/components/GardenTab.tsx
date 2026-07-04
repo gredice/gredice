@@ -20,6 +20,7 @@ import { GardenAccountMenuItems } from '../../hud/GardenAccountMenuItems';
 import { useCurrentGardenIdParam } from '../../useUrlState';
 import { CreateGardenModal } from './CreateGardenModal';
 import { GardenDangerCard } from './GardenDangerCard';
+import { GardenHomeCameraCard } from './GardenHomeCameraCard';
 import { GardenNameCard } from './GardenNameCard';
 import { GardenVisibilityCard } from './GardenVisibilityCard';
 
@@ -144,6 +145,12 @@ export function GardenTab() {
                                     gardenId={selectedGarden.id}
                                     gardenName={selectedGarden.name}
                                     gardenCreatedAt={selectedGarden.createdAt}
+                                />
+                                <GardenHomeCameraCard
+                                    gardenId={selectedGarden.id}
+                                    hasHomeCamera={Boolean(
+                                        selectedGarden.homeCamera,
+                                    )}
                                 />
                                 <GardenVisibilityCard
                                     gardenId={selectedGarden.id}
