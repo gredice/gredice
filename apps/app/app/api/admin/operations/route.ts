@@ -6,6 +6,7 @@ import {
     normalizeOperationsListSortKey,
     operationsListPageSize,
 } from '../../../admin/operations/operationsListData';
+import { parseOperationsListOperationEntityIds } from '../../../admin/operations/operationsListQuery';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,6 +33,9 @@ export async function GET(request: Request) {
                     searchParams.get('direction'),
                 ),
             },
+            operationEntityIds: parseOperationsListOperationEntityIds(
+                searchParams.get('operations') ?? undefined,
+            ),
             limit: parseInteger(
                 searchParams.get('limit'),
                 operationsListPageSize,

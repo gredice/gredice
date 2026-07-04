@@ -6,6 +6,10 @@ import { Typography } from '@gredice/ui/Typography';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { defaultOperationsListSort } from '../../app/admin/operations/operationsListConfig';
+import {
+    createOperationsListQueryKey,
+    createOperationsListSearchParams,
+} from '../../app/admin/operations/operationsListQuery';
 import type {
     OperationsListPage,
     OperationsListSort,
@@ -19,20 +23,23 @@ async function fetchOperationsPage({
     fromFilter,
     limit,
     offset,
+    operationEntityIds,
     sortKey,
 }: {
     direction: OperationsListSort['direction'];
     fromFilter: string;
     limit: number;
     offset: number;
+    operationEntityIds: number[];
     sortKey: OperationsListSort['key'];
 }) {
-    const searchParams = new URLSearchParams({
+    const searchParams = createOperationsListSearchParams({
         direction,
-        from: fromFilter,
-        limit: String(limit),
-        offset: String(offset),
-        sort: sortKey,
+        fromFilter,
+        limit,
+        offset,
+        operationEntityIds,
+        sortKey,
     });
     const response = await fetch(
         `/api/admin/operations?${searchParams.toString()}`,
@@ -50,9 +57,11 @@ async function fetchOperationsPage({
 export function OperationsList({
     fromFilter,
     initialPage,
+    operationEntityIds,
 }: {
     fromFilter: string;
     initialPage: OperationsListPage;
+    operationEntityIds: number[];
 }) {
     const sentinelRef = useRef<HTMLDivElement | null>(null);
     const [sort, setSort] = useState<OperationsListSort>(
@@ -62,13 +71,18 @@ export function OperationsList({
         sort.key === defaultOperationsListSort.key &&
         sort.direction === defaultOperationsListSort.direction;
     const operationsQuery = useInfiniteQuery({
-        queryKey: ['admin-operations', fromFilter, sort.key, sort.direction],
+        queryKey: createOperationsListQueryKey({
+            fromFilter,
+            operationEntityIds,
+            sort,
+        }),
         queryFn: ({ pageParam }) =>
             fetchOperationsPage({
                 direction: sort.direction,
                 fromFilter,
                 limit: initialPage.pageSize,
                 offset: pageParam,
+                operationEntityIds,
                 sortKey: sort.key,
             }),
         initialData: shouldUseInitialPage

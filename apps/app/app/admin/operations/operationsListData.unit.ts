@@ -17,8 +17,10 @@ function buildContext(): OperationsListContext {
         ],
         farms: [{ id: 1, name: 'Farma Zagreb' }],
         gardens: [{ id: 10, farmId: 1, name: 'Vrt Zagreb' }],
+        operationFilterOptions: [],
         operationDefinitions: [
             { id: 501, information: { label: 'Zalijevanje' } },
+            { id: 502, information: { label: 'Plijevljenje' } },
         ],
         plantSorts: [
             { id: 701, information: { name: 'Rajčica' } },
@@ -193,6 +195,37 @@ test('operations list merges operation and sowing rows before sorting, filtering
     assert.equal(
         nextPage.operations[0]?.label,
         'Sijanje u stakleniku: Paprika',
+    );
+});
+
+test('operations list entity filter narrows operations and hides sowing rows', () => {
+    const page = buildOperationsListPage({
+        context: buildContext(),
+        fromDate: new Date('2026-07-02T00:00:00.000Z'),
+        operationEntityIds: [502],
+        operations: [
+            {
+                id: 301,
+                entityId: 501,
+                entityTypeName: 'operation',
+                status: 'planned',
+                timestamp: new Date('2026-07-03T07:00:00.000Z'),
+            },
+            {
+                id: 302,
+                entityId: 502,
+                entityTypeName: 'operation',
+                status: 'planned',
+                timestamp: new Date('2026-07-04T07:00:00.000Z'),
+            },
+        ],
+        sort: { key: 'date', direction: 'desc' },
+    });
+
+    assert.equal(page.totalCount, 1);
+    assert.deepEqual(
+        page.operations.map((operation) => operation.rowId),
+        ['operation:302'],
     );
 });
 
