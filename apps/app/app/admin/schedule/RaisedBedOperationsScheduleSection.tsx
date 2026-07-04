@@ -39,6 +39,7 @@ import { OperationCompletionEvidenceEditModal } from './OperationCompletionEvide
 import { OperationRequirementIcons } from './OperationRequirementIcons';
 import { RescheduleOperationModal } from './RescheduleOperationModal';
 import { ScheduleOperationVisual } from './ScheduleTaskVisual';
+import { getScheduleOperationHref } from './scheduleOperationLinks';
 import {
     createOperationAssignedUsers,
     parseScheduledDateInput,
@@ -153,9 +154,7 @@ export function RaisedBedOperationsScheduleSection({
         return {
             id: `operation-${operation.id}`,
             text,
-            link: operationData?.information?.label
-                ? KnownPages.GrediceOperation(operationData?.information?.label)
-                : KnownPages.GrediceOperations,
+            link: getScheduleOperationHref(operation.id),
             approved:
                 operation.isAccepted &&
                 !isOperationCompleted(operation.status) &&
@@ -615,18 +614,11 @@ export function RaisedBedOperationsScheduleSection({
                                         operation={operationData}
                                         label={operationLabel}
                                     />
-                                    <a
+                                    <Link
                                         className="min-w-0 flex-1"
-                                        href={
-                                            operationData?.information?.label
-                                                ? KnownPages.GrediceOperation(
-                                                      operationData?.information
-                                                          ?.label,
-                                                  )
-                                                : KnownPages.GrediceOperations
-                                        }
-                                        target="_blank"
-                                        rel="noopener noreferrer"
+                                        href={getScheduleOperationHref(
+                                            operation.id,
+                                        )}
                                     >
                                         <Typography
                                             level="body1"
@@ -639,7 +631,7 @@ export function RaisedBedOperationsScheduleSection({
                                         >
                                             {operationLabel}
                                         </Typography>
-                                    </a>
+                                    </Link>
                                     {operationStatusText && (
                                         <Typography
                                             level="body2"
