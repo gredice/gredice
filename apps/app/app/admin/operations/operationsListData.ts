@@ -12,7 +12,9 @@ import {
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
 import { serializeOperationDefinitionForList } from './operationListDefinitionVisual';
 import { defaultOperationsListSort } from './operationsListConfig';
+import { filterOperationsByEntityIds } from './operationsListQuery';
 import type {
+    OperationEntityFilterOption,
     OperationsListOperation,
     OperationsListOperationDefinition,
     OperationsListOperationRow,
@@ -99,6 +101,7 @@ export type OperationsListContext = {
     accounts: RawAccount[];
     farms: RawFarm[];
     gardens: RawGarden[];
+    operationFilterOptions: OperationEntityFilterOption[];
     operationDefinitions: EntityStandardized[];
     plantSorts: EntityStandardized[];
     raisedBeds: RawRaisedBed[];
@@ -200,6 +203,30 @@ function sowingTaskOperationDefinition(
             stage: null,
         },
     };
+}
+
+function operationDefinitionFilterLabel(definition: EntityStandardized) {
+    return (
+        definition.information?.label ??
+        definition.information?.name ??
+        `Radnja ${definition.id}`
+    );
+}
+
+function operationFilterOptions(
+    operationDefinitions: EntityStandardized[],
+): OperationEntityFilterOption[] {
+    return operationDefinitions
+        .map((definition) => ({
+            value: definition.id.toString(),
+            label: operationDefinitionFilterLabel(definition),
+        }))
+        .toSorted((left, right) =>
+            left.label.localeCompare(right.label, 'hr', {
+                numeric: true,
+                sensitivity: 'base',
+            }),
+        );
 }
 
 function operationPlaceLabel(operation: OperationsListOperation) {
@@ -511,6 +538,9 @@ export async function getOperationsListContext(): Promise<OperationsListContext>
         accounts,
         farms,
         gardens,
+        operationFilterOptions: operationFilterOptions(
+            operationDefinitions ?? [],
+        ),
         operationDefinitions: operationDefinitions ?? [],
         plantSorts: plantSorts ?? [],
         raisedBeds,
@@ -524,6 +554,7 @@ export function buildOperationsListPage({
     limit,
     offset = 0,
     operations,
+    operationEntityIds = [],
     sort = defaultOperationsListSort,
 }: {
     context: OperationsListContext;
@@ -531,14 +562,21 @@ export function buildOperationsListPage({
     limit?: number;
     offset?: number;
     operations: RawOperations;
+    operationEntityIds?: number[];
     sort?: OperationsListSort;
 }): OperationsListPage {
     const pageSize = normalizeLimit(limit);
+    const filteredOperations = filterOperationsByEntityIds(
+        operations,
+        operationEntityIds,
+    );
     const serializedOperations = [
-        ...operations.map((operation) =>
+        ...filteredOperations.map((operation) =>
             serializeOperation(operation, context),
         ),
-        ...serializeSowingTasks(context),
+        ...(operationEntityIds.length === 0
+            ? serializeSowingTasks(context)
+            : []),
     ]
         .filter((operation) =>
             operationIsOnOrAfterFromDate(operation, fromDate),
@@ -565,12 +603,14 @@ export async function listOperationsPageFromContext({
     fromDate,
     limit,
     offset = 0,
+    operationEntityIds = [],
     sort = defaultOperationsListSort,
 }: {
     context: OperationsListContext;
     fromDate?: Date;
     limit?: number;
     offset?: number;
+    operationEntityIds?: number[];
     sort?: OperationsListSort;
 }): Promise<OperationsListPage> {
     const operations = await getAllOperations(
@@ -582,6 +622,7 @@ export async function listOperationsPageFromContext({
         fromDate,
         limit,
         offset,
+        operationEntityIds,
         operations,
         sort,
     });

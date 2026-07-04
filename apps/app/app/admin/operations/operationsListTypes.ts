@@ -64,6 +64,11 @@ export type OperationsListOperation =
     | OperationsListOperationRow
     | OperationsListSowingTask;
 
+export type OperationEntityFilterOption = {
+    value: string;
+    label: string;
+};
+
 export type OperationsListPage = {
     operations: OperationsListOperation[];
     hasMore: boolean;

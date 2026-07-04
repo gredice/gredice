@@ -17,6 +17,7 @@ import {
     getOperationsListContext,
     listOperationsPageFromContext,
 } from './operationsListData';
+import { parseOperationsListOperationEntityIds } from './operationsListQuery';
 import { SingleOperationCreateModal } from './SingleOperationCreateModal';
 
 export const dynamic = 'force-dynamic';
@@ -59,11 +60,15 @@ export default async function OperationsPage({
     const params = await searchParams;
     const fromFilter =
         typeof params.from === 'string' ? params.from : 'last-14-days';
+    const operationEntityIds = parseOperationsListOperationEntityIds(
+        typeof params.operations === 'string' ? params.operations : undefined,
+    );
     const fromDate = getDateFromTimeFilter(fromFilter);
     const operationsListContext = await getOperationsListContext();
     const initialOperationsPage = await listOperationsPageFromContext({
         context: operationsListContext,
         fromDate,
+        operationEntityIds,
     });
 
     return (
@@ -86,12 +91,16 @@ export default async function OperationsPage({
                     </div>
                 }
             />
-            <OperationsFilters />
+            <OperationsFilters
+                operationOptions={operationsListContext.operationFilterOptions}
+                selectedOperationEntityIds={operationEntityIds}
+            />
             <Card>
                 <CardOverflow>
                     <OperationsList
                         fromFilter={fromFilter}
                         initialPage={initialOperationsPage}
+                        operationEntityIds={operationEntityIds}
                     />
                 </CardOverflow>
             </Card>
