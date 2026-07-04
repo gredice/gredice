@@ -11,6 +11,9 @@ import ResetPasswordEmailTemplate, {
 import WelcomeEmailTemplate, {
     type WelcomeEmailTemplateProps,
 } from '@gredice/transactional/emails/Account/welcome';
+import OrderConfirmationEmailTemplate, {
+    type OrderConfirmationEmailTemplateProps,
+} from '@gredice/transactional/emails/Commerce/order-confirmation';
 import BirthdayEmailTemplate, {
     type BirthdayEmailTemplateProps,
 } from '@gredice/transactional/emails/Notifications/birthday';
@@ -69,6 +72,23 @@ export async function sendWelcome(
         template: WelcomeEmailTemplate(config),
         templateName: 'account-welcome',
         messageType: 'account',
+    });
+}
+
+export async function sendOrderConfirmation(
+    to: string,
+    config: OrderConfirmationEmailTemplateProps,
+) {
+    return await sendEmail({
+        from: 'suncokret@obavijesti.gredice.com',
+        to,
+        subject: 'Gredice - potvrda narudžbe',
+        template: OrderConfirmationEmailTemplate(config),
+        templateName: 'commerce-order-confirmation',
+        messageType: 'commerce',
+        metadata: {
+            orderReference: config.orderReference ?? null,
+        },
     });
 }
 

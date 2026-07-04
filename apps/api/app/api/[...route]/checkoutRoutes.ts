@@ -25,6 +25,10 @@ import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import { getCartInfo } from '../../../lib/checkout/cartInfo';
+import {
+    buildOrderConfirmationItems,
+    notifyOrderConfirmationEmail,
+} from '../../../lib/checkout/orderConfirmationEmail';
 import { calculateSunflowerAmount } from '../../../lib/checkout/sunflowerCalculations';
 import {
     type AuthVariables,
@@ -255,6 +259,20 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     }
 
                     await markCartPaidIfAllItemsPaid(cart.id);
+                }
+
+                const completedCart = await getShoppingCart(cart.id);
+                if (completedCart?.status === 'paid') {
+                    await notifyOrderConfirmationEmail({
+                        to: user.userName,
+                        cartId: cart.id,
+                        items: buildOrderConfirmationItems(
+                            cartInfo.items,
+                            calculateSunflowerAmount,
+                        ),
+                        totalAmountCents: null,
+                        currency: null,
+                    });
                 }
             }
 
