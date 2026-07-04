@@ -1,12 +1,15 @@
 import { expect, test } from '@playwright/experimental-ct-react';
+import type { Locator, Page } from '@playwright/test';
 import {
     ActiveItemsHudDropTargetStory,
     CloseupBottomHudStory,
     ItemsHudAlignmentStory,
     ItemsHudCameraTargetStory,
     ItemsHudControlsTooltipStory,
+    ItemsHudDragStateStory,
     ItemsHudDropTargetStory,
     LocalSandboxItemsHudStory,
+    LowSunflowerBalanceItemsHudDragStateStory,
     LowSunflowerBalanceItemsHudStory,
     SandboxBlockTrashDropTargetStory,
     SandboxItemsHudStory,
@@ -14,6 +17,67 @@ import {
 
 const TABLET_VIEWPORT = { width: 820, height: 1180 };
 const SHORT_MOBILE_VIEWPORT = { width: 414, height: 420 };
+
+async function dragLocatorByMouse(page: Page, locator: Locator) {
+    const box = await locator.boundingBox();
+    expect(box).not.toBeNull();
+
+    const x = (box?.x ?? 0) + (box?.width ?? 0) / 2;
+    const y = (box?.y ?? 0) + (box?.height ?? 0) / 2;
+
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x, y - 96, { steps: 6 });
+    return { x, y: y - 96 };
+}
+
+async function dispatchTouchDrag({
+    endEvent,
+    locator,
+    page,
+}: {
+    endEvent: 'pointercancel' | 'pointerup';
+    locator: Locator;
+    page: Page;
+}) {
+    const box = await locator.boundingBox();
+    expect(box).not.toBeNull();
+
+    const x = (box?.x ?? 0) + (box?.width ?? 0) / 2;
+    const y = (box?.y ?? 0) + (box?.height ?? 0) / 2;
+    const pointerId = 41;
+
+    await locator.dispatchEvent('pointerdown', {
+        bubbles: true,
+        button: 0,
+        buttons: 1,
+        clientX: x,
+        clientY: y,
+        isPrimary: true,
+        pointerId,
+        pointerType: 'touch',
+    });
+    await page.locator('body').dispatchEvent('pointermove', {
+        bubbles: true,
+        button: 0,
+        buttons: 1,
+        clientX: x,
+        clientY: y - 96,
+        isPrimary: true,
+        pointerId,
+        pointerType: 'touch',
+    });
+    await page.locator('body').dispatchEvent(endEvent, {
+        bubbles: true,
+        button: 0,
+        buttons: endEvent === 'pointerup' ? 0 : 1,
+        clientX: x,
+        clientY: y - 96,
+        isPrimary: true,
+        pointerId,
+        pointerType: 'touch',
+    });
+}
 
 function getPlacementRequestPosition(body: unknown) {
     if (typeof body !== 'object' || body === null || !('position' in body)) {
@@ -479,6 +543,67 @@ test('item picker disables purchase buttons above the sunflower balance', async 
     });
     await expect(detailsPlaceButton).toBeDisabled();
     await expect(page.getByText('Nedovoljno suncokreta.')).toBeVisible();
+});
+
+test('dragging an affordable picker item requests a scene drop without opening details', async ({
+    mount,
+    page,
+}) => {
+    await mount(<ItemsHudDragStateStory />);
+
+    const dragState = page.getByTestId('hud-placement-drag-state');
+    await expect(dragState).toHaveText('idle');
+
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+
+    const stoolButton = page.getByRole('button', { name: 'Stool' });
+    await dragLocatorByMouse(page, stoolButton);
+
+    await expect(dragState).toHaveText('Stool:drag');
+    await page.mouse.up();
+    await expect(dragState).toHaveText('Stool:drop');
+    await expect(
+        page.getByText('Mock block for HUD layout tests.'),
+    ).toHaveCount(0);
+});
+
+test('touch drag cancellation clears HUD item placement', async ({
+    mount,
+    page,
+}) => {
+    await mount(<ItemsHudDragStateStory />);
+
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+
+    const stoolButton = page.getByRole('button', { name: 'Stool' });
+    await dispatchTouchDrag({
+        endEvent: 'pointercancel',
+        locator: stoolButton,
+        page,
+    });
+
+    await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
+        'idle',
+    );
+});
+
+test('unaffordable item icons do not start HUD drag placement', async ({
+    mount,
+    page,
+}) => {
+    await mount(<LowSunflowerBalanceItemsHudDragStateStory />);
+
+    await page.getByRole('button', { name: 'Alat' }).click();
+
+    const paintRollerButton = page.getByRole('button', {
+        name: 'PaintRoller',
+    });
+    await dragLocatorByMouse(page, paintRollerButton);
+    await page.mouse.up();
+
+    await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
+        'idle',
+    );
 });
 
 test('item details place button keeps the soft color treatment', async ({

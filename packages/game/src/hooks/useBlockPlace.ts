@@ -205,9 +205,11 @@ export function useBlockPlace() {
                         optimisticBlockId,
                         {
                             preferredPosition:
+                                variables.position ??
                                 getPreferredBlockPlacementPosition(
                                     gameCamera?.getSnapshot(),
                                 ),
+                            requestedPosition: variables.position,
                         },
                     );
                     if (!optimisticPlacement) {
