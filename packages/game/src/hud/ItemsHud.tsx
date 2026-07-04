@@ -4,7 +4,7 @@ import { BlockImage } from '@gredice/ui/BlockImage';
 import { Button } from '@gredice/ui/Button';
 import { Divider } from '@gredice/ui/Divider';
 import { IconButton } from '@gredice/ui/IconButton';
-import { Info, Left, Navigate, Up } from '@gredice/ui/icons';
+import { Delete, Info, Left, Navigate, Up } from '@gredice/ui/icons';
 import { Link } from '@gredice/ui/Link';
 import { Popper } from '@gredice/ui/Popper';
 import { Row } from '@gredice/ui/Row';
@@ -17,6 +17,10 @@ import { useBlockData } from '../hooks/useBlockData';
 import { useBlockPlace } from '../hooks/useBlockPlace';
 import { useCurrentAccount } from '../hooks/useCurrentAccount';
 import { useIsSandboxGarden } from '../hooks/useCurrentGarden';
+import {
+    itemsHudDropTargetActiveAttribute,
+    itemsHudDropTargetAttribute,
+} from '../itemsHudDropTarget';
 import { KnownPages } from '../knownPages';
 import { useGameState } from '../useGameState';
 import { HudCard } from './components/HudCard';
@@ -688,22 +692,59 @@ function PickerItem({ label, items, imageSrc }: HudItemPicker) {
 export function ItemsHud() {
     const { data: blockData } = useBlockData();
     const isSandbox = useIsSandboxGarden();
+    const pickupBlock = useGameState((state) => state.pickupBlock);
+    const dropTargetActive = useGameState(
+        (state) => state.itemsHudDropTargetActive,
+    );
     const hudItems = useMemo(
         () => getHudItems({ blockData, isSandbox }),
         [blockData, isSandbox],
     );
+    const dropTargetVisible = Boolean(pickupBlock);
+    const dropTargetLabel = isSandbox ? 'Obriši' : 'Recikliranje';
 
     return (
         <HudCard
             data-items-hud
+            {...(dropTargetVisible
+                ? {
+                      [itemsHudDropTargetAttribute]: 'true',
+                      [itemsHudDropTargetActiveAttribute]: dropTargetActive
+                          ? 'true'
+                          : 'false',
+                  }
+                : {})}
             open
             position="bottom"
-            className="pointer-events-auto static mx-auto mb-1 w-fit max-w-[calc(100vw-1rem)] overflow-x-auto rounded-xl border-0 bg-background/95 shadow-xl shadow-foreground/10 backdrop-blur-sm motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-4 motion-safe:duration-300 motion-safe:ease-out md:px-1"
+            className={cx(
+                'pointer-events-auto static relative mx-auto mb-1 w-fit max-w-[calc(100vw-1rem)] overflow-x-auto rounded-xl border-0 bg-background/95 shadow-xl shadow-foreground/10 backdrop-blur-sm motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-4 motion-safe:duration-300 motion-safe:ease-out md:px-1',
+                dropTargetVisible &&
+                    'border-2 border-dashed border-red-300 bg-red-50/95 shadow-red-950/15',
+                dropTargetActive &&
+                    'scale-[1.02] border-red-500 bg-red-100/95 shadow-red-950/25 ring-4 ring-red-500/20',
+            )}
             animateHeight
         >
+            {dropTargetVisible && (
+                <div
+                    aria-hidden="true"
+                    className={cx(
+                        'pointer-events-none absolute inset-0 z-10 grid place-items-center rounded-xl bg-red-600/10 px-3 text-red-700 transition duration-150 ease-out',
+                        dropTargetActive && 'bg-red-600/85 text-white',
+                    )}
+                >
+                    <div className="flex items-center gap-2 rounded-full bg-background/90 px-3 py-1.5 text-sm font-semibold text-red-700 shadow-sm">
+                        <Delete className="size-4" strokeWidth={2.4} />
+                        <span>{dropTargetLabel}</span>
+                    </div>
+                </div>
+            )}
             <Row
                 spacing={1}
-                className="min-w-max md:px-1"
+                className={cx(
+                    'min-w-max md:px-1',
+                    dropTargetVisible && 'opacity-35',
+                )}
                 justifyContent="center"
             >
                 {hudItems.map((item, index) => {

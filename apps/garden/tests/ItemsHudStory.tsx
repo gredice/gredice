@@ -208,6 +208,7 @@ type ItemsHudStoryOptions = {
     isSandbox?: boolean;
     localSandboxStorageKey?: string;
     pickupBlock?: boolean;
+    pickupHudDropTargetActive?: boolean;
     trashTargetActive?: boolean;
 };
 
@@ -252,6 +253,7 @@ function ItemsHudTestProviders({
     localSandboxStorageKey,
     closeup = false,
     pickupBlock = false,
+    pickupHudDropTargetActive = false,
     trashTargetActive = false,
 }: PropsWithChildren<ItemsHudStoryOptions>) {
     const queryClient = useMemo(
@@ -273,6 +275,7 @@ function ItemsHudTestProviders({
                     name: 'Block_Grass',
                     rotation: 0,
                 },
+                itemsHudDropTargetActive: pickupHudDropTargetActive,
                 sandboxBlockTrashDropTargetActive: trashTargetActive,
             });
         }
@@ -290,6 +293,7 @@ function ItemsHudTestProviders({
         closeup,
         localSandboxStorageKey,
         pickupBlock,
+        pickupHudDropTargetActive,
         trashTargetActive,
     ]);
 
@@ -454,6 +458,38 @@ export function SandboxBlockTrashDropTargetStory() {
                 >
                     <BottomControlsTestFrame />
                     <SandboxBlockTrashDropTarget />
+                    <ItemsHudTestFrame />
+                </div>
+            </div>
+        </ItemsHudTestProviders>
+    );
+}
+
+export function ItemsHudDropTargetStory() {
+    return (
+        <ItemsHudTestProviders pickupBlock>
+            <div className="relative h-screen w-screen overflow-hidden">
+                <div
+                    data-testid="bottom-hud"
+                    className={gameHudBottomBarClassName}
+                >
+                    <BottomControlsTestFrame />
+                    <ItemsHudTestFrame />
+                </div>
+            </div>
+        </ItemsHudTestProviders>
+    );
+}
+
+export function ActiveItemsHudDropTargetStory() {
+    return (
+        <ItemsHudTestProviders pickupBlock pickupHudDropTargetActive>
+            <div className="relative h-screen w-screen overflow-hidden">
+                <div
+                    data-testid="bottom-hud"
+                    className={gameHudBottomBarClassName}
+                >
+                    <BottomControlsTestFrame />
                     <ItemsHudTestFrame />
                 </div>
             </div>
