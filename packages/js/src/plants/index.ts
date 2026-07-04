@@ -4,3 +4,4 @@ export * from './isPlantRecommended';
 export * from './plantFieldStatusEmoji';
 export * from './plantFieldStatusLabel';
 export * from './plantFieldStatusTransitions';
+export * from './plantStages';

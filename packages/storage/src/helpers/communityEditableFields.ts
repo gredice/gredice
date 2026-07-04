@@ -1,3 +1,9 @@
+import {
+    PLANT_STAGE_LABELS,
+    PLANT_STAGES,
+    type PlantStageName,
+} from '@gredice/js/plants';
+
 export type CommunityEditControlType =
     | 'boolean'
     | 'json'
@@ -39,18 +45,40 @@ export type CommunityEditableSection = {
 };
 
 export type CommunityEditableOperationSuggestionStage = {
-    name: string;
+    name: PlantStageName;
     label: string;
 };
 
 export const communityEditablePlantOperationStages: CommunityEditableOperationSuggestionStage[] =
-    [
-        { name: 'sowing', label: 'Sjetva' },
-        { name: 'growth', label: 'Rast' },
-        { name: 'watering', label: 'Zalijevanje' },
-        { name: 'harvest', label: 'Berba' },
-        { name: 'storage', label: 'Skladištenje' },
-    ];
+    PLANT_STAGES.map(({ name, label }) => ({ name, label }));
+
+const communityEditablePlantStageInformationFields: CommunityEditableFieldDefinition[] =
+    PLANT_STAGES.map((stage) => ({
+        entityTypeName: 'plant',
+        fieldKey: `plant.${stage.name}`,
+        sectionKey: stage.name,
+        category: 'information',
+        name: stage.name,
+        publicLabel: stage.label,
+        controlType: 'markdown',
+        pageLevel: true,
+        inline: true,
+        maxLength: 16000,
+    }));
+
+const communityEditablePlantSortStageInformationFields: CommunityEditableFieldDefinition[] =
+    PLANT_STAGES.map((stage) => ({
+        entityTypeName: 'plantSort',
+        fieldKey: `plant-sort.${stage.name}`,
+        sectionKey: stage.name,
+        category: 'information',
+        name: stage.name,
+        publicLabel: `${stage.label} sorte`,
+        controlType: 'markdown',
+        pageLevel: true,
+        inline: true,
+        maxLength: 16000,
+    }));
 
 const communityEditablePlantOperationFields: CommunityEditableFieldDefinition[] =
     communityEditablePlantOperationStages.map((stage) => ({
@@ -118,66 +146,7 @@ const communityEditableFieldRegistry: CommunityEditableFieldDefinition[] = [
         inline: true,
         maxLength: 12000,
     },
-    {
-        entityTypeName: 'plant',
-        fieldKey: 'plant.sowing',
-        sectionKey: 'sowing',
-        category: 'information',
-        name: 'sowing',
-        publicLabel: 'Sjetva',
-        controlType: 'markdown',
-        pageLevel: true,
-        inline: true,
-        maxLength: 16000,
-    },
-    {
-        entityTypeName: 'plant',
-        fieldKey: 'plant.growth',
-        sectionKey: 'growth',
-        category: 'information',
-        name: 'growth',
-        publicLabel: 'Rast',
-        controlType: 'markdown',
-        pageLevel: true,
-        inline: true,
-        maxLength: 16000,
-    },
-    {
-        entityTypeName: 'plant',
-        fieldKey: 'plant.watering',
-        sectionKey: 'watering',
-        category: 'information',
-        name: 'watering',
-        publicLabel: 'Zalijevanje',
-        controlType: 'markdown',
-        pageLevel: true,
-        inline: true,
-        maxLength: 16000,
-    },
-    {
-        entityTypeName: 'plant',
-        fieldKey: 'plant.harvest',
-        sectionKey: 'harvest',
-        category: 'information',
-        name: 'harvest',
-        publicLabel: 'Berba',
-        controlType: 'markdown',
-        pageLevel: true,
-        inline: true,
-        maxLength: 16000,
-    },
-    {
-        entityTypeName: 'plant',
-        fieldKey: 'plant.storage',
-        sectionKey: 'storage',
-        category: 'information',
-        name: 'storage',
-        publicLabel: 'Skladištenje',
-        controlType: 'markdown',
-        pageLevel: true,
-        inline: true,
-        maxLength: 16000,
-    },
+    ...communityEditablePlantStageInformationFields,
     {
         entityTypeName: 'plant',
         fieldKey: 'plant.seeding-distance',
@@ -488,54 +457,7 @@ const communityEditableFieldRegistry: CommunityEditableFieldDefinition[] = [
         inline: true,
         maxLength: 12000,
     },
-    {
-        entityTypeName: 'plantSort',
-        fieldKey: 'plant-sort.sowing',
-        sectionKey: 'sowing',
-        category: 'information',
-        name: 'sowing',
-        publicLabel: 'Sjetva sorte',
-        controlType: 'markdown',
-        pageLevel: true,
-        inline: true,
-        maxLength: 16000,
-    },
-    {
-        entityTypeName: 'plantSort',
-        fieldKey: 'plant-sort.growth',
-        sectionKey: 'growth',
-        category: 'information',
-        name: 'growth',
-        publicLabel: 'Rast sorte',
-        controlType: 'markdown',
-        pageLevel: true,
-        inline: true,
-        maxLength: 16000,
-    },
-    {
-        entityTypeName: 'plantSort',
-        fieldKey: 'plant-sort.watering',
-        sectionKey: 'watering',
-        category: 'information',
-        name: 'watering',
-        publicLabel: 'Zalijevanje sorte',
-        controlType: 'markdown',
-        pageLevel: true,
-        inline: true,
-        maxLength: 16000,
-    },
-    {
-        entityTypeName: 'plantSort',
-        fieldKey: 'plant-sort.harvest',
-        sectionKey: 'harvest',
-        category: 'information',
-        name: 'harvest',
-        publicLabel: 'Berba sorte',
-        controlType: 'markdown',
-        pageLevel: true,
-        inline: true,
-        maxLength: 16000,
-    },
+    ...communityEditablePlantSortStageInformationFields,
     {
         entityTypeName: 'operation',
         fieldKey: 'operation.label',
@@ -739,24 +661,24 @@ export function getCommunityEditableSections(entityTypeName: string) {
     );
 }
 
+function isPlantStageName(sectionKey: string): sectionKey is PlantStageName {
+    return sectionKey in PLANT_STAGE_LABELS;
+}
+
 export function communityEditableSectionLabel(sectionKey: string) {
+    if (isPlantStageName(sectionKey)) {
+        return PLANT_STAGE_LABELS[sectionKey];
+    }
+
     switch (sectionKey) {
         case 'attributes':
             return 'Svojstva';
         case 'description':
             return 'Opis';
-        case 'growth':
-            return 'Rast';
-        case 'harvest':
-            return 'Berba';
         case 'instructions':
             return 'Postupak';
         case 'overview':
             return 'Pregled';
-        case 'sowing':
-            return 'Sjetva';
-        case 'watering':
-            return 'Zalijevanje';
         default:
             return sectionKey;
     }

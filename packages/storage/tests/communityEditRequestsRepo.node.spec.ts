@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';
+import { PLANT_STAGES } from '@gredice/js/plants';
 import {
     accountUsers,
     approveCommunityEditRequest,
@@ -28,10 +29,12 @@ import { createTestDb } from './testDb';
 type CommunityEditFixture = {
     plantDescriptionDefinitionId: number;
     plantGerminationTypeDefinitionId: number;
+    plantMaintenanceDefinitionId: number;
     plantOperationsDefinitionId: number;
     plantSeedingDistanceDefinitionId: number;
     plantStorageDefinitionId: number;
     plantSortLatinNameDefinitionId: number;
+    plantSortMaintenanceDefinitionId: number;
     operationNameDefinitionId: number;
     operationStageDefinitionId: number;
     operationApplicationDefinitionId: number;
@@ -92,6 +95,13 @@ async function createFixture(): Promise<CommunityEditFixture> {
         entityTypeName: 'plant',
         dataType: 'markdown',
     });
+    const plantMaintenanceDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'maintenance',
+        label: 'Održavanje',
+        entityTypeName: 'plant',
+        dataType: 'markdown',
+    });
     const plantSeedingDistanceDefinitionId = await createAttributeDefinition({
         category: 'attributes',
         name: 'seedingDistance',
@@ -121,6 +131,13 @@ async function createFixture(): Promise<CommunityEditFixture> {
         label: 'Latinski naziv',
         entityTypeName: 'plantSort',
         dataType: 'text',
+    });
+    const plantSortMaintenanceDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'maintenance',
+        label: 'Održavanje sorte',
+        entityTypeName: 'plantSort',
+        dataType: 'markdown',
     });
     const stageNameDefinitionId = await createAttributeDefinition({
         category: 'information',
@@ -176,10 +193,12 @@ async function createFixture(): Promise<CommunityEditFixture> {
     return {
         plantDescriptionDefinitionId,
         plantGerminationTypeDefinitionId,
+        plantMaintenanceDefinitionId,
         plantOperationsDefinitionId,
         plantSeedingDistanceDefinitionId,
         plantStorageDefinitionId,
         plantSortLatinNameDefinitionId,
+        plantSortMaintenanceDefinitionId,
         operationNameDefinitionId,
         operationStageDefinitionId,
         operationApplicationDefinitionId,
@@ -194,6 +213,7 @@ async function createFixture(): Promise<CommunityEditFixture> {
 async function createPublishedPlant(input?: {
     description?: string;
     germinationType?: string;
+    maintenance?: string;
     operationIds?: number[];
     seedingDistance?: string;
     storage?: string;
@@ -224,6 +244,12 @@ async function createPublishedPlant(input?: {
         entityTypeName: 'plant',
         entityId,
         value: input?.storage ?? 'Čuvati na hladnom mjestu.',
+    });
+    await upsertAttributeValue({
+        attributeDefinitionId: data.plantMaintenanceDefinitionId,
+        entityTypeName: 'plant',
+        entityId,
+        value: input?.maintenance ?? 'Redovito uklanjati korov.',
     });
     for (const [index, operationId] of (input?.operationIds ?? []).entries()) {
         await upsertAttributeValue({
@@ -259,7 +285,10 @@ async function createPublishedPlantStage(input: {
     return entityId;
 }
 
-async function createPublishedPlantSort(input?: { latinName?: string }) {
+async function createPublishedPlantSort(input?: {
+    latinName?: string;
+    maintenance?: string;
+}) {
     const data = await fixture();
     const entityId = await createEntity('plantSort');
     await updateEntity({ id: entityId, state: 'published' });
@@ -268,6 +297,12 @@ async function createPublishedPlantSort(input?: { latinName?: string }) {
         entityTypeName: 'plantSort',
         entityId,
         value: input?.latinName ?? 'Solanum sortum',
+    });
+    await upsertAttributeValue({
+        attributeDefinitionId: data.plantSortMaintenanceDefinitionId,
+        entityTypeName: 'plantSort',
+        entityId,
+        value: input?.maintenance ?? 'Sortu redovito pregledavati.',
     });
     return entityId;
 }
@@ -362,8 +397,41 @@ test('community editable registry resolves allowed plant and operation fields', 
                 (field) => field.fieldKey === 'plant.stage-operations.storage',
             ),
     );
+
+    for (const stage of PLANT_STAGES) {
+        const sectionFields =
+            plantSections.find((section) => section.key === stage.name)
+                ?.fields ?? [];
+        assert.ok(
+            sectionFields.some(
+                (field) => field.fieldKey === `plant.${stage.name}`,
+            ),
+            `Expected plant ${stage.name} content field.`,
+        );
+        assert.ok(
+            sectionFields.some(
+                (field) =>
+                    field.fieldKey === `plant.stage-operations.${stage.name}`,
+            ),
+            `Expected plant ${stage.name} operation suggestion field.`,
+        );
+    }
+
+    const plantSortSections = getCommunityEditableSections('plantSort');
+    for (const stage of PLANT_STAGES) {
+        const sectionFields =
+            plantSortSections.find((section) => section.key === stage.name)
+                ?.fields ?? [];
+        assert.ok(
+            sectionFields.some(
+                (field) => field.fieldKey === `plant-sort.${stage.name}`,
+            ),
+            `Expected plant sort ${stage.name} content field.`,
+        );
+    }
+
     assert.ok(
-        getCommunityEditableSections('plantSort')
+        plantSortSections
             .find((section) => section.key === 'overview')
             ?.fields.some((field) => field.fieldKey === 'plant-sort.name'),
     );
@@ -434,6 +502,28 @@ test('community editable registry resolves allowed plant and operation fields', 
         ),
     );
 
+    const maintenanceFields = await getCommunityEditableFieldsForEntity({
+        entityTypeName: 'plant',
+        entityId: plantId,
+        sectionKey: 'maintenance',
+    });
+    assert.ok(
+        maintenanceFields.some(
+            (field) =>
+                field.fieldKey === 'plant.maintenance' &&
+                field.controlType === 'markdown' &&
+                field.currentValue === 'Redovito uklanjati korov.',
+        ),
+    );
+    assert.ok(
+        maintenanceFields.some(
+            (field) =>
+                field.fieldKey === 'plant.stage-operations.maintenance' &&
+                field.controlType === 'operationSuggestion' &&
+                field.operationSuggestionStage?.name === 'maintenance',
+        ),
+    );
+
     const plantSortId = await createPublishedPlantSort();
     const plantSortFields = await getCommunityEditableFieldsForEntity({
         entityTypeName: 'plantSort',
@@ -446,6 +536,21 @@ test('community editable registry resolves allowed plant and operation fields', 
                 field.fieldKey === 'plant-sort.latin-name' &&
                 field.controlType === 'text' &&
                 field.currentValue === 'Solanum sortum',
+        ),
+    );
+
+    const plantSortMaintenanceFields =
+        await getCommunityEditableFieldsForEntity({
+            entityTypeName: 'plantSort',
+            entityId: plantSortId,
+            sectionKey: 'maintenance',
+        });
+    assert.ok(
+        plantSortMaintenanceFields.some(
+            (field) =>
+                field.fieldKey === 'plant-sort.maintenance' &&
+                field.controlType === 'markdown' &&
+                field.currentValue === 'Sortu redovito pregledavati.',
         ),
     );
 
