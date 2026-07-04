@@ -1,3 +1,4 @@
+import type { RaisedBedFieldSowingLocation } from '@gredice/storage';
 import type { OperationImageProps } from '@gredice/ui/OperationImage';
 
 export type OperationsListSortDirection = 'asc' | 'desc';
@@ -25,14 +26,14 @@ export type OperationsListStatus =
 export type OperationsListOperationDefinition =
     OperationImageProps['operation'];
 
-export type OperationsListOperation = {
+type OperationsListRowBase = {
+    rowId: string;
     id: number;
-    entityId: number;
-    entityTypeName: string;
     label: string;
     operationDefinition: OperationsListOperationDefinition;
     status: OperationsListStatus;
     accountUserNames: string[];
+    assignedUserNames: string[];
     farmName: string | null;
     gardenName: string | null;
     raisedBedPhysicalId: string | null;
@@ -43,6 +44,25 @@ export type OperationsListOperation = {
     scheduledDate: string | null;
     completedAt: string | null;
 };
+
+export type OperationsListOperationRow = OperationsListRowBase & {
+    kind: 'operation';
+    entityId: number;
+    entityTypeName: string;
+};
+
+export type OperationsListSowingTask = OperationsListRowBase & {
+    kind: 'sowing';
+    entityId: null;
+    entityTypeName: 'sowing' | 'sowingGreenhouse';
+    plantSortId: number;
+    plantCycleEventId: number;
+    sowingLocation: RaisedBedFieldSowingLocation;
+};
+
+export type OperationsListOperation =
+    | OperationsListOperationRow
+    | OperationsListSowingTask;
 
 export type OperationsListPage = {
     operations: OperationsListOperation[];

@@ -148,7 +148,7 @@ export function OperationsList({
                 <ul className="divide-y">
                     {operations.map((operation) => (
                         <OperationListItem
-                            key={operation.id}
+                            key={operation.rowId}
                             operation={operation}
                         />
                     ))}
