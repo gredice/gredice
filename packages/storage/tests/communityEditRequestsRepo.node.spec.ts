@@ -11,6 +11,7 @@ import {
     createEntity,
     getAccountAchievements,
     getCommunityEditableFieldsForEntity,
+    getCommunityEditableSections,
     getCommunityEditRequest,
     getEntityRaw,
     getEntityRevisions,
@@ -25,8 +26,11 @@ import { createTestDb } from './testDb';
 
 type CommunityEditFixture = {
     plantDescriptionDefinitionId: number;
+    plantGerminationTypeDefinitionId: number;
     plantSeedingDistanceDefinitionId: number;
+    plantSortLatinNameDefinitionId: number;
     operationStageDefinitionId: number;
+    operationApplicationDefinitionId: number;
     stageEntityId: number;
     submitterId: string;
     reviewerId: string;
@@ -82,6 +86,21 @@ async function createFixture(): Promise<CommunityEditFixture> {
         entityTypeName: 'plant',
         dataType: 'number',
     });
+    const plantGerminationTypeDefinitionId = await createAttributeDefinition({
+        category: 'attributes',
+        name: 'germinationType',
+        label: 'Klijanje',
+        entityTypeName: 'plant',
+        dataType: 'text',
+    });
+    await upsertEntityType({ name: 'plantSort', label: 'Sorta biljke' });
+    const plantSortLatinNameDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'latinName',
+        label: 'Latinski naziv',
+        entityTypeName: 'plantSort',
+        dataType: 'text',
+    });
     const stageNameDefinitionId = await createAttributeDefinition({
         category: 'information',
         name: 'name',
@@ -96,6 +115,13 @@ async function createFixture(): Promise<CommunityEditFixture> {
         entityTypeName: 'operation',
         dataType: 'ref:plantStage',
     });
+    const operationApplicationDefinitionId = await createAttributeDefinition({
+        category: 'attributes',
+        name: 'application',
+        label: 'Primjena',
+        entityTypeName: 'operation',
+        dataType: 'text',
+    });
 
     const stageEntityId = await createEntity('plantStage');
     await updateEntity({ id: stageEntityId, state: 'published' });
@@ -108,8 +134,11 @@ async function createFixture(): Promise<CommunityEditFixture> {
 
     return {
         plantDescriptionDefinitionId,
+        plantGerminationTypeDefinitionId,
         plantSeedingDistanceDefinitionId,
+        plantSortLatinNameDefinitionId,
         operationStageDefinitionId,
+        operationApplicationDefinitionId,
         stageEntityId,
         submitterId,
         reviewerId,
@@ -118,6 +147,7 @@ async function createFixture(): Promise<CommunityEditFixture> {
 
 async function createPublishedPlant(input?: {
     description?: string;
+    germinationType?: string;
     seedingDistance?: string;
 }) {
     const data = await fixture();
@@ -135,6 +165,25 @@ async function createPublishedPlant(input?: {
         entityId,
         value: input?.seedingDistance ?? '25',
     });
+    await upsertAttributeValue({
+        attributeDefinitionId: data.plantGerminationTypeDefinitionId,
+        entityTypeName: 'plant',
+        entityId,
+        value: input?.germinationType ?? 'Klijanje u mraku',
+    });
+    return entityId;
+}
+
+async function createPublishedPlantSort(input?: { latinName?: string }) {
+    const data = await fixture();
+    const entityId = await createEntity('plantSort');
+    await updateEntity({ id: entityId, state: 'published' });
+    await upsertAttributeValue({
+        attributeDefinitionId: data.plantSortLatinNameDefinitionId,
+        entityTypeName: 'plantSort',
+        entityId,
+        value: input?.latinName ?? 'Solanum sortum',
+    });
     return entityId;
 }
 
@@ -151,6 +200,42 @@ function attributeValue(
 
 test('community editable registry resolves allowed plant and operation fields', async () => {
     const data = await fixture();
+    const plantSections = getCommunityEditableSections('plant');
+    assert.ok(
+        plantSections
+            .find((section) => section.key === 'sowing')
+            ?.fields.some(
+                (field) => field.fieldKey === 'plant.germination-type',
+            ),
+    );
+    assert.ok(
+        plantSections
+            .find((section) => section.key === 'growth')
+            ?.fields.some((field) => field.fieldKey === 'plant.light'),
+    );
+    assert.ok(
+        plantSections
+            .find((section) => section.key === 'watering')
+            ?.fields.some((field) => field.fieldKey === 'plant.water'),
+    );
+    assert.ok(
+        plantSections
+            .find((section) => section.key === 'harvest')
+            ?.fields.some((field) => field.fieldKey === 'plant.yield-type'),
+    );
+    assert.ok(
+        getCommunityEditableSections('plantSort')
+            .find((section) => section.key === 'overview')
+            ?.fields.some((field) => field.fieldKey === 'plant-sort.name'),
+    );
+    assert.ok(
+        getCommunityEditableSections('operation')
+            .find((section) => section.key === 'attributes')
+            ?.fields.some(
+                (field) => field.fieldKey === 'operation.application',
+            ),
+    );
+
     const plantId = await createPublishedPlant();
     const plantFields = await getCommunityEditableFieldsForEntity({
         entityTypeName: 'plant',
@@ -172,9 +257,35 @@ test('community editable registry resolves allowed plant and operation fields', 
                 field.currentValue === '25',
         ),
     );
+    assert.ok(
+        plantFields.some(
+            (field) =>
+                field.fieldKey === 'plant.germination-type' &&
+                field.controlType === 'select' &&
+                field.currentValue === 'Klijanje u mraku' &&
+                field.options?.some(
+                    (option) => option.value === 'Klijanje pod svijetlosti',
+                ),
+        ),
+    );
     assert.equal(
         plantFields.some((field) => field.fieldKey.includes('price')),
         false,
+    );
+
+    const plantSortId = await createPublishedPlantSort();
+    const plantSortFields = await getCommunityEditableFieldsForEntity({
+        entityTypeName: 'plantSort',
+        entityId: plantSortId,
+        sectionKey: 'overview',
+    });
+    assert.ok(
+        plantSortFields.some(
+            (field) =>
+                field.fieldKey === 'plant-sort.latin-name' &&
+                field.controlType === 'text' &&
+                field.currentValue === 'Solanum sortum',
+        ),
     );
 
     const operationId = await createEntity('operation');
@@ -184,6 +295,12 @@ test('community editable registry resolves allowed plant and operation fields', 
         entityTypeName: 'operation',
         entityId: operationId,
         value: String(data.stageEntityId),
+    });
+    await upsertAttributeValue({
+        attributeDefinitionId: data.operationApplicationDefinitionId,
+        entityTypeName: 'operation',
+        entityId: operationId,
+        value: 'plant',
     });
     const operationFields = await getCommunityEditableFieldsForEntity({
         entityTypeName: 'operation',
@@ -196,6 +313,15 @@ test('community editable registry resolves allowed plant and operation fields', 
                 field.fieldKey === 'operation.stage' &&
                 field.controlType === 'reference' &&
                 field.currentValue === String(data.stageEntityId),
+        ),
+    );
+    assert.ok(
+        operationFields.some(
+            (field) =>
+                field.fieldKey === 'operation.application' &&
+                field.controlType === 'select' &&
+                field.currentValue === 'plant' &&
+                field.options?.some((option) => option.value === 'garden'),
         ),
     );
 });
@@ -243,6 +369,55 @@ test('community edit requests create pending diffs without mutating live values'
     assert.equal(
         attributeValue(entity, data.plantDescriptionDefinitionId),
         'Stari opis biljke.',
+    );
+});
+
+test('community edit requests validate select field options', async () => {
+    const data = await fixture();
+    const plantId = await createPublishedPlant();
+    const [germinationField] = (
+        await getCommunityEditableFieldsForEntity({
+            entityTypeName: 'plant',
+            entityId: plantId,
+            sectionKey: 'sowing',
+        })
+    ).filter((field) => field.fieldKey === 'plant.germination-type');
+    assert.ok(germinationField);
+
+    const request = await createCommunityEditRequest({
+        entityTypeName: 'plant',
+        entityId: plantId,
+        publicPath: '/biljke/test',
+        sectionKey: 'sowing',
+        submitter: { id: data.submitterId, name: 'Community Submitter' },
+        changes: [
+            {
+                fieldKey: 'plant.germination-type',
+                baseValueHash: germinationField.baseValueHash,
+                proposedValue: 'Klijanje pod svijetlosti',
+            },
+        ],
+    });
+
+    assert.equal(request.changes[0]?.proposedValue, 'Klijanje pod svijetlosti');
+    await assert.rejects(
+        createCommunityEditRequest({
+            entityTypeName: 'plant',
+            entityId: plantId,
+            publicPath: '/biljke/test',
+            sectionKey: 'sowing',
+            submitter: { id: data.submitterId, name: 'Community Submitter' },
+            changes: [
+                {
+                    fieldKey: 'plant.germination-type',
+                    baseValueHash: germinationField.baseValueHash,
+                    proposedValue: 'Klijanje na mjesecu',
+                },
+            ],
+        }),
+        (error: unknown) =>
+            error instanceof CommunityEditRequestError &&
+            error.code === 'invalid_value',
     );
 });
 
