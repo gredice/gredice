@@ -11,7 +11,7 @@ test('buildPlantPricingRows includes plants only when numeric prices exist and l
         [
             {
                 id: 1,
-                slug: 'mrkva',
+                slug: 'custom-mrkva-slug',
                 information: { name: 'Mrkva' },
                 prices: { perPlant: 1.2 },
             },
@@ -53,7 +53,7 @@ test('buildPlantPricingRows includes plant sorts with their own numeric price an
         [
             {
                 id: 1,
-                slug: 'rajcica',
+                slug: 'custom-rajcica-slug',
                 information: { name: 'Rajčica' },
                 prices: { perPlant: 2.5 },
             },
@@ -67,7 +67,7 @@ test('buildPlantPricingRows includes plant sorts with their own numeric price an
         [
             {
                 id: 11,
-                slug: 'roma',
+                slug: 'custom-roma-slug',
                 information: {
                     name: 'Roma',
                     plant: {
@@ -133,7 +133,7 @@ test('buildOperationPricingRows includes operations only when numeric prices exi
     const rows = buildOperationPricingRows([
         {
             id: 21,
-            slug: 'zalijevanje',
+            slug: 'custom-zalijevanje-slug',
             information: { label: 'Zalijevanje' },
             prices: { perOperation: 1.25 },
         },

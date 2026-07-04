@@ -157,11 +157,7 @@ export function buildPlantPricingRows<
             id: `plant-${plant.id}`,
             kind: 'plant',
             label: plant.information.name,
-            href: toRoute(
-                PublicDirectoryPaths.Plant(
-                    plant.slug || plant.information.name,
-                ),
-            ),
+            href: toRoute(PublicDirectoryPaths.Plant(plant.information.name)),
             price: plant.prices.perPlant,
             plant,
         }),
@@ -185,8 +181,8 @@ export function buildPlantPricingRows<
                 parentLabel,
                 href: toRoute(
                     PublicDirectoryPaths.PlantSort(
-                        parentPlant?.slug || parentLabel,
-                        sort.slug || sort.information.name,
+                        parentLabel,
+                        sort.information.name,
                     ),
                 ),
                 price: sort.prices.perPlant,
@@ -206,9 +202,7 @@ export function buildOperationPricingRows<TOperation extends NamedOperation>(
             id: `operation-${operation.id}`,
             label: operation.information.label,
             href: toRoute(
-                PublicDirectoryPaths.Operation(
-                    operation.slug || operation.information.label,
-                ),
+                PublicDirectoryPaths.Operation(operation.information.label),
             ),
             price: operation.prices.perOperation,
             operation,
