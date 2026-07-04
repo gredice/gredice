@@ -1,9 +1,11 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import {
+    ActiveItemsHudDropTargetStory,
     CloseupBottomHudStory,
     ItemsHudAlignmentStory,
     ItemsHudCameraTargetStory,
     ItemsHudControlsTooltipStory,
+    ItemsHudDropTargetStory,
     LocalSandboxItemsHudStory,
     LowSunflowerBalanceItemsHudStory,
     SandboxBlockTrashDropTargetStory,
@@ -186,6 +188,50 @@ test('sandbox trash target appears centered above item picker while dragging', a
         (pickerBox?.y ?? 0) - 8,
     );
     await expect(trashTarget).toHaveClass(/bg-red-600/u);
+});
+
+test('item picker does not show the recycle drop target while idle', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<ItemsHudAlignmentStory />);
+
+    await expect(
+        page.locator('[data-items-hud-drop-target="true"]'),
+    ).toHaveCount(0);
+});
+
+test('item picker reveals a recycle drop target during pickup', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<ItemsHudDropTargetStory />);
+
+    const picker = page.locator('[data-items-hud]');
+    await expect(picker).toHaveAttribute('data-items-hud-drop-target', 'true');
+    await expect(picker).toHaveAttribute(
+        'data-items-hud-drop-target-active',
+        'false',
+    );
+    await expect(page.getByText('Recikliranje')).toBeVisible();
+});
+
+test('item picker highlights while the picked block is over the drop target', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<ActiveItemsHudDropTargetStory />);
+
+    const picker = page.locator('[data-items-hud]');
+    await expect(picker).toHaveAttribute('data-items-hud-drop-target', 'true');
+    await expect(picker).toHaveAttribute(
+        'data-items-hud-drop-target-active',
+        'true',
+    );
+    await expect(picker).toHaveClass(/border-red-500/u);
 });
 
 test('pots and mulch are listed under the decoration picker', async ({

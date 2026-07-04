@@ -280,6 +280,8 @@ export type GameState = {
     ) => void;
     sandboxBlockTrashDropTargetActive: boolean;
     setSandboxBlockTrashDropTargetActive: (active: boolean) => void;
+    itemsHudDropTargetActive: boolean;
+    setItemsHudDropTargetActive: (active: boolean) => void;
     activeDragPreview: ActiveDragPreview | null;
     setActiveDragPreview: (dragPreview: ActiveDragPreview | null) => void;
     openGardenBoxBlockId: string | null;
@@ -538,6 +540,13 @@ export function createGameState({
                 sandboxBlockTrashDropTargetActive
                     ? state
                     : { sandboxBlockTrashDropTargetActive },
+            ),
+        itemsHudDropTargetActive: false,
+        setItemsHudDropTargetActive: (itemsHudDropTargetActive) =>
+            set((state) =>
+                state.itemsHudDropTargetActive === itemsHudDropTargetActive
+                    ? state
+                    : { itemsHudDropTargetActive },
             ),
         activeDragPreview: null,
         setActiveDragPreview: (activeDragPreview) =>

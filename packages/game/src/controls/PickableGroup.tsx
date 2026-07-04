@@ -32,6 +32,7 @@ import {
     useCurrentGardenCache,
 } from '../hooks/useCurrentGarden';
 import { useGardenBoxStoreBlock } from '../hooks/useGardenBoxStoreBlock';
+import { isPointOverItemsHudDropTarget } from '../itemsHudDropTarget';
 import {
     resolveBlockParticleType,
     useParticles,
@@ -68,6 +69,10 @@ import {
     type PickupPlacementPreviewResolver,
     type ResolvedPlacementPreview,
 } from './PickupPlacementResolver';
+import {
+    getMovingSegmentBlockIds,
+    resolvePickupHudDropAction,
+} from './pickupRemovalDropAction';
 import {
     createPickupSelectionMoveRequests,
     createPickupSelectionMovingSegments,
@@ -271,6 +276,9 @@ export function PickableGroup({
     );
     const setSandboxBlockTrashDropTargetActive = useGameState(
         (state) => state.setSandboxBlockTrashDropTargetActive,
+    );
+    const setItemsHudDropTargetActive = useGameState(
+        (state) => state.setItemsHudDropTargetActive,
     );
     const localSandboxStorageKey = useGameState(
         (state) => state.localSandboxStorageKey,
@@ -707,6 +715,7 @@ export function PickableGroup({
         setPickupBlock(null);
         clearPickupSelectionTargets();
         setSandboxBlockTrashDropTargetActive(false);
+        setItemsHudDropTargetActive(false);
     }
 
     function isPointerOverSandboxTrash(clientX: number, clientY: number) {
@@ -769,6 +778,7 @@ export function PickableGroup({
         cleanupPointerSessionListeners();
         setPickupOutlineVisible(false);
         setSandboxBlockTrashDropTargetActive(false);
+        setItemsHudDropTargetActive(false);
         if (resetSpring) {
             dragSpringsApi.start({ internalPosition: [0, 0, 0], scale: 1 });
         }
@@ -921,27 +931,33 @@ export function PickableGroup({
 
     async function finishPickup(
         preview: ResolvedPlacementPreview | null,
-        deleteRequested: boolean,
+        {
+            hudDropRequested,
+            sandboxTrashDropRequested,
+        }: {
+            hudDropRequested: boolean;
+            sandboxTrashDropRequested: boolean;
+        },
     ) {
         const garden = getCurrentGarden();
         const attachedPlacement = getAttachedPlacement(garden);
         const raisedBed = findRaisedBedByBlockId(garden, block.id);
-        const blockIdsToDelete = deleteRequested
-            ? getMovingSegments(garden).flatMap((segment) =>
-                  segment.blocks.map((segmentBlock) => segmentBlock.id),
-              )
-            : [];
+        const movingSegments = getMovingSegments(garden);
+        const hudDropAction =
+            hudDropRequested && !sandboxTrashDropRequested
+                ? resolvePickupHudDropAction({
+                      forceDelete: Boolean(garden?.isSandbox),
+                      movingSegments,
+                  })
+                : null;
+        const blockIdsToDelete = sandboxTrashDropRequested
+            ? getMovingSegmentBlockIds(movingSegments)
+            : hudDropAction?.type === 'delete'
+              ? hudDropAction.blockIds
+              : [];
 
-        if (deleteRequested) {
+        if (blockIdsToDelete.length > 0) {
             resetPickupVisualState();
-            if (blockIdsToDelete.length === 0) {
-                dragSpringsApi.start({
-                    internalPosition: [0, 0, 0],
-                    scale: 1,
-                });
-                return;
-            }
-
             dragSpringsApi.start({
                 internalPosition: preview
                     ? [
@@ -964,6 +980,44 @@ export function PickableGroup({
                     scale: 1,
                 });
             }
+            return;
+        }
+
+        if (hudDropAction?.type === 'recycle') {
+            clearPickupInteractionState();
+            const activePreviewReset = createActivePreviewResetQueue();
+            dragSpringsApi.start({
+                internalPosition: preview
+                    ? [preview.relative.x, -1.5, preview.relative.z]
+                    : [0, -1.5, 0],
+                scale: 0.1,
+            });
+            triggerPlaceHaptic();
+            await recycleBlock
+                .mutateAsync({
+                    position: stack.position,
+                    blockIndex,
+                    raisedBedId: raisedBed?.id,
+                    attached: attachedPlacement
+                        ? {
+                              position: {
+                                  x: attachedPlacement.candidateStack.position
+                                      .x,
+                                  z: attachedPlacement.candidateStack.position
+                                      .z,
+                              },
+                              blockIndex: attachedPlacement.candidateBlockIndex,
+                          }
+                        : undefined,
+                    onOptimisticUpdate: activePreviewReset.queue,
+                })
+                .finally(activePreviewReset.resetIfUnqueued);
+            return;
+        }
+
+        if (hudDropRequested || sandboxTrashDropRequested) {
+            resetPickupVisualState();
+            dragSpringsApi.start({ internalPosition: [0, 0, 0], scale: 1 });
             return;
         }
 
@@ -1061,7 +1115,7 @@ export function PickableGroup({
         }
 
         const moveRequests = createPickupSelectionMoveRequests(
-            getMovingSegments(garden),
+            movingSegments,
             relative,
         );
         const [primaryMoveRequest, ...additionalBlockMoves] = moveRequests;
@@ -1134,6 +1188,9 @@ export function PickableGroup({
         setSandboxBlockTrashDropTargetActive(
             isPointerOverSandboxTrash(event.clientX, event.clientY),
         );
+        setItemsHudDropTargetActive(
+            isPointOverItemsHudDropTarget(event.clientX, event.clientY),
+        );
 
         refreshPlacementPreviewFromSession(session);
     }
@@ -1168,10 +1225,16 @@ export function PickableGroup({
                 session.lastClientY,
                 session.pickupAnchorOffset,
             ) ?? session.latestPreview;
-        void finishPickup(
-            preview,
-            isPointerOverSandboxTrash(session.lastClientX, session.lastClientY),
-        );
+        void finishPickup(preview, {
+            hudDropRequested: isPointOverItemsHudDropTarget(
+                session.lastClientX,
+                session.lastClientY,
+            ),
+            sandboxTrashDropRequested: isPointerOverSandboxTrash(
+                session.lastClientX,
+                session.lastClientY,
+            ),
+        });
     }
 
     function handleWindowPointerCancel(event: PointerEvent) {
