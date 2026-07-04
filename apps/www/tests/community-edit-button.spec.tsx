@@ -494,3 +494,216 @@ test('submits select field edits for authenticated users', async ({
         page.getByText('Prijedlog #43 je poslan na odobrenje.'),
     ).toBeVisible();
 });
+
+test('organizes harvest edit fields into grouped sections with attribute icons', async ({
+    mount,
+    page,
+}) => {
+    await page.route('**/api/gredice/api/auth/current-claims', (route) =>
+        route.fulfill({
+            status: 200,
+            json: {
+                id: 'user-1',
+                userName: 'ana',
+                displayName: 'Ana',
+            },
+        }),
+    );
+    await page.route(
+        '**/api/gredice/api/directories/community-edits/entities/plant/1/fields**',
+        (route) =>
+            route.fulfill({
+                status: 200,
+                json: {
+                    entityTypeName: 'plant',
+                    entityId: 1,
+                    sectionKey: 'harvest',
+                    fields: [
+                        {
+                            entityTypeName: 'plant',
+                            entityId: 1,
+                            fieldKey: 'plant.harvest',
+                            sectionKey: 'harvest',
+                            attributeDefinitionId: 10,
+                            attributeValueId: 20,
+                            attributePath: 'information.harvest',
+                            dataType: 'markdown',
+                            controlType: 'text',
+                            multiple: false,
+                            publicLabel: 'Berba',
+                            currentValue: 'Berba počinje nakon sijanja.',
+                            baseValueHash: 'hash-harvest',
+                        },
+                        {
+                            entityTypeName: 'plant',
+                            entityId: 1,
+                            fieldKey: 'plant.harvest-window-min',
+                            sectionKey: 'harvest',
+                            attributeDefinitionId: 11,
+                            attributeValueId: 21,
+                            attributePath: 'attributes.harvestWindowMin',
+                            dataType: 'number',
+                            controlType: 'number',
+                            multiple: false,
+                            publicLabel: 'Najranija berba',
+                            helpText: 'Vrijednost u danima.',
+                            currentValue: '30',
+                            baseValueHash: 'hash-harvest-min',
+                        },
+                        {
+                            entityTypeName: 'plant',
+                            entityId: 1,
+                            fieldKey: 'plant.harvest-window-max',
+                            sectionKey: 'harvest',
+                            attributeDefinitionId: 12,
+                            attributeValueId: 22,
+                            attributePath: 'attributes.harvestWindowMax',
+                            dataType: 'number',
+                            controlType: 'number',
+                            multiple: false,
+                            publicLabel: 'Najkasnija berba',
+                            helpText: 'Vrijednost u danima.',
+                            currentValue: '60',
+                            baseValueHash: 'hash-harvest-max',
+                        },
+                        {
+                            entityTypeName: 'plant',
+                            entityId: 1,
+                            fieldKey: 'plant.yield-min',
+                            sectionKey: 'harvest',
+                            attributeDefinitionId: 13,
+                            attributeValueId: 23,
+                            attributePath: 'attributes.yieldMin',
+                            dataType: 'number',
+                            controlType: 'number',
+                            multiple: false,
+                            publicLabel: 'Najmanji očekivani prinos',
+                            helpText: 'Vrijednost u gramima.',
+                            currentValue: '300',
+                            baseValueHash: 'hash-yield-min',
+                        },
+                        {
+                            entityTypeName: 'plant',
+                            entityId: 1,
+                            fieldKey: 'plant.yield-max',
+                            sectionKey: 'harvest',
+                            attributeDefinitionId: 14,
+                            attributeValueId: 24,
+                            attributePath: 'attributes.yieldMax',
+                            dataType: 'number',
+                            controlType: 'number',
+                            multiple: false,
+                            publicLabel: 'Najveći očekivani prinos',
+                            helpText: 'Vrijednost u gramima.',
+                            currentValue: '1500',
+                            baseValueHash: 'hash-yield-max',
+                        },
+                        {
+                            entityTypeName: 'plant',
+                            entityId: 1,
+                            fieldKey: 'plant.yield-type',
+                            sectionKey: 'harvest',
+                            attributeDefinitionId: 15,
+                            attributeValueId: 25,
+                            attributePath: 'attributes.yieldType',
+                            dataType: 'text',
+                            controlType: 'select',
+                            multiple: false,
+                            publicLabel: 'Mjera prinosa',
+                            currentValue: 'perField',
+                            baseValueHash: 'hash-yield-type',
+                            options: [
+                                { value: 'perField', label: 'Po polju' },
+                                { value: 'perPlant', label: 'Po biljci' },
+                            ],
+                        },
+                        {
+                            entityTypeName: 'plant',
+                            entityId: 1,
+                            fieldKey: 'plant.clean-harvest',
+                            sectionKey: 'harvest',
+                            attributeDefinitionId: 16,
+                            attributeValueId: 26,
+                            attributePath: 'attributes.cleanHarvest',
+                            dataType: 'boolean',
+                            controlType: 'boolean',
+                            multiple: false,
+                            publicLabel: 'Uklanjanje biljke nakon berbe',
+                            currentValue: 'false',
+                            baseValueHash: 'hash-clean-harvest',
+                        },
+                        {
+                            entityTypeName: 'plant',
+                            entityId: 1,
+                            fieldKey: 'plant.stage-operations.harvest',
+                            sectionKey: 'harvest',
+                            attributeDefinitionId: 17,
+                            attributeValueId: null,
+                            attributePath: 'information.operations',
+                            dataType: 'ref:operation',
+                            controlType: 'operationSuggestion',
+                            multiple: true,
+                            publicLabel: 'Radnje: Berba',
+                            operationSuggestionStage: {
+                                name: 'harvest',
+                                label: 'Berba',
+                            },
+                            currentValue: '[]',
+                            baseValueHash: 'hash-harvest-operations',
+                            options: [
+                                {
+                                    value: '987',
+                                    label: 'Branje zrelih plodova',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            }),
+    );
+
+    await mount(
+        <CommunityEditButtonHarness
+            entityTypeName="plant"
+            entityId={1}
+            publicPath="/biljke/blitva"
+            sectionKey="harvest"
+        />,
+    );
+
+    await page.getByTitle('Predloži izmjenu').click();
+    await expect(page.getByText('Sadržaj', { exact: true })).toBeVisible();
+    await expect(page.getByText('Svojstva', { exact: true })).toBeVisible();
+    await expect(page.getByText('Radnje', { exact: true })).toBeVisible();
+
+    const visibleGroups = await page
+        .locator('[data-community-edit-group]')
+        .evaluateAll((elements) =>
+            elements.map((element) =>
+                element.getAttribute('data-community-edit-group'),
+            ),
+        );
+    expect(visibleGroups).toEqual(['content', 'attributes', 'operations']);
+
+    await expect(
+        page.locator(
+            '[data-community-edit-group="attributes"] [data-field-key]',
+        ),
+    ).toHaveCount(6);
+    await expect(
+        page.locator('[data-community-edit-group="attributes"] > div'),
+    ).toHaveClass(/md:grid-cols-2/);
+
+    for (const fieldKey of [
+        'plant.harvest-window-min',
+        'plant.harvest-window-max',
+        'plant.yield-min',
+        'plant.yield-max',
+        'plant.yield-type',
+        'plant.clean-harvest',
+    ]) {
+        await expect(
+            page.locator(`[data-field-icon="${fieldKey}"] svg`),
+        ).toHaveCount(1);
+    }
+});
