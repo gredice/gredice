@@ -8,8 +8,13 @@ import { notFound } from 'next/navigation';
 import { KnownPages } from '../../../src/KnownPages';
 import { PublicGardenExplorer } from '../PublicGardenExplorer';
 import { PublicGardenLikeButton } from '../PublicGardenLikeButton';
-import { getPublicGardenForWww } from '../publicGardenData';
+import { PublicGardenStatsAccordion } from '../PublicGardenStatsAccordion';
 import {
+    getPublicGardenBlockDataForWww,
+    getPublicGardenForWww,
+} from '../publicGardenData';
+import {
+    calculatePublicGardenStats,
     countActivePlantsFromPublicGarden,
     formatGardenDate,
     formatGardenNumber,
@@ -84,8 +89,12 @@ export default async function PublicGardenPage({
         notFound();
     }
 
-    const garden = await getPublicGardenForWww(gardenId);
+    const [garden, blockData] = await Promise.all([
+        getPublicGardenForWww(gardenId),
+        getPublicGardenBlockDataForWww(),
+    ]);
     const activePlantCount = countActivePlantsFromPublicGarden(garden);
+    const gardenStats = calculatePublicGardenStats(garden, blockData);
 
     return (
         <Stack spacing={2} className="py-6">
@@ -172,6 +181,7 @@ export default async function PublicGardenPage({
                             initialLikeCount={garden.likeCount}
                         />
                     </div>
+                    <PublicGardenStatsAccordion stats={gardenStats} />
                 </div>
             </Card>
             <Typography
