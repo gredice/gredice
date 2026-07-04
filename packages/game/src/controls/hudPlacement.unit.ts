@@ -76,8 +76,27 @@ describe('resolveHudPlacementPreview', () => {
 
         assert.equal(preview?.isBlocked, false);
         assert.equal(preview?.error, null);
+        assert.deepEqual(preview?.baseBlocks, []);
         assert.equal(preview?.hoverHeight, 0);
         assert.deepEqual(preview?.position, { x: 4, z: -2 });
+    });
+
+    it('returns support blocks for stack-height-aware HUD previews', () => {
+        const preview = resolveHudPlacementPreview({
+            blockData,
+            blockName: 'Tree',
+            garden: {
+                stacks: [createStack(0, 0, 'Block_Grass')],
+            },
+            position: { x: 0, z: 0 },
+        });
+
+        assert.equal(preview?.isBlocked, false);
+        assert.equal(preview?.hoverHeight, 0.2);
+        assert.deepEqual(
+            preview?.baseBlocks.map((block) => block.name),
+            ['Block_Grass'],
+        );
     });
 
     it('marks exact invalid targets as blocked instead of falling back nearby', () => {
@@ -92,6 +111,10 @@ describe('resolveHudPlacementPreview', () => {
 
         assert.equal(preview?.isBlocked, true);
         assert.match(preview?.error ?? '', /cannot support Tree/u);
+        assert.deepEqual(
+            preview?.baseBlocks.map((block) => block.name),
+            ['StoneLarge'],
+        );
         assert.equal(preview?.hoverHeight, 1);
         assert.deepEqual(preview?.position, { x: 0, z: 0 });
     });

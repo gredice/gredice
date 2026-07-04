@@ -1,6 +1,7 @@
 import type { BlockData } from '@gredice/client';
 import { getGardenBlockFootprintOffsets } from '@gredice/js/gardenBlocks';
 import { resolveBlockPlacement } from '../hooks/optimisticBlockPlacement';
+import type { Block } from '../types/Block';
 import type { Stack } from '../types/Stack';
 import { getStackHeight } from '../utils/stackHeightCore';
 
@@ -10,6 +11,7 @@ export type HudPlacementGridPosition = {
 };
 
 export type HudPlacementPreview = {
+    baseBlocks: Block[];
     error: string | null;
     hoverHeight: number;
     isBlocked: boolean;
@@ -30,7 +32,7 @@ function getStackAtPosition(
     );
 }
 
-function getHudPlacementHoverHeight({
+function getHudPlacementSupport({
     blockData,
     blockName,
     position,
@@ -44,17 +46,26 @@ function getHudPlacementHoverHeight({
     const blockEntity = blockData.find(
         (block) => block.information.name === blockName,
     );
-    const heights = getGardenBlockFootprintOffsets(blockEntity).map(
-        (offset) => {
-            const stack = getStackAtPosition(stacks, {
-                x: position.x + offset.x,
-                z: position.z + offset.y,
-            });
-            return getStackHeight(blockData, stack);
-        },
-    );
+    let support = {
+        baseBlocks: [] as Block[],
+        hoverHeight: 0,
+    };
 
-    return heights.length > 0 ? Math.max(...heights) : 0;
+    for (const offset of getGardenBlockFootprintOffsets(blockEntity)) {
+        const stack = getStackAtPosition(stacks, {
+            x: position.x + offset.x,
+            z: position.z + offset.y,
+        });
+        const hoverHeight = getStackHeight(blockData, stack);
+        if (hoverHeight > support.hoverHeight) {
+            support = {
+                baseBlocks: stack?.blocks ?? [],
+                hoverHeight,
+            };
+        }
+    }
+
+    return support;
 }
 
 export function resolveHudPlacementPreview({
@@ -75,15 +86,17 @@ export function resolveHudPlacementPreview({
     const placement = resolveBlockPlacement(garden, blockData, blockName, {
         requestedPosition: { x: position.x, y: position.z },
     });
+    const support = getHudPlacementSupport({
+        blockData,
+        blockName,
+        position,
+        stacks: garden.stacks,
+    });
 
     return {
+        baseBlocks: support.baseBlocks,
         error: placement?.valid === false ? placement.error : null,
-        hoverHeight: getHudPlacementHoverHeight({
-            blockData,
-            blockName,
-            position,
-            stacks: garden.stacks,
-        }),
+        hoverHeight: support.hoverHeight,
         isBlocked: placement?.valid !== true,
         position,
     };

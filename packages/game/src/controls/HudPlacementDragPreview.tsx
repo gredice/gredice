@@ -137,7 +137,7 @@ export function HudPlacementDragPreview() {
         }
 
         return {
-            blocks: [block],
+            blocks: [...placementPreview.baseBlocks, block],
             position: new Vector3(
                 placementPreview.position.x,
                 0,
