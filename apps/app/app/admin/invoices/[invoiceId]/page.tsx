@@ -1,5 +1,6 @@
 import { getInvoice } from '@gredice/storage';
 import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
+import { Button } from '@gredice/ui/Button';
 import {
     Card,
     CardContent,
@@ -212,6 +213,15 @@ export default async function InvoicePage({
                     }
                     actions={
                         <Row className="items-center" spacing={2}>
+                            <Button
+                                href={KnownPages.BillingPreviewInvoice(
+                                    invoice.id,
+                                )}
+                                size="sm"
+                                variant="outlined"
+                            >
+                                Pregled
+                            </Button>
                             <InvoiceActions invoice={invoice} />
                             <EntityDetailsPropertiesToggle />
                         </Row>
