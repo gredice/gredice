@@ -171,6 +171,7 @@ export async function stripeCheckout(
     data: {
         items: CheckoutItem[];
         expiresAt?: Date;
+        allowPromotionCodes?: boolean;
     },
 ) {
     try {
@@ -193,7 +194,7 @@ export async function stripeCheckout(
                 },
                 quantity: item.quantity,
             })),
-            allow_promotion_codes: true,
+            allow_promotion_codes: data.allowPromotionCodes ?? true,
             mode: 'payment',
             locale: 'hr',
             cancel_url: getReturnUrl({ status: 'cancel' }),

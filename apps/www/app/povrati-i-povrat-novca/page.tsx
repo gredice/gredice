@@ -8,7 +8,7 @@ import { KnownPages } from '../../src/KnownPages';
 export const metadata: Metadata = {
     title: 'Povrat novca',
     description:
-        'Informacije o 30-dnevnoj politici povrata novca za biljke, sorte i radnje na tržištu Hrvatske.',
+        'Informacije o povratu novca, suncokretima, rezervacijama i korekcijama Gredice salda.',
 };
 
 export default function RefundsPage() {
@@ -38,11 +38,32 @@ export default function RefundsPage() {
                             prema dogovoru sa podrškom.
                         </li>
                     </ul>
+                    <h2>Suncokreti i Gredice saldo</h2>
+                    <p>
+                        Suncokreti su prepaid Gredice bodovi koji se koriste
+                        samo unutar Gredica za vrtne akcije i povezane usluge.
+                        Ne prenose se na druge korisnike i ne mogu se zamijeniti
+                        za gotovinu osim kada je povrat zakonski obvezan ili ga
+                        Gredice izričito odobre.
+                    </p>
+                    <p>
+                        Kada naručiš akciju u vrtu, potreban broj suncokreta
+                        najprije se rezervira. Ako se akcija otkaže prije
+                        obrade, rezervacija se otpušta i suncokreti se vraćaju
+                        na raspoloživi saldo.
+                    </p>
+                    <p>
+                        Nakon što je akcija izvršena i naplaćena iz salda,
+                        eventualni povrat ili korekcija rješava se kroz
+                        korisničku podršku. Bonus suncokreti iz paketa ne
+                        predstavljaju zaseban novčani iznos i ne obećavaju
+                        automatski gotovinski povrat.
+                    </p>
                     <h2>Kako zatražiti povrat</h2>
                     <p>
                         Javi se našoj podršci i opiši razlog nezadovoljstva.
                         Nakon provjere zahtjeva predložit ćemo puni povrat novca
-                        ili suncokreta.
+                        ili korekciju Gredice salda.
                     </p>
                     <p>
                         Kontakt stranicu možeš otvoriti ovdje:{' '}

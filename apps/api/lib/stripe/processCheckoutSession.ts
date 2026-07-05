@@ -28,6 +28,7 @@ import {
     getRaisedBed,
     getRaisedBedFieldsWithEvents,
     getShoppingCart,
+    getSunflowerPackageByCode,
     getUser,
     type InvoiceForTransactionLineItem,
     isCartItemDeliverable,
@@ -35,8 +36,11 @@ import {
     markCartPaidIfAllItemsPaid,
     normalizeShoppingCartInventoryUsage,
     normalizeShoppingCartScheduledDates,
+    SunflowerPackageAlreadyPurchasedError,
     setCartItemPaid,
     spendSunflowers,
+    sunflowerPackageEntityTypeName,
+    topUpSunflowerPackage,
     updateRaisedBed,
     upsertRaisedBedField,
     withStripePaymentProcessingLock,
@@ -74,6 +78,7 @@ export type ProcessCheckoutSessionDependencies = {
     createTransaction: typeof createTransaction;
     earnSunflowersForPayment: typeof earnSunflowersForPayment;
     ensureInvoiceForTransaction: typeof ensureInvoiceForTransaction;
+    getSunflowerPackageByCode: typeof getSunflowerPackageByCode;
     getCompletedTransactionByStripePaymentId: typeof getCompletedTransactionByStripePaymentId;
     getDefaultShoppingCartScheduledDate: typeof getDefaultShoppingCartScheduledDate;
     getInventory: typeof getInventory;
@@ -89,6 +94,7 @@ export type ProcessCheckoutSessionDependencies = {
     normalizeShoppingCartScheduledDates: typeof normalizeShoppingCartScheduledDates;
     setCartItemPaid: typeof setCartItemPaid;
     spendSunflowers: typeof spendSunflowers;
+    topUpSunflowerPackage: typeof topUpSunflowerPackage;
     updateRaisedBed: typeof updateRaisedBed;
     upsertRaisedBedField: typeof upsertRaisedBedField;
     withStripePaymentProcessingLock: typeof withStripePaymentProcessingLock;
@@ -121,6 +127,7 @@ const realDependencies: ProcessCheckoutSessionDependencies = {
     createTransaction,
     earnSunflowersForPayment,
     ensureInvoiceForTransaction,
+    getSunflowerPackageByCode,
     getCompletedTransactionByStripePaymentId,
     getDefaultShoppingCartScheduledDate,
     getInventory,
@@ -136,6 +143,7 @@ const realDependencies: ProcessCheckoutSessionDependencies = {
     normalizeShoppingCartScheduledDates,
     setCartItemPaid,
     spendSunflowers,
+    topUpSunflowerPackage,
     updateRaisedBed,
     upsertRaisedBedField,
     withStripePaymentProcessingLock,
@@ -172,6 +180,140 @@ function sortObjectKeys(obj: unknown): unknown {
             result[key] = sortObjectKeys((obj as Record<string, unknown>)[key]);
             return result;
         }, {});
+}
+
+type PaidCheckoutSession = NonNullable<
+    Awaited<ReturnType<typeof getStripeCheckoutSession>>
+>;
+type StripeCheckoutLineItem = PaidCheckoutSession['lineItems']['data'][number];
+
+type SunflowerPackageCheckoutLineItem = {
+    lineItemId: string;
+    productName: string | null;
+    amountTotal: number;
+    quantity: number;
+    accountId: string;
+    userId: string;
+    entityId: number;
+    entityTypeName: string;
+    packageCode: string;
+    packageRole: string;
+    sunflowers: number;
+    baseSunflowers: number;
+    bonusSunflowers: number;
+    priceCents: number;
+    currency: string;
+};
+
+function readMetadataString(
+    metadata: Record<string, unknown> | undefined,
+    key: string,
+) {
+    const value = metadata?.[key];
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+        return trimmed.length > 0 ? trimmed : null;
+    }
+    if (typeof value === 'number' && Number.isFinite(value)) {
+        return String(value);
+    }
+    return null;
+}
+
+function readMetadataInteger(
+    metadata: Record<string, unknown> | undefined,
+    key: string,
+) {
+    const value = metadata?.[key];
+    if (typeof value === 'number' && Number.isInteger(value)) {
+        return value;
+    }
+    if (typeof value === 'string' && /^\d+$/u.test(value.trim())) {
+        return Number.parseInt(value.trim(), 10);
+    }
+    return null;
+}
+
+function parseSunflowerPackageCheckoutLineItem(
+    item: StripeCheckoutLineItem,
+): SunflowerPackageCheckoutLineItem | null {
+    const product = item.price?.product;
+    if (typeof product === 'string' || product?.deleted) {
+        return null;
+    }
+
+    const metadata = product?.metadata;
+    if (metadata?.kind !== 'sunflowerPackage') {
+        return null;
+    }
+
+    const accountId = readMetadataString(metadata, 'accountId');
+    const userId = readMetadataString(metadata, 'userId');
+    const entityTypeName = readMetadataString(metadata, 'entityTypeName');
+    const packageCode = readMetadataString(metadata, 'packageCode');
+    const packageRole = readMetadataString(metadata, 'packageRole');
+    const currency = readMetadataString(metadata, 'currency');
+    const entityId = readMetadataInteger(metadata, 'entityId');
+    const sunflowers = readMetadataInteger(metadata, 'sunflowers');
+    const baseSunflowers = readMetadataInteger(metadata, 'baseSunflowers');
+    const bonusSunflowers = readMetadataInteger(metadata, 'bonusSunflowers');
+    const priceCents = readMetadataInteger(metadata, 'priceCents');
+
+    if (
+        !accountId ||
+        !userId ||
+        !entityTypeName ||
+        !packageCode ||
+        !packageRole ||
+        !currency ||
+        entityId === null ||
+        sunflowers === null ||
+        baseSunflowers === null ||
+        bonusSunflowers === null ||
+        priceCents === null ||
+        typeof item.amount_total !== 'number'
+    ) {
+        return null;
+    }
+
+    return {
+        lineItemId: item.id,
+        productName: typeof product?.name === 'string' ? product.name : null,
+        amountTotal: item.amount_total,
+        quantity: item.quantity ?? 1,
+        accountId,
+        userId,
+        entityId,
+        entityTypeName,
+        packageCode,
+        packageRole,
+        sunflowers,
+        baseSunflowers,
+        bonusSunflowers,
+        priceCents,
+        currency,
+    };
+}
+
+function hasSunflowerPackageCheckoutMetadata(item: StripeCheckoutLineItem) {
+    const product = item.price?.product;
+    if (typeof product === 'string' || product?.deleted) {
+        return false;
+    }
+    return product?.metadata?.kind === 'sunflowerPackage';
+}
+
+function getSunflowerPackageCheckoutLineItems(session: PaidCheckoutSession) {
+    const packageLineItems = (session.lineItems?.data ?? []).filter(
+        hasSunflowerPackageCheckoutMetadata,
+    );
+    const items = packageLineItems
+        .map(parseSunflowerPackageCheckoutLineItem)
+        .filter((item) => item !== null);
+    return {
+        items,
+        malformedCount: packageLineItems.length - items.length,
+    };
 }
 
 async function processNonStripeCartItems(
@@ -412,6 +554,370 @@ export async function processCheckoutSession(
     );
 }
 
+async function recordSunflowerPackageFulfillmentFailure({
+    accountId,
+    checkoutSessionId,
+    dependencies,
+    packageCode,
+    reason,
+}: {
+    accountId?: string | null;
+    checkoutSessionId: string;
+    dependencies: ProcessCheckoutSessionDependencies;
+    packageCode?: string | null;
+    reason: string;
+}) {
+    console.warn('Sunflower package fulfillment failed', {
+        accountId,
+        checkoutSessionId,
+        packageCode,
+        reason,
+    });
+
+    if (!accountId) {
+        return;
+    }
+
+    (await dependencies.getPostHogClient()).capture({
+        distinctId: accountId,
+        event: 'sunflower_package_fulfillment_failed',
+        properties: {
+            checkout_session_id: checkoutSessionId,
+            package_code: packageCode ?? null,
+            reason,
+        },
+    });
+}
+
+async function processSunflowerPackageCheckoutSession({
+    checkoutSessionId,
+    dependencies,
+    existingTransactionId,
+    packageItem,
+    session,
+}: {
+    checkoutSessionId: string;
+    dependencies: ProcessCheckoutSessionDependencies;
+    existingTransactionId?: number;
+    packageItem: SunflowerPackageCheckoutLineItem;
+    session: PaidCheckoutSession;
+}) {
+    if (session.amountTotal !== packageItem.amountTotal) {
+        await recordSunflowerPackageFulfillmentFailure({
+            accountId: packageItem.accountId,
+            checkoutSessionId,
+            dependencies,
+            packageCode: packageItem.packageCode,
+            reason: 'session_amount_mismatch',
+        });
+        return;
+    }
+
+    const paidAmountCents = packageItem.amountTotal;
+    const packageData = await dependencies.getSunflowerPackageByCode(
+        packageItem.packageCode,
+    );
+    if (!packageData) {
+        await recordSunflowerPackageFulfillmentFailure({
+            accountId: packageItem.accountId,
+            checkoutSessionId,
+            dependencies,
+            packageCode: packageItem.packageCode,
+            reason: 'package_not_available',
+        });
+        return;
+    }
+
+    const mismatches = [
+        packageItem.entityTypeName === sunflowerPackageEntityTypeName
+            ? null
+            : 'entity_type',
+        packageItem.entityId === packageData.entityId ? null : 'entity_id',
+        packageItem.packageRole === packageData.role ? null : 'role',
+        packageItem.currency === packageData.currency ? null : 'currency',
+        packageItem.priceCents === packageData.priceCents
+            ? null
+            : 'price_cents',
+        paidAmountCents > 0 && paidAmountCents <= packageData.priceCents
+            ? null
+            : 'line_amount',
+        packageItem.sunflowers === packageData.sunflowers ? null : 'sunflowers',
+        packageItem.baseSunflowers === packageData.baseSunflowers
+            ? null
+            : 'base_sunflowers',
+        packageItem.bonusSunflowers === packageData.bonusSunflowers
+            ? null
+            : 'bonus_sunflowers',
+    ].filter((mismatch) => mismatch !== null);
+
+    if (mismatches.length > 0 || packageData.currency !== 'eur') {
+        await recordSunflowerPackageFulfillmentFailure({
+            accountId: packageItem.accountId,
+            checkoutSessionId,
+            dependencies,
+            packageCode: packageItem.packageCode,
+            reason: `metadata_mismatch:${mismatches.join(',')}`,
+        });
+        return;
+    }
+
+    try {
+        const oneTimeAccountPackage =
+            packageData.isOneTime && packageData.oneTimeScope === 'account';
+        const idempotencyKey = `stripe:${session.id}:sunflowerPackage:${packageData.code}`;
+        const ledgerMetadata = {
+            checkoutSessionId: session.id,
+            lineItemId: packageItem.lineItemId,
+            packageRole: packageData.role,
+            catalogPriceCents: packageData.priceCents,
+            paidAmountCents,
+        };
+        let creditedSunflowers = packageData.sunflowers;
+        let creditedBonusSunflowers = packageData.bonusSunflowers;
+        let duplicateOneTimePurchase = false;
+        let topUpResult: Awaited<
+            ReturnType<
+                ProcessCheckoutSessionDependencies['topUpSunflowerPackage']
+            >
+        >;
+        try {
+            topUpResult = await dependencies.topUpSunflowerPackage({
+                accountId: packageItem.accountId,
+                packageCode: packageData.code,
+                packageEntityId: packageData.entityId,
+                sunflowers: packageData.sunflowers,
+                bonusSunflowers: packageData.bonusSunflowers,
+                priceCents: paidAmountCents,
+                idempotencyKey,
+                enforceOneTime: oneTimeAccountPackage,
+                sourceType: 'stripeCheckoutSession',
+                sourceId: session.id,
+                reason: `sunflowerPackage:${packageData.code}`,
+                metadata: ledgerMetadata,
+            });
+        } catch (error) {
+            if (
+                !(error instanceof SunflowerPackageAlreadyPurchasedError) ||
+                !oneTimeAccountPackage
+            ) {
+                throw error;
+            }
+            if (packageData.baseSunflowers <= 0) {
+                await recordSunflowerPackageFulfillmentFailure({
+                    accountId: packageItem.accountId,
+                    checkoutSessionId,
+                    dependencies,
+                    packageCode: packageItem.packageCode,
+                    reason: 'already_purchased',
+                });
+                return;
+            }
+
+            console.warn(
+                'One-time sunflower package was already purchased before a paid duplicate session fulfilled; crediting paid base sunflowers without duplicate bonus.',
+                {
+                    accountId: packageItem.accountId,
+                    checkoutSessionId,
+                    packageCode: packageData.code,
+                },
+            );
+            duplicateOneTimePurchase = true;
+            creditedSunflowers = packageData.baseSunflowers;
+            creditedBonusSunflowers = 0;
+            topUpResult = await dependencies.topUpSunflowerPackage({
+                accountId: packageItem.accountId,
+                packageCode: packageData.code,
+                packageEntityId: packageData.entityId,
+                sunflowers: creditedSunflowers,
+                bonusSunflowers: 0,
+                priceCents: paidAmountCents,
+                idempotencyKey: `${idempotencyKey}:duplicate_paid_base`,
+                enforceOneTime: false,
+                sourceType: 'stripeCheckoutSession',
+                sourceId: session.id,
+                reason: `sunflowerPackage:${packageData.code}:duplicatePaid`,
+                metadata: {
+                    ...ledgerMetadata,
+                    duplicateOneTimePurchase: true,
+                    originalSunflowers: packageData.sunflowers,
+                    originalBonusSunflowers: packageData.bonusSunflowers,
+                },
+            });
+        }
+
+        const transactionId =
+            existingTransactionId ??
+            (await dependencies.createTransaction({
+                accountId: packageItem.accountId,
+                amount: paidAmountCents,
+                stripePaymentId: session.id,
+                status: 'completed',
+                currency: 'eur',
+            }));
+
+        if (existingTransactionId) {
+            console.info(
+                `Checkout session ${checkoutSessionId} already has transaction ${existingTransactionId}; sunflower package ledger replayed idempotently.`,
+            );
+            return;
+        }
+
+        const customer = await dependencies.getUser(packageItem.userId);
+        const invoiceLineItem = dependencies.buildCheckoutInvoiceLineItem({
+            amountTotalCents: packageItem.amountTotal,
+            entityId: packageData.entityId.toString(),
+            entityTypeName: sunflowerPackageEntityTypeName,
+            metadataName: packageData.name,
+            productName: packageItem.productName ?? packageData.name,
+            quantity: packageItem.quantity,
+        });
+
+        if (dependencies.isBillingAutomationEnabled() && invoiceLineItem) {
+            try {
+                const invoiceResult =
+                    await dependencies.ensureInvoiceForTransaction({
+                        transactionId,
+                        billingSnapshot:
+                            dependencies.buildCheckoutInvoiceBillingSnapshot({
+                                customerEmail: customer?.userName,
+                                customerName: customer?.displayName,
+                            }),
+                        items: [invoiceLineItem],
+                    });
+                if (invoiceResult.status === 'skipped') {
+                    console.warn('Sunflower package invoice skipped', {
+                        checkoutSessionId,
+                        reason: invoiceResult.reason,
+                        transactionId,
+                    });
+                } else {
+                    const receiptResult =
+                        await dependencies.issueReceiptForPaidInvoice({
+                            invoiceId: invoiceResult.invoiceId,
+                            paymentReference: session.id,
+                        });
+                    if (receiptResult.status === 'skipped') {
+                        console.warn('Sunflower package receipt skipped', {
+                            checkoutSessionId,
+                            invoiceId: invoiceResult.invoiceId,
+                            reason: receiptResult.reason,
+                            transactionId,
+                        });
+                    } else {
+                        const fiscalizationResult =
+                            await dependencies.fiscalizeReceipt(
+                                receiptResult.receiptId,
+                            );
+                        const hasFiscalizedReceipt =
+                            fiscalizationResult.status === 'confirmed' ||
+                            fiscalizationResult.status === 'existing';
+                        if (fiscalizationResult.status === 'failed') {
+                            console.warn(
+                                'Sunflower package receipt fiscalization failed',
+                                {
+                                    checkoutSessionId,
+                                    reason: fiscalizationResult.reason,
+                                    receiptId: receiptResult.receiptId,
+                                    transactionId,
+                                },
+                            );
+                        } else if (fiscalizationResult.status === 'skipped') {
+                            console.warn(
+                                'Sunflower package receipt fiscalization skipped',
+                                {
+                                    checkoutSessionId,
+                                    reason: fiscalizationResult.reason,
+                                    receiptId: receiptResult.receiptId,
+                                    transactionId,
+                                },
+                            );
+                        }
+
+                        await dependencies.notifyBillingDocumentsEmail({
+                            to: customer?.userName,
+                            checkoutSessionId: session.id,
+                            invoiceId: invoiceResult.invoiceId,
+                            invoiceNumber: invoiceResult.invoiceNumber,
+                            receiptId: hasFiscalizedReceipt
+                                ? receiptResult.receiptId
+                                : null,
+                            receiptNumber: hasFiscalizedReceipt
+                                ? receiptResult.yearReceiptNumber
+                                : null,
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error(
+                    'Sunflower package billing document automation failed',
+                    {
+                        checkoutSessionId,
+                        error,
+                        transactionId,
+                    },
+                );
+            }
+        }
+
+        const purchasedItems = [
+            {
+                name: packageData.name,
+                quantity: 1,
+                amountSubtotal: paidAmountCents,
+                currency: 'eur',
+            },
+        ];
+        await dependencies.notifyOrderConfirmationEmail({
+            to: customer?.userName,
+            cartId: null,
+            checkoutSessionId: session.id,
+            items: purchasedItems,
+            totalAmountCents: paidAmountCents,
+            currency: 'eur',
+        });
+        await dependencies.notifyPurchase({
+            accountId: packageItem.accountId,
+            amountTotal: paidAmountCents,
+            checkoutSessionId: session.id,
+            customerEmail: customer?.userName ?? null,
+            items: purchasedItems,
+        });
+
+        const ledgerEntryIds = [
+            topUpResult.topUp.entry.id,
+            topUpResult.bonus?.entry.id,
+        ].filter((id) => typeof id === 'number');
+        (await dependencies.getPostHogClient()).capture({
+            distinctId: packageItem.accountId,
+            event: 'sunflower_package_fulfilled',
+            properties: {
+                checkout_session_id: session.id,
+                transaction_id: transactionId,
+                package_code: packageData.code,
+                package_role: packageData.role,
+                price_cents: packageData.priceCents,
+                paid_amount_cents: paidAmountCents,
+                sunflowers: creditedSunflowers,
+                bonus_sunflowers: creditedBonusSunflowers,
+                duplicate_one_time_purchase: duplicateOneTimePurchase,
+                ledger_entry_ids: ledgerEntryIds,
+            },
+        });
+    } catch (error) {
+        if (error instanceof SunflowerPackageAlreadyPurchasedError) {
+            await recordSunflowerPackageFulfillmentFailure({
+                accountId: packageItem.accountId,
+                checkoutSessionId,
+                dependencies,
+                packageCode: packageItem.packageCode,
+                reason: 'already_purchased',
+            });
+            return;
+        }
+        throw error;
+    }
+}
+
 async function processPaidCheckoutSession(
     checkoutSessionId: string,
     session: NonNullable<Awaited<ReturnType<typeof getStripeCheckoutSession>>>,
@@ -419,6 +925,39 @@ async function processPaidCheckoutSession(
 ) {
     const alreadyProcessed =
         await dependencies.getCompletedTransactionByStripePaymentId(session.id);
+    const sunflowerPackageCheckout =
+        getSunflowerPackageCheckoutLineItems(session);
+    if (sunflowerPackageCheckout.malformedCount > 0) {
+        await recordSunflowerPackageFulfillmentFailure({
+            checkoutSessionId,
+            dependencies,
+            packageCode: null,
+            reason: 'malformed_package_metadata',
+        });
+        return;
+    }
+    const sunflowerPackageLineItems = sunflowerPackageCheckout.items;
+    if (sunflowerPackageLineItems.length > 1) {
+        await recordSunflowerPackageFulfillmentFailure({
+            checkoutSessionId,
+            dependencies,
+            packageCode: null,
+            reason: 'multiple_package_line_items',
+        });
+        return;
+    }
+    const sunflowerPackageLineItem = sunflowerPackageLineItems[0];
+    if (sunflowerPackageLineItem) {
+        await processSunflowerPackageCheckoutSession({
+            checkoutSessionId,
+            dependencies,
+            existingTransactionId: alreadyProcessed?.id,
+            packageItem: sunflowerPackageLineItem,
+            session,
+        });
+        return;
+    }
+
     if (alreadyProcessed) {
         console.info(
             `Checkout session ${checkoutSessionId} already processed; skipping.`,

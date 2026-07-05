@@ -21,6 +21,7 @@ import {
     getGardenBlocks,
     getOrCreateSunflowerDropSpawn,
     getReferralAccountSummary,
+    getSunflowerPackageEligibilityForAccount,
     getSunflowers,
     getSunflowersHistory,
     getTutorialChecklistState,
@@ -48,7 +49,7 @@ import AccountDeleteConfirmationTemplate from '@gredice/transactional/emails/Acc
 import { addDays, differenceInCalendarDays, startOfDay } from 'date-fns';
 import { Hono } from 'hono';
 import { setCookie as honoSetCookie } from 'hono/cookie';
-import { describeRoute, validator as zValidator } from 'hono-openapi';
+import { describeRoute, resolver, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import { createJwt, verifyJwt } from '../../../lib/auth/auth';
 import {
@@ -64,6 +65,10 @@ import {
     authValidator,
 } from '../../../lib/hono/authValidator';
 import { getPostHogClient } from '../../../lib/posthog-server';
+import {
+    buildSunflowerPackageCatalogResponse,
+    sunflowerPackageCatalogResponseSchema,
+} from '../../../lib/sunflowers/packageCatalog';
 import { getBjelovarForecast } from '../../../lib/weather/forecast';
 import { populateWeatherFromSymbol } from '../../../lib/weather/populateWeatherFromSymbol';
 import { findClosestForecastEntry } from '../../../lib/weather/weatherNowContract';
@@ -556,6 +561,33 @@ const app = new Hono<{ Variables: AuthVariables }>()
         },
     )
 
+    .get(
+        '/current/sunflowers/packages',
+        describeRoute({
+            description:
+                'Get active sunflower packages with eligibility for the current account',
+            security: authSecurity,
+            responses: {
+                200: {
+                    description: 'Active sunflower package catalog',
+                    content: {
+                        'application/json': {
+                            schema: resolver(
+                                sunflowerPackageCatalogResponseSchema,
+                            ),
+                        },
+                    },
+                },
+            },
+        }),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId } = context.get('authContext');
+            const packages =
+                await getSunflowerPackageEligibilityForAccount(accountId);
+            return context.json(buildSunflowerPackageCatalogResponse(packages));
+        },
+    )
     .get(
         '/current/sunflowers',
         describeRoute({

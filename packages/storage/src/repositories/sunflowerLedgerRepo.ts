@@ -75,6 +75,7 @@ export type SunflowerPackageTopUpInput = LedgerSourceInput & {
     bonusSunflowers?: number;
     priceCents?: number | null;
     idempotencyKey: string;
+    enforceOneTime?: boolean;
 };
 
 export type ReserveSunflowersInput = LedgerSourceInput & {
@@ -129,6 +130,16 @@ function assertNonZeroInteger(fieldName: string, value: number) {
 function assertReason(reason: string | null | undefined) {
     if (!reason || reason.trim().length === 0) {
         throw new Error('reason is required.');
+    }
+}
+
+export class SunflowerPackageAlreadyPurchasedError extends Error {
+    constructor(
+        public readonly accountId: string,
+        public readonly packageCode: string,
+    ) {
+        super(`Sunflower package ${packageCode} was already purchased.`);
+        this.name = 'SunflowerPackageAlreadyPurchasedError';
     }
 }
 
@@ -357,6 +368,27 @@ export async function topUpSunflowerPackage(input: SunflowerPackageTopUpInput) {
                     ? { status: 'existing' as const, entry: existingBonus }
                     : null,
             };
+        }
+
+        if (input.enforceOneTime) {
+            const previousTopUp =
+                await tx.query.sunflowerLedgerEntries.findFirst({
+                    where: and(
+                        eq(sunflowerLedgerEntries.accountId, input.accountId),
+                        eq(sunflowerLedgerEntries.entryType, 'top_up'),
+                        eq(
+                            sunflowerLedgerEntries.packageCode,
+                            input.packageCode,
+                        ),
+                        eq(sunflowerLedgerEntries.isDeleted, false),
+                    ),
+                });
+            if (previousTopUp) {
+                throw new SunflowerPackageAlreadyPurchasedError(
+                    input.accountId,
+                    input.packageCode,
+                );
+            }
         }
 
         const topUp = {
