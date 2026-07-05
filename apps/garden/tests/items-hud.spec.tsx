@@ -11,7 +11,7 @@ import {
     LocalSandboxItemsHudStory,
     LowSunflowerBalanceItemsHudDragStateStory,
     LowSunflowerBalanceItemsHudStory,
-    SandboxBlockTrashDropTargetStory,
+    SandboxItemsHudDropTargetStory,
     SandboxItemsHudStory,
 } from './ItemsHudStory';
 
@@ -225,35 +225,6 @@ test('controls instructions clear the item picker on tablet layouts', async ({
     );
 });
 
-test('sandbox trash target appears centered above item picker while dragging', async ({
-    mount,
-    page,
-}) => {
-    await page.setViewportSize(TABLET_VIEWPORT);
-    await mount(<SandboxBlockTrashDropTargetStory />);
-
-    const picker = page.locator('[data-items-hud]');
-    const trashTarget = page.locator(
-        '[data-sandbox-block-trash-drop-target="true"]',
-    );
-    await expect(picker).toBeVisible();
-    await expect(trashTarget).toBeVisible();
-
-    const pickerBox = await picker.boundingBox();
-    const trashBox = await trashTarget.boundingBox();
-    expect(pickerBox).not.toBeNull();
-    expect(trashBox).not.toBeNull();
-
-    const trashCenter = (trashBox?.x ?? 0) + (trashBox?.width ?? 0) / 2;
-    expect(
-        Math.abs(trashCenter - TABLET_VIEWPORT.width / 2),
-    ).toBeLessThanOrEqual(1);
-    expect((trashBox?.y ?? 0) + (trashBox?.height ?? 0)).toBeLessThanOrEqual(
-        (pickerBox?.y ?? 0) - 8,
-    );
-    await expect(trashTarget).toHaveClass(/bg-red-600/u);
-});
-
 test('item picker does not show the recycle drop target while idle', async ({
     mount,
     page,
@@ -280,6 +251,21 @@ test('item picker reveals a recycle drop target during pickup', async ({
         'false',
     );
     await expect(page.getByText('Recikliranje')).toBeVisible();
+});
+
+test('sandbox item picker reveals a delete drop target during pickup', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<SandboxItemsHudDropTargetStory />);
+
+    const picker = page.locator('[data-items-hud]');
+    await expect(picker).toHaveAttribute('data-items-hud-drop-target', 'true');
+    await expect(page.getByText('Obriši')).toBeVisible();
+    await expect(
+        page.locator('[data-sandbox-block-trash-drop-target="true"]'),
+    ).toHaveCount(0);
 });
 
 test('item picker highlights while the picked block is over the drop target', async ({

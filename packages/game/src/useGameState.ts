@@ -307,8 +307,6 @@ export type GameState = {
     setStationaryPickupOutlineTarget: (
         target: ActiveDragPreviewTarget | null,
     ) => void;
-    sandboxBlockTrashDropTargetActive: boolean;
-    setSandboxBlockTrashDropTargetActive: (active: boolean) => void;
     itemsHudDropTargetActive: boolean;
     setItemsHudDropTargetActive: (active: boolean) => void;
     activeDragPreview: ActiveDragPreview | null;
@@ -594,16 +592,6 @@ export function createGameState({
         stationaryPickupOutlineTarget: null,
         setStationaryPickupOutlineTarget: (stationaryPickupOutlineTarget) =>
             set({ stationaryPickupOutlineTarget }),
-        sandboxBlockTrashDropTargetActive: false,
-        setSandboxBlockTrashDropTargetActive: (
-            sandboxBlockTrashDropTargetActive,
-        ) =>
-            set((state) =>
-                state.sandboxBlockTrashDropTargetActive ===
-                sandboxBlockTrashDropTargetActive
-                    ? state
-                    : { sandboxBlockTrashDropTargetActive },
-            ),
         itemsHudDropTargetActive: false,
         setItemsHudDropTargetActive: (itemsHudDropTargetActive) =>
             set((state) =>
