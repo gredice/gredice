@@ -9,6 +9,7 @@ import {
 } from './DeliveryDestinationDetails';
 import { DeliveryRequestActionButtons } from './DeliveryRequestActionButtons';
 import { DeliveryRequestContents } from './DeliveryRequestContents';
+import { DeliveryRequestGroupStatusAction } from './DeliveryRequestGroupStatusAction';
 import type { DeliveryRequestGroup } from './DeliveryRequestGroups';
 import type { DeliveryRequestDetails } from './DeliveryRequestListTypes';
 import { DeliveryRequestSlotAction } from './DeliveryRequestSlotAction';
@@ -44,32 +45,40 @@ export function DeliveryRequestListItem({
 
     const destinationTitle = getDeliveryRequestDestinationTitle(primaryRequest);
     const groupedRequestCount = group.requests.length;
+    const groupActionRequests = group.requests.map(getActionRequest);
 
     return (
-        <li className="group transition-colors hover:bg-muted/40">
-            <div className="px-3 py-3 sm:px-4">
-                <Stack spacing={1} className="min-w-0 flex-1">
-                    <div className="flex min-w-0 flex-wrap items-center gap-2">
-                        <Typography
-                            level="body1"
-                            component="h3"
-                            semiBold
-                            className="min-w-0 truncate"
-                        >
-                            {destinationTitle}
-                        </Typography>
-                        <DeliveryRequestModeChip
-                            mode={primaryRequest.mode}
-                            size="sm"
+        <li className="group border-l-4 border-l-primary/60 transition-colors hover:bg-muted/30">
+            <div className="bg-muted/35 px-3 py-3 sm:px-4">
+                <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <Stack spacing={1} className="min-w-0 flex-1">
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                            <Typography
+                                level="body1"
+                                component="h3"
+                                semiBold
+                                className="min-w-0 truncate"
+                            >
+                                {destinationTitle}
+                            </Typography>
+                            <DeliveryRequestModeChip
+                                mode={primaryRequest.mode}
+                                size="sm"
+                            />
+                            {groupedRequestCount > 1 ? (
+                                <Chip color="neutral" size="sm" variant="soft">
+                                    {groupedRequestCount} zahtjeva
+                                </Chip>
+                            ) : null}
+                        </div>
+                        <DeliveryDestinationDetails request={primaryRequest} />
+                    </Stack>
+                    <div className="flex shrink-0 justify-start lg:justify-end">
+                        <DeliveryRequestGroupStatusAction
+                            requests={groupActionRequests}
                         />
-                        {groupedRequestCount > 1 ? (
-                            <Chip color="neutral" size="sm" variant="soft">
-                                {groupedRequestCount} zahtjeva
-                            </Chip>
-                        ) : null}
                     </div>
-                    <DeliveryDestinationDetails request={primaryRequest} />
-                </Stack>
+                </div>
             </div>
             <ul className="divide-y border-t bg-background/60">
                 {group.requests.map((request) => {

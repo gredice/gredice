@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, ShoppingCart, Truck } from '@gredice/ui/icons';
+import { Check, ShoppingCart, Truck, Undo } from '@gredice/ui/icons';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -13,6 +13,7 @@ import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { DeliveryRequestStatusChip } from '../components';
 import { updateDeliveryRequestStatusAction } from './actions';
+import { getNextDeliveryRequestStatus } from './DeliveryRequestStatusFlow';
 import type { DeliveryRequestActionData } from './DeliveryRequestTypes';
 
 type NextStatusAction = {
@@ -22,34 +23,44 @@ type NextStatusAction = {
 };
 
 function getNextStatusAction(state: string): NextStatusAction | undefined {
-    switch (state) {
-        case 'pending':
+    const nextStatus = getNextDeliveryRequestStatus(state);
+
+    switch (nextStatus) {
+        case 'confirmed':
             return {
                 status: 'confirmed',
                 label: 'Potvrdi',
                 icon: <Check className="size-4 shrink-0" />,
             };
-        case 'confirmed':
+        case 'preparing':
             return {
                 status: 'preparing',
                 label: 'U pripremi',
                 icon: <ShoppingCart className="size-4 shrink-0" />,
             };
-        case 'preparing':
+        case 'ready':
             return {
                 status: 'ready',
                 label: 'Spreman',
                 icon: <Truck className="size-4 shrink-0" />,
             };
-        case 'ready':
+        case 'fulfilled':
             return {
                 status: 'fulfilled',
                 label: 'Ispunjen',
                 icon: <Check className="size-4 shrink-0" />,
             };
-        default:
-            return undefined;
     }
+
+    if (state === 'cancelled') {
+        return {
+            status: 'confirmed',
+            label: 'Vrati u potvrđeno',
+            icon: <Undo className="size-4 shrink-0" />,
+        };
+    }
+
+    return undefined;
 }
 
 export function DeliveryRequestStatusAction({
