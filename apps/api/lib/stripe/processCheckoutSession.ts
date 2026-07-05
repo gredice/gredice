@@ -16,6 +16,7 @@ import {
     createOperation,
     createTransaction,
     earnSunflowersForPayment,
+    ensureInvoiceForTransaction,
     getCompletedTransactionByStripePaymentId,
     getDefaultShoppingCartScheduledDate,
     getInventory,
@@ -24,6 +25,7 @@ import {
     getRaisedBedFieldsWithEvents,
     getShoppingCart,
     getUser,
+    type InvoiceForTransactionLineItem,
     isCartItemDeliverable,
     knownEvents,
     markCartPaidIfAllItemsPaid,
@@ -36,6 +38,11 @@ import {
     withStripePaymentProcessingLock,
 } from '@gredice/storage';
 import { getStripeCheckoutSession } from '@gredice/stripe/server';
+import { isBillingAutomationEnabled } from '../billing/automationFlag';
+import {
+    buildCheckoutInvoiceBillingSnapshot,
+    buildCheckoutInvoiceLineItem,
+} from '../billing/checkoutInvoiceDraft';
 import {
     getCartInfo,
     type ShoppingCartItemWithShopData,
@@ -61,6 +68,7 @@ export type ProcessCheckoutSessionDependencies = {
     createOperation: typeof createOperation;
     createTransaction: typeof createTransaction;
     earnSunflowersForPayment: typeof earnSunflowersForPayment;
+    ensureInvoiceForTransaction: typeof ensureInvoiceForTransaction;
     getCompletedTransactionByStripePaymentId: typeof getCompletedTransactionByStripePaymentId;
     getDefaultShoppingCartScheduledDate: typeof getDefaultShoppingCartScheduledDate;
     getInventory: typeof getInventory;
@@ -80,6 +88,9 @@ export type ProcessCheckoutSessionDependencies = {
     upsertRaisedBedField: typeof upsertRaisedBedField;
     withStripePaymentProcessingLock: typeof withStripePaymentProcessingLock;
     getStripeCheckoutSession: typeof getStripeCheckoutSession;
+    isBillingAutomationEnabled: typeof isBillingAutomationEnabled;
+    buildCheckoutInvoiceBillingSnapshot: typeof buildCheckoutInvoiceBillingSnapshot;
+    buildCheckoutInvoiceLineItem: typeof buildCheckoutInvoiceLineItem;
     getCartInfo: typeof getCartInfo;
     calculateSunflowerAmount: typeof calculateSunflowerAmount;
     buildOrderConfirmationItems: typeof buildOrderConfirmationItems;
@@ -101,6 +112,7 @@ const realDependencies: ProcessCheckoutSessionDependencies = {
     createOperation,
     createTransaction,
     earnSunflowersForPayment,
+    ensureInvoiceForTransaction,
     getCompletedTransactionByStripePaymentId,
     getDefaultShoppingCartScheduledDate,
     getInventory,
@@ -120,6 +132,9 @@ const realDependencies: ProcessCheckoutSessionDependencies = {
     upsertRaisedBedField,
     withStripePaymentProcessingLock,
     getStripeCheckoutSession,
+    isBillingAutomationEnabled,
+    buildCheckoutInvoiceBillingSnapshot,
+    buildCheckoutInvoiceLineItem,
     getCartInfo,
     calculateSunflowerAmount,
     buildOrderConfirmationItems,
@@ -414,6 +429,7 @@ async function processPaidCheckoutSession(
     const scheduledDeliveryEmailKeys = new Set<string>();
     let accountId: string | undefined;
     let customerUserId: string | undefined;
+    const invoiceLineItems: InvoiceForTransactionLineItem[] = [];
     for (const item of session.lineItems?.data ?? []) {
         console.debug(`Item: ${item.id} Quantity: ${item.quantity}`);
 
@@ -594,6 +610,25 @@ async function processPaidCheckoutSession(
                 },
                 dependencies,
             );
+
+            const invoiceLineItem = dependencies.buildCheckoutInvoiceLineItem({
+                amountTotalCents: item.amount_total,
+                entityId: itemData.entityId,
+                entityTypeName: itemData.entityTypeName,
+                metadataName: product?.metadata?.name ?? null,
+                outletOfferId: itemData.outletOfferId,
+                outletSowingDate: itemData.outletSowingDate,
+                productName:
+                    typeof product?.name === 'string' ? product.name : null,
+                quantity: item.quantity ?? null,
+            });
+            if (invoiceLineItem) {
+                invoiceLineItems.push(invoiceLineItem);
+            } else {
+                console.warn(
+                    `Missing invoice line amount for Stripe line item ${item.id} in session ${checkoutSessionId}.`,
+                );
+            }
         } catch (error) {
             console.error(
                 `Error processing cart item ${itemData.cartItemId} in session ${checkoutSessionId}`,
@@ -661,19 +696,53 @@ async function processPaidCheckoutSession(
         }
     }
 
+    const customer = customerUserId
+        ? await dependencies.getUser(customerUserId)
+        : null;
+
     // Update all affected carts to mark them as paid if all items are paid
-    await Promise.all([
-        ...uniqueAffectedCartIds.map(dependencies.markCartPaidIfAllItemsPaid),
-        accountId && session.amountTotal
-            ? dependencies.createTransaction({
+    await Promise.all(
+        uniqueAffectedCartIds.map(dependencies.markCartPaidIfAllItemsPaid),
+    );
+
+    const transactionId =
+        accountId && typeof session.amountTotal === 'number'
+            ? await dependencies.createTransaction({
                   accountId,
                   amount: session.amountTotal,
                   stripePaymentId: session.id,
                   status: 'completed',
                   currency: 'eur',
               })
-            : undefined,
-    ]);
+            : undefined;
+
+    if (transactionId && dependencies.isBillingAutomationEnabled()) {
+        try {
+            const invoiceResult =
+                await dependencies.ensureInvoiceForTransaction({
+                    transactionId,
+                    billingSnapshot:
+                        dependencies.buildCheckoutInvoiceBillingSnapshot({
+                            customerEmail: customer?.userName,
+                            customerName: customer?.displayName,
+                        }),
+                    items: invoiceLineItems,
+                });
+            if (invoiceResult.status === 'skipped') {
+                console.warn('Checkout invoice generation skipped', {
+                    checkoutSessionId,
+                    reason: invoiceResult.reason,
+                    transactionId,
+                });
+            }
+        } catch (error) {
+            console.error('Checkout invoice generation failed', {
+                checkoutSessionId,
+                error,
+                transactionId,
+            });
+        }
+    }
 
     const completedCartIds: number[] = [];
     for (const cartId of uniqueAffectedCartIds) {
@@ -682,10 +751,6 @@ async function processPaidCheckoutSession(
             completedCartIds.push(completedCart.id);
         }
     }
-
-    const customer = customerUserId
-        ? await dependencies.getUser(customerUserId)
-        : null;
 
     if (completedCartIds.length > 0) {
         await dependencies.notifyOrderConfirmationEmail({

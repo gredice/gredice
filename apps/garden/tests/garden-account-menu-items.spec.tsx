@@ -10,6 +10,9 @@ test.describe('Garden account menu items', () => {
 
         await expect(page.getByText('Vrtovi za igru')).toBeVisible();
         await expect(page.getByText('Vrt za igru 1')).toBeVisible();
+        await expect(
+            page.getByRole('menuitem', { name: /Računi/ }),
+        ).toHaveAttribute('href', '/racun/naplata');
         await expect(page.getByText('Kreiraj vrt za igru')).toBeVisible();
 
         const sandboxGardenBox = await page

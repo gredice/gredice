@@ -1,5 +1,12 @@
 import { IconButton } from '@gredice/ui/IconButton';
-import { Add, Check, Delete, Joystick, MapPinHouse } from '@gredice/ui/icons';
+import {
+    Add,
+    Check,
+    Delete,
+    FileText,
+    Joystick,
+    MapPinHouse,
+} from '@gredice/ui/icons';
 import {
     DropdownMenuItem,
     DropdownMenuLabel,
@@ -216,6 +223,10 @@ export function GardenAccountMenuItems({
                         <span>Pregled tvojih vrtovima</span>
                     </DropdownMenuItem>
                 )}
+                <DropdownMenuItem className="gap-3" href="/racun/naplata">
+                    <FileText className="size-4" />
+                    <span>Računi i plaćanja</span>
+                </DropdownMenuItem>
             </>
         );
     }
@@ -341,6 +352,15 @@ export function GardenAccountMenuItems({
                     ))}
                 </Fragment>
             ))}
+            {normalGardenGroups.length > 0 && (
+                <>
+                    <DropdownMenuSeparator className="my-2" />
+                    <DropdownMenuItem className="gap-3" href="/racun/naplata">
+                        <FileText className="size-4" />
+                        <span>Računi i plaćanja</span>
+                    </DropdownMenuItem>
+                </>
+            )}
             {normalGardenGroups.length > 0 && showSandboxMenu && (
                 <DropdownMenuSeparator className="my-2" />
             )}
