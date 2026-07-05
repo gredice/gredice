@@ -373,75 +373,6 @@ function shouldRenderMulchPatchSide(input: {
     return true;
 }
 
-function isPointInInnerCornerArea({
-    corner,
-    point,
-    radius,
-}: {
-    corner: 'ne' | 'nw' | 'se' | 'sw';
-    point: MulchPatchPoint;
-    radius: number;
-}) {
-    const tolerance = 0.0001;
-
-    if (corner === 'ne') {
-        return (
-            point.x >= 0.5 - radius - tolerance &&
-            point.z <= -0.5 + radius + tolerance
-        );
-    }
-    if (corner === 'nw') {
-        return (
-            point.x >= 0.5 - radius - tolerance &&
-            point.z >= 0.5 - radius - tolerance
-        );
-    }
-    if (corner === 'se') {
-        return (
-            point.x <= -0.5 + radius + tolerance &&
-            point.z <= -0.5 + radius + tolerance
-        );
-    }
-
-    return (
-        point.x <= -0.5 + radius + tolerance &&
-        point.z >= 0.5 - radius - tolerance
-    );
-}
-
-function isInnerCornerMulchPatchSide({
-    connections,
-    current,
-    next,
-}: {
-    connections: MulchPatchConnections;
-    current: MulchPatchPoint;
-    next: MulchPatchPoint;
-}) {
-    const innerCornerRadius = 0.11;
-    const innerCorners = [
-        connections.n && connections.e && !connections.ne ? 'ne' : null,
-        connections.n && connections.w && !connections.nw ? 'nw' : null,
-        connections.s && connections.e && !connections.se ? 'se' : null,
-        connections.s && connections.w && !connections.sw ? 'sw' : null,
-    ] as const;
-
-    return innerCorners.some(
-        (corner) =>
-            corner &&
-            isPointInInnerCornerArea({
-                corner,
-                point: current,
-                radius: innerCornerRadius,
-            }) &&
-            isPointInInnerCornerArea({
-                corner,
-                point: next,
-                radius: innerCornerRadius,
-            }),
-    );
-}
-
 export function createMulchPatchGeometry({
     connections,
 }: {
@@ -546,39 +477,18 @@ export function createMulchPatchGeometry({
                 next,
             })
         ) {
-            if (
-                isInnerCornerMulchPatchSide({
-                    connections,
-                    current,
-                    next,
-                })
-            ) {
-                addTriangle(current, topY, 1, next, bottomY, 1, next, topY, 1);
-                addTriangle(
-                    current,
-                    topY,
-                    1,
-                    current,
-                    bottomY,
-                    1,
-                    next,
-                    bottomY,
-                    1,
-                );
-            } else {
-                addTriangle(current, topY, 1, next, topY, 1, next, bottomY, 1);
-                addTriangle(
-                    current,
-                    topY,
-                    1,
-                    next,
-                    bottomY,
-                    1,
-                    current,
-                    bottomY,
-                    1,
-                );
-            }
+            addTriangle(current, topY, 1, next, topY, 1, next, bottomY, 1);
+            addTriangle(
+                current,
+                topY,
+                1,
+                next,
+                bottomY,
+                1,
+                current,
+                bottomY,
+                1,
+            );
         }
     }
 
