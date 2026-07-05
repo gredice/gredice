@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { notifyWeatherRiskAlerts } from '../../../../../lib/weather/alertNotifications';
 import { getBjelovarForecast } from '../../../../../lib/weather/forecast';
 import { populateWeatherFromSymbol } from '../../../../../lib/weather/populateWeatherFromSymbol';
+import { findClosestForecastEntry } from '../../../../../lib/weather/weatherNowContract';
 
 export const dynamic = 'force-dynamic';
 
@@ -74,26 +75,7 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        // Get current weather from forecast
-        const nowLocal = new Date();
-        let closestEntry = null;
-        let minDiff = Infinity;
-
-        for (const day of forecast) {
-            for (const entry of day.entries) {
-                const entryDateTime = new Date(
-                    `${day.date}T${entry.time.toString().padStart(2, '0')}:00:00`,
-                );
-                const diff = Math.abs(
-                    entryDateTime.getTime() - nowLocal.getTime(),
-                );
-                if (diff < minDiff) {
-                    minDiff = diff;
-                    closestEntry = entry;
-                }
-            }
-        }
-
+        const closestEntry = findClosestForecastEntry(forecast, Date.now());
         if (!closestEntry) {
             console.error('Could not find closest forecast entry');
             return Response.json(
