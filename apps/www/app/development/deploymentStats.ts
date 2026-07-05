@@ -5,7 +5,6 @@ const VERCEL_API_BASE_URL = 'https://api.vercel.com/v7/deployments';
 const VERCEL_PAGE_LIMIT = 100;
 const LIVE_WINDOW_DAYS = 30;
 const MAX_PAGES_PER_PROJECT = 25;
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 type VercelProject = {
     name: string;
@@ -139,8 +138,8 @@ export async function getLiveDeploymentStats(): Promise<DeploymentStatsSnapshot>
 
     const now = new Date();
     const until = now.getTime();
-    const since = until - (LIVE_WINDOW_DAYS - 1) * MS_PER_DAY;
     const dayRows = createRollingDayRows(now, LIVE_WINDOW_DAYS);
+    const since = startOfZagrebDayMs(dayRows[0].date);
 
     try {
         const deployments = await fetchAllProjectDeployments({
@@ -326,10 +325,12 @@ function createEmptyTotals(days: number): DeploymentStatsTotals {
 }
 
 function createRollingDayRows(now: Date, days: number): DeploymentDayStats[] {
+    const today = dateKeyZagreb(now.getTime());
+
     return Array.from({ length: days }, (_, index) => {
-        const date = new Date(now.getTime() - (days - index - 1) * MS_PER_DAY);
+        const date = shiftDateKey(today, index - days + 1);
         return {
-            date: dateKeyZagreb(date.getTime()),
+            date,
             all: 0,
             production: 0,
             readyProduction: 0,
@@ -401,6 +402,38 @@ function numberValue(value: unknown): number | null {
     return typeof value === 'number' ? value : null;
 }
 
+function startOfZagrebDayMs(dateKey: string) {
+    const [year, month, day] = dateKey.split('-').map(Number);
+    const utcMidnight = Date.UTC(year, month - 1, day);
+    const offset = zagrebOffsetMinutes(utcMidnight);
+    const candidate = utcMidnight - offset * 60 * 1000;
+    const candidateOffset = zagrebOffsetMinutes(candidate);
+
+    return utcMidnight - candidateOffset * 60 * 1000;
+}
+
+function zagrebOffsetMinutes(ms: number) {
+    const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Europe/Zagreb',
+        timeZoneName: 'shortOffset',
+    }).formatToParts(new Date(ms));
+    const timeZoneName =
+        parts.find((part) => part.type === 'timeZoneName')?.value ?? 'GMT';
+    const match = timeZoneName.match(
+        /^GMT(?<sign>[+-])(?<hours>\d{1,2})(?::(?<minutes>\d{2}))?$/,
+    );
+
+    if (!match?.groups) {
+        return 0;
+    }
+
+    const sign = match.groups.sign === '-' ? -1 : 1;
+    const hours = Number(match.groups.hours);
+    const minutes = Number(match.groups.minutes ?? 0);
+
+    return sign * (hours * 60 + minutes);
+}
+
 function dateKeyZagreb(ms: number) {
     const parts = new Intl.DateTimeFormat('en-CA', {
         timeZone: 'Europe/Zagreb',
@@ -414,6 +447,13 @@ function dateKeyZagreb(ms: number) {
     const day = parts.find((part) => part.type === 'day')?.value ?? '00';
 
     return `${year}-${month}-${day}`;
+}
+
+function shiftDateKey(dateKey: string, dayOffset: number) {
+    const [year, month, day] = dateKey.split('-').map(Number);
+    return new Date(Date.UTC(year, month - 1, day + dayOffset))
+        .toISOString()
+        .slice(0, 10);
 }
 
 function roundToTwo(value: number) {
