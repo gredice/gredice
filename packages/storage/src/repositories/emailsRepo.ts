@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { storage } from '..';
 import {
     type EmailLogAttachment,
@@ -121,5 +121,28 @@ export function getEmailMessageByProviderId(
 ): Promise<SelectEmailMessage | undefined> {
     return storage().query.emailMessages.findFirst({
         where: eq(emailMessages.providerMessageId, providerMessageId),
+    });
+}
+
+export function getEmailMessageByTemplateAndMetadata({
+    metadataKey,
+    metadataValue,
+    statuses,
+    templateName,
+}: {
+    metadataKey: string;
+    metadataValue: string;
+    statuses?: EmailStatus[];
+    templateName: string;
+}): Promise<SelectEmailMessage | undefined> {
+    return storage().query.emailMessages.findFirst({
+        where: and(
+            eq(emailMessages.templateName, templateName),
+            sql<boolean>`${emailMessages.metadata}->>${metadataKey} = ${metadataValue}`,
+            statuses && statuses.length > 0
+                ? inArray(emailMessages.status, statuses)
+                : undefined,
+        ),
+        orderBy: desc(emailMessages.createdAt),
     });
 }

@@ -1,4 +1,8 @@
 import {
+    fiscalizeReceipt,
+    issueReceiptForPaidInvoice,
+} from '@gredice/fiscalization/server';
+import {
     isRaisedBedAbandoned,
     RAISED_BED_ABANDONED_ACTIONS_DISABLED_MESSAGE,
     RAISED_BED_ABANDONED_DUE_TO_INACTIVITY_MESSAGE,
@@ -39,6 +43,7 @@ import {
 } from '@gredice/storage';
 import { getStripeCheckoutSession } from '@gredice/stripe/server';
 import { isBillingAutomationEnabled } from '../billing/automationFlag';
+import { notifyBillingDocumentsEmail } from '../billing/billingDocumentEmail';
 import {
     buildCheckoutInvoiceBillingSnapshot,
     buildCheckoutInvoiceLineItem,
@@ -98,6 +103,9 @@ export type ProcessCheckoutSessionDependencies = {
     notifyDeliveryScheduled: typeof notifyDeliveryScheduled;
     notifyScheduledDeliveryEmailOnce: typeof notifyScheduledDeliveryEmailOnce;
     getPostHogClient: typeof getPostHogClient;
+    issueReceiptForPaidInvoice: typeof issueReceiptForPaidInvoice;
+    fiscalizeReceipt: typeof fiscalizeReceipt;
+    notifyBillingDocumentsEmail: typeof notifyBillingDocumentsEmail;
 };
 
 const realDependencies: ProcessCheckoutSessionDependencies = {
@@ -142,6 +150,9 @@ const realDependencies: ProcessCheckoutSessionDependencies = {
     notifyDeliveryScheduled,
     notifyScheduledDeliveryEmailOnce,
     getPostHogClient,
+    issueReceiptForPaidInvoice,
+    fiscalizeReceipt,
+    notifyBillingDocumentsEmail,
 };
 
 /**
@@ -734,9 +745,60 @@ async function processPaidCheckoutSession(
                     reason: invoiceResult.reason,
                     transactionId,
                 });
+            } else {
+                const receiptResult =
+                    await dependencies.issueReceiptForPaidInvoice({
+                        invoiceId: invoiceResult.invoiceId,
+                        paymentReference: session.id,
+                    });
+                if (receiptResult.status === 'skipped') {
+                    console.warn('Checkout receipt issuing skipped', {
+                        checkoutSessionId,
+                        invoiceId: invoiceResult.invoiceId,
+                        reason: receiptResult.reason,
+                        transactionId,
+                    });
+                } else {
+                    const fiscalizationResult =
+                        await dependencies.fiscalizeReceipt(
+                            receiptResult.receiptId,
+                        );
+                    const hasFiscalizedReceipt =
+                        fiscalizationResult.status === 'confirmed' ||
+                        fiscalizationResult.status === 'existing';
+                    if (fiscalizationResult.status === 'failed') {
+                        console.warn('Checkout receipt fiscalization failed', {
+                            checkoutSessionId,
+                            reason: fiscalizationResult.reason,
+                            receiptId: receiptResult.receiptId,
+                            transactionId,
+                        });
+                    } else if (fiscalizationResult.status === 'skipped') {
+                        console.warn('Checkout receipt fiscalization skipped', {
+                            checkoutSessionId,
+                            reason: fiscalizationResult.reason,
+                            receiptId: receiptResult.receiptId,
+                            transactionId,
+                        });
+                    }
+
+                    await dependencies.notifyBillingDocumentsEmail({
+                        to: customer?.userName,
+                        cartIds: uniqueAffectedCartIds,
+                        checkoutSessionId: session.id,
+                        invoiceId: invoiceResult.invoiceId,
+                        invoiceNumber: invoiceResult.invoiceNumber,
+                        receiptId: hasFiscalizedReceipt
+                            ? receiptResult.receiptId
+                            : null,
+                        receiptNumber: hasFiscalizedReceipt
+                            ? receiptResult.yearReceiptNumber
+                            : null,
+                    });
+                }
             }
         } catch (error) {
-            console.error('Checkout invoice generation failed', {
+            console.error('Checkout billing document automation failed', {
                 checkoutSessionId,
                 error,
                 transactionId,

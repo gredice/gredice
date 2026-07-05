@@ -3,7 +3,8 @@
     "version": "1.0.0",
     "private": true,
     "exports": {
-        ".": "./src/index.ts"
+        ".": "./src/index.ts",
+        "./server": "./src/server.ts"
     },
     "scripts": {
         "clean": "rimraf .turbo dist build out coverage tsconfig.tsbuildinfo",
@@ -25,8 +26,10 @@
         "wsdl-tsclient": "1.7.1"
     },
     "dependencies": {
+        "@gredice/storage": "workspace:*",
         "node-forge": "1.4.0",
         "qrcode": "1.5.4",
+        "server-only": "0.0.1",
         "soap": "1.9.3",
         "undici": "8.5.0",
         "xml-crypto": "6.1.2",
