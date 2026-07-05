@@ -17,7 +17,11 @@ const mulchBlockNameLookup: Record<MulchBlockName, true> = {
 export type MulchPatchConnections = {
     e: boolean;
     n: boolean;
+    ne: boolean;
+    nw: boolean;
     s: boolean;
+    se: boolean;
+    sw: boolean;
     w: boolean;
 };
 
@@ -39,7 +43,7 @@ type MulchPatchBounds = {
 };
 
 export const mulchPatchConnectionMasks = Array.from(
-    { length: 16 },
+    { length: 256 },
     (_, mask) => mask,
 );
 
@@ -47,7 +51,11 @@ export const isolatedMulchPatchConnectionMask = 0;
 export const fullMulchPatchConnectionMask = getMulchPatchConnectionMask({
     e: true,
     n: true,
+    ne: true,
+    nw: true,
     s: true,
+    se: true,
+    sw: true,
     w: true,
 });
 
@@ -64,13 +72,18 @@ export function isMulchBlockName(name: string): name is MulchBlockName {
 }
 
 export function getMulchPatchConnectionMask(
-    connections: MulchPatchConnections,
+    connections: Pick<MulchPatchConnections, 'e' | 'n' | 's' | 'w'> &
+        Partial<Pick<MulchPatchConnections, 'ne' | 'nw' | 'se' | 'sw'>>,
 ) {
     return (
         (connections.n ? 1 : 0) |
         (connections.e ? 2 : 0) |
         (connections.s ? 4 : 0) |
-        (connections.w ? 8 : 0)
+        (connections.w ? 8 : 0) |
+        (connections.ne ? 16 : 0) |
+        (connections.nw ? 32 : 0) |
+        (connections.se ? 64 : 0) |
+        (connections.sw ? 128 : 0)
     );
 }
 
@@ -80,7 +93,11 @@ export function getMulchPatchConnectionsFromMask(
     return {
         e: (mask & 2) !== 0,
         n: (mask & 1) !== 0,
+        ne: (mask & 16) !== 0,
+        nw: (mask & 32) !== 0,
         s: (mask & 4) !== 0,
+        se: (mask & 64) !== 0,
+        sw: (mask & 128) !== 0,
         w: (mask & 8) !== 0,
     };
 }
@@ -94,7 +111,11 @@ export function resolveMulchPatchConnectionMask(
     const connections: MulchPatchConnections = {
         e: false,
         n: false,
+        ne: false,
+        nw: false,
         s: false,
+        se: false,
+        sw: false,
         w: false,
     };
 
@@ -126,6 +147,20 @@ export function resolveMulchPatchConnectionMask(
                 connections.w = true;
             }
         }
+
+        if (nearlyEqual(candidateX - x, xDistance)) {
+            if (nearlyEqual(z - candidateZ, zDistance)) {
+                connections.ne = true;
+            } else if (nearlyEqual(candidateZ - z, zDistance)) {
+                connections.nw = true;
+            }
+        } else if (nearlyEqual(x - candidateX, xDistance)) {
+            if (nearlyEqual(z - candidateZ, zDistance)) {
+                connections.se = true;
+            } else if (nearlyEqual(candidateZ - z, zDistance)) {
+                connections.sw = true;
+            }
+        }
     }
 
     return getMulchPatchConnectionMask(connections);
@@ -138,11 +173,53 @@ function getMulchPatchPerimeter(connections: MulchPatchConnections) {
     const maxX = connections.n ? connectedHalfSize : isolatedHalfSize;
     const minZ = connections.e ? -connectedHalfSize : -isolatedHalfSize;
     const maxZ = connections.w ? connectedHalfSize : isolatedHalfSize;
-    const cornerRadius = Math.min(0.15, (maxX - minX) / 3, (maxZ - minZ) / 3);
-    const southEastCorner = !connections.s && !connections.e ? cornerRadius : 0;
-    const northEastCorner = !connections.n && !connections.e ? cornerRadius : 0;
-    const northWestCorner = !connections.n && !connections.w ? cornerRadius : 0;
-    const southWestCorner = !connections.s && !connections.w ? cornerRadius : 0;
+    const outerCornerRadius = Math.min(
+        0.15,
+        (maxX - minX) / 3,
+        (maxZ - minZ) / 3,
+    );
+    const innerCornerRadius = connectedHalfSize - isolatedHalfSize;
+
+    function getCornerRadius({
+        diagonal,
+        xConnection,
+        zConnection,
+    }: {
+        diagonal: boolean;
+        xConnection: boolean;
+        zConnection: boolean;
+    }) {
+        if (!xConnection && !zConnection) {
+            return outerCornerRadius;
+        }
+
+        if (xConnection && zConnection && !diagonal) {
+            return innerCornerRadius;
+        }
+
+        return 0;
+    }
+
+    const southEastCorner = getCornerRadius({
+        diagonal: connections.se,
+        xConnection: connections.s,
+        zConnection: connections.e,
+    });
+    const northEastCorner = getCornerRadius({
+        diagonal: connections.ne,
+        xConnection: connections.n,
+        zConnection: connections.e,
+    });
+    const northWestCorner = getCornerRadius({
+        diagonal: connections.nw,
+        xConnection: connections.n,
+        zConnection: connections.w,
+    });
+    const southWestCorner = getCornerRadius({
+        diagonal: connections.sw,
+        xConnection: connections.s,
+        zConnection: connections.w,
+    });
     const perimeter: MulchPatchPoint[] = [];
 
     function addPoint(point: MulchPatchPoint) {

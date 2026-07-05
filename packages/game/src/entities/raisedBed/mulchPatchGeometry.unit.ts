@@ -56,6 +56,49 @@ function hasBottomEdgeAtX(geometry: BufferGeometry, x: number) {
     return false;
 }
 
+function hasBottomEdgeAtZ(geometry: BufferGeometry, z: number) {
+    const position = geometry.getAttribute('position');
+
+    for (let index = 0; index < position.count; index += 3) {
+        const triangle = [index, index + 1, index + 2];
+
+        for (const firstIndex of triangle) {
+            for (const secondIndex of triangle) {
+                if (firstIndex >= secondIndex) {
+                    continue;
+                }
+
+                if (
+                    rounded(position.getZ(firstIndex)) === rounded(z) &&
+                    rounded(position.getZ(secondIndex)) === rounded(z) &&
+                    rounded(position.getY(firstIndex)) === 0 &&
+                    rounded(position.getY(secondIndex)) === 0
+                ) {
+                    return true;
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
+function hasTopPoint(geometry: BufferGeometry, x: number, z: number) {
+    const position = geometry.getAttribute('position');
+
+    for (let index = 0; index < position.count; index += 1) {
+        if (
+            rounded(position.getX(index)) === rounded(x) &&
+            rounded(position.getY(index)) === 0.018 &&
+            rounded(position.getZ(index)) === rounded(z)
+        ) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 function hasTopEdgeShadeAtX(
     geometry: BufferGeometry,
     x: number,
@@ -121,6 +164,22 @@ function hasRoundedOuterCornerPoint(geometry: BufferGeometry) {
     return false;
 }
 
+function hasRoundedInnerCornerPoint(geometry: BufferGeometry) {
+    const position = geometry.getAttribute('position');
+
+    for (let index = 0; index < position.count; index += 1) {
+        const x = rounded(position.getX(index));
+        const y = rounded(position.getY(index));
+        const z = rounded(position.getZ(index));
+
+        if (y === 0.018 && x > 0.43 && x < 0.49 && z < -0.43 && z > -0.49) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 test('mulch patch target resolver connects neighbors on the same height only', () => {
     const target = {
         position: [0, 1, 0],
@@ -141,6 +200,10 @@ test('mulch patch target resolver connects neighbors on the same height only', (
         position: [-1, 1.25, 0],
         size: [1, 1],
     } satisfies typeof target;
+    const sameHeightNorthEast = {
+        position: [1, 1, -1],
+        size: [1, 1],
+    } satisfies typeof target;
 
     assert.equal(
         resolveMulchPatchConnectionMask(target, [
@@ -148,10 +211,12 @@ test('mulch patch target resolver connects neighbors on the same height only', (
             sameHeightNorth,
             sameHeightEast,
             differentHeightSouth,
+            sameHeightNorthEast,
         ]),
         getMulchPatchConnectionMask({
             e: true,
             n: true,
+            ne: true,
             s: false,
             w: false,
         }),
@@ -203,6 +268,52 @@ test('connected mulch patch reaches neighbor edges without internal walls', () =
     assert.equal(hasTopEdgeShadeAtX(northConnected, 0.5, 0), true);
 
     northConnected.dispose();
+});
+
+test('diagonal holes round the inner corner between connected edges', () => {
+    const geometry = createMulchPatchGeometry({
+        connections: getMulchPatchConnectionsFromMask(
+            getMulchPatchConnectionMask({
+                e: true,
+                n: true,
+                s: false,
+                w: false,
+            }),
+        ),
+    });
+
+    assert.deepEqual(getBounds(geometry), {
+        maxX: 0.5,
+        maxY: 0.026,
+        maxZ: 0.39,
+        minX: -0.39,
+        minY: 0,
+        minZ: -0.5,
+    });
+    assert.equal(hasTopPoint(geometry, 0.5, -0.5), false);
+    assert.equal(hasRoundedInnerCornerPoint(geometry), true);
+    assert.equal(hasBottomEdgeAtX(geometry, 0.5), false);
+    assert.equal(hasBottomEdgeAtZ(geometry, -0.5), false);
+
+    geometry.dispose();
+});
+
+test('diagonal mulch keeps solid connected corners filled', () => {
+    const geometry = createMulchPatchGeometry({
+        connections: getMulchPatchConnectionsFromMask(
+            getMulchPatchConnectionMask({
+                e: true,
+                n: true,
+                ne: true,
+                s: false,
+                w: false,
+            }),
+        ),
+    });
+
+    assert.equal(hasTopPoint(geometry, 0.5, -0.5), true);
+
+    geometry.dispose();
 });
 
 test('fully connected mulch patch fills the tile without skirt walls', () => {
