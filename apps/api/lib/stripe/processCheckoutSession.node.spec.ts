@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+    buildCheckoutInvoiceBillingSnapshot,
+    buildCheckoutInvoiceLineItem,
+} from '../billing/checkoutInvoiceDraft';
+import {
     __testUtils,
     type ProcessCheckoutSessionDependencies,
     processCheckoutSession,
@@ -80,9 +84,18 @@ function makeDependencies(
         },
         createTransaction: async (...args: unknown[]) => {
             record(calls, 'createTransaction', args);
+            return 901;
         },
         earnSunflowersForPayment: async (...args: unknown[]) => {
             record(calls, 'earnSunflowersForPayment', args);
+        },
+        ensureInvoiceForTransaction: async (...args: unknown[]) => {
+            record(calls, 'ensureInvoiceForTransaction', args);
+            return {
+                status: 'created',
+                invoiceId: 601,
+                invoiceNumber: 'PON-2026-0001',
+            };
         },
         getCompletedTransactionByStripePaymentId: async (
             ...args: unknown[]
@@ -179,6 +192,24 @@ function makeDependencies(
         getStripeCheckoutSession: async (...args: unknown[]) => {
             record(calls, 'getStripeCheckoutSession', args);
             return undefined;
+        },
+        isBillingAutomationEnabled: (...args: unknown[]) => {
+            record(calls, 'isBillingAutomationEnabled', args);
+            return false;
+        },
+        buildCheckoutInvoiceBillingSnapshot: (...args: unknown[]) => {
+            record(calls, 'buildCheckoutInvoiceBillingSnapshot', args);
+            return buildCheckoutInvoiceBillingSnapshot(
+                args[0] as Parameters<
+                    typeof buildCheckoutInvoiceBillingSnapshot
+                >[0],
+            );
+        },
+        buildCheckoutInvoiceLineItem: (...args: unknown[]) => {
+            record(calls, 'buildCheckoutInvoiceLineItem', args);
+            return buildCheckoutInvoiceLineItem(
+                args[0] as Parameters<typeof buildCheckoutInvoiceLineItem>[0],
+            );
         },
         getCartInfo: async (...args: unknown[]) => {
             record(calls, 'getCartInfo', args);
@@ -382,6 +413,105 @@ describe('processCheckoutSession', () => {
                     currency: 'eur',
                 },
             ],
+        );
+        assert.equal(
+            callsNamed(calls, 'ensureInvoiceForTransaction').length,
+            0,
+        );
+    });
+
+    it('generates an invoice from mapped Stripe line items when billing automation is enabled', async () => {
+        const calls: RecordedCall[] = [];
+        const dependencies = makeDependencies(calls, {
+            getStripeCheckoutSession: async (...args: unknown[]) => {
+                record(calls, 'getStripeCheckoutSession', args);
+                return makeSession();
+            },
+            getShoppingCart: async (...args: unknown[]) => {
+                record(calls, 'getShoppingCart', args);
+                return makeCart();
+            },
+            getRaisedBedFieldsWithEvents: async (...args: unknown[]) => {
+                record(calls, 'getRaisedBedFieldsWithEvents', args);
+                return [{ id: 88, positionIndex: 2, active: true }];
+            },
+            isBillingAutomationEnabled: (...args: unknown[]) => {
+                record(calls, 'isBillingAutomationEnabled', args);
+                return true;
+            },
+        });
+
+        await processCheckoutSession('cs_paid', dependencies);
+
+        assert.deepStrictEqual(
+            callsNamed(calls, 'ensureInvoiceForTransaction')[0]?.args,
+            [
+                {
+                    transactionId: 901,
+                    billingSnapshot: {
+                        billToCountry: 'Hrvatska',
+                        billToEmail: 'buyer@example.test',
+                        billToName: undefined,
+                        notes: 'Generirano iz plaćene Gredice checkout transakcije.',
+                    },
+                    items: [
+                        {
+                            description: 'Planting',
+                            entityId: '42',
+                            entityTypeName: 'operation',
+                            quantity: 1,
+                            unitPriceCents: 2500,
+                            totalPriceCents: 2500,
+                        },
+                    ],
+                },
+            ],
+        );
+    });
+
+    it('continues checkout side effects when invoice generation fails', async () => {
+        const calls: RecordedCall[] = [];
+        let getShoppingCartCount = 0;
+        const dependencies = makeDependencies(calls, {
+            getStripeCheckoutSession: async (...args: unknown[]) => {
+                record(calls, 'getStripeCheckoutSession', args);
+                return makeSession();
+            },
+            getShoppingCart: async (...args: unknown[]) => {
+                record(calls, 'getShoppingCart', args);
+                getShoppingCartCount += 1;
+                return {
+                    ...makeCart(),
+                    status: getShoppingCartCount > 1 ? 'paid' : 'new',
+                };
+            },
+            getRaisedBedFieldsWithEvents: async (...args: unknown[]) => {
+                record(calls, 'getRaisedBedFieldsWithEvents', args);
+                return [{ id: 88, positionIndex: 2, active: true }];
+            },
+            getUser: async (...args: unknown[]) => {
+                record(calls, 'getUser', args);
+                return { userName: 'buyer@example.test' };
+            },
+            isBillingAutomationEnabled: (...args: unknown[]) => {
+                record(calls, 'isBillingAutomationEnabled', args);
+                return true;
+            },
+            ensureInvoiceForTransaction: async (...args: unknown[]) => {
+                record(calls, 'ensureInvoiceForTransaction', args);
+                throw new Error('invoice db unavailable');
+            },
+        });
+
+        await processCheckoutSession('cs_paid', dependencies);
+
+        assert.equal(
+            callsNamed(calls, 'ensureInvoiceForTransaction').length,
+            1,
+        );
+        assert.equal(
+            callsNamed(calls, 'notifyOrderConfirmationEmail').length,
+            1,
         );
     });
 

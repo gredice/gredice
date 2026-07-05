@@ -66,6 +66,7 @@ import { getPostHogClient } from '../../../lib/posthog-server';
 import { getBjelovarForecast } from '../../../lib/weather/forecast';
 import { populateWeatherFromSymbol } from '../../../lib/weather/populateWeatherFromSymbol';
 import { findClosestForecastEntry } from '../../../lib/weather/weatherNowContract';
+import accountBillingRoutes from './accountBillingRoutes';
 
 const dailyRewards = [5, 10, 15, 20, 25, 50];
 const DAILY_REWARD_TIME_ZONE = 'Europe/Zagreb';
@@ -252,6 +253,7 @@ function pickSunflowerBlock<T extends { id: string }>(blocks: T[]) {
 }
 
 const app = new Hono<{ Variables: AuthVariables }>()
+    .route('/current/billing', accountBillingRoutes)
     .get(
         '/current',
         describeRoute({
