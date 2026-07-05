@@ -6,6 +6,7 @@ import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { KnownPages } from '../../../src/KnownPages';
+import { blockGeometryMergingFlag } from '../../flags';
 import { PublicGardenExplorer } from '../PublicGardenExplorer';
 import { PublicGardenLikeButton } from '../PublicGardenLikeButton';
 import { PublicGardenStatsAccordion } from '../PublicGardenStatsAccordion';
@@ -89,9 +90,10 @@ export default async function PublicGardenPage({
         notFound();
     }
 
-    const [garden, blockData] = await Promise.all([
+    const [garden, blockData, enableBlockGeometryMerging] = await Promise.all([
         getPublicGardenForWww(gardenId),
         getPublicGardenBlockDataForWww(),
+        blockGeometryMergingFlag(),
     ]);
     const activePlantCount = countActivePlantsFromPublicGarden(garden);
     const gardenStats = calculatePublicGardenStats(garden, blockData);
@@ -114,6 +116,7 @@ export default async function PublicGardenPage({
                 }}
             >
                 <PublicGardenExplorer
+                    enableBlockGeometryMerging={enableBlockGeometryMerging}
                     framed={false}
                     garden={garden}
                     size="card"

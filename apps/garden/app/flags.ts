@@ -24,6 +24,13 @@ export const rainWetOverlayFlag = flag<boolean>({
     options: booleanFlagOptions,
 });
 
+export const blockGeometryMergingFlag = flag<boolean>({
+    key: 'blockGeometryMerging',
+    description: 'Enable merged geometry chunks for stable terrain blocks.',
+    decide: () => false,
+    options: booleanFlagOptions,
+});
+
 export const enableDebugCloseupFlag = flag<boolean>({
     key: 'enableDebugCloseup',
     decide: () => false,
