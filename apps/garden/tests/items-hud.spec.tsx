@@ -567,6 +567,85 @@ test('dragging an affordable picker item requests a scene drop without opening d
     ).toHaveCount(0);
 });
 
+test('dragging a nested picker item hides and restores the same picker state on desktop', async ({
+    mount,
+    page,
+}) => {
+    await mount(<ItemsHudDragStateStory />);
+
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await page.getByRole('button', { name: 'Malč' }).click();
+
+    const pickerContent = page.locator('[data-items-picker-content="true"]');
+    await expect(pickerContent).toHaveAttribute(
+        'data-active-items-picker',
+        'Malč',
+    );
+
+    const mulchButton = page.getByRole('button', {
+        name: 'Malč - kora drveta',
+    });
+    await expect(mulchButton).toBeVisible();
+
+    await dragLocatorByMouse(page, mulchButton);
+
+    await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
+        'MulchWood:drag',
+    );
+    await expect(pickerContent).toHaveAttribute(
+        'data-items-picker-drag-hidden',
+        'true',
+    );
+
+    await page.mouse.up();
+
+    await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
+        'MulchWood:drop',
+    );
+    await expect(pickerContent).toHaveAttribute(
+        'data-items-picker-drag-hidden',
+        'false',
+    );
+    await expect(pickerContent).toHaveAttribute(
+        'data-active-items-picker',
+        'Malč',
+    );
+    await expect(mulchButton).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Posude' })).toHaveCount(0);
+});
+
+test('dismissing a nested picker keeps its content during the close animation', async ({
+    mount,
+    page,
+}) => {
+    await mount(<ItemsHudAlignmentStory />);
+
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await page.getByRole('button', { name: 'Malč' }).click();
+
+    const pickerContent = page.locator('[data-items-picker-content="true"]');
+    await expect(pickerContent).toHaveAttribute(
+        'data-active-items-picker',
+        'Malč',
+    );
+
+    await page.keyboard.press('Escape');
+
+    await expect(pickerContent).toHaveAttribute(
+        'data-active-items-picker',
+        'Malč',
+    );
+    await expect(page.getByRole('button', { name: 'Posude' })).toHaveCount(0);
+
+    await page.waitForTimeout(220);
+    await expect(pickerContent).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await expect(
+        page.locator('[data-items-picker-content="true"]'),
+    ).toHaveAttribute('data-active-items-picker', 'Dekoracija');
+});
+
 test('touch drag cancellation clears HUD item placement', async ({
     mount,
     page,

@@ -12,6 +12,7 @@ import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import Image from 'next/image';
 import {
+    type DragEvent as ReactDragEvent,
     type MouseEvent as ReactMouseEvent,
     type PointerEvent as ReactPointerEvent,
     useCallback,
@@ -266,9 +267,13 @@ function releasePointerCapture(element: HTMLElement, pointerId: number) {
 function useHudEntityDragPlacement({
     blockName,
     enabled,
+    onHudDragEnd,
+    onHudDragStart,
 }: {
     blockName: string;
     enabled: boolean;
+    onHudDragEnd?: () => void;
+    onHudDragStart?: () => void;
 }) {
     const sessionRef = useRef<HudDragSession | null>(null);
     const listenerCleanupRef = useRef<(() => void) | null>(null);
@@ -321,6 +326,7 @@ function useHudEntityDragPlacement({
 
                 session.activated = true;
                 suppressNextClick.current = true;
+                onHudDragStart?.();
                 beginHudPlacementDrag({
                     blockName,
                     pointerType: session.pointerType,
@@ -332,7 +338,12 @@ function useHudEntityDragPlacement({
 
             event.preventDefault();
         },
-        [beginHudPlacementDrag, blockName, updateHudPlacementDragPointer],
+        [
+            beginHudPlacementDrag,
+            blockName,
+            onHudDragStart,
+            updateHudPlacementDragPointer,
+        ],
     );
 
     const handlePointerUp = useCallback(
@@ -349,11 +360,12 @@ function useHudEntityDragPlacement({
                     clientY: event.clientY,
                     pointerId: event.pointerId,
                 });
+                onHudDragEnd?.();
             }
 
             cleanupSession();
         },
-        [cleanupSession, requestHudPlacementDrop],
+        [cleanupSession, onHudDragEnd, requestHudPlacementDrop],
     );
 
     const handlePointerCancel = useCallback(
@@ -365,11 +377,12 @@ function useHudEntityDragPlacement({
 
             if (session.activated) {
                 clearHudPlacementDrag();
+                onHudDragEnd?.();
             }
 
             cleanupSession();
         },
-        [cleanupSession, clearHudPlacementDrag],
+        [cleanupSession, clearHudPlacementDrag, onHudDragEnd],
     );
 
     const addSessionListeners = useCallback(() => {
@@ -440,11 +453,19 @@ function useHudEntityDragPlacement({
         event.stopPropagation();
     }, []);
 
+    const handleNativeDragStart = useCallback(
+        (event: ReactDragEvent<HTMLElement>) => {
+            event.preventDefault();
+        },
+        [],
+    );
+
     return {
         className: enabled
-            ? 'cursor-grab touch-none active:cursor-grabbing'
+            ? 'cursor-grab touch-none select-none active:cursor-grabbing'
             : '',
         onClick: handleClick,
+        onDragStart: handleNativeDragStart,
         onPointerDown: handlePointerDown,
     };
 }
@@ -743,12 +764,19 @@ function PlaceEntityButton({
     );
 }
 
-function EntityItem({ name }: HudItemEntity) {
+type EntityItemProps = HudItemEntity & {
+    onHudDragEnd?: () => void;
+    onHudDragStart?: () => void;
+};
+
+function EntityItem({ name, onHudDragEnd, onHudDragStart }: EntityItemProps) {
     const [open, setOpen] = useState(false);
     const entityPlacement = useHudEntityPlacementState(name);
     const dragPlacement = useHudEntityDragPlacement({
         blockName: name,
         enabled: entityPlacement?.availability.canPlace ?? false,
+        onHudDragEnd,
+        onHudDragStart,
     });
 
     if (!entityPlacement) return null;
@@ -771,11 +799,13 @@ function EntityItem({ name }: HudItemEntity) {
                         variant="plain"
                         data-items-hud-entity={name}
                         onClick={dragPlacement.onClick}
+                        onDragStart={dragPlacement.onDragStart}
                         onPointerDown={dragPlacement.onPointerDown}
                     >
                         <BlockImage
                             blockName={name}
                             alt={block.information.label}
+                            draggable={false}
                             width={64}
                             height={64}
                         />
@@ -843,6 +873,7 @@ function SubPickerButton({
                     src={picker.imageSrc}
                     alt={picker.label}
                     className="absolute size-10 -mb-4"
+                    draggable={false}
                     width={40}
                     height={40}
                 />
@@ -860,19 +891,114 @@ function SubPickerButton({
 }
 
 function PickerItem({ label, items, imageSrc }: HudItemPicker) {
+    const [open, setOpen] = useState(false);
     const [activeSubPicker, setActiveSubPicker] =
         useState<HudItemPicker | null>(null);
+    const [hiddenForHudDrag, setHiddenForHudDrag] = useState(false);
+    const resetSubPickerAfterCloseRef = useRef(false);
+    const hudDragRestoreTimeoutRef = useRef<number | null>(null);
+    const subPickerResetTimeoutRef = useRef<number | null>(null);
     const currentLabel = activeSubPicker?.label ?? label;
     const currentItems = activeSubPicker?.items ?? items;
 
+    const clearHudDragRestoreTimeout = useCallback(() => {
+        if (hudDragRestoreTimeoutRef.current === null) {
+            return;
+        }
+
+        window.clearTimeout(hudDragRestoreTimeoutRef.current);
+        hudDragRestoreTimeoutRef.current = null;
+    }, []);
+
+    const clearSubPickerResetTimeout = useCallback(() => {
+        if (subPickerResetTimeoutRef.current === null) {
+            return;
+        }
+
+        window.clearTimeout(subPickerResetTimeoutRef.current);
+        subPickerResetTimeoutRef.current = null;
+    }, []);
+
+    const resetClosedSubPicker = useCallback(() => {
+        resetSubPickerAfterCloseRef.current = false;
+        setActiveSubPicker(null);
+    }, []);
+
+    const scheduleClosedSubPickerReset = useCallback(() => {
+        clearSubPickerResetTimeout();
+        resetSubPickerAfterCloseRef.current = true;
+        subPickerResetTimeoutRef.current = window.setTimeout(
+            resetClosedSubPicker,
+            180,
+        );
+    }, [clearSubPickerResetTimeout, resetClosedSubPicker]);
+
+    const restorePickerAfterHudDrag = useCallback(() => {
+        hudDragRestoreTimeoutRef.current = null;
+        clearSubPickerResetTimeout();
+        resetSubPickerAfterCloseRef.current = false;
+        setHiddenForHudDrag(false);
+        setOpen(true);
+    }, [clearSubPickerResetTimeout]);
+
+    const handleHudDragStart = useCallback(() => {
+        clearHudDragRestoreTimeout();
+        clearSubPickerResetTimeout();
+        resetSubPickerAfterCloseRef.current = false;
+        setHiddenForHudDrag(true);
+    }, [clearHudDragRestoreTimeout, clearSubPickerResetTimeout]);
+
+    const handleHudDragEnd = useCallback(() => {
+        clearHudDragRestoreTimeout();
+        hudDragRestoreTimeoutRef.current = window.setTimeout(
+            restorePickerAfterHudDrag,
+            0,
+        );
+    }, [clearHudDragRestoreTimeout, restorePickerAfterHudDrag]);
+
+    const handleOpenChange = useCallback(
+        (nextOpen: boolean) => {
+            if (nextOpen) {
+                clearSubPickerResetTimeout();
+                if (resetSubPickerAfterCloseRef.current) {
+                    resetClosedSubPicker();
+                }
+                setOpen(true);
+                return;
+            }
+
+            setOpen(false);
+            setHiddenForHudDrag(false);
+            scheduleClosedSubPickerReset();
+        },
+        [
+            clearSubPickerResetTimeout,
+            resetClosedSubPicker,
+            scheduleClosedSubPickerReset,
+        ],
+    );
+
+    useEffect(
+        () => () => {
+            clearHudDragRestoreTimeout();
+            clearSubPickerResetTimeout();
+        },
+        [clearHudDragRestoreTimeout, clearSubPickerResetTimeout],
+    );
+
     return (
         <Popper
-            className="w-fit overflow-hidden border-tertiary border-b-4 flex flex-col max-h-[var(--radix-popover-content-available-height)]"
+            open={open}
+            className={cx(
+                'w-fit overflow-hidden border-tertiary border-b-4 flex flex-col max-h-[var(--radix-popover-content-available-height)]',
+                hiddenForHudDrag && 'hidden',
+            )}
             sideOffset={12}
-            onOpenChange={(open) => {
-                if (!open) setActiveSubPicker(null);
-            }}
+            onOpenChange={handleOpenChange}
+            data-active-items-picker={currentLabel}
             data-items-hud-surface="true"
+            data-items-picker-content="true"
+            data-items-picker-drag-hidden={hiddenForHudDrag ? 'true' : 'false'}
             trigger={
                 <IconButton
                     aria-label={label}
@@ -884,6 +1010,7 @@ function PickerItem({ label, items, imageSrc }: HudItemPicker) {
                         src={imageSrc}
                         alt={label}
                         className="absolute size-10 -mb-4"
+                        draggable={false}
                         width={40}
                         height={40}
                     />
@@ -917,7 +1044,12 @@ function PickerItem({ label, items, imageSrc }: HudItemPicker) {
                 {currentItems.map((item) => {
                     if (item.type === 'entity') {
                         return (
-                            <EntityItem key={`entity:${item.name}`} {...item} />
+                            <EntityItem
+                                key={`entity:${item.name}`}
+                                {...item}
+                                onHudDragEnd={handleHudDragEnd}
+                                onHudDragStart={handleHudDragStart}
+                            />
                         );
                     } else if (item.type === 'picker') {
                         return (
