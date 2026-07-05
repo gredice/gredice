@@ -7,7 +7,8 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
     title: 'Uvjeti korištenja',
-    description: 'Uvjeti korištenja web stranice Gredice.',
+    description:
+        'Uvjeti korištenja web stranice Gredice, uključujući pravila za suncokrete i Gredice saldo.',
 };
 
 export default function UvjetiKoristenjaPage() {
@@ -51,7 +52,36 @@ export default function UvjetiKoristenjaPage() {
                             ograničavajući se na, pretraživanje, interakcije s
                             drugim korisnicima i dijeljenje sadržaja.
                         </li>
+                        <li>
+                            &quot;<strong>Suncokreti</strong>&quot; označavaju
+                            Gredice bodove odnosno prepaid saldo koji se koristi
+                            samo unutar Gredica za vrtne akcije i povezane
+                            usluge.
+                        </li>
                     </ul>
+                    <h2>Suncokreti i prepaid saldo</h2>
+                    <p>
+                        Suncokreti se evidentiraju na korisničkom računu kao
+                        Gredice saldo. Nisu opće sredstvo plaćanja, ne prenose
+                        se na druge korisnike i ne mogu se zamijeniti za
+                        gotovinu osim u slučajevima u kojima je povrat zakonski
+                        obvezan ili ga Gredice izričito odobre.
+                    </p>
+                    <p>
+                        Kod naručivanja vrtne akcije saldo se može najprije
+                        rezervirati. Ako se akcija otkaže prije obrade,
+                        rezervacija se otpušta i vraća na raspoloživi saldo.
+                        Nakon izvršene akcije rezervirani iznos se naplaćuje iz
+                        salda, a povezani dokumenti dostupni su u korisničkom
+                        profilu kada su izdani.
+                    </p>
+                    <p>
+                        Bonus suncokreti iz paketa služe za korištenje unutar
+                        Gredica i ne predstavljaju zaseban novčani iznos.
+                        Povrati i korekcije rješavaju se prema pravilima na
+                        stranici{' '}
+                        <a href="/povrati-i-povrat-novca">Povrat novca</a>.
+                    </p>
                     <h2>Prava i obveze pri korištenju Platforme</h2>
                     <p>Korištenjem Platforme potrebno je:</p>
                     <ul>

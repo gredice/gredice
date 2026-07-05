@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import {
+    SunflowerPackagesPanelStory,
     SunflowersHudStory,
     SunflowersPendingDetailsStory,
 } from './SunflowersHudStory';
@@ -49,5 +50,49 @@ test.describe('Sunflowers HUD', () => {
         await expect(page.getByText('Zadaci za novi vrt')).toBeVisible();
         await expect(page.getByText('+25')).toBeVisible();
         await expect(page.getByText('Nepoznato')).toHaveCount(0);
+    });
+
+    test('shows sunflower packages and master upsell in the purchase panel', async ({
+        mount,
+        page,
+    }) => {
+        await mount(<SunflowerPackagesPanelStory />);
+
+        await expect(page.getByText('Početna ponuda')).toBeVisible();
+        await expect(
+            page.getByText('Puna gredica', { exact: true }),
+        ).toBeVisible();
+        await expect(page.getByText('Glavni paketi')).toBeVisible();
+        await expect(
+            page.getByText('Mali zalogaj', { exact: true }),
+        ).toBeVisible();
+        await expect(
+            page.getByText('Vrtna košarica', { exact: true }),
+        ).toBeVisible();
+        await expect(
+            page.getByText('Mirna sezona', { exact: true }),
+        ).toBeVisible();
+
+        await page.getByRole('button', { name: 'Kupi mirnu sezonu' }).click();
+
+        await expect(page.getByText('Želiš veći saldo?')).toBeVisible();
+        await expect(page.getByText('Majstor vrtlar')).toBeVisible();
+        await expect(
+            page.getByRole('button', { name: 'Odaberi majstor paket' }),
+        ).toBeVisible();
+    });
+
+    test('disables the one-time package after it has been used', async ({
+        mount,
+        page,
+    }) => {
+        await mount(<SunflowerPackagesPanelStory initialOfferUsed />);
+
+        await expect(
+            page.getByText('Ova ponuda je već iskorištena na tvom računu.'),
+        ).toBeVisible();
+        await expect(
+            page.getByRole('button', { name: 'Kupi početni paket' }),
+        ).toBeDisabled();
     });
 });

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { SunflowerPackageAlreadyPurchasedError } from '@gredice/storage';
 import {
     buildCheckoutInvoiceBillingSnapshot,
     buildCheckoutInvoiceLineItem,
@@ -96,6 +97,10 @@ function makeDependencies(
                 invoiceId: 601,
                 invoiceNumber: 'PON-2026-0001',
             };
+        },
+        getSunflowerPackageByCode: async (...args: unknown[]) => {
+            record(calls, 'getSunflowerPackageByCode', args);
+            return null;
         },
         issueReceiptForPaidInvoice: async (...args: unknown[]) => {
             record(calls, 'issueReceiptForPaidInvoice', args);
@@ -198,6 +203,13 @@ function makeDependencies(
         },
         spendSunflowers: async (...args: unknown[]) => {
             record(calls, 'spendSunflowers', args);
+        },
+        topUpSunflowerPackage: async (...args: unknown[]) => {
+            record(calls, 'topUpSunflowerPackage', args);
+            return {
+                topUp: { status: 'created', entry: { id: 801 } },
+                bonus: { status: 'created', entry: { id: 802 } },
+            };
         },
         updateRaisedBed: async (...args: unknown[]) => {
             record(calls, 'updateRaisedBed', args);
@@ -309,6 +321,76 @@ function makeSession() {
                 },
             ],
         },
+    };
+}
+
+function makeSunflowerPackageSession({
+    amountTotal = 4999,
+    lineAmountTotal = 4999,
+    lineAmountSubtotal = 4999,
+} = {}) {
+    return {
+        id: 'cs_package_paid',
+        status: 'complete',
+        paymentStatus: 'paid',
+        amountTotal,
+        lineItems: {
+            data: [
+                {
+                    id: 'li_package_1',
+                    quantity: 1,
+                    amount_total: lineAmountTotal,
+                    amount_subtotal: lineAmountSubtotal,
+                    price: {
+                        product: {
+                            id: 'prod_package_1',
+                            name: 'Puna gredica',
+                            metadata: {
+                                kind: 'sunflowerPackage',
+                                accountId: 'account-1',
+                                userId: 'user-1',
+                                entityTypeName: 'sunflowerPackage',
+                                entityId: '77',
+                                packageCode: 'puna_gredica',
+                                packageRole: 'initial_one_time',
+                                sunflowers: '60000',
+                                baseSunflowers: '50000',
+                                bonusSunflowers: '10000',
+                                priceCents: '4999',
+                                currency: 'eur',
+                            },
+                        },
+                    },
+                },
+            ],
+        },
+    };
+}
+
+function makeSunflowerPackageData() {
+    return {
+        entityId: 77,
+        code: 'puna_gredica',
+        name: 'Puna gredica',
+        tag: 'Jednokratna ponuda',
+        descriptionShort: 'Početni paket.',
+        descriptionLong: 'Početni paket za Gredice saldo.',
+        cta: 'Kupi paket',
+        displayOrder: 10,
+        priceCents: 4999,
+        priceEur: 49.99,
+        currency: 'eur',
+        sunflowers: 60000,
+        baseSunflowers: 50000,
+        bonusSunflowers: 10000,
+        bonusPercentage: 20,
+        role: 'initial_one_time',
+        isActive: true,
+        isOneTime: true,
+        oneTimeScope: 'account',
+        upsellTriggerCode: null,
+        showInPrimaryList: false,
+        eligible: true,
     };
 }
 
@@ -514,6 +596,354 @@ describe('processCheckoutSession', () => {
                     invoiceNumber: 'PON-2026-0001',
                     receiptId: 701,
                     receiptNumber: '2026-1',
+                },
+            ],
+        );
+    });
+
+    it('fulfills a paid sunflower package without cart processing or loyalty earning', async () => {
+        const calls: RecordedCall[] = [];
+        const dependencies = makeDependencies(calls, {
+            getStripeCheckoutSession: async (...args: unknown[]) => {
+                record(calls, 'getStripeCheckoutSession', args);
+                return makeSunflowerPackageSession();
+            },
+            getSunflowerPackageByCode: async (...args: unknown[]) => {
+                record(calls, 'getSunflowerPackageByCode', args);
+                return makeSunflowerPackageData();
+            },
+            isBillingAutomationEnabled: (...args: unknown[]) => {
+                record(calls, 'isBillingAutomationEnabled', args);
+                return true;
+            },
+        });
+
+        await processCheckoutSession('cs_package_paid', dependencies);
+
+        assert.equal(callsNamed(calls, 'getShoppingCart').length, 0);
+        assert.equal(callsNamed(calls, 'earnSunflowersForPayment').length, 0);
+        assert.deepStrictEqual(
+            callsNamed(calls, 'topUpSunflowerPackage')[0]?.args,
+            [
+                {
+                    accountId: 'account-1',
+                    packageCode: 'puna_gredica',
+                    packageEntityId: 77,
+                    sunflowers: 60000,
+                    bonusSunflowers: 10000,
+                    priceCents: 4999,
+                    idempotencyKey:
+                        'stripe:cs_package_paid:sunflowerPackage:puna_gredica',
+                    enforceOneTime: true,
+                    sourceType: 'stripeCheckoutSession',
+                    sourceId: 'cs_package_paid',
+                    reason: 'sunflowerPackage:puna_gredica',
+                    metadata: {
+                        checkoutSessionId: 'cs_package_paid',
+                        lineItemId: 'li_package_1',
+                        packageRole: 'initial_one_time',
+                        catalogPriceCents: 4999,
+                        paidAmountCents: 4999,
+                    },
+                },
+            ],
+        );
+        assert.deepStrictEqual(
+            callsNamed(calls, 'createTransaction')[0]?.args,
+            [
+                {
+                    accountId: 'account-1',
+                    amount: 4999,
+                    stripePaymentId: 'cs_package_paid',
+                    status: 'completed',
+                    currency: 'eur',
+                },
+            ],
+        );
+        assert.deepStrictEqual(
+            callsNamed(calls, 'ensureInvoiceForTransaction')[0]?.args,
+            [
+                {
+                    transactionId: 901,
+                    billingSnapshot: {
+                        billToCountry: 'Hrvatska',
+                        billToEmail: 'buyer@example.test',
+                        billToName: undefined,
+                        notes: 'Generirano iz plaćene Gredice checkout transakcije.',
+                    },
+                    items: [
+                        {
+                            description: 'Puna gredica',
+                            quantity: 1,
+                            unitPriceCents: 4999,
+                            totalPriceCents: 4999,
+                            entityId: '77',
+                            entityTypeName: 'sunflowerPackage',
+                        },
+                    ],
+                },
+            ],
+        );
+        assert.deepStrictEqual(
+            callsNamed(calls, 'notifyOrderConfirmationEmail')[0]?.args,
+            [
+                {
+                    to: 'buyer@example.test',
+                    cartId: null,
+                    checkoutSessionId: 'cs_package_paid',
+                    items: [
+                        {
+                            name: 'Puna gredica',
+                            quantity: 1,
+                            amountSubtotal: 4999,
+                            currency: 'eur',
+                        },
+                    ],
+                    totalAmountCents: 4999,
+                    currency: 'eur',
+                },
+            ],
+        );
+        assert.deepStrictEqual(
+            callsNamed(calls, 'posthog.capture').at(-1)?.args,
+            [
+                {
+                    distinctId: 'account-1',
+                    event: 'sunflower_package_fulfilled',
+                    properties: {
+                        checkout_session_id: 'cs_package_paid',
+                        transaction_id: 901,
+                        package_code: 'puna_gredica',
+                        package_role: 'initial_one_time',
+                        price_cents: 4999,
+                        paid_amount_cents: 4999,
+                        sunflowers: 60000,
+                        bonus_sunflowers: 10000,
+                        duplicate_one_time_purchase: false,
+                        ledger_entry_ids: [801, 802],
+                    },
+                },
+            ],
+        );
+    });
+
+    it('fulfills a discounted paid sunflower package with the actual paid amount', async () => {
+        const calls: RecordedCall[] = [];
+        const dependencies = makeDependencies(calls, {
+            getStripeCheckoutSession: async (...args: unknown[]) => {
+                record(calls, 'getStripeCheckoutSession', args);
+                return makeSunflowerPackageSession({
+                    amountTotal: 3999,
+                    lineAmountTotal: 3999,
+                    lineAmountSubtotal: 4999,
+                });
+            },
+            getSunflowerPackageByCode: async (...args: unknown[]) => {
+                record(calls, 'getSunflowerPackageByCode', args);
+                return makeSunflowerPackageData();
+            },
+        });
+
+        await processCheckoutSession('cs_package_paid', dependencies);
+
+        const topUpInput = callsNamed(calls, 'topUpSunflowerPackage')[0]
+            ?.args[0];
+        assert.ok(isRecord(topUpInput));
+        assert.equal(topUpInput.priceCents, 3999);
+        assert.deepStrictEqual(
+            callsNamed(calls, 'createTransaction')[0]?.args,
+            [
+                {
+                    accountId: 'account-1',
+                    amount: 3999,
+                    stripePaymentId: 'cs_package_paid',
+                    status: 'completed',
+                    currency: 'eur',
+                },
+            ],
+        );
+        assert.deepStrictEqual(
+            callsNamed(calls, 'notifyOrderConfirmationEmail')[0]?.args,
+            [
+                {
+                    to: 'buyer@example.test',
+                    cartId: null,
+                    checkoutSessionId: 'cs_package_paid',
+                    items: [
+                        {
+                            name: 'Puna gredica',
+                            quantity: 1,
+                            amountSubtotal: 3999,
+                            currency: 'eur',
+                        },
+                    ],
+                    totalAmountCents: 3999,
+                    currency: 'eur',
+                },
+            ],
+        );
+        assert.equal(
+            callsNamed(calls, 'posthog.capture').some((call) => {
+                const event = call.args[0];
+                return (
+                    isRecord(event) &&
+                    event.event === 'sunflower_package_fulfillment_failed'
+                );
+            }),
+            false,
+        );
+    });
+
+    it('replays sunflower package fulfillment through idempotent ledger top-up without a duplicate transaction', async () => {
+        const calls: RecordedCall[] = [];
+        const dependencies = makeDependencies(calls, {
+            getStripeCheckoutSession: async (...args: unknown[]) => {
+                record(calls, 'getStripeCheckoutSession', args);
+                return makeSunflowerPackageSession();
+            },
+            getCompletedTransactionByStripePaymentId: async (
+                ...args: unknown[]
+            ) => {
+                record(calls, 'getCompletedTransactionByStripePaymentId', args);
+                return { id: 902 };
+            },
+            getSunflowerPackageByCode: async (...args: unknown[]) => {
+                record(calls, 'getSunflowerPackageByCode', args);
+                return makeSunflowerPackageData();
+            },
+        });
+
+        await processCheckoutSession('cs_package_paid', dependencies);
+
+        assert.equal(callsNamed(calls, 'topUpSunflowerPackage').length, 1);
+        assert.equal(callsNamed(calls, 'createTransaction').length, 0);
+        assert.equal(
+            callsNamed(calls, 'ensureInvoiceForTransaction').length,
+            0,
+        );
+        assert.equal(
+            callsNamed(calls, 'notifyOrderConfirmationEmail').length,
+            0,
+        );
+        assert.equal(callsNamed(calls, 'notifyPurchase').length, 0);
+        assert.equal(callsNamed(calls, 'posthog.capture').length, 0);
+    });
+
+    it('does not credit a sunflower package when Stripe metadata mismatches current package data', async () => {
+        const calls: RecordedCall[] = [];
+        const dependencies = makeDependencies(calls, {
+            getStripeCheckoutSession: async (...args: unknown[]) => {
+                record(calls, 'getStripeCheckoutSession', args);
+                return makeSunflowerPackageSession();
+            },
+            getSunflowerPackageByCode: async (...args: unknown[]) => {
+                record(calls, 'getSunflowerPackageByCode', args);
+                return {
+                    ...makeSunflowerPackageData(),
+                    priceCents: 5999,
+                };
+            },
+        });
+
+        await processCheckoutSession('cs_package_paid', dependencies);
+
+        assert.equal(callsNamed(calls, 'topUpSunflowerPackage').length, 0);
+        assert.equal(callsNamed(calls, 'createTransaction').length, 0);
+        assert.deepStrictEqual(callsNamed(calls, 'posthog.capture')[0]?.args, [
+            {
+                distinctId: 'account-1',
+                event: 'sunflower_package_fulfillment_failed',
+                properties: {
+                    checkout_session_id: 'cs_package_paid',
+                    package_code: 'puna_gredica',
+                    reason: 'metadata_mismatch:price_cents',
+                },
+            },
+        ]);
+    });
+
+    it('credits paid base sunflowers when a duplicate one-time session was already purchased', async () => {
+        const calls: RecordedCall[] = [];
+        const dependencies = makeDependencies(calls, {
+            getStripeCheckoutSession: async (...args: unknown[]) => {
+                record(calls, 'getStripeCheckoutSession', args);
+                return makeSunflowerPackageSession();
+            },
+            getSunflowerPackageByCode: async (...args: unknown[]) => {
+                record(calls, 'getSunflowerPackageByCode', args);
+                return makeSunflowerPackageData();
+            },
+            topUpSunflowerPackage: async (...args: unknown[]) => {
+                record(calls, 'topUpSunflowerPackage', args);
+                const input = args[0];
+                if (isRecord(input) && input.enforceOneTime === true) {
+                    throw new SunflowerPackageAlreadyPurchasedError(
+                        'account-1',
+                        'puna_gredica',
+                    );
+                }
+                return {
+                    topUp: { status: 'created', entry: { id: 803 } },
+                    bonus: null,
+                };
+            },
+        });
+
+        await processCheckoutSession('cs_package_paid', dependencies);
+
+        assert.equal(callsNamed(calls, 'topUpSunflowerPackage').length, 2);
+        const duplicateTopUpInput = callsNamed(
+            calls,
+            'topUpSunflowerPackage',
+        )[1]?.args[0];
+        assert.ok(isRecord(duplicateTopUpInput));
+        assert.equal(duplicateTopUpInput.sunflowers, 50000);
+        assert.equal(duplicateTopUpInput.bonusSunflowers, 0);
+        assert.equal(duplicateTopUpInput.enforceOneTime, false);
+        assert.equal(
+            duplicateTopUpInput.idempotencyKey,
+            'stripe:cs_package_paid:sunflowerPackage:puna_gredica:duplicate_paid_base',
+        );
+        assert.deepStrictEqual(
+            callsNamed(calls, 'createTransaction')[0]?.args,
+            [
+                {
+                    accountId: 'account-1',
+                    amount: 4999,
+                    stripePaymentId: 'cs_package_paid',
+                    status: 'completed',
+                    currency: 'eur',
+                },
+            ],
+        );
+        assert.equal(
+            callsNamed(calls, 'posthog.capture').some((call) => {
+                const event = call.args[0];
+                return (
+                    isRecord(event) &&
+                    event.event === 'sunflower_package_fulfillment_failed'
+                );
+            }),
+            false,
+        );
+        assert.deepStrictEqual(
+            callsNamed(calls, 'posthog.capture').at(-1)?.args,
+            [
+                {
+                    distinctId: 'account-1',
+                    event: 'sunflower_package_fulfilled',
+                    properties: {
+                        checkout_session_id: 'cs_package_paid',
+                        transaction_id: 901,
+                        package_code: 'puna_gredica',
+                        package_role: 'initial_one_time',
+                        price_cents: 4999,
+                        paid_amount_cents: 4999,
+                        sunflowers: 50000,
+                        bonus_sunflowers: 0,
+                        duplicate_one_time_purchase: true,
+                        ledger_entry_ids: [803],
+                    },
                 },
             ],
         );

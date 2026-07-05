@@ -3,6 +3,7 @@ import {
     consumeInventoryItem,
     getAccount,
     getShoppingCart,
+    getSunflowerPackageEligibilityForAccount,
     getUser,
     markCartPaidIfAllItemsPaid,
     normalizeShoppingCartInventoryUsage,
@@ -14,6 +15,7 @@ import {
     reserveOutletOffer,
     setCartItemPaid,
     spendSunflowers,
+    sunflowerPackageEntityTypeName,
 } from '@gredice/storage';
 import {
     type CheckoutItem,
@@ -22,7 +24,7 @@ import {
     stripeSessionCancel,
 } from '@gredice/stripe/server';
 import { Hono } from 'hono';
-import { describeRoute, validator as zValidator } from 'hono-openapi';
+import { describeRoute, resolver, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import { getCartInfo } from '../../../lib/checkout/cartInfo';
 import {
@@ -30,12 +32,17 @@ import {
     notifyOrderConfirmationEmail,
 } from '../../../lib/checkout/orderConfirmationEmail';
 import { calculateSunflowerAmount } from '../../../lib/checkout/sunflowerCalculations';
+import { authSecurity } from '../../../lib/docs/security';
 import {
     type AuthVariables,
     authValidator,
 } from '../../../lib/hono/authValidator';
 import { getPostHogClient } from '../../../lib/posthog-server';
 import { processItem } from '../../../lib/stripe/processCheckoutSession';
+import {
+    buildSunflowerPackageCatalogResponse,
+    sunflowerPackageCatalogResponseSchema,
+} from '../../../lib/sunflowers/packageCatalog';
 
 const STRIPE_MIN_CHECKOUT_SESSION_LIFETIME_MINUTES = 30;
 const OUTLET_CHECKOUT_HOLD_MINUTES = Math.max(
@@ -44,11 +51,47 @@ const OUTLET_CHECKOUT_HOLD_MINUTES = Math.max(
     STRIPE_MIN_CHECKOUT_SESSION_LIFETIME_MINUTES + 1,
 );
 
+const packageCheckoutBodySchema = z.object({
+    returnContext: z
+        .object({
+            source: z.enum(['garden', 'www']).optional(),
+            path: z.string().max(200).optional(),
+        })
+        .optional(),
+});
+
 function addMinutes(date: Date, minutes: number) {
     return new Date(date.getTime() + minutes * 60 * 1000);
 }
 
 const app = new Hono<{ Variables: AuthVariables }>()
+    .get(
+        '/sunflower-packages',
+        describeRoute({
+            description:
+                'Get active sunflower packages with eligibility for package checkout',
+            security: authSecurity,
+            responses: {
+                200: {
+                    description: 'Active sunflower package catalog',
+                    content: {
+                        'application/json': {
+                            schema: resolver(
+                                sunflowerPackageCatalogResponseSchema,
+                            ),
+                        },
+                    },
+                },
+            },
+        }),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId } = context.get('authContext');
+            const packages =
+                await getSunflowerPackageEligibilityForAccount(accountId);
+            return context.json(buildSunflowerPackageCatalogResponse(packages));
+        },
+    )
     .post(
         '/checkout',
         describeRoute({
@@ -419,6 +462,139 @@ const app = new Hono<{ Variables: AuthVariables }>()
             });
 
             return context.json({ success: true });
+        },
+    )
+    .post(
+        '/sunflower-packages/:code',
+        describeRoute({
+            description:
+                'Create a Stripe checkout session for an eligible sunflower package',
+            security: authSecurity,
+        }),
+        authValidator(['user', 'admin']),
+        zValidator(
+            'param',
+            z.object({
+                code: z.string().trim().min(1).max(80),
+            }),
+        ),
+        zValidator('json', packageCheckoutBodySchema),
+        async (context) => {
+            const { accountId, userId } = context.get('authContext');
+            const { code } = context.req.valid('param');
+            const { returnContext } = context.req.valid('json');
+
+            const [account, user, packages] = await Promise.all([
+                getAccount(accountId),
+                getUser(userId),
+                getSunflowerPackageEligibilityForAccount(accountId),
+            ]);
+            if (!account) {
+                return context.json({ error: 'Account not found' }, 404);
+            }
+            if (!user) {
+                return context.json({ error: 'User not found' }, 404);
+            }
+
+            const packageData =
+                packages.find((pkg) => pkg.code === code) ?? null;
+            if (!packageData) {
+                return context.json({ error: 'Package not found' }, 404);
+            }
+            if (!packageData.eligible) {
+                return context.json(
+                    {
+                        error: 'Package is not eligible',
+                        reason:
+                            packageData.ineligibleReason === 'already_purchased'
+                                ? 'already_used'
+                                : 'not_eligible',
+                    },
+                    409,
+                );
+            }
+            if (
+                packageData.currency !== 'eur' ||
+                packageData.priceCents <= 0 ||
+                packageData.sunflowers <= 0
+            ) {
+                console.warn('Invalid sunflower package checkout data', {
+                    code,
+                    currency: packageData.currency,
+                    priceCents: packageData.priceCents,
+                    sunflowers: packageData.sunflowers,
+                });
+                return context.json({ error: 'Package is not available' }, 400);
+            }
+
+            const { customerId, sessionId, url } = await stripeCheckout(
+                {
+                    id: account.id,
+                    email: user.userName,
+                    name: user.userName,
+                    stripeCustomerId: account.stripeCustomerId ?? undefined,
+                },
+                {
+                    items: [
+                        {
+                            product: {
+                                name: packageData.name,
+                                description:
+                                    packageData.descriptionShort ?? undefined,
+                                imageUrls: [
+                                    'https://cdn.gredice.com/sunflower-large.svg',
+                                ],
+                                metadata: {
+                                    kind: 'sunflowerPackage',
+                                    entityTypeName:
+                                        sunflowerPackageEntityTypeName,
+                                    entityId: packageData.entityId,
+                                    packageCode: packageData.code,
+                                    packageRole: packageData.role,
+                                    accountId: account.id,
+                                    userId: user.id,
+                                    sunflowers: packageData.sunflowers,
+                                    baseSunflowers: packageData.baseSunflowers,
+                                    bonusSunflowers:
+                                        packageData.bonusSunflowers,
+                                    priceCents: packageData.priceCents,
+                                    currency: packageData.currency,
+                                    returnContextSource:
+                                        returnContext?.source ?? null,
+                                    returnContextPath:
+                                        returnContext?.path ?? null,
+                                },
+                            },
+                            price: {
+                                valueInCents: packageData.priceCents,
+                                currency: 'eur',
+                            },
+                            quantity: 1,
+                        },
+                    ],
+                    allowPromotionCodes: false,
+                },
+            );
+
+            if (account.stripeCustomerId !== customerId) {
+                await assignStripeCustomerId(account.id, customerId);
+            }
+
+            (await getPostHogClient()).capture({
+                distinctId: accountId,
+                event: 'checkout_initiated',
+                properties: {
+                    checkout_kind: 'sunflower_package',
+                    package_code: packageData.code,
+                    package_role: packageData.role,
+                    price_cents: packageData.priceCents,
+                    sunflowers: packageData.sunflowers,
+                    bonus_sunflowers: packageData.bonusSunflowers,
+                    payment_method: 'stripe',
+                },
+            });
+
+            return context.json({ sessionId, url });
         },
     )
     .delete(

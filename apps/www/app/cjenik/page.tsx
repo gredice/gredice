@@ -13,6 +13,7 @@ import { getHqLocationsData } from '../../lib/getHqLocationsData';
 import { getOperationsData } from '../../lib/plants/getOperationsData';
 import { getPlantSortsData } from '../../lib/plants/getPlantSortsData';
 import { getPlantsData } from '../../lib/plants/getPlantsData';
+import { getPublicSunflowerPackages } from '../../lib/sunflowerPackages';
 import { KnownPages } from '../../src/KnownPages';
 import {
     buildDeliveryPricingRows,
@@ -23,17 +24,27 @@ import {
 export const metadata: Metadata = {
     title: 'Cjenik',
     description:
-        'Pregled svih cijena: biljke, radnje i dostava na jednom mjestu.',
+        'Pregled svih cijena: paketi suncokreta, biljke, radnje i dostava na jednom mjestu.',
 };
 
+const sunflowerFormatter = new Intl.NumberFormat('hr-HR', {
+    maximumFractionDigits: 0,
+});
+
 export default async function PricingPage() {
-    const [plantsData, plantSortsData, operationsData, hqLocations] =
-        await Promise.all([
-            getPlantsData(),
-            getPlantSortsData(),
-            getOperationsData(),
-            getHqLocationsData(),
-        ]);
+    const [
+        plantsData,
+        plantSortsData,
+        operationsData,
+        hqLocations,
+        sunflowerPackages,
+    ] = await Promise.all([
+        getPlantsData(),
+        getPlantSortsData(),
+        getOperationsData(),
+        getHqLocationsData(),
+        getPublicSunflowerPackages(),
+    ]);
 
     const plantPricingRows = buildPlantPricingRows(plantsData, plantSortsData);
     const operationPricingRows = buildOperationPricingRows(operationsData);
@@ -48,8 +59,100 @@ export default async function PricingPage() {
                 <PageHeader
                     padded
                     header="💶 Cjenik"
-                    subHeader="Sve cijene na jednom mjestu: biljke, sorte, radnje i dostava"
+                    subHeader="Sve cijene na jednom mjestu: paketi suncokreta, biljke, sorte, radnje i dostava"
                 />
+
+                <Card>
+                    <CardHeader className="flex-row items-center justify-between">
+                        <CardTitle>Paketi suncokreta</CardTitle>
+                        <FeedbackModal topic="www/pricing/sunflowers" />
+                    </CardHeader>
+                    <CardContent>
+                        <Stack spacing={3}>
+                            <Typography level="body2" secondary>
+                                Suncokreti su prepaid Gredice bodovi za vrtne
+                                akcije. Kod korištenja salda vrijedi
+                                orijentacijski odnos 1 EUR ≈ 1.000 suncokreta, a
+                                bonus se dodaje kao dodatni broj suncokreta.
+                            </Typography>
+                            {sunflowerPackages.length > 0 ? (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full border-collapse">
+                                        <thead>
+                                            <tr className="border-b">
+                                                <th className="py-2 pr-4 text-left">
+                                                    Paket
+                                                </th>
+                                                <th className="py-2 pr-4 text-right">
+                                                    Suncokreti
+                                                </th>
+                                                <th className="py-2 pr-4 text-right">
+                                                    Bonus
+                                                </th>
+                                                <th className="py-2 text-right">
+                                                    Cijena
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {sunflowerPackages.map((pkg) => (
+                                                <tr
+                                                    key={pkg.code}
+                                                    className="border-b last:border-b-0"
+                                                >
+                                                    <td className="py-2 pr-4 align-middle">
+                                                        <span className="block font-medium">
+                                                            {pkg.name}
+                                                        </span>
+                                                        <span className="block text-xs text-muted-foreground">
+                                                            {pkg.isOneTime
+                                                                ? 'Jednokratna ponuda'
+                                                                : pkg.role ===
+                                                                    'upsell'
+                                                                  ? 'Najveći paket'
+                                                                  : (pkg.tag ??
+                                                                    'Glavni paket')}
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-2 pr-4 text-right font-medium tabular-nums">
+                                                        {sunflowerFormatter.format(
+                                                            pkg.sunflowers,
+                                                        )}
+                                                    </td>
+                                                    <td className="py-2 pr-4 text-right tabular-nums">
+                                                        {pkg.bonusSunflowers > 0
+                                                            ? `+${sunflowerFormatter.format(pkg.bonusSunflowers)}`
+                                                            : '-'}
+                                                    </td>
+                                                    <td className="py-2 text-right font-medium">
+                                                        {formatPrice(
+                                                            pkg.priceEur,
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                <Typography level="body2" secondary>
+                                    Paketi se trenutno ne mogu učitati. Aktualni
+                                    saldo i kupnja dostupni su u vrtu.
+                                </Typography>
+                            )}
+                            <Typography level="body2" secondary>
+                                Detalje o korištenju salda pročitaj na stranici{' '}
+                                <Link
+                                    className="underline"
+                                    href={KnownPages.Sunflowers}
+                                >
+                                    Suncokreti
+                                </Link>
+                                .
+                            </Typography>
+                        </Stack>
+                    </CardContent>
+                </Card>
 
                 <Card>
                     <CardHeader className="flex-row items-center justify-between">

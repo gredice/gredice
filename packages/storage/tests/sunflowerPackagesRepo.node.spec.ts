@@ -6,6 +6,7 @@ import {
     getSunflowerPackageByCode,
     getSunflowerPackageEligibilityForAccount,
     getSunflowerPackages,
+    SunflowerPackageAlreadyPurchasedError,
     seedSunflowerPackageCatalog,
     storage,
     sunflowerPackageEntityTypeName,
@@ -192,6 +193,47 @@ test('topUpSunflowerPackage does not create a bonus on replay after a bonus-less
     });
     assert.equal(replay.topUp.status, 'existing');
     assert.equal(replay.bonus, null);
+});
+
+test('topUpSunflowerPackage enforces one-time package purchases while preserving replay idempotency', async () => {
+    createTestDb();
+    await seedSunflowerPackageCatalog();
+    const accountId = await createTestAccount();
+
+    const firstTopUp = await topUpSunflowerPackage({
+        accountId,
+        packageCode: 'puna_gredica',
+        sunflowers: 60000,
+        bonusSunflowers: 10000,
+        priceCents: 4999,
+        idempotencyKey: 'checkout-session-one-time-first',
+        enforceOneTime: true,
+    });
+    const replayTopUp = await topUpSunflowerPackage({
+        accountId,
+        packageCode: 'puna_gredica',
+        sunflowers: 60000,
+        bonusSunflowers: 10000,
+        priceCents: 4999,
+        idempotencyKey: 'checkout-session-one-time-first',
+        enforceOneTime: true,
+    });
+
+    assert.equal(firstTopUp.topUp.status, 'created');
+    assert.equal(replayTopUp.topUp.status, 'existing');
+    await assert.rejects(
+        () =>
+            topUpSunflowerPackage({
+                accountId,
+                packageCode: 'puna_gredica',
+                sunflowers: 60000,
+                bonusSunflowers: 10000,
+                priceCents: 4999,
+                idempotencyKey: 'checkout-session-one-time-second',
+                enforceOneTime: true,
+            }),
+        SunflowerPackageAlreadyPurchasedError,
+    );
 });
 
 test('getSunflowerPackages rejects malformed numeric package data', async () => {
