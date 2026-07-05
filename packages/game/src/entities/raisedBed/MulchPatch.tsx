@@ -34,10 +34,12 @@ const mulchPatchVertexParameters = `
 attribute float mulchEdge;
 attribute vec4 mulchBounds;
 attribute vec4 mulchExposedEdges;
+attribute vec4 mulchInnerCorners;
 varying vec3 vMulchPatchPosition;
 varying float vMulchEdge;
 varying vec4 vMulchBounds;
 varying vec4 vMulchExposedEdges;
+varying vec4 vMulchInnerCorners;
 `;
 
 const mulchPatchVertex = `
@@ -45,6 +47,7 @@ vMulchPatchPosition = position;
 vMulchEdge = mulchEdge;
 vMulchBounds = mulchBounds;
 vMulchExposedEdges = mulchExposedEdges;
+vMulchInnerCorners = mulchInnerCorners;
 `;
 
 const mulchPatchFragmentParameters = `
@@ -52,23 +55,70 @@ varying vec3 vMulchPatchPosition;
 varying float vMulchEdge;
 varying vec4 vMulchBounds;
 varying vec4 vMulchExposedEdges;
+varying vec4 vMulchInnerCorners;
 `;
 
 const mulchPatchColorFragment = `
-float mulchPatchEdgeDistance = 1000.0;
+const float mulchPatchInnerCornerRadius = 0.11;
+const float mulchPatchStraightEdgeBandWidth = 0.14;
+const float mulchPatchInnerEdgeBandWidth = 0.055;
+float mulchPatchStraightEdgeDistance = 1000.0;
+float mulchPatchInnerEdgeDistance = 1000.0;
 if (vMulchExposedEdges.x > 0.5) {
-    mulchPatchEdgeDistance = min(mulchPatchEdgeDistance, abs(vMulchPatchPosition.x - vMulchBounds.y));
+    mulchPatchStraightEdgeDistance = min(mulchPatchStraightEdgeDistance, abs(vMulchPatchPosition.x - vMulchBounds.y));
 }
 if (vMulchExposedEdges.y > 0.5) {
-    mulchPatchEdgeDistance = min(mulchPatchEdgeDistance, abs(vMulchPatchPosition.z - vMulchBounds.z));
+    mulchPatchStraightEdgeDistance = min(mulchPatchStraightEdgeDistance, abs(vMulchPatchPosition.z - vMulchBounds.z));
 }
 if (vMulchExposedEdges.z > 0.5) {
-    mulchPatchEdgeDistance = min(mulchPatchEdgeDistance, abs(vMulchPatchPosition.x - vMulchBounds.x));
+    mulchPatchStraightEdgeDistance = min(mulchPatchStraightEdgeDistance, abs(vMulchPatchPosition.x - vMulchBounds.x));
 }
 if (vMulchExposedEdges.w > 0.5) {
-    mulchPatchEdgeDistance = min(mulchPatchEdgeDistance, abs(vMulchPatchPosition.z - vMulchBounds.w));
+    mulchPatchStraightEdgeDistance = min(mulchPatchStraightEdgeDistance, abs(vMulchPatchPosition.z - vMulchBounds.w));
 }
-float mulchPatchEdgeBand = 1.0 - smoothstep(0.0, 0.14, mulchPatchEdgeDistance);
+if (
+    vMulchInnerCorners.x > 0.5 &&
+    vMulchPatchPosition.x > vMulchBounds.y - mulchPatchInnerCornerRadius - mulchPatchInnerEdgeBandWidth &&
+    vMulchPatchPosition.z < vMulchBounds.z + mulchPatchInnerCornerRadius + mulchPatchInnerEdgeBandWidth
+) {
+    mulchPatchInnerEdgeDistance = min(
+        mulchPatchInnerEdgeDistance,
+        abs(length(vMulchPatchPosition.xz - vec2(vMulchBounds.y - mulchPatchInnerCornerRadius, vMulchBounds.z + mulchPatchInnerCornerRadius)) - mulchPatchInnerCornerRadius)
+    );
+}
+if (
+    vMulchInnerCorners.y > 0.5 &&
+    vMulchPatchPosition.x > vMulchBounds.y - mulchPatchInnerCornerRadius - mulchPatchInnerEdgeBandWidth &&
+    vMulchPatchPosition.z > vMulchBounds.w - mulchPatchInnerCornerRadius - mulchPatchInnerEdgeBandWidth
+) {
+    mulchPatchInnerEdgeDistance = min(
+        mulchPatchInnerEdgeDistance,
+        abs(length(vMulchPatchPosition.xz - vec2(vMulchBounds.y - mulchPatchInnerCornerRadius, vMulchBounds.w - mulchPatchInnerCornerRadius)) - mulchPatchInnerCornerRadius)
+    );
+}
+if (
+    vMulchInnerCorners.z > 0.5 &&
+    vMulchPatchPosition.x < vMulchBounds.x + mulchPatchInnerCornerRadius + mulchPatchInnerEdgeBandWidth &&
+    vMulchPatchPosition.z < vMulchBounds.z + mulchPatchInnerCornerRadius + mulchPatchInnerEdgeBandWidth
+) {
+    mulchPatchInnerEdgeDistance = min(
+        mulchPatchInnerEdgeDistance,
+        abs(length(vMulchPatchPosition.xz - vec2(vMulchBounds.x + mulchPatchInnerCornerRadius, vMulchBounds.z + mulchPatchInnerCornerRadius)) - mulchPatchInnerCornerRadius)
+    );
+}
+if (
+    vMulchInnerCorners.w > 0.5 &&
+    vMulchPatchPosition.x < vMulchBounds.x + mulchPatchInnerCornerRadius + mulchPatchInnerEdgeBandWidth &&
+    vMulchPatchPosition.z > vMulchBounds.w - mulchPatchInnerCornerRadius - mulchPatchInnerEdgeBandWidth
+) {
+    mulchPatchInnerEdgeDistance = min(
+        mulchPatchInnerEdgeDistance,
+        abs(length(vMulchPatchPosition.xz - vec2(vMulchBounds.x + mulchPatchInnerCornerRadius, vMulchBounds.w - mulchPatchInnerCornerRadius)) - mulchPatchInnerCornerRadius)
+    );
+}
+float mulchPatchStraightEdgeBand = 1.0 - smoothstep(0.0, mulchPatchStraightEdgeBandWidth, mulchPatchStraightEdgeDistance);
+float mulchPatchInnerEdgeBand = 1.0 - smoothstep(0.0, mulchPatchInnerEdgeBandWidth, mulchPatchInnerEdgeDistance);
+float mulchPatchEdgeBand = max(mulchPatchStraightEdgeBand, mulchPatchInnerEdgeBand);
 float mulchPatchShade = max(vMulchEdge, mulchPatchEdgeBand * 0.82);
 diffuseColor.rgb *= mix(1.0, 0.78, mulchPatchShade);
 `;

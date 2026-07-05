@@ -10,6 +10,8 @@ import {
     resolveMulchPatchConnectionMask,
 } from './mulchPatchGeometry';
 
+const topY = 0.026;
+
 function rounded(value: number) {
     return Number(value.toFixed(6));
 }
@@ -89,7 +91,7 @@ function hasTopPoint(geometry: BufferGeometry, x: number, z: number) {
     for (let index = 0; index < position.count; index += 1) {
         if (
             rounded(position.getX(index)) === rounded(x) &&
-            rounded(position.getY(index)) === 0.018 &&
+            rounded(position.getY(index)) === topY &&
             rounded(position.getZ(index)) === rounded(z)
         ) {
             return true;
@@ -119,8 +121,8 @@ function hasTopEdgeShadeAtX(
                 if (
                     rounded(position.getX(firstIndex)) === rounded(x) &&
                     rounded(position.getX(secondIndex)) === rounded(x) &&
-                    rounded(position.getY(firstIndex)) === 0.018 &&
-                    rounded(position.getY(secondIndex)) === 0.018 &&
+                    rounded(position.getY(firstIndex)) === topY &&
+                    rounded(position.getY(secondIndex)) === topY &&
                     rounded(mulchEdge.getX(firstIndex)) === edgeShade &&
                     rounded(mulchEdge.getX(secondIndex)) === edgeShade
                 ) {
@@ -148,6 +150,18 @@ function getMulchEdgeRange(geometry: BufferGeometry) {
     };
 }
 
+function getFirstVec4Attribute(geometry: BufferGeometry, name: string) {
+    const attribute = geometry.getAttribute(name);
+    assert.ok(attribute);
+
+    return [
+        rounded(attribute.getX(0)),
+        rounded(attribute.getY(0)),
+        rounded(attribute.getZ(0)),
+        rounded(attribute.getW(0)),
+    ];
+}
+
 function hasRoundedOuterCornerPoint(geometry: BufferGeometry) {
     const position = geometry.getAttribute('position');
 
@@ -156,7 +170,7 @@ function hasRoundedOuterCornerPoint(geometry: BufferGeometry) {
         const y = rounded(position.getY(index));
         const z = rounded(position.getZ(index));
 
-        if (y === 0.018 && x > 0.32 && x < 0.38 && z > 0.32 && z < 0.38) {
+        if (y === topY && x > 0.32 && x < 0.38 && z > 0.32 && z < 0.38) {
             return true;
         }
     }
@@ -172,7 +186,7 @@ function hasRoundedInnerCornerPoint(geometry: BufferGeometry) {
         const y = rounded(position.getY(index));
         const z = rounded(position.getZ(index));
 
-        if (y === 0.018 && x > 0.43 && x < 0.49 && z < -0.43 && z > -0.49) {
+        if (y === topY && x > 0.43 && x < 0.49 && z < -0.43 && z > -0.49) {
             return true;
         }
     }
@@ -292,6 +306,10 @@ test('diagonal holes round the inner corner between connected edges', () => {
     });
     assert.equal(hasTopPoint(geometry, 0.5, -0.5), false);
     assert.equal(hasRoundedInnerCornerPoint(geometry), true);
+    assert.deepEqual(
+        getFirstVec4Attribute(geometry, 'mulchInnerCorners'),
+        [1, 0, 0, 0],
+    );
     assert.equal(hasBottomEdgeAtX(geometry, 0.5), false);
     assert.equal(hasBottomEdgeAtZ(geometry, -0.5), false);
 
@@ -312,6 +330,10 @@ test('diagonal mulch keeps solid connected corners filled', () => {
     });
 
     assert.equal(hasTopPoint(geometry, 0.5, -0.5), true);
+    assert.deepEqual(
+        getFirstVec4Attribute(geometry, 'mulchInnerCorners'),
+        [0, 0, 0, 0],
+    );
 
     geometry.dispose();
 });
@@ -328,7 +350,7 @@ test('fully connected mulch patch fills the tile without skirt walls', () => {
         maxY: 0.026,
         maxZ: 0.5,
         minX: -0.5,
-        minY: 0.018,
+        minY: topY,
         minZ: -0.5,
     });
 

@@ -1,4 +1,9 @@
-import { BufferGeometry, Float32BufferAttribute } from 'three';
+import {
+    BufferGeometry,
+    Float32BufferAttribute,
+    ShapeUtils,
+    Vector2,
+} from 'three';
 
 export type MulchBlockName = 'MulchCoconut' | 'MulchHey' | 'MulchWood';
 
@@ -40,6 +45,10 @@ type MulchPatchBounds = {
     maxZ: number;
     minX: number;
     minZ: number;
+};
+
+type MulchPatchCorner = {
+    radius: number;
 };
 
 export const mulchPatchConnectionMasks = Array.from(
@@ -180,7 +189,7 @@ function getMulchPatchPerimeter(connections: MulchPatchConnections) {
     );
     const innerCornerRadius = connectedHalfSize - isolatedHalfSize;
 
-    function getCornerRadius({
+    function getCorner({
         diagonal,
         xConnection,
         zConnection,
@@ -188,34 +197,40 @@ function getMulchPatchPerimeter(connections: MulchPatchConnections) {
         diagonal: boolean;
         xConnection: boolean;
         zConnection: boolean;
-    }) {
+    }): MulchPatchCorner {
         if (!xConnection && !zConnection) {
-            return outerCornerRadius;
+            return {
+                radius: outerCornerRadius,
+            };
         }
 
         if (xConnection && zConnection && !diagonal) {
-            return innerCornerRadius;
+            return {
+                radius: innerCornerRadius,
+            };
         }
 
-        return 0;
+        return {
+            radius: 0,
+        };
     }
 
-    const southEastCorner = getCornerRadius({
+    const southEastCorner = getCorner({
         diagonal: connections.se,
         xConnection: connections.s,
         zConnection: connections.e,
     });
-    const northEastCorner = getCornerRadius({
+    const northEastCorner = getCorner({
         diagonal: connections.ne,
         xConnection: connections.n,
         zConnection: connections.e,
     });
-    const northWestCorner = getCornerRadius({
+    const northWestCorner = getCorner({
         diagonal: connections.nw,
         xConnection: connections.n,
         zConnection: connections.w,
     });
-    const southWestCorner = getCornerRadius({
+    const southWestCorner = getCorner({
         diagonal: connections.sw,
         xConnection: connections.s,
         zConnection: connections.w,
@@ -262,33 +277,45 @@ function getMulchPatchPerimeter(connections: MulchPatchConnections) {
         }
     }
 
-    addPoint({ x: minX + southEastCorner, z: minZ });
-    addPoint({ x: maxX - northEastCorner, z: minZ });
+    addPoint({ x: minX + southEastCorner.radius, z: minZ });
+    addPoint({ x: maxX - northEastCorner.radius, z: minZ });
     addCornerArc({
-        center: { x: maxX - northEastCorner, z: minZ + northEastCorner },
+        center: {
+            x: maxX - northEastCorner.radius,
+            z: minZ + northEastCorner.radius,
+        },
         endAngle: 0,
-        radius: northEastCorner,
+        radius: northEastCorner.radius,
         startAngle: -Math.PI / 2,
     });
-    addPoint({ x: maxX, z: maxZ - northWestCorner });
+    addPoint({ x: maxX, z: maxZ - northWestCorner.radius });
     addCornerArc({
-        center: { x: maxX - northWestCorner, z: maxZ - northWestCorner },
+        center: {
+            x: maxX - northWestCorner.radius,
+            z: maxZ - northWestCorner.radius,
+        },
         endAngle: Math.PI / 2,
-        radius: northWestCorner,
+        radius: northWestCorner.radius,
         startAngle: 0,
     });
-    addPoint({ x: minX + southWestCorner, z: maxZ });
+    addPoint({ x: minX + southWestCorner.radius, z: maxZ });
     addCornerArc({
-        center: { x: minX + southWestCorner, z: maxZ - southWestCorner },
+        center: {
+            x: minX + southWestCorner.radius,
+            z: maxZ - southWestCorner.radius,
+        },
         endAngle: Math.PI,
-        radius: southWestCorner,
+        radius: southWestCorner.radius,
         startAngle: Math.PI / 2,
     });
-    addPoint({ x: minX, z: minZ + southEastCorner });
+    addPoint({ x: minX, z: minZ + southEastCorner.radius });
     addCornerArc({
-        center: { x: minX + southEastCorner, z: minZ + southEastCorner },
+        center: {
+            x: minX + southEastCorner.radius,
+            z: minZ + southEastCorner.radius,
+        },
         endAngle: (Math.PI * 3) / 2,
-        radius: southEastCorner,
+        radius: southEastCorner.radius,
         startAngle: Math.PI,
     });
 
@@ -346,24 +373,99 @@ function shouldRenderMulchPatchSide(input: {
     return true;
 }
 
+function isPointInInnerCornerArea({
+    corner,
+    point,
+    radius,
+}: {
+    corner: 'ne' | 'nw' | 'se' | 'sw';
+    point: MulchPatchPoint;
+    radius: number;
+}) {
+    const tolerance = 0.0001;
+
+    if (corner === 'ne') {
+        return (
+            point.x >= 0.5 - radius - tolerance &&
+            point.z <= -0.5 + radius + tolerance
+        );
+    }
+    if (corner === 'nw') {
+        return (
+            point.x >= 0.5 - radius - tolerance &&
+            point.z >= 0.5 - radius - tolerance
+        );
+    }
+    if (corner === 'se') {
+        return (
+            point.x <= -0.5 + radius + tolerance &&
+            point.z <= -0.5 + radius + tolerance
+        );
+    }
+
+    return (
+        point.x <= -0.5 + radius + tolerance &&
+        point.z >= 0.5 - radius - tolerance
+    );
+}
+
+function isInnerCornerMulchPatchSide({
+    connections,
+    current,
+    next,
+}: {
+    connections: MulchPatchConnections;
+    current: MulchPatchPoint;
+    next: MulchPatchPoint;
+}) {
+    const innerCornerRadius = 0.11;
+    const innerCorners = [
+        connections.n && connections.e && !connections.ne ? 'ne' : null,
+        connections.n && connections.w && !connections.nw ? 'nw' : null,
+        connections.s && connections.e && !connections.se ? 'se' : null,
+        connections.s && connections.w && !connections.sw ? 'sw' : null,
+    ] as const;
+
+    return innerCorners.some(
+        (corner) =>
+            corner &&
+            isPointInInnerCornerArea({
+                corner,
+                point: current,
+                radius: innerCornerRadius,
+            }) &&
+            isPointInInnerCornerArea({
+                corner,
+                point: next,
+                radius: innerCornerRadius,
+            }),
+    );
+}
+
 export function createMulchPatchGeometry({
     connections,
 }: {
     connections: MulchPatchConnections;
 }) {
-    const topCenterY = 0.026;
-    const topEdgeY = 0.018;
+    const topY = 0.026;
     const bottomY = 0;
     const positions: number[] = [];
     const edgeShades: number[] = [];
     const boundsAttributes: number[] = [];
     const exposedEdgeAttributes: number[] = [];
+    const innerCornerAttributes: number[] = [];
     const { bounds, perimeter } = getMulchPatchPerimeter(connections);
     const exposedEdges = [
         connections.n ? 0 : 1,
         connections.e ? 0 : 1,
         connections.s ? 0 : 1,
         connections.w ? 0 : 1,
+    ];
+    const innerCorners = [
+        connections.n && connections.e && !connections.ne ? 1 : 0,
+        connections.n && connections.w && !connections.nw ? 1 : 0,
+        connections.s && connections.e && !connections.se ? 1 : 0,
+        connections.s && connections.w && !connections.sw ? 1 : 0,
     ];
 
     function addVertex(point: MulchPatchPoint, y: number, edgeShade: number) {
@@ -376,6 +478,7 @@ export function createMulchPatchGeometry({
             bounds.maxZ,
         );
         exposedEdgeAttributes.push(...exposedEdges);
+        innerCornerAttributes.push(...innerCorners);
     }
 
     function addTriangle(
@@ -394,24 +497,46 @@ export function createMulchPatchGeometry({
         addVertex(third, thirdY, thirdEdgeShade);
     }
 
-    const center = { x: 0, z: 0 };
+    function getTopNormalY(
+        first: MulchPatchPoint,
+        second: MulchPatchPoint,
+        third: MulchPatchPoint,
+    ) {
+        const abX = second.x - first.x;
+        const abZ = second.z - first.z;
+        const acX = third.x - first.x;
+        const acZ = third.z - first.z;
+
+        return abZ * acX - abX * acZ;
+    }
+
+    for (const triangle of ShapeUtils.triangulateShape(
+        perimeter.map((point) => new Vector2(point.x, point.z)),
+        [],
+    )) {
+        const firstIndex = triangle[0];
+        const secondIndex = triangle[1];
+        const thirdIndex = triangle[2];
+        const first = firstIndex == null ? undefined : perimeter[firstIndex];
+        const second = secondIndex == null ? undefined : perimeter[secondIndex];
+        const third = thirdIndex == null ? undefined : perimeter[thirdIndex];
+
+        if (!first || !second || !third) {
+            continue;
+        }
+
+        if (getTopNormalY(first, second, third) >= 0) {
+            addTriangle(first, topY, 0, second, topY, 0, third, topY, 0);
+        } else {
+            addTriangle(first, topY, 0, third, topY, 0, second, topY, 0);
+        }
+    }
+
     for (const [index, current] of perimeter.entries()) {
         const next = perimeter[(index + 1) % perimeter.length];
         if (!next) {
             continue;
         }
-
-        addTriangle(
-            center,
-            topCenterY,
-            0,
-            next,
-            topEdgeY,
-            0,
-            current,
-            topEdgeY,
-            0,
-        );
 
         if (
             shouldRenderMulchPatchSide({
@@ -421,28 +546,39 @@ export function createMulchPatchGeometry({
                 next,
             })
         ) {
-            addTriangle(
-                current,
-                topEdgeY,
-                1,
-                next,
-                topEdgeY,
-                1,
-                next,
-                bottomY,
-                1,
-            );
-            addTriangle(
-                current,
-                topEdgeY,
-                1,
-                next,
-                bottomY,
-                1,
-                current,
-                bottomY,
-                1,
-            );
+            if (
+                isInnerCornerMulchPatchSide({
+                    connections,
+                    current,
+                    next,
+                })
+            ) {
+                addTriangle(current, topY, 1, next, bottomY, 1, next, topY, 1);
+                addTriangle(
+                    current,
+                    topY,
+                    1,
+                    current,
+                    bottomY,
+                    1,
+                    next,
+                    bottomY,
+                    1,
+                );
+            } else {
+                addTriangle(current, topY, 1, next, topY, 1, next, bottomY, 1);
+                addTriangle(
+                    current,
+                    topY,
+                    1,
+                    next,
+                    bottomY,
+                    1,
+                    current,
+                    bottomY,
+                    1,
+                );
+            }
         }
     }
 
@@ -459,6 +595,10 @@ export function createMulchPatchGeometry({
     geometry.setAttribute(
         'mulchExposedEdges',
         new Float32BufferAttribute(exposedEdgeAttributes, 4),
+    );
+    geometry.setAttribute(
+        'mulchInnerCorners',
+        new Float32BufferAttribute(innerCornerAttributes, 4),
     );
     geometry.computeVertexNormals();
     geometry.computeBoundingBox();
