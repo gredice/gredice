@@ -23,6 +23,7 @@ import {
     getRaisedBed,
     getRaisedBedFieldsWithEvents,
     getShoppingCart,
+    getUser,
     isCartItemDeliverable,
     knownEvents,
     markCartPaidIfAllItemsPaid,
@@ -39,6 +40,10 @@ import {
     getCartInfo,
     type ShoppingCartItemWithShopData,
 } from '../checkout/cartInfo';
+import {
+    buildOrderConfirmationItems,
+    notifyOrderConfirmationEmail,
+} from '../checkout/orderConfirmationEmail';
 import { calculateSunflowerAmount } from '../checkout/sunflowerCalculations';
 import { notifyDeliveryScheduled } from '../delivery/emailNotifications';
 import { notifyScheduledDeliveryEmailOnce } from '../delivery/scheduledEmailDeduper';
@@ -63,6 +68,7 @@ export type ProcessCheckoutSessionDependencies = {
     getRaisedBed: typeof getRaisedBed;
     getRaisedBedFieldsWithEvents: typeof getRaisedBedFieldsWithEvents;
     getShoppingCart: typeof getShoppingCart;
+    getUser: typeof getUser;
     isCartItemDeliverable: typeof isCartItemDeliverable;
     knownEvents: typeof knownEvents;
     markCartPaidIfAllItemsPaid: typeof markCartPaidIfAllItemsPaid;
@@ -76,6 +82,8 @@ export type ProcessCheckoutSessionDependencies = {
     getStripeCheckoutSession: typeof getStripeCheckoutSession;
     getCartInfo: typeof getCartInfo;
     calculateSunflowerAmount: typeof calculateSunflowerAmount;
+    buildOrderConfirmationItems: typeof buildOrderConfirmationItems;
+    notifyOrderConfirmationEmail: typeof notifyOrderConfirmationEmail;
     notifyDeliveryScheduled: typeof notifyDeliveryScheduled;
     notifyScheduledDeliveryEmailOnce: typeof notifyScheduledDeliveryEmailOnce;
     getPostHogClient: typeof getPostHogClient;
@@ -100,6 +108,7 @@ const realDependencies: ProcessCheckoutSessionDependencies = {
     getRaisedBed,
     getRaisedBedFieldsWithEvents,
     getShoppingCart,
+    getUser,
     isCartItemDeliverable,
     knownEvents,
     markCartPaidIfAllItemsPaid,
@@ -113,6 +122,8 @@ const realDependencies: ProcessCheckoutSessionDependencies = {
     getStripeCheckoutSession,
     getCartInfo,
     calculateSunflowerAmount,
+    buildOrderConfirmationItems,
+    notifyOrderConfirmationEmail,
     notifyDeliveryScheduled,
     notifyScheduledDeliveryEmailOnce,
     getPostHogClient,
@@ -145,6 +156,7 @@ async function processNonStripeCartItems(
     checkoutSessionId?: string | null,
     dependencies: ProcessCheckoutSessionDependencies = realDependencies,
 ): Promise<ShoppingCartItemWithShopData[]> {
+    const processedItems: ShoppingCartItemWithShopData[] = [];
     const inventoryNormalizedCart =
         await dependencies.normalizeShoppingCartInventoryUsage(cartId);
     if (!inventoryNormalizedCart) {
@@ -237,6 +249,7 @@ async function processNonStripeCartItems(
                     dependencies,
                 ),
             ]);
+            processedItems.push(item);
         }
     }
 
@@ -323,13 +336,14 @@ async function processNonStripeCartItems(
                     dependencies,
                 ),
             ]);
+            processedItems.push(item);
 
             // Update the lookup to reflect consumed inventory
             inventoryLookup.set(inventoryKey, available - item.amount);
         }
     }
 
-    return cartInfo.items;
+    return processedItems;
 }
 
 export async function processCheckoutSession(
@@ -395,9 +409,11 @@ async function processPaidCheckoutSession(
         name?: string | null;
         quantity?: number | null;
         amountSubtotal?: number | null;
+        currency?: string | null;
     }[] = [];
     const scheduledDeliveryEmailKeys = new Set<string>();
     let accountId: string | undefined;
+    let customerUserId: string | undefined;
     for (const item of session.lineItems?.data ?? []) {
         console.debug(`Item: ${item.id} Quantity: ${item.quantity}`);
 
@@ -434,6 +450,7 @@ async function processPaidCheckoutSession(
                 (item as { amount_subtotal?: number }).amount_subtotal ??
                 item.amount_total ??
                 null,
+            currency: 'eur',
         });
 
         // Extract metadata from the product
@@ -477,6 +494,7 @@ async function processPaidCheckoutSession(
 
         // Save accountId from metadata if not already set
         accountId ??= itemData.accountId;
+        customerUserId ??= itemData.userId;
 
         // Validate required metadata (accountId can be derived from cart)
         if (
@@ -583,7 +601,6 @@ async function processPaidCheckoutSession(
             );
         }
 
-        // TODO: Send email to customer
         // TODO: Send invoice to customer
     }
 
@@ -627,13 +644,19 @@ async function processPaidCheckoutSession(
     const uniqueAffectedCartIds = Array.from(new Set(affectedCartIds));
     if (accountId && uniqueAffectedCartIds.length > 0) {
         for (const cartId of uniqueAffectedCartIds) {
-            await processNonStripeCartItems(
+            const nonStripeItems = await processNonStripeCartItems(
                 cartId,
                 accountId,
                 deliveryInfo,
                 scheduledDeliveryEmailKeys,
                 session.id,
                 dependencies,
+            );
+            purchasedItems.push(
+                ...dependencies.buildOrderConfirmationItems(
+                    nonStripeItems,
+                    dependencies.calculateSunflowerAmount,
+                ),
             );
         }
     }
@@ -652,10 +675,42 @@ async function processPaidCheckoutSession(
             : undefined,
     ]);
 
+    const completedCartIds: number[] = [];
+    for (const cartId of uniqueAffectedCartIds) {
+        const completedCart = await dependencies.getShoppingCart(cartId);
+        if (completedCart?.status === 'paid') {
+            completedCartIds.push(completedCart.id);
+        }
+    }
+
+    const customer = customerUserId
+        ? await dependencies.getUser(customerUserId)
+        : null;
+
+    if (completedCartIds.length > 0) {
+        await dependencies.notifyOrderConfirmationEmail({
+            to: customer?.userName,
+            cartId: completedCartIds.length === 1 ? completedCartIds[0] : null,
+            checkoutSessionId: session.id,
+            items: purchasedItems,
+            totalAmountCents: session.amountTotal ?? null,
+            currency: 'eur',
+        });
+    } else {
+        console.warn(
+            'Skipping order confirmation email: no affected cart is paid',
+            {
+                checkoutSessionId: session.id,
+                affectedCartIds: uniqueAffectedCartIds,
+            },
+        );
+    }
+
     await dependencies.notifyPurchase({
         accountId,
         amountTotal: session.amountTotal ?? null,
         checkoutSessionId: session.id ?? null,
+        customerEmail: customer?.userName ?? null,
         items: purchasedItems,
     });
 

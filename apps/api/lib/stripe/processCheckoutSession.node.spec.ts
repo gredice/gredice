@@ -114,6 +114,10 @@ function makeDependencies(
             record(calls, 'getShoppingCart', args);
             return null;
         },
+        getUser: async (...args: unknown[]) => {
+            record(calls, 'getUser', args);
+            return { userName: 'buyer@example.test' };
+        },
         isCartItemDeliverable: async (...args: unknown[]) => {
             record(calls, 'isCartItemDeliverable', args);
             return false;
@@ -188,6 +192,13 @@ function makeDependencies(
             record(calls, 'calculateSunflowerAmount', args);
             return 5000;
         },
+        buildOrderConfirmationItems: (...args: unknown[]) => {
+            record(calls, 'buildOrderConfirmationItems', args);
+            return [];
+        },
+        notifyOrderConfirmationEmail: async (...args: unknown[]) => {
+            record(calls, 'notifyOrderConfirmationEmail', args);
+        },
         notifyDeliveryScheduled: async (...args: unknown[]) => {
             record(calls, 'notifyDeliveryScheduled', args);
         },
@@ -231,6 +242,7 @@ function makeSession() {
                                 cartItemId: '1',
                                 entityId: '42',
                                 entityTypeName: 'operation',
+                                userId: 'user-1',
                                 gardenId: '200',
                                 raisedBedId: '300',
                                 positionIndex: '2',
@@ -367,6 +379,59 @@ describe('processCheckoutSession', () => {
                     amount: 2500,
                     stripePaymentId: 'cs_paid',
                     status: 'completed',
+                    currency: 'eur',
+                },
+            ],
+        );
+    });
+
+    it('sends an order confirmation email after the cart is marked paid', async () => {
+        const calls: RecordedCall[] = [];
+        let getShoppingCartCount = 0;
+        const dependencies = makeDependencies(calls, {
+            getStripeCheckoutSession: async (...args: unknown[]) => {
+                record(calls, 'getStripeCheckoutSession', args);
+                return makeSession();
+            },
+            getShoppingCart: async (...args: unknown[]) => {
+                record(calls, 'getShoppingCart', args);
+                getShoppingCartCount += 1;
+                return {
+                    ...makeCart(),
+                    status: getShoppingCartCount > 1 ? 'paid' : 'new',
+                };
+            },
+            getRaisedBedFieldsWithEvents: async (...args: unknown[]) => {
+                record(calls, 'getRaisedBedFieldsWithEvents', args);
+                return [{ id: 88, positionIndex: 2, active: true }];
+            },
+            getUser: async (...args: unknown[]) => {
+                record(calls, 'getUser', args);
+                return { userName: 'buyer@example.test' };
+            },
+        });
+
+        await processCheckoutSession('cs_paid', dependencies);
+
+        assert.deepStrictEqual(callsNamed(calls, 'getUser')[0]?.args, [
+            'user-1',
+        ]);
+        assert.deepStrictEqual(
+            callsNamed(calls, 'notifyOrderConfirmationEmail')[0]?.args,
+            [
+                {
+                    to: 'buyer@example.test',
+                    cartId: 100,
+                    checkoutSessionId: 'cs_paid',
+                    items: [
+                        {
+                            name: 'Planting',
+                            quantity: 1,
+                            amountSubtotal: 2500,
+                            currency: 'eur',
+                        },
+                    ],
+                    totalAmountCents: 2500,
                     currency: 'eur',
                 },
             ],
