@@ -57,6 +57,7 @@ import {
 } from '../../../lib/auth/sessionConfig';
 import { authSecurity } from '../../../lib/docs/security';
 import { sendAccountInvitation } from '../../../lib/email/transactional';
+import { getSunflowerDropSpawnChance } from '../../../lib/garden/sunflowerDropChance';
 import { isSunflowerDropWeatherEligible } from '../../../lib/garden/sunflowerDropWeather';
 import {
     type AuthVariables,
@@ -69,7 +70,6 @@ import { findClosestForecastEntry } from '../../../lib/weather/weatherNowContrac
 
 const dailyRewards = [5, 10, 15, 20, 25, 50];
 const DAILY_REWARD_TIME_ZONE = 'Europe/Zagreb';
-const SUNFLOWER_DROP_SPAWN_CHANCE = 0.35;
 const GARDEN_APP_URL =
     process.env.GREDICE_GARDEN_APP_URL ?? 'https://vrt.gredice.com';
 
@@ -635,7 +635,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             const result = await getOrCreateSunflowerDropSpawn({
                 accountId,
-                allowCreate: Math.random() < SUNFLOWER_DROP_SPAWN_CHANCE,
+                allowCreate:
+                    Math.random() <
+                    getSunflowerDropSpawnChance(sunflowerBlocks.length),
                 gardenId,
                 now,
                 sourceBlockId: sourceBlock.id,
