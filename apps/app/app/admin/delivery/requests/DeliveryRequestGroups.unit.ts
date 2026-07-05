@@ -2,7 +2,25 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { groupDeliveryRequests } from './DeliveryRequestGroups.ts';
 
-type GroupableRequest = Parameters<typeof groupDeliveryRequests>[0][number];
+type BaseGroupableRequest = Parameters<typeof groupDeliveryRequests>[0][number];
+type GroupableRequest = BaseGroupableRequest & {
+    mode: 'delivery' | 'pickup';
+    state: string;
+    address: {
+        id: number;
+        contactName: string;
+        phone: string;
+        street1: string;
+        street2: string | null;
+        postalCode: string;
+        city: string;
+        countryCode: string;
+    } | null;
+    location: null;
+    requestNotes: string | null;
+    deliveryNotes: string | null;
+    cancelReason: string | null;
+};
 
 const slot = {
     id: 10,
@@ -50,7 +68,7 @@ function buildRequest(
     };
 }
 
-test('groups requests for the same destination and slot', () => {
+test('groups requests for the same account and slot in raised bed order', () => {
     const groups = groupDeliveryRequests([
         buildRequest({ id: 'field-3' }),
         buildRequest({
@@ -66,20 +84,18 @@ test('groups requests for the same destination and slot', () => {
     );
 });
 
-test('splits requests when delivery facts differ', () => {
+test('groups requests for the same account and slot regardless of state', () => {
     const groups = groupDeliveryRequests([
         buildRequest({ id: 'confirmed' }),
-        buildRequest({ id: 'ready', state: 'ready' }),
         buildRequest({
-            id: 'other-slot',
-            slot: {
-                id: 11,
-                startAt: new Date('2026-06-30T15:00:00.000Z'),
-                endAt: new Date('2026-06-30T17:00:00.000Z'),
-            },
+            id: 'ready',
+            state: 'ready',
+            requestNotes: 'Napomena kupca',
         }),
         buildRequest({
-            id: 'other-address',
+            id: 'cancelled',
+            state: 'cancelled',
+            cancelReason: 'Vec ubrano.',
             address: {
                 id: 21,
                 contactName: 'Drugi kontakt',
@@ -93,5 +109,43 @@ test('splits requests when delivery facts differ', () => {
         }),
     ]);
 
-    assert.equal(groups.length, 4);
+    assert.equal(groups.length, 1);
+    assert.deepEqual(
+        groups[0]?.requests.map((request) => request.id).toSorted(),
+        ['cancelled', 'confirmed', 'ready'],
+    );
+});
+
+test('splits requests when account or slot differs', () => {
+    const groups = groupDeliveryRequests([
+        buildRequest({ id: 'same-account-and-slot' }),
+        buildRequest({ id: 'other-account', accountId: 'account-2' }),
+        buildRequest({
+            id: 'other-slot',
+            slot: {
+                id: 11,
+                startAt: new Date('2026-06-30T15:00:00.000Z'),
+                endAt: new Date('2026-06-30T17:00:00.000Z'),
+            },
+        }),
+    ]);
+
+    assert.equal(groups.length, 3);
+});
+
+test('uses the operation account when the event projection has no account', () => {
+    const groups = groupDeliveryRequests([
+        buildRequest({
+            id: 'first',
+            accountId: null,
+            operation: { accountId: 'operation-account' },
+        }),
+        buildRequest({
+            id: 'second',
+            accountId: null,
+            operation: { accountId: 'operation-account' },
+        }),
+    ]);
+
+    assert.equal(groups.length, 1);
 });
