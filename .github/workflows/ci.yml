@@ -105,6 +105,7 @@ jobs:
               - packages/auth/**
               - packages/directory-types/**
               - packages/email/**
+              - packages/fiscalization/**
               - packages/google/**
               - packages/js/**
               - packages/notifications/**

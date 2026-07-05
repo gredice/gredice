@@ -61,6 +61,7 @@
         "@gredice/auth": "workspace:*",
         "@gredice/directory-types": "workspace:*",
         "@gredice/email": "workspace:*",
+        "@gredice/fiscalization": "workspace:*",
         "@gredice/js": "workspace:*",
         "@gredice/notifications": "workspace:*",
         "@gredice/signalco": "workspace:*",

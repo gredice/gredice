@@ -14,6 +14,7 @@ import {
     createTransaction,
     deleteInvoice,
     ensureInvoiceForTransaction,
+    ensureReceiptForInvoice,
     getAccountBillingInvoice,
     getAccountBillingInvoices,
     getAccountBillingReceipt,
@@ -282,6 +283,54 @@ test('ensureInvoiceForTransaction returns existing invoice on repeated calls', a
     assert.ok('invoiceId' in second);
     assert.equal(second.invoiceId, first.invoiceId);
     assert.equal((await getAllInvoices({ transactionId })).length, 1);
+});
+
+test('ensureReceiptForInvoice creates one receipt for repeated paid invoice calls', async () => {
+    createTestDb();
+    const invoiceData = await baseInvoice();
+    invoiceData.status = 'paid';
+    invoiceData.paidDate = new Date('2026-07-05T10:00:00.000Z');
+    const invoiceId = await createInvoice(invoiceData);
+
+    const first = await ensureReceiptForInvoice(invoiceId, {
+        paymentMethod: 'card',
+        paymentReference: 'cs_test_123',
+        businessPin: '12345678901',
+        businessName: 'Gredice d.o.o.',
+        businessAddress: 'Zagreb',
+    });
+    const second = await ensureReceiptForInvoice(invoiceId, {
+        paymentMethod: 'card',
+        paymentReference: 'cs_test_123',
+    });
+
+    assert.equal(first.status, 'created');
+    assert.equal(second.status, 'existing');
+    assert.ok('receiptId' in first);
+    assert.ok('receiptId' in second);
+    assert.equal(second.receiptId, first.receiptId);
+    const receipt = await getReceipt(first.receiptId);
+    assert.ok(receipt);
+    assert.equal(receipt.paymentReference, 'cs_test_123');
+    assert.equal(receipt.customerName, invoiceData.billToName);
+    assert.equal(
+        receipt.issuedAt.toISOString(),
+        invoiceData.paidDate.toISOString(),
+    );
+});
+
+test('ensureReceiptForInvoice skips unpaid invoices', async () => {
+    createTestDb();
+    const invoiceData = await baseInvoice();
+    const invoiceId = await createInvoice(invoiceData);
+
+    const result = await ensureReceiptForInvoice(invoiceId, {
+        paymentMethod: 'card',
+    });
+
+    assert.equal(result.status, 'skipped');
+    assert.ok('reason' in result);
+    assert.equal(result.reason, 'invoice_not_paid');
 });
 
 test('ensureInvoiceForTransaction ignores deleted invoice and creates a new active invoice', async () => {

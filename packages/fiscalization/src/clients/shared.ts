@@ -1,8 +1,8 @@
 import { WSDL } from 'soap';
 import { Agent, request as undiciRequest } from 'undici';
 import type { UserSettings } from '../@types/UserSettings';
-import { createClientAsync as createClientAsyncEduc } from '../generated/1-9-0-educ/fiskalizacijaservice';
-import { createClientAsync as createClientAsyncProd } from '../generated/1-9-0-prod/fiskalizacijaservice';
+import { createClientAsync as createClientAsyncEduc } from '../generated/1-9-0-educ/fiskalizacijaservice/client';
+import { createClientAsync as createClientAsyncProd } from '../generated/1-9-0-prod/fiskalizacijaservice/client';
 import { signXml } from './signXml';
 
 const testEndpoint = 'https://cistest.apis-it.hr:8449/FiskalizacijaServiceTest';

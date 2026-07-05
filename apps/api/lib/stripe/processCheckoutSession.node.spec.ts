@@ -97,6 +97,29 @@ function makeDependencies(
                 invoiceNumber: 'PON-2026-0001',
             };
         },
+        issueReceiptForPaidInvoice: async (...args: unknown[]) => {
+            record(calls, 'issueReceiptForPaidInvoice', args);
+            return {
+                status: 'created',
+                receiptId: 701,
+                receiptNumber: '1',
+                yearReceiptNumber: '2026-1',
+            };
+        },
+        fiscalizeReceipt: async (...args: unknown[]) => {
+            record(calls, 'fiscalizeReceipt', args);
+            return {
+                status: 'confirmed',
+                receiptId: 701,
+                receiptNumber: '1',
+                jir: 'jir-123',
+                zki: 'zki-123',
+            };
+        },
+        notifyBillingDocumentsEmail: async (...args: unknown[]) => {
+            record(calls, 'notifyBillingDocumentsEmail', args);
+            return { status: 'sent' };
+        },
         getCompletedTransactionByStripePaymentId: async (
             ...args: unknown[]
         ) => {
@@ -467,6 +490,82 @@ describe('processCheckoutSession', () => {
                 },
             ],
         );
+        assert.deepStrictEqual(
+            callsNamed(calls, 'issueReceiptForPaidInvoice')[0]?.args,
+            [
+                {
+                    invoiceId: 601,
+                    paymentReference: 'cs_paid',
+                },
+            ],
+        );
+        assert.deepStrictEqual(
+            callsNamed(calls, 'fiscalizeReceipt')[0]?.args,
+            [701],
+        );
+        assert.deepStrictEqual(
+            callsNamed(calls, 'notifyBillingDocumentsEmail')[0]?.args,
+            [
+                {
+                    to: 'buyer@example.test',
+                    cartIds: [100],
+                    checkoutSessionId: 'cs_paid',
+                    invoiceId: 601,
+                    invoiceNumber: 'PON-2026-0001',
+                    receiptId: 701,
+                    receiptNumber: '2026-1',
+                },
+            ],
+        );
+    });
+
+    it('omits receipt links from billing email when checkout fiscalization fails', async () => {
+        const calls: RecordedCall[] = [];
+        const dependencies = makeDependencies(calls, {
+            getStripeCheckoutSession: async (...args: unknown[]) => {
+                record(calls, 'getStripeCheckoutSession', args);
+                return makeSession();
+            },
+            getShoppingCart: async (...args: unknown[]) => {
+                record(calls, 'getShoppingCart', args);
+                return makeCart();
+            },
+            getRaisedBedFieldsWithEvents: async (...args: unknown[]) => {
+                record(calls, 'getRaisedBedFieldsWithEvents', args);
+                return [{ id: 88, positionIndex: 2, active: true }];
+            },
+            isBillingAutomationEnabled: (...args: unknown[]) => {
+                record(calls, 'isBillingAutomationEnabled', args);
+                return true;
+            },
+            fiscalizeReceipt: async (...args: unknown[]) => {
+                record(calls, 'fiscalizeReceipt', args);
+                return {
+                    status: 'failed',
+                    reason: 'cis_rejected',
+                    receiptId: 701,
+                    message: 'CIS says no',
+                    zki: 'zki-123',
+                };
+            },
+        });
+
+        await processCheckoutSession('cs_paid', dependencies);
+
+        assert.deepStrictEqual(
+            callsNamed(calls, 'notifyBillingDocumentsEmail')[0]?.args,
+            [
+                {
+                    to: 'buyer@example.test',
+                    cartIds: [100],
+                    checkoutSessionId: 'cs_paid',
+                    invoiceId: 601,
+                    invoiceNumber: 'PON-2026-0001',
+                    receiptId: null,
+                    receiptNumber: null,
+                },
+            ],
+        );
     });
 
     it('continues checkout side effects when invoice generation fails', async () => {
@@ -512,6 +611,11 @@ describe('processCheckoutSession', () => {
         assert.equal(
             callsNamed(calls, 'notifyOrderConfirmationEmail').length,
             1,
+        );
+        assert.equal(callsNamed(calls, 'issueReceiptForPaidInvoice').length, 0);
+        assert.equal(
+            callsNamed(calls, 'notifyBillingDocumentsEmail').length,
+            0,
         );
     });
 

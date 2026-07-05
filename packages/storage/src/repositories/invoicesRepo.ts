@@ -74,6 +74,28 @@ export type EnsureInvoiceForTransactionResult =
           message: string;
       };
 
+export interface ReceiptForInvoiceData
+    extends Omit<ReceiptCreationData, 'jir' | 'zki'> {
+    issuedAt?: Date | null;
+}
+
+export type EnsureReceiptForInvoiceSkippedReason =
+    | 'invoice_not_found'
+    | 'invoice_not_paid';
+
+export type EnsureReceiptForInvoiceResult =
+    | {
+          status: 'created' | 'existing';
+          receiptId: number;
+          receiptNumber: string;
+          yearReceiptNumber: string;
+      }
+    | {
+          status: 'skipped';
+          reason: EnsureReceiptForInvoiceSkippedReason;
+          message: string;
+      };
+
 // Invoice CRUD operations
 export async function createInvoice(
     invoice: InsertInvoice,
@@ -206,6 +228,17 @@ function buildSkippedInvoiceResult(
     };
 }
 
+function buildSkippedReceiptResult(
+    reason: EnsureReceiptForInvoiceSkippedReason,
+    message: string,
+): EnsureReceiptForInvoiceResult {
+    return {
+        status: 'skipped',
+        reason,
+        message,
+    };
+}
+
 async function withInvoiceTransactionGenerationLock<T>(
     transactionId: number,
     callback: () => Promise<T>,
@@ -217,6 +250,23 @@ async function withInvoiceTransactionGenerationLock<T>(
     return storage().transaction(async (tx) => {
         await tx.execute(
             sql`select pg_advisory_xact_lock(hashtext(${`invoice-transaction:${transactionId}`}));`,
+        );
+
+        return callback();
+    });
+}
+
+async function withReceiptInvoiceGenerationLock<T>(
+    invoiceId: number,
+    callback: () => Promise<T>,
+) {
+    if (process.env.GREDICE_TEST_DB_PROVIDER === 'pglite') {
+        return callback();
+    }
+
+    return storage().transaction(async (tx) => {
+        await tx.execute(
+            sql`select pg_advisory_xact_lock(hashtext(${`receipt-invoice:${invoiceId}`}));`,
         );
 
         return callback();
@@ -381,6 +431,74 @@ export async function ensureInvoiceForTransaction({
             status: 'created',
             invoiceId,
             invoiceNumber: invoice.invoiceNumber,
+        };
+    });
+}
+
+export async function ensureReceiptForInvoice(
+    invoiceId: number,
+    receiptData: ReceiptForInvoiceData,
+): Promise<EnsureReceiptForInvoiceResult> {
+    return withReceiptInvoiceGenerationLock(invoiceId, async () => {
+        const existingReceipt = await getReceiptByInvoice(invoiceId);
+        if (existingReceipt) {
+            return {
+                status: 'existing',
+                receiptId: existingReceipt.id,
+                receiptNumber: existingReceipt.receiptNumber,
+                yearReceiptNumber: existingReceipt.yearReceiptNumber,
+            };
+        }
+
+        const invoice = await getInvoice(invoiceId);
+        if (!invoice) {
+            return buildSkippedReceiptResult(
+                'invoice_not_found',
+                `Invoice ${invoiceId} was not found.`,
+            );
+        }
+        if (invoice.status !== 'paid') {
+            return buildSkippedReceiptResult(
+                'invoice_not_paid',
+                `Invoice ${invoiceId} is not paid.`,
+            );
+        }
+
+        const issuedAt = receiptData.issuedAt ?? invoice.paidDate ?? new Date();
+        const receiptId = await createReceipt({
+            invoiceId,
+            subtotal: invoice.subtotal,
+            taxAmount: invoice.taxAmount,
+            totalAmount: invoice.totalAmount,
+            currency: invoice.currency,
+            paymentMethod: receiptData.paymentMethod,
+            paymentReference:
+                receiptData.paymentReference ??
+                invoice.transaction?.stripePaymentId ??
+                invoice.transactionId?.toString(),
+            businessPin: receiptData.businessPin,
+            businessName: receiptData.businessName,
+            businessAddress: receiptData.businessAddress,
+            customerPin: receiptData.customerPin,
+            customerName: receiptData.customerName ?? invoice.billToName,
+            customerAddress:
+                receiptData.customerAddress ?? invoice.billToAddress,
+            issuedAt,
+            cisStatus: 'pending',
+        });
+
+        const receipt = await getReceipt(receiptId);
+        if (!receipt) {
+            throw new Error(
+                `Failed to create receipt for invoice ${invoiceId}`,
+            );
+        }
+
+        return {
+            status: 'created',
+            receiptId,
+            receiptNumber: receipt.receiptNumber,
+            yearReceiptNumber: receipt.yearReceiptNumber,
         };
     });
 }
@@ -790,42 +908,12 @@ export async function createReceiptFromInvoice(
     invoiceId: number,
     receiptData: Omit<ReceiptCreationData, 'jir' | 'zki'>,
 ) {
-    // Get the invoice details
-    const invoice = await getInvoice(invoiceId);
-    if (!invoice) {
-        throw new Error('Invoice not found');
+    const result = await ensureReceiptForInvoice(invoiceId, receiptData);
+    if (result.status === 'skipped') {
+        throw new Error(result.message);
     }
 
-    if (invoice.status !== 'paid') {
-        throw new Error('Can only create receipt for paid invoices');
-    }
-
-    // Check if receipt already exists for this invoice
-    const existingReceipt = await getReceiptByInvoice(invoiceId);
-    if (existingReceipt) {
-        throw new Error('Receipt already exists for this invoice');
-    }
-
-    // Generate receipt number
-    const receiptToInsert = {
-        invoiceId,
-        subtotal: invoice.subtotal,
-        taxAmount: invoice.taxAmount,
-        totalAmount: invoice.totalAmount,
-        currency: invoice.currency,
-        paymentMethod: receiptData.paymentMethod,
-        paymentReference: receiptData.paymentReference,
-        businessPin: receiptData.businessPin,
-        businessName: receiptData.businessName,
-        businessAddress: receiptData.businessAddress,
-        customerPin: receiptData.customerPin,
-        customerName: receiptData.customerName,
-        customerAddress: receiptData.customerAddress,
-        cisStatus: 'pending', // Start as pending, not fiscalized yet
-    } satisfies Omit<InsertReceipt, 'yearReceiptNumber'>;
-
-    const receiptId = await createReceipt(receiptToInsert);
-    return receiptId;
+    return result.receiptId;
 }
 
 // Receipt CRUD operations
