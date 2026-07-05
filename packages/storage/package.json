@@ -26,6 +26,7 @@
         "test:db:stop": "bash ./tests/stopTestDb.sh",
         "test:node": "bash ./tests/runNodeTests.sh",
         "notifications:backfill-rollout": "tsx --env-file=.env ./scripts/backfillNotificationRolloutDefaults.ts",
+        "sunflower-packages:seed": "tsx --conditions=react-server --env-file=.env ./scripts/seedSunflowerPackageCatalog.ts",
         "plant-relationships:backfill": "tsx --conditions=react-server --env-file=.env ./scripts/backfillPlantRelationships.ts",
         "plant-health:backfill": "tsx --conditions=react-server --env-file=.env ./scripts/backfillPlantHealthDirectory.ts",
         "generated-images:backfill": "tsx --conditions=react-server --env-file=.env ./scripts/upsertGeneratedImageAttributes.ts",

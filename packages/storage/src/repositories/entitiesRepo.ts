@@ -431,7 +431,10 @@ async function expandValue(
         return await resolveRef(value, attributeDefinition, cache);
     }
     if (attributeDefinition.dataType === 'number') {
-        return parseFloat(value);
+        const trimmed = value.trim();
+        return /^-?\d+(?:\.\d+)?$/u.test(trimmed)
+            ? Number(trimmed)
+            : Number.NaN;
     } else if (
         attributeDefinition.dataType === 'range' ||
         attributeDefinition.dataType.startsWith('range|')

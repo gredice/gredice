@@ -74,6 +74,8 @@ export * from './repositories/shoppingCartRepo';
 export * from './repositories/socialAccountsRepo';
 export * from './repositories/socialPostsRepo';
 export * from './repositories/sunflowerDropsRepo';
+export * from './repositories/sunflowerLedgerRepo';
+export * from './repositories/sunflowerPackagesRepo';
 export * from './repositories/surveysRepo';
 export * from './repositories/timeSlotsRepo';
 export * from './repositories/transactionsRepo';
