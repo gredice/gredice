@@ -1,5 +1,6 @@
 import { getReceipt } from '@gredice/storage';
 import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
+import { Button } from '@gredice/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
@@ -127,6 +128,15 @@ export default async function ReceiptPage({
                     }
                     actions={
                         <Row className="items-center" spacing={2}>
+                            <Button
+                                href={KnownPages.BillingPreviewReceipt(
+                                    receipt.id,
+                                )}
+                                size="sm"
+                                variant="outlined"
+                            >
+                                Pregled
+                            </Button>
                             <ReceiptActions receipt={receipt} />
                             <EntityDetailsPropertiesToggle />
                         </Row>
@@ -315,15 +325,22 @@ export default async function ReceiptPage({
                                             >
                                                 Ponuda:
                                             </Typography>
-                                            <Link
-                                                href={KnownPages.Invoice(
-                                                    receipt.invoiceId,
-                                                )}
-                                            >
-                                                {receipt.invoice
-                                                    ?.invoiceNumber ||
-                                                    `#${receipt.invoiceId}`}
-                                            </Link>
+                                            {typeof receipt.invoiceId ===
+                                            'number' ? (
+                                                <Link
+                                                    href={KnownPages.Invoice(
+                                                        receipt.invoiceId,
+                                                    )}
+                                                >
+                                                    {receipt.invoice
+                                                        ?.invoiceNumber ||
+                                                        `#${receipt.invoiceId}`}
+                                                </Link>
+                                            ) : (
+                                                <Typography level="body2">
+                                                    Nema povezane ponude
+                                                </Typography>
+                                            )}
                                         </Row>
                                         {receipt.invoice?.transactionId && (
                                             <Row spacing={4}>

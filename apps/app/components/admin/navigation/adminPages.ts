@@ -18,6 +18,10 @@ export const adminPages = {
     Invoices: { href: KnownPages.Invoices, label: 'Ponude' },
     Transactions: { href: KnownPages.Transactions, label: 'Transakcije' },
     Sunflowers: { href: KnownPages.Sunflowers, label: 'Suncokreti' },
+    BillingPreviews: {
+        href: KnownPages.BillingPreviews,
+        label: 'Pregledi dokumenata',
+    },
     Receipts: { href: KnownPages.Receipts, label: 'Fiskalni računi' },
     Outlet: { href: KnownPages.Outlet, label: 'Outlet' },
     Users: { href: KnownPages.Users, label: 'Korisnici' },
@@ -85,6 +89,7 @@ export const adminBreadcrumbPages = [
     adminPages.Invoices,
     adminPages.Transactions,
     adminPages.Sunflowers,
+    adminPages.BillingPreviews,
     adminPages.Receipts,
     adminPages.Outlet,
     adminPages.Users,

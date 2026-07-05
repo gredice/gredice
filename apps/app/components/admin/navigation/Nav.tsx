@@ -458,6 +458,7 @@ export function Nav({
                         adminPages.Invoices.href,
                         adminPages.Transactions.href,
                         adminPages.Sunflowers.href,
+                        adminPages.BillingPreviews.href,
                         adminPages.Receipts.href,
                         adminPages.Outlet.href,
                     ])}
@@ -491,6 +492,14 @@ export function Nav({
                         href={adminPages.Sunflowers.href}
                         label={adminPages.Sunflowers.label}
                         icon={<Success className="size-5" />}
+                        onClick={onItemClick}
+                        compact={compact}
+                        nested
+                    />
+                    <NavItem
+                        href={adminPages.BillingPreviews.href}
+                        label={adminPages.BillingPreviews.label}
+                        icon={<File className="size-5" />}
                         onClick={onItemClick}
                         compact={compact}
                         nested

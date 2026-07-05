@@ -4,6 +4,7 @@ import type { NavContextType } from './NavContext';
 const idRouteTitlePrefixes = new Map([
     ['/admin/accounts', 'Račun'],
     ['/admin/automations', 'Automatizacija'],
+    ['/admin/billing/previews', 'Pregled dokumenta'],
     ['/admin/cms/pages', 'Stranica'],
     ['/admin/community-edits', 'Prijedlog zajednice'],
     ['/admin/communication/emails', 'Email'],
