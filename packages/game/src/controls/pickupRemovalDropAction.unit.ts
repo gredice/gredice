@@ -71,7 +71,7 @@ describe('resolvePickupHudDropAction', () => {
         });
     });
 
-    it('keeps sandbox trash drops on the delete path even for recyclable blocks', () => {
+    it('keeps sandbox HUD drops on the delete path even for recyclable blocks', () => {
         const action = resolvePickupHudDropAction({
             forceDelete: true,
             movingSegments: [

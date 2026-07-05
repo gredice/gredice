@@ -16,7 +16,6 @@ import {
 import { currentAccountKeys } from '../../../packages/game/src/hooks/useCurrentAccount';
 import { ControlsTooltipHud } from '../../../packages/game/src/hud/ControlsTooltipHud';
 import { ItemsHud } from '../../../packages/game/src/hud/ItemsHud';
-import { SandboxBlockTrashDropTarget } from '../../../packages/game/src/hud/SandboxBlockTrashDropTarget';
 import { defaultLocalSandboxStorageKey } from '../../../packages/game/src/localSandboxGarden';
 import {
     createGameState,
@@ -210,7 +209,6 @@ type ItemsHudStoryOptions = {
     localSandboxStorageKey?: string;
     pickupBlock?: boolean;
     pickupHudDropTargetActive?: boolean;
-    trashTargetActive?: boolean;
 };
 
 function createItemsHudQueryClient({
@@ -255,7 +253,6 @@ function ItemsHudTestProviders({
     closeup = false,
     pickupBlock = false,
     pickupHudDropTargetActive = false,
-    trashTargetActive = false,
 }: PropsWithChildren<ItemsHudStoryOptions>) {
     const queryClient = useMemo(
         () => createItemsHudQueryClient({ accountSunflowers, isSandbox }),
@@ -277,7 +274,6 @@ function ItemsHudTestProviders({
                     rotation: 0,
                 },
                 itemsHudDropTargetActive: pickupHudDropTargetActive,
-                sandboxBlockTrashDropTargetActive: trashTargetActive,
             });
         }
         if (closeup) {
@@ -295,7 +291,6 @@ function ItemsHudTestProviders({
         localSandboxStorageKey,
         pickupBlock,
         pickupHudDropTargetActive,
-        trashTargetActive,
     ]);
 
     return (
@@ -476,12 +471,9 @@ export function SandboxItemsHudStory() {
     );
 }
 
-export function LocalSandboxItemsHudStory() {
+export function SandboxItemsHudDropTargetStory() {
     return (
-        <ItemsHudTestProviders
-            isSandbox
-            localSandboxStorageKey={`${defaultLocalSandboxStorageKey}.items-hud-test`}
-        >
+        <ItemsHudTestProviders isSandbox pickupBlock>
             <div className="relative h-screen w-screen overflow-hidden">
                 <div
                     data-testid="bottom-hud"
@@ -495,16 +487,18 @@ export function LocalSandboxItemsHudStory() {
     );
 }
 
-export function SandboxBlockTrashDropTargetStory() {
+export function LocalSandboxItemsHudStory() {
     return (
-        <ItemsHudTestProviders isSandbox pickupBlock trashTargetActive>
+        <ItemsHudTestProviders
+            isSandbox
+            localSandboxStorageKey={`${defaultLocalSandboxStorageKey}.items-hud-test`}
+        >
             <div className="relative h-screen w-screen overflow-hidden">
                 <div
                     data-testid="bottom-hud"
                     className={gameHudBottomBarClassName}
                 >
                     <BottomControlsTestFrame />
-                    <SandboxBlockTrashDropTarget />
                     <ItemsHudTestFrame />
                 </div>
             </div>

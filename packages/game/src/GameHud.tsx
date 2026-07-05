@@ -20,7 +20,6 @@ import { OutletHud } from './hud/OutletHud';
 import { PaymentSuccessfulMessage } from './hud/PaymentSuccessfulMessage';
 import { RaisedBedFieldHud } from './hud/RaisedBedFieldHud';
 import { RaisedBedOnboardingModal } from './hud/RaisedBedOnboardingModal';
-import { SandboxBlockTrashDropTarget } from './hud/SandboxBlockTrashDropTarget';
 import { SandboxEnvironmentHud } from './hud/SandboxEnvironmentHud';
 import { ShoppingCartHud } from './hud/ShoppingCartHud';
 import { SuncokretChatHud } from './hud/SuncokretChatHud';
@@ -209,7 +208,6 @@ export function GameHud({
                         </IconButton>
                     )}
                 </div>
-                <SandboxBlockTrashDropTarget />
                 <div
                     data-game-hud-bottom-items
                     aria-hidden={isCloseup}
