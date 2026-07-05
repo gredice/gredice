@@ -5,8 +5,12 @@ type DateValue = Date | string | null | undefined;
 type GroupableDeliveryRequest = {
     id: string;
     accountId?: string | null;
-    mode?: string | null;
-    state: string;
+    operation?:
+        | {
+              accountId?: string | null;
+          }
+        | null
+        | undefined;
     slot?:
         | {
               id?: number | null;
@@ -15,34 +19,6 @@ type GroupableDeliveryRequest = {
           }
         | null
         | undefined;
-    address?:
-        | {
-              id?: number | null;
-              contactName?: string | null;
-              phone?: string | null;
-              street1?: string | null;
-              street2?: string | null;
-              postalCode?: string | null;
-              city?: string | null;
-              countryCode?: string | null;
-          }
-        | null
-        | undefined;
-    location?:
-        | {
-              id?: number | null;
-              name?: string | null;
-              street1?: string | null;
-              street2?: string | null;
-              postalCode?: string | null;
-              city?: string | null;
-              countryCode?: string | null;
-          }
-        | null
-        | undefined;
-    requestNotes?: string | null;
-    deliveryNotes?: string | null;
-    cancelReason?: string | null;
     createdAt: Date | string;
     raisedBed?:
         | {
@@ -87,9 +63,19 @@ function dateKey(value: DateValue) {
     return typeof value === 'string' ? value : value.toISOString();
 }
 
+function getAccountKey(request: GroupableDeliveryRequest) {
+    const accountId = request.accountId ?? request.operation?.accountId;
+
+    return accountId ? `account:${accountId}` : `request:${request.id}`;
+}
+
 function getSlotKey(request: GroupableDeliveryRequest) {
     if (typeof request.slot?.id === 'number') {
         return `slot:${request.slot.id}`;
+    }
+
+    if (!request.slot?.startAt && !request.slot?.endAt) {
+        return `slot:unknown:${request.id}`;
     }
 
     return [
@@ -99,54 +85,8 @@ function getSlotKey(request: GroupableDeliveryRequest) {
     ].join(':');
 }
 
-function getDestinationKey(request: GroupableDeliveryRequest) {
-    if (request.mode === 'pickup') {
-        const location = request.location;
-
-        return [
-            'pickup',
-            location?.id ?? 'unknown',
-            normalizeKeyPart(location?.name),
-            normalizeKeyPart(location?.street1),
-            normalizeKeyPart(location?.street2),
-            normalizeKeyPart(location?.postalCode),
-            normalizeKeyPart(location?.city),
-            normalizeKeyPart(location?.countryCode),
-        ].join(':');
-    }
-
-    const address = request.address;
-
-    return [
-        'delivery',
-        address?.id ?? 'unknown',
-        normalizeKeyPart(address?.contactName),
-        normalizeKeyPart(address?.phone),
-        normalizeKeyPart(address?.street1),
-        normalizeKeyPart(address?.street2),
-        normalizeKeyPart(address?.postalCode),
-        normalizeKeyPart(address?.city),
-        normalizeKeyPart(address?.countryCode),
-    ].join(':');
-}
-
-function getNotesKey(request: GroupableDeliveryRequest) {
-    return [
-        normalizeKeyPart(request.requestNotes),
-        normalizeKeyPart(request.deliveryNotes),
-        normalizeKeyPart(request.cancelReason),
-    ].join(':');
-}
-
 function getDeliveryRequestGroupKey(request: GroupableDeliveryRequest) {
-    return [
-        request.accountId ?? 'account:unknown',
-        request.mode ?? 'mode:unknown',
-        request.state,
-        getSlotKey(request),
-        getDestinationKey(request),
-        getNotesKey(request),
-    ].join('|');
+    return [getAccountKey(request), getSlotKey(request)].join('|');
 }
 
 function comparePhysicalIds(left: string, right: string) {
