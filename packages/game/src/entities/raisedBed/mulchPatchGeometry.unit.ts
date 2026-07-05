@@ -178,7 +178,7 @@ function hasRoundedOuterCornerPoint(geometry: BufferGeometry) {
     return false;
 }
 
-function hasRoundedInnerCornerPoint(geometry: BufferGeometry) {
+function hasRoundedInnerCornerCutoutPoint(geometry: BufferGeometry) {
     const position = geometry.getAttribute('position');
 
     for (let index = 0; index < position.count; index += 1) {
@@ -186,7 +186,7 @@ function hasRoundedInnerCornerPoint(geometry: BufferGeometry) {
         const y = rounded(position.getY(index));
         const z = rounded(position.getZ(index));
 
-        if (y === topY && x > 0.43 && x < 0.49 && z < -0.43 && z > -0.49) {
+        if (y === topY && x > 0.4 && x < 0.44 && z < -0.41 && z > -0.45) {
             return true;
         }
     }
@@ -305,7 +305,7 @@ test('diagonal holes round the inner corner between connected edges', () => {
         minZ: -0.5,
     });
     assert.equal(hasTopPoint(geometry, 0.5, -0.5), false);
-    assert.equal(hasRoundedInnerCornerPoint(geometry), true);
+    assert.equal(hasRoundedInnerCornerCutoutPoint(geometry), true);
     assert.deepEqual(
         getFirstVec4Attribute(geometry, 'mulchInnerCorners'),
         [1, 0, 0, 0],

@@ -83,7 +83,7 @@ if (
 ) {
     mulchPatchInnerEdgeDistance = min(
         mulchPatchInnerEdgeDistance,
-        abs(length(vMulchPatchPosition.xz - vec2(vMulchBounds.y - mulchPatchInnerCornerRadius, vMulchBounds.z + mulchPatchInnerCornerRadius)) - mulchPatchInnerCornerRadius)
+        abs(length(vMulchPatchPosition.xz - vec2(vMulchBounds.y, vMulchBounds.z)) - mulchPatchInnerCornerRadius)
     );
 }
 if (
@@ -93,7 +93,7 @@ if (
 ) {
     mulchPatchInnerEdgeDistance = min(
         mulchPatchInnerEdgeDistance,
-        abs(length(vMulchPatchPosition.xz - vec2(vMulchBounds.y - mulchPatchInnerCornerRadius, vMulchBounds.w - mulchPatchInnerCornerRadius)) - mulchPatchInnerCornerRadius)
+        abs(length(vMulchPatchPosition.xz - vec2(vMulchBounds.y, vMulchBounds.w)) - mulchPatchInnerCornerRadius)
     );
 }
 if (
@@ -103,7 +103,7 @@ if (
 ) {
     mulchPatchInnerEdgeDistance = min(
         mulchPatchInnerEdgeDistance,
-        abs(length(vMulchPatchPosition.xz - vec2(vMulchBounds.x + mulchPatchInnerCornerRadius, vMulchBounds.z + mulchPatchInnerCornerRadius)) - mulchPatchInnerCornerRadius)
+        abs(length(vMulchPatchPosition.xz - vec2(vMulchBounds.x, vMulchBounds.z)) - mulchPatchInnerCornerRadius)
     );
 }
 if (
@@ -113,7 +113,7 @@ if (
 ) {
     mulchPatchInnerEdgeDistance = min(
         mulchPatchInnerEdgeDistance,
-        abs(length(vMulchPatchPosition.xz - vec2(vMulchBounds.x + mulchPatchInnerCornerRadius, vMulchBounds.w - mulchPatchInnerCornerRadius)) - mulchPatchInnerCornerRadius)
+        abs(length(vMulchPatchPosition.xz - vec2(vMulchBounds.x, vMulchBounds.w)) - mulchPatchInnerCornerRadius)
     );
 }
 float mulchPatchStraightEdgeBand = 1.0 - smoothstep(0.0, mulchPatchStraightEdgeBandWidth, mulchPatchStraightEdgeDistance);
@@ -164,7 +164,7 @@ function createMulchPatchMaterial(blockName: MulchBlockName) {
                 `#include <color_fragment>\n${mulchPatchColorFragment}`,
             );
     };
-    material.customProgramCacheKey = () => 'mulch-patch-edge-shading-v1';
+    material.customProgramCacheKey = () => 'mulch-patch-edge-shading-v2';
     material.needsUpdate = true;
 
     return material;

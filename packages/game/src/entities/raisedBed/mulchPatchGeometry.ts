@@ -48,6 +48,7 @@ type MulchPatchBounds = {
 };
 
 type MulchPatchCorner = {
+    kind: 'inner' | 'none' | 'outer';
     radius: number;
 };
 
@@ -200,17 +201,20 @@ function getMulchPatchPerimeter(connections: MulchPatchConnections) {
     }): MulchPatchCorner {
         if (!xConnection && !zConnection) {
             return {
+                kind: 'outer',
                 radius: outerCornerRadius,
             };
         }
 
         if (xConnection && zConnection && !diagonal) {
             return {
+                kind: 'inner',
                 radius: innerCornerRadius,
             };
         }
 
         return {
+            kind: 'none',
             radius: 0,
         };
     }
@@ -280,43 +284,55 @@ function getMulchPatchPerimeter(connections: MulchPatchConnections) {
     addPoint({ x: minX + southEastCorner.radius, z: minZ });
     addPoint({ x: maxX - northEastCorner.radius, z: minZ });
     addCornerArc({
-        center: {
-            x: maxX - northEastCorner.radius,
-            z: minZ + northEastCorner.radius,
-        },
-        endAngle: 0,
+        center:
+            northEastCorner.kind === 'inner'
+                ? { x: maxX, z: minZ }
+                : {
+                      x: maxX - northEastCorner.radius,
+                      z: minZ + northEastCorner.radius,
+                  },
+        endAngle: northEastCorner.kind === 'inner' ? Math.PI / 2 : 0,
         radius: northEastCorner.radius,
-        startAngle: -Math.PI / 2,
+        startAngle: northEastCorner.kind === 'inner' ? Math.PI : -Math.PI / 2,
     });
     addPoint({ x: maxX, z: maxZ - northWestCorner.radius });
     addCornerArc({
-        center: {
-            x: maxX - northWestCorner.radius,
-            z: maxZ - northWestCorner.radius,
-        },
-        endAngle: Math.PI / 2,
+        center:
+            northWestCorner.kind === 'inner'
+                ? { x: maxX, z: maxZ }
+                : {
+                      x: maxX - northWestCorner.radius,
+                      z: maxZ - northWestCorner.radius,
+                  },
+        endAngle: northWestCorner.kind === 'inner' ? -Math.PI : Math.PI / 2,
         radius: northWestCorner.radius,
-        startAngle: 0,
+        startAngle: northWestCorner.kind === 'inner' ? -Math.PI / 2 : 0,
     });
     addPoint({ x: minX + southWestCorner.radius, z: maxZ });
     addCornerArc({
-        center: {
-            x: minX + southWestCorner.radius,
-            z: maxZ - southWestCorner.radius,
-        },
-        endAngle: Math.PI,
+        center:
+            southWestCorner.kind === 'inner'
+                ? { x: minX, z: maxZ }
+                : {
+                      x: minX + southWestCorner.radius,
+                      z: maxZ - southWestCorner.radius,
+                  },
+        endAngle: southWestCorner.kind === 'inner' ? -Math.PI / 2 : Math.PI,
         radius: southWestCorner.radius,
-        startAngle: Math.PI / 2,
+        startAngle: southWestCorner.kind === 'inner' ? 0 : Math.PI / 2,
     });
     addPoint({ x: minX, z: minZ + southEastCorner.radius });
     addCornerArc({
-        center: {
-            x: minX + southEastCorner.radius,
-            z: minZ + southEastCorner.radius,
-        },
-        endAngle: (Math.PI * 3) / 2,
+        center:
+            southEastCorner.kind === 'inner'
+                ? { x: minX, z: minZ }
+                : {
+                      x: minX + southEastCorner.radius,
+                      z: minZ + southEastCorner.radius,
+                  },
+        endAngle: southEastCorner.kind === 'inner' ? 0 : (Math.PI * 3) / 2,
         radius: southEastCorner.radius,
-        startAngle: Math.PI,
+        startAngle: southEastCorner.kind === 'inner' ? Math.PI / 2 : Math.PI,
     });
 
     const last = perimeter[perimeter.length - 1];
