@@ -84,6 +84,19 @@ export function getGardenDisplayViewportOffset({
     };
 }
 
+export function getGardenDisplayViewportPosition({
+    projectedPosition,
+    viewportOffset,
+}: {
+    projectedPosition: { top: number; left: number };
+    viewportOffset?: { x: number; y: number };
+}) {
+    return {
+        top: projectedPosition.top - (viewportOffset?.y ?? 0),
+        left: projectedPosition.left - (viewportOffset?.x ?? 0),
+    };
+}
+
 export function GardenDisplay2D({
     blockImageSrcByKey,
     garden,
@@ -96,7 +109,6 @@ export function GardenDisplay2D({
 }: GardenDisplay2DProps) {
     // Block snapshots have margins so we need to adjust the size
     const ySize = blockSize - blockSize * 0.538;
-    const xSize = blockSize - blockSize * 0.154;
     const blockHeightByName = new Map<string, number>();
     for (const block of blockData) {
         const name = block.information?.name;
@@ -147,12 +159,20 @@ export function GardenDisplay2D({
 
     // Filter stacks that are in view
     const inViewStacks = stacks.filter((stack) => {
+        const viewportPosition = getGardenDisplayViewportPosition({
+            projectedPosition: {
+                top: stack.projectedTop,
+                left: stack.projectedLeft,
+            },
+            viewportOffset,
+        });
+
         // Basic check for stacks overlapping the viewport
         return (
-            stack.projectedTop + blockSize > 0 &&
-            stack.projectedLeft + blockSize > 0 &&
-            stack.projectedTop - blockSize < viewportSize &&
-            stack.projectedLeft - blockSize < viewportSize
+            viewportPosition.top + blockSize > 0 &&
+            viewportPosition.left + blockSize > 0 &&
+            viewportPosition.top - blockSize < viewportSize &&
+            viewportPosition.left - blockSize < viewportSize
         );
     });
 
@@ -203,53 +223,57 @@ export function GardenDisplay2D({
         return {
             key: stack.key,
             position: stack.position,
+            projectedTop: stack.projectedTop,
+            projectedLeft: stack.projectedLeft,
             renderedBlocks,
         };
     });
 
     return (
         <div {...rest} style={{ position: 'relative', ...style }}>
-            {renderedStacks.map((stack) => (
-                <div
-                    key={stack.key}
-                    style={{
-                        display: 'flex',
-                        position: 'absolute',
-                        top:
-                            viewportSize / 2 +
-                            ((-stack.position.y - stack.position.x) * ySize) /
-                                2 -
-                            (viewportOffset?.y ?? 0),
-                        left:
-                            viewportSize / 2 -
-                            ((-stack.position.y + stack.position.x) * xSize) /
-                                2 -
-                            (viewportOffset?.x ?? 0),
-                        width: blockSize,
-                        height: blockSize,
-                    }}
-                >
-                    {stack.renderedBlocks.map((block) => {
-                        return (
-                            // biome-ignore lint/performance/noImgElement: Not part of NextJS app - OG image generation doesn't support next image
-                            <img
-                                key={block.id}
-                                src={block.src}
-                                alt={`${block.name}`}
-                                width={block.realizedBlockSize}
-                                height={block.realizedBlockSize}
-                                style={{
-                                    position: 'absolute',
-                                    bottom: block.underStackHeight * ySize,
-                                    left: block.horizontalOffset,
-                                    width: block.realizedBlockSize,
-                                    height: block.realizedBlockSize,
-                                }}
-                            />
-                        );
-                    })}
-                </div>
-            ))}
+            {renderedStacks.map((stack) => {
+                const viewportPosition = getGardenDisplayViewportPosition({
+                    projectedPosition: {
+                        top: stack.projectedTop,
+                        left: stack.projectedLeft,
+                    },
+                    viewportOffset,
+                });
+
+                return (
+                    <div
+                        key={stack.key}
+                        style={{
+                            display: 'flex',
+                            position: 'absolute',
+                            top: viewportPosition.top,
+                            left: viewportPosition.left,
+                            width: blockSize,
+                            height: blockSize,
+                        }}
+                    >
+                        {stack.renderedBlocks.map((block) => {
+                            return (
+                                // biome-ignore lint/performance/noImgElement: Not part of NextJS app - OG image generation doesn't support next image
+                                <img
+                                    key={block.id}
+                                    src={block.src}
+                                    alt={`${block.name}`}
+                                    width={block.realizedBlockSize}
+                                    height={block.realizedBlockSize}
+                                    style={{
+                                        position: 'absolute',
+                                        bottom: block.underStackHeight * ySize,
+                                        left: block.horizontalOffset,
+                                        width: block.realizedBlockSize,
+                                        height: block.realizedBlockSize,
+                                    }}
+                                />
+                            );
+                        })}
+                    </div>
+                );
+            })}
         </div>
     );
 }
