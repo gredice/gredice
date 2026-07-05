@@ -158,10 +158,14 @@ function toSnapshot({
 
 export function GameCameraRig({
     controlsEnabled,
+    initialSnapshot,
     initialTarget,
+    initialViewKey,
 }: {
     controlsEnabled: boolean;
+    initialSnapshot?: Pick<GameCameraSnapshot, 'position' | 'target' | 'zoom'>;
     initialTarget?: Vector3;
+    initialViewKey?: string | number | null;
 }) {
     const { camera, gl, size } = useThree();
     const isOrthographicCamera = camera instanceof OrthographicCamera;
@@ -182,8 +186,19 @@ export function GameCameraRig({
     const { data: garden } = useCurrentGarden();
 
     const resolvedInitialTarget = useMemo(
-        () => initialTarget?.clone() ?? new Vector3(...defaultGameCameraTarget),
-        [initialTarget],
+        () =>
+            initialSnapshot
+                ? new Vector3(...initialSnapshot.target)
+                : (initialTarget?.clone() ??
+                  new Vector3(...defaultGameCameraTarget)),
+        [initialSnapshot, initialTarget],
+    );
+    const resolvedInitialPosition = useMemo(
+        () =>
+            initialSnapshot
+                ? new Vector3(...initialSnapshot.position)
+                : undefined,
+        [initialSnapshot],
     );
     const targetRef = useRef(resolvedInitialTarget.clone());
     const animationRef = useRef<CameraAnimation | null>(null);
@@ -199,6 +214,9 @@ export function GameCameraRig({
     const activePanDirectionRef = useRef<[number, number] | null>(null);
     const snapshotVersionRef = useRef(0);
     const snapshotDirtyRef = useRef(false);
+    const initialViewKeyRef = useRef<string | number | null | undefined>(
+        undefined,
+    );
     const normalCameraRef = useRef<NormalCameraSnapshot>({
         position: new Vector3(...defaultGameCameraPosition),
         target: new Vector3(...defaultGameCameraTarget),
@@ -533,15 +551,29 @@ export function GameCameraRig({
             return;
         }
 
-        targetRef.current.copy(resolvedInitialTarget);
-        normalCameraRef.current = {
-            position: camera.position.clone(),
-            target: targetRef.current.clone(),
-            zoom: camera.zoom,
-        };
-        initializedRef.current = true;
-        applyCamera();
-        flushSnapshot();
+        const shouldApplyInitialView =
+            !initializedRef.current ||
+            initialViewKeyRef.current !== initialViewKey;
+        if (shouldApplyInitialView) {
+            if (resolvedInitialPosition) {
+                camera.position.copy(resolvedInitialPosition);
+                camera.zoom = MathUtils.clamp(
+                    initialSnapshot?.zoom ?? camera.zoom,
+                    minZoom,
+                    maxZoom,
+                );
+            }
+            targetRef.current.copy(resolvedInitialTarget);
+            normalCameraRef.current = {
+                position: camera.position.clone(),
+                target: targetRef.current.clone(),
+                zoom: camera.zoom,
+            };
+            initializedRef.current = true;
+            initialViewKeyRef.current = initialViewKey;
+            applyCamera();
+            flushSnapshot();
+        }
         setGameCamera(apiRef.current);
         return () => {
             setGameCamera(null);
@@ -550,7 +582,10 @@ export function GameCameraRig({
         applyCamera,
         camera,
         flushSnapshot,
+        initialSnapshot?.zoom,
+        initialViewKey,
         isOrthographicCamera,
+        resolvedInitialPosition,
         resolvedInitialTarget,
         setGameCamera,
     ]);

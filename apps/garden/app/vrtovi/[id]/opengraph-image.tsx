@@ -7,6 +7,7 @@ import {
     type GardenDisplay2DProps,
     getGardenDisplayBlockImageKey,
     getGardenDisplayRotationSuffix,
+    getGardenDisplayViewportOffset,
 } from '../../../components/GardenDisplay2D';
 import { Logotype } from '../../../components/Logotype';
 
@@ -22,8 +23,16 @@ export const runtime = 'nodejs';
 const gardenOgImageCacheControl =
     'public, max-age=86400, s-maxage=86400, stale-while-revalidate=86400';
 const gardenOgImageAssetBaseUrl = 'https://vrt.gredice.com';
+const gardenOgViewportSize = 1200;
+const gardenOgViewportCenter = { x: 576, y: 184 };
+const gardenOgDefaultBlockSize = 128;
+const gardenOgDefaultViewportOffset = { x: 24, y: 630 / 2 + 24 * 2 + 106 / 2 };
 
 type GardenOgStacks = GardenDisplay2DProps['garden']['stacks'];
+type GardenOgHomeCamera = {
+    target: [x: number, y: number, z: number];
+    zoom: number;
+} | null;
 
 const spritePngDataUrlBySrc = new Map<string, Promise<string>>();
 
@@ -98,6 +107,29 @@ async function getGardenOgBlockImageSrcByKey(stacks: GardenOgStacks) {
     );
 }
 
+function clampGardenOgZoomScale(zoom: number) {
+    return Math.min(1.5, Math.max(0.7, zoom / 100));
+}
+
+function getGardenOgBlockSize(homeCamera: GardenOgHomeCamera) {
+    return homeCamera
+        ? gardenOgDefaultBlockSize * clampGardenOgZoomScale(homeCamera.zoom)
+        : gardenOgDefaultBlockSize;
+}
+
+function getGardenOgViewportOffset(homeCamera: GardenOgHomeCamera) {
+    if (!homeCamera) {
+        return gardenOgDefaultViewportOffset;
+    }
+
+    return getGardenDisplayViewportOffset({
+        blockSize: getGardenOgBlockSize(homeCamera),
+        focus: { x: homeCamera.target[0], y: homeCamera.target[2] },
+        viewportCenter: gardenOgViewportCenter,
+        viewportSize: gardenOgViewportSize,
+    });
+}
+
 export default async function GardenOgImage({
     params,
 }: {
@@ -129,6 +161,8 @@ export default async function GardenOgImage({
     const blockImageSrcByKey = await getGardenOgBlockImageSrcByKey(
         garden.stacks,
     );
+    const viewportOffset = getGardenOgViewportOffset(garden.homeCamera);
+    const blockSize = getGardenOgBlockSize(garden.homeCamera);
 
     return new ImageResponse(
         <div
@@ -161,12 +195,13 @@ export default async function GardenOgImage({
                     garden={garden}
                     blockData={blockData}
                     blockImageSrcByKey={blockImageSrcByKey}
-                    viewportSize={1200}
-                    viewportOffset={{ x: 24, y: 630 / 2 + 24 * 2 + 106 / 2 }}
+                    blockSize={blockSize}
+                    viewportSize={gardenOgViewportSize}
+                    viewportOffset={viewportOffset}
                     style={{
                         marginLeft: 0,
                         display: 'flex',
-                        width: 1200,
+                        width: gardenOgViewportSize,
                         height: 630,
                     }}
                 />

@@ -2,6 +2,56 @@ import { expect, test } from '@playwright/experimental-ct-react';
 import { GardenTabStory } from './GardenTabStory';
 
 test.describe('Garden tab', () => {
+    test('saves the current camera snapshot as the garden home position', async ({
+        mount,
+        page,
+    }) => {
+        const patchBodies: unknown[] = [];
+        await page.route('**/api/gredice/api/gardens/1', async (route) => {
+            if (route.request().method() === 'PATCH') {
+                patchBodies.push(route.request().postDataJSON());
+                await route.fulfill({
+                    contentType: 'application/json',
+                    status: 200,
+                    body: JSON.stringify({ success: true }),
+                });
+                return;
+            }
+
+            await route.fallback();
+        });
+
+        await mount(
+            <GardenTabStory
+                cameraSnapshot={{
+                    position: [12, 80, -18],
+                    target: [4, 0, -6],
+                    version: 7,
+                    zoom: 140,
+                }}
+            />,
+        );
+
+        await page
+            .getByRole('button', { name: 'Postavi trenutni prikaz' })
+            .click();
+
+        await expect
+            .poll(() => patchBodies)
+            .toEqual([
+                {
+                    homeCamera: {
+                        position: [12, 80, -18],
+                        target: [4, 0, -6],
+                        zoom: 140,
+                    },
+                },
+            ]);
+        await expect(
+            page.getByText('Početni položaj je spremljen.'),
+        ).toBeVisible();
+    });
+
     test('disables garden deletion while raised beds are active', async ({
         mount,
         page,

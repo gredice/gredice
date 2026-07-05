@@ -155,6 +155,20 @@ const visitSummarySeenBodySchema = z.object({
     factsHash: z.string().trim().min(1).max(128).nullable().optional(),
 });
 
+const gardenCameraVectorSchema = z.tuple([
+    z.number().finite(),
+    z.number().finite(),
+    z.number().finite(),
+]);
+
+const gardenHomeCameraSchema = z
+    .object({
+        position: gardenCameraVectorSchema,
+        target: gardenCameraVectorSchema,
+        zoom: z.number().finite().min(50).max(500),
+    })
+    .strict();
+
 function normalizeAnalysisImageUrls(body: AnalyzeImageBody) {
     const imageUrls = body.imageUrls?.length
         ? body.imageUrls
@@ -621,6 +635,7 @@ async function serializeGardenDetails(
         isSandbox: garden.isSandbox,
         isPublic: garden.isPublic,
         backgroundPalette: garden.backgroundPalette,
+        homeCamera: garden.homeCamera ?? null,
         farmId: garden.farmId,
         latitude: garden.farm.latitude,
         longitude: garden.farm.longitude,
@@ -684,6 +699,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     isSandbox: garden.isSandbox,
                     isPublic: garden.isPublic,
                     backgroundPalette: garden.backgroundPalette,
+                    homeCamera: garden.homeCamera ?? null,
                     createdAt: garden.createdAt,
                 })),
             );
@@ -741,6 +757,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         name: garden.name,
                         isSandbox: garden.isSandbox,
                         backgroundPalette: garden.backgroundPalette,
+                        homeCamera: garden.homeCamera ?? null,
                         activePlantCount:
                             countPublicGardenActivePlants(raisedBeds),
                         likeCount: likeCounts.get(garden.id) ?? 0,
@@ -1358,13 +1375,14 @@ const app = new Hono<{ Variables: AuthVariables }>()
             z.object({
                 name: z.string().min(1).optional(),
                 backgroundPalette: z.enum(gameBackgroundPaletteKeys).optional(),
+                homeCamera: gardenHomeCameraSchema.nullable().optional(),
                 isPublic: z.boolean().optional(),
             }),
         ),
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId } = context.req.valid('param');
-            const { backgroundPalette, isPublic, name } =
+            const { backgroundPalette, homeCamera, isPublic, name } =
                 context.req.valid('json');
             const gardenIdNumber = parseInt(gardenId, 10);
             if (Number.isNaN(gardenIdNumber)) {
@@ -1386,6 +1404,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
             if (backgroundPalette !== undefined) {
                 updateData.backgroundPalette = backgroundPalette;
+            }
+            if (homeCamera !== undefined) {
+                updateData.homeCamera = homeCamera;
             }
             if (isPublic !== undefined) {
                 updateData.isPublic = isPublic;

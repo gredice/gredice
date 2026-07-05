@@ -27,6 +27,8 @@ function createStack(
 }
 
 function createGarden(overrides: Partial<CurrentGarden> = {}): CurrentGarden {
+    const { homeCamera, ...gardenOverrides } = overrides;
+
     return {
         id: 1,
         name: 'Garden',
@@ -40,7 +42,8 @@ function createGarden(overrides: Partial<CurrentGarden> = {}): CurrentGarden {
             lon: 16,
         },
         raisedBeds: [],
-        ...overrides,
+        ...gardenOverrides,
+        homeCamera: homeCamera ?? null,
     };
 }
 

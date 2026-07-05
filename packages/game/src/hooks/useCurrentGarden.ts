@@ -835,6 +835,7 @@ function denseMockGarden(
         isSandbox: false,
         isPublic: false,
         backgroundPalette: defaultGameBackgroundPaletteKey,
+        homeCamera: null,
         stacks,
         location: { lat: 45.739, lon: 16.572 },
         raisedBeds,
@@ -884,6 +885,7 @@ function operationRewardDebugMockGarden(
         isSandbox: false,
         isPublic: false,
         backgroundPalette: defaultGameBackgroundPaletteKey,
+        homeCamera: null,
         stacks,
         location: { lat: 45.739, lon: 16.572 },
         raisedBeds,
@@ -949,6 +951,7 @@ function mockGarden(
         isSandbox: false,
         isPublic: false,
         backgroundPalette: defaultGameBackgroundPaletteKey,
+        homeCamera: null,
         stacks: [
             {
                 position: new Vector3(
@@ -1267,6 +1270,7 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
                 backgroundPalette: normalizeGardenBackgroundPalette(
                     garden.backgroundPalette,
                 ),
+                homeCamera: garden.homeCamera ?? null,
                 farmId: garden.farmId,
                 stacks,
                 location: {

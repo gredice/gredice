@@ -1,0 +1,1 @@
+ALTER TABLE "gardens" ADD COLUMN "home_camera" jsonb;

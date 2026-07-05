@@ -160,6 +160,10 @@ export function shareCurrentGardenData(
         return nextGarden;
     }
 
+    const homeCamera = shareJsonValue(
+        previousGarden.homeCamera,
+        nextGarden.homeCamera,
+    );
     const stacks = shareStacks(previousGarden.stacks, nextGarden.stacks);
     const location = shareLocation(
         previousGarden.location,
@@ -171,6 +175,7 @@ export function shareCurrentGardenData(
     );
 
     if (
+        homeCamera === previousGarden.homeCamera &&
         stacks === previousGarden.stacks &&
         location === previousGarden.location &&
         raisedBeds === previousGarden.raisedBeds
@@ -180,6 +185,7 @@ export function shareCurrentGardenData(
 
     return {
         ...nextGarden,
+        homeCamera,
         stacks,
         location,
         raisedBeds,

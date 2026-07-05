@@ -1,6 +1,10 @@
 import * as ReactQuery from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { type PropsWithChildren, useMemo } from 'react';
+import type {
+    GameCameraRigApi,
+    GameCameraSnapshot,
+} from '../../../packages/game/src/controls/GameCameraRigApi';
 import { currentGardenKeys } from '../../../packages/game/src/hooks/useCurrentGarden';
 import { gardenAccountGroupsKeys } from '../../../packages/game/src/hooks/useGardenAccountGroups';
 import { useGardensKeys } from '../../../packages/game/src/hooks/useGardens';
@@ -12,6 +16,7 @@ import {
 
 type GardenTabStoryProps = {
     activeRaisedBedCount?: number;
+    cameraSnapshot?: GameCameraSnapshot;
     isSandbox?: boolean;
 };
 
@@ -19,7 +24,9 @@ const baseGarden = {
     id: 1,
     name: 'Test',
     isSandbox: false,
+    isPublic: false,
     backgroundPalette: 'current',
+    homeCamera: null,
     createdAt: '2026-06-01T00:00:00.000Z',
 };
 
@@ -67,6 +74,9 @@ function createGardenTabQueryClient(
         id: garden.id,
         name: garden.name,
         isSandbox: garden.isSandbox,
+        isPublic: garden.isPublic,
+        backgroundPalette: garden.backgroundPalette,
+        homeCamera: garden.homeCamera,
         stacks: [],
         location: { lat: 45.739, lon: 16.572 },
         raisedBeds,
@@ -75,8 +85,24 @@ function createGardenTabQueryClient(
     return queryClient;
 }
 
+function createMockGameCamera(snapshot: GameCameraSnapshot): GameCameraRigApi {
+    return {
+        focus: () => undefined,
+        getCamera: () => null,
+        getDomElement: () => null,
+        getSnapshot: () => snapshot,
+        panByDragEdge: () => false,
+        projectToScreen: () => null,
+        subscribe: (listener) => {
+            listener(snapshot);
+            return () => undefined;
+        },
+    };
+}
+
 function GardenTabTestProviders({
     activeRaisedBedCount,
+    cameraSnapshot,
     isSandbox,
     children,
 }: PropsWithChildren<GardenTabStoryProps>) {
@@ -84,15 +110,21 @@ function GardenTabTestProviders({
         () => createGardenTabQueryClient(activeRaisedBedCount, isSandbox),
         [activeRaisedBedCount, isSandbox],
     );
-    const gameState = useMemo(
-        () =>
-            createGameState({
-                appBaseUrl: '',
-                freezeTime: new Date('2026-06-01T00:00:00.000Z'),
-                isMock: false,
-            }),
-        [],
-    );
+    const gameState = useMemo(() => {
+        const state = createGameState({
+            appBaseUrl: '',
+            freezeTime: new Date('2026-06-01T00:00:00.000Z'),
+            isMock: false,
+        });
+
+        if (cameraSnapshot) {
+            state
+                .getState()
+                .setGameCamera(createMockGameCamera(cameraSnapshot));
+        }
+
+        return state;
+    }, [cameraSnapshot]);
 
     return (
         <ReactQuery.QueryClientProvider client={queryClient}>
@@ -107,12 +139,14 @@ function GardenTabTestProviders({
 
 export function GardenTabStory({
     activeRaisedBedCount,
+    cameraSnapshot,
     isSandbox,
 }: GardenTabStoryProps) {
     return (
         <div className="min-h-96 max-w-2xl p-4">
             <GardenTabTestProviders
                 activeRaisedBedCount={activeRaisedBedCount}
+                cameraSnapshot={cameraSnapshot}
                 isSandbox={isSandbox}
             >
                 <GardenTab />
