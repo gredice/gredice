@@ -43,6 +43,7 @@ import {
     Tally3,
     Truck,
     User,
+    Warning,
 } from '@gredice/ui/icons';
 import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { usePathname } from 'next/navigation';
@@ -84,6 +85,8 @@ function quickActionIcon(quickAction: { href: string; icon?: string | null }) {
             return <Success className="size-5" />;
         case KnownPages.AiAnalytics:
             return <AI className="size-5" />;
+        case KnownPages.BillingReconciliation:
+            return <Warning className="size-5" />;
         case KnownPages.Approvals:
         case KnownPages.CommunicationInbox:
             return <Inbox className="size-5" />;
@@ -458,6 +461,7 @@ export function Nav({
                         adminPages.Invoices.href,
                         adminPages.Transactions.href,
                         adminPages.Sunflowers.href,
+                        adminPages.BillingReconciliation.href,
                         adminPages.BillingPreviews.href,
                         adminPages.Receipts.href,
                         adminPages.Outlet.href,
@@ -492,6 +496,14 @@ export function Nav({
                         href={adminPages.Sunflowers.href}
                         label={adminPages.Sunflowers.label}
                         icon={<Success className="size-5" />}
+                        onClick={onItemClick}
+                        compact={compact}
+                        nested
+                    />
+                    <NavItem
+                        href={adminPages.BillingReconciliation.href}
+                        label={adminPages.BillingReconciliation.label}
+                        icon={<Warning className="size-5" />}
                         onClick={onItemClick}
                         compact={compact}
                         nested

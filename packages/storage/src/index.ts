@@ -30,6 +30,7 @@ export * from './repositories/approvalRequestsRepo';
 export * from './repositories/attributeDefinitionsRepo';
 export * from './repositories/attributeValuesRepo';
 export * from './repositories/automationsRepo';
+export * from './repositories/billingReconciliationRepo';
 export * from './repositories/cmsPagesRepo';
 export * from './repositories/communityEditRequestsRepo';
 export * from './repositories/deliveryAddressesRepo';

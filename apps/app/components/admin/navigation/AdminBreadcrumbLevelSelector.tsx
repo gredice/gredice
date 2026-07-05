@@ -26,6 +26,7 @@ import {
     Tally3,
     Truck,
     User,
+    Warning,
 } from '@gredice/ui/icons';
 import {
     DropdownMenu,
@@ -126,6 +127,10 @@ const breadcrumbSections: {
                 icon: <Euro className="size-4" />,
             },
             { ...adminPages.Sunflowers, icon: <Success className="size-4" /> },
+            {
+                ...adminPages.BillingReconciliation,
+                icon: <Warning className="size-4" />,
+            },
             { ...adminPages.Receipts, icon: <File className="size-4" /> },
             { ...adminPages.Outlet, icon: <Discount className="size-4" /> },
         ],
