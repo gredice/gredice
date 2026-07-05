@@ -82,6 +82,7 @@ export const KnownPages = {
     Transaction: (transactionId: number) =>
         `/admin/transactions/${transactionId}` as Route,
     Sunflowers: '/admin/sunflowers',
+    BillingReconciliation: '/admin/billing/reconciliation',
     BillingPreviews: '/admin/billing/previews',
     BillingPreviewInvoice: (invoiceId: number) =>
         `/admin/billing/previews?source=invoice&invoiceId=${invoiceId}` as Route,
