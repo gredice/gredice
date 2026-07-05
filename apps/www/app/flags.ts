@@ -15,7 +15,7 @@ export const lSystemPlantsFlag = flag<boolean>({
 export const blockGeometryMergingFlag = flag<boolean>({
     key: 'blockGeometryMerging',
     description: 'Enable merged geometry chunks for stable terrain blocks.',
-    decide: () => false,
+    decide: () => true,
     options: booleanFlagOptions,
 });
 
