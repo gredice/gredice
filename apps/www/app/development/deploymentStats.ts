@@ -13,7 +13,7 @@ const VERCEL_API_BASE_URL = 'https://api.vercel.com/v7/deployments';
 const VERCEL_PAGE_LIMIT = 100;
 const LIVE_WINDOW_DAYS = 30;
 const MAX_PAGES_PER_PROJECT = 25;
-const DEPLOYMENT_STATS_REVALIDATE_SECONDS = 300;
+export const DEPLOYMENT_STATS_CACHE_SECONDS = 12 * 60 * 60;
 
 type VercelProject = {
     name: string;
@@ -191,7 +191,7 @@ async function fetchProjectDeployments({
                 Authorization: `Bearer ${token}`,
             },
             next: {
-                revalidate: DEPLOYMENT_STATS_REVALIDATE_SECONDS,
+                revalidate: DEPLOYMENT_STATS_CACHE_SECONDS,
             },
         });
 

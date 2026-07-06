@@ -139,7 +139,6 @@ async function fetchDeploymentStats(
     signal: AbortSignal,
 ) {
     const response = await fetch(deploymentStatsUrl(period), {
-        cache: 'no-store',
         signal,
     });
 
