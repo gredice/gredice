@@ -12,6 +12,13 @@ export const lSystemPlantsFlag = flag<boolean>({
     options: booleanFlagOptions,
 });
 
+export const blockGeometryMergingFlag = flag<boolean>({
+    key: 'blockGeometryMerging',
+    description: 'Enable merged geometry chunks for stable terrain blocks.',
+    decide: () => true,
+    options: booleanFlagOptions,
+});
+
 export const recipesFlag = flag<boolean>({
     key: 'recipes',
     description: 'Enable recipes pages and recipe detail routes.',

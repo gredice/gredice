@@ -4,6 +4,7 @@ import type { ComponentProps } from 'react';
 import LoginModal from '../components/auth/LoginModal';
 import { GameSceneWithAnalytics } from '../components/game/GameSceneWithAnalytics';
 import {
+    blockGeometryMergingFlag,
     enableDebugHudFlag,
     enableSuncokretChatFlag,
     enableSuncokretDebugFlag,
@@ -17,6 +18,7 @@ export default async function Home() {
     const suppressOpeningHud =
         cookieStore.get(impersonationFlagCookieName)?.value === '1';
     const flags: ComponentProps<typeof GameSceneWithAnalytics>['flags'] = {
+        enableBlockGeometryMergingFlag: await blockGeometryMergingFlag(),
         enableDebugHudFlag: await enableDebugHudFlag(),
         enableRainWetOverlayFlag: await rainWetOverlayFlag(),
         enableSuncokretChatFlag: await enableSuncokretChatFlag(),

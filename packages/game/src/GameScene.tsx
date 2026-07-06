@@ -381,6 +381,9 @@ export function GameScene({
                                     </Suspense>
                                 )}
                                 <EntityInstances
+                                    enableBlockGeometryMerging={Boolean(
+                                        flags?.enableBlockGeometryMergingFlag,
+                                    )}
                                     farmId={garden?.farmId}
                                     quality={qualityProfile}
                                     renderGroundDecorations={

@@ -80,6 +80,9 @@ type CommonWeatherProps = Pick<
     EntityInstancesBlockBaseProps,
     'renderSnow' | 'snowOverlayMinCoverage'
 >;
+type BlockGeometryMergingProps = {
+    enableBlockGeometryMerging?: boolean;
+};
 
 type ScaleTuple = [number, number, number];
 type ScaleInput = number | ScaleTuple | { x: number; y: number; z: number };
@@ -372,9 +375,11 @@ function InstancedWaterSurfaceMaterial() {
 }
 
 function BlockGroundInstances({
+    enableBlockGeometryMerging = false,
     stacks,
     ...commonSnowProps
-}: { stacks: Stack[] | undefined } & CommonWeatherProps) {
+}: { stacks: Stack[] | undefined } & CommonWeatherProps &
+    BlockGeometryMergingProps) {
     const { nodes } = useGameGLTF('BlockGround');
     const groundMaterial11 = useGroundPatchMaterial(
         nodes.Block_Ground_1.material,
@@ -408,7 +413,7 @@ function BlockGroundInstances({
                     slopeExponent: 3.2,
                     noiseScale: 1.7,
                 }}
-                renderStableChunksAsMergedGeometry
+                renderStableChunksAsMergedGeometry={enableBlockGeometryMerging}
                 {...commonSnowProps}
             />
             <EntityInstancesGeometry
@@ -421,7 +426,7 @@ function BlockGroundInstances({
                     slopeExponent: 3.2,
                     noiseScale: 1.7,
                 }}
-                renderStableChunksAsMergedGeometry
+                renderStableChunksAsMergedGeometry={enableBlockGeometryMerging}
                 {...commonSnowProps}
             />
         </>
@@ -2384,9 +2389,11 @@ const birdHouseRoofNodes = [
 ] satisfies (keyof GLTFResult['nodes'])[];
 
 function SimpleAdditionalInstances({
+    enableBlockGeometryMerging = false,
     stacks,
     ...commonSnowProps
-}: { stacks: Stack[] | undefined } & CommonWeatherProps) {
+}: { stacks: Stack[] | undefined } & CommonWeatherProps &
+    BlockGeometryMergingProps) {
     const snowmanMaterial = useMemo(
         () =>
             new MeshStandardMaterial({
@@ -2412,7 +2419,7 @@ function SimpleAdditionalInstances({
                     slopeExponent: 2.2,
                     noiseScale: 1.8,
                 }}
-                renderStableChunksAsMergedGeometry
+                renderStableChunksAsMergedGeometry={enableBlockGeometryMerging}
                 {...commonSnowProps}
             />
             <AssetBlock
@@ -2428,7 +2435,7 @@ function SimpleAdditionalInstances({
                     slopeExponent: 2.2,
                     noiseScale: 1.8,
                 }}
-                renderStableChunksAsMergedGeometry
+                renderStableChunksAsMergedGeometry={enableBlockGeometryMerging}
                 {...commonSnowProps}
             />
             <AssetBlock
@@ -2448,7 +2455,7 @@ function SimpleAdditionalInstances({
                     slopeExponent: 2.2,
                     noiseScale: 1.8,
                 }}
-                renderStableChunksAsMergedGeometry
+                renderStableChunksAsMergedGeometry={enableBlockGeometryMerging}
                 {...commonSnowProps}
             />
             <AssetBlock
@@ -2507,13 +2514,23 @@ function SimpleAdditionalInstances({
 }
 
 export function AdditionalEntityInstances({
+    enableBlockGeometryMerging = false,
     stacks,
     ...commonSnowProps
-}: { stacks: Stack[] | undefined } & CommonWeatherProps) {
+}: { stacks: Stack[] | undefined } & CommonWeatherProps &
+    BlockGeometryMergingProps) {
     return (
         <>
-            <BlockGroundInstances stacks={stacks} {...commonSnowProps} />
-            <SimpleAdditionalInstances stacks={stacks} {...commonSnowProps} />
+            <BlockGroundInstances
+                enableBlockGeometryMerging={enableBlockGeometryMerging}
+                stacks={stacks}
+                {...commonSnowProps}
+            />
+            <SimpleAdditionalInstances
+                enableBlockGeometryMerging={enableBlockGeometryMerging}
+                stacks={stacks}
+                {...commonSnowProps}
+            />
             <WaterBlockInstances stacks={stacks} />
             <RaisedBedInstances stacks={stacks} {...commonSnowProps} />
             <ShadeInstances stacks={stacks} {...commonSnowProps} />

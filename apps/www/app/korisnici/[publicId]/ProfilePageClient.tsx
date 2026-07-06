@@ -8,10 +8,14 @@ import { useState } from 'react';
 import { PublicGardenViewerDynamic } from './PublicGardenViewerDynamic';
 
 type ProfilePageClientProps = {
+    enableBlockGeometryMerging?: boolean;
     publicId: string;
 };
 
-export function ProfilePageClient({ publicId }: ProfilePageClientProps) {
+export function ProfilePageClient({
+    enableBlockGeometryMerging = false,
+    publicId,
+}: ProfilePageClientProps) {
     const profileQuery = useQuery({
         queryKey: ['public-profile', publicId],
         queryFn: async () => {
@@ -138,6 +142,9 @@ export function ProfilePageClient({ publicId }: ProfilePageClientProps) {
                     ) : (
                         <PublicGardenViewerDynamic
                             className="h-full"
+                            enableBlockGeometryMerging={
+                                enableBlockGeometryMerging
+                            }
                             garden={gardenQuery.data}
                         />
                     )}

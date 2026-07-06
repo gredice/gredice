@@ -69,6 +69,7 @@ export type PublicGardenViewerProps = HTMLAttributes<HTMLDivElement> & {
     stacks?: PublicGardenStack[];
     appBaseUrl?: string;
     spriteBaseUrl?: string;
+    enableBlockGeometryMerging?: boolean;
     deferDetails?: boolean;
     className?: string;
 };
@@ -212,6 +213,7 @@ function publicGardenTimeLocation(
 }
 
 function PublicGardenScene({
+    enableBlockGeometryMerging,
     initialView,
     className,
     garden,
@@ -219,6 +221,7 @@ function PublicGardenScene({
     normalizedStacks,
     renderDetails,
 }: {
+    enableBlockGeometryMerging: boolean;
     initialView: PublicGardenInitialView;
     className?: string;
     garden?: ReturnType<typeof publicGardenForGameState>;
@@ -264,6 +267,9 @@ function PublicGardenScene({
                                     )),
                                 )}
                                 <EntityInstances
+                                    enableBlockGeometryMerging={
+                                        enableBlockGeometryMerging
+                                    }
                                     farmId={garden?.farmId}
                                     quality={qualityProfile}
                                     renderGroundDecorations={
@@ -363,6 +369,7 @@ function SeedPublicGardenQueryCache({
 export function PublicGardenViewer({
     appBaseUrl,
     spriteBaseUrl,
+    enableBlockGeometryMerging = false,
     deferDetails = true,
     garden,
     stacks,
@@ -435,6 +442,9 @@ export function PublicGardenViewer({
                         {(gardenCacheReady) => (
                             <PublicGardenScene
                                 className={className}
+                                enableBlockGeometryMerging={
+                                    enableBlockGeometryMerging
+                                }
                                 garden={gameGarden}
                                 gardenCacheReady={gardenCacheReady}
                                 initialView={initialView}
