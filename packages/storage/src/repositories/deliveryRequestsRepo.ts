@@ -253,12 +253,16 @@ function reconstructDeliveryRequestState(
             requestNotes = asString(data.requestNotes);
         } else if (event.type === knownEventTypes.delivery.requestConfirmed) {
             state = DeliveryRequestStates.CONFIRMED;
+            cancelReason = undefined;
         } else if (event.type === knownEventTypes.delivery.requestPreparing) {
             state = DeliveryRequestStates.PREPARING;
+            cancelReason = undefined;
         } else if (event.type === knownEventTypes.delivery.requestReady) {
             state = DeliveryRequestStates.READY;
+            cancelReason = undefined;
         } else if (event.type === knownEventTypes.delivery.requestFulfilled) {
             state = DeliveryRequestStates.FULFILLED;
+            cancelReason = undefined;
             deliveryNotes = data.deliveryNotes ?? deliveryNotes;
         } else if (event.type === knownEventTypes.delivery.requestSlotChanged) {
             slotId = asNumber(data.newSlotId);
@@ -1157,6 +1161,26 @@ export async function cancelDeliveryRequest(
             cancelReason,
             note,
             cancelledBy: actorId,
+        }),
+    );
+}
+
+export async function uncancelDeliveryRequest(
+    requestId: string,
+): Promise<void> {
+    const request = await getDeliveryRequest(requestId);
+
+    if (!request) {
+        throw new Error('Delivery request not found');
+    }
+
+    if (request.state !== DeliveryRequestStates.CANCELLED) {
+        return;
+    }
+
+    await createEvent(
+        knownEvents.delivery.requestConfirmedV1(requestId, {
+            status: DeliveryRequestStates.CONFIRMED,
         }),
     );
 }

@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
     acceptOperation,
+    cancelDeliveryRequest,
     changeDeliveryRequestSlot,
     createAttributeDefinition,
     createDeliveryRequest,
@@ -24,6 +25,7 @@ import {
     raisedBeds,
     storage,
     TimeSlotStatuses,
+    uncancelDeliveryRequest,
     updateEntity,
     upsertAttributeValue,
     upsertEntityType,
@@ -427,4 +429,32 @@ test('getDeliveryRequestsWithEvents uses the traced harvest plant sort for plant
     assert.equal(request.plantSort?.id, fixture.originalPlantSortId);
     assert.notEqual(request.plantSort?.id, fixture.latestPlantSortId);
     assert.equal(request.plantSort?.information.name, 'Original tomato');
+});
+
+test('uncancelDeliveryRequest restores cancelled requests to confirmed', async () => {
+    const fixture = await createDeliveryRequestWithTraceFixture();
+
+    await cancelDeliveryRequest(fixture.requestId, 'admin', 'Pogrešan termin');
+
+    const cancelledRequests = await getDeliveryRequestsWithEvents(
+        fixture.accountId,
+    );
+    const cancelledRequest = cancelledRequests.find(
+        (request) => request.id === fixture.requestId,
+    );
+
+    assert.equal(cancelledRequest?.state, DeliveryRequestStates.CANCELLED);
+    assert.equal(cancelledRequest?.cancelReason, 'Pogrešan termin');
+
+    await uncancelDeliveryRequest(fixture.requestId);
+
+    const restoredRequests = await getDeliveryRequestsWithEvents(
+        fixture.accountId,
+    );
+    const restoredRequest = restoredRequests.find(
+        (request) => request.id === fixture.requestId,
+    );
+
+    assert.equal(restoredRequest?.state, DeliveryRequestStates.CONFIRMED);
+    assert.equal(restoredRequest?.cancelReason, undefined);
 });

@@ -1,10 +1,9 @@
 import {
+    DeliveryRequestStates,
     getAllTimeSlots,
     getDeliveryRequestsWithEvents,
     TimeSlotStatuses,
 } from '@gredice/storage';
-import { Chip } from '@gredice/ui/Chip';
-import { Typography } from '@gredice/ui/Typography';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
 import { getDateFromTimeFilter } from '../../../../lib/utils/timeFilters';
 import { groupDeliveryRequests } from './DeliveryRequestGroups';
@@ -25,8 +24,9 @@ export async function DeliveryRequestsList({
         getAllTimeSlots(),
     ]);
 
-    const statusFilter =
+    const statusParam =
         typeof searchParams?.status === 'string' ? searchParams.status : '';
+    const statusFilter = statusParam || 'active';
     const modeFilter =
         typeof searchParams?.mode === 'string' ? searchParams.mode : '';
     const fromFilter =
@@ -35,7 +35,13 @@ export async function DeliveryRequestsList({
 
     let filteredRequests = deliveryRequests;
 
-    if (statusFilter) {
+    if (statusFilter === 'active') {
+        filteredRequests = filteredRequests.filter(
+            (request) =>
+                request.state !== DeliveryRequestStates.FULFILLED &&
+                request.state !== DeliveryRequestStates.CANCELLED,
+        );
+    } else if (statusFilter && statusFilter !== 'all') {
         filteredRequests = filteredRequests.filter(
             (request) => request.state === statusFilter,
         );
@@ -93,29 +99,6 @@ export async function DeliveryRequestsList({
     return (
         <DeliveryRequestSlotsProvider slots={slotOptions}>
             <div className="min-w-0">
-                <div className="flex min-w-0 flex-col gap-2 border-b bg-card px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex min-w-0 flex-wrap items-center gap-2">
-                        <Chip color="neutral" size="sm" variant="soft">
-                            {deliveryRequestGroups.length}
-                        </Chip>
-                        <Typography
-                            level="body3"
-                            className="text-muted-foreground"
-                        >
-                            Grupirani zahtjevi za dostavu
-                        </Typography>
-                        {deliveryRequestGroups.length !==
-                        sortedDeliveryRequests.length ? (
-                            <Typography
-                                level="body3"
-                                className="text-muted-foreground"
-                            >
-                                {sortedDeliveryRequests.length} zahtjeva
-                            </Typography>
-                        ) : null}
-                    </div>
-                </div>
-
                 {deliveryRequestGroups.length === 0 ? (
                     <div className="p-4">
                         <NoDataPlaceholder>

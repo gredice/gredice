@@ -1,4 +1,5 @@
 import { Chip } from '@gredice/ui/Chip';
+import { PlantOrSortImage } from '@gredice/ui/plants';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -8,7 +9,7 @@ function getPlantSortName(request: DeliveryRequestDetails) {
     return (
         request.plantSort?.information?.name ??
         request.plantSort?.information?.plant?.information?.name ??
-        'Nepoznata sorta'
+        null
     );
 }
 
@@ -31,28 +32,43 @@ export function DeliveryRequestContents({
 }) {
     const plantSortName = getPlantSortName(request);
     const operationLabel = getOperationLabel(request);
+    const primaryLabel = plantSortName ?? operationLabel ?? 'Radnja bez naziva';
+    const secondaryLabel = plantSortName ? operationLabel : null;
     const fieldLabel = getFieldLabel(request);
 
     return (
         <Stack spacing={0.75} className="min-w-0">
-            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                <Typography level="body2" semiBold className="min-w-0 truncate">
-                    {plantSortName}
-                </Typography>
-                {operationLabel ? (
-                    <Typography
-                        level="body3"
-                        className="min-w-0 truncate text-muted-foreground"
-                    >
-                        {operationLabel}
-                    </Typography>
+            <div className="flex min-w-0 items-center gap-2">
+                {plantSortName ? (
+                    <PlantOrSortImage
+                        plantSort={request.plantSort}
+                        width={28}
+                        height={28}
+                        className="size-7 shrink-0 rounded-md border border-border object-cover"
+                    />
                 ) : null}
+                <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+                    <Typography
+                        level="body2"
+                        semiBold
+                        className="min-w-0 truncate"
+                    >
+                        {primaryLabel}
+                    </Typography>
+                    {secondaryLabel ? (
+                        <Typography
+                            level="body3"
+                            className="min-w-0 truncate text-muted-foreground"
+                        >
+                            {secondaryLabel}
+                        </Typography>
+                    ) : null}
+                </div>
             </div>
             <div className="flex min-w-0 flex-wrap items-center gap-2">
                 {request.raisedBed ? (
                     <RaisedBedLabel
                         physicalId={request.raisedBed.physicalId}
-                        name={request.raisedBed.name}
                         size="compact"
                         className="min-w-0"
                     />
