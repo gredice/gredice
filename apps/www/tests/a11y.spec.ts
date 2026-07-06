@@ -4,6 +4,10 @@ import { expect, test } from './fixtures';
 
 const FALLBACK_ROUTES = ['/', '/recepti'];
 const EXTERNAL_REWRITE_PREFIXES = ['/novosti'];
+const REDIRECT_ONLY_ROUTES = [
+    '/prijava/facebook-prijava/povratak',
+    '/prijava/google-prijava/povratak',
+];
 
 function isExternalRewriteRoute(route: string): boolean {
     return EXTERNAL_REWRITE_PREFIXES.some(
@@ -30,6 +34,10 @@ test.describe('accessibility axe smoke tests', () => {
             test.skip(
                 isExternalRewriteRoute(url),
                 'Route is rendered by a different app behind a www rewrite.',
+            );
+            test.skip(
+                REDIRECT_ONLY_ROUTES.includes(url),
+                'Route immediately forwards the browser after an OAuth callback.',
             );
 
             await page.goto(url, { waitUntil: 'domcontentloaded' });
