@@ -1,4 +1,5 @@
 import {
+    DeliveryRequestStates,
     getAllTimeSlots,
     getDeliveryRequestsWithEvents,
     TimeSlotStatuses,
@@ -36,7 +37,9 @@ export async function DeliveryRequestsList({
 
     if (statusFilter === 'active') {
         filteredRequests = filteredRequests.filter(
-            (request) => request.state !== 'fulfilled',
+            (request) =>
+                request.state !== DeliveryRequestStates.FULFILLED &&
+                request.state !== DeliveryRequestStates.CANCELLED,
         );
     } else if (statusFilter && statusFilter !== 'all') {
         filteredRequests = filteredRequests.filter(
