@@ -1,10 +1,19 @@
 import 'server-only';
 
+import {
+    DEFAULT_DEPLOYMENT_STATS_PERIOD,
+    type DeploymentDayStats,
+    type DeploymentStatsPeriodSelection,
+    type DeploymentStatsSnapshot,
+    type DeploymentStatsTotals,
+} from './deploymentStatsTypes';
+
 const GREDICE_VERCEL_TEAM_ID = 'team_QBex7AXLs3YNeyYGdMEPim4S';
 const VERCEL_API_BASE_URL = 'https://api.vercel.com/v7/deployments';
 const VERCEL_PAGE_LIMIT = 100;
 const LIVE_WINDOW_DAYS = 30;
 const MAX_PAGES_PER_PROJECT = 25;
+const DEPLOYMENT_STATS_REVALIDATE_SECONDS = 300;
 
 type VercelProject = {
     name: string;
@@ -22,40 +31,6 @@ const GREDICE_VERCEL_PROJECTS: VercelProject[] = [
     { name: 'garden', id: 'prj_tJ406gH1dAjl7J2VDZBTv0aBAOJF' },
 ];
 
-export type DeploymentStatsTotals = {
-    all: number;
-    production: number;
-    preview: number;
-    readyProduction: number;
-    erroredProduction: number;
-    canceledProduction: number;
-    productionAverage: number;
-};
-
-export type DeploymentDayStats = {
-    date: string;
-    all: number;
-    production: number;
-    readyProduction: number;
-};
-
-export type DeploymentStatsSnapshot =
-    | {
-          status: 'ready';
-          title: string;
-          description: string;
-          totals: DeploymentStatsTotals;
-          days: number;
-          updatedAt: string | null;
-          dayRows: DeploymentDayStats[];
-      }
-    | {
-          status: 'unavailable';
-          title: string;
-          description: string;
-          reason: string;
-      };
-
 type VercelDeployment = {
     id: string;
     created: number;
@@ -69,58 +44,47 @@ type VercelDeploymentsPage = {
     next: number | null;
 };
 
-export const may2026DeploymentStats: DeploymentStatsSnapshot = {
-    status: 'ready',
-    title: 'Svibanj 2026',
-    description:
-        'Zaključeni pregled svih Vercel deployment zapisa u svibnju 2026.',
-    days: 31,
-    updatedAt: null,
-    totals: {
-        all: 6518,
-        production: 2064,
-        preview: 4454,
-        readyProduction: 1899,
-        erroredProduction: 41,
-        canceledProduction: 124,
-        productionAverage: 66.58,
-    },
-    dayRows: [
-        { date: '2026-05-01', all: 97, production: 26, readyProduction: 26 },
-        { date: '2026-05-02', all: 38, production: 23, readyProduction: 21 },
-        { date: '2026-05-03', all: 10, production: 0, readyProduction: 0 },
-        { date: '2026-05-04', all: 287, production: 77, readyProduction: 64 },
-        { date: '2026-05-05', all: 135, production: 39, readyProduction: 39 },
-        { date: '2026-05-06', all: 120, production: 41, readyProduction: 41 },
-        { date: '2026-05-07', all: 415, production: 113, readyProduction: 113 },
-        { date: '2026-05-08', all: 278, production: 78, readyProduction: 78 },
-        { date: '2026-05-09', all: 400, production: 103, readyProduction: 102 },
-        { date: '2026-05-10', all: 29, production: 0, readyProduction: 0 },
-        { date: '2026-05-11', all: 157, production: 53, readyProduction: 51 },
-        { date: '2026-05-12', all: 237, production: 53, readyProduction: 46 },
-        { date: '2026-05-13', all: 314, production: 87, readyProduction: 87 },
-        { date: '2026-05-14', all: 383, production: 119, readyProduction: 119 },
-        { date: '2026-05-15', all: 210, production: 66, readyProduction: 66 },
-        { date: '2026-05-16', all: 84, production: 30, readyProduction: 28 },
-        { date: '2026-05-17', all: 280, production: 81, readyProduction: 80 },
-        { date: '2026-05-18', all: 61, production: 31, readyProduction: 31 },
-        { date: '2026-05-19', all: 117, production: 32, readyProduction: 32 },
-        { date: '2026-05-20', all: 372, production: 101, readyProduction: 101 },
-        { date: '2026-05-21', all: 51, production: 22, readyProduction: 22 },
-        { date: '2026-05-22', all: 49, production: 14, readyProduction: 14 },
-        { date: '2026-05-23', all: 76, production: 29, readyProduction: 29 },
-        { date: '2026-05-24', all: 212, production: 70, readyProduction: 70 },
-        { date: '2026-05-25', all: 479, production: 167, readyProduction: 167 },
-        { date: '2026-05-26', all: 152, production: 57, readyProduction: 57 },
-        { date: '2026-05-27', all: 279, production: 100, readyProduction: 100 },
-        { date: '2026-05-28', all: 309, production: 121, readyProduction: 121 },
-        { date: '2026-05-29', all: 47, production: 0, readyProduction: 0 },
-        { date: '2026-05-30', all: 636, production: 241, readyProduction: 132 },
-        { date: '2026-05-31', all: 204, production: 90, readyProduction: 62 },
-    ],
+type DeploymentStatsRange = {
+    period: DeploymentStatsPeriodSelection;
+    title: string;
+    description: string;
+    days: number;
+    since: number;
+    until: number;
+    dayRows: DeploymentDayStats[];
 };
 
-export async function getLiveDeploymentStats(): Promise<DeploymentStatsSnapshot> {
+const monthLabelFormatter = new Intl.DateTimeFormat('hr-HR', {
+    month: 'long',
+    timeZone: 'Europe/Zagreb',
+    year: 'numeric',
+});
+
+export function getDeploymentStatsPeriodFromSearchParams(
+    searchParams: URLSearchParams,
+): DeploymentStatsPeriodSelection {
+    const mode = searchParams.get('mode');
+
+    if (mode === 'last-month') {
+        return { mode };
+    }
+
+    if (mode === 'month') {
+        const month = normalizeMonthValue(searchParams.get('month'));
+
+        if (month) {
+            return { mode, month };
+        }
+    }
+
+    return DEFAULT_DEPLOYMENT_STATS_PERIOD;
+}
+
+export async function getDeploymentStats(
+    period: DeploymentStatsPeriodSelection = DEFAULT_DEPLOYMENT_STATS_PERIOD,
+): Promise<DeploymentStatsSnapshot> {
+    const now = new Date();
+    const range = createDeploymentStatsRange(period, now);
     const token = (
         process.env.GREDICE_VERCEL_TOKEN ??
         process.env.VERCEL_TOKEN ??
@@ -130,45 +94,43 @@ export async function getLiveDeploymentStats(): Promise<DeploymentStatsSnapshot>
     if (!token) {
         return {
             status: 'unavailable',
-            title: 'Uživo',
-            description: `Zadnjih ${LIVE_WINDOW_DAYS} dana`,
-            reason: 'Nedostaje poslužiteljski Vercel token za dohvat deployment statistike.',
+            period: range.period,
+            title: range.title,
+            description: range.description,
+            reason: 'Deployment statistika trenutno nije dostupna.',
         };
     }
-
-    const now = new Date();
-    const until = now.getTime();
-    const dayRows = createRollingDayRows(now, LIVE_WINDOW_DAYS);
-    const since = startOfZagrebDayMs(dayRows[0].date);
 
     try {
         const deployments = await fetchAllProjectDeployments({
             token,
-            since,
-            until,
+            since: range.since,
+            until: range.until,
         });
         const stats = summarizeDeployments({
             deployments,
-            dayRows,
-            days: LIVE_WINDOW_DAYS,
-            since,
-            until,
+            dayRows: range.dayRows,
+            days: range.days,
+            since: range.since,
+            until: range.until,
         });
 
         return {
             status: 'ready',
-            title: 'Uživo',
-            description: `Zadnjih ${LIVE_WINDOW_DAYS} dana`,
-            days: LIVE_WINDOW_DAYS,
+            period: range.period,
+            title: range.title,
+            description: range.description,
+            days: range.days,
             updatedAt: now.toISOString(),
             ...stats,
         };
     } catch (error) {
-        console.error('Failed to fetch live Vercel deployment stats', error);
+        console.error('Failed to fetch Vercel deployment stats', error);
         return {
             status: 'unavailable',
-            title: 'Uživo',
-            description: `Zadnjih ${LIVE_WINDOW_DAYS} dana`,
+            period: range.period,
+            title: range.title,
+            description: range.description,
             reason: 'Vercel API trenutno nije vratio deployment statistiku.',
         };
     }
@@ -229,7 +191,7 @@ async function fetchProjectDeployments({
                 Authorization: `Bearer ${token}`,
             },
             next: {
-                revalidate: 300,
+                revalidate: DEPLOYMENT_STATS_REVALIDATE_SECONDS,
             },
         });
 
@@ -304,11 +266,130 @@ function summarizeDeployments({
         }
     }
 
-    totals.productionAverage = roundToTwo(totals.production / days);
+    totals.productionAverage = roundToTwo(
+        days > 0 ? totals.production / days : 0,
+    );
 
     return {
         totals,
         dayRows,
+    };
+}
+
+function createDeploymentStatsRange(
+    period: DeploymentStatsPeriodSelection,
+    now: Date,
+): DeploymentStatsRange {
+    if (period.mode === 'last-month') {
+        return createLastMonthRange(now);
+    }
+
+    if (period.mode === 'month') {
+        return createMonthRange(period.month, now);
+    }
+
+    return createRollingRange(now, LIVE_WINDOW_DAYS);
+}
+
+function createRollingRange(now: Date, days: number): DeploymentStatsRange {
+    const until = now.getTime();
+    const today = dateKeyZagreb(until);
+    const dayRows = Array.from({ length: days }, (_, index) =>
+        createEmptyDayRow(shiftDateKey(today, index - days + 1)),
+    );
+    const firstDay = dayRows[0]?.date ?? today;
+
+    return {
+        period: { mode: 'rolling-30-days' },
+        title: 'Zadnjih 30 dana',
+        description: 'Uključuje današnji dan i prethodnih 29 dana.',
+        days,
+        since: startOfZagrebDayMs(firstDay),
+        until,
+        dayRows,
+    };
+}
+
+function createLastMonthRange(now: Date): DeploymentStatsRange {
+    const month = previousMonthValue(now);
+    const range = createCalendarMonthRange({
+        description: 'Zadnji završeni kalendarski mjesec.',
+        month,
+        now,
+        period: { mode: 'last-month' },
+    });
+
+    return range;
+}
+
+function createMonthRange(
+    requestedMonth: string,
+    now: Date,
+): DeploymentStatsRange {
+    const currentMonth = monthValueZagreb(now.getTime());
+    const month = requestedMonth > currentMonth ? currentMonth : requestedMonth;
+
+    return createCalendarMonthRange({
+        description:
+            month === currentMonth
+                ? 'Odabrani mjesec do danas.'
+                : 'Odabrani kalendarski mjesec.',
+        month,
+        now,
+        period: { mode: 'month', month },
+    });
+}
+
+function createCalendarMonthRange({
+    description,
+    month,
+    now,
+    period,
+}: {
+    description: string;
+    month: string;
+    now: Date;
+    period: DeploymentStatsPeriodSelection;
+}): DeploymentStatsRange {
+    const startDateKey = `${month}-01`;
+    const currentMonth = monthValueZagreb(now.getTime());
+    const endDateKey =
+        month === currentMonth
+            ? shiftDateKey(dateKeyZagreb(now.getTime()), 1)
+            : `${nextMonthValue(month)}-01`;
+    const dayRows = createDayRows(startDateKey, endDateKey);
+    const days = dayRows.length;
+    const endBoundary = startOfZagrebDayMs(endDateKey);
+
+    return {
+        period,
+        title: formatMonthTitle(month),
+        description,
+        days,
+        since: startOfZagrebDayMs(startDateKey),
+        until: Math.min(endBoundary, now.getTime()),
+        dayRows,
+    };
+}
+
+function createDayRows(startDateKey: string, endDateKey: string) {
+    const dayRows: DeploymentDayStats[] = [];
+    let date = startDateKey;
+
+    while (date < endDateKey) {
+        dayRows.push(createEmptyDayRow(date));
+        date = shiftDateKey(date, 1);
+    }
+
+    return dayRows;
+}
+
+function createEmptyDayRow(date: string): DeploymentDayStats {
+    return {
+        date,
+        all: 0,
+        production: 0,
+        readyProduction: 0,
     };
 }
 
@@ -320,22 +401,8 @@ function createEmptyTotals(days: number): DeploymentStatsTotals {
         readyProduction: 0,
         erroredProduction: 0,
         canceledProduction: 0,
-        productionAverage: roundToTwo(0 / days),
+        productionAverage: roundToTwo(days > 0 ? 0 / days : 0),
     };
-}
-
-function createRollingDayRows(now: Date, days: number): DeploymentDayStats[] {
-    const today = dateKeyZagreb(now.getTime());
-
-    return Array.from({ length: days }, (_, index) => {
-        const date = shiftDateKey(today, index - days + 1);
-        return {
-            date,
-            all: 0,
-            production: 0,
-            readyProduction: 0,
-        };
-    });
 }
 
 function parseVercelDeploymentsPage(value: unknown): VercelDeploymentsPage {
@@ -382,6 +449,51 @@ function parseVercelDeployment(value: unknown): VercelDeployment | null {
         state: nullableStringValue(value.state),
         readyState: nullableStringValue(value.readyState),
     };
+}
+
+function normalizeMonthValue(value: string | null) {
+    if (!value) {
+        return null;
+    }
+
+    const match = value.match(/^(\d{4})-(\d{2})$/);
+    if (!match) {
+        return null;
+    }
+
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    if (year < 2020 || year > 2100 || month < 1 || month > 12) {
+        return null;
+    }
+
+    return value;
+}
+
+function previousMonthValue(now: Date) {
+    const currentMonth = monthValueZagreb(now.getTime());
+    const [year = 0, month = 1] = currentMonth.split('-').map(Number);
+
+    return new Date(Date.UTC(year, month - 2, 1)).toISOString().slice(0, 7);
+}
+
+function nextMonthValue(monthValue: string) {
+    const [year = 0, month = 1] = monthValue.split('-').map(Number);
+
+    return new Date(Date.UTC(year, month, 1)).toISOString().slice(0, 7);
+}
+
+function formatMonthTitle(monthValue: string) {
+    const [year = 0, month = 1] = monthValue.split('-').map(Number);
+    const label = monthLabelFormatter.format(
+        new Date(Date.UTC(year, month - 1, 15)),
+    );
+    const normalizedLabel = label.replace(/\.$/, '');
+
+    return (
+        normalizedLabel.charAt(0).toLocaleUpperCase('hr-HR') +
+        normalizedLabel.slice(1)
+    );
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -447,6 +559,10 @@ function dateKeyZagreb(ms: number) {
     const day = parts.find((part) => part.type === 'day')?.value ?? '00';
 
     return `${year}-${month}-${day}`;
+}
+
+function monthValueZagreb(ms: number) {
+    return dateKeyZagreb(ms).slice(0, 7);
 }
 
 function shiftDateKey(dateKey: string, dayOffset: number) {
