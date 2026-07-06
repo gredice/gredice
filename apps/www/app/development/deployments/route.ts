@@ -7,7 +7,8 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-const cacheControl = `public, max-age=0, s-maxage=${DEPLOYMENT_STATS_CACHE_SECONDS}`;
+const readyCacheControl = `public, max-age=0, s-maxage=${DEPLOYMENT_STATS_CACHE_SECONDS}`;
+const unavailableCacheControl = 'private, no-store';
 
 export async function GET(request: NextRequest) {
     const period = getDeploymentStatsPeriodFromSearchParams(
@@ -17,7 +18,10 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(snapshot, {
         headers: {
-            'Cache-Control': cacheControl,
+            'Cache-Control':
+                snapshot.status === 'ready'
+                    ? readyCacheControl
+                    : unavailableCacheControl,
         },
     });
 }
