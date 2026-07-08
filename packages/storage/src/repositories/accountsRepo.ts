@@ -5,6 +5,7 @@ import { accounts, accountUsers, ensureAccountAchievement, storage } from '..';
 import {
     createEvent,
     getAllEvents,
+    getLastBirthdayRewardEvent,
     getLatestEvents,
     knownEvents,
     knownEventTypes,
@@ -14,6 +15,16 @@ interface SunflowerEventData {
     amount: number;
     reason?: string;
 }
+
+export type BirthdaySunflowerGrantResult =
+    | {
+          status: 'created';
+          accountId: string;
+      }
+    | {
+          status: 'existing';
+          accountId: string;
+      };
 
 function parseSunflowerEventData(data: unknown): SunflowerEventData {
     if (!data || typeof data !== 'object') {
@@ -144,6 +155,69 @@ export async function getSunflowers(
                 : amount;
     }
     return currentSunflowers;
+}
+
+function startOfUtcDay(date: Date) {
+    return new Date(
+        Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
+    );
+}
+
+export async function grantBirthdaySunflowers({
+    accountId,
+    amount,
+    isLate,
+    rewardDate,
+    userId,
+}: {
+    accountId: string;
+    amount: number;
+    isLate: boolean;
+    rewardDate: Date;
+    userId: string;
+}): Promise<BirthdaySunflowerGrantResult> {
+    if (!Number.isInteger(amount) || amount <= 0) {
+        throw new Error(
+            'Birthday sunflower amount must be a positive integer.',
+        );
+    }
+
+    const normalizedRewardDate = startOfUtcDay(rewardDate);
+    const rewardYear = normalizedRewardDate.getUTCFullYear();
+    const reason = `birthday:${rewardYear.toString()}`;
+
+    return storage().transaction(async (tx) => {
+        await tx.execute(
+            sql`select pg_advisory_xact_lock(hashtext(${`birthday-reward:${userId}:${rewardYear.toString()}`}));`,
+        );
+
+        const lastRewardEvent = await getLastBirthdayRewardEvent(userId, tx);
+        const lastRewardDate = lastRewardEvent
+            ? startOfUtcDay(new Date(lastRewardEvent.data.rewardDate))
+            : null;
+        if (lastRewardDate && lastRewardDate >= normalizedRewardDate) {
+            return {
+                status: 'existing',
+                accountId,
+            };
+        }
+
+        await earnSunflowers(accountId, amount, reason, tx);
+        await createEvent(
+            knownEvents.users.birthdayRewardV1(userId, {
+                rewardDate: normalizedRewardDate.toISOString(),
+                accountId,
+                amount,
+                late: isLate,
+            }),
+            tx,
+        );
+
+        return {
+            status: 'created',
+            accountId,
+        };
+    });
 }
 
 export async function getSunflowersHistory(

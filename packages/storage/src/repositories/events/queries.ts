@@ -708,8 +708,11 @@ export async function updateEventCreatedAt(eventId: number, createdAt: Date) {
     await bustReadModelCachesForEvent(event);
 }
 
-export async function getLastBirthdayRewardEvent(userId: string) {
-    const event = await storage().query.events.findFirst({
+export async function getLastBirthdayRewardEvent(
+    userId: string,
+    db: DatabaseClient = storage(),
+) {
+    const event = await db.query.events.findFirst({
         where: and(
             eq(events.aggregateId, userId),
             eq(events.type, knownEventTypes.users.birthdayReward),
