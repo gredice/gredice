@@ -1135,7 +1135,7 @@ export function RaisedBedOnboardingModal({
                                     </span>
                                     <Typography
                                         level="h2"
-                                        className="text-2xl md:text-3xl"
+                                        className="text-2xl"
                                     >
                                         Tvoja nova personalizirana gredica
                                     </Typography>
