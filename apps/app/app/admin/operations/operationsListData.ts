@@ -192,11 +192,24 @@ function operationAssignedUserNames(operation: RawOperation) {
         .filter(isNonEmptyString);
 }
 
+function plantSortCoverUrl(plantSort: EntityStandardized | undefined) {
+    return (
+        plantSort?.image?.cover?.url ??
+        plantSort?.images?.cover?.url ??
+        plantSort?.information?.plant?.image?.cover?.url ??
+        plantSort?.information?.plant?.images?.cover?.url ??
+        null
+    );
+}
+
 function sowingTaskOperationDefinition(
     label: string,
+    plantSort: EntityStandardized | undefined,
 ): OperationsListOperationDefinition {
+    const coverUrl = plantSortCoverUrl(plantSort);
+
     return {
-        image: null,
+        image: coverUrl ? { cover: { url: coverUrl } } : null,
         information: { label },
         attributes: {
             category: { information: { name: 'sowing' } },
@@ -439,12 +452,10 @@ function serializeSowingTask({
     const farm = garden
         ? context.farms.find((item) => item.id === garden.farmId)
         : undefined;
-    const plantSortName = entityLabel(
-        context.plantSorts.find(
-            (plantSort) => plantSort.id === cycle.plantSortId,
-        ),
-        `Sorta ${cycle.plantSortId}`,
+    const plantSort = context.plantSorts.find(
+        (candidate) => candidate.id === cycle.plantSortId,
     );
+    const plantSortName = entityLabel(plantSort, `Sorta ${cycle.plantSortId}`);
     const label = `${sowingTaskName(cycle.sowingLocation)}: ${plantSortName}`;
 
     return {
@@ -457,7 +468,7 @@ function serializeSowingTask({
         plantCycleEventId: cycle.plantPlaceEventId,
         sowingLocation: cycle.sowingLocation,
         label,
-        operationDefinition: sowingTaskOperationDefinition(label),
+        operationDefinition: sowingTaskOperationDefinition(label, plantSort),
         status,
         accountUserNames:
             account?.accountUsers

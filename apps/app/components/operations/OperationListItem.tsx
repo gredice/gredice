@@ -10,6 +10,7 @@ import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
+import { operationListStatusLabel } from '../../app/admin/operations/operationListLabels';
 import type {
     OperationsListOperation,
     OperationsListOperationRow,
@@ -33,42 +34,6 @@ function statusColor(status: OperationsListOperation['status']) {
     }
 
     return 'warning';
-}
-
-function statusLabel(status: OperationsListOperation['status']) {
-    return status === 'pendingVerification' ? 'Čeka verifikaciju' : status;
-}
-
-function sowingStatusLabel(status: OperationsListOperation['status']) {
-    if (status === 'new') {
-        return 'Čeka sijanje';
-    }
-
-    if (status === 'planned') {
-        return 'Planirano';
-    }
-
-    if (status === 'pendingVerification') {
-        return 'Čeka verifikaciju';
-    }
-
-    if (status === 'completed') {
-        return 'Posijano';
-    }
-
-    if (status === 'canceled') {
-        return 'Otkazano';
-    }
-
-    return status;
-}
-
-function rowStatusLabel(operation: OperationsListOperation) {
-    if (operation.kind === 'sowing') {
-        return sowingStatusLabel(operation.status);
-    }
-
-    return statusLabel(operation.status);
 }
 
 function statusDate(operation: OperationsListOperation) {
@@ -204,7 +169,7 @@ export function OperationListItem({
                         color={statusColor(operation.status)}
                         size="sm"
                     >
-                        {rowStatusLabel(operation)}
+                        {operationListStatusLabel(operation)}
                     </Chip>
                     {currentStatusDate ? (
                         <Row

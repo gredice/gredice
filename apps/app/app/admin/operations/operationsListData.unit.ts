@@ -23,8 +23,29 @@ function buildContext(): OperationsListContext {
             { id: 502, information: { label: 'Plijevljenje' } },
         ],
         plantSorts: [
-            { id: 701, information: { name: 'Rajčica' } },
-            { id: 702, information: { name: 'Paprika' } },
+            {
+                id: 701,
+                information: { name: 'Rajčica' },
+                image: {
+                    cover: {
+                        url: 'https://cdn.example.com/plants/tomato.webp',
+                    },
+                },
+            },
+            {
+                id: 702,
+                information: {
+                    name: 'Paprika',
+                    plant: {
+                        id: 801,
+                        image: {
+                            cover: {
+                                url: 'https://cdn.example.com/plants/pepper.webp',
+                            },
+                        },
+                    },
+                },
+            },
             { id: 703, information: { name: 'Salata' } },
         ],
         users: [
@@ -162,6 +183,10 @@ test('operations list merges operation and sowing rows before sorting, filtering
     assert.equal(sowing.entityTypeName, 'sowing');
     assert.equal(sowing.sowingLocation, 'direct');
     assert.deepEqual(sowing.assignedUserNames, ['Farmer One']);
+    assert.equal(
+        sowing.operationDefinition.image?.cover?.url,
+        'https://cdn.example.com/plants/tomato.webp',
+    );
 
     const nextPage = buildOperationsListPage({
         context: buildContext(),
@@ -195,6 +220,10 @@ test('operations list merges operation and sowing rows before sorting, filtering
     assert.equal(
         nextPage.operations[0]?.label,
         'Sijanje u stakleniku: Paprika',
+    );
+    assert.equal(
+        nextPage.operations[0]?.operationDefinition.image?.cover?.url,
+        'https://cdn.example.com/plants/pepper.webp',
     );
 });
 
