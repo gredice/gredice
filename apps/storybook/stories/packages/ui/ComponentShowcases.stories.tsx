@@ -25,6 +25,12 @@ import {
     CardOverflow,
     CardTitle,
 } from '@gredice/ui/Card';
+import {
+    ChatBubble,
+    ChatMarker,
+    ChatMessage,
+    ChatMessageScroller,
+} from '@gredice/ui/Chat';
 import { Checkbox } from '@gredice/ui/Checkbox';
 import { Chip } from '@gredice/ui/Chip';
 import { Collapse } from '@gredice/ui/Collapse';
@@ -71,6 +77,7 @@ import { ImageViewer } from '@gredice/ui/ImageViewer';
 import { Input } from '@gredice/ui/Input';
 import {
     Add,
+    AI,
     Approved,
     Calendar,
     Check,
@@ -91,6 +98,7 @@ import {
     Settings,
     Sprout,
     Store,
+    Sun,
     Truck,
     Upload,
     User,
@@ -1569,6 +1577,71 @@ function GardenWorkspaceShowcase() {
                                         </Row>
                                     </Stack>
                                 </GentleSlide>
+                            </div>
+                            <div className="absolute right-4 bottom-4 hidden h-72 w-80 flex-col overflow-hidden rounded-2xl border border-amber-200/80 border-b-4 border-b-emerald-700 bg-background shadow-xl xl:flex dark:border-amber-900/80">
+                                <Row className="border-b border-amber-200/70 bg-amber-50/90 px-3 py-2 dark:border-amber-900/70 dark:bg-amber-950/40">
+                                    <span className="grid size-8 place-items-center rounded-full bg-background">
+                                        <Sun className="size-4 text-amber-500" />
+                                    </span>
+                                    <Stack spacing={0}>
+                                        <Typography level="body3" semiBold>
+                                            Suncokret
+                                        </Typography>
+                                        <Typography
+                                            level="body3"
+                                            className="text-muted-foreground"
+                                        >
+                                            Gredica A12
+                                        </Typography>
+                                    </Stack>
+                                </Row>
+                                <ChatMessageScroller
+                                    className="flex-1"
+                                    contentClassName="gap-3 px-3 py-3"
+                                    items={[
+                                        {
+                                            id: 'showcase-question',
+                                            scrollAnchor: true,
+                                            content: (
+                                                <ChatMessage align="end">
+                                                    <ChatBubble
+                                                        align="end"
+                                                        variant="sunflower"
+                                                    >
+                                                        Što prvo trebam
+                                                        napraviti?
+                                                    </ChatBubble>
+                                                </ChatMessage>
+                                            ),
+                                        },
+                                        {
+                                            id: 'showcase-status',
+                                            content: (
+                                                <ChatMarker icon={<AI />}>
+                                                    Provjereno stanje gredice
+                                                </ChatMarker>
+                                            ),
+                                        },
+                                        {
+                                            id: 'showcase-answer',
+                                            content: (
+                                                <ChatMessage
+                                                    avatar={
+                                                        <Sun className="size-4 text-amber-500" />
+                                                    }
+                                                    header="Suncokret"
+                                                >
+                                                    <ChatBubble variant="ghost">
+                                                        Kreni sa zalijevanjem
+                                                        rajčice, zatim provjeri
+                                                        mlade listove.
+                                                    </ChatBubble>
+                                                </ChatMessage>
+                                            ),
+                                        },
+                                    ]}
+                                    scrollButtonLabel="Najnovije"
+                                />
                             </div>
                         </div>
                     </SplitView>
