@@ -38,7 +38,7 @@ export function GameModalHeader({
                     level="h3"
                     component="h2"
                     noWrap
-                    className="text-2xl md:text-3xl"
+                    className="text-2xl"
                 >
                     {title}
                 </Typography>
