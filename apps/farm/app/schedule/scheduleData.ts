@@ -1,6 +1,7 @@
 import 'server-only';
 
 import {
+    addCalendarDays,
     cacheScheduleRead,
     type EntityStandardized,
     getEntitiesFormatted,
@@ -8,10 +9,13 @@ import {
     getFarmUserAcceptedOperationsByScheduleRange,
     getFarmUserRaisedBeds,
     getRaisedBedPhotoPreviews,
+    getTimeZoneDateKey,
+    getTimeZoneDayRange,
     scheduleCacheKeys,
     scheduleCacheTtls,
 } from '@gredice/storage';
 import { cache } from 'react';
+import { FARM_SCHEDULE_TIME_ZONE } from './scheduleShared';
 
 const operationsBackDays = 90;
 const raisedBedPhotoPreviewImageLimit = 3;
@@ -27,26 +31,12 @@ const SCHEDULE_OPERATION_STATUSES = new Set([
     'completed',
 ]);
 
-function startOfToday() {
-    const date = new Date();
-    date.setHours(0, 0, 0, 0);
-    return date;
-}
-
 function startOfDaysAgo(days: number) {
-    const date = startOfToday();
-    date.setDate(date.getDate() - days);
-    return date;
-}
-
-function getDayRange(date: Date) {
-    const from = new Date(date);
-    from.setHours(0, 0, 0, 0);
-
-    const to = new Date(date);
-    to.setHours(23, 59, 59, 999);
-
-    return { from, to };
+    const todayKey = getTimeZoneDateKey(new Date(), FARM_SCHEDULE_TIME_ZONE);
+    return getTimeZoneDayRange(
+        addCalendarDays(todayKey, -days),
+        FARM_SCHEDULE_TIME_ZONE,
+    ).from;
 }
 
 function dedupeById<T extends { id: number }>(items: T[]) {
@@ -63,12 +53,9 @@ function isFieldCompleted(status?: string) {
 
 function getScheduledFieldsForDay(
     isToday: boolean,
-    date: Date,
+    dateKey: string,
     raisedBeds: FarmScheduleRaisedBed[],
 ) {
-    const normalizedDate = new Date(date);
-    normalizedDate.setHours(0, 0, 0, 0);
-
     return raisedBeds
         .filter((raisedBed) => Boolean(raisedBed.physicalId))
         .flatMap((raisedBed) => raisedBed.fields)
@@ -83,7 +70,10 @@ function getScheduledFieldsForDay(
 
             if (isFieldCompleted(field.plantStatus) && field.plantSowDate) {
                 const sowDate = new Date(field.plantSowDate);
-                return sowDate.toDateString() === normalizedDate.toDateString();
+                return (
+                    getTimeZoneDateKey(sowDate, FARM_SCHEDULE_TIME_ZONE) ===
+                    dateKey
+                );
             }
 
             if (!field.plantScheduledDate) {
@@ -91,22 +81,22 @@ function getScheduledFieldsForDay(
             }
 
             const scheduledDate = new Date(field.plantScheduledDate);
+            const scheduledDateKey = getTimeZoneDateKey(
+                scheduledDate,
+                FARM_SCHEDULE_TIME_ZONE,
+            );
 
             return (
-                normalizedDate.toDateString() ===
-                    scheduledDate.toDateString() ||
-                (isToday && normalizedDate > scheduledDate)
+                scheduledDateKey === dateKey ||
+                (isToday && scheduledDateKey < dateKey)
             );
         });
 }
 
 function getSelectedDateOperationsForDay(
-    date: Date,
+    dateKey: string,
     operations: FarmScheduleOperation[],
 ) {
-    const normalizedDate = new Date(date);
-    normalizedDate.setHours(0, 0, 0, 0);
-
     return operations.filter((operation) => {
         if (!SCHEDULE_OPERATION_STATUSES.has(operation.status)) {
             return false;
@@ -122,7 +112,8 @@ function getSelectedDateOperationsForDay(
         if (isOperationCompleted(operation.status) && operation.completedAt) {
             const completedDate = new Date(operation.completedAt);
             return (
-                completedDate.toDateString() === normalizedDate.toDateString()
+                getTimeZoneDateKey(completedDate, FARM_SCHEDULE_TIME_ZONE) ===
+                dateKey
             );
         }
 
@@ -132,22 +123,20 @@ function getSelectedDateOperationsForDay(
 
         return (
             scheduledDate !== undefined &&
-            normalizedDate.toDateString() === scheduledDate.toDateString()
+            getTimeZoneDateKey(scheduledDate, FARM_SCHEDULE_TIME_ZONE) ===
+                dateKey
         );
     });
 }
 
 function getCarryoverOperationsForToday(
     isToday: boolean,
-    date: Date,
+    dateKey: string,
     operations: FarmScheduleOperation[],
 ) {
     if (!isToday) {
         return [];
     }
-
-    const normalizedDate = new Date(date);
-    normalizedDate.setHours(0, 0, 0, 0);
 
     return operations.filter((operation) => {
         if (!SCHEDULE_OPERATION_STATUSES.has(operation.status)) {
@@ -169,7 +158,12 @@ function getCarryoverOperationsForToday(
             return true;
         }
 
-        return normalizedDate > new Date(operation.scheduledDate);
+        return (
+            getTimeZoneDateKey(
+                new Date(operation.scheduledDate),
+                FARM_SCHEDULE_TIME_ZONE,
+            ) < dateKey
+        );
     });
 }
 
@@ -328,8 +322,10 @@ export const getFarmScheduleOperationsForDay = cache(
 
 export const getFarmScheduleSelectedDateOperationsForDay = cache(
     async (userId: string, dateKey: string) => {
-        const date = new Date(dateKey);
-        const { from, to } = getDayRange(date);
+        const { from, to } = getTimeZoneDayRange(
+            dateKey,
+            FARM_SCHEDULE_TIME_ZONE,
+        );
         const [scheduledOperations, completedOperations] = await Promise.all([
             getFarmUserAcceptedOperationsByScheduleRange({
                 userId,
@@ -344,7 +340,7 @@ export const getFarmScheduleSelectedDateOperationsForDay = cache(
         ]);
 
         return getSelectedDateOperationsForDay(
-            date,
+            dateKey,
             sortOperationsNewestFirst(
                 dedupeById([...scheduledOperations, ...completedOperations]),
             ),
@@ -358,10 +354,9 @@ export const getFarmScheduleCarryoverOperationsForDay = cache(
             return [];
         }
 
-        const date = new Date(dateKey);
         const operations = await getFarmScheduleOperations(userId);
 
-        return getCarryoverOperationsForToday(isToday, date, operations);
+        return getCarryoverOperationsForToday(isToday, dateKey, operations);
     },
 );
 
@@ -371,14 +366,13 @@ export const getFarmSchedulePlantingsDayData = cache(
         dateKey: string,
         isToday: boolean,
     ): Promise<FarmSchedulePlantingsDayData> => {
-        const date = new Date(dateKey);
         const raisedBeds = await getFarmScheduleRaisedBeds(userId);
 
         return {
             raisedBeds,
             scheduledFields: getScheduledFieldsForDay(
                 isToday,
-                date,
+                dateKey,
                 raisedBeds,
             ),
         };

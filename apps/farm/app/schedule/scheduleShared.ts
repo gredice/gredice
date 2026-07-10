@@ -6,6 +6,7 @@ type FarmRaisedBedField = FarmRaisedBed['fields'][number];
 type ScheduleTaskAgeIndicatorLevel = 'warning' | 'critical';
 
 const RAISED_BED_FIELDS_PER_BLOCK = 9;
+export const FARM_SCHEDULE_TIME_ZONE = 'Europe/Zagreb';
 
 export type RaisedBedScheduleGroup = {
     key: string;
@@ -22,6 +23,20 @@ export type ScheduleTaskAgeIndicator = {
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 const WARNING_TASK_AGE_DAYS = 2;
 const CRITICAL_TASK_AGE_DAYS = 3;
+
+export function getFarmScheduleDateKey(date: Date) {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: FARM_SCHEDULE_TIME_ZONE,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    }).formatToParts(date);
+    const values = Object.fromEntries(
+        parts.map((part) => [part.type, part.value]),
+    );
+
+    return `${values.year}-${values.month}-${values.day}`;
+}
 
 function comparePhysicalIds(left: string | null, right: string | null) {
     if (!left && !right) {
@@ -107,19 +122,23 @@ export function getScheduleDateFormat(
     referenceDate = new Date(),
 ): Intl.DateTimeFormatOptions {
     const parsedScheduledDate = parseScheduleDate(scheduledDate);
-    const includeYear =
-        !parsedScheduledDate ||
-        parsedScheduledDate.getFullYear() !== referenceDate.getFullYear();
+    const scheduledYear = parsedScheduledDate
+        ? getFarmScheduleDateKey(parsedScheduledDate).slice(0, 4)
+        : null;
+    const referenceYear = getFarmScheduleDateKey(referenceDate).slice(0, 4);
+    const includeYear = !parsedScheduledDate || scheduledYear !== referenceYear;
 
     return includeYear
         ? {
               day: '2-digit',
               month: '2-digit',
               year: 'numeric',
+              timeZone: FARM_SCHEDULE_TIME_ZONE,
           }
         : {
               day: '2-digit',
               month: '2-digit',
+              timeZone: FARM_SCHEDULE_TIME_ZONE,
           };
 }
 
@@ -196,10 +215,11 @@ export function getFieldPhysicalPositionIndex(
 }
 
 function getLocalDayNumber(date: Date) {
-    return (
-        Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) /
-        MILLISECONDS_PER_DAY
-    );
+    const [year, month, day] = getFarmScheduleDateKey(date)
+        .split('-')
+        .map(Number);
+
+    return Date.UTC(year, month - 1, day) / MILLISECONDS_PER_DAY;
 }
 
 function parseScheduleDate(date: Date | string | null | undefined) {
