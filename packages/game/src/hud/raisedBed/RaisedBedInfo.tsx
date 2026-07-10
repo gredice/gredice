@@ -4,6 +4,7 @@ import { EditableInput } from '@gredice/ui/EditableInput';
 import { Book, Hammer, Info, MoreHorizontal, Warning } from '@gredice/ui/icons';
 import { ModalConfirm } from '@gredice/ui/ModalConfirm';
 import { Row } from '@gredice/ui/Row';
+import { ScrollArea } from '@gredice/ui/ScrollArea';
 import { Stack } from '@gredice/ui/Stack';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import { Typography } from '@gredice/ui/Typography';
@@ -16,7 +17,6 @@ import {
     RAISED_BED_ABANDON_FAILED_MESSAGE,
     RAISED_BED_STATUS_ABANDONED,
 } from '../../raisedBedConstants';
-import { ScrollView } from '../../shared-ui/ScrollView';
 import { useGameState } from '../../useGameState';
 import { RaisedBedInfoTab } from './RaisedBedInfoTab';
 import { RaisedBedOperationHistoryList } from './RaisedBedOperationHistoryList';
@@ -231,7 +231,7 @@ export function RaisedBedInfo({
                     </Stack>
                 </TabsContent>
                 <TabsContent value="diary">
-                    <ScrollView
+                    <ScrollArea
                         className="-mx-4 md:-mx-6"
                         viewportClassName="max-h-96"
                         contentClassName="pl-4 pr-2 md:pl-6 md:pr-2"
@@ -239,7 +239,7 @@ export function RaisedBedInfo({
                         <RaisedBedOperationHistoryList
                             raisedBedId={raisedBed.id}
                         />
-                    </ScrollView>
+                    </ScrollArea>
                 </TabsContent>
                 <TabsContent value="operations">
                     <RaisedBedOperationsTab

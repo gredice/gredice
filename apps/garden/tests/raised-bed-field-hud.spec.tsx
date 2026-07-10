@@ -25,6 +25,18 @@ const favoriteTimestamp = '2026-06-01T00:00:00.000Z';
 const healthRecommendationsViewedEvent =
     'game_plant_health_recommendations_viewed';
 
+async function scrollFadeSize(viewport: Locator, edge: 'b' | 't') {
+    return viewport.evaluate((element, property) => {
+        const value = getComputedStyle(element).getPropertyValue(property);
+        const measurement = document.createElement('div');
+        measurement.style.cssText = `position:fixed;visibility:hidden;width:${value}`;
+        document.body.appendChild(measurement);
+        const width = measurement.getBoundingClientRect().width;
+        measurement.remove();
+        return width;
+    }, `--scroll-fade-${edge}`);
+}
+
 type AnalyticsEvent = {
     eventName: string;
     properties?: Record<string, unknown>;
@@ -1156,7 +1168,7 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await expect(
             dialog
                 .locator('[role="tabpanel"]:not([hidden])')
-                .locator('[data-scroll-view]'),
+                .locator('[data-scroll-area]'),
         ).toBeVisible();
         await expect(
             dialog
@@ -2050,13 +2062,14 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
 
         const dialog = page.getByRole('dialog');
         const activePanel = dialog.locator('[role="tabpanel"]:not([hidden])');
-        const scrollView = activePanel.locator('[data-scroll-view]').first();
-        const viewport = scrollView.locator('[data-scroll-view-viewport]');
-        const topFade = scrollView.locator('[data-scroll-view-top-fade]');
-        const bottomFade = scrollView.locator('[data-scroll-view-bottom-fade]');
-        await expect(scrollView).toBeVisible();
-        await expect(topFade).toHaveAttribute('data-visible', 'false');
-        await expect(bottomFade).toHaveAttribute('data-visible', 'true');
+        const scrollArea = activePanel.locator('[data-scroll-area]').first();
+        const viewport = scrollArea.locator('[data-scroll-area-viewport]');
+        await expect(scrollArea).toBeVisible();
+        await expect(viewport).toHaveClass(/scroll-fade-y/);
+        await expect.poll(() => scrollFadeSize(viewport, 't')).toBe(0);
+        await expect
+            .poll(() => scrollFadeSize(viewport, 'b'))
+            .toBeGreaterThan(0);
 
         await expect
             .poll(async () => {
@@ -2075,15 +2088,15 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
 
         await viewport.evaluate((element) => {
             element.scrollTop = 120;
-            element.dispatchEvent(new Event('scroll', { bubbles: true }));
         });
-        await expect(topFade).toHaveAttribute('data-visible', 'true');
+        await expect
+            .poll(() => scrollFadeSize(viewport, 't'))
+            .toBeGreaterThan(0);
 
         await viewport.evaluate((element) => {
             element.scrollTop = element.scrollHeight;
-            element.dispatchEvent(new Event('scroll', { bubbles: true }));
         });
-        await expect(bottomFade).toHaveAttribute('data-visible', 'false');
+        await expect.poll(() => scrollFadeSize(viewport, 'b')).toBe(0);
     });
 
     test('lifecycle modal opens status change popover from current state', async ({

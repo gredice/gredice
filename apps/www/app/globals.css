@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "@gredice/ui/utilities.css";
 @import "../../../packages/ui/src/MarkdownEditor/MarkdownEditor.css";
 @config "../tailwind.config.ts";
 @source "../../../packages/game/src";

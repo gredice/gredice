@@ -16,6 +16,7 @@ import {
 import { Link } from '@gredice/ui/Link';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Row } from '@gredice/ui/Row';
+import { ScrollArea } from '@gredice/ui/ScrollArea';
 import { SegmentedCircularProgress } from '@gredice/ui/SegmentedCircularProgress';
 import { Stack } from '@gredice/ui/Stack';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
@@ -26,7 +27,6 @@ import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { usePlantSort } from '../../hooks/usePlantSorts';
 import { KnownPages } from '../../knownPages';
 import { GameModal } from '../../shared-ui/game-modal';
-import { ScrollView } from '../../shared-ui/ScrollView';
 import {
     findRaisedBedFieldWithPlant,
     findRaisedBedOccupiedField,
@@ -548,7 +548,7 @@ export function RaisedBedFieldItemPlanted({
                     )}
                     <TabsContent value="diary">
                         {garden && (
-                            <ScrollView
+                            <ScrollArea
                                 className="-mx-4 md:-mx-6"
                                 viewportClassName="max-h-96"
                                 contentClassName="pl-4 pr-2 md:pl-6 md:pr-2"
@@ -558,7 +558,7 @@ export function RaisedBedFieldItemPlanted({
                                     positionIndex={positionIndex}
                                     disableActions={isHistorical}
                                 />
-                            </ScrollView>
+                            </ScrollArea>
                         )}
                     </TabsContent>
                     <TabsContent value="lifecycle">

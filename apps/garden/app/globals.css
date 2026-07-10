@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "@gredice/ui/utilities.css";
 @config "../tailwind.config.ts";
 @source "../../../packages/game/src";
 @source "../../../packages/ui/src";

@@ -5,7 +5,8 @@ import {
     createGameState,
     GameStateContext,
 } from '../../../packages/game/src/useGameState';
-import { Card, CardOverflow } from '../../../packages/ui/src/Card';
+import { Card } from '../../../packages/ui/src/Card';
+import { ScrollArea } from '../../../packages/ui/src/ScrollArea';
 import { buildOperation } from './raisedBedFieldHudScenarios';
 
 const TEST_GARDEN_ID = 1;
@@ -175,12 +176,12 @@ export function RaisedBedDiaryOverflowStory() {
                     data-testid="diary-shell"
                     className="w-[360px] max-w-full"
                 >
-                    <CardOverflow className="max-h-96 overflow-y-auto overflow-x-hidden">
+                    <ScrollArea className="-m-2" viewportClassName="max-h-96">
                         <RaisedBedDiary
                             gardenId={TEST_GARDEN_ID}
                             raisedBedId={TEST_RAISED_BED_ID}
                         />
-                    </CardOverflow>
+                    </ScrollArea>
                 </Card>
             </div>
         </RaisedBedDiaryTestProviders>

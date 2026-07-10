@@ -151,6 +151,7 @@ import { RaisedBedIdentifierIcon } from '@gredice/ui/RaisedBedIdentifierIcon';
 import { RaisedBedSimpleIcon } from '@gredice/ui/RaisedBedSimpleIcon';
 import { Row } from '@gredice/ui/Row';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
+import { ScrollArea } from '@gredice/ui/ScrollArea';
 import { SegmentedCircularProgress } from '@gredice/ui/SegmentedCircularProgress';
 import { SelectItems } from '@gredice/ui/SelectItems';
 import { ShovelIcon } from '@gredice/ui/ShovelIcon';
@@ -1380,7 +1381,14 @@ function GardenWorkspaceShowcase() {
                         collapsed={collapsed}
                         onCollapsedChanged={setCollapsed}
                     >
-                        <Stack className="h-full overflow-auto p-4" spacing={4}>
+                        <ScrollArea
+                            className="h-full"
+                            viewportClassName="h-full"
+                            contentClassName="flex flex-col gap-4 p-4"
+                            viewportProps={{
+                                'aria-label': 'Detalji gredice A12',
+                            }}
+                        >
                             <Row justifyContent="space-between">
                                 <Typography level="h5">Gredica A12</Typography>
                                 <IconButton
@@ -1510,7 +1518,7 @@ function GardenWorkspaceShowcase() {
                                     new Date('2026-06-18T12:00:00.000Z')
                                 }
                             />
-                        </Stack>
+                        </ScrollArea>
 
                         <div className="relative h-full overflow-hidden bg-emerald-50 p-6 dark:bg-emerald-950/20">
                             <LoadingIndicator className="absolute inset-x-0 top-0" />
