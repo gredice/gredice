@@ -821,6 +821,10 @@ function isFinishedOperation(operation: GardenOperationHudItem) {
     );
 }
 
+function getOperationTaskDisplayDate(operation: GardenOperationHudItem) {
+    return operation.completedAt ?? operation.scheduledDate;
+}
+
 function OperationScheduleText({ label }: { label: string }) {
     return (
         <Row spacing={1} className="min-w-0 text-muted-foreground">
@@ -843,24 +847,24 @@ export function GardenOperationScheduleAction({
     operation: GardenOperationHudItem;
     referenceDate: Date;
 }) {
-    const scheduledDateLabel = formatDate(operation.scheduledDate);
+    const taskDateLabel = formatDate(getOperationTaskDisplayDate(operation));
 
     if (isFinishedOperation(operation)) {
-        return scheduledDateLabel ? (
-            <OperationScheduleText label={scheduledDateLabel} />
+        return taskDateLabel ? (
+            <OperationScheduleText label={taskDateLabel} />
         ) : null;
     }
 
     if (!garden) {
-        return scheduledDateLabel ? (
-            <OperationScheduleText label={scheduledDateLabel} />
+        return taskDateLabel ? (
+            <OperationScheduleText label={taskDateLabel} />
         ) : null;
     }
 
     const target = getGardenOperationRescheduleTarget(operation, garden);
     if (!target) {
-        return scheduledDateLabel ? (
-            <OperationScheduleText label={scheduledDateLabel} />
+        return taskDateLabel ? (
+            <OperationScheduleText label={taskDateLabel} />
         ) : null;
     }
 
@@ -873,7 +877,7 @@ export function GardenOperationScheduleAction({
             entryName={entryName}
             gardenId={garden.id}
             target={target}
-            triggerLabel={scheduledDateLabel ?? 'Zakaži'}
+            triggerLabel={taskDateLabel ?? 'Zakaži'}
         />
     );
 }
@@ -1325,19 +1329,19 @@ function OperationSchedule({
     cancelAction?: ReactNode;
     scheduleAction?: ReactNode;
 }) {
-    const scheduledDate = formatDate(operation.scheduledDate);
+    const taskDate = formatDate(getOperationTaskDisplayDate(operation));
     const scheduleContent = scheduleAction ? (
         <div className="min-w-0 max-w-full overflow-hidden">
             {scheduleAction}
         </div>
-    ) : scheduledDate ? (
+    ) : taskDate ? (
         <Row
             spacing={1}
             className="min-w-0 max-w-full justify-end text-muted-foreground"
         >
             <Calendar aria-hidden className="size-3.5 shrink-0" />
             <Typography level="body3" secondary noWrap className="min-w-0">
-                {scheduledDate}
+                {taskDate}
             </Typography>
         </Row>
     ) : null;

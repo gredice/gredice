@@ -1895,13 +1895,37 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         ).toBeVisible();
     });
 
-    test('diary tab shows completed schedule dates as text instead of buttons', async ({
+    test('diary tab shows completed dates as text instead of scheduled dates', async ({
         mount,
         page,
     }) => {
+        const scenario = plantedGrowingWithOperationHistoryScenario();
+        const operation = scenario.operationHistoryItems?.[0];
+
+        if (!operation) {
+            throw new Error('Expected operation history item.');
+        }
+
         await mount(
             <RaisedBedFieldHudStory
-                scenario={plantedGrowingWithOperationHistoryScenario()}
+                scenario={{
+                    ...scenario,
+                    operationHistoryItems: [
+                        {
+                            ...operation,
+                            status: 'completed',
+                            completedAt: '2026-05-12T08:00:00.000Z',
+                            verifiedAt: '2026-05-13T09:00:00.000Z',
+                            statusHistory: [
+                                ...operation.statusHistory,
+                                {
+                                    status: 'completed',
+                                    changedAt: '2026-05-13T09:00:00.000Z',
+                                },
+                            ],
+                        },
+                    ],
+                }}
                 positionIndex={0}
             />,
         );
@@ -1911,9 +1935,10 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         const dialog = page.getByRole('dialog');
         await dialog.getByRole('tab', { name: /Dnevnik/ }).click();
 
-        await expect(dialog.getByText('10. svibnja 2026.')).toBeVisible();
+        await expect(dialog.getByText('12. svibnja 2026.')).toBeVisible();
+        await expect(dialog.getByText('10. svibnja 2026.')).toHaveCount(0);
         await expect(
-            dialog.getByRole('button', { name: '10. svibnja 2026.' }),
+            dialog.getByRole('button', { name: '12. svibnja 2026.' }),
         ).toHaveCount(0);
     });
 

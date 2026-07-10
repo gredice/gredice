@@ -317,9 +317,9 @@ const fieldPlantRescheduleStatuses = new Set(['new', 'planned']);
 
 function operationDiaryTimestamp(operation: DiaryOperation) {
     return (
+        operation.completedAt ??
         operation.scheduledDate ??
         operation.verifiedAt ??
-        operation.completedAt ??
         operation.canceledAt ??
         operation.createdAt
     );

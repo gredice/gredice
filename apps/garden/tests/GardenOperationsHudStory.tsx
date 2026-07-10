@@ -108,6 +108,7 @@ function buildGarden() {
                             positionIndex: 2,
                             plantSortId: testSorts.tomato.id,
                             plantStatus: 'sprouted',
+                            plantScheduledDate: '2026-05-10T00:00:00.000Z',
                             plantSowDate: now,
                             plantGrowthDate: now,
                         },

@@ -30,7 +30,7 @@ function operation({
     };
 }
 
-test('sortOperationTasksNewestFirst prefers scheduled date over status changes', () => {
+test('sortOperationTasksNewestFirst uses completion date after an operation is completed', () => {
     const sorted = sortOperationTasksNewestFirst([
         operation({
             id: 1,
@@ -56,7 +56,7 @@ test('sortOperationTasksNewestFirst prefers scheduled date over status changes',
 
     assert.deepEqual(
         sorted.map((item) => item.id),
-        [3, 1, 2],
+        [3, 2, 1],
     );
 });
 

@@ -30,9 +30,9 @@ function getLatestOperationChangeTime(operation: OperationOrderingItem) {
 
 export function getOperationOrderingTime(operation: OperationOrderingItem) {
     return (
+        getTimestamp(operation.completedAt) ||
         getTimestamp(operation.scheduledDate) ||
         getTimestamp(operation.verifiedAt) ||
-        getTimestamp(operation.completedAt) ||
         getTimestamp(operation.canceledAt) ||
         getLatestOperationChangeTime(operation) ||
         getTimestamp(operation.createdAt)
