@@ -1,10 +1,11 @@
 import 'server-only';
-import { and, asc, desc, eq, gte, lte } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, lte } from 'drizzle-orm';
 import { bustDeliveryRequestsCache } from '../cache/scheduleCache';
 import { assertTimeSlotClosesBeforeStart } from '../helpers/timeSlotAutomation';
 import {
     type InsertTimeSlot,
     type SelectTimeSlot,
+    type TimeSlotStatus,
     TimeSlotStatuses,
     timeSlots,
     type UpdateTimeSlot,
@@ -200,7 +201,7 @@ export interface GetTimeSlotsParams {
     locationId?: number;
     fromDate?: Date;
     toDate?: Date;
-    status?: string;
+    status?: TimeSlotStatus | TimeSlotStatus[];
 }
 
 export async function getTimeSlots(
@@ -214,7 +215,8 @@ export async function getTimeSlots(
         status = TimeSlotStatuses.SCHEDULED,
     } = params;
 
-    const conditions = [eq(timeSlots.status, status)];
+    const statuses = Array.isArray(status) ? status : [status];
+    const conditions = [inArray(timeSlots.status, statuses)];
 
     if (type) {
         conditions.push(eq(timeSlots.type, type));

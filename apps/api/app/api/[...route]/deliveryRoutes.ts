@@ -8,8 +8,11 @@ import {
     getDeliveryAddresses,
     getDeliveryRequestsWithEvents,
     getPickupLocations,
+    getTimeSlotEffectiveClosesAt,
     getTimeSlots,
     type InsertDeliveryAddress,
+    type TimeSlotStatus,
+    TimeSlotStatuses,
     type UpdateDeliveryAddress,
     updateDeliveryAddress,
     validateDeliveryAddress,
@@ -58,6 +61,8 @@ const slotsQuerySchema = z.object({
     from: z.iso.datetime().optional(),
     to: z.iso.datetime().optional(),
     locationId: z.coerce.number().optional(),
+    includeClosed: z.literal('true').optional(),
+    includeArchived: z.literal('true').optional(),
 });
 
 const createRequestSchema = z.object({
@@ -202,28 +207,50 @@ const app = new Hono<{ Variables: AuthVariables }>()
     .get(
         '/slots',
         describeRoute({
-            description: 'Get available time slots for delivery or pickup',
+            description:
+                'Get time slots for delivery or pickup, with optional closed and archived slots',
             security: publicSecurity,
             tags: ['Delivery'],
         }),
         zValidator('query', slotsQuerySchema),
         async (context) => {
-            const { type, from, to, locationId } = context.req.valid('query');
+            const {
+                type,
+                from,
+                to,
+                locationId,
+                includeClosed,
+                includeArchived,
+            } = context.req.valid('query');
 
             // Default to next 14 days if no date range provided
             const fromDate = from ? new Date(from) : new Date();
             const toDate = to
                 ? new Date(to)
                 : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+            const statuses: TimeSlotStatus[] = [TimeSlotStatuses.SCHEDULED];
+
+            if (includeClosed) {
+                statuses.push(TimeSlotStatuses.CLOSED);
+            }
+
+            if (includeArchived) {
+                statuses.push(TimeSlotStatuses.ARCHIVED);
+            }
 
             const slots = await getTimeSlots({
                 type,
                 locationId,
                 fromDate,
                 toDate,
-                status: 'scheduled', // Only return bookable slots
+                status: statuses,
             });
-            return context.json(slots);
+            return context.json(
+                slots.map((slot) => ({
+                    ...slot,
+                    effectiveClosesAt: getTimeSlotEffectiveClosesAt(slot),
+                })),
+            );
         },
     )
     // GET /requests - list user's delivery requests
