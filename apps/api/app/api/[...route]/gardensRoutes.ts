@@ -2719,6 +2719,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     409,
                 );
             }
+            if (raisedBed.status !== 'active') {
+                return context.json(
+                    { error: 'Only active raised beds can be abandoned' },
+                    409,
+                );
+            }
 
             const operationId = await abandonRaisedBed({
                 accountId,

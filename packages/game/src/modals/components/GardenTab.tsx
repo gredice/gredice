@@ -23,6 +23,7 @@ import { GardenDangerCard } from './GardenDangerCard';
 import { GardenHomeCameraCard } from './GardenHomeCameraCard';
 import { GardenNameCard } from './GardenNameCard';
 import { GardenVisibilityCard } from './GardenVisibilityCard';
+import { RaisedBedAbandonCard } from './RaisedBedAbandonCard';
 
 function NoGardensCard() {
     const [createGardenModalOpen, setCreateGardenModalOpen] = useState(false);
@@ -156,6 +157,9 @@ export function GardenTab() {
                                     gardenId={selectedGarden.id}
                                     gardenName={selectedGarden.name}
                                     isPublic={selectedGarden.isPublic}
+                                />
+                                <RaisedBedAbandonCard
+                                    gardenId={selectedGarden.id}
                                 />
                                 <GardenDangerCard
                                     gardenId={selectedGarden.id}
