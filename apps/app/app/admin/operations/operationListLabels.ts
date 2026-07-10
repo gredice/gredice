@@ -1,3 +1,4 @@
+import type { ColorPaletteProp } from '@gredice/ui/Chip';
 import type {
     OperationsListOperation,
     OperationsListStatus,
@@ -24,4 +25,26 @@ export function operationListStatusLabel(
     return operation.kind === 'sowing'
         ? sowingStatusLabels[operation.status]
         : operationStatusLabels[operation.status];
+}
+
+export function operationListStatusColor(
+    status: OperationsListStatus,
+): ColorPaletteProp {
+    if (status === 'completed') {
+        return 'success';
+    }
+
+    if (status === 'planned') {
+        return 'info';
+    }
+
+    if (status === 'canceled') {
+        return 'neutral';
+    }
+
+    if (status === 'failed') {
+        return 'error';
+    }
+
+    return 'warning';
 }

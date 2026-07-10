@@ -19,10 +19,12 @@ import type {
     OperationsListOperationDefinition,
     OperationsListOperationRow,
     OperationsListPage,
+    OperationsListRecordType,
     OperationsListSort,
     OperationsListSortDirection,
     OperationsListSortKey,
     OperationsListSowingTask,
+    OperationsListSowingTaskDetails,
     OperationsListStatus,
 } from './operationsListTypes';
 
@@ -63,7 +65,12 @@ type RawRaisedBedFieldPlantCycle = {
     stoppedDate?: Date;
     startedAt: Date;
     endedAt: Date;
+    endedEventId?: number;
+    eventIds?: number[];
     assignedUserIds?: string[];
+    assignedBy?: string | null;
+    assignedAt?: Date;
+    cancellationReason?: string;
 };
 type RawRaisedBedField = {
     id: number;
@@ -464,6 +471,7 @@ function serializeSowingTask({
         id: field.id,
         entityId: null,
         entityTypeName: sowingTaskEntityTypeName(cycle.sowingLocation),
+        raisedBedFieldId: field.id,
         plantSortId: cycle.plantSortId,
         plantCycleEventId: cycle.plantPlaceEventId,
         sowingLocation: cycle.sowingLocation,
@@ -513,6 +521,83 @@ function serializeSowingTasks(context: OperationsListContext) {
                 ),
         ),
     );
+}
+
+export function findSowingTaskDetails({
+    context,
+    plantCycleEventId,
+    raisedBedFieldId,
+}: {
+    context: OperationsListContext;
+    plantCycleEventId: number;
+    raisedBedFieldId: number;
+}): OperationsListSowingTaskDetails | null {
+    const usersById = new Map(context.users.map((user) => [user.id, user]));
+
+    for (const raisedBed of context.raisedBeds) {
+        const field = raisedBed.fields.find(
+            (candidate) => candidate.id === raisedBedFieldId,
+        );
+        if (!field) {
+            continue;
+        }
+
+        const cycle = field.plantCycles.find(
+            (candidate) => candidate.plantPlaceEventId === plantCycleEventId,
+        );
+        if (!cycle) {
+            return null;
+        }
+
+        const task = serializeSowingTask({
+            context,
+            cycle,
+            field,
+            raisedBed,
+            usersById,
+        });
+        if (!task) {
+            return null;
+        }
+
+        const garden = raisedBed.gardenId
+            ? context.gardens.find((item) => item.id === raisedBed.gardenId)
+            : undefined;
+        const farm = garden
+            ? context.farms.find((item) => item.id === garden.farmId)
+            : undefined;
+        const plantSort = context.plantSorts.find(
+            (candidate) => candidate.id === task.plantSortId,
+        );
+        const eventIds = cycle.eventIds ?? [cycle.plantPlaceEventId];
+
+        return {
+            ...task,
+            accountId: raisedBed.accountId ?? null,
+            farmId: farm?.id ?? null,
+            gardenId: garden?.id ?? null,
+            raisedBedId: raisedBed.id,
+            raisedBedFieldId: field.id,
+            plantSortName: entityLabel(plantSort, `Sorta ${task.plantSortId}`),
+            active: cycle.active,
+            assignedUsers: (cycle.assignedUserIds ?? []).map((userId) => ({
+                id: userId,
+                label: userDisplayName(usersById.get(userId)) ?? userId,
+            })),
+            assignedBy: cycle.assignedBy ?? null,
+            assignedAt: toIsoString(cycle.assignedAt),
+            canceledAt: toIsoString(cycle.stoppedDate),
+            cancellationReason: cycle.cancellationReason ?? null,
+            endedAt: toIsoString(cycle.endedAt) ?? new Date(0).toISOString(),
+            eventIds,
+            endedEventId:
+                cycle.endedEventId ??
+                eventIds[eventIds.length - 1] ??
+                cycle.plantPlaceEventId,
+        };
+    }
+
+    return null;
 }
 
 function operationIsOnOrAfterFromDate(
@@ -566,6 +651,7 @@ export function buildOperationsListPage({
     offset = 0,
     operations,
     operationEntityIds = [],
+    recordType = 'all',
     sort = defaultOperationsListSort,
 }: {
     context: OperationsListContext;
@@ -574,20 +660,21 @@ export function buildOperationsListPage({
     offset?: number;
     operations: RawOperations;
     operationEntityIds?: number[];
+    recordType?: OperationsListRecordType;
     sort?: OperationsListSort;
 }): OperationsListPage {
     const pageSize = normalizeLimit(limit);
-    const filteredOperations = filterOperationsByEntityIds(
-        operations,
-        operationEntityIds,
-    );
+    const filteredOperations =
+        recordType === 'sowing'
+            ? []
+            : filterOperationsByEntityIds(operations, operationEntityIds);
+    const includeSowingTasks =
+        recordType !== 'operation' && operationEntityIds.length === 0;
     const serializedOperations = [
         ...filteredOperations.map((operation) =>
             serializeOperation(operation, context),
         ),
-        ...(operationEntityIds.length === 0
-            ? serializeSowingTasks(context)
-            : []),
+        ...(includeSowingTasks ? serializeSowingTasks(context) : []),
     ]
         .filter((operation) =>
             operationIsOnOrAfterFromDate(operation, fromDate),
@@ -615,6 +702,7 @@ export async function listOperationsPageFromContext({
     limit,
     offset = 0,
     operationEntityIds = [],
+    recordType = 'all',
     sort = defaultOperationsListSort,
 }: {
     context: OperationsListContext;
@@ -622,6 +710,7 @@ export async function listOperationsPageFromContext({
     limit?: number;
     offset?: number;
     operationEntityIds?: number[];
+    recordType?: OperationsListRecordType;
     sort?: OperationsListSort;
 }): Promise<OperationsListPage> {
     const operations = await getAllOperations(
@@ -635,6 +724,7 @@ export async function listOperationsPageFromContext({
         offset,
         operationEntityIds,
         operations,
+        recordType,
         sort,
     });
 }

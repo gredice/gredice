@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { operationListStatusLabel } from './operationListLabels';
+import {
+    operationListStatusColor,
+    operationListStatusLabel,
+} from './operationListLabels';
 import type { OperationsListStatus } from './operationsListTypes';
 
 const operationStatuses = [
@@ -40,4 +43,10 @@ test('operation list uses sowing-specific Croatian status labels', () => {
         operationListStatusLabel({ kind: 'sowing', status: 'completed' }),
         'Posijano',
     );
+});
+
+test('operation list status colors distinguish success and failure states', () => {
+    assert.equal(operationListStatusColor('completed'), 'success');
+    assert.equal(operationListStatusColor('failed'), 'error');
+    assert.equal(operationListStatusColor('canceled'), 'neutral');
 });

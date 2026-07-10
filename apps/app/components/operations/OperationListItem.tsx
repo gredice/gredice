@@ -10,7 +10,10 @@ import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
-import { operationListStatusLabel } from '../../app/admin/operations/operationListLabels';
+import {
+    operationListStatusColor,
+    operationListStatusLabel,
+} from '../../app/admin/operations/operationListLabels';
 import type {
     OperationsListOperation,
     OperationsListOperationRow,
@@ -19,22 +22,6 @@ import { VerifyOperationModal } from '../../app/admin/schedule/VerifyOperationMo
 import { KnownPages } from '../../src/KnownPages';
 import { OperationCancelButton } from './OperationCancelButton';
 import { OperationRescheduleButton } from './OperationRescheduleButton';
-
-function statusColor(status: OperationsListOperation['status']) {
-    if (status === 'completed') {
-        return 'success';
-    }
-
-    if (status === 'planned') {
-        return 'info';
-    }
-
-    if (status === 'canceled') {
-        return 'neutral';
-    }
-
-    return 'warning';
-}
 
 function statusDate(operation: OperationsListOperation) {
     if (operation.status === 'planned') {
@@ -83,6 +70,13 @@ export function OperationListItem({
             : null;
     const currentStatusDate = statusDate(operation);
     const locationLabel = sowingLocationLabel(operation);
+    const detailsHref =
+        operation.kind === 'operation'
+            ? KnownPages.Operation(operation.id)
+            : KnownPages.SowingTask(
+                  operation.raisedBedFieldId,
+                  operation.plantCycleEventId,
+              );
 
     return (
         <li className="group px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4">
@@ -100,18 +94,12 @@ export function OperationListItem({
                     </span>
                     <Stack spacing={1} className="min-w-0 flex-1 pt-0.5">
                         <div className="flex min-w-0 flex-wrap items-center gap-2">
-                            {operation.kind === 'operation' ? (
-                                <Link
-                                    href={KnownPages.Operation(operation.id)}
-                                    className="min-w-0 truncate font-medium text-primary underline-offset-4 hover:underline"
-                                >
-                                    {operation.label}
-                                </Link>
-                            ) : (
-                                <span className="min-w-0 truncate font-medium">
-                                    {operation.label}
-                                </span>
-                            )}
+                            <Link
+                                href={detailsHref}
+                                className="min-w-0 truncate font-medium text-primary underline-offset-4 hover:underline"
+                            >
+                                {operation.label}
+                            </Link>
                             {operation.kind === 'sowing' && locationLabel ? (
                                 <Chip
                                     color={
@@ -166,7 +154,7 @@ export function OperationListItem({
                 <div className="flex min-w-0 flex-wrap items-center justify-start gap-2 md:justify-end">
                     <Chip
                         className="w-fit"
-                        color={statusColor(operation.status)}
+                        color={operationListStatusColor(operation.status)}
                         size="sm"
                     >
                         {operationListStatusLabel(operation)}

@@ -6,7 +6,10 @@ import {
     normalizeOperationsListSortKey,
     operationsListPageSize,
 } from '../../../admin/operations/operationsListData';
-import { parseOperationsListOperationEntityIds } from '../../../admin/operations/operationsListQuery';
+import {
+    normalizeOperationsListRecordType,
+    parseOperationsListOperationEntityIds,
+} from '../../../admin/operations/operationsListQuery';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,6 +38,9 @@ export async function GET(request: Request) {
             },
             operationEntityIds: parseOperationsListOperationEntityIds(
                 searchParams.get('operations') ?? undefined,
+            ),
+            recordType: normalizeOperationsListRecordType(
+                searchParams.get('type'),
             ),
             limit: parseInteger(
                 searchParams.get('limit'),
