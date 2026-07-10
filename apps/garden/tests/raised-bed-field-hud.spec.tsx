@@ -2038,6 +2038,35 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         ).toBeLessThanOrEqual(1);
     });
 
+    test('raised bed details modal uses expanded desktop dimensions', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedCloseupHudStory
+                scenario={raisedBedScrollableOperationHistoryScenario()}
+            />,
+        );
+
+        await page.locator('[data-raised-bed-details-trigger]').click();
+
+        const dialog = page.getByRole('dialog');
+        const diaryViewport = dialog
+            .locator('[data-scroll-view-viewport]')
+            .first();
+        await expect(dialog).toBeVisible();
+        await expect(diaryViewport).toBeVisible();
+
+        const dialogBox = await dialog.boundingBox();
+        const diaryViewportBox = await diaryViewport.boundingBox();
+
+        expect(dialogBox?.width).toBeGreaterThanOrEqual(800);
+        expect(dialogBox?.height).toBeLessThanOrEqual(
+            DESKTOP_VIEWPORT.height - 32,
+        );
+        expect(diaryViewportBox?.height).toBeGreaterThan(384);
+    });
+
     test('raised bed diary scroll view uses modal edge scrollbar and overflow fades', async ({
         mount,
         page,

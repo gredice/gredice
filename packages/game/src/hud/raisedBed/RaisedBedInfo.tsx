@@ -233,7 +233,7 @@ export function RaisedBedInfo({
                 <TabsContent value="diary">
                     <ScrollView
                         className="-mx-4 md:-mx-6"
-                        viewportClassName="max-h-96"
+                        viewportClassName="max-h-96 md:max-h-[60dvh]"
                         contentClassName="pl-4 pr-2 md:pl-6 md:pr-2"
                     >
                         <RaisedBedOperationHistoryList
