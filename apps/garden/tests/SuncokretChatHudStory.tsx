@@ -5,6 +5,11 @@ import { GameFlagsContext } from '../../../packages/game/src/GameFlagsContext';
 import { currentGardenKeys } from '../../../packages/game/src/hooks/useCurrentGarden';
 import { SuncokretChatHud } from '../../../packages/game/src/hud/SuncokretChatHud';
 import {
+    SuncokretChatProvider,
+    type SuncokretChatTarget,
+} from '../../../packages/game/src/hud/SuncokretChatProvider';
+import { SuncokretChatTrigger } from '../../../packages/game/src/hud/SuncokretChatTrigger';
+import {
     createGameState,
     GameStateContext,
 } from '../../../packages/game/src/useGameState';
@@ -64,10 +69,12 @@ function createQueryClient() {
 }
 
 export function SuncokretChatHudStory({
+    contextTarget,
     debug = false,
-    focusedRaisedBed = true,
+    focusedRaisedBed = false,
     settingsSection,
 }: {
+    contextTarget?: SuncokretChatTarget;
     debug?: boolean;
     focusedRaisedBed?: boolean;
     settingsSection?: string;
@@ -103,7 +110,15 @@ export function SuncokretChatHudStory({
                             enableSuncokretDebugFlag: debug,
                         }}
                     >
-                        <SuncokretChatHud />
+                        <SuncokretChatProvider>
+                            {contextTarget && (
+                                <SuncokretChatTrigger
+                                    title="Pitaj Suncokreta u kontekstu"
+                                    target={contextTarget}
+                                />
+                            )}
+                            <SuncokretChatHud />
+                        </SuncokretChatProvider>
                     </GameFlagsContext.Provider>
                 </GameStateContext.Provider>
             </ReactQuery.QueryClientProvider>

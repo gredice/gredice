@@ -28,12 +28,26 @@ const settingsSectionDescriptions: Record<SuncokretSettingsSection, string> = {
     zvuk: 'postavke zvuka',
 };
 
+const raisedBedDetailTabDescriptions = {
+    diary: 'Dnevnik',
+    operations: 'Radnje',
+    info: 'Informacije',
+} as const;
+
+const plantDetailTabDescriptions = {
+    lifecycle: 'Biljka',
+    diary: 'Dnevnik',
+    operations: 'Radnje',
+} as const;
+
 function interfaceContextLine({
     garden,
+    positionIndex,
     raisedBed,
     uiContext,
 }: {
     garden?: GardenContext | null;
+    positionIndex?: number | null;
     raisedBed?: RaisedBedContext | null;
     uiContext?: SuncokretUiContext | null;
 }) {
@@ -42,6 +56,26 @@ function interfaceContextLine({
             ? settingsSectionDescriptions[uiContext.section]
             : 'postavke';
         return `Korisnik trenutačno gleda ${description} u sučelju. Prilagodi odgovor tom kontekstu kada je relevantno.`;
+    }
+
+    if (uiContext?.surface === 'weather') {
+        const weatherView =
+            uiContext.view === 'forecast'
+                ? 'vremensku prognozu'
+                : 'aktualno vrijeme';
+        return `Korisnik trenutačno gleda ${weatherView} u sučelju. Prije odgovora o vremenu ili radovima upotrijebi alate za aktualno vrijeme i prognozu, a preporuke poveži s konkretnim vrtom kada je dostupan.`;
+    }
+
+    if (uiContext?.surface === 'raised-bed-details' && raisedBed) {
+        return `Korisnik trenutačno gleda karticu "${raisedBedDetailTabDescriptions[uiContext.tab]}" u detaljima gredice "${raisedBed.name}" (ID ${raisedBed.id.toString()}). Prilagodi objašnjenje toj kartici.`;
+    }
+
+    if (uiContext?.surface === 'plant-details' && raisedBed) {
+        const fieldDescription =
+            typeof positionIndex === 'number'
+                ? `, polje ${(positionIndex + 1).toString()}`
+                : '';
+        return `Korisnik trenutačno gleda karticu "${plantDetailTabDescriptions[uiContext.tab]}" u detaljima biljke na gredici "${raisedBed.name}" (ID ${raisedBed.id.toString()}${fieldDescription}). Prije savjeta dohvati detalje polja i biljke.`;
     }
 
     if (uiContext?.surface === 'raised-bed' && raisedBed) {

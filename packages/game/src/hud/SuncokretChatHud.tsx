@@ -33,10 +33,14 @@ import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useGameState } from '../useGameState';
 import { useOverviewSectionParam } from '../useUrlState';
 import { findRaisedBedByBlockId } from '../utils/raisedBedBlocks';
+import { HudCard } from './components/HudCard';
+import { useSuncokretChat } from './SuncokretChatProvider';
+import { SuncokretChatTrigger } from './SuncokretChatTrigger';
 import {
     formatSuncokretTokenUsage,
     resolveSuncokretUiContext,
     resolveSuncokretVisibleUsage,
+    suncokretContextSuggestions,
     suncokretConversationLabel,
     suncokretUsageFromMetadata,
 } from './suncokretChatContext';
@@ -116,7 +120,12 @@ function toolActivityLabel(name: string) {
         case 'listRaisedBeds':
             return 'Provjeravam gredice';
         case 'getRaisedBedFields':
+        case 'getRaisedBedDetails':
             return 'Provjeravam polja u gredici';
+        case 'getCurrentWeather':
+            return 'Provjeravam aktualno vrijeme';
+        case 'getWeatherForecast':
+            return 'Provjeravam vremensku prognozu';
         case 'listGardenOperations':
             return 'Provjeravam radnje';
         case 'getRaisedBedAiHistory':
@@ -357,11 +366,17 @@ function toolActivityScope(parts: Record<string, unknown>[]) {
                 'listGardens',
                 'listRaisedBeds',
                 'getRaisedBedFields',
+                'getRaisedBedDetails',
                 'listGardenOperations',
                 'getRaisedBedAiHistory',
             ].includes(name),
         )
             ? 'vrt'
+            : null,
+        names.some((name) =>
+            ['getCurrentWeather', 'getWeatherForecast'].includes(name),
+        )
+            ? 'vrijeme'
             : null,
         names.some((name) =>
             [
@@ -577,7 +592,8 @@ export function SuncokretChatHud() {
     const flags = useGameFlags();
     const enabled = Boolean(flags.enableSuncokretChatFlag);
     const debug = Boolean(flags.enableSuncokretDebugFlag);
-    const [open, setOpen] = useState(false);
+    const chat = useSuncokretChat();
+    const open = chat?.open ?? false;
     const [input, setInput] = useState('');
     const [statusInfo, setStatusInfo] = useState<SuncokretStatus | null>(null);
     const [models, setModels] = useState<SuncokretModel[]>([]);
@@ -601,13 +617,14 @@ export function SuncokretChatHud() {
     );
     const { data: currentGarden } = useCurrentGarden();
     const [settingsSection] = useOverviewSectionParam();
+    const view = useGameState((state) => state.view);
     const closeupBlock = useGameState((state) => state.closeupBlock);
     const raisedBed = closeupBlock
         ? findRaisedBedByBlockId(currentGarden, closeupBlock.id)
         : null;
-    const gardenId = currentGarden?.id ?? null;
-    const raisedBedId = raisedBed?.id ?? null;
-    const uiContext = useMemo(
+    const defaultGardenId = currentGarden?.id ?? null;
+    const defaultRaisedBedId = raisedBed?.id ?? null;
+    const defaultUiContext = useMemo(
         () =>
             resolveSuncokretUiContext({
                 raisedBedName: raisedBed?.name,
@@ -615,13 +632,21 @@ export function SuncokretChatHud() {
             }),
         [raisedBed?.name, settingsSection],
     );
-    const conversationLabel = suncokretConversationLabel({
-        gardenName: currentGarden?.name,
-        raisedBedName: raisedBed?.name,
-        settingsSection,
-    });
-    const contextRaisedBedId =
-        uiContext.surface === 'raised-bed' ? raisedBedId : null;
+    const uiContext = chat?.target?.uiContext ?? defaultUiContext;
+    const gardenId = chat?.target ? chat.target.gardenId : defaultGardenId;
+    const contextRaisedBedId = chat?.target
+        ? chat.target.raisedBedId
+        : defaultUiContext.surface === 'raised-bed'
+          ? defaultRaisedBedId
+          : null;
+    const positionIndex = chat?.target?.positionIndex ?? null;
+    const conversationLabel =
+        chat?.target?.conversationLabel ??
+        suncokretConversationLabel({
+            gardenName: currentGarden?.name,
+            raisedBedName: raisedBed?.name,
+            settingsSection,
+        });
 
     const transport = useMemo(
         () =>
@@ -635,6 +660,7 @@ export function SuncokretChatHud() {
                         messages,
                         gardenId,
                         raisedBedId: contextRaisedBedId,
+                        positionIndex,
                         modelId,
                         uiContext,
                         debug,
@@ -650,6 +676,7 @@ export function SuncokretChatHud() {
             featureFlags,
             gardenId,
             modelId,
+            positionIndex,
             uiContext,
         ],
     );
@@ -745,7 +772,7 @@ export function SuncokretChatHud() {
         }
     }, [messages]);
 
-    if (!enabled) {
+    if (!enabled || !chat) {
         return null;
     }
 
@@ -774,37 +801,37 @@ export function SuncokretChatHud() {
         dailyUsageTokens,
         streamingText: messageTextContent(streamingMessage),
     });
-    const contextSummaryPrompt =
-        uiContext.surface === 'settings'
-            ? 'Objasni mi što mogu napraviti u ovoj sekciji.'
-            : uiContext.surface === 'raised-bed'
-              ? 'Sažmi stanje ove gredice i predloži sljedeće korake.'
-              : 'Sažmi stanje mog vrta i predloži sljedeće korake.';
-    const contextSummaryLabel =
-        uiContext.surface === 'settings'
-            ? 'Pomozi mi s ovom sekcijom'
-            : uiContext.surface === 'raised-bed'
-              ? 'Sažmi stanje gredice'
-              : 'Sažmi stanje vrta';
+    const contextSuggestions = suncokretContextSuggestions(uiContext);
+    const isCloseup = view === 'closeup';
 
     return (
         <>
-            <div className="pointer-events-auto">
-                <IconButton
-                    aria-label="Suncokret AI"
-                    title="Suncokret AI"
-                    variant="plain"
-                    onClick={() => setOpen((current) => !current)}
-                    className={cx(
-                        'rounded-full border border-amber-200 bg-background/95 shadow-lg hover:bg-amber-50 dark:border-amber-900 dark:hover:bg-amber-950',
-                        open && 'bg-amber-50 dark:bg-amber-950',
-                    )}
+            {!isCloseup && (
+                <HudCard
+                    open
+                    position="floating"
+                    className="static border-amber-400 bg-amber-100 p-0 dark:border-amber-700 dark:bg-amber-950"
+                    data-suncokret-hud-trigger
                 >
-                    <Sun className="size-5 text-amber-500" />
-                </IconButton>
-            </div>
+                    <SuncokretChatTrigger
+                        action="toggle-default"
+                        title="Suncokret AI"
+                        variant="hud"
+                    />
+                </HudCard>
+            )}
             {open && (
-                <div className="pointer-events-auto fixed inset-x-2 bottom-2 z-50 flex justify-center md:inset-auto md:right-2 md:bottom-14 md:block">
+                <div
+                    className={cx(
+                        'pointer-events-auto fixed inset-x-2 bottom-2 z-50 flex justify-center md:inset-auto md:bottom-2 md:block',
+                        isCloseup
+                            ? 'md:right-auto md:left-2'
+                            : 'md:right-2 md:left-auto',
+                    )}
+                    data-suncokret-placement={
+                        isCloseup ? 'bottom-left' : 'bottom-right'
+                    }
+                >
                     <div
                         aria-label="Razgovor sa Suncokretom"
                         className="flex h-[min(680px,calc(100dvh-1rem))] w-full max-w-[440px] flex-col overflow-hidden rounded-2xl border border-amber-200/80 border-b-4 border-b-amber-400 bg-background/98 shadow-2xl shadow-foreground/15 backdrop-blur-sm dark:border-amber-900/80 dark:border-b-amber-700 md:h-[min(720px,calc(100dvh-5rem))]"
@@ -865,7 +892,7 @@ export function SuncokretChatHud() {
                                 <IconButton
                                     title="Zatvori"
                                     variant="plain"
-                                    onClick={() => setOpen(false)}
+                                    onClick={chat.closeChat}
                                 >
                                     <Close className="size-4" />
                                 </IconButton>
@@ -898,43 +925,28 @@ export function SuncokretChatHud() {
                                         </Typography>
                                     </Stack>
                                     <Stack spacing={2} className="w-full">
-                                        <Button
-                                            fullWidth
-                                            size="sm"
-                                            variant="outlined"
-                                            className="rounded-full border-amber-200 bg-amber-50/60 hover:bg-amber-100 dark:border-amber-900 dark:bg-amber-950/40 dark:hover:bg-amber-950"
-                                            onClick={() =>
-                                                sendPrompt(contextSummaryPrompt)
-                                            }
-                                        >
-                                            {contextSummaryLabel}
-                                        </Button>
-                                        <Button
-                                            fullWidth
-                                            size="sm"
-                                            variant="outlined"
-                                            className="rounded-full"
-                                            onClick={() =>
-                                                sendPrompt(
-                                                    'Koje radnje su najvažnije ovaj tjedan?',
-                                                )
-                                            }
-                                        >
-                                            Složi plan za ovaj tjedan
-                                        </Button>
-                                        <Button
-                                            fullWidth
-                                            size="sm"
-                                            variant="outlined"
-                                            className="rounded-full"
-                                            onClick={() =>
-                                                sendPrompt(
-                                                    'Što mogu posaditi sljedeće?',
-                                                )
-                                            }
-                                        >
-                                            Predloži što posaditi
-                                        </Button>
+                                        {contextSuggestions.map(
+                                            (suggestion, index) => (
+                                                <Button
+                                                    key={suggestion.prompt}
+                                                    fullWidth
+                                                    size="sm"
+                                                    variant="outlined"
+                                                    className={cx(
+                                                        'rounded-full',
+                                                        index === 0 &&
+                                                            'border-amber-200 bg-amber-50/60 hover:bg-amber-100 dark:border-amber-900 dark:bg-amber-950/40 dark:hover:bg-amber-950',
+                                                    )}
+                                                    onClick={() =>
+                                                        sendPrompt(
+                                                            suggestion.prompt,
+                                                        )
+                                                    }
+                                                >
+                                                    {suggestion.label}
+                                                </Button>
+                                            ),
+                                        )}
                                     </Stack>
                                 </Stack>
                             }

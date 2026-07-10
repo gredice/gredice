@@ -58,13 +58,19 @@ test('production chat hides developer controls and shows token usage', async ({
         name: 'Razgovor sa Suncokretom',
     });
     await expect(chat).toBeVisible();
-    await expect(chat).toContainText('Razgovor za Sunčano Sunce');
+    await expect(chat).toContainText('Razgovor za Aleksov vrt');
     await expect(chat).toContainText('Danas korišteno');
     await expect(chat).not.toContainText('USD');
     await expect(chat).not.toContainText('AI vrtni pomoćnik');
     await expect(page.getByLabel('AI model')).toHaveCount(0);
     expect(modelRequests).toBe(0);
     await expect(chat).toHaveClass(/border-b-amber-400/);
+    await expect(page.locator('[data-suncokret-hud-trigger]')).toHaveClass(
+        /border-amber-400/,
+    );
+    await expect(
+        page.locator('[data-suncokret-placement="bottom-right"]'),
+    ).toBeVisible();
 });
 
 test('debug chat exposes the model picker', async ({ mount, page }) => {
@@ -89,4 +95,62 @@ test('settings context replaces the raised-bed context in the header', async ({
     });
     await expect(chat).toContainText('Razgovor za postavke igre');
     await expect(chat).toContainText('Pomozi mi s ovom sekcijom');
+});
+
+test('context trigger opens weather suggestions in the bottom right', async ({
+    mount,
+    page,
+}) => {
+    await mockSuncokretRoutes(page);
+    await mount(
+        <SuncokretChatHudStory
+            contextTarget={{
+                conversationLabel: 'vremensku prognozu',
+                gardenId: 1,
+                positionIndex: null,
+                raisedBedId: null,
+                uiContext: { surface: 'weather', view: 'forecast' },
+            }}
+        />,
+    );
+    await page
+        .getByRole('button', { name: 'Pitaj Suncokreta u kontekstu' })
+        .click();
+
+    const chat = page.getByRole('dialog', {
+        name: 'Razgovor sa Suncokretom',
+    });
+    await expect(chat).toContainText('Razgovor za vremensku prognozu');
+    await expect(chat).toContainText('Pripremi vrt za prognozu');
+    await expect(chat).toContainText('Odaberi najbolje dane za radove');
+    await expect(
+        page.locator('[data-suncokret-placement="bottom-right"]'),
+    ).toBeVisible();
+});
+
+test('raised-bed closeup uses the contextual trigger and bottom-left chat', async ({
+    mount,
+    page,
+}) => {
+    await mockSuncokretRoutes(page);
+    await mount(
+        <SuncokretChatHudStory
+            focusedRaisedBed
+            contextTarget={{
+                conversationLabel: 'Sunčano Sunce',
+                gardenId: 1,
+                positionIndex: null,
+                raisedBedId: 11,
+                uiContext: { surface: 'raised-bed' },
+            }}
+        />,
+    );
+
+    await expect(page.locator('[data-suncokret-hud-trigger]')).toHaveCount(0);
+    await page
+        .getByRole('button', { name: 'Pitaj Suncokreta u kontekstu' })
+        .click();
+    await expect(
+        page.locator('[data-suncokret-placement="bottom-left"]'),
+    ).toBeVisible();
 });

@@ -6,6 +6,8 @@ import {
     formatSuncokretTokenUsage,
     resolveSuncokretUiContext,
     resolveSuncokretVisibleUsage,
+    suncokretContextConversationLabel,
+    suncokretContextSuggestions,
     suncokretConversationLabel,
     suncokretUsageFromMetadata,
 } from './suncokretChatContext';
@@ -44,6 +46,47 @@ test('raised-bed and garden contexts use the visible entity name', () => {
         suncokretConversationLabel({ gardenName: 'Aleksov vrt' }),
         'Aleksov vrt',
     );
+});
+
+test('contextual surfaces use distinct labels and suggestions', () => {
+    assert.strictEqual(
+        suncokretContextConversationLabel({
+            uiContext: { surface: 'weather', view: 'forecast' },
+        }),
+        'vremensku prognozu',
+    );
+    assert.strictEqual(
+        suncokretContextConversationLabel({
+            plantName: 'Kupus bijeli',
+            uiContext: { surface: 'plant-details', tab: 'diary' },
+        }),
+        'dnevnik biljke "Kupus bijeli"',
+    );
+
+    const diarySuggestions = suncokretContextSuggestions({
+        surface: 'raised-bed-details',
+        tab: 'diary',
+    });
+    const operationSuggestions = suncokretContextSuggestions({
+        surface: 'raised-bed-details',
+        tab: 'operations',
+    });
+    assert.match(diarySuggestions[0]?.label ?? '', /dnevnik/i);
+    assert.match(operationSuggestions[0]?.label ?? '', /radnje/i);
+    assert.notDeepStrictEqual(diarySuggestions, operationSuggestions);
+
+    const plantPrompts = [
+        'lifecycle' as const,
+        'diary' as const,
+        'operations' as const,
+    ].map(
+        (tab) =>
+            suncokretContextSuggestions({
+                surface: 'plant-details',
+                tab,
+            })[0]?.prompt,
+    );
+    assert.strictEqual(new Set(plantPrompts).size, 3);
 });
 
 test('token usage metadata supports exact totals and a live text estimate', () => {

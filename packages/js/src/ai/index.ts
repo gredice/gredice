@@ -38,8 +38,25 @@ const INTERNAL_TERM_REPLACEMENTS = new Map([
 export const suncokretUiSurfaces = [
     'garden',
     'raised-bed',
+    'raised-bed-details',
+    'plant-details',
+    'weather',
     'settings',
 ] as const;
+
+export const suncokretRaisedBedDetailTabs = [
+    'diary',
+    'operations',
+    'info',
+] as const;
+
+export const suncokretPlantDetailTabs = [
+    'lifecycle',
+    'diary',
+    'operations',
+] as const;
+
+export const suncokretWeatherViews = ['current', 'forecast'] as const;
 
 export const suncokretSettingsSections = [
     'generalno',
@@ -58,9 +75,22 @@ export const suncokretSettingsSections = [
 export type SuncokretSettingsSection =
     (typeof suncokretSettingsSections)[number];
 
+export type SuncokretRaisedBedDetailTab =
+    (typeof suncokretRaisedBedDetailTabs)[number];
+
+export type SuncokretPlantDetailTab = (typeof suncokretPlantDetailTabs)[number];
+
+export type SuncokretWeatherView = (typeof suncokretWeatherViews)[number];
+
 export type SuncokretUiContext =
     | { surface: 'garden' }
     | { surface: 'raised-bed' }
+    | {
+          surface: 'raised-bed-details';
+          tab: SuncokretRaisedBedDetailTab;
+      }
+    | { surface: 'plant-details'; tab: SuncokretPlantDetailTab }
+    | { surface: 'weather'; view: SuncokretWeatherView }
     | { surface: 'settings'; section?: SuncokretSettingsSection | null };
 
 const SUNCOKRET_TOOL_PROTOCOL_PATTERN =

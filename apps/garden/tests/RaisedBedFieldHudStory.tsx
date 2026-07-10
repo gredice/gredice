@@ -4,6 +4,7 @@ import * as ReactQuery from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { type PropsWithChildren, useEffect, useMemo, useState } from 'react';
 import { GameAnalyticsProvider } from '../../../packages/game/src/analytics/GameAnalyticsContext';
+import { GameFlagsContext } from '../../../packages/game/src/GameFlagsContext';
 import { useCurrentGarden } from '../../../packages/game/src/hooks/useCurrentGarden';
 import { favoritesQueryKey } from '../../../packages/game/src/hooks/useFavorites';
 import { gardenOperationsQueryKey } from '../../../packages/game/src/hooks/useGardenOperations';
@@ -16,6 +17,7 @@ import { RaisedBedField } from '../../../packages/game/src/hud/raisedBed/RaisedB
 import { RaisedBedFieldItem } from '../../../packages/game/src/hud/raisedBed/RaisedBedFieldItem';
 import { RaisedBedFieldSuggestions } from '../../../packages/game/src/hud/raisedBed/RaisedBedFieldSuggestions';
 import { RaisedBedInfo } from '../../../packages/game/src/hud/raisedBed/RaisedBedInfo';
+import { SuncokretChatProvider } from '../../../packages/game/src/hud/SuncokretChatProvider';
 import {
     createGameState,
     GameStateContext,
@@ -164,12 +166,14 @@ function createScenarioQueryClient(
 }
 
 type ProvidersProps = PropsWithChildren<{
-    scenario: RaisedBedScenario;
+    enableSuncokret?: boolean;
     favorites?: FavoriteItem[];
+    scenario: RaisedBedScenario;
 }>;
 
 function RaisedBedHudTestProviders({
     children,
+    enableSuncokret = false,
     scenario,
     favorites = [],
 }: ProvidersProps) {
@@ -192,17 +196,31 @@ function RaisedBedHudTestProviders({
         <NuqsTestingAdapter>
             <ReactQuery.QueryClientProvider client={queryClient}>
                 <GameStateContext.Provider value={gameStore}>
-                    <GameAnalyticsProvider
-                        capture={(eventName, properties) => {
-                            window.dispatchEvent(
-                                new CustomEvent('gredice:game-analytics', {
-                                    detail: { eventName, properties },
-                                }),
-                            );
+                    <GameFlagsContext.Provider
+                        value={{
+                            enableSuncokretChatFlag: enableSuncokret,
                         }}
                     >
-                        {children}
-                    </GameAnalyticsProvider>
+                        <SuncokretChatProvider>
+                            <GameAnalyticsProvider
+                                capture={(eventName, properties) => {
+                                    window.dispatchEvent(
+                                        new CustomEvent(
+                                            'gredice:game-analytics',
+                                            {
+                                                detail: {
+                                                    eventName,
+                                                    properties,
+                                                },
+                                            },
+                                        ),
+                                    );
+                                }}
+                            >
+                                {children}
+                            </GameAnalyticsProvider>
+                        </SuncokretChatProvider>
+                    </GameFlagsContext.Provider>
                 </GameStateContext.Provider>
             </ReactQuery.QueryClientProvider>
         </NuqsTestingAdapter>
@@ -214,18 +232,24 @@ export function RaisedBedFieldHudStory({
     positionIndex,
     favorites = [],
     cellSize = 80,
+    enableSuncokret = false,
 }: {
     scenario: RaisedBedScenario;
     positionIndex: number;
     favorites?: FavoriteItem[];
     cellSize?: number;
+    enableSuncokret?: boolean;
 }) {
     const cartItem =
         scenario.cartItems?.find(
             (item) => item.positionIndex === positionIndex,
         ) ?? null;
     return (
-        <RaisedBedHudTestProviders scenario={scenario} favorites={favorites}>
+        <RaisedBedHudTestProviders
+            scenario={scenario}
+            favorites={favorites}
+            enableSuncokret={enableSuncokret}
+        >
             <div
                 data-testid="hud-cell"
                 className="relative"
@@ -248,24 +272,34 @@ export function RaisedBedFieldHudStory({
 }
 
 export function RaisedBedInfoModalStory({
+    enableSuncokret = false,
     scenario,
 }: {
+    enableSuncokret?: boolean;
     scenario: RaisedBedScenario;
 }) {
     return (
-        <RaisedBedHudTestProviders scenario={scenario}>
+        <RaisedBedHudTestProviders
+            scenario={scenario}
+            enableSuncokret={enableSuncokret}
+        >
             <RaisedBedInfoModalStoryContent />
         </RaisedBedHudTestProviders>
     );
 }
 
 export function RaisedBedCloseupHudStory({
+    enableSuncokret = false,
     scenario,
 }: {
+    enableSuncokret?: boolean;
     scenario: RaisedBedScenario;
 }) {
     return (
-        <RaisedBedHudTestProviders scenario={scenario}>
+        <RaisedBedHudTestProviders
+            scenario={scenario}
+            enableSuncokret={enableSuncokret}
+        >
             <RaisedBedCloseupHudStoryContent />
         </RaisedBedHudTestProviders>
     );

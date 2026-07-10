@@ -1,4 +1,9 @@
-import { suncokretSettingsSections, suncokretUiSurfaces } from '@gredice/js/ai';
+import {
+    suncokretPlantDetailTabs,
+    suncokretRaisedBedDetailTabs,
+    suncokretSettingsSections,
+    suncokretWeatherViews,
+} from '@gredice/js/ai';
 import {
     aiChatRetryAtIso,
     ensureAiChatConversation,
@@ -53,6 +58,27 @@ const FeatureFlagsSchema = z.object({
     enableSuncokretDebugFlag: z.boolean().optional().default(false),
 });
 
+const SuncokretUiContextSchema = z.discriminatedUnion('surface', [
+    z.object({ surface: z.literal('garden') }),
+    z.object({ surface: z.literal('raised-bed') }),
+    z.object({
+        surface: z.literal('raised-bed-details'),
+        tab: z.enum(suncokretRaisedBedDetailTabs),
+    }),
+    z.object({
+        surface: z.literal('plant-details'),
+        tab: z.enum(suncokretPlantDetailTabs),
+    }),
+    z.object({
+        surface: z.literal('weather'),
+        view: z.enum(suncokretWeatherViews),
+    }),
+    z.object({
+        surface: z.literal('settings'),
+        section: z.enum(suncokretSettingsSections).optional().nullable(),
+    }),
+]);
+
 const ChatBodySchema = z.object({
     id: z.string().optional(),
     conversationId: z.string().optional(),
@@ -61,13 +87,7 @@ const ChatBodySchema = z.object({
     raisedBedId: z.number().int().positive().optional().nullable(),
     positionIndex: z.number().int().min(0).optional().nullable(),
     modelId: z.string().trim().min(1).optional().nullable(),
-    uiContext: z
-        .object({
-            surface: z.enum(suncokretUiSurfaces),
-            section: z.enum(suncokretSettingsSections).optional().nullable(),
-        })
-        .optional()
-        .nullable(),
+    uiContext: SuncokretUiContextSchema.optional().nullable(),
     debug: z.boolean().optional(),
     featureFlags: FeatureFlagsSchema.optional().default({
         enableSuncokretChatFlag: false,
@@ -232,6 +252,17 @@ async function callMcpTool({
     return payload.result;
 }
 
+async function callPublicJson(url: URL) {
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error(
+            `Public data request failed (${response.status.toString()})`,
+        );
+    }
+
+    return (await response.json()) as unknown;
+}
+
 async function callRaisedBedImageAnalysis({
     accountId,
     gardenId,
@@ -279,6 +310,7 @@ async function callRaisedBedImageAnalysis({
 
 function buildTools({
     accountId,
+    contextFarmId,
     contextGardenId,
     contextRaisedBedId,
     origin,
@@ -286,6 +318,7 @@ function buildTools({
     userId,
 }: {
     accountId: string;
+    contextFarmId?: number | null;
     contextGardenId?: number | null;
     contextRaisedBedId?: number | null;
     origin: string;
@@ -330,6 +363,33 @@ function buildTools({
         }),
         getRaisedBedFields: raisedBedDetailsTool,
         getRaisedBedDetails: raisedBedDetailsTool,
+        getCurrentWeather: tool({
+            description:
+                'Dohvati aktualno vrijeme i aktivna vremenska upozorenja za farmu trenutnog vrta.',
+            inputSchema: z.object({}),
+            execute: () => {
+                const url = new URL('/api/data/weather/now', origin);
+                if (contextFarmId) {
+                    url.searchParams.set('farmId', contextFarmId.toString());
+                }
+                return callPublicJson(url);
+            },
+        }),
+        getWeatherForecast: tool({
+            description:
+                'Dohvati vremensku prognozu za planiranje radova u vrtu.',
+            inputSchema: z.object({
+                days: z.number().int().min(1).max(7).default(5),
+            }),
+            execute: async ({ days }) => {
+                const forecast = await callPublicJson(
+                    new URL('/api/data/weather', origin),
+                );
+                return Array.isArray(forecast)
+                    ? { days: forecast.slice(0, days) }
+                    : { days: [] };
+            },
+        }),
         listGardenOperations: tool({
             description: 'Dohvati radnje za vrt ili gredicu.',
             inputSchema: z.object({
@@ -701,6 +761,7 @@ const app = new Hono<{ Variables: ChatVariables }>()
                     messages: modelMessages,
                     tools: buildTools({
                         accountId: auth.accountId,
+                        contextFarmId: gardenContext.garden?.farmId,
                         contextGardenId: body.gardenId,
                         contextRaisedBedId: body.raisedBedId,
                         origin,

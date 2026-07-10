@@ -23,6 +23,7 @@ import { RaisedBedOnboardingModal } from './hud/RaisedBedOnboardingModal';
 import { SandboxEnvironmentHud } from './hud/SandboxEnvironmentHud';
 import { ShoppingCartHud } from './hud/ShoppingCartHud';
 import { SuncokretChatHud } from './hud/SuncokretChatHud';
+import { SuncokretChatProvider } from './hud/SuncokretChatProvider';
 import { SunflowersHud } from './hud/SunflowersHud';
 import { TutorialChecklistHud } from './hud/TutorialChecklistHud';
 import { WeatherHud } from './hud/WeatherHud';
@@ -119,7 +120,7 @@ export function GameHud({
         !isLocalSandbox && !suppressOpeningHud && openingFlowComplete;
 
     return (
-        <>
+        <SuncokretChatProvider>
             <div
                 className={cx(
                     'absolute top-2 left-2 flex flex-col items-start gap-2',
@@ -247,6 +248,6 @@ export function GameHud({
             )}
             {!isLocalSandbox && <PaymentSuccessfulMessage />}
             {debugHud && <DebugHud />}
-        </>
+        </SuncokretChatProvider>
     );
 }
