@@ -8,6 +8,7 @@ import {
 } from 'react';
 import * as THREE from 'three';
 import { useGameState } from '../../useGameState';
+import { createPrecipitationMaterial } from '../PrecipitationMaterial';
 import { useSceneTimeInvalidation, useSceneTimeUniform } from '../SceneTime';
 
 interface DropsProps {
@@ -194,14 +195,21 @@ export const Drops = ({ count = 2000 }: DropsProps) => {
         [],
     );
 
-    const uniforms = useMemo(
-        () => ({
-            uTime: timeUniform,
-            uRainFieldSize: { value: size },
-            uRainProgress: { value: 1 },
-        }),
-        [timeUniform],
+    const material = useMemo(
+        () =>
+            createPrecipitationMaterial({
+                fragmentShader,
+                timeUniform,
+                uniforms: {
+                    uRainFieldSize: { value: size },
+                    uRainProgress: { value: 1 },
+                },
+                vertexShader,
+            }),
+        [fragmentShader, timeUniform, vertexShader],
     );
+
+    useEffect(() => () => material.dispose(), [material]);
 
     return (
         <group ref={fref} name="Weather:Rain">
@@ -211,16 +219,7 @@ export const Drops = ({ count = 2000 }: DropsProps) => {
                 frustumCulled={false}
                 renderOrder={35}
             >
-                <shaderMaterial
-                    key={vertexShader + fragmentShader}
-                    depthTest={false}
-                    depthWrite={false}
-                    vertexShader={vertexShader}
-                    fragmentShader={fragmentShader}
-                    side={THREE.DoubleSide}
-                    uniforms={uniforms}
-                    transparent
-                />
+                <primitive attach="material" object={material} />
             </instancedMesh>
         </group>
     );
