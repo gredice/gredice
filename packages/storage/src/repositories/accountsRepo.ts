@@ -195,7 +195,7 @@ export async function grantBirthdaySunflowers({
         const lastRewardDate = lastRewardEvent
             ? startOfUtcDay(new Date(lastRewardEvent.data.rewardDate))
             : null;
-        if (lastRewardDate && lastRewardDate >= normalizedRewardDate) {
+        if (lastRewardDate?.getUTCFullYear() === rewardYear) {
             return {
                 status: 'existing',
                 accountId,

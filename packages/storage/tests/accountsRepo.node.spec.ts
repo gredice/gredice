@@ -182,7 +182,8 @@ test('grantBirthdaySunflowers is idempotent for a user reward year', async () =>
     const accountId = await createTestAccount();
     const userId = randomUUID();
     const userCreatedAt = new Date(Date.UTC(2026, 4, 1));
-    const rewardDate = new Date(Date.UTC(2026, 6, 8));
+    const firstRewardDate = new Date(Date.UTC(2026, 5, 8));
+    const laterRewardDate = new Date(Date.UTC(2026, 6, 8));
 
     await db.insert(users).values({
         id: userId,
@@ -203,14 +204,14 @@ test('grantBirthdaySunflowers is idempotent for a user reward year', async () =>
         accountId,
         amount: 9999,
         isLate: false,
-        rewardDate,
+        rewardDate: firstRewardDate,
         userId,
     });
     const secondGrant = await grantBirthdaySunflowers({
         accountId,
         amount: 9999,
         isLate: false,
-        rewardDate,
+        rewardDate: laterRewardDate,
         userId,
     });
 
@@ -222,7 +223,10 @@ test('grantBirthdaySunflowers is idempotent for a user reward year', async () =>
     assert.ok(rewardEvent);
     assert.strictEqual(rewardEvent.data.accountId, accountId);
     assert.strictEqual(rewardEvent.data.amount, 9999);
-    assert.strictEqual(rewardEvent.data.rewardDate, rewardDate.toISOString());
+    assert.strictEqual(
+        rewardEvent.data.rewardDate,
+        firstRewardDate.toISOString(),
+    );
 });
 
 test('spendSunflowers decreases sunflowers', async () => {
