@@ -1,14 +1,20 @@
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
+    accountUsers,
     assignStripeCustomerId,
     earnSunflowers,
     getAccount,
     getAccounts,
     getAccountUsers,
+    getLastBirthdayRewardEvent,
     getSunflowers,
     getSunflowersHistory,
+    grantBirthdaySunflowers,
     spendSunflowers,
+    storage,
+    users,
 } from '@gredice/storage';
 import { createTestAccount } from './helpers/testHelpers';
 import { createTestDb } from './testDb';
@@ -168,6 +174,59 @@ test('earnSunflowers increases sunflowers', async () => {
     await earnSunflowers(accountId, 500, 'bonus');
     const sunflowers = await getSunflowers(accountId);
     assert.strictEqual(sunflowers, 1500);
+});
+
+test('grantBirthdaySunflowers is idempotent for a user reward year', async () => {
+    createTestDb();
+    const db = storage();
+    const accountId = await createTestAccount();
+    const userId = randomUUID();
+    const userCreatedAt = new Date(Date.UTC(2026, 4, 1));
+    const firstRewardDate = new Date(Date.UTC(2026, 5, 8));
+    const laterRewardDate = new Date(Date.UTC(2026, 6, 8));
+
+    await db.insert(users).values({
+        id: userId,
+        userName: `${userId}@example.com`,
+        displayName: 'Birthday Test',
+        role: 'user',
+        createdAt: userCreatedAt,
+        updatedAt: userCreatedAt,
+    });
+    await db.insert(accountUsers).values({
+        accountId,
+        userId,
+        createdAt: userCreatedAt,
+        updatedAt: userCreatedAt,
+    });
+
+    const firstGrant = await grantBirthdaySunflowers({
+        accountId,
+        amount: 9999,
+        isLate: false,
+        rewardDate: firstRewardDate,
+        userId,
+    });
+    const secondGrant = await grantBirthdaySunflowers({
+        accountId,
+        amount: 9999,
+        isLate: false,
+        rewardDate: laterRewardDate,
+        userId,
+    });
+
+    assert.strictEqual(firstGrant.status, 'created');
+    assert.strictEqual(secondGrant.status, 'existing');
+    assert.strictEqual(await getSunflowers(accountId), 10999);
+
+    const rewardEvent = await getLastBirthdayRewardEvent(userId);
+    assert.ok(rewardEvent);
+    assert.strictEqual(rewardEvent.data.accountId, accountId);
+    assert.strictEqual(rewardEvent.data.amount, 9999);
+    assert.strictEqual(
+        rewardEvent.data.rewardDate,
+        firstRewardDate.toISOString(),
+    );
 });
 
 test('spendSunflowers decreases sunflowers', async () => {
