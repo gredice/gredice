@@ -232,9 +232,11 @@ export function SelectItems<T extends string>({
                     aria-label={label ?? placeholder}
                     aria-labelledby={labelId}
                     className={cx(
-                        'flex h-10 w-full items-center justify-between rounded-md bg-transparent px-3 py-2 text-left text-sm ring-offset-background focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+                        'flex h-10 w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm ring-offset-background focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
                         '[&>span]:line-clamp-1 data-[placeholder]:text-muted-foreground',
-                        variant === 'outlined' && 'border border-input',
+                        variant === 'outlined' &&
+                            'border border-input bg-background',
+                        variant === 'plain' && 'bg-transparent',
                     )}
                     id={inputId}
                 >

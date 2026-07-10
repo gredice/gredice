@@ -6,6 +6,7 @@ import {
     Info,
     Navigate,
     ShoppingCart as ShoppingCartIcon,
+    Truck,
 } from '@gredice/ui/icons';
 import { ModalConfirm } from '@gredice/ui/ModalConfirm';
 import { NoDataPlaceholder } from '@gredice/ui/NoDataPlaceholder';
@@ -34,7 +35,15 @@ import { HudCard } from './components/HudCard';
 import { ButtonConfirmPayment } from './components/shopping-cart/ButtonConfirmPayment';
 import { ShoppingCartItem } from './components/shopping-cart/ShoppingCartItem';
 
-export function ShoppingCart() {
+interface ShoppingCartProps {
+    showDeliveryStep: boolean;
+    onShowDeliveryStepChange: (showDeliveryStep: boolean) => void;
+}
+
+export function ShoppingCart({
+    showDeliveryStep,
+    onShowDeliveryStepChange,
+}: ShoppingCartProps) {
     const { data: account } = useCurrentAccount();
     const { data: cart, isLoading, isError } = useShoppingCart();
     const { track } = useGameAnalytics();
@@ -42,7 +51,6 @@ export function ShoppingCart() {
     const checkout = useCheckout();
 
     // State for delivery flow
-    const [showDeliveryStep, setShowDeliveryStep] = useState(false);
     const [deliverySelection, setDeliverySelection] =
         useState<DeliverySelectionData | null>(null);
 
@@ -69,7 +77,7 @@ export function ShoppingCart() {
                 item_count: cart.items.length,
                 total: cart.total,
             });
-            setShowDeliveryStep(true);
+            onShowDeliveryStepChange(true);
             return;
         }
 
@@ -100,7 +108,7 @@ export function ShoppingCart() {
     }
 
     function handleBackToCart() {
-        setShowDeliveryStep(false);
+        onShowDeliveryStepChange(false);
     }
 
     function handleDelivery() {
@@ -108,7 +116,7 @@ export function ShoppingCart() {
             item_count: cart?.items.length,
             total: cart?.total,
         });
-        setShowDeliveryStep(true);
+        onShowDeliveryStepChange(true);
     }
 
     function handleDeliveryProceed() {
@@ -284,6 +292,7 @@ export function ShoppingCartHud() {
     const { data: cart } = useShoppingCart();
     const { track } = useGameAnalytics();
     const [isOpen, setIsOpen] = useShoppingCartOpenParam();
+    const [showDeliveryStep, setShowDeliveryStep] = useState(false);
     const showTransientHub = useShoppingCartTransientHub(isOpen);
 
     if (!cart?.items.length && !showTransientHub) {
@@ -304,10 +313,14 @@ export function ShoppingCartHud() {
                         }
                         setIsOpen(open);
                     }}
-                    title="Košara"
+                    title={showDeliveryStep ? 'Dostava' : 'Košara'}
                     className="md:max-w-2xl"
                     headerIcon={
-                        <ShoppingCartIcon className="size-7 shrink-0" />
+                        showDeliveryStep ? (
+                            <Truck className="size-7 shrink-0" />
+                        ) : (
+                            <ShoppingCartIcon className="size-7 shrink-0" />
+                        )
                     }
                     hudLayer
                     trigger={
@@ -341,7 +354,10 @@ export function ShoppingCartHud() {
                         </Button>
                     }
                 >
-                    <ShoppingCart />
+                    <ShoppingCart
+                        showDeliveryStep={showDeliveryStep}
+                        onShowDeliveryStepChange={setShowDeliveryStep}
+                    />
                 </GameModal>
             </Row>
         </HudCard>
