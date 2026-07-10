@@ -26,6 +26,8 @@ import { RaisedBedInfo } from './raisedBed/RaisedBedInfo';
 import { RaisedBedPhotosModal } from './raisedBed/RaisedBedPhotosModal';
 import { RaisedBedSensorInfo } from './raisedBed/RaisedBedSensorInfo';
 import { RaisedBedWatering } from './raisedBed/RaisedBedWatering';
+import { SuncokretChatTrigger } from './SuncokretChatTrigger';
+import { suncokretContextConversationLabel } from './suncokretChatContext';
 
 const GRID_SIZE = 240;
 const GRID_HEIGHT_ADDITIONAL = 30;
@@ -88,6 +90,26 @@ export function RaisedBedFieldHud() {
         >
             {currentGarden && raisedBed && (
                 <div className="absolute z-40 top-[var(--raised-bed-ui-top)] left-[var(--raised-bed-title-left)]">
+                    {!isSandbox && (
+                        <SuncokretChatTrigger
+                            title="Pitaj Suncokreta o ovoj gredici"
+                            className="absolute top-1/2 right-full mr-2 -translate-y-1/2"
+                            target={{
+                                conversationLabel:
+                                    suncokretContextConversationLabel({
+                                        gardenName: currentGarden.name,
+                                        raisedBedName: raisedBed.name,
+                                        uiContext: {
+                                            surface: 'raised-bed',
+                                        },
+                                    }),
+                                gardenId: currentGarden.id,
+                                positionIndex: null,
+                                raisedBedId: raisedBed.id,
+                                uiContext: { surface: 'raised-bed' },
+                            }}
+                        />
+                    )}
                     <div
                         className="relative flex max-w-72 items-stretch overflow-hidden rounded-xl bg-gradient-to-br from-lime-100/95 to-lime-100/85 text-green-950 shadow-lg ring-1 ring-black/10 dark:from-emerald-950/95 dark:to-lime-950/90 dark:text-lime-50 dark:ring-lime-100/10 md:max-w-[360px]"
                         data-raised-bed-title-cluster

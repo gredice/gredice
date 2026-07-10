@@ -1,5 +1,6 @@
 import 'server-only';
 import { randomUUID } from 'node:crypto';
+import { sanitizeSuncokretAssistantText } from '@gredice/js/ai';
 import { and, desc, eq, gte, sql } from 'drizzle-orm';
 import {
     accounts,
@@ -42,6 +43,9 @@ export type AiChatLimitState = {
     usedMicroUsd: number;
     reservedMicroUsd: number;
     remainingMicroUsd: number;
+    usedInputTokens: number;
+    usedOutputTokens: number;
+    usedTotalTokens: number;
     trialChatDaysUsed: number;
     trialChatDaysLimit: number;
     disabled: boolean;
@@ -208,6 +212,22 @@ function messageRole(value: unknown) {
         : 'user';
 }
 
+function sanitizedMessageParts(value: unknown, role: string) {
+    const parts = messageParts(value);
+    if (role !== 'assistant') {
+        return parts;
+    }
+
+    return parts.map((part) =>
+        part.type === 'text' && typeof part.text === 'string'
+            ? {
+                  ...part,
+                  text: sanitizeSuncokretAssistantText(part.text),
+              }
+            : part,
+    );
+}
+
 export function normalizeAiChatMessagesForStorage(
     messages: unknown[],
 ): AiChatMessageForStorage[] {
@@ -223,10 +243,11 @@ export function normalizeAiChatMessagesForStorage(
             typeof record.id === 'string' && record.id.trim().length > 0
                 ? record.id
                 : randomUUID();
+        const role = messageRole(record.role);
         normalized.push({
             id,
-            role: messageRole(record.role),
-            parts: messageParts(record.parts),
+            role,
+            parts: sanitizedMessageParts(record.parts, role),
             metadata: metadataObject(record.metadata),
         });
     }
@@ -303,7 +324,10 @@ export async function getAiChatAccountLimitState(
         columns: {
             usageDate: true,
             status: true,
+            inputTokens: true,
+            outputTokens: true,
             reservedMicroUsd: true,
+            totalTokens: true,
             totalMicroUsd: true,
         },
         where: and(
@@ -325,6 +349,21 @@ export async function getAiChatAccountLimitState(
             statusCountsAsReserved(row.status)
                 ? sum + row.reservedMicroUsd
                 : sum,
+        0,
+    );
+    const usedInputTokens = todayRows.reduce(
+        (sum, row) =>
+            statusCountsAsFinalized(row.status) ? sum + row.inputTokens : sum,
+        0,
+    );
+    const usedOutputTokens = todayRows.reduce(
+        (sum, row) =>
+            statusCountsAsFinalized(row.status) ? sum + row.outputTokens : sum,
+        0,
+    );
+    const usedTotalTokens = todayRows.reduce(
+        (sum, row) =>
+            statusCountsAsFinalized(row.status) ? sum + row.totalTokens : sum,
         0,
     );
     const finalizedUsageDates = new Set(
@@ -370,6 +409,9 @@ export async function getAiChatAccountLimitState(
             0,
             dailyLimitMicroUsd - spentOrReservedMicroUsd,
         ),
+        usedInputTokens,
+        usedOutputTokens,
+        usedTotalTokens,
         trialChatDaysUsed,
         trialChatDaysLimit,
         disabled,

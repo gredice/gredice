@@ -32,6 +32,8 @@ import {
     findRaisedBedOccupiedField,
     type RaisedBedFieldPlantHistoryEntry,
 } from '../../utils/raisedBedFields';
+import { SuncokretChatTrigger } from '../SuncokretChatTrigger';
+import { suncokretContextConversationLabel } from '../suncokretChatContext';
 import { GreenhouseSeedlingPlantVisual } from './GreenhouseSeedlingPlantVisual';
 import { GreenhouseSeedlingProgress } from './GreenhouseSeedlingProgress';
 import { GreenhouseSeedlingTransplantAction } from './GreenhouseSeedlingTransplantAction';
@@ -116,6 +118,10 @@ export function RaisedBedFieldItemPlanted({
     const [internalOpen, setInternalOpen] = useState(false);
     const [activeTab, setActiveTab] =
         useState<RaisedBedFieldTabValue>('lifecycle');
+    const chatUiContext = {
+        surface: 'plant-details' as const,
+        tab: activeTab,
+    };
     const isOpenControlled = openProp !== undefined;
     const open = openProp ?? internalOpen;
 
@@ -490,6 +496,23 @@ export function RaisedBedFieldItemPlanted({
                             <span>Detalji</span>
                         </Link>
                     </Stack>
+                    {garden && !isHistorical && (
+                        <SuncokretChatTrigger
+                            title="Pitaj Suncokreta o ovoj kartici biljke"
+                            target={{
+                                conversationLabel:
+                                    suncokretContextConversationLabel({
+                                        plantName: plantSort.information.name,
+                                        raisedBedName: raisedBed.name,
+                                        uiContext: chatUiContext,
+                                    }),
+                                gardenId: garden.id,
+                                positionIndex,
+                                raisedBedId,
+                                uiContext: chatUiContext,
+                            }}
+                        />
+                    )}
                     {garden && !isHistorical && (
                         <RaisedBedPhotosModal
                             gardenId={garden.id}
