@@ -67,12 +67,17 @@ test('token usage metadata supports exact totals and a live text estimate', () =
     assert.match(formatSuncokretTokenUsage(1_234, true), /^Danas korišteno ≈/);
 });
 
-test('provider tool protocol is replaced with a friendly retry message', () => {
-    const sanitized = sanitizeSuncokretAssistantText(
-        'Provjeravam podatke.\n<｜｜DSML｜｜tool_calls>\n<｜｜DSML｜｜invoke name="searchDirectory">',
-    );
+test('provider tool protocol variants are replaced with a friendly retry message', () => {
+    for (const protocol of [
+        '<｜｜DSML｜｜tool_calls>\n<｜｜DSML｜｜invoke name="searchDirectory">',
+        '< | | DSML | | tool_calls> < | | DSML | | invoke name="getRaisedBedDetails">',
+    ]) {
+        const sanitized = sanitizeSuncokretAssistantText(
+            `Provjeravam podatke.\n${protocol}`,
+        );
 
-    assert.doesNotMatch(sanitized, /DSML|searchDirectory/);
-    assert.match(sanitized, /Provjeravam podatke\./);
-    assert.match(sanitized, /Pokušaj ponovno/);
+        assert.doesNotMatch(sanitized, /DSML|searchDirectory|RaisedBedDetails/);
+        assert.match(sanitized, /Provjeravam podatke\./);
+        assert.match(sanitized, /Pokušaj ponovno/);
+    }
 });

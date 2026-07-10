@@ -308,3 +308,26 @@ test('normalizeAiChatMessagesForStorage does not persist provider tool protocol 
         },
     ]);
 });
+
+test('normalizeAiChatMessagesForStorage rejects spaced provider tool protocol text', () => {
+    const [message] = normalizeAiChatMessagesForStorage([
+        {
+            id: 'assistant-message',
+            role: 'assistant',
+            parts: [
+                {
+                    type: 'text',
+                    text: '< | | DSML | | tool_calls> < | | DSML | | invoke name="getRaisedBedDetails">',
+                },
+            ],
+        },
+    ]);
+
+    assert.ok(message);
+    assert.deepStrictEqual(message.parts, [
+        {
+            type: 'text',
+            text: 'Nisam uspio dovršiti odgovor. Pokušaj ponovno — ne moraš mijenjati pitanje.',
+        },
+    ]);
+});

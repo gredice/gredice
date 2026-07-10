@@ -63,7 +63,8 @@ export type SuncokretUiContext =
     | { surface: 'raised-bed' }
     | { surface: 'settings'; section?: SuncokretSettingsSection | null };
 
-const SUNCOKRET_TOOL_PROTOCOL_PATTERN = /<(?:｜｜|\|\|)\s*DSML/iu;
+const SUNCOKRET_TOOL_PROTOCOL_PATTERN =
+    /<\s*(?:[|｜]\s*){1,2}DSML(?:\s*[|｜]){1,2}/iu;
 
 export const SUNCOKRET_TOOL_PROTOCOL_FALLBACK =
     'Nisam uspio dovršiti odgovor. Pokušaj ponovno — ne moraš mijenjati pitanje.';
