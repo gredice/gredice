@@ -8,6 +8,7 @@ import {
     ChatBubble,
     ChatMarker,
     ChatMessage as ChatMessageLayout,
+    ChatMessageResponse,
     ChatMessageScroller,
 } from '@gredice/ui/Chat';
 import { IconButton } from '@gredice/ui/IconButton';
@@ -20,7 +21,6 @@ import {
     Sun,
     Warning,
 } from '@gredice/ui/icons';
-import { Markdown } from '@gredice/ui/Markdown';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -244,13 +244,22 @@ function suncokretFlagParams({
     return params.toString();
 }
 
-function MessageText({ children }: { children: string }) {
+function MessageText({
+    children,
+    isStreaming,
+}: {
+    children: string;
+    isStreaming: boolean;
+}) {
     const safeText = sanitizeSuncokretAssistantText(children);
 
     return (
-        <Markdown className="prose-sm max-w-none text-sm leading-relaxed [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1">
+        <ChatMessageResponse
+            className="text-sm leading-relaxed"
+            isAnimating={isStreaming}
+        >
             {safeText}
-        </Markdown>
+        </ChatMessageResponse>
     );
 }
 
@@ -515,7 +524,11 @@ function ChatMessage({
                             : `${baseKey}:${duplicateCount}`;
                     const text = textPart(part);
                     if (text) {
-                        return <MessageText key={key}>{text}</MessageText>;
+                        return (
+                            <MessageText key={key} isStreaming={isStreaming}>
+                                {text}
+                            </MessageText>
+                        );
                     }
 
                     const toolData = toolPart(part);

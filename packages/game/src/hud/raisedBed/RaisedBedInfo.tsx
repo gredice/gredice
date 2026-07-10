@@ -1,13 +1,13 @@
 import { EditableInput } from '@gredice/ui/EditableInput';
 import { Book, Hammer, Info } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
+import { ScrollArea } from '@gredice/ui/ScrollArea';
 import { Stack } from '@gredice/ui/Stack';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 import type { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useUpdateRaisedBed } from '../../hooks/useUpdateRaisedBed';
-import { ScrollView } from '../../shared-ui/ScrollView';
 import { SuncokretChatTrigger } from '../SuncokretChatTrigger';
 import { suncokretContextConversationLabel } from '../suncokretChatContext';
 import { RaisedBedInfoTab } from './RaisedBedInfoTab';
@@ -107,7 +107,7 @@ export function RaisedBedInfo({
                     />
                 </TabsContent>
                 <TabsContent value="diary">
-                    <ScrollView
+                    <ScrollArea
                         className="-mx-4 md:-mx-6"
                         viewportClassName="max-h-96 md:max-h-[60dvh]"
                         contentClassName="pl-4 pr-2 md:pl-6 md:pr-2"
@@ -115,7 +115,7 @@ export function RaisedBedInfo({
                         <RaisedBedOperationHistoryList
                             raisedBedId={raisedBed.id}
                         />
-                    </ScrollView>
+                    </ScrollArea>
                 </TabsContent>
                 <TabsContent value="operations">
                     <RaisedBedOperationsTab

@@ -49,7 +49,7 @@ export function ChatMessageScroller({
             >
                 <MessageScroller.Viewport
                     aria-label={ariaLabel}
-                    className="size-full min-h-0 min-w-0 overflow-y-auto overscroll-contain"
+                    className="scroll-fade-y scrollbar-none size-full min-h-0 min-w-0 overflow-y-auto overscroll-contain"
                     data-chat-message-scroller-viewport=""
                 >
                     <MessageScroller.Content

@@ -2,6 +2,7 @@ import {
     ChatBubble,
     ChatMarker,
     ChatMessage,
+    ChatMessageResponse,
     ChatMessageScroller,
     type ChatMessageScrollerProps,
 } from '@gredice/ui/Chat';
@@ -256,6 +257,51 @@ export const Streaming: Story = {
                             Suncokret razmišlja...
                         </span>
                     </ChatMarker>
+                ),
+            },
+        ],
+    },
+    render: (args) => <ChatPanel {...args} />,
+};
+
+export const MarkdownResponse: Story = {
+    args: {
+        ariaLabel: 'Razgovor s tabličnim odgovorom',
+        items: [
+            {
+                id: 'markdown-question',
+                content: (
+                    <ChatMessage align="end">
+                        <ChatBubble align="end" variant="sunflower">
+                            Sažmi stanje mojih gredica.
+                        </ChatBubble>
+                    </ChatMessage>
+                ),
+            },
+            {
+                id: 'markdown-answer',
+                content: (
+                    <ChatMessage avatar={assistantAvatar} header="Suncokret">
+                        <ChatBubble className="w-full" variant="ghost">
+                            <ChatMessageResponse>
+                                {[
+                                    'U vrtu su trenutno aktivne ove gredice:',
+                                    '',
+                                    '| Gredica | Status | Polja |',
+                                    '| --- | --- | ---: |',
+                                    '| 🌻 Sunčano Sunce | Nova | 18/18 |',
+                                    '| 🐰 Hrabra Jabuka | Aktivna | 18/18 |',
+                                    '| ❄️ Zabavna Pahuljica | Aktivna | 18/18 |',
+                                    '| 🌬️ Ljupki Vjetar | Aktivna | 16/18 |',
+                                    '',
+                                    '- [x] Provjereno stanje vrta',
+                                    '- [ ] Odaberi gredicu za detaljan pregled',
+                                    '',
+                                    'Mogu odmah pripremiti **sljedeće korake**.',
+                                ].join('\n')}
+                            </ChatMessageResponse>
+                        </ChatBubble>
+                    </ChatMessage>
                 ),
             },
         ],

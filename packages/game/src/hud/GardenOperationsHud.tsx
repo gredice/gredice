@@ -21,6 +21,7 @@ import { Popper } from '@gredice/ui/Popper';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Row } from '@gredice/ui/Row';
+import { ScrollArea } from '@gredice/ui/ScrollArea';
 import { Stack } from '@gredice/ui/Stack';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@gredice/ui/Tooltip';
 import { Typography } from '@gredice/ui/Typography';
@@ -57,7 +58,6 @@ import {
     useShoppingCart,
 } from '../hooks/useShoppingCart';
 import { GameModal } from '../shared-ui/game-modal';
-import { ScrollView } from '../shared-ui/ScrollView';
 import { useShoppingCartOpenParam } from '../useUrlState';
 import { sortOperationTasksNewestFirst } from './gardenOperationOrdering';
 import { RaisedBedDiaryCancelAction } from './raisedBed/RaisedBedDiaryCancelAction';
@@ -1749,7 +1749,7 @@ function HistoryModal({
                     </Typography>
                 </Stack>
                 <Divider />
-                <ScrollView
+                <ScrollArea
                     className="-mx-6"
                     viewportClassName="max-h-[70vh]"
                     contentClassName="px-6 pr-4"
@@ -1832,7 +1832,7 @@ function HistoryModal({
                         )}
                         <div ref={listRef} className="h-1" />
                     </Stack>
-                </ScrollView>
+                </ScrollArea>
             </Stack>
         </GameModal>
     );
@@ -2023,7 +2023,7 @@ export function GardenOperationsHud() {
                     </Typography>
                 </Row>
                 <Divider />
-                <ScrollView
+                <ScrollArea
                     viewportClassName="max-h-[50vh]"
                     contentClassName="py-2 pl-3 pr-1"
                     viewportProps={{ 'data-infinite-scroll-root': 'true' }}
@@ -2145,7 +2145,7 @@ export function GardenOperationsHud() {
                         )}
                         <div ref={pendingRef} className="h-1" />
                     </Stack>
-                </ScrollView>
+                </ScrollArea>
                 <Divider />
                 <HistoryModal
                     operations={historyOperations}

@@ -22,6 +22,18 @@ async function expectSameControlRow(
     expect(Math.abs(leftCenterY - rightCenterY)).toBeLessThanOrEqual(8);
 }
 
+async function scrollFadeSize(viewport: Locator, edge: 'b' | 't') {
+    return viewport.evaluate((element, property) => {
+        const value = getComputedStyle(element).getPropertyValue(property);
+        const measurement = document.createElement('div');
+        measurement.style.cssText = `position:fixed;visibility:hidden;width:${value}`;
+        document.body.appendChild(measurement);
+        const width = measurement.getBoundingClientRect().width;
+        measurement.remove();
+        return width;
+    }, `--scroll-fade-${edge}`);
+}
+
 test.describe('Garden operations HUD', () => {
     test('shows operation items that are still in the shopping cart', async ({
         mount,
@@ -218,12 +230,14 @@ test.describe('Garden operations HUD', () => {
 
         await page.getByTitle('Status radnji').click();
 
-        const scrollView = page.locator('[data-scroll-view]').first();
-        const topFade = scrollView.locator('[data-scroll-view-top-fade]');
-        const bottomFade = scrollView.locator('[data-scroll-view-bottom-fade]');
-        await expect(scrollView).toBeVisible();
-        await expect(topFade).toHaveAttribute('data-visible', 'false');
-        await expect(bottomFade).toHaveAttribute('data-visible', 'true');
+        const scrollArea = page.locator('[data-scroll-area]').first();
+        const viewport = scrollArea.locator('[data-scroll-area-viewport]');
+        await expect(scrollArea).toBeVisible();
+        await expect(viewport).toHaveClass(/scroll-fade-y/);
+        await expect.poll(() => scrollFadeSize(viewport, 't')).toBe(0);
+        await expect
+            .poll(() => scrollFadeSize(viewport, 'b'))
+            .toBeGreaterThan(0);
 
         const cards = page.locator('[data-garden-operation-card]');
         await expect(cards.nth(10)).toBeVisible();
@@ -263,13 +277,12 @@ test.describe('Garden operations HUD', () => {
         expect(firstCardBox?.height ?? 0).toBeGreaterThan(90);
         expect(sixthCardBox?.height ?? 0).toBeGreaterThan(90);
 
-        await scrollView
-            .locator('[data-scroll-view-viewport]')
-            .evaluate((element) => {
-                element.scrollTop = 120;
-                element.dispatchEvent(new Event('scroll', { bubbles: true }));
-            });
-        await expect(topFade).toHaveAttribute('data-visible', 'true');
+        await viewport.evaluate((element) => {
+            element.scrollTop = 120;
+        });
+        await expect
+            .poll(() => scrollFadeSize(viewport, 't'))
+            .toBeGreaterThan(0);
     });
 
     test('lets operation names use the space before the status badge', async ({
@@ -317,13 +330,14 @@ test.describe('Garden operations HUD', () => {
         const dialog = page
             .getByRole('dialog')
             .filter({ hasText: 'Povijest radnji' });
-        const scrollView = dialog.locator('[data-scroll-view]').first();
-        const viewport = scrollView.locator('[data-scroll-view-viewport]');
-        const topFade = scrollView.locator('[data-scroll-view-top-fade]');
-        const bottomFade = scrollView.locator('[data-scroll-view-bottom-fade]');
-        await expect(scrollView).toBeVisible();
-        await expect(topFade).toHaveAttribute('data-visible', 'false');
-        await expect(bottomFade).toHaveAttribute('data-visible', 'true');
+        const scrollArea = dialog.locator('[data-scroll-area]').first();
+        const viewport = scrollArea.locator('[data-scroll-area-viewport]');
+        await expect(scrollArea).toBeVisible();
+        await expect(viewport).toHaveClass(/scroll-fade-y/);
+        await expect.poll(() => scrollFadeSize(viewport, 't')).toBe(0);
+        await expect
+            .poll(() => scrollFadeSize(viewport, 'b'))
+            .toBeGreaterThan(0);
 
         await expect
             .poll(async () => {
@@ -374,8 +388,9 @@ test.describe('Garden operations HUD', () => {
 
         await viewport.evaluate((element) => {
             element.scrollTop = 120;
-            element.dispatchEvent(new Event('scroll', { bubbles: true }));
         });
-        await expect(topFade).toHaveAttribute('data-visible', 'true');
+        await expect
+            .poll(() => scrollFadeSize(viewport, 't'))
+            .toBeGreaterThan(0);
     });
 });

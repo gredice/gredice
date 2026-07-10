@@ -1,0 +1,214 @@
+@source "../node_modules/streamdown/dist/*.js";
+
+/* Scroll-aware masks adapted from shadcn/ui's scroll-fade utility. */
+:is(.scrollbar-none, .no-scrollbar) {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+:is(.scrollbar-none, .no-scrollbar)::-webkit-scrollbar {
+    display: none;
+}
+
+@property --scroll-fade-t {
+    syntax: "<length-percentage>";
+    inherits: false;
+    initial-value: 0px;
+}
+
+@property --scroll-fade-b {
+    syntax: "<length-percentage>";
+    inherits: false;
+    initial-value: 0px;
+}
+
+@property --scroll-fade-s {
+    syntax: "<length-percentage>";
+    inherits: false;
+    initial-value: 0px;
+}
+
+@property --scroll-fade-e {
+    syntax: "<length-percentage>";
+    inherits: false;
+    initial-value: 0px;
+}
+
+@keyframes scroll-fade-reveal-t {
+    from {
+        --scroll-fade-t: 0px;
+    }
+    to {
+        --scroll-fade-t: var(--_scroll-fade-size-t);
+    }
+}
+
+@keyframes scroll-fade-reveal-b {
+    from {
+        --scroll-fade-b: var(--_scroll-fade-size-b);
+    }
+    to {
+        --scroll-fade-b: 0px;
+    }
+}
+
+@keyframes scroll-fade-reveal-s {
+    from {
+        --scroll-fade-s: 0px;
+    }
+    to {
+        --scroll-fade-s: var(--_scroll-fade-size-s);
+    }
+}
+
+@keyframes scroll-fade-reveal-e {
+    from {
+        --scroll-fade-e: var(--_scroll-fade-size-e);
+    }
+    to {
+        --scroll-fade-e: 0px;
+    }
+}
+
+:is(.scroll-fade-y, .scroll-fade-t, .scroll-fade-b) {
+    --_scroll-fade-size-t: var(
+        --scroll-fade-t-size,
+        var(--scroll-fade-size, min(12%, calc(var(--spacing) * 10)))
+    );
+    --_scroll-fade-size-b: var(
+        --scroll-fade-b-size,
+        var(--scroll-fade-size, min(12%, calc(var(--spacing) * 10)))
+    );
+    --scroll-fade-block: linear-gradient(
+        to bottom,
+        transparent 0,
+        #000 var(--scroll-fade-t, 0px),
+        #000 calc(100% - var(--scroll-fade-b, 0px)),
+        transparent 100%
+    );
+    -webkit-mask-image: var(--scroll-fade-mask, var(--scroll-fade-block));
+    mask-image: var(--scroll-fade-mask, var(--scroll-fade-block));
+    -webkit-mask-composite: source-in;
+    mask-composite: intersect;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+}
+
+.scroll-fade-t {
+    --_scroll-fade-size-b: 0px;
+}
+
+.scroll-fade-b {
+    --_scroll-fade-size-t: 0px;
+}
+
+:is(.scroll-fade-x, .scroll-fade-s, .scroll-fade-e) {
+    --_scroll-fade-size-s: var(
+        --scroll-fade-s-size,
+        var(--scroll-fade-size, min(12%, calc(var(--spacing) * 10)))
+    );
+    --_scroll-fade-size-e: var(
+        --scroll-fade-e-size,
+        var(--scroll-fade-size, min(12%, calc(var(--spacing) * 10)))
+    );
+    --scroll-fade-inline: linear-gradient(
+        to right,
+        transparent 0,
+        #000 var(--scroll-fade-s, 0px),
+        #000 calc(100% - var(--scroll-fade-e, 0px)),
+        transparent 100%
+    );
+    -webkit-mask-image: var(--scroll-fade-mask, var(--scroll-fade-inline));
+    mask-image: var(--scroll-fade-mask, var(--scroll-fade-inline));
+    -webkit-mask-composite: source-in;
+    mask-composite: intersect;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+}
+
+:is(.scroll-fade-x, .scroll-fade-s, .scroll-fade-e):where(
+    [dir="rtl"],
+    [dir="rtl"] *
+) {
+    --scroll-fade-inline: linear-gradient(
+        to left,
+        transparent 0,
+        #000 var(--scroll-fade-s, 0px),
+        #000 calc(100% - var(--scroll-fade-e, 0px)),
+        transparent 100%
+    );
+}
+
+.scroll-fade-s {
+    --_scroll-fade-size-e: 0px;
+}
+
+.scroll-fade-e {
+    --_scroll-fade-size-s: 0px;
+}
+
+@supports (animation-timeline: scroll()) {
+    :is(.scroll-fade-y, .scroll-fade-t, .scroll-fade-b) {
+        animation:
+            scroll-fade-reveal-t 1ms ease-in-out,
+            scroll-fade-reveal-b 1ms ease-in-out;
+        animation-timeline: scroll(self y), scroll(self y);
+        animation-range:
+            0 var(--scroll-fade-reveal, calc(var(--spacing) * 24)),
+            calc(100% - var(--scroll-fade-reveal, calc(var(--spacing) * 24)))
+            100%;
+        animation-fill-mode: both;
+    }
+
+    :is(.scroll-fade-x, .scroll-fade-s, .scroll-fade-e) {
+        animation:
+            scroll-fade-reveal-s 1ms ease-in-out,
+            scroll-fade-reveal-e 1ms ease-in-out;
+        animation-timeline: scroll(self inline), scroll(self inline);
+        animation-range:
+            0 var(--scroll-fade-reveal, calc(var(--spacing) * 24)),
+            calc(100% - var(--scroll-fade-reveal, calc(var(--spacing) * 24)))
+            100%;
+        animation-fill-mode: both;
+    }
+}
+
+@supports not (animation-timeline: scroll()) {
+    :is(.scroll-fade-y, .scroll-fade-t, .scroll-fade-b) {
+        --scroll-fade-t: var(--_scroll-fade-size-t);
+        --scroll-fade-b: var(--_scroll-fade-size-b);
+    }
+
+    :is(.scroll-fade-x, .scroll-fade-s, .scroll-fade-e) {
+        --scroll-fade-s: var(--_scroll-fade-size-s);
+        --scroll-fade-e: var(--_scroll-fade-size-e);
+    }
+}
+
+@keyframes chat-shimmer {
+    to {
+        background-position: -200% center;
+    }
+}
+
+.chat-shimmer {
+    animation: chat-shimmer 1.8s linear infinite;
+    background-image: linear-gradient(
+        90deg,
+        hsl(var(--muted-foreground)) 35%,
+        hsl(var(--foreground)) 50%,
+        hsl(var(--muted-foreground)) 65%
+    );
+    background-position: 200% center;
+    background-size: 200% 100%;
+    background-clip: text;
+    color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .chat-shimmer {
+        animation: none;
+        background: none;
+        color: inherit;
+    }
+}

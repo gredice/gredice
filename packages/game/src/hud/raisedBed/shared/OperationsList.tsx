@@ -5,6 +5,7 @@ import { Close, Search } from '@gredice/ui/icons';
 import { List } from '@gredice/ui/List';
 import { NoDataPlaceholder } from '@gredice/ui/NoDataPlaceholder';
 import { Row } from '@gredice/ui/Row';
+import { ScrollArea } from '@gredice/ui/ScrollArea';
 import { Stack } from '@gredice/ui/Stack';
 import { memo, useState } from 'react';
 import {
@@ -13,7 +14,6 @@ import {
 } from '../../../hooks/useFavorites';
 import { useOperations } from '../../../hooks/useOperations';
 import { usePlantSort } from '../../../hooks/usePlantSorts';
-import { ScrollView } from '../../../shared-ui/ScrollView';
 import { OperationListItemSkeleton } from '../OperationListItemSkeleton';
 import { OperationsListItem } from './OperationsListItem';
 import { useOperationContextIndicators } from './useOperationContextIndicators';
@@ -40,11 +40,9 @@ const OperationsListContent = memo(function OperationsListContent({
     scheduledOperationIds: Set<number>;
 }) {
     return (
-        <ScrollView
+        <ScrollArea
             className="overflow-hidden rounded-lg border bg-card"
             viewportClassName="max-h-96"
-            topFadeClassName="from-card"
-            bottomFadeClassName="from-card"
         >
             <List className="divide-y">
                 {!isLoading && operations?.length === 0 && (
@@ -73,7 +71,7 @@ const OperationsListContent = memo(function OperationsListContent({
                     />
                 ))}
             </List>
-        </ScrollView>
+        </ScrollArea>
     );
 });
 
