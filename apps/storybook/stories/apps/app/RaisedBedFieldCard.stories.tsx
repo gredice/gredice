@@ -8,7 +8,7 @@ import {
 import { Button } from '@gredice/ui/Button';
 import { Chip } from '@gredice/ui/Chip';
 import { IconButton } from '@gredice/ui/IconButton';
-import { Calendar, Timer } from '@gredice/ui/icons';
+import { Calendar, Check, Leaf, Timer, Warning } from '@gredice/ui/icons';
 import { SelectItems } from '@gredice/ui/SelectItems';
 import { cx } from '@gredice/ui/utils';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
@@ -22,6 +22,7 @@ type MockField = {
     imageSrc?: string;
     location?: 'greenhouse' | 'raisedBed';
     hasHistory?: boolean;
+    weedLevel?: 'none' | 'light' | 'heavy';
 };
 
 const mockFields: MockField[] = [
@@ -34,6 +35,7 @@ const mockFields: MockField[] = [
         imageSrc: '/assets/plants/tomato_mature.png',
         location: 'greenhouse',
         hasHistory: true,
+        weedLevel: 'heavy',
     },
     {
         id: 'tomato-mini-a',
@@ -43,6 +45,7 @@ const mockFields: MockField[] = [
         date: '22. 05.',
         imageSrc: '/assets/plants/tomato_growing.png',
         location: 'greenhouse',
+        weedLevel: 'light',
     },
     {
         id: 'tomato-mini-b',
@@ -52,6 +55,7 @@ const mockFields: MockField[] = [
         date: '22. 05.',
         imageSrc: '/assets/plants/tomato_growing.png',
         location: 'greenhouse',
+        weedLevel: 'none',
     },
     {
         id: 'chili',
@@ -61,6 +65,7 @@ const mockFields: MockField[] = [
         date: '22. 05.',
         imageSrc: '/assets/plants/bellpepper_mature.png',
         location: 'greenhouse',
+        weedLevel: 'none',
     },
     {
         id: 'bean-yellow',
@@ -70,6 +75,7 @@ const mockFields: MockField[] = [
         date: '29. 05.',
         imageSrc: '/assets/plants/bean_mature.png',
         location: 'raisedBed',
+        weedLevel: 'light',
     },
     {
         id: 'bean-green',
@@ -79,6 +85,7 @@ const mockFields: MockField[] = [
         date: '29. 05.',
         imageSrc: '/assets/plants/greenbean_mature.png',
         location: 'raisedBed',
+        weedLevel: 'none',
     },
 ];
 
@@ -209,6 +216,29 @@ function StatusDateButton({ field }: { field: MockField }) {
     );
 }
 
+function WeedChip({ level = 'none' }: { level?: MockField['weedLevel'] }) {
+    const content = {
+        none: { color: 'success', icon: Check, label: 'Bez korova' },
+        light: { color: 'warning', icon: Leaf, label: 'Lagani korov' },
+        heavy: { color: 'error', icon: Warning, label: 'Jaki korov' },
+    } as const;
+    const current = content[level];
+    const CurrentIcon = current.icon;
+
+    return (
+        <Chip
+            size="sm"
+            variant="solid"
+            color={current.color}
+            startDecorator={<CurrentIcon aria-hidden />}
+            title="Promijeni stanje korova"
+            className={raisedBedFieldCardChipClassName}
+        >
+            <span className="min-w-0 truncate">{current.label}</span>
+        </Chip>
+    );
+}
+
 function MockRaisedBedFieldCard({ field }: { field: MockField }) {
     return (
         <RaisedBedFieldCard
@@ -225,6 +255,7 @@ function MockRaisedBedFieldCard({ field }: { field: MockField }) {
             fieldBadge={<FieldBadge number={field.number} />}
             historyControl={field.hasHistory ? <HistoryButton /> : undefined}
             plantSortControl={<PlantSortSelect field={field} />}
+            weedControl={<WeedChip level={field.weedLevel} />}
             statusControl={
                 field.status ? <StatusDateButton field={field} /> : undefined
             }
