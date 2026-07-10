@@ -12,6 +12,7 @@ import {
 } from '../../app/admin/operations/operationsListQuery';
 import type {
     OperationsListPage,
+    OperationsListRecordType,
     OperationsListSort,
 } from '../../app/admin/operations/operationsListTypes';
 import { NoDataPlaceholder } from '../shared/placeholders/NoDataPlaceholder';
@@ -24,6 +25,7 @@ async function fetchOperationsPage({
     limit,
     offset,
     operationEntityIds,
+    recordType,
     sortKey,
 }: {
     direction: OperationsListSort['direction'];
@@ -31,6 +33,7 @@ async function fetchOperationsPage({
     limit: number;
     offset: number;
     operationEntityIds: number[];
+    recordType: OperationsListRecordType;
     sortKey: OperationsListSort['key'];
 }) {
     const searchParams = createOperationsListSearchParams({
@@ -39,6 +42,7 @@ async function fetchOperationsPage({
         limit,
         offset,
         operationEntityIds,
+        recordType,
         sortKey,
     });
     const response = await fetch(
@@ -58,10 +62,12 @@ export function OperationsList({
     fromFilter,
     initialPage,
     operationEntityIds,
+    recordType,
 }: {
     fromFilter: string;
     initialPage: OperationsListPage;
     operationEntityIds: number[];
+    recordType: OperationsListRecordType;
 }) {
     const sentinelRef = useRef<HTMLDivElement | null>(null);
     const [sort, setSort] = useState<OperationsListSort>(
@@ -74,6 +80,7 @@ export function OperationsList({
         queryKey: createOperationsListQueryKey({
             fromFilter,
             operationEntityIds,
+            recordType,
             sort,
         }),
         queryFn: ({ pageParam }) =>
@@ -83,6 +90,7 @@ export function OperationsList({
                 limit: initialPage.pageSize,
                 offset: pageParam,
                 operationEntityIds,
+                recordType,
                 sortKey: sort.key,
             }),
         initialData: shouldUseInitialPage
@@ -146,12 +154,12 @@ export function OperationsList({
             {operationsQuery.isPending ? (
                 <div className="flex items-center justify-center gap-2 p-8 text-muted-foreground">
                     <LoaderSpinner className="size-4 animate-spin" />
-                    <Typography level="body2">Učitavanje radnji</Typography>
+                    <Typography level="body2">Učitavanje zapisa</Typography>
                 </div>
             ) : operationsQuery.isError ? (
                 <div className="p-4">
                     <NoDataPlaceholder>
-                        Nije moguće učitati radnje.
+                        Nije moguće učitati zapise.
                     </NoDataPlaceholder>
                 </div>
             ) : operations.length === 0 ? (

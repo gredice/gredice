@@ -17,7 +17,10 @@ import {
     getOperationsListContext,
     listOperationsPageFromContext,
 } from './operationsListData';
-import { parseOperationsListOperationEntityIds } from './operationsListQuery';
+import {
+    normalizeOperationsListRecordType,
+    parseOperationsListOperationEntityIds,
+} from './operationsListQuery';
 import { SingleOperationCreateModal } from './SingleOperationCreateModal';
 
 export const dynamic = 'force-dynamic';
@@ -63,12 +66,16 @@ export default async function OperationsPage({
     const operationEntityIds = parseOperationsListOperationEntityIds(
         typeof params.operations === 'string' ? params.operations : undefined,
     );
+    const recordType = normalizeOperationsListRecordType(
+        typeof params.type === 'string' ? params.type : undefined,
+    );
     const fromDate = getDateFromTimeFilter(fromFilter);
     const operationsListContext = await getOperationsListContext();
     const initialOperationsPage = await listOperationsPageFromContext({
         context: operationsListContext,
         fromDate,
         operationEntityIds,
+        recordType,
     });
 
     return (
@@ -101,6 +108,7 @@ export default async function OperationsPage({
                         fromFilter={fromFilter}
                         initialPage={initialOperationsPage}
                         operationEntityIds={operationEntityIds}
+                        recordType={recordType}
                     />
                 </CardOverflow>
             </Card>

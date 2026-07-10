@@ -104,6 +104,8 @@ export const KnownPages = {
     Operations: '/admin/operations',
     Operation: (operationId: number) =>
         `/admin/operations/${operationId}` as Route,
+    SowingTask: (raisedBedFieldId: number, plantCycleEventId: number) =>
+        `/admin/operations/sowing/${raisedBedFieldId}/${plantCycleEventId}` as Route,
     Sensors: '/admin/sensors',
     Cache: '/admin/cache',
     Occasions: '/admin/occasions',
