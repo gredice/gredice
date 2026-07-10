@@ -305,7 +305,7 @@ function RaisedBedInfoModalStoryContent() {
             open
             title="Informacije o gredici"
             modal={false}
-            className="overflow-x-hidden md:border-tertiary md:border-b-4"
+            className="overflow-x-hidden md:max-w-4xl md:border-tertiary md:border-b-4"
         >
             <RaisedBedInfo gardenId={garden.id} raisedBed={raisedBed} />
         </Modal>

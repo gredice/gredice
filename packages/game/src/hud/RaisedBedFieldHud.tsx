@@ -116,7 +116,7 @@ export function RaisedBedFieldHud() {
                             }}
                             title="Informacije o gredici"
                             modal={false}
-                            className="overflow-x-hidden"
+                            className="overflow-x-hidden md:max-w-4xl"
                             trigger={
                                 <ButtonGreen
                                     className="min-w-0 flex-1 justify-between rounded-none px-3 !bg-transparent !bg-none !text-green-950 shadow-none hover:!bg-white/30 hover:!text-green-900 dark:!text-lime-50 dark:hover:!bg-white/10 dark:hover:!text-lime-100"
