@@ -1,8 +1,10 @@
 import * as ReactQuery from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { type PropsWithChildren, useMemo } from 'react';
+import { GameFlagsContext } from '../../../packages/game/src/GameFlagsContext';
 import { currentGardenKeys } from '../../../packages/game/src/hooks/useCurrentGarden';
 import { useGardensKeys } from '../../../packages/game/src/hooks/useGardens';
+import { SuncokretChatProvider } from '../../../packages/game/src/hud/SuncokretChatProvider';
 import { WeatherHud } from '../../../packages/game/src/hud/WeatherHud';
 import {
     createGameState,
@@ -196,7 +198,11 @@ function createWeatherHudQueryClient({
 function WeatherHudTestProviders({
     alerts,
     children,
-}: PropsWithChildren<{ alerts?: WeatherHudAlert[] }>) {
+    enableSuncokret = false,
+}: PropsWithChildren<{
+    alerts?: WeatherHudAlert[];
+    enableSuncokret?: boolean;
+}>) {
     const queryClient = useMemo(
         () => createWeatherHudQueryClient({ alerts }),
         [alerts],
@@ -216,7 +222,15 @@ function WeatherHudTestProviders({
         <ReactQuery.QueryClientProvider client={queryClient}>
             <NuqsTestingAdapter>
                 <GameStateContext.Provider value={gameStore}>
-                    {children}
+                    <GameFlagsContext.Provider
+                        value={{
+                            enableSuncokretChatFlag: enableSuncokret,
+                        }}
+                    >
+                        <SuncokretChatProvider>
+                            {children}
+                        </SuncokretChatProvider>
+                    </GameFlagsContext.Provider>
                 </GameStateContext.Provider>
             </NuqsTestingAdapter>
         </ReactQuery.QueryClientProvider>
@@ -224,13 +238,16 @@ function WeatherHudTestProviders({
 }
 
 export function WeatherHudStory({
+    enableSuncokret = false,
     withAlerts = false,
 }: {
+    enableSuncokret?: boolean;
     withAlerts?: boolean;
 } = {}) {
     return (
         <WeatherHudTestProviders
             alerts={withAlerts ? groupedWeatherAlerts : undefined}
+            enableSuncokret={enableSuncokret}
         >
             <div className="relative h-screen w-screen overflow-hidden">
                 <div className="absolute right-2 top-2">

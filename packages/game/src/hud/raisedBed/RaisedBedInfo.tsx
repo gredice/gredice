@@ -8,6 +8,8 @@ import { useState } from 'react';
 import type { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useUpdateRaisedBed } from '../../hooks/useUpdateRaisedBed';
 import { ScrollView } from '../../shared-ui/ScrollView';
+import { SuncokretChatTrigger } from '../SuncokretChatTrigger';
+import { suncokretContextConversationLabel } from '../suncokretChatContext';
 import { RaisedBedInfoTab } from './RaisedBedInfoTab';
 import { RaisedBedOperationHistoryList } from './RaisedBedOperationHistoryList';
 import { RaisedBedOperationsTab } from './RaisedBedOperationsTab';
@@ -26,6 +28,10 @@ export function RaisedBedInfo({
 }) {
     const updateRaisedBed = useUpdateRaisedBed(gardenId, raisedBed.id);
     const [activeTab, setActiveTab] = useState<RaisedBedTab>('diary');
+    const chatUiContext = {
+        surface: 'raised-bed-details' as const,
+        tab: activeTab,
+    };
 
     function handleNameChange(newName: string) {
         updateRaisedBed.mutate({ name: newName });
@@ -49,6 +55,20 @@ export function RaisedBedInfo({
                             className="w-full"
                         />
                     </Stack>
+                    <SuncokretChatTrigger
+                        title="Pitaj Suncokreta o ovoj kartici gredice"
+                        target={{
+                            conversationLabel:
+                                suncokretContextConversationLabel({
+                                    raisedBedName: raisedBed.name,
+                                    uiContext: chatUiContext,
+                                }),
+                            gardenId,
+                            positionIndex: null,
+                            raisedBedId: raisedBed.id,
+                            uiContext: chatUiContext,
+                        }}
+                    />
                 </Row>
             </div>
             <Tabs

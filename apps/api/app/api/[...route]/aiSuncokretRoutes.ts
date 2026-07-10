@@ -1,4 +1,10 @@
 import {
+    suncokretPlantDetailTabs,
+    suncokretRaisedBedDetailTabs,
+    suncokretSettingsSections,
+    suncokretWeatherViews,
+} from '@gredice/js/ai';
+import {
     aiChatRetryAtIso,
     ensureAiChatConversation,
     finalizeAiChatUsage,
@@ -23,6 +29,10 @@ import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import {
+    buildSuncokretFinalAnswerSystemPrompt,
+    buildSuncokretSystemPrompt,
+} from '../../../lib/ai/suncokretContext';
+import {
     estimateSuncokretPromptTokens,
     estimateSuncokretRequestCostMicroUsd,
     getSuncokretModel,
@@ -39,6 +49,7 @@ import {
 const MIN_OUTPUT_TOKENS = 128;
 const MAX_CONTEXT_MESSAGES = 24;
 const MAX_IMAGE_URLS_PER_ANALYSIS = 6;
+const MAX_TOOL_STEPS = 6;
 
 type ChatVariables = AuthVariables;
 
@@ -46,6 +57,27 @@ const FeatureFlagsSchema = z.object({
     enableSuncokretChatFlag: z.boolean().optional().default(false),
     enableSuncokretDebugFlag: z.boolean().optional().default(false),
 });
+
+const SuncokretUiContextSchema = z.discriminatedUnion('surface', [
+    z.object({ surface: z.literal('garden') }),
+    z.object({ surface: z.literal('raised-bed') }),
+    z.object({
+        surface: z.literal('raised-bed-details'),
+        tab: z.enum(suncokretRaisedBedDetailTabs),
+    }),
+    z.object({
+        surface: z.literal('plant-details'),
+        tab: z.enum(suncokretPlantDetailTabs),
+    }),
+    z.object({
+        surface: z.literal('weather'),
+        view: z.enum(suncokretWeatherViews),
+    }),
+    z.object({
+        surface: z.literal('settings'),
+        section: z.enum(suncokretSettingsSections).optional().nullable(),
+    }),
+]);
 
 const ChatBodySchema = z.object({
     id: z.string().optional(),
@@ -55,6 +87,7 @@ const ChatBodySchema = z.object({
     raisedBedId: z.number().int().positive().optional().nullable(),
     positionIndex: z.number().int().min(0).optional().nullable(),
     modelId: z.string().trim().min(1).optional().nullable(),
+    uiContext: SuncokretUiContextSchema.optional().nullable(),
     debug: z.boolean().optional(),
     featureFlags: FeatureFlagsSchema.optional().default({
         enableSuncokretChatFlag: false,
@@ -136,59 +169,41 @@ async function validateGardenContext({
     gardenId?: number | null;
     raisedBedId?: number | null;
 }) {
-    if (gardenId) {
-        const garden = await getGarden(gardenId);
-        if (!garden || garden.accountId !== accountId) {
-            return false;
-        }
+    const [requestedGarden, raisedBed] = await Promise.all([
+        gardenId ? getGarden(gardenId) : null,
+        raisedBedId ? getRaisedBed(raisedBedId) : null,
+    ]);
+
+    if (
+        gardenId &&
+        (!requestedGarden || requestedGarden.accountId !== accountId)
+    ) {
+        return { allowed: false as const };
     }
 
     if (raisedBedId) {
-        const raisedBed = await getRaisedBed(raisedBedId);
         if (
             !raisedBed ||
             raisedBed.accountId !== accountId ||
             (gardenId && raisedBed.gardenId !== gardenId)
         ) {
-            return false;
+            return { allowed: false as const };
         }
     }
 
-    return true;
-}
+    let garden = requestedGarden;
+    if (!garden && raisedBed?.gardenId) {
+        garden = await getGarden(raisedBed.gardenId);
+        if (!garden || garden.accountId !== accountId) {
+            return { allowed: false as const };
+        }
+    }
 
-function systemPrompt(input: {
-    gardenId?: number | null;
-    raisedBedId?: number | null;
-    positionIndex?: number | null;
-}) {
-    return [
-        'Ti si Suncokret, Gredice AI pomoćnik u vrtu.',
-        'Piši isključivo na hrvatskom jeziku, kratko, konkretno i prijateljski.',
-        'Koristi alate za podatke o vrtu, gredicama, biljkama, radnjama i košarici. Ne pogađaj stanje vrta ako ga možeš dohvatiti alatom.',
-        'Ne zovi isti alat s istim argumentima više puta u jednom odgovoru. Nakon dohvaćanja podataka nastavi korisniku završnim odgovorom; ne završavaj razgovor samo na rezultatu alata.',
-        'Kada korisnik pita što treba napraviti ovaj tjedan, odgovori s naslovom "Plan za ovaj tjedan" i 3-6 prioriteta. Za svaki prioritet navedi zašto je važan, kada ga napraviti ako podaci imaju termin i koju Gredice radnju naručiti kada postoji odgovarajuća radnja.',
-        'Korisnik nema nužno fizički pristup gredici. Kada preporuka traži rad na gredici, predloži naručivanje odgovarajuće radnje ili sijanja kroz dostupne alate.',
-        'Ne tvrdi da je radnja, sijanje, izmjena košarice ili checkout izvršen dok alat ne potvrdi rezultat.',
-        'Za kupnju, checkout, promjene košarice, sijanje, zakazivanje, otkazivanje i druge promjene prvo sažmi što želiš napraviti i koristi alat koji traži odobrenje korisnika.',
-        'Ako korisnik traži savjete iz fotografija gredice, prvo pokreni alat analyzeRaisedBedImages i nastavi razgovor iz spremljenog rezultata.',
-        input.gardenId
-            ? `Trenutni vrt u sučelju: ${input.gardenId.toString()}.`
-            : 'Trenutni vrt nije zadan u sučelju.',
-        input.raisedBedId
-            ? `Trenutna gredica u fokusu: ${input.raisedBedId.toString()}.`
-            : 'Trenutna gredica nije zadana u sučelju.',
-        typeof input.positionIndex === 'number'
-            ? `Trenutno polje u fokusu: ${(input.positionIndex + 1).toString()}.`
-            : 'Trenutno polje nije zadano u sučelju.',
-    ].join('\n');
-}
-
-function finalAnswerSystemPrompt(baseSystem: string) {
-    return [
-        baseSystem,
-        'Sada više ne koristi alate. Napiši završni odgovor korisniku iz već dohvaćenih podataka. Ako neki podatak nedostaje, reci to kratko i svejedno daj najbolji praktični plan iz dostupnog konteksta.',
-    ].join('\n\n');
+    return {
+        allowed: true as const,
+        garden,
+        raisedBed,
+    };
 }
 
 async function mcpToken(userId: string, accountId: string) {
@@ -235,6 +250,17 @@ async function callMcpTool({
     }
 
     return payload.result;
+}
+
+async function callPublicJson(url: URL) {
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error(
+            `Public data request failed (${response.status.toString()})`,
+        );
+    }
+
+    return (await response.json()) as unknown;
 }
 
 async function callRaisedBedImageAnalysis({
@@ -284,6 +310,7 @@ async function callRaisedBedImageAnalysis({
 
 function buildTools({
     accountId,
+    contextFarmId,
     contextGardenId,
     contextRaisedBedId,
     origin,
@@ -291,6 +318,7 @@ function buildTools({
     userId,
 }: {
     accountId: string;
+    contextFarmId?: number | null;
     contextGardenId?: number | null;
     contextRaisedBedId?: number | null;
     origin: string;
@@ -299,6 +327,20 @@ function buildTools({
 }) {
     const mcp = (name: string, args: Record<string, unknown>) =>
         callMcpTool({ accountId, args, name, origin, token });
+
+    const raisedBedDetailsTool = tool({
+        description:
+            'Dohvati detalje jedne gredice: polja, nazive biljaka i njihov životni ciklus.',
+        inputSchema: z.object({
+            gardenId: z.number().int().positive().optional(),
+            raisedBedId: z.number().int().positive().optional(),
+        }),
+        execute: ({ gardenId, raisedBedId }) =>
+            mcp('gardens/get-raised-bed-fields', {
+                gardenId: gardenId ?? contextGardenId,
+                raisedBedId: raisedBedId ?? contextRaisedBedId,
+            }),
+    });
 
     return {
         listGardens: tool({
@@ -319,17 +361,34 @@ function buildTools({
                     gardenId: gardenId ?? contextGardenId,
                 }),
         }),
-        getRaisedBedFields: tool({
-            description: 'Dohvati polja, biljke i status jedne gredice.',
+        getRaisedBedFields: raisedBedDetailsTool,
+        getRaisedBedDetails: raisedBedDetailsTool,
+        getCurrentWeather: tool({
+            description:
+                'Dohvati aktualno vrijeme i aktivna vremenska upozorenja za farmu trenutnog vrta.',
+            inputSchema: z.object({}),
+            execute: () => {
+                const url = new URL('/api/data/weather/now', origin);
+                if (contextFarmId) {
+                    url.searchParams.set('farmId', contextFarmId.toString());
+                }
+                return callPublicJson(url);
+            },
+        }),
+        getWeatherForecast: tool({
+            description:
+                'Dohvati vremensku prognozu za planiranje radova u vrtu.',
             inputSchema: z.object({
-                gardenId: z.number().int().positive().optional(),
-                raisedBedId: z.number().int().positive().optional(),
+                days: z.number().int().min(1).max(7).default(5),
             }),
-            execute: ({ gardenId, raisedBedId }) =>
-                mcp('gardens/get-raised-bed-fields', {
-                    gardenId: gardenId ?? contextGardenId,
-                    raisedBedId: raisedBedId ?? contextRaisedBedId,
-                }),
+            execute: async ({ days }) => {
+                const forecast = await callPublicJson(
+                    new URL('/api/data/weather', origin),
+                );
+                return Array.isArray(forecast)
+                    ? { days: forecast.slice(0, days) }
+                    : { days: [] };
+            },
         }),
         listGardenOperations: tool({
             description: 'Dohvati radnje za vrt ili gredicu.',
@@ -483,6 +542,17 @@ const app = new Hono<{ Variables: ChatVariables }>()
             const model = getSuncokretModel(query.modelId);
             const limitState = await getAiChatAccountLimitState(accountId);
 
+            const budget = featureFlags.enableSuncokretDebugFlag
+                ? {
+                      dailyLimitUsd: microUsdToUsd(
+                          limitState.dailyLimitMicroUsd,
+                      ),
+                      usedUsd: microUsdToUsd(limitState.usedMicroUsd),
+                      reservedUsd: microUsdToUsd(limitState.reservedMicroUsd),
+                      remainingUsd: microUsdToUsd(limitState.remainingMicroUsd),
+                  }
+                : undefined;
+
             return context.json({
                 enabled: !disabled,
                 debugEnabled: featureFlags.enableSuncokretDebugFlag,
@@ -493,12 +563,15 @@ const app = new Hono<{ Variables: ChatVariables }>()
                       }
                     : null,
                 limit: {
-                    ...limitState,
-                    dailyLimitUsd: microUsdToUsd(limitState.dailyLimitMicroUsd),
-                    usedUsd: microUsdToUsd(limitState.usedMicroUsd),
-                    reservedUsd: microUsdToUsd(limitState.reservedMicroUsd),
-                    remainingUsd: microUsdToUsd(limitState.remainingMicroUsd),
+                    retryAt: limitState.retryAt,
+                    blockedReason: limitState.blockedReason,
+                    trialChatDaysUsed: limitState.trialChatDaysUsed,
+                    trialChatDaysLimit: limitState.trialChatDaysLimit,
+                    usedInputTokens: limitState.usedInputTokens,
+                    usedOutputTokens: limitState.usedOutputTokens,
+                    usedTotalTokens: limitState.usedTotalTokens,
                 },
+                budget,
             });
         },
     )
@@ -556,12 +629,12 @@ const app = new Hono<{ Variables: ChatVariables }>()
                 return context.json(error.body, error.status);
             }
 
-            const contextAllowed = await validateGardenContext({
+            const gardenContext = await validateGardenContext({
                 accountId: auth.accountId,
                 gardenId: body.gardenId,
                 raisedBedId: body.raisedBedId,
             });
-            if (!contextAllowed) {
+            if (!gardenContext.allowed) {
                 const error = jsonError(
                     'ai_context_forbidden',
                     'Odabrani vrt ili gredica nisu dostupni trenutnom računu.',
@@ -603,10 +676,22 @@ const app = new Hono<{ Variables: ChatVariables }>()
             }
 
             const promptInput = {
-                system: systemPrompt({
-                    gardenId: body.gardenId,
-                    raisedBedId: body.raisedBedId,
+                system: buildSuncokretSystemPrompt({
+                    garden: gardenContext.garden
+                        ? {
+                              id: gardenContext.garden.id,
+                              name: gardenContext.garden.name,
+                          }
+                        : null,
+                    raisedBed: gardenContext.raisedBed
+                        ? {
+                              id: gardenContext.raisedBed.id,
+                              name: gardenContext.raisedBed.name,
+                              status: gardenContext.raisedBed.status,
+                          }
+                        : null,
                     positionIndex: body.positionIndex,
+                    uiContext: body.uiContext,
                 }),
                 messages: body.messages.slice(-MAX_CONTEXT_MESSAGES),
             };
@@ -676,6 +761,7 @@ const app = new Hono<{ Variables: ChatVariables }>()
                     messages: modelMessages,
                     tools: buildTools({
                         accountId: auth.accountId,
+                        contextFarmId: gardenContext.garden?.farmId,
                         contextGardenId: body.gardenId,
                         contextRaisedBedId: body.raisedBedId,
                         origin,
@@ -684,12 +770,14 @@ const app = new Hono<{ Variables: ChatVariables }>()
                     }),
                     stopWhen: stepCountIs(8),
                     prepareStep: ({ stepNumber }) => {
-                        if (stepNumber < 4) {
+                        if (stepNumber < MAX_TOOL_STEPS) {
                             return undefined;
                         }
 
                         return {
-                            system: finalAnswerSystemPrompt(promptInput.system),
+                            system: buildSuncokretFinalAnswerSystemPrompt(
+                                promptInput.system,
+                            ),
                             toolChoice: 'none',
                         };
                     },
@@ -715,17 +803,19 @@ const app = new Hono<{ Variables: ChatVariables }>()
                             pricing: model,
                         });
                         finalized = true;
-                        finishMetadata = debugAllowed
-                            ? {
-                                  suncokret: {
-                                      model: model.id,
-                                      usage,
-                                      cost,
-                                      requestId,
-                                      conversationId,
-                                  },
-                              }
-                            : null;
+                        finishMetadata = {
+                            suncokret: {
+                                usage,
+                                requestId,
+                                ...(debugAllowed
+                                    ? {
+                                          model: model.id,
+                                          cost,
+                                          conversationId,
+                                      }
+                                    : {}),
+                            },
+                        };
                     },
                     onError: async ({ error }) => {
                         if (!finalized) {
@@ -745,10 +835,6 @@ const app = new Hono<{ Variables: ChatVariables }>()
                     originalMessages: body.messages as UIMessage[],
                     consumeSseStream: consumeStream,
                     messageMetadata: ({ part }) => {
-                        if (!debugAllowed) {
-                            return undefined;
-                        }
-
                         if (part.type !== 'finish') {
                             return undefined;
                         }
@@ -756,15 +842,21 @@ const app = new Hono<{ Variables: ChatVariables }>()
                         return (
                             finishMetadata ?? {
                                 suncokret: {
-                                    model: model.id,
                                     requestId,
-                                    conversationId,
                                     usage: usageTokens(part.totalUsage),
-                                    estimated: {
-                                        inputTokens: estimatedInputTokens,
-                                        maxOutputTokens,
-                                        reservedMicroUsd: estimatedCostMicroUsd,
-                                    },
+                                    ...(debugAllowed
+                                        ? {
+                                              model: model.id,
+                                              conversationId,
+                                              estimated: {
+                                                  inputTokens:
+                                                      estimatedInputTokens,
+                                                  maxOutputTokens,
+                                                  reservedMicroUsd:
+                                                      estimatedCostMicroUsd,
+                                              },
+                                          }
+                                        : {}),
                                 },
                             }
                         );
