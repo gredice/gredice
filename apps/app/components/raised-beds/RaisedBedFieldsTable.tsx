@@ -458,8 +458,7 @@ function RaisedBedFieldTile({
             raisedBedId={raisedBedId}
             positionIndex={positionIndex}
             level={field?.weedState?.level ?? 'none'}
-            variant="plain"
-            className={raisedBedFieldCardSelectClassName}
+            className={raisedBedFieldCardChipClassName}
         />
     );
 
