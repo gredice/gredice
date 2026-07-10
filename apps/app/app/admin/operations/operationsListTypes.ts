@@ -23,6 +23,8 @@ export type OperationsListStatus =
     | 'failed'
     | 'canceled';
 
+export type OperationsListRecordType = 'all' | OperationsListOperation['kind'];
+
 export type OperationsListOperationDefinition =
     OperationImageProps['operation'];
 
@@ -55,9 +57,30 @@ export type OperationsListSowingTask = OperationsListRowBase & {
     kind: 'sowing';
     entityId: null;
     entityTypeName: 'sowing' | 'sowingGreenhouse';
+    raisedBedFieldId: number;
     plantSortId: number;
     plantCycleEventId: number;
     sowingLocation: RaisedBedFieldSowingLocation;
+};
+
+export type OperationsListSowingTaskDetails = OperationsListSowingTask & {
+    accountId: string | null;
+    farmId: number | null;
+    gardenId: number | null;
+    raisedBedId: number;
+    plantSortName: string;
+    active: boolean;
+    assignedUsers: Array<{
+        id: string;
+        label: string;
+    }>;
+    assignedBy: string | null;
+    assignedAt: string | null;
+    canceledAt: string | null;
+    cancellationReason: string | null;
+    endedAt: string;
+    eventIds: number[];
+    endedEventId: number;
 };
 
 export type OperationsListOperation =

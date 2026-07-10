@@ -4,10 +4,18 @@ import {
     createOperationsListQueryKey,
     createOperationsListSearchParams,
     filterOperationsByEntityIds,
+    normalizeOperationsListRecordType,
     parseOperationsListOperationEntityIds,
     serializeOperationsListOperationEntityIds,
 } from './operationsListQuery';
 import type { OperationsListSort } from './operationsListTypes';
+
+test('normalizeOperationsListRecordType accepts supported record types', () => {
+    assert.equal(normalizeOperationsListRecordType('operation'), 'operation');
+    assert.equal(normalizeOperationsListRecordType('sowing'), 'sowing');
+    assert.equal(normalizeOperationsListRecordType('unknown'), 'all');
+    assert.equal(normalizeOperationsListRecordType(undefined), 'all');
+});
 
 test('parseOperationsListOperationEntityIds keeps valid unique positive IDs', () => {
     assert.deepEqual(parseOperationsListOperationEntityIds(undefined), []);
@@ -39,7 +47,7 @@ test('filterOperationsByEntityIds filters matching operations and ignores unknow
     ]);
 });
 
-test('operations list search params and query key include operation entity filters', () => {
+test('operations list search params and query key include record type and operation filters', () => {
     const sort: OperationsListSort = {
         key: 'date',
         direction: 'desc',
@@ -50,18 +58,21 @@ test('operations list search params and query key include operation entity filte
         limit: 40,
         offset: 80,
         operationEntityIds: [42, 7],
+        recordType: 'sowing',
         sortKey: sort.key,
     });
 
     assert.equal(params.get('operations'), '42,7');
+    assert.equal(params.get('type'), 'sowing');
     assert.equal(params.get('from'), 'last-14-days');
     assert.equal(params.get('offset'), '80');
     assert.deepEqual(
         createOperationsListQueryKey({
             fromFilter: 'last-14-days',
             operationEntityIds: [42, 7],
+            recordType: 'sowing',
             sort,
         }),
-        ['admin-operations', 'last-14-days', '42,7', 'date', 'desc'],
+        ['admin-operations', 'last-14-days', 'sowing', '42,7', 'date', 'desc'],
     );
 });

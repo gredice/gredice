@@ -69,6 +69,114 @@ test.describe('Garden tab', () => {
         ).toBeDisabled();
     });
 
+    test('requires an active raised bed selection and confirmation before abandonment', async ({
+        mount,
+        page,
+    }) => {
+        const abandonRequests: string[] = [];
+        await page.route(
+            '**/api/gredice/api/gardens/1/raised-beds/*/abandon',
+            async (route) => {
+                if (route.request().method() === 'POST') {
+                    abandonRequests.push(route.request().url());
+                    await route.fulfill({
+                        contentType: 'application/json',
+                        status: 201,
+                        body: JSON.stringify({ id: 99 }),
+                    });
+                    return;
+                }
+
+                await route.fallback();
+            },
+        );
+
+        await mount(<GardenTabStory activeRaisedBedCount={2} />);
+
+        const abandonButton = page.getByRole('button', {
+            name: 'Napusti gredicu',
+        });
+        await expect(abandonButton).toBeDisabled();
+
+        await page.getByLabel('Aktivna gredica').click();
+        await expect(
+            page.getByRole('option', { name: 'Gredica 3' }),
+        ).toHaveCount(0);
+        await page.getByRole('option', { name: 'Gredica 2' }).click();
+        await expect(abandonButton).toBeEnabled();
+
+        await abandonButton.click();
+        const dialog = page.getByRole('alertdialog', {
+            name: 'Napuštanje gredice',
+        });
+        await expect(dialog).toBeVisible();
+        expect(abandonRequests).toHaveLength(0);
+
+        await dialog.getByRole('button', { name: 'Napusti gredicu' }).click();
+
+        await expect.poll(() => abandonRequests.length).toBe(1);
+        expect(abandonRequests[0]).toContain(
+            '/gardens/1/raised-beds/2/abandon',
+        );
+        await expect(
+            page.getByText(
+                'Postupak napuštanja gredice „Gredica 2” je pokrenut.',
+            ),
+        ).toBeVisible();
+    });
+
+    test('disables raised bed abandonment when the garden has no active beds', async ({
+        mount,
+        page,
+    }) => {
+        await mount(<GardenTabStory activeRaisedBedCount={0} />);
+
+        await expect(page.getByLabel('Aktivna gredica')).toBeDisabled();
+        await expect(
+            page.getByText('Vrt nema aktivnih gredica za napuštanje.'),
+        ).toBeVisible();
+        await expect(
+            page.getByRole('button', { name: 'Napusti gredicu' }),
+        ).toBeDisabled();
+    });
+
+    test('shows a recoverable error when raised bed eligibility changes before confirmation', async ({
+        mount,
+        page,
+    }) => {
+        await page.route(
+            '**/api/gredice/api/gardens/1/raised-beds/*/abandon',
+            async (route) => {
+                await route.fulfill({
+                    contentType: 'application/json',
+                    status: 409,
+                    body: JSON.stringify({
+                        error: 'Only active raised beds can be abandoned',
+                    }),
+                });
+            },
+        );
+
+        await mount(<GardenTabStory activeRaisedBedCount={1} />);
+
+        await page.getByLabel('Aktivna gredica').click();
+        await page.getByRole('option', { name: 'Gredica 1' }).click();
+        await page.getByRole('button', { name: 'Napusti gredicu' }).click();
+        await page
+            .getByRole('alertdialog', { name: 'Napuštanje gredice' })
+            .getByRole('button', { name: 'Napusti gredicu' })
+            .click();
+
+        await expect(
+            page.getByText(
+                'Odabrana gredica više nije aktivna. Osvježi popis i odaberi drugu gredicu.',
+            ),
+        ).toBeVisible();
+        await expect(
+            page.getByRole('button', { name: 'Napusti gredicu' }),
+        ).toBeEnabled();
+    });
+
     test('requires typed confirmation before deleting a garden', async ({
         mount,
         page,

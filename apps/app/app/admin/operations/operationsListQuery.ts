@@ -1,6 +1,16 @@
-import type { OperationsListSort } from './operationsListTypes';
+import type {
+    OperationsListRecordType,
+    OperationsListSort,
+} from './operationsListTypes';
 
 export const operationsListOperationEntityParam = 'operations';
+export const operationsListRecordTypeParam = 'type';
+
+export function normalizeOperationsListRecordType(
+    value: string | null | undefined,
+): OperationsListRecordType {
+    return value === 'operation' || value === 'sowing' ? value : 'all';
+}
 
 export function parseOperationsListOperationEntityIds(
     value: string | undefined,
@@ -54,6 +64,7 @@ export function createOperationsListSearchParams({
     limit,
     offset,
     operationEntityIds,
+    recordType,
     sortKey,
 }: {
     direction: OperationsListSort['direction'];
@@ -61,6 +72,7 @@ export function createOperationsListSearchParams({
     limit: number;
     offset: number;
     operationEntityIds: number[];
+    recordType: OperationsListRecordType;
     sortKey: OperationsListSort['key'];
 }) {
     const searchParams = new URLSearchParams({
@@ -80,21 +92,28 @@ export function createOperationsListSearchParams({
         );
     }
 
+    if (recordType !== 'all') {
+        searchParams.set(operationsListRecordTypeParam, recordType);
+    }
+
     return searchParams;
 }
 
 export function createOperationsListQueryKey({
     fromFilter,
     operationEntityIds,
+    recordType,
     sort,
 }: {
     fromFilter: string;
     operationEntityIds: number[];
+    recordType: OperationsListRecordType;
     sort: OperationsListSort;
 }) {
     return [
         'admin-operations',
         fromFilter,
+        recordType,
         serializeOperationsListOperationEntityIds(operationEntityIds),
         sort.key,
         sort.direction,

@@ -2050,6 +2050,35 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         ).toBeLessThanOrEqual(1);
     });
 
+    test('raised bed details modal uses expanded desktop dimensions', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedCloseupHudStory
+                scenario={raisedBedScrollableOperationHistoryScenario()}
+            />,
+        );
+
+        await page.locator('[data-raised-bed-details-trigger]').click();
+
+        const dialog = page.getByRole('dialog');
+        const diaryViewport = dialog
+            .locator('[data-scroll-view-viewport]')
+            .first();
+        await expect(dialog).toBeVisible();
+        await expect(diaryViewport).toBeVisible();
+
+        const dialogBox = await dialog.boundingBox();
+        const diaryViewportBox = await diaryViewport.boundingBox();
+
+        expect(dialogBox?.width).toBeGreaterThanOrEqual(800);
+        expect(dialogBox?.height).toBeLessThanOrEqual(
+            DESKTOP_VIEWPORT.height - 32,
+        );
+        expect(diaryViewportBox?.height).toBeGreaterThan(384);
+    });
+
     test('raised bed diary scroll view uses modal edge scrollbar and overflow fades', async ({
         mount,
         page,
@@ -2338,7 +2367,7 @@ test.describe('RaisedBedFieldItem HUD (mobile)', () => {
         ).toHaveCount(1);
     });
 
-    test('raised bed more action sits in the header above the tabs', async ({
+    test('raised bed header no longer exposes the abandonment action', async ({
         mount,
         page,
     }) => {
@@ -2350,14 +2379,10 @@ test.describe('RaisedBedFieldItem HUD (mobile)', () => {
 
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible();
-        const moreButton = dialog.getByRole('button', {
-            name: 'Prikaži dodatne opcije gredice',
-        });
         const photoButton = dialog.getByRole('button', {
             name: /Fotografije gredice Raised Bed 1/u,
         });
         const tabList = dialog.getByRole('tablist');
-        await expect(moreButton).toBeVisible();
         await expect(photoButton).toBeVisible();
         await expect(photoButton.locator('img')).toBeVisible();
         await expect(
@@ -2367,21 +2392,25 @@ test.describe('RaisedBedFieldItem HUD (mobile)', () => {
 
         await expect
             .poll(async () => {
-                const moreBox = await moreButton.boundingBox();
+                const photoBox = await photoButton.boundingBox();
                 const tabListBox = await tabList.boundingBox();
 
-                if (!moreBox || !tabListBox) {
+                if (!photoBox || !tabListBox) {
                     return Number.POSITIVE_INFINITY;
                 }
 
-                return moreBox.y + moreBox.height - tabListBox.y;
+                return photoBox.y + photoBox.height - tabListBox.y;
             })
             .toBeLessThanOrEqual(0);
 
-        await moreButton.click();
+        await expect(
+            dialog.getByRole('button', {
+                name: 'Prikaži dodatne opcije gredice',
+            }),
+        ).toHaveCount(0);
         await expect(
             dialog.getByRole('button', { name: 'Napusti gredicu' }),
-        ).toBeVisible();
+        ).toHaveCount(0);
     });
 
     test('raised bed info modal cover searches older history pages', async ({

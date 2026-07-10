@@ -24,7 +24,7 @@ import type { AutomationJsonObject } from '../schema';
 import { buildPreviousPlantNames } from './raisedBedImagePlantContext';
 import type { AutomationSourceEvent } from './types';
 
-const AI_MODEL = process.env.AI_GATEWAY_MODEL ?? 'openai/gpt-5.5';
+const AI_MODEL = process.env.AI_GATEWAY_MODEL ?? 'openai/gpt-5.6-terra';
 const RAISED_BED_COLUMNS = 3;
 const REVIEW_REQUESTER = 'automation:raised-bed-image-status-review';
 const MAX_AI_DEBUG_TEXT_LENGTH = 8_000;

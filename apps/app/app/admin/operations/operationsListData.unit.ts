@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
     buildOperationsListPage,
+    findSowingTaskDetails,
     type OperationsListContext,
 } from './operationsListData.ts';
 
@@ -23,8 +24,29 @@ function buildContext(): OperationsListContext {
             { id: 502, information: { label: 'Plijevljenje' } },
         ],
         plantSorts: [
-            { id: 701, information: { name: 'Rajčica' } },
-            { id: 702, information: { name: 'Paprika' } },
+            {
+                id: 701,
+                information: { name: 'Rajčica' },
+                image: {
+                    cover: {
+                        url: 'https://cdn.example.com/plants/tomato.webp',
+                    },
+                },
+            },
+            {
+                id: 702,
+                information: {
+                    name: 'Paprika',
+                    plant: {
+                        id: 801,
+                        image: {
+                            cover: {
+                                url: 'https://cdn.example.com/plants/pepper.webp',
+                            },
+                        },
+                    },
+                },
+            },
             { id: 703, information: { name: 'Salata' } },
         ],
         users: [
@@ -61,7 +83,13 @@ function buildContext(): OperationsListContext {
                                 ),
                                 startedAt: createdAt,
                                 endedAt: new Date('2026-07-04T06:30:00.000Z'),
+                                eventIds: [9001, 9004],
+                                endedEventId: 9004,
                                 assignedUserIds: ['farmer-1'],
+                                assignedBy: 'admin-1',
+                                assignedAt: new Date(
+                                    '2026-07-01T09:00:00.000Z',
+                                ),
                             },
                         ],
                     },
@@ -101,6 +129,9 @@ function buildContext(): OperationsListContext {
                                 stoppedDate: new Date(
                                     '2026-06-11T07:00:00.000Z',
                                 ),
+                                eventIds: [9003, 9005],
+                                endedEventId: 9005,
+                                cancellationReason: 'Promjena plana',
                                 startedAt: new Date('2026-06-09T07:00:00.000Z'),
                                 endedAt: new Date('2026-06-11T07:00:00.000Z'),
                             },
@@ -160,8 +191,13 @@ test('operations list merges operation and sowing rows before sorting, filtering
     assert.equal(sowing.label, 'Sijanje: Rajčica');
     assert.equal(sowing.status, 'completed');
     assert.equal(sowing.entityTypeName, 'sowing');
+    assert.equal(sowing.raisedBedFieldId, 1001);
     assert.equal(sowing.sowingLocation, 'direct');
     assert.deepEqual(sowing.assignedUserNames, ['Farmer One']);
+    assert.equal(
+        sowing.operationDefinition.image?.cover?.url,
+        'https://cdn.example.com/plants/tomato.webp',
+    );
 
     const nextPage = buildOperationsListPage({
         context: buildContext(),
@@ -196,6 +232,10 @@ test('operations list merges operation and sowing rows before sorting, filtering
         nextPage.operations[0]?.label,
         'Sijanje u stakleniku: Paprika',
     );
+    assert.equal(
+        nextPage.operations[0]?.operationDefinition.image?.cover?.url,
+        'https://cdn.example.com/plants/pepper.webp',
+    );
 });
 
 test('operations list entity filter narrows operations and hides sowing rows', () => {
@@ -226,6 +266,76 @@ test('operations list entity filter narrows operations and hides sowing rows', (
     assert.deepEqual(
         page.operations.map((operation) => operation.rowId),
         ['operation:302'],
+    );
+});
+
+test('operations list record type filter selects operation or sowing rows', () => {
+    const operations = [
+        {
+            id: 301,
+            entityId: 501,
+            entityTypeName: 'operation',
+            status: 'planned',
+            timestamp: new Date('2026-07-03T07:00:00.000Z'),
+        },
+        {
+            id: 302,
+            entityId: 502,
+            entityTypeName: 'operation',
+            status: 'planned',
+            timestamp: new Date('2026-07-04T07:00:00.000Z'),
+        },
+    ] satisfies Parameters<typeof buildOperationsListPage>[0]['operations'];
+    const operationPage = buildOperationsListPage({
+        context: buildContext(),
+        fromDate: new Date('2026-07-02T00:00:00.000Z'),
+        operations,
+        recordType: 'operation',
+    });
+    const sowingPage = buildOperationsListPage({
+        context: buildContext(),
+        fromDate: new Date('2026-07-02T00:00:00.000Z'),
+        operations,
+        recordType: 'sowing',
+    });
+
+    assert.deepEqual(
+        operationPage.operations.map((operation) => operation.kind),
+        ['operation', 'operation'],
+    );
+    assert.deepEqual(
+        sowingPage.operations.map((operation) => operation.kind),
+        ['sowing', 'sowing'],
+    );
+});
+
+test('sowing task details expose cycle, assignment, location, and event metadata', () => {
+    const details = findSowingTaskDetails({
+        context: buildContext(),
+        plantCycleEventId: 9001,
+        raisedBedFieldId: 1001,
+    });
+
+    assert.ok(details);
+    assert.equal(details.plantSortName, 'Rajčica');
+    assert.equal(details.accountId, 'account-1');
+    assert.equal(details.farmId, 1);
+    assert.equal(details.gardenId, 10);
+    assert.equal(details.raisedBedId, 100);
+    assert.deepEqual(details.assignedUsers, [
+        { id: 'farmer-1', label: 'Farmer One' },
+    ]);
+    assert.equal(details.assignedBy, 'admin-1');
+    assert.equal(details.assignedAt, '2026-07-01T09:00:00.000Z');
+    assert.deepEqual(details.eventIds, [9001, 9004]);
+    assert.equal(details.endedEventId, 9004);
+    assert.equal(
+        findSowingTaskDetails({
+            context: buildContext(),
+            plantCycleEventId: 9999,
+            raisedBedFieldId: 1001,
+        }),
+        null,
     );
 });
 
