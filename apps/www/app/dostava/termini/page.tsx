@@ -68,7 +68,7 @@ interface SlotRange {
 
 function createSlotRange(): SlotRange {
     const referenceDate = new Date();
-    const fromDate = startOfWeek(referenceDate);
+    const fromDate = new Date(referenceDate);
     const toDate = new Date(referenceDate);
     toDate.setDate(toDate.getDate() + SLOT_RANGE_DAYS);
 
