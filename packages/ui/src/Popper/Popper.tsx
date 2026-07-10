@@ -7,6 +7,7 @@ import { cx } from '../utils';
 export type PopperProps = HTMLAttributes<HTMLDivElement> & {
     trigger?: ReactNode;
     anchor?: ReactNode;
+    virtualRef?: PopoverPrimitive.PopoverAnchorProps['virtualRef'];
     open?: boolean;
     side?: 'top' | 'right' | 'bottom' | 'left';
     sideOffset?: number;
@@ -28,6 +29,7 @@ export function Popper({
     side,
     sideOffset,
     trigger,
+    virtualRef,
     ...rest
 }: PopperProps) {
     const resolvedSideOffset = sideOffset ?? 4;
@@ -41,7 +43,9 @@ export function Popper({
                     {trigger}
                 </PopoverPrimitive.Trigger>
             ) : null}
-            {anchor ? (
+            {virtualRef ? (
+                <PopoverPrimitive.Anchor virtualRef={virtualRef} />
+            ) : anchor ? (
                 <PopoverPrimitive.Anchor asChild>
                     {anchor}
                 </PopoverPrimitive.Anchor>

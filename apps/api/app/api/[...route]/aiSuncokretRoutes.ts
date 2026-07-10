@@ -32,6 +32,7 @@ import {
     buildSuncokretFinalAnswerSystemPrompt,
     buildSuncokretSystemPrompt,
 } from '../../../lib/ai/suncokretContext';
+import { visibleRaisedBedsForGarden } from '../../../lib/ai/suncokretGardenContext';
 import {
     estimateSuncokretPromptTokens,
     estimateSuncokretRequestCostMicroUsd,
@@ -39,6 +40,7 @@ import {
     getSuncokretModelRegistry,
     resolveSuncokretMaxOutputTokens,
 } from '../../../lib/ai/suncokretModels';
+import { buildSuncokretUsageStatus } from '../../../lib/ai/suncokretUsage';
 import { createJwt } from '../../../lib/auth/auth';
 import { authSecurity } from '../../../lib/docs/security';
 import {
@@ -197,6 +199,16 @@ async function validateGardenContext({
         if (!garden || garden.accountId !== accountId) {
             return { allowed: false as const };
         }
+    }
+
+    if (
+        raisedBed &&
+        garden &&
+        !visibleRaisedBedsForGarden(garden).some(
+            (visibleRaisedBed) => visibleRaisedBed.id === raisedBed.id,
+        )
+    ) {
+        return { allowed: false as const };
     }
 
     return {
@@ -567,10 +579,17 @@ const app = new Hono<{ Variables: ChatVariables }>()
                     blockedReason: limitState.blockedReason,
                     trialChatDaysUsed: limitState.trialChatDaysUsed,
                     trialChatDaysLimit: limitState.trialChatDaysLimit,
-                    usedInputTokens: limitState.usedInputTokens,
-                    usedOutputTokens: limitState.usedOutputTokens,
-                    usedTotalTokens: limitState.usedTotalTokens,
                 },
+                usage: buildSuncokretUsageStatus({
+                    dailyLimit: limitState.dailyLimitMicroUsd,
+                    dailyReserved: limitState.reservedMicroUsd,
+                    dailyUsed: limitState.usedMicroUsd,
+                    outputUsageUnitsPerToken:
+                        model?.outputUsdPerMillionTokens ?? 0,
+                    weeklyLimit: limitState.weeklyLimitMicroUsd,
+                    weeklyReserved: limitState.weeklyReservedMicroUsd,
+                    weeklyUsed: limitState.weeklyUsedMicroUsd,
+                }),
                 budget,
             });
         },
@@ -644,12 +663,15 @@ const app = new Hono<{ Variables: ChatVariables }>()
             }
 
             const conversationId = getConversationId(body);
+            const validatedGardenId = gardenContext.garden?.id ?? body.gardenId;
+            const validatedRaisedBedId =
+                gardenContext.raisedBed?.id ?? body.raisedBedId;
             const conversation = await ensureAiChatConversation({
                 id: conversationId,
                 accountId: auth.accountId,
                 userId: auth.userId,
-                gardenId: body.gardenId,
-                raisedBedId: body.raisedBedId,
+                gardenId: validatedGardenId,
+                raisedBedId: validatedRaisedBedId,
                 model: model.id,
                 title: 'Suncokret razgovor',
             });
@@ -762,8 +784,8 @@ const app = new Hono<{ Variables: ChatVariables }>()
                     tools: buildTools({
                         accountId: auth.accountId,
                         contextFarmId: gardenContext.garden?.farmId,
-                        contextGardenId: body.gardenId,
-                        contextRaisedBedId: body.raisedBedId,
+                        contextGardenId: validatedGardenId,
+                        contextRaisedBedId: validatedRaisedBedId,
                         origin,
                         token,
                         userId: auth.userId,
@@ -863,6 +885,7 @@ const app = new Hono<{ Variables: ChatVariables }>()
                     },
                     onFinish: async ({ isAborted, messages }) => {
                         await replaceAiChatMessages({
+                            approvedByUserId: auth.userId,
                             conversationId,
                             messages,
                         });

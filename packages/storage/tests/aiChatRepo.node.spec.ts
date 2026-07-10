@@ -11,6 +11,7 @@ import {
     getAiChatAccountLimitState,
     getUser,
     normalizeAiChatMessagesForStorage,
+    replaceAiChatMessages,
     reserveAiChatUsage,
     SUNCOKRET_ACTIVE_DAILY_LIMIT_MICRO_USD,
     SUNCOKRET_AI_FEATURE,
@@ -121,6 +122,63 @@ test('getAiChatAccountLimitState reports finalized token usage for today', async
     assert.strictEqual(state.usedInputTokens, 800);
     assert.strictEqual(state.usedOutputTokens, 200);
     assert.strictEqual(state.usedTotalTokens, 1_000);
+});
+
+test('getAiChatAccountLimitState reports current ISO week usage', async () => {
+    createTestDb();
+    const { accountId, userId } = await createAiChatTestUser();
+
+    await storage()
+        .insert(aiUsageLedger)
+        .values([
+            {
+                id: randomUUID(),
+                accountId,
+                userId,
+                requestId: randomUUID(),
+                feature: SUNCOKRET_AI_FEATURE,
+                model: 'openai/gpt-5.5',
+                usageDate: '2026-06-14',
+                status: 'finalized',
+                totalMicroUsd: 90,
+            },
+            {
+                id: randomUUID(),
+                accountId,
+                userId,
+                requestId: randomUUID(),
+                feature: SUNCOKRET_AI_FEATURE,
+                model: 'openai/gpt-5.5',
+                usageDate: '2026-06-15',
+                status: 'finalized',
+                totalMicroUsd: 30,
+            },
+            {
+                id: randomUUID(),
+                accountId,
+                userId,
+                requestId: randomUUID(),
+                feature: SUNCOKRET_AI_FEATURE,
+                model: 'openai/gpt-5.5',
+                usageDate: '2026-06-21',
+                status: 'reserved',
+                reservedMicroUsd: 20,
+            },
+        ]);
+
+    const state = await getAiChatAccountLimitState(
+        accountId,
+        new Date('2026-06-21T10:00:00Z'),
+    );
+
+    assert.strictEqual(state.weekStartUsageDate, '2026-06-15');
+    assert.strictEqual(state.weeklyUsedMicroUsd, 30);
+    assert.strictEqual(state.weeklyReservedMicroUsd, 20);
+    assert.strictEqual(state.weeklyLimitMicroUsd, state.dailyLimitMicroUsd * 7);
+    assert.strictEqual(
+        state.weeklyRemainingMicroUsd,
+        state.weeklyLimitMicroUsd - 50,
+    );
 });
 
 test('getAiChatAccountLimitState blocks trial accounts after five used chat days', async () => {
@@ -284,6 +342,49 @@ test('normalizeAiChatMessagesForStorage keeps valid UI message payloads', () => 
     });
     assert.strictEqual(messages[1].role, 'assistant');
     assert.deepStrictEqual(messages[1].parts, []);
+});
+
+test('replaceAiChatMessages records approved tool requests for audit', async () => {
+    createTestDb();
+    const { accountId, userId } = await createAiChatTestUser();
+    const conversationId = randomUUID();
+    await ensureAiChatConversation({
+        id: conversationId,
+        accountId,
+        userId,
+        model: 'openai/gpt-5.5',
+        title: 'Suncokret approval test',
+    });
+
+    await replaceAiChatMessages({
+        approvedByUserId: userId,
+        conversationId,
+        messages: [
+            {
+                id: 'assistant-approval',
+                role: 'assistant',
+                parts: [
+                    {
+                        type: 'tool-addProductToCart',
+                        toolCallId: 'cart-call-1',
+                        state: 'approval-responded',
+                        input: { productId: 'plant-sort-458' },
+                        approval: {
+                            id: 'approval-1',
+                            approved: true,
+                        },
+                    },
+                ],
+            },
+        ],
+    });
+
+    const toolCall = await storage().query.aiChatToolCalls.findFirst();
+    assert.ok(toolCall);
+    assert.strictEqual(toolCall.state, 'approval-responded');
+    assert.strictEqual(toolCall.needsApproval, true);
+    assert.strictEqual(toolCall.approvedByUserId, userId);
+    assert.ok(toolCall.approvedAt instanceof Date);
 });
 
 test('normalizeAiChatMessagesForStorage does not persist provider tool protocol text', () => {

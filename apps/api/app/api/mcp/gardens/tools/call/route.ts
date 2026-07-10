@@ -2,6 +2,7 @@ import { getAccountGardens, getGarden, getOperations } from '@gredice/storage';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { visibleRaisedBedsForGarden } from '../../../../../../lib/ai/suncokretGardenContext';
 import {
     checkMCPPermission,
     createMCPAuthError,
@@ -141,9 +142,10 @@ export async function POST(request: NextRequest) {
                     auth,
                     input.gardenId,
                 );
+                const visibleRaisedBeds = visibleRaisedBedsForGarden(garden);
                 result = {
                     gardenId: garden.id,
-                    items: garden.raisedBeds.map((bed) => ({
+                    items: visibleRaisedBeds.map((bed) => ({
                         id: bed.id,
                         name: bed.name,
                         fieldsCount: bed.fields.length,
@@ -157,7 +159,7 @@ export async function POST(request: NextRequest) {
                     auth,
                     input.gardenId,
                 );
-                const raisedBed = garden.raisedBeds.find(
+                const raisedBed = visibleRaisedBedsForGarden(garden).find(
                     (bed) => bed.id === input.raisedBedId,
                 );
                 if (!raisedBed) {
@@ -186,6 +188,18 @@ export async function POST(request: NextRequest) {
                     auth,
                     input.gardenId,
                 );
+                if (
+                    input.raisedBedId &&
+                    !visibleRaisedBedsForGarden(garden).some(
+                        (raisedBed) => raisedBed.id === input.raisedBedId,
+                    )
+                ) {
+                    throw new MCPToolError(
+                        'Raised bed not found in garden',
+                        400,
+                        -32602,
+                    );
+                }
                 const operations = await getOperations(
                     auth.accountId,
                     garden.id,
@@ -217,12 +231,13 @@ export async function POST(request: NextRequest) {
                     auth,
                     input.gardenId,
                 );
-                const activeFields = garden.raisedBeds
+                const visibleRaisedBeds = visibleRaisedBedsForGarden(garden);
+                const activeFields = visibleRaisedBeds
                     .flatMap((bed) => bed.fields)
                     .filter((f) => f.active && f.plantSortId);
                 result = {
                     gardenId: garden.id,
-                    raisedBedsCount: garden.raisedBeds.length,
+                    raisedBedsCount: visibleRaisedBeds.length,
                     activePlantFieldsCount: activeFields.length,
                     hasLifecycleActivity: activeFields.length > 0,
                 };

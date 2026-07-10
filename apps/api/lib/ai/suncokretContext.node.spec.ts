@@ -20,6 +20,19 @@ test('buildSuncokretSystemPrompt identifies the focused raised bed by name and i
         prompt,
         /Trenutna gredica u fokusu: "Sunčano Sunce" \(ID 34, status active\)\./,
     );
+    assert.match(prompt, /Nemoj ponovno pitati koju gredicu korisnik misli/);
+});
+
+test('buildSuncokretSystemPrompt requires a friendly gender-neutral voice', () => {
+    const prompt = buildSuncokretSystemPrompt({
+        garden: { id: 12, name: 'Aleksov vrt' },
+        uiContext: { surface: 'garden' },
+    });
+
+    assert.match(prompt, /toplo i prijateljski/);
+    assert.match(prompt, /Obraćaj se korisniku s "ti"/);
+    assert.match(prompt, /Uvijek koristi rodno neutralne rečenice/);
+    assert.match(prompt, /trebao\/trebala/);
 });
 
 test('buildSuncokretSystemPrompt describes the active settings section', () => {
