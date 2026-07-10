@@ -8,6 +8,7 @@ import {
 } from 'react';
 import * as THREE from 'three';
 import { useGameState } from '../../useGameState';
+import { createPrecipitationMaterial } from '../PrecipitationMaterial';
 import { useSceneTimeInvalidation, useSceneTimeUniform } from '../SceneTime';
 
 const DEFAULT_FLAKE_SIZE = 0.07;
@@ -228,15 +229,22 @@ const Snow = ({
         });
     }, [camera, gameCamera, updateSnowFieldPosition]);
 
-    const uniforms = useMemo(
-        () => ({
-            uTime: timeUniform,
-            uSize: { value: size },
-            uHeightRange: { value: heightRange },
-            uGroundLevel: { value: groundLevel },
-        }),
+    const material = useMemo(
+        () =>
+            createPrecipitationMaterial({
+                fragmentShader: snowFragmentShader,
+                timeUniform,
+                uniforms: {
+                    uSize: { value: size },
+                    uHeightRange: { value: heightRange },
+                    uGroundLevel: { value: groundLevel },
+                },
+                vertexShader: snowVertexShader,
+            }),
         [groundLevel, heightRange, size, timeUniform],
     );
+
+    useEffect(() => () => material.dispose(), [material]);
 
     return (
         <group ref={fref} name="Weather:Snow">
@@ -246,15 +254,7 @@ const Snow = ({
                 frustumCulled={false}
                 renderOrder={36}
             >
-                <shaderMaterial
-                    depthTest={false}
-                    depthWrite={false}
-                    vertexShader={snowVertexShader}
-                    fragmentShader={snowFragmentShader}
-                    side={THREE.DoubleSide}
-                    transparent
-                    uniforms={uniforms}
-                />
+                <primitive attach="material" object={material} />
             </instancedMesh>
         </group>
     );
