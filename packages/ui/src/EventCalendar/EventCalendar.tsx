@@ -494,7 +494,7 @@ function EventCalendarDayView({
             {visibleEntries.length > 0 ? (
                 <span
                     aria-hidden
-                    className="absolute top-0.5 left-1/2 flex -translate-x-1/2 gap-0.5"
+                    className="absolute top-0.5 left-1/2 z-20 flex -translate-x-1/2 gap-0.5"
                     data-event-calendar-markers
                 >
                     {visibleEntries.map((entry) => {
