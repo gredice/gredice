@@ -1,3 +1,4 @@
+import { suncokretSettingsSections, suncokretUiSurfaces } from '@gredice/js/ai';
 import {
     aiChatRetryAtIso,
     ensureAiChatConversation,
@@ -22,6 +23,7 @@ import {
 import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
+import { buildSuncokretSystemPrompt } from '../../../lib/ai/suncokretContext';
 import {
     estimateSuncokretPromptTokens,
     estimateSuncokretRequestCostMicroUsd,
@@ -55,6 +57,13 @@ const ChatBodySchema = z.object({
     raisedBedId: z.number().int().positive().optional().nullable(),
     positionIndex: z.number().int().min(0).optional().nullable(),
     modelId: z.string().trim().min(1).optional().nullable(),
+    uiContext: z
+        .object({
+            surface: z.enum(suncokretUiSurfaces),
+            section: z.enum(suncokretSettingsSections).optional().nullable(),
+        })
+        .optional()
+        .nullable(),
     debug: z.boolean().optional(),
     featureFlags: FeatureFlagsSchema.optional().default({
         enableSuncokretChatFlag: false,
@@ -136,52 +145,41 @@ async function validateGardenContext({
     gardenId?: number | null;
     raisedBedId?: number | null;
 }) {
-    if (gardenId) {
-        const garden = await getGarden(gardenId);
-        if (!garden || garden.accountId !== accountId) {
-            return false;
-        }
+    const [requestedGarden, raisedBed] = await Promise.all([
+        gardenId ? getGarden(gardenId) : null,
+        raisedBedId ? getRaisedBed(raisedBedId) : null,
+    ]);
+
+    if (
+        gardenId &&
+        (!requestedGarden || requestedGarden.accountId !== accountId)
+    ) {
+        return { allowed: false as const };
     }
 
     if (raisedBedId) {
-        const raisedBed = await getRaisedBed(raisedBedId);
         if (
             !raisedBed ||
             raisedBed.accountId !== accountId ||
             (gardenId && raisedBed.gardenId !== gardenId)
         ) {
-            return false;
+            return { allowed: false as const };
         }
     }
 
-    return true;
-}
+    let garden = requestedGarden;
+    if (!garden && raisedBed?.gardenId) {
+        garden = await getGarden(raisedBed.gardenId);
+        if (!garden || garden.accountId !== accountId) {
+            return { allowed: false as const };
+        }
+    }
 
-function systemPrompt(input: {
-    gardenId?: number | null;
-    raisedBedId?: number | null;
-    positionIndex?: number | null;
-}) {
-    return [
-        'Ti si Suncokret, Gredice AI pomoćnik u vrtu.',
-        'Piši isključivo na hrvatskom jeziku, kratko, konkretno i prijateljski.',
-        'Koristi alate za podatke o vrtu, gredicama, biljkama, radnjama i košarici. Ne pogađaj stanje vrta ako ga možeš dohvatiti alatom.',
-        'Ne zovi isti alat s istim argumentima više puta u jednom odgovoru. Nakon dohvaćanja podataka nastavi korisniku završnim odgovorom; ne završavaj razgovor samo na rezultatu alata.',
-        'Kada korisnik pita što treba napraviti ovaj tjedan, odgovori s naslovom "Plan za ovaj tjedan" i 3-6 prioriteta. Za svaki prioritet navedi zašto je važan, kada ga napraviti ako podaci imaju termin i koju Gredice radnju naručiti kada postoji odgovarajuća radnja.',
-        'Korisnik nema nužno fizički pristup gredici. Kada preporuka traži rad na gredici, predloži naručivanje odgovarajuće radnje ili sijanja kroz dostupne alate.',
-        'Ne tvrdi da je radnja, sijanje, izmjena košarice ili checkout izvršen dok alat ne potvrdi rezultat.',
-        'Za kupnju, checkout, promjene košarice, sijanje, zakazivanje, otkazivanje i druge promjene prvo sažmi što želiš napraviti i koristi alat koji traži odobrenje korisnika.',
-        'Ako korisnik traži savjete iz fotografija gredice, prvo pokreni alat analyzeRaisedBedImages i nastavi razgovor iz spremljenog rezultata.',
-        input.gardenId
-            ? `Trenutni vrt u sučelju: ${input.gardenId.toString()}.`
-            : 'Trenutni vrt nije zadan u sučelju.',
-        input.raisedBedId
-            ? `Trenutna gredica u fokusu: ${input.raisedBedId.toString()}.`
-            : 'Trenutna gredica nije zadana u sučelju.',
-        typeof input.positionIndex === 'number'
-            ? `Trenutno polje u fokusu: ${(input.positionIndex + 1).toString()}.`
-            : 'Trenutno polje nije zadano u sučelju.',
-    ].join('\n');
+    return {
+        allowed: true as const,
+        garden,
+        raisedBed,
+    };
 }
 
 function finalAnswerSystemPrompt(baseSystem: string) {
@@ -483,6 +481,17 @@ const app = new Hono<{ Variables: ChatVariables }>()
             const model = getSuncokretModel(query.modelId);
             const limitState = await getAiChatAccountLimitState(accountId);
 
+            const budget = featureFlags.enableSuncokretDebugFlag
+                ? {
+                      dailyLimitUsd: microUsdToUsd(
+                          limitState.dailyLimitMicroUsd,
+                      ),
+                      usedUsd: microUsdToUsd(limitState.usedMicroUsd),
+                      reservedUsd: microUsdToUsd(limitState.reservedMicroUsd),
+                      remainingUsd: microUsdToUsd(limitState.remainingMicroUsd),
+                  }
+                : undefined;
+
             return context.json({
                 enabled: !disabled,
                 debugEnabled: featureFlags.enableSuncokretDebugFlag,
@@ -493,12 +502,15 @@ const app = new Hono<{ Variables: ChatVariables }>()
                       }
                     : null,
                 limit: {
-                    ...limitState,
-                    dailyLimitUsd: microUsdToUsd(limitState.dailyLimitMicroUsd),
-                    usedUsd: microUsdToUsd(limitState.usedMicroUsd),
-                    reservedUsd: microUsdToUsd(limitState.reservedMicroUsd),
-                    remainingUsd: microUsdToUsd(limitState.remainingMicroUsd),
+                    retryAt: limitState.retryAt,
+                    blockedReason: limitState.blockedReason,
+                    trialChatDaysUsed: limitState.trialChatDaysUsed,
+                    trialChatDaysLimit: limitState.trialChatDaysLimit,
+                    usedInputTokens: limitState.usedInputTokens,
+                    usedOutputTokens: limitState.usedOutputTokens,
+                    usedTotalTokens: limitState.usedTotalTokens,
                 },
+                budget,
             });
         },
     )
@@ -556,12 +568,12 @@ const app = new Hono<{ Variables: ChatVariables }>()
                 return context.json(error.body, error.status);
             }
 
-            const contextAllowed = await validateGardenContext({
+            const gardenContext = await validateGardenContext({
                 accountId: auth.accountId,
                 gardenId: body.gardenId,
                 raisedBedId: body.raisedBedId,
             });
-            if (!contextAllowed) {
+            if (!gardenContext.allowed) {
                 const error = jsonError(
                     'ai_context_forbidden',
                     'Odabrani vrt ili gredica nisu dostupni trenutnom računu.',
@@ -603,10 +615,22 @@ const app = new Hono<{ Variables: ChatVariables }>()
             }
 
             const promptInput = {
-                system: systemPrompt({
-                    gardenId: body.gardenId,
-                    raisedBedId: body.raisedBedId,
+                system: buildSuncokretSystemPrompt({
+                    garden: gardenContext.garden
+                        ? {
+                              id: gardenContext.garden.id,
+                              name: gardenContext.garden.name,
+                          }
+                        : null,
+                    raisedBed: gardenContext.raisedBed
+                        ? {
+                              id: gardenContext.raisedBed.id,
+                              name: gardenContext.raisedBed.name,
+                              status: gardenContext.raisedBed.status,
+                          }
+                        : null,
                     positionIndex: body.positionIndex,
+                    uiContext: body.uiContext,
                 }),
                 messages: body.messages.slice(-MAX_CONTEXT_MESSAGES),
             };
@@ -715,17 +739,19 @@ const app = new Hono<{ Variables: ChatVariables }>()
                             pricing: model,
                         });
                         finalized = true;
-                        finishMetadata = debugAllowed
-                            ? {
-                                  suncokret: {
-                                      model: model.id,
-                                      usage,
-                                      cost,
-                                      requestId,
-                                      conversationId,
-                                  },
-                              }
-                            : null;
+                        finishMetadata = {
+                            suncokret: {
+                                usage,
+                                requestId,
+                                ...(debugAllowed
+                                    ? {
+                                          model: model.id,
+                                          cost,
+                                          conversationId,
+                                      }
+                                    : {}),
+                            },
+                        };
                     },
                     onError: async ({ error }) => {
                         if (!finalized) {
@@ -745,10 +771,6 @@ const app = new Hono<{ Variables: ChatVariables }>()
                     originalMessages: body.messages as UIMessage[],
                     consumeSseStream: consumeStream,
                     messageMetadata: ({ part }) => {
-                        if (!debugAllowed) {
-                            return undefined;
-                        }
-
                         if (part.type !== 'finish') {
                             return undefined;
                         }
@@ -756,15 +778,21 @@ const app = new Hono<{ Variables: ChatVariables }>()
                         return (
                             finishMetadata ?? {
                                 suncokret: {
-                                    model: model.id,
                                     requestId,
-                                    conversationId,
                                     usage: usageTokens(part.totalUsage),
-                                    estimated: {
-                                        inputTokens: estimatedInputTokens,
-                                        maxOutputTokens,
-                                        reservedMicroUsd: estimatedCostMicroUsd,
-                                    },
+                                    ...(debugAllowed
+                                        ? {
+                                              model: model.id,
+                                              conversationId,
+                                              estimated: {
+                                                  inputTokens:
+                                                      estimatedInputTokens,
+                                                  maxOutputTokens,
+                                                  reservedMicroUsd:
+                                                      estimatedCostMicroUsd,
+                                              },
+                                          }
+                                        : {}),
                                 },
                             }
                         );

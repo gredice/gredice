@@ -35,6 +35,34 @@ const INTERNAL_TERM_REPLACEMENTS = new Map([
     ['weedProposals', 'prijedlozi za korov'],
 ]);
 
+export const suncokretUiSurfaces = [
+    'garden',
+    'raised-bed',
+    'settings',
+] as const;
+
+export const suncokretSettingsSections = [
+    'generalno',
+    'postignuca',
+    'suncokreti',
+    'dostava',
+    'obavijesti',
+    'preporuke',
+    'vrt',
+    'korisnici',
+    'igra',
+    'sigurnost',
+    'zvuk',
+] as const;
+
+export type SuncokretSettingsSection =
+    (typeof suncokretSettingsSections)[number];
+
+export type SuncokretUiContext =
+    | { surface: 'garden' }
+    | { surface: 'raised-bed' }
+    | { surface: 'settings'; section?: SuncokretSettingsSection | null };
+
 function protectMarkdownLinkDestinations(value: string) {
     const protectedSegments: string[] = [];
     const text = value.replace(MARKDOWN_LINK_DESTINATION_PATTERN, (segment) => {

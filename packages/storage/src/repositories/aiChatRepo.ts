@@ -42,6 +42,9 @@ export type AiChatLimitState = {
     usedMicroUsd: number;
     reservedMicroUsd: number;
     remainingMicroUsd: number;
+    usedInputTokens: number;
+    usedOutputTokens: number;
+    usedTotalTokens: number;
     trialChatDaysUsed: number;
     trialChatDaysLimit: number;
     disabled: boolean;
@@ -303,7 +306,10 @@ export async function getAiChatAccountLimitState(
         columns: {
             usageDate: true,
             status: true,
+            inputTokens: true,
+            outputTokens: true,
             reservedMicroUsd: true,
+            totalTokens: true,
             totalMicroUsd: true,
         },
         where: and(
@@ -325,6 +331,21 @@ export async function getAiChatAccountLimitState(
             statusCountsAsReserved(row.status)
                 ? sum + row.reservedMicroUsd
                 : sum,
+        0,
+    );
+    const usedInputTokens = todayRows.reduce(
+        (sum, row) =>
+            statusCountsAsFinalized(row.status) ? sum + row.inputTokens : sum,
+        0,
+    );
+    const usedOutputTokens = todayRows.reduce(
+        (sum, row) =>
+            statusCountsAsFinalized(row.status) ? sum + row.outputTokens : sum,
+        0,
+    );
+    const usedTotalTokens = todayRows.reduce(
+        (sum, row) =>
+            statusCountsAsFinalized(row.status) ? sum + row.totalTokens : sum,
         0,
     );
     const finalizedUsageDates = new Set(
@@ -370,6 +391,9 @@ export async function getAiChatAccountLimitState(
             0,
             dailyLimitMicroUsd - spentOrReservedMicroUsd,
         ),
+        usedInputTokens,
+        usedOutputTokens,
+        usedTotalTokens,
         trialChatDaysUsed,
         trialChatDaysLimit,
         disabled,
