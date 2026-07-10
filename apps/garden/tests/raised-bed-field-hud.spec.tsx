@@ -1562,6 +1562,84 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         ).toBeVisible();
     });
 
+    test('closeup HUD positions the contextual Suncokret trigger left of the raised-bed title', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedCloseupHudStory
+                enableSuncokret
+                scenario={plantedGrowingWithOperationHistoryScenario()}
+            />,
+        );
+
+        const trigger = page.getByRole('button', {
+            name: 'Pitaj Suncokreta o ovoj gredici',
+        });
+        const titleCluster = page.locator('[data-raised-bed-title-cluster]');
+        await expect(trigger).toBeVisible();
+        await expect(titleCluster).toBeVisible();
+
+        const triggerBox = await trigger.boundingBox();
+        const titleBox = await titleCluster.boundingBox();
+        expect(triggerBox).not.toBeNull();
+        expect(titleBox).not.toBeNull();
+        expect((triggerBox?.x ?? 0) + (triggerBox?.width ?? 0)).toBeLessThan(
+            titleBox?.x ?? 0,
+        );
+    });
+
+    test('raised-bed detail tabs expose a contextual Suncokret trigger', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedInfoModalStory
+                enableSuncokret
+                scenario={plantedGrowingWithOperationHistoryScenario()}
+            />,
+        );
+
+        const dialog = page.getByRole('dialog');
+        await expect(
+            dialog.getByRole('button', {
+                name: 'Pitaj Suncokreta o ovoj kartici gredice',
+            }),
+        ).toBeVisible();
+        await dialog.getByRole('tab', { name: /Radnje/ }).click();
+        await expect(
+            dialog.getByRole('button', {
+                name: 'Pitaj Suncokreta o ovoj kartici gredice',
+            }),
+        ).toBeVisible();
+    });
+
+    test('plant detail tabs expose a contextual Suncokret trigger', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldHudStory
+                enableSuncokret
+                scenario={plantedGrowingWithOperationHistoryScenario()}
+                positionIndex={0}
+            />,
+        );
+        await page.getByRole('button').first().click();
+        const dialog = page.getByRole('dialog');
+        await expect(
+            dialog.getByRole('button', {
+                name: 'Pitaj Suncokreta o ovoj kartici biljke',
+            }),
+        ).toBeVisible();
+        await dialog.getByRole('tab', { name: /Dnevnik/ }).click();
+        await expect(
+            dialog.getByRole('button', {
+                name: 'Pitaj Suncokreta o ovoj kartici biljke',
+            }),
+        ).toBeVisible();
+    });
+
     test('closeup HUD photo AI action keeps dark mode button colors', async ({
         mount,
         page,

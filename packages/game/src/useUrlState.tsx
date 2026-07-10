@@ -79,6 +79,10 @@ export function useCurrentGardenIdParam() {
     return useQueryState('vrt', parseAsInteger);
 }
 
+export function useOverviewSectionParam() {
+    return useQueryState('pregled', parseAsString);
+}
+
 // Serializer for building URLs with query params
 export const urlStateSerializer = createSerializer({
     kosarica: parseAsBoolean,
@@ -90,4 +94,5 @@ export const urlStateSerializer = createSerializer({
     polje: parseAsInteger,
     'poklon-kutija': parseAsString,
     vrt: parseAsInteger,
+    pregled: parseAsString,
 });

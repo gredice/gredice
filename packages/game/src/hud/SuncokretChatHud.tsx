@@ -2,6 +2,7 @@
 
 import { useChat } from '@ai-sdk/react';
 import { getBrowserGrediceAppOrigin } from '@gredice/client';
+import { sanitizeSuncokretAssistantText } from '@gredice/js/ai';
 import { Button } from '@gredice/ui/Button';
 import {
     ChatBubble,
@@ -26,19 +27,32 @@ import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import { DefaultChatTransport, type UIMessage } from 'ai';
 import Image from 'next/image';
-import { type FormEvent, useEffect, useMemo, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useGameFlags } from '../GameFlagsContext';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useGameState } from '../useGameState';
+import { useOverviewSectionParam } from '../useUrlState';
 import { findRaisedBedByBlockId } from '../utils/raisedBedBlocks';
+import { HudCard } from './components/HudCard';
+import { useSuncokretChat } from './SuncokretChatProvider';
+import { SuncokretChatTrigger } from './SuncokretChatTrigger';
+import {
+    formatSuncokretTokenUsage,
+    resolveSuncokretUiContext,
+    resolveSuncokretVisibleUsage,
+    suncokretContextSuggestions,
+    suncokretConversationLabel,
+    suncokretUsageFromMetadata,
+} from './suncokretChatContext';
 
 type SuncokretLimit = {
-    dailyLimitUsd: number;
-    remainingUsd: number;
     retryAt: string;
     blockedReason: string | null;
     trialChatDaysUsed: number;
     trialChatDaysLimit: number;
+    usedInputTokens: number;
+    usedOutputTokens: number;
+    usedTotalTokens: number;
 };
 
 type SuncokretStatus = {
@@ -106,7 +120,12 @@ function toolActivityLabel(name: string) {
         case 'listRaisedBeds':
             return 'Provjeravam gredice';
         case 'getRaisedBedFields':
+        case 'getRaisedBedDetails':
             return 'Provjeravam polja u gredici';
+        case 'getCurrentWeather':
+            return 'Provjeravam aktualno vrijeme';
+        case 'getWeatherForecast':
+            return 'Provjeravam vremensku prognozu';
         case 'listGardenOperations':
             return 'Provjeravam radnje';
         case 'getRaisedBedAiHistory':
@@ -190,16 +209,6 @@ function debugJson(value: unknown) {
     }
 }
 
-function formatUsd(value: number | null | undefined) {
-    if (value == null) return '-';
-    return new Intl.NumberFormat('hr-HR', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: value > 0 && value < 0.01 ? 4 : 2,
-    }).format(value);
-}
-
 function formatRetryAt(value: string | null | undefined) {
     if (!value) return 'sutra';
     const date = new Date(value);
@@ -208,6 +217,17 @@ function formatRetryAt(value: string | null | undefined) {
         dateStyle: 'medium',
         timeStyle: 'short',
     }).format(date);
+}
+
+function messageTextContent(message: UIMessage | undefined) {
+    if (!message) {
+        return '';
+    }
+
+    return message.parts
+        .map((part) => textPart(part) ?? '')
+        .join('')
+        .trim();
 }
 
 function suncokretFlagParams({
@@ -231,12 +251,14 @@ function MessageText({
     children: string;
     isStreaming: boolean;
 }) {
+    const safeText = sanitizeSuncokretAssistantText(children);
+
     return (
         <ChatMessageResponse
             className="text-sm leading-relaxed"
             isAnimating={isStreaming}
         >
-            {children}
+            {safeText}
         </ChatMessageResponse>
     );
 }
@@ -353,11 +375,17 @@ function toolActivityScope(parts: Record<string, unknown>[]) {
                 'listGardens',
                 'listRaisedBeds',
                 'getRaisedBedFields',
+                'getRaisedBedDetails',
                 'listGardenOperations',
                 'getRaisedBedAiHistory',
             ].includes(name),
         )
             ? 'vrt'
+            : null,
+        names.some((name) =>
+            ['getCurrentWeather', 'getWeatherForecast'].includes(name),
+        )
+            ? 'vrijeme'
             : null,
         names.some((name) =>
             [
@@ -577,11 +605,16 @@ export function SuncokretChatHud() {
     const flags = useGameFlags();
     const enabled = Boolean(flags.enableSuncokretChatFlag);
     const debug = Boolean(flags.enableSuncokretDebugFlag);
-    const [open, setOpen] = useState(false);
+    const chat = useSuncokretChat();
+    const open = chat?.open ?? false;
     const [input, setInput] = useState('');
     const [statusInfo, setStatusInfo] = useState<SuncokretStatus | null>(null);
     const [models, setModels] = useState<SuncokretModel[]>([]);
     const [modelId, setModelId] = useState<string | null>(null);
+    const [dailyUsageTokens, setDailyUsageTokens] = useState<number | null>(
+        null,
+    );
+    const appliedUsageRequestIds = useRef(new Set<string>());
     const chatId = useMemo(randomChatId, []);
     const apiOrigin = getBrowserGrediceAppOrigin('api');
     const featureFlags = useMemo(
@@ -596,12 +629,37 @@ export function SuncokretChatHud() {
         [debug, enabled],
     );
     const { data: currentGarden } = useCurrentGarden();
+    const [settingsSection] = useOverviewSectionParam();
+    const view = useGameState((state) => state.view);
     const closeupBlock = useGameState((state) => state.closeupBlock);
     const raisedBed = closeupBlock
         ? findRaisedBedByBlockId(currentGarden, closeupBlock.id)
         : null;
-    const gardenId = currentGarden?.id ?? null;
-    const raisedBedId = raisedBed?.id ?? null;
+    const defaultGardenId = currentGarden?.id ?? null;
+    const defaultRaisedBedId = raisedBed?.id ?? null;
+    const defaultUiContext = useMemo(
+        () =>
+            resolveSuncokretUiContext({
+                raisedBedName: raisedBed?.name,
+                settingsSection,
+            }),
+        [raisedBed?.name, settingsSection],
+    );
+    const uiContext = chat?.target?.uiContext ?? defaultUiContext;
+    const gardenId = chat?.target ? chat.target.gardenId : defaultGardenId;
+    const contextRaisedBedId = chat?.target
+        ? chat.target.raisedBedId
+        : defaultUiContext.surface === 'raised-bed'
+          ? defaultRaisedBedId
+          : null;
+    const positionIndex = chat?.target?.positionIndex ?? null;
+    const conversationLabel =
+        chat?.target?.conversationLabel ??
+        suncokretConversationLabel({
+            gardenName: currentGarden?.name,
+            raisedBedName: raisedBed?.name,
+            settingsSection,
+        });
 
     const transport = useMemo(
         () =>
@@ -614,15 +672,26 @@ export function SuncokretChatHud() {
                         conversationId: id,
                         messages,
                         gardenId,
-                        raisedBedId,
+                        raisedBedId: contextRaisedBedId,
+                        positionIndex,
                         modelId,
+                        uiContext,
                         debug,
                         featureFlags,
                     },
                     credentials: 'include',
                 }),
             }),
-        [apiOrigin, debug, featureFlags, gardenId, modelId, raisedBedId],
+        [
+            apiOrigin,
+            contextRaisedBedId,
+            debug,
+            featureFlags,
+            gardenId,
+            modelId,
+            positionIndex,
+            uiContext,
+        ],
     );
 
     const { addToolApprovalResponse, error, messages, sendMessage, status } =
@@ -635,34 +704,60 @@ export function SuncokretChatHud() {
     const loading = status === 'submitted' || status === 'streaming';
 
     useEffect(() => {
-        if (!enabled || !open) {
+        if (!enabled || !open || status !== 'ready') {
             return;
         }
 
         let cancelled = false;
-        void Promise.all([
-            fetch(`${apiOrigin}/api/ai/suncokret/status?${featureFlagQuery}`, {
-                credentials: 'include',
-            }).then((response) => response.json() as Promise<SuncokretStatus>),
-            fetch(`${apiOrigin}/api/ai/suncokret/models?${featureFlagQuery}`, {
-                credentials: 'include',
-            }).then(
-                (response) =>
-                    response.json() as Promise<{ models?: SuncokretModel[] }>,
-            ),
-        ])
-            .then(([nextStatus, modelPayload]) => {
+        void fetch(`${apiOrigin}/api/ai/suncokret/status?${featureFlagQuery}`, {
+            credentials: 'include',
+        })
+            .then((response) => response.json() as Promise<SuncokretStatus>)
+            .then((nextStatus) => {
                 if (cancelled) return;
                 setStatusInfo(nextStatus);
-                const nextModels = modelPayload.models ?? [];
-                setModels(nextModels);
-                setModelId(
-                    (current) => current ?? nextStatus.model?.id ?? null,
+                setDailyUsageTokens(nextStatus.limit.usedTotalTokens);
+                setModelId((current) =>
+                    debug ? (current ?? nextStatus.model?.id ?? null) : null,
                 );
             })
             .catch(() => {
                 if (!cancelled) {
                     setStatusInfo(null);
+                    setDailyUsageTokens(null);
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [apiOrigin, debug, enabled, featureFlagQuery, open, status]);
+
+    useEffect(() => {
+        if (!debug) {
+            setModels([]);
+            setModelId(null);
+            return;
+        }
+        if (!enabled || !open) {
+            return;
+        }
+
+        let cancelled = false;
+        void fetch(`${apiOrigin}/api/ai/suncokret/models?${featureFlagQuery}`, {
+            credentials: 'include',
+        })
+            .then(
+                (response) =>
+                    response.json() as Promise<{ models?: SuncokretModel[] }>,
+            )
+            .then((modelPayload) => {
+                if (!cancelled) {
+                    setModels(modelPayload.models ?? []);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) {
                     setModels([]);
                 }
             });
@@ -670,9 +765,27 @@ export function SuncokretChatHud() {
         return () => {
             cancelled = true;
         };
-    }, [apiOrigin, enabled, featureFlagQuery, open]);
+    }, [apiOrigin, debug, enabled, featureFlagQuery, open]);
 
-    if (!enabled) {
+    useEffect(() => {
+        let tokenDelta = 0;
+
+        for (const message of messages) {
+            const usage = suncokretUsageFromMetadata(message.metadata);
+            if (!usage || appliedUsageRequestIds.current.has(usage.requestId)) {
+                continue;
+            }
+
+            appliedUsageRequestIds.current.add(usage.requestId);
+            tokenDelta += usage.totalTokens;
+        }
+
+        if (tokenDelta > 0) {
+            setDailyUsageTokens((current) => (current ?? 0) + tokenDelta);
+        }
+    }, [messages]);
+
+    if (!enabled || !chat) {
         return null;
     }
 
@@ -692,25 +805,52 @@ export function SuncokretChatHud() {
 
     const limit = statusInfo?.limit;
     const blocked = Boolean(limit?.blockedReason);
+    const streamingMessage =
+        status === 'streaming' &&
+        messages[messages.length - 1]?.role === 'assistant'
+            ? messages[messages.length - 1]
+            : undefined;
+    const visibleUsage = resolveSuncokretVisibleUsage({
+        dailyUsageTokens,
+        streamingText: messageTextContent(streamingMessage),
+    });
+    const contextSuggestions = suncokretContextSuggestions(uiContext);
+    const isCloseup = view === 'closeup';
 
     return (
         <>
-            <div className="pointer-events-auto">
-                <IconButton
-                    title="Suncokret AI"
-                    variant="plain"
-                    onClick={() => setOpen((current) => !current)}
-                    className={cx(
-                        'rounded-full border border-amber-200 bg-background/95 shadow-lg hover:bg-amber-50 dark:border-amber-900 dark:hover:bg-amber-950',
-                        open && 'bg-amber-50 dark:bg-amber-950',
-                    )}
+            {!isCloseup && (
+                <HudCard
+                    open
+                    position="floating"
+                    className="static border-amber-400 bg-amber-100 p-0 dark:border-amber-700 dark:bg-amber-950"
+                    data-suncokret-hud-trigger
                 >
-                    <Sun className="size-5 text-amber-500" />
-                </IconButton>
-            </div>
+                    <SuncokretChatTrigger
+                        action="toggle-default"
+                        title="Suncokret AI"
+                        variant="hud"
+                    />
+                </HudCard>
+            )}
             {open && (
-                <div className="pointer-events-auto fixed inset-x-2 bottom-2 z-50 flex justify-center md:inset-auto md:right-2 md:bottom-14 md:block">
-                    <div className="flex h-[min(680px,calc(100dvh-1rem))] w-full max-w-[440px] flex-col overflow-hidden rounded-2xl border border-amber-200/80 border-b-4 border-b-emerald-700 bg-background/98 shadow-2xl shadow-foreground/15 backdrop-blur-sm dark:border-amber-900/80 md:h-[min(720px,calc(100dvh-5rem))]">
+                <div
+                    className={cx(
+                        'pointer-events-auto fixed inset-x-2 bottom-2 z-50 flex justify-center md:inset-auto md:bottom-2 md:block',
+                        isCloseup
+                            ? 'md:right-auto md:left-2'
+                            : 'md:right-2 md:left-auto',
+                    )}
+                    data-suncokret-placement={
+                        isCloseup ? 'bottom-left' : 'bottom-right'
+                    }
+                >
+                    <div
+                        aria-label="Razgovor sa Suncokretom"
+                        className="flex h-[min(680px,calc(100dvh-1rem))] w-full max-w-[440px] flex-col overflow-hidden rounded-2xl border border-amber-200/80 border-b-4 border-b-amber-400 bg-background/98 shadow-2xl shadow-foreground/15 backdrop-blur-sm dark:border-amber-900/80 dark:border-b-amber-700 md:h-[min(720px,calc(100dvh-5rem))]"
+                        data-suncokret-chat
+                        role="dialog"
+                    >
                         <Row
                             justifyContent="space-between"
                             className="border-b border-amber-200/70 bg-amber-50/80 px-3.5 py-3 dark:border-amber-900/70 dark:bg-amber-950/30"
@@ -726,36 +866,24 @@ export function SuncokretChatHud() {
                                     />
                                 </span>
                                 <Stack spacing={0} className="min-w-0">
-                                    <Row spacing={1.5}>
-                                        <Typography
-                                            level="body2"
-                                            semiBold
-                                            noWrap
-                                        >
-                                            Suncokret
-                                        </Typography>
-                                        <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
-                                            AI vrtni pomoćnik
-                                        </span>
-                                    </Row>
+                                    <Typography level="body2" semiBold noWrap>
+                                        Suncokret
+                                    </Typography>
                                     <Typography
                                         level="body3"
                                         className="text-muted-foreground"
                                         noWrap
                                     >
                                         <span className="mr-1.5 inline-block size-1.5 rounded-full bg-emerald-500 align-middle" />
-                                        Razgovor za{' '}
-                                        {raisedBed
-                                            ? raisedBed.name
-                                            : (currentGarden?.name ??
-                                              'moj vrt')}
+                                        Razgovor za {conversationLabel}
                                     </Typography>
                                 </Stack>
                             </Row>
                             <Row spacing={1}>
-                                {models.length > 1 && (
+                                {debug && models.length > 1 && (
                                     <select
                                         aria-label="AI model"
+                                        data-suncokret-model-picker
                                         value={modelId ?? ''}
                                         onChange={(event) =>
                                             setModelId(
@@ -777,7 +905,7 @@ export function SuncokretChatHud() {
                                 <IconButton
                                     title="Zatvori"
                                     variant="plain"
-                                    onClick={() => setOpen(false)}
+                                    onClick={chat.closeChat}
                                 >
                                     <Close className="size-4" />
                                 </IconButton>
@@ -810,47 +938,28 @@ export function SuncokretChatHud() {
                                         </Typography>
                                     </Stack>
                                     <Stack spacing={2} className="w-full">
-                                        <Button
-                                            fullWidth
-                                            size="sm"
-                                            variant="outlined"
-                                            className="rounded-full border-amber-200 bg-amber-50/60 hover:bg-amber-100 dark:border-amber-900 dark:bg-amber-950/40 dark:hover:bg-amber-950"
-                                            onClick={() =>
-                                                sendPrompt(
-                                                    raisedBed
-                                                        ? 'Sažmi stanje ove gredice i predloži sljedeće korake.'
-                                                        : 'Sažmi stanje mog vrta i predloži sljedeće korake.',
-                                                )
-                                            }
-                                        >
-                                            Sažmi stanje gredice
-                                        </Button>
-                                        <Button
-                                            fullWidth
-                                            size="sm"
-                                            variant="outlined"
-                                            className="rounded-full"
-                                            onClick={() =>
-                                                sendPrompt(
-                                                    'Koje radnje su najvažnije ovaj tjedan?',
-                                                )
-                                            }
-                                        >
-                                            Složi plan za ovaj tjedan
-                                        </Button>
-                                        <Button
-                                            fullWidth
-                                            size="sm"
-                                            variant="outlined"
-                                            className="rounded-full"
-                                            onClick={() =>
-                                                sendPrompt(
-                                                    'Što mogu posaditi sljedeće?',
-                                                )
-                                            }
-                                        >
-                                            Predloži što posaditi
-                                        </Button>
+                                        {contextSuggestions.map(
+                                            (suggestion, index) => (
+                                                <Button
+                                                    key={suggestion.prompt}
+                                                    fullWidth
+                                                    size="sm"
+                                                    variant="outlined"
+                                                    className={cx(
+                                                        'rounded-full',
+                                                        index === 0 &&
+                                                            'border-amber-200 bg-amber-50/60 hover:bg-amber-100 dark:border-amber-900 dark:bg-amber-950/40 dark:hover:bg-amber-950',
+                                                    )}
+                                                    onClick={() =>
+                                                        sendPrompt(
+                                                            suggestion.prompt,
+                                                        )
+                                                    }
+                                                >
+                                                    {suggestion.label}
+                                                </Button>
+                                            ),
+                                        )}
                                     </Stack>
                                 </Stack>
                             }
@@ -941,14 +1050,17 @@ export function SuncokretChatHud() {
                                     justifyContent="space-between"
                                     className="border-t border-border/60 px-2 py-2"
                                 >
-                                    <Typography
-                                        level="body3"
-                                        className="px-1 text-muted-foreground"
+                                    <span
+                                        aria-live="polite"
+                                        className="px-1 text-xs text-muted-foreground"
                                     >
-                                        {limit
-                                            ? `Danas preostalo ${formatUsd(limit.remainingUsd)}`
+                                        {visibleUsage
+                                            ? formatSuncokretTokenUsage(
+                                                  visibleUsage.tokens,
+                                                  visibleUsage.approximate,
+                                              )
                                             : 'Enter šalje poruku'}
-                                    </Typography>
+                                    </span>
                                     <IconButton
                                         title={
                                             loading

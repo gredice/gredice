@@ -24,6 +24,7 @@ import { cx } from '@gredice/ui/utils';
 import Image from 'next/image';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { type FC, useEffect, useMemo, useState } from 'react';
+import { useCurrentGarden } from '../../../hooks/useCurrentGarden';
 import {
     pushNotificationPreferenceUpdate,
     useNotificationPreferences,
@@ -32,6 +33,8 @@ import {
 import { usePushPermissionOnboarding } from '../../../hooks/usePushPermissionOnboarding';
 import { useWeatherNow } from '../../../hooks/useWeatherNow';
 import { notificationsViewSearchParam } from '../../../notificationFilters';
+import { SuncokretChatTrigger } from '../../SuncokretChatTrigger';
+import { suncokretContextConversationLabel } from '../../suncokretChatContext';
 import { TimeOfDayDetails } from '../TimeOfDayDetails';
 import { RainIcon } from './icons/RainIcon';
 import { WeatherForecastDays } from './WeatherForecastDetails';
@@ -456,6 +459,7 @@ function WeatherAlertPreferencePrompt() {
 
 export function WeatherNowDetails({ farmId }: { farmId?: number | null } = {}) {
     const { data } = useWeatherNow(true, farmId);
+    const { data: currentGarden } = useCurrentGarden();
     // TODO: Add loading indicator
     // TODO: Add error message
 
@@ -496,7 +500,35 @@ export function WeatherNowDetails({ farmId }: { farmId?: number | null } = {}) {
                 <Typography level="body2" bold>
                     {title}
                 </Typography>
-                <WeatherViewToggle value={view} onValueChange={setView} />
+                <Row spacing={1}>
+                    <SuncokretChatTrigger
+                        title={
+                            showForecast
+                                ? 'Pitaj Suncokreta o vremenskoj prognozi'
+                                : 'Pitaj Suncokreta o trenutnom vremenu'
+                        }
+                        target={{
+                            conversationLabel:
+                                suncokretContextConversationLabel({
+                                    gardenName: currentGarden?.name,
+                                    uiContext: {
+                                        surface: 'weather',
+                                        view: showForecast
+                                            ? 'forecast'
+                                            : 'current',
+                                    },
+                                }),
+                            gardenId: currentGarden?.id ?? null,
+                            positionIndex: null,
+                            raisedBedId: null,
+                            uiContext: {
+                                surface: 'weather',
+                                view: showForecast ? 'forecast' : 'current',
+                            },
+                        }}
+                    />
+                    <WeatherViewToggle value={view} onValueChange={setView} />
+                </Row>
             </Row>
             <Divider />
             <TimeOfDayDetails

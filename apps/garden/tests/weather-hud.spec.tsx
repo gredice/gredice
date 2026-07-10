@@ -75,6 +75,29 @@ test('weather popover includes time of day on desktop', async ({
     expect(popoverBox?.width ?? 0).toBeGreaterThan(360);
 });
 
+test('weather and forecast surfaces expose contextual Suncokret triggers', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(DESKTOP_VIEWPORT);
+    await mount(<WeatherHudStory enableSuncokret />);
+
+    await page.getByTitle('Trenutno vrijeme').click();
+    await expect(
+        page.getByRole('button', {
+            name: 'Pitaj Suncokreta o trenutnom vremenu',
+        }),
+    ).toBeVisible();
+
+    await page.keyboard.press('Escape');
+    await page.getByTitle('Prognoza vremena').click();
+    await expect(
+        page.getByRole('button', {
+            name: 'Pitaj Suncokreta o vremenskoj prognozi',
+        }),
+    ).toBeVisible();
+});
+
 test('weather popover time of day fits on narrow mobile viewports', async ({
     mount,
     page,

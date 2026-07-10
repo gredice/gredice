@@ -76,6 +76,53 @@ test('getAiChatAccountLimitState gives no-active-bed accounts a trial cap', asyn
     assert.strictEqual(state.blockedReason, null);
 });
 
+test('getAiChatAccountLimitState reports finalized token usage for today', async () => {
+    createTestDb();
+    const { accountId, userId } = await createAiChatTestUser();
+
+    await storage()
+        .insert(aiUsageLedger)
+        .values([
+            {
+                id: randomUUID(),
+                accountId,
+                userId,
+                requestId: randomUUID(),
+                feature: SUNCOKRET_AI_FEATURE,
+                model: 'openai/gpt-5.5',
+                usageDate: '2026-06-21',
+                status: 'finalized',
+                inputTokens: 800,
+                outputTokens: 200,
+                totalTokens: 1_000,
+                totalMicroUsd: 1,
+            },
+            {
+                id: randomUUID(),
+                accountId,
+                userId,
+                requestId: randomUUID(),
+                feature: SUNCOKRET_AI_FEATURE,
+                model: 'openai/gpt-5.5',
+                usageDate: '2026-06-21',
+                status: 'reserved',
+                inputTokens: 400,
+                outputTokens: 100,
+                totalTokens: 500,
+                reservedMicroUsd: 1,
+            },
+        ]);
+
+    const state = await getAiChatAccountLimitState(
+        accountId,
+        new Date('2026-06-21T10:00:00Z'),
+    );
+
+    assert.strictEqual(state.usedInputTokens, 800);
+    assert.strictEqual(state.usedOutputTokens, 200);
+    assert.strictEqual(state.usedTotalTokens, 1_000);
+});
+
 test('getAiChatAccountLimitState blocks trial accounts after five used chat days', async () => {
     createTestDb();
     const { accountId, userId } = await createAiChatTestUser();
@@ -237,4 +284,50 @@ test('normalizeAiChatMessagesForStorage keeps valid UI message payloads', () => 
     });
     assert.strictEqual(messages[1].role, 'assistant');
     assert.deepStrictEqual(messages[1].parts, []);
+});
+
+test('normalizeAiChatMessagesForStorage does not persist provider tool protocol text', () => {
+    const [message] = normalizeAiChatMessagesForStorage([
+        {
+            id: 'assistant-message',
+            role: 'assistant',
+            parts: [
+                {
+                    type: 'text',
+                    text: '<｜｜DSML｜｜tool_calls>\n<｜｜DSML｜｜invoke name="searchDirectory">',
+                },
+            ],
+        },
+    ]);
+
+    assert.ok(message);
+    assert.deepStrictEqual(message.parts, [
+        {
+            type: 'text',
+            text: 'Nisam uspio dovršiti odgovor. Pokušaj ponovno — ne moraš mijenjati pitanje.',
+        },
+    ]);
+});
+
+test('normalizeAiChatMessagesForStorage rejects spaced provider tool protocol text', () => {
+    const [message] = normalizeAiChatMessagesForStorage([
+        {
+            id: 'assistant-message',
+            role: 'assistant',
+            parts: [
+                {
+                    type: 'text',
+                    text: '< | | DSML | | tool_calls> < | | DSML | | invoke name="getRaisedBedDetails">',
+                },
+            ],
+        },
+    ]);
+
+    assert.ok(message);
+    assert.deepStrictEqual(message.parts, [
+        {
+            type: 'text',
+            text: 'Nisam uspio dovršiti odgovor. Pokušaj ponovno — ne moraš mijenjati pitanje.',
+        },
+    ]);
 });

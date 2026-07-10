@@ -35,6 +35,82 @@ const INTERNAL_TERM_REPLACEMENTS = new Map([
     ['weedProposals', 'prijedlozi za korov'],
 ]);
 
+export const suncokretUiSurfaces = [
+    'garden',
+    'raised-bed',
+    'raised-bed-details',
+    'plant-details',
+    'weather',
+    'settings',
+] as const;
+
+export const suncokretRaisedBedDetailTabs = [
+    'diary',
+    'operations',
+    'info',
+] as const;
+
+export const suncokretPlantDetailTabs = [
+    'lifecycle',
+    'diary',
+    'operations',
+] as const;
+
+export const suncokretWeatherViews = ['current', 'forecast'] as const;
+
+export const suncokretSettingsSections = [
+    'generalno',
+    'postignuca',
+    'suncokreti',
+    'dostava',
+    'obavijesti',
+    'preporuke',
+    'vrt',
+    'korisnici',
+    'igra',
+    'sigurnost',
+    'zvuk',
+] as const;
+
+export type SuncokretSettingsSection =
+    (typeof suncokretSettingsSections)[number];
+
+export type SuncokretRaisedBedDetailTab =
+    (typeof suncokretRaisedBedDetailTabs)[number];
+
+export type SuncokretPlantDetailTab = (typeof suncokretPlantDetailTabs)[number];
+
+export type SuncokretWeatherView = (typeof suncokretWeatherViews)[number];
+
+export type SuncokretUiContext =
+    | { surface: 'garden' }
+    | { surface: 'raised-bed' }
+    | {
+          surface: 'raised-bed-details';
+          tab: SuncokretRaisedBedDetailTab;
+      }
+    | { surface: 'plant-details'; tab: SuncokretPlantDetailTab }
+    | { surface: 'weather'; view: SuncokretWeatherView }
+    | { surface: 'settings'; section?: SuncokretSettingsSection | null };
+
+const SUNCOKRET_TOOL_PROTOCOL_PATTERN =
+    /<\s*(?:[|｜]\s*){1,2}DSML(?:\s*[|｜]){1,2}/iu;
+
+export const SUNCOKRET_TOOL_PROTOCOL_FALLBACK =
+    'Nisam uspio dovršiti odgovor. Pokušaj ponovno — ne moraš mijenjati pitanje.';
+
+export function sanitizeSuncokretAssistantText(value: string) {
+    const protocolStart = value.search(SUNCOKRET_TOOL_PROTOCOL_PATTERN);
+    if (protocolStart === -1) {
+        return value;
+    }
+
+    const visibleText = value.slice(0, protocolStart).trimEnd();
+    return visibleText
+        ? `${visibleText}\n\n${SUNCOKRET_TOOL_PROTOCOL_FALLBACK}`
+        : SUNCOKRET_TOOL_PROTOCOL_FALLBACK;
+}
+
 function protectMarkdownLinkDestinations(value: string) {
     const protectedSegments: string[] = [];
     const text = value.replace(MARKDOWN_LINK_DESTINATION_PATTERN, (segment) => {
