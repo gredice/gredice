@@ -177,6 +177,12 @@ test.describe('Garden operations HUD', () => {
         ).toBeVisible();
         await expect(completedSowingCard.getByText('Završeno')).toBeVisible();
         await expect(
+            completedSowingCard.getByText('13. svibnja 2026.'),
+        ).toBeVisible();
+        await expect(
+            completedSowingCard.getByText('10. svibnja 2026.'),
+        ).toHaveCount(0);
+        await expect(
             completedSowingCard.getByLabel('Tijek radnje'),
         ).toHaveCount(0);
         await expect(

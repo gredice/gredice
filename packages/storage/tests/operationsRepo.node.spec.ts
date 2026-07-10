@@ -138,7 +138,7 @@ test('farm-targeted operations are visible and assignable for farm users', async
     );
 });
 
-test('getOperationsPage returns operations by newest scheduled or completed task date', async () => {
+test('getOperationsPage uses completion dates for completed operation ordering', async () => {
     createTestDb();
     const { accountId, gardenId, raisedBedId } =
         await createOperationsPageTestContext();
@@ -231,9 +231,9 @@ test('getOperationsPage returns operations by newest scheduled or completed task
     assert.deepStrictEqual(
         firstPage.items.map((operation) => operation.id),
         [
-            completedScheduledOperationId,
             scheduledOperationId,
             completedOperationId,
+            completedScheduledOperationId,
         ],
     );
     assert.strictEqual(firstPage.nextCursor, 3);

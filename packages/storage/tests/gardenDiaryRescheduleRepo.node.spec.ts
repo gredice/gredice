@@ -917,7 +917,7 @@ test('diary entries can hide unverified operation images', async () => {
     );
 });
 
-test('raised bed diary entries order operations by scheduled or completed dates', async () => {
+test('raised bed diary entries display and order completed operations by completion date', async () => {
     createTestDb();
     const { accountId, gardenId, raisedBedId } =
         await createDiaryRescheduleContext();
@@ -935,21 +935,29 @@ test('raised bed diary entries order operations by scheduled or completed dates'
         raisedBedId,
     });
 
-    await createEvent(
-        knownEvents.operations.completedV1(
+    await createEvent({
+        ...knownEvents.operations.completedV1(
             scheduledCompletedOperationId.toString(),
             {
                 completedBy: 'test-user',
             },
         ),
-    );
-    await createEvent(
-        knownEvents.operations.completedV1(completedOperationId.toString(), {
+        createdAt: new Date('2026-07-15T08:00:00.000Z'),
+    });
+    await createEvent({
+        ...knownEvents.operations.completedV1(completedOperationId.toString(), {
             completedBy: 'test-user',
         }),
-    );
+        createdAt: new Date('2026-07-16T08:00:00.000Z'),
+    });
 
     const raisedBedEntries = await getRaisedBedDiaryEntries(raisedBedId);
+    assert.equal(
+        raisedBedEntries
+            .find((entry) => entry.id === scheduledCompletedOperationId)
+            ?.timestamp.toISOString(),
+        '2026-07-15T08:00:00.000Z',
+    );
     const operationEntryIds = raisedBedEntries
         .map((entry) => entry.id)
         .filter((entryId) =>
@@ -959,7 +967,7 @@ test('raised bed diary entries order operations by scheduled or completed dates'
         );
 
     assert.deepEqual(operationEntryIds, [
-        scheduledCompletedOperationId,
         completedOperationId,
+        scheduledCompletedOperationId,
     ]);
 });

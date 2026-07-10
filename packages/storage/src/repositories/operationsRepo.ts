@@ -398,6 +398,33 @@ function getOperationScheduledDateExpression() {
     )`;
 }
 
+function getOperationCompletedDateExpression() {
+    return sql<Date | null>`(
+        select ${events.createdAt}
+        from ${events}
+        where ${events.aggregateId} = CAST(${operations.id} as text)
+          and ${events.type} = ${knownEventTypes.operations.complete}
+          and (
+              not exists (
+                  select 1
+                  from ${events}
+                  where ${events.aggregateId} = CAST(${operations.id} as text)
+                    and ${events.type} = ${knownEventTypes.operations.schedule}
+              )
+              or (${events.createdAt}, ${events.id}) > (
+                  select ${events.createdAt}, ${events.id}
+                  from ${events}
+                  where ${events.aggregateId} = CAST(${operations.id} as text)
+                    and ${events.type} = ${knownEventTypes.operations.schedule}
+                  order by ${events.createdAt} desc, ${events.id} desc
+                  limit 1
+                )
+          )
+        order by ${events.createdAt} asc, ${events.id} asc
+        limit 1
+    )`;
+}
+
 function getOperationStatusExpression() {
     const latestStatusTypeExpression = getLatestOperationStatusTypeExpression();
 
@@ -457,11 +484,20 @@ function getOperationLatestStatusChangeDateExpression() {
 }
 
 function getOperationTaskSortExpression() {
+    const statusExpression = getOperationStatusExpression();
+    const completedDateExpression = getOperationCompletedDateExpression();
     const scheduledDateExpression = getOperationScheduledDateExpression();
     const latestStatusChangeDateExpression =
         getOperationLatestStatusChangeDateExpression();
 
-    return sql<Date>`coalesce(${scheduledDateExpression}, ${latestStatusChangeDateExpression}, ${operations.createdAt})`;
+    return sql<Date>`case
+        when ${statusExpression} in (${sql.join(
+            appliedRaisedBedOperationStatuses.map((value) => sql`${value}`),
+            sql`, `,
+        )})
+            then coalesce(${completedDateExpression}, ${scheduledDateExpression}, ${latestStatusChangeDateExpression}, ${operations.createdAt})
+        else coalesce(${scheduledDateExpression}, ${latestStatusChangeDateExpression}, ${operations.createdAt})
+    end`;
 }
 
 export async function getOperations(
