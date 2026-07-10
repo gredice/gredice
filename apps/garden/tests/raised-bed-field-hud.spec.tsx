@@ -502,6 +502,28 @@ function plantedGrowingWithOperationHistoryScenario(): RaisedBedScenario {
     };
 }
 
+function plantedGrowingWithMarkdownOperationNotesScenario(): RaisedBedScenario {
+    const scenario = plantedGrowingWithOperationHistoryScenario();
+    const [operation, ...remainingOperations] =
+        scenario.operationHistoryItems ?? [];
+
+    if (!operation) {
+        return scenario;
+    }
+
+    return {
+        ...scenario,
+        operationHistoryItems: [
+            {
+                ...operation,
+                completionNotes:
+                    '**Pregled**\nPolje 1\nPolje 2\n\n- Ukloni korov\n- Provjeri kupus',
+            },
+            ...remainingOperations,
+        ],
+    };
+}
+
 function plantedGrowingWithPendingOperationHistoryScenario(): RaisedBedScenario {
     const scenario = plantedGrowingWithOperationHistoryScenario();
     const operation = scenario.operations?.[0];
@@ -1423,6 +1445,43 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
                 (element) => element.scrollWidth - element.clientWidth,
             ),
         ).toBeLessThanOrEqual(1);
+    });
+
+    test('diary tab renders operation notes as markdown with visible line breaks', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldHudStory
+                scenario={plantedGrowingWithMarkdownOperationNotesScenario()}
+                positionIndex={0}
+            />,
+        );
+
+        await page.getByRole('button').first().click();
+
+        const dialog = page.getByRole('dialog');
+        await dialog.getByRole('tab', { name: /Dnevnik/ }).click();
+
+        const notes = dialog.locator('[data-operation-notes]');
+        const paragraph = notes.locator('p');
+        await expect(notes.locator('strong')).toHaveText('Pregled');
+        await expect(notes.locator('li')).toHaveText([
+            'Ukloni korov',
+            'Provjeri kupus',
+        ]);
+        await expect(paragraph).toHaveCSS('white-space', 'pre-line');
+
+        const paragraphLineCount = await paragraph.evaluate((element) => {
+            const range = document.createRange();
+            range.selectNodeContents(element);
+            return new Set(
+                Array.from(range.getClientRects(), (rect) =>
+                    Math.round(rect.top),
+                ),
+            ).size;
+        });
+        expect(paragraphLineCount).toBeGreaterThanOrEqual(3);
     });
 
     test('closeup HUD photo shortcut opens the raised bed photos modal', async ({

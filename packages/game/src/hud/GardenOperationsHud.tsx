@@ -15,6 +15,7 @@ import {
     Navigate,
     ShoppingCart,
 } from '@gredice/ui/icons';
+import { Markdown } from '@gredice/ui/Markdown';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { Popper } from '@gredice/ui/Popper';
 import { PlantOrSortImage } from '@gredice/ui/plants';
@@ -1385,13 +1386,12 @@ function OperationEvidence({ operation }: { operation: GardenOperationItem }) {
                 </div>
             )}
             {completionNotes && (
-                <Typography
-                    level="body2"
-                    className="break-words"
+                <Markdown
+                    className="min-w-0 break-words text-sm prose-headings:my-1 prose-headings:text-sm prose-li:my-0 prose-ol:my-1 prose-p:my-1 prose-p:whitespace-pre-line prose-ul:my-1"
                     data-operation-notes
                 >
                     {completionNotes}
-                </Typography>
+                </Markdown>
             )}
         </Stack>
     );
