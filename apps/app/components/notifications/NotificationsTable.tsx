@@ -1,6 +1,5 @@
 'use client';
 
-import { Button } from '@gredice/ui/Button';
 import { Checkbox } from '@gredice/ui/Checkbox';
 import { Chip } from '@gredice/ui/Chip';
 import { IconButton } from '@gredice/ui/IconButton';
@@ -8,12 +7,10 @@ import { ImageViewer } from '@gredice/ui/ImageViewer';
 import { Delete, ExternalLink } from '@gredice/ui/icons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Markdown } from '@gredice/ui/Markdown';
-import { Row } from '@gredice/ui/Row';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
-import { useEffect, useMemo, useState, useTransition } from 'react';
 import { KnownPages } from '../../src/KnownPages';
 import { NoDataPlaceholder } from '../shared/placeholders/NoDataPlaceholder';
 
@@ -46,27 +43,25 @@ export type NotificationDeleteContext = {
     raisedBedId?: number;
 };
 
-type DeleteNotificationsResult = {
+export type DeleteNotificationsResult = {
     success: boolean;
     deletedCount: number;
     error?: string;
 };
 
+export type DeleteNotificationsAction = (
+    notificationIds: string[],
+    context: NotificationDeleteContext,
+) => Promise<DeleteNotificationsResult>;
+
 type NotificationsTableProps = {
-    deleteContext: NotificationDeleteContext;
-    deleteNotificationsAction: (
-        notificationIds: string[],
-        context: NotificationDeleteContext,
-    ) => Promise<DeleteNotificationsResult>;
+    isPending: boolean;
     notifications: NotificationTableRow[];
+    onDeleteNotification: (notificationId: string) => void;
+    onNotificationSelected: (notificationId: string, selected: boolean) => void;
+    selectedIds: ReadonlySet<string>;
     showAccountColumn: boolean;
 };
-
-function buildDeleteConfirmMessage(count: number) {
-    return count === 1
-        ? 'Da li ste sigurni da želite obrisati odabranu obavijest?'
-        : `Da li ste sigurni da želite obrisati ${count} odabrane obavijesti?`;
-}
 
 function getCreatedTimestampDistance(row: NotificationTableRow) {
     return Math.abs(
@@ -92,128 +87,17 @@ function getNotificationChannelLabel(channel: string) {
 }
 
 export function NotificationsTable({
-    deleteContext,
-    deleteNotificationsAction,
+    isPending,
     notifications,
+    onDeleteNotification,
+    onNotificationSelected,
+    selectedIds,
     showAccountColumn,
 }: NotificationsTableProps) {
-    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-    const [isPending, startTransition] = useTransition();
-    const selectedCount = selectedIds.size;
     const hasNotifications = notifications.length > 0;
-    const allSelected =
-        hasNotifications && selectedCount === notifications.length;
-    const headerChecked = allSelected
-        ? true
-        : selectedCount > 0
-          ? 'indeterminate'
-          : false;
-
-    const selectedNotificationIds = useMemo(
-        () => notifications.map((notification) => notification.id),
-        [notifications],
-    );
-
-    useEffect(() => {
-        const visibleIds = new Set(selectedNotificationIds);
-        setSelectedIds((current) => {
-            const next = new Set<string>();
-            for (const id of current) {
-                if (visibleIds.has(id)) {
-                    next.add(id);
-                }
-            }
-            return next.size === current.size ? current : next;
-        });
-    }, [selectedNotificationIds]);
-
-    function setNotificationSelected(id: string, selected: boolean) {
-        setSelectedIds((current) => {
-            const next = new Set(current);
-            if (selected) {
-                next.add(id);
-            } else {
-                next.delete(id);
-            }
-            return next;
-        });
-    }
-
-    function setAllSelected(selected: boolean) {
-        setSelectedIds(selected ? new Set(selectedNotificationIds) : new Set());
-    }
-
-    function handleDelete(ids: string[]) {
-        if (ids.length === 0) {
-            return;
-        }
-
-        if (!confirm(buildDeleteConfirmMessage(ids.length))) {
-            return;
-        }
-
-        startTransition(async () => {
-            try {
-                const result = await deleteNotificationsAction(
-                    ids,
-                    deleteContext,
-                );
-                if (!result.success) {
-                    alert('Došlo je do greške pri brisanju obavijesti.');
-                    return;
-                }
-
-                setSelectedIds((current) => {
-                    const next = new Set(current);
-                    for (const id of ids) {
-                        next.delete(id);
-                    }
-                    return next;
-                });
-            } catch (error) {
-                console.error('Error deleting notifications:', error);
-                alert('Došlo je do greške pri brisanju obavijesti.');
-            }
-        });
-    }
 
     return (
-        <Stack spacing={0} className="min-w-0">
-            <Row
-                justifyContent="space-between"
-                className="gap-3 border-b px-3 py-3 sm:px-4"
-            >
-                <div className="flex min-w-0 items-center gap-3">
-                    <Checkbox
-                        aria-label="Odaberi sve obavijesti"
-                        checked={headerChecked}
-                        disabled={!hasNotifications || isPending}
-                        onCheckedChange={(checked) =>
-                            setAllSelected(checked === true)
-                        }
-                    />
-                    <Typography
-                        component="span"
-                        level="body2"
-                        className="whitespace-nowrap"
-                    >
-                        Odabrano: {selectedCount}
-                    </Typography>
-                </div>
-                <Button
-                    type="button"
-                    size="sm"
-                    variant="outlined"
-                    color="danger"
-                    startDecorator={<Delete className="size-4" />}
-                    disabled={selectedCount === 0 || isPending}
-                    loading={isPending}
-                    className="shrink-0"
-                    onClick={() => handleDelete(Array.from(selectedIds))}
-                >
-                    Obriši odabrane
-                </Button>
-            </Row>
+        <Stack spacing={0} className="@container/notifications min-w-0">
             {!hasNotifications ? (
                 <div className="p-4">
                     <NoDataPlaceholder>Nema obavjesti</NoDataPlaceholder>
@@ -233,7 +117,7 @@ export function NotificationsTable({
                                 key={notification.id}
                                 className="px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4"
                             >
-                                <div className="grid min-w-0 gap-3 2xl:grid-cols-[minmax(0,1fr)_minmax(12rem,0.5fr)_minmax(14rem,0.5fr)] 2xl:items-start">
+                                <div className="grid min-w-0 gap-3 @[48rem]/notifications:grid-cols-[minmax(0,1fr)_minmax(12rem,0.5fr)_minmax(14rem,0.5fr)] @[48rem]/notifications:items-start">
                                     <div className="flex min-w-0 items-start gap-3">
                                         <Checkbox
                                             aria-label={`Odaberi obavijest ${notification.header}`}
@@ -241,7 +125,7 @@ export function NotificationsTable({
                                             disabled={isPending}
                                             className="mt-1 shrink-0"
                                             onCheckedChange={(checked) =>
-                                                setNotificationSelected(
+                                                onNotificationSelected(
                                                     notification.id,
                                                     checked === true,
                                                 )
@@ -298,7 +182,7 @@ export function NotificationsTable({
                                         </Stack>
                                     </div>
 
-                                    <div className="grid min-w-0 gap-2 text-sm sm:grid-cols-2 2xl:grid-cols-1 2xl:gap-1">
+                                    <div className="grid min-w-0 gap-2 text-sm @[32rem]/notifications:grid-cols-2 @[48rem]/notifications:grid-cols-1 @[48rem]/notifications:gap-1">
                                         <Stack spacing={1} className="min-w-0">
                                             <Typography
                                                 component="span"
@@ -411,8 +295,8 @@ export function NotificationsTable({
                                         </Stack>
                                     </div>
 
-                                    <div className="flex min-w-0 flex-col gap-2 2xl:items-end">
-                                        <div className="flex min-w-0 flex-wrap items-center gap-2 2xl:justify-end">
+                                    <div className="flex min-w-0 flex-col gap-2 @[48rem]/notifications:items-end">
+                                        <div className="flex min-w-0 flex-wrap items-center gap-2 @[48rem]/notifications:justify-end">
                                             <Chip
                                                 color={
                                                     notification.readAt
@@ -465,9 +349,9 @@ export function NotificationsTable({
                                                 color="danger"
                                                 disabled={isPending}
                                                 onClick={() =>
-                                                    handleDelete([
+                                                    onDeleteNotification(
                                                         notification.id,
-                                                    ])
+                                                    )
                                                 }
                                             >
                                                 <Delete className="size-5" />
@@ -475,12 +359,12 @@ export function NotificationsTable({
                                         </div>
                                         <Stack
                                             spacing={1}
-                                            className="min-w-0 2xl:items-end"
+                                            className="min-w-0 @[48rem]/notifications:items-end"
                                         >
                                             <Typography
                                                 component="span"
                                                 level="body3"
-                                                className="text-muted-foreground 2xl:text-right"
+                                                className="text-muted-foreground @[48rem]/notifications:text-right"
                                             >
                                                 Kreirano:{' '}
                                                 <span className="whitespace-nowrap">
@@ -495,7 +379,7 @@ export function NotificationsTable({
                                                 <Typography
                                                     component="span"
                                                     level="body3"
-                                                    className="text-muted-foreground 2xl:text-right"
+                                                    className="text-muted-foreground @[48rem]/notifications:text-right"
                                                 >
                                                     Poslano:{' '}
                                                     <span className="whitespace-nowrap">
