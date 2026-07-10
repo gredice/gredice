@@ -5,6 +5,26 @@ import {
     sumAiAnalysisCostUsd,
 } from './aiAnalyticsCost';
 
+test('estimateAiAnalysisCostUsd calculates standard GPT-5.6 Terra usage cost', () => {
+    const cost = estimateAiAnalysisCostUsd({
+        model: 'openai/gpt-5.6-terra',
+        inputTokens: 200_000,
+        outputTokens: 100_000,
+    });
+
+    assert.strictEqual(cost, 2);
+});
+
+test('estimateAiAnalysisCostUsd applies GPT-5.6 Terra long-context multipliers', () => {
+    const cost = estimateAiAnalysisCostUsd({
+        model: 'gpt-5.6-terra',
+        inputTokens: 300_000,
+        outputTokens: 100_000,
+    });
+
+    assert.strictEqual(cost, 3.75);
+});
+
 test('estimateAiAnalysisCostUsd calculates standard GPT-5.5 usage cost', () => {
     const cost = estimateAiAnalysisCostUsd({
         model: 'openai/gpt-5.5',

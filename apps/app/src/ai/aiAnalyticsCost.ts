@@ -21,6 +21,15 @@ type AiModelPricing = {
 const TOKENS_PER_MILLION = 1_000_000;
 
 const AI_MODEL_PRICING_USD: Record<string, AiModelPricing> = {
+    'gpt-5.6-terra': {
+        inputUsdPerMillionTokens: 2.5,
+        outputUsdPerMillionTokens: 15,
+        longContext: {
+            inputTokenThreshold: 272_000,
+            inputRateMultiplier: 2,
+            outputRateMultiplier: 1.5,
+        },
+    },
     'gpt-5.5': {
         inputUsdPerMillionTokens: 5,
         outputUsdPerMillionTokens: 30,
