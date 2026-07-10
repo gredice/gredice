@@ -2064,7 +2064,7 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
 
         const dialog = page.getByRole('dialog');
         const diaryViewport = dialog
-            .locator('[data-scroll-view-viewport]')
+            .locator('[data-scroll-area-viewport]')
             .first();
         await expect(dialog).toBeVisible();
         await expect(diaryViewport).toBeVisible();
