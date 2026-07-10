@@ -3,6 +3,12 @@
 import { useChat } from '@ai-sdk/react';
 import { getBrowserGrediceAppOrigin } from '@gredice/client';
 import { Button } from '@gredice/ui/Button';
+import {
+    ChatBubble,
+    ChatMarker,
+    ChatMessage as ChatMessageLayout,
+    ChatMessageScroller,
+} from '@gredice/ui/Chat';
 import { IconButton } from '@gredice/ui/IconButton';
 import {
     AI,
@@ -20,7 +26,7 @@ import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import { DefaultChatTransport, type UIMessage } from 'ai';
 import Image from 'next/image';
-import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { useGameFlags } from '../GameFlagsContext';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useGameState } from '../useGameState';
@@ -243,7 +249,7 @@ function ToolPart({
     const name = toolName(part);
 
     return (
-        <div className="rounded-md border bg-muted/30 p-2 text-xs">
+        <div className="rounded-xl border bg-muted/30 p-3 text-xs">
             <Row justifyContent="space-between" className="gap-2">
                 <Stack spacing={0} className="min-w-0">
                     <Typography level="body3" semiBold>
@@ -451,20 +457,25 @@ function ChatMessage({
     );
 
     return (
-        <div
-            className={cx(
-                'flex w-full',
-                isUser ? 'justify-end' : 'justify-start',
-            )}
+        <ChatMessageLayout
+            align={isUser ? 'end' : 'start'}
+            avatar={
+                isUser ? undefined : (
+                    <Image
+                        src="https://cdn.gredice.com/sunflower-large.svg"
+                        alt=""
+                        width={32}
+                        height={32}
+                        className="size-full bg-amber-50 p-1 dark:bg-amber-950"
+                    />
+                )
+            }
+            header={isUser ? undefined : 'Suncokret'}
         >
-            <Stack
-                spacing={1}
-                className={cx(
-                    'max-w-[88%] rounded-md border px-3 py-2',
-                    isUser
-                        ? 'border-primary/30 bg-primary/10'
-                        : 'border-border bg-background/95',
-                )}
+            <ChatBubble
+                align={isUser ? 'end' : 'start'}
+                className={cx('flex flex-col gap-2', !isUser && 'w-full')}
+                variant={isUser ? 'sunflower' : 'ghost'}
             >
                 {message.parts.map((part) => {
                     const baseKey = messagePartKey(part);
@@ -507,32 +518,32 @@ function ChatMessage({
                     ) : null;
                 })}
                 {showToolActivity && (
-                    <Row
-                        spacing={2}
+                    <ChatMarker
                         className={cx(
-                            'rounded-md border border-dashed px-2 py-1.5 text-muted-foreground',
+                            'w-fit rounded-full bg-muted/60 px-2.5 py-1',
                             hasToolError
-                                ? 'border-amber-300 bg-amber-50 text-amber-900'
-                                : 'bg-muted/30',
+                                ? 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-100'
+                                : 'text-muted-foreground',
                         )}
+                        icon={
+                            hasToolError ? (
+                                <Warning />
+                            ) : hasDeniedTool ? (
+                                <Close />
+                            ) : hasRunningTool ||
+                              (isStreaming && !hasApprovalRespondedTool) ? (
+                                <LoaderSpinner className="animate-spin" />
+                            ) : (
+                                <AI />
+                            )
+                        }
+                        role="status"
                     >
-                        {hasToolError ? (
-                            <Warning className="size-3.5 shrink-0" />
-                        ) : hasDeniedTool ? (
-                            <Close className="size-3.5 shrink-0" />
-                        ) : hasRunningTool ||
-                          (isStreaming && !hasApprovalRespondedTool) ? (
-                            <LoaderSpinner className="size-3.5 shrink-0 animate-spin" />
-                        ) : (
-                            <AI className="size-3.5 shrink-0" />
-                        )}
-                        <Typography level="body3">
-                            {toolActivitySummary({
-                                isStreaming,
-                                parts: passiveToolParts,
-                            })}
-                        </Typography>
-                    </Row>
+                        {toolActivitySummary({
+                            isStreaming,
+                            parts: passiveToolParts,
+                        })}
+                    </ChatMarker>
                 )}
                 {debug && Boolean(message.metadata) && (
                     <details>
@@ -544,8 +555,8 @@ function ChatMessage({
                         </pre>
                     </details>
                 )}
-            </Stack>
-        </div>
+            </ChatBubble>
+        </ChatMessageLayout>
     );
 }
 
@@ -559,7 +570,6 @@ export function SuncokretChatHud() {
     const [models, setModels] = useState<SuncokretModel[]>([]);
     const [modelId, setModelId] = useState<string | null>(null);
     const chatId = useMemo(randomChatId, []);
-    const scrollRef = useRef<HTMLDivElement>(null);
     const apiOrigin = getBrowserGrediceAppOrigin('api');
     const featureFlags = useMemo(
         () => ({
@@ -649,13 +659,6 @@ export function SuncokretChatHud() {
         };
     }, [apiOrigin, enabled, featureFlagQuery, open]);
 
-    useEffect(() => {
-        scrollRef.current?.scrollTo({
-            top: scrollRef.current.scrollHeight,
-            behavior: 'smooth',
-        });
-    });
-
     if (!enabled) {
         return null;
     }
@@ -685,8 +688,8 @@ export function SuncokretChatHud() {
                     variant="plain"
                     onClick={() => setOpen((current) => !current)}
                     className={cx(
-                        'bg-background/90 hover:bg-muted shadow-sm',
-                        open && 'bg-muted',
+                        'rounded-full border border-amber-200 bg-background/95 shadow-lg hover:bg-amber-50 dark:border-amber-900 dark:hover:bg-amber-950',
+                        open && 'bg-amber-50 dark:bg-amber-950',
                     )}
                 >
                     <Sun className="size-5 text-amber-500" />
@@ -694,32 +697,45 @@ export function SuncokretChatHud() {
             </div>
             {open && (
                 <div className="pointer-events-auto fixed inset-x-2 bottom-2 z-50 flex justify-center md:inset-auto md:right-2 md:bottom-14 md:block">
-                    <div className="flex h-[min(680px,calc(100dvh-1rem))] w-full max-w-[430px] flex-col overflow-hidden rounded-md border border-tertiary border-b-4 bg-background shadow-xl md:h-[min(720px,calc(100dvh-5rem))]">
+                    <div className="flex h-[min(680px,calc(100dvh-1rem))] w-full max-w-[440px] flex-col overflow-hidden rounded-2xl border border-amber-200/80 border-b-4 border-b-emerald-700 bg-background/98 shadow-2xl shadow-foreground/15 backdrop-blur-sm dark:border-amber-900/80 md:h-[min(720px,calc(100dvh-5rem))]">
                         <Row
                             justifyContent="space-between"
-                            className="border-b bg-muted/40 px-3 py-2"
+                            className="border-b border-amber-200/70 bg-amber-50/80 px-3.5 py-3 dark:border-amber-900/70 dark:bg-amber-950/30"
                         >
                             <Row spacing={2} className="min-w-0">
-                                <Image
-                                    src="https://cdn.gredice.com/sunflower-large.svg"
-                                    alt=""
-                                    width={32}
-                                    height={32}
-                                    className="size-8 shrink-0"
-                                />
+                                <span className="grid size-10 shrink-0 place-items-center rounded-full border border-amber-200 bg-white shadow-sm dark:border-amber-900 dark:bg-amber-950">
+                                    <Image
+                                        src="https://cdn.gredice.com/sunflower-large.svg"
+                                        alt=""
+                                        width={32}
+                                        height={32}
+                                        className="size-8"
+                                    />
+                                </span>
                                 <Stack spacing={0} className="min-w-0">
-                                    <Typography level="body2" semiBold noWrap>
-                                        Suncokret
-                                    </Typography>
+                                    <Row spacing={1.5}>
+                                        <Typography
+                                            level="body2"
+                                            semiBold
+                                            noWrap
+                                        >
+                                            Suncokret
+                                        </Typography>
+                                        <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+                                            AI vrtni pomoćnik
+                                        </span>
+                                    </Row>
                                     <Typography
                                         level="body3"
                                         className="text-muted-foreground"
                                         noWrap
                                     >
+                                        <span className="mr-1.5 inline-block size-1.5 rounded-full bg-emerald-500 align-middle" />
+                                        Razgovor za{' '}
                                         {raisedBed
                                             ? raisedBed.name
                                             : (currentGarden?.name ??
-                                              'Moj vrt')}
+                                              'moj vrt')}
                                     </Typography>
                                 </Stack>
                             </Row>
@@ -733,7 +749,7 @@ export function SuncokretChatHud() {
                                                 event.target.value || null,
                                             )
                                         }
-                                        className="h-8 max-w-36 rounded-md border bg-background px-2 text-xs"
+                                        className="h-8 max-w-32 rounded-full border bg-background px-2.5 text-xs"
                                     >
                                         {models.map((model) => (
                                             <option
@@ -755,23 +771,37 @@ export function SuncokretChatHud() {
                             </Row>
                         </Row>
 
-                        <div
-                            ref={scrollRef}
-                            className="flex-1 space-y-3 overflow-y-auto px-3 py-3"
-                        >
-                            {messages.length === 0 && (
-                                <Stack spacing={3} className="items-start">
-                                    <Row spacing={2}>
-                                        <AI className="mt-0.5 size-5 shrink-0 text-primary" />
-                                        <Typography level="body2">
-                                            Pitaj za stanje vrta, gredice,
-                                            sijanje ili radnje.
+                        <ChatMessageScroller
+                            ariaBusy={loading}
+                            ariaLabel="Razgovor sa Suncokretom"
+                            className="flex-1"
+                            emptyContent={
+                                <Stack
+                                    alignItems="center"
+                                    spacing={4}
+                                    className="w-full px-3 text-center"
+                                >
+                                    <span className="grid size-14 place-items-center rounded-full border border-amber-200 bg-amber-50 shadow-sm dark:border-amber-900 dark:bg-amber-950">
+                                        <Sun className="size-7 text-amber-500" />
+                                    </span>
+                                    <Stack spacing={1} alignItems="center">
+                                        <Typography level="h6" semiBold>
+                                            Kako ti mogu pomoći?
                                         </Typography>
-                                    </Row>
-                                    <div className="flex flex-wrap gap-2">
+                                        <Typography
+                                            level="body3"
+                                            className="max-w-72 text-muted-foreground"
+                                        >
+                                            Pitaj me o stanju vrta, sadnji ili
+                                            radnjama koje slijede.
+                                        </Typography>
+                                    </Stack>
+                                    <Stack spacing={2} className="w-full">
                                         <Button
-                                            size="xs"
-                                            variant="soft"
+                                            fullWidth
+                                            size="sm"
+                                            variant="outlined"
+                                            className="rounded-full border-amber-200 bg-amber-50/60 hover:bg-amber-100 dark:border-amber-900 dark:bg-amber-950/40 dark:hover:bg-amber-950"
                                             onClick={() =>
                                                 sendPrompt(
                                                     raisedBed
@@ -780,89 +810,103 @@ export function SuncokretChatHud() {
                                                 )
                                             }
                                         >
-                                            Stanje gredice
+                                            Sažmi stanje gredice
                                         </Button>
                                         <Button
-                                            size="xs"
-                                            variant="soft"
+                                            fullWidth
+                                            size="sm"
+                                            variant="outlined"
+                                            className="rounded-full"
                                             onClick={() =>
                                                 sendPrompt(
                                                     'Koje radnje su najvažnije ovaj tjedan?',
                                                 )
                                             }
                                         >
-                                            Plan za tjedan
+                                            Složi plan za ovaj tjedan
                                         </Button>
                                         <Button
-                                            size="xs"
-                                            variant="soft"
+                                            fullWidth
+                                            size="sm"
+                                            variant="outlined"
+                                            className="rounded-full"
                                             onClick={() =>
                                                 sendPrompt(
                                                     'Što mogu posaditi sljedeće?',
                                                 )
                                             }
                                         >
-                                            Što posaditi
+                                            Predloži što posaditi
                                         </Button>
-                                    </div>
+                                    </Stack>
                                 </Stack>
-                            )}
-                            {messages.map((message) => (
-                                <ChatMessage
-                                    key={message.id}
-                                    addToolApprovalResponse={
-                                        addToolApprovalResponse
-                                    }
-                                    debug={debug}
-                                    isStreaming={
-                                        loading &&
-                                        message.role === 'assistant' &&
-                                        message.id ===
-                                            messages[messages.length - 1]?.id
-                                    }
-                                    message={message}
-                                />
-                            ))}
-                            {loading && (
-                                <Row
-                                    spacing={2}
-                                    className="text-muted-foreground"
-                                >
-                                    <LoaderSpinner className="size-4 animate-spin" />
-                                    <Typography level="body3">
-                                        Suncokret razmišlja...
-                                    </Typography>
-                                </Row>
-                            )}
-                        </div>
+                            }
+                            items={[
+                                ...messages.map((message) => ({
+                                    id: message.id,
+                                    scrollAnchor: message.role === 'user',
+                                    content: (
+                                        <ChatMessage
+                                            addToolApprovalResponse={
+                                                addToolApprovalResponse
+                                            }
+                                            debug={debug}
+                                            isStreaming={
+                                                loading &&
+                                                message.role === 'assistant' &&
+                                                message.id ===
+                                                    messages[
+                                                        messages.length - 1
+                                                    ]?.id
+                                            }
+                                            message={message}
+                                        />
+                                    ),
+                                })),
+                                ...(loading
+                                    ? [
+                                          {
+                                              id: 'suncokret-loading',
+                                              content: (
+                                                  <ChatMarker
+                                                      className="px-10"
+                                                      icon={
+                                                          <LoaderSpinner className="animate-spin" />
+                                                      }
+                                                      role="status"
+                                                  >
+                                                      <span className="chat-shimmer">
+                                                          Suncokret razmišlja...
+                                                      </span>
+                                                  </ChatMarker>
+                                              ),
+                                          },
+                                      ]
+                                    : []),
+                            ]}
+                        />
 
-                        <Stack spacing={1} className="border-t p-2">
-                            {limit && (
-                                <Row
-                                    justifyContent="space-between"
-                                    className="text-muted-foreground"
-                                >
-                                    <Typography level="body3">
-                                        Preostalo danas
-                                    </Typography>
-                                    <Typography level="body3">
-                                        {formatUsd(limit.remainingUsd)}
-                                    </Typography>
-                                </Row>
-                            )}
+                        <Stack
+                            spacing={2}
+                            className="border-t bg-background/95 p-3"
+                        >
                             {blocked && (
-                                <div className="rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
+                                <div className="rounded-xl border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
                                     Dnevni limit je iskorišten. Nastavak je
                                     moguć {formatRetryAt(limit?.retryAt)}.
                                 </div>
                             )}
                             {error && (
-                                <div className="rounded-md border border-red-300 bg-red-50 p-2 text-xs text-red-900">
+                                <div className="rounded-xl border border-red-300 bg-red-50 p-2.5 text-xs text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-100">
                                     {error.message}
                                 </div>
                             )}
-                            <form onSubmit={onSubmit} className="flex gap-2">
+                            <form
+                                onSubmit={onSubmit}
+                                className="overflow-hidden rounded-2xl border bg-card shadow-sm transition-shadow focus-within:ring-2 focus-within:ring-ring"
+                            >
                                 <textarea
+                                    aria-label="Pitaj Suncokret"
                                     value={input}
                                     disabled={loading || blocked}
                                     onChange={(event) =>
@@ -877,25 +921,42 @@ export function SuncokretChatHud() {
                                             sendPrompt(input);
                                         }
                                     }}
-                                    className="min-h-10 max-h-28 flex-1 resize-none rounded-md border bg-background px-3 py-2 text-sm outline-hidden focus:ring-2 focus:ring-ring"
+                                    className="min-h-14 max-h-28 w-full resize-none border-0 bg-transparent px-4 py-3 text-sm outline-hidden placeholder:text-muted-foreground disabled:cursor-not-allowed"
                                     placeholder="Pitaj Suncokret..."
                                 />
-                                <IconButton
-                                    title="Pošalji"
-                                    type="submit"
-                                    disabled={
-                                        loading ||
-                                        blocked ||
-                                        input.trim().length === 0
-                                    }
-                                    className="h-10 w-10 shrink-0 bg-primary text-primary-foreground hover:bg-primary/90"
+                                <Row
+                                    justifyContent="space-between"
+                                    className="border-t border-border/60 px-2 py-2"
                                 >
-                                    {loading ? (
-                                        <LoaderSpinner className="size-4 animate-spin" />
-                                    ) : (
-                                        <Send className="size-4" />
-                                    )}
-                                </IconButton>
+                                    <Typography
+                                        level="body3"
+                                        className="px-1 text-muted-foreground"
+                                    >
+                                        {limit
+                                            ? `Danas preostalo ${formatUsd(limit.remainingUsd)}`
+                                            : 'Enter šalje poruku'}
+                                    </Typography>
+                                    <IconButton
+                                        title={
+                                            loading
+                                                ? 'Suncokret odgovara'
+                                                : 'Pošalji'
+                                        }
+                                        type="submit"
+                                        disabled={
+                                            loading ||
+                                            blocked ||
+                                            input.trim().length === 0
+                                        }
+                                        className="size-9 shrink-0 rounded-full bg-emerald-700 text-white shadow-sm hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500"
+                                    >
+                                        {loading ? (
+                                            <LoaderSpinner className="size-4 animate-spin" />
+                                        ) : (
+                                            <Send className="size-4" />
+                                        )}
+                                    </IconButton>
+                                </Row>
                             </form>
                             {debug && statusInfo && (
                                 <details className="text-xs text-muted-foreground">
