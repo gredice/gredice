@@ -41,10 +41,14 @@ test('getSuncokretModel defaults to DeepSeek V4 Flash', () => {
 test('getSuncokretModel falls back to the first enabled model for automatic selection', () => {
     withModelEnv(
         {
-            allowlist: 'openai/gpt-5.5',
+            allowlist: 'openai/gpt-5.6-luna',
         },
         () => {
-            assert.equal(getSuncokretModel()?.id, 'openai/gpt-5.5');
+            const model = getSuncokretModel();
+
+            assert.equal(model?.id, 'openai/gpt-5.6-luna');
+            assert.equal(model?.inputUsdPerMillionTokens, 1);
+            assert.equal(model?.outputUsdPerMillionTokens, 6);
         },
     );
 });
@@ -52,7 +56,7 @@ test('getSuncokretModel falls back to the first enabled model for automatic sele
 test('getSuncokretModel keeps explicit unavailable model requests invalid', () => {
     withModelEnv(
         {
-            allowlist: 'openai/gpt-5.5',
+            allowlist: 'openai/gpt-5.6-luna',
         },
         () => {
             assert.equal(getSuncokretModel('deepseek/deepseek-v4-flash'), null);

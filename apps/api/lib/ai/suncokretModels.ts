@@ -13,10 +13,10 @@ const DEFAULT_MODEL_ID = 'deepseek/deepseek-v4-flash';
 
 const MODEL_REGISTRY: SuncokretModelConfig[] = [
     {
-        id: 'openai/gpt-5.5',
-        label: 'OpenAI GPT-5.5',
-        inputUsdPerMillionTokens: 5,
-        outputUsdPerMillionTokens: 30,
+        id: 'openai/gpt-5.6-luna',
+        label: 'OpenAI GPT-5.6 Luna',
+        inputUsdPerMillionTokens: 1,
+        outputUsdPerMillionTokens: 6,
         enabled: true,
     },
     {
