@@ -285,3 +285,26 @@ test('normalizeAiChatMessagesForStorage keeps valid UI message payloads', () => 
     assert.strictEqual(messages[1].role, 'assistant');
     assert.deepStrictEqual(messages[1].parts, []);
 });
+
+test('normalizeAiChatMessagesForStorage does not persist provider tool protocol text', () => {
+    const [message] = normalizeAiChatMessagesForStorage([
+        {
+            id: 'assistant-message',
+            role: 'assistant',
+            parts: [
+                {
+                    type: 'text',
+                    text: '<｜｜DSML｜｜tool_calls>\n<｜｜DSML｜｜invoke name="searchDirectory">',
+                },
+            ],
+        },
+    ]);
+
+    assert.ok(message);
+    assert.deepStrictEqual(message.parts, [
+        {
+            type: 'text',
+            text: 'Nisam uspio dovršiti odgovor. Pokušaj ponovno — ne moraš mijenjati pitanje.',
+        },
+    ]);
+});

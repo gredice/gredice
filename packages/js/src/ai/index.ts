@@ -63,6 +63,23 @@ export type SuncokretUiContext =
     | { surface: 'raised-bed' }
     | { surface: 'settings'; section?: SuncokretSettingsSection | null };
 
+const SUNCOKRET_TOOL_PROTOCOL_PATTERN = /<(?:｜｜|\|\|)\s*DSML/iu;
+
+export const SUNCOKRET_TOOL_PROTOCOL_FALLBACK =
+    'Nisam uspio dovršiti odgovor. Pokušaj ponovno — ne moraš mijenjati pitanje.';
+
+export function sanitizeSuncokretAssistantText(value: string) {
+    const protocolStart = value.search(SUNCOKRET_TOOL_PROTOCOL_PATTERN);
+    if (protocolStart === -1) {
+        return value;
+    }
+
+    const visibleText = value.slice(0, protocolStart).trimEnd();
+    return visibleText
+        ? `${visibleText}\n\n${SUNCOKRET_TOOL_PROTOCOL_FALLBACK}`
+        : SUNCOKRET_TOOL_PROTOCOL_FALLBACK;
+}
+
 function protectMarkdownLinkDestinations(value: string) {
     const protectedSegments: string[] = [];
     const text = value.replace(MARKDOWN_LINK_DESTINATION_PATTERN, (segment) => {

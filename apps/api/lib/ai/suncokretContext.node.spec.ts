@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildSuncokretSystemPrompt } from './suncokretContext';
+import {
+    buildSuncokretFinalAnswerSystemPrompt,
+    buildSuncokretSystemPrompt,
+} from './suncokretContext';
 
 test('buildSuncokretSystemPrompt identifies the focused raised bed by name and id', () => {
     const prompt = buildSuncokretSystemPrompt({
@@ -27,4 +30,12 @@ test('buildSuncokretSystemPrompt describes the active settings section', () => {
 
     assert.match(prompt, /Korisnik trenutačno gleda postavke igre u sučelju\./);
     assert.doesNotMatch(prompt, /gredicu .* u fokusu: "/);
+});
+
+test('buildSuncokretFinalAnswerSystemPrompt forbids internal tool protocols', () => {
+    const prompt = buildSuncokretFinalAnswerSystemPrompt('Osnovne upute.');
+
+    assert.match(prompt, /više ne koristi alate/);
+    assert.match(prompt, /Nikada ne ispisuj poziv alata, DSML, XML, JSON/);
+    assert.match(prompt, /običnim hrvatskim jezikom/);
 });

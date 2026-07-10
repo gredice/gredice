@@ -1,5 +1,6 @@
 import 'server-only';
 import { randomUUID } from 'node:crypto';
+import { sanitizeSuncokretAssistantText } from '@gredice/js/ai';
 import { and, desc, eq, gte, sql } from 'drizzle-orm';
 import {
     accounts,
@@ -211,6 +212,22 @@ function messageRole(value: unknown) {
         : 'user';
 }
 
+function sanitizedMessageParts(value: unknown, role: string) {
+    const parts = messageParts(value);
+    if (role !== 'assistant') {
+        return parts;
+    }
+
+    return parts.map((part) =>
+        part.type === 'text' && typeof part.text === 'string'
+            ? {
+                  ...part,
+                  text: sanitizeSuncokretAssistantText(part.text),
+              }
+            : part,
+    );
+}
+
 export function normalizeAiChatMessagesForStorage(
     messages: unknown[],
 ): AiChatMessageForStorage[] {
@@ -226,10 +243,11 @@ export function normalizeAiChatMessagesForStorage(
             typeof record.id === 'string' && record.id.trim().length > 0
                 ? record.id
                 : randomUUID();
+        const role = messageRole(record.role);
         normalized.push({
             id,
-            role: messageRole(record.role),
-            parts: messageParts(record.parts),
+            role,
+            parts: sanitizedMessageParts(record.parts, role),
             metadata: metadataObject(record.metadata),
         });
     }

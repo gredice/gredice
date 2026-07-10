@@ -23,7 +23,10 @@ import {
 import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
-import { buildSuncokretSystemPrompt } from '../../../lib/ai/suncokretContext';
+import {
+    buildSuncokretFinalAnswerSystemPrompt,
+    buildSuncokretSystemPrompt,
+} from '../../../lib/ai/suncokretContext';
 import {
     estimateSuncokretPromptTokens,
     estimateSuncokretRequestCostMicroUsd,
@@ -41,6 +44,7 @@ import {
 const MIN_OUTPUT_TOKENS = 128;
 const MAX_CONTEXT_MESSAGES = 24;
 const MAX_IMAGE_URLS_PER_ANALYSIS = 6;
+const MAX_TOOL_STEPS = 6;
 
 type ChatVariables = AuthVariables;
 
@@ -182,13 +186,6 @@ async function validateGardenContext({
     };
 }
 
-function finalAnswerSystemPrompt(baseSystem: string) {
-    return [
-        baseSystem,
-        'Sada više ne koristi alate. Napiši završni odgovor korisniku iz već dohvaćenih podataka. Ako neki podatak nedostaje, reci to kratko i svejedno daj najbolji praktični plan iz dostupnog konteksta.',
-    ].join('\n\n');
-}
-
 async function mcpToken(userId: string, accountId: string) {
     return createJwt({ sub: userId, accountId }, '72h');
 }
@@ -298,6 +295,20 @@ function buildTools({
     const mcp = (name: string, args: Record<string, unknown>) =>
         callMcpTool({ accountId, args, name, origin, token });
 
+    const raisedBedDetailsTool = tool({
+        description:
+            'Dohvati detalje jedne gredice: polja, nazive biljaka i njihov životni ciklus.',
+        inputSchema: z.object({
+            gardenId: z.number().int().positive().optional(),
+            raisedBedId: z.number().int().positive().optional(),
+        }),
+        execute: ({ gardenId, raisedBedId }) =>
+            mcp('gardens/get-raised-bed-fields', {
+                gardenId: gardenId ?? contextGardenId,
+                raisedBedId: raisedBedId ?? contextRaisedBedId,
+            }),
+    });
+
     return {
         listGardens: tool({
             description: 'Dohvati vrtove za trenutni Gredice račun.',
@@ -317,18 +328,8 @@ function buildTools({
                     gardenId: gardenId ?? contextGardenId,
                 }),
         }),
-        getRaisedBedFields: tool({
-            description: 'Dohvati polja, biljke i status jedne gredice.',
-            inputSchema: z.object({
-                gardenId: z.number().int().positive().optional(),
-                raisedBedId: z.number().int().positive().optional(),
-            }),
-            execute: ({ gardenId, raisedBedId }) =>
-                mcp('gardens/get-raised-bed-fields', {
-                    gardenId: gardenId ?? contextGardenId,
-                    raisedBedId: raisedBedId ?? contextRaisedBedId,
-                }),
-        }),
+        getRaisedBedFields: raisedBedDetailsTool,
+        getRaisedBedDetails: raisedBedDetailsTool,
         listGardenOperations: tool({
             description: 'Dohvati radnje za vrt ili gredicu.',
             inputSchema: z.object({
@@ -708,12 +709,14 @@ const app = new Hono<{ Variables: ChatVariables }>()
                     }),
                     stopWhen: stepCountIs(8),
                     prepareStep: ({ stepNumber }) => {
-                        if (stepNumber < 4) {
+                        if (stepNumber < MAX_TOOL_STEPS) {
                             return undefined;
                         }
 
                         return {
-                            system: finalAnswerSystemPrompt(promptInput.system),
+                            system: buildSuncokretFinalAnswerSystemPrompt(
+                                promptInput.system,
+                            ),
                             toolChoice: 'none',
                         };
                     },

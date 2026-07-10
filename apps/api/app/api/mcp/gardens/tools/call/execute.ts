@@ -1,5 +1,6 @@
 import {
     getAccountGardens,
+    getEntitiesFormatted,
     getGarden,
     getOperations,
     getRaisedBedAiHistoryEntries,
@@ -40,6 +41,26 @@ const GetGardenOperationsSchema = z.object({
     limit: z.number().int().min(1).max(100).default(20),
     offset: z.number().int().min(0).default(0),
 });
+
+type PlantSortSummary = {
+    id: number;
+    information?: { name?: string };
+};
+
+async function plantSortNamesById() {
+    try {
+        const plantSorts =
+            await getEntitiesFormatted<PlantSortSummary>('plantSort');
+        return new Map(
+            plantSorts.map((plantSort) => [
+                plantSort.id,
+                plantSort.information?.name ?? `Biljka #${plantSort.id}`,
+            ]),
+        );
+    } catch {
+        return new Map<number, string>();
+    }
+}
 
 async function getOwnedGardenOrThrow(auth: McpAuthContext, gardenId: number) {
     const garden = await getGarden(gardenId);
@@ -102,6 +123,7 @@ export async function executeGardenTool(
             if (!raisedBed) {
                 throw new Error('Raised bed not found in garden');
             }
+            const plantSortNames = await plantSortNamesById();
 
             return {
                 gardenId: garden.id,
@@ -114,6 +136,10 @@ export async function executeGardenTool(
                     positionIndex: field.positionIndex,
                     active: field.active,
                     plantSortId: field.plantSortId,
+                    plantSortName: field.plantSortId
+                        ? (plantSortNames.get(field.plantSortId) ??
+                          `Biljka #${field.plantSortId}`)
+                        : null,
                     plantStatus: field.plantStatus,
                     plantScheduledDate: field.plantScheduledDate,
                     plantSowDate: field.plantSowDate,

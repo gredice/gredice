@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { sanitizeSuncokretAssistantText } from '@gredice/js/ai';
 import {
     estimateSuncokretTextTokens,
     formatSuncokretTokenUsage,
@@ -64,4 +65,14 @@ test('token usage metadata supports exact totals and a live text estimate', () =
         { approximate: true, tokens: 1_236 },
     );
     assert.match(formatSuncokretTokenUsage(1_234, true), /^Danas korišteno ≈/);
+});
+
+test('provider tool protocol is replaced with a friendly retry message', () => {
+    const sanitized = sanitizeSuncokretAssistantText(
+        'Provjeravam podatke.\n<｜｜DSML｜｜tool_calls>\n<｜｜DSML｜｜invoke name="searchDirectory">',
+    );
+
+    assert.doesNotMatch(sanitized, /DSML|searchDirectory/);
+    assert.match(sanitized, /Provjeravam podatke\./);
+    assert.match(sanitized, /Pokušaj ponovno/);
 });

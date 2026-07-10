@@ -2,6 +2,7 @@
 
 import { useChat } from '@ai-sdk/react';
 import { getBrowserGrediceAppOrigin } from '@gredice/client';
+import { sanitizeSuncokretAssistantText } from '@gredice/js/ai';
 import { Button } from '@gredice/ui/Button';
 import {
     ChatBubble,
@@ -235,9 +236,11 @@ function suncokretFlagParams({
 }
 
 function MessageText({ children }: { children: string }) {
+    const safeText = sanitizeSuncokretAssistantText(children);
+
     return (
         <Markdown className="prose-sm max-w-none text-sm leading-relaxed [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1">
-            {children}
+            {safeText}
         </Markdown>
     );
 }

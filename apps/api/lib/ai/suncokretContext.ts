@@ -86,3 +86,12 @@ export function buildSuncokretSystemPrompt(input: {
             : 'Trenutno polje nije zadano u sučelju.',
     ].join('\n');
 }
+
+export function buildSuncokretFinalAnswerSystemPrompt(baseSystem: string) {
+    return [
+        baseSystem,
+        'Sada više ne koristi alate. Napiši završni odgovor korisniku iz već dohvaćenih podataka.',
+        'Ako neki podatak nedostaje, reci to kratko i svejedno daj najbolji praktični odgovor iz dostupnog konteksta.',
+        'Nikada ne ispisuj poziv alata, DSML, XML, JSON ni drugi interni protokol. Ako si namjeravao pozvati alat, umjesto toga sažmi ono što već znaš običnim hrvatskim jezikom.',
+    ].join('\n\n');
+}
