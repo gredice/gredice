@@ -12,6 +12,7 @@ import type { Block } from '../../types/Block';
 import type { Stack } from '../../types/Stack';
 import {
     resolveRaisedBedHarvestBasketPlacement,
+    resolveRaisedBedHarvestBasketPlacements,
     resolveRaisedBedHarvestBasketState,
     resolveRaisedBedHarvestPositions,
 } from './raisedBedHarvestRewards';
@@ -245,6 +246,48 @@ test('completed field harvest reward fills a partial basket with matching produc
     );
 });
 
+test('harvest basket stays empty while completed work awaits verification', () => {
+    const visualRewards = resolveOperationVisualRewards({
+        appliedOperations: [
+            applied(551, {
+                completedAt: '2026-06-01T08:00:00.000Z',
+                entityId: 1,
+                raisedBedId: 10,
+                status: 'pendingVerification',
+            }),
+        ],
+        operations,
+    });
+
+    assert.deepStrictEqual(
+        resolveRaisedBedHarvestBasketState({
+            fields: [
+                { active: true, id: 50, plantSortId: 337, positionIndex: 0 },
+                { active: true, id: 51, plantSortId: 284, positionIndex: 1 },
+            ],
+            raisedBedId: 10,
+            visualRewards,
+        }),
+        {
+            fillLevel: 'empty',
+            operationIds: [551],
+            producePlantSortIds: [],
+        },
+    );
+    assert.deepStrictEqual(
+        resolveRaisedBedHarvestPositions({
+            blockOffset: 0,
+            fields: [
+                { active: true, id: 50, plantSortId: 337, positionIndex: 0 },
+                { active: true, id: 51, plantSortId: 284, positionIndex: 1 },
+            ],
+            raisedBedId: 10,
+            visualRewards,
+        }),
+        [],
+    );
+});
+
 test('completed raised-bed harvest reward fills the basket from occupied fields', () => {
     const visualRewards = resolveOperationVisualRewards({
         appliedOperations: [
@@ -347,6 +390,48 @@ test('harvest basket placement skips occupied non-stackable neighbor blocks', ()
             position: [-1, 0.4, 0],
             rotation: -Math.PI / 2,
         },
+    );
+});
+
+test('harvest basket placements reserve shared neighboring blocks', () => {
+    assert.deepStrictEqual(
+        Array.from(
+            resolveRaisedBedHarvestBasketPlacements({
+                blockData: placementBlockData,
+                raisedBeds: [
+                    { blockIds: ['bed-10'], raisedBedId: 10 },
+                    { blockIds: ['bed-11'], raisedBedId: 11 },
+                ],
+                stacks: [
+                    stack(0, 0, [
+                        block('Block_Grass'),
+                        block('Raised_Bed', 'bed-10'),
+                    ]),
+                    stack(1, -1, [
+                        block('Block_Grass'),
+                        block('Raised_Bed', 'bed-11'),
+                    ]),
+                    stack(1, 0, [block('Block_Grass', 'shared-target')]),
+                    stack(0, -1, [block('Block_Grass', 'second-target')]),
+                ],
+            }),
+        ),
+        [
+            [
+                10,
+                {
+                    position: [1, 0.4, 0],
+                    rotation: Math.PI / 2,
+                },
+            ],
+            [
+                11,
+                {
+                    position: [0, 0.4, -1],
+                    rotation: -Math.PI / 2,
+                },
+            ],
+        ],
     );
 });
 

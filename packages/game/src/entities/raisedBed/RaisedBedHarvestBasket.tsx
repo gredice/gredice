@@ -1,20 +1,21 @@
-import { Suspense, useMemo } from 'react';
+import { Suspense, useEffect, useMemo } from 'react';
 import { useBlockData } from '../../hooks/useBlockData';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useDeliveryRequests } from '../../hooks/useDeliveryRequests';
+import { useGardenOperations } from '../../hooks/useGardenOperations';
+import { useOperations } from '../../hooks/useOperations';
 import { useAllSorts } from '../../hooks/usePlantSorts';
-import { useRaisedBedOperationVisualRewards } from '../../hooks/useRaisedBedOperationVisualRewards';
+import { resolveOperationVisualRewards } from '../../operationVisualRewards';
 import { useGameState } from '../../useGameState';
-import {
-    findRaisedBedByBlockId,
-    getRaisedBedBlockIds,
-} from '../../utils/raisedBedBlocks';
+import { getRaisedBedBlockIds } from '../../utils/raisedBedBlocks';
 import { useGameGLTF } from '../../utils/useGameGLTF';
 import {
     type RaisedBedHarvestBasketFillLevel,
-    resolveRaisedBedHarvestBasketPlacement,
+    resolveRaisedBedHarvestBasketPlacements,
     resolveRaisedBedHarvestBasketState,
 } from './raisedBedHarvestRewards';
+
+const harvestOperationPageSize = 50;
 
 type HarvestProduceKind =
     | 'green'
@@ -209,30 +210,91 @@ function RaisedBedHarvestBasketVisual({
     );
 }
 
-export function RaisedBedHarvestBasketForBlock({
-    blockId,
-}: {
-    blockId: string;
-}) {
+export function RaisedBedHarvestBaskets() {
     const { data: blockData } = useBlockData();
     const { data: sortData } = useAllSorts();
     const { data: garden } = useCurrentGarden();
-    const raisedBed = findRaisedBedByBlockId(garden, blockId);
-    const visualRewards = useRaisedBedOperationVisualRewards(raisedBed);
+    const { data: operations } = useOperations();
+    const {
+        data: operationHistory,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
+    } = useGardenOperations({
+        enabled: Boolean(garden),
+        includeCompleted: false,
+        pageSize: harvestOperationPageSize,
+    });
     const isMock = useGameState((state) => state.isMock);
     const isLocalSandbox = useGameState(
         (state) => state.localSandboxStorageKey !== null,
     );
-    const hasHarvestRewards = visualRewards.some(
-        (reward) =>
-            reward.family === 'harvest' && reward.raisedBedId === raisedBed?.id,
+
+    useEffect(() => {
+        if (hasNextPage && !isFetchingNextPage) {
+            void fetchNextPage();
+        }
+    }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
+    const operationItems = useMemo(
+        () => operationHistory?.pages.flatMap((page) => page.items) ?? [],
+        [operationHistory?.pages],
     );
+    const harvestCandidates = useMemo(() => {
+        if (!garden || !operations) {
+            return [];
+        }
+
+        const operationItemsByRaisedBedId = new Map<
+            number,
+            typeof operationItems
+        >();
+        for (const operationItem of operationItems) {
+            if (operationItem.raisedBedId == null) {
+                continue;
+            }
+
+            const raisedBedOperationItems =
+                operationItemsByRaisedBedId.get(operationItem.raisedBedId) ??
+                [];
+            raisedBedOperationItems.push(operationItem);
+            operationItemsByRaisedBedId.set(
+                operationItem.raisedBedId,
+                raisedBedOperationItems,
+            );
+        }
+
+        return garden.raisedBeds.flatMap((raisedBed) => {
+            const visualRewards = resolveOperationVisualRewards({
+                appliedOperations: (raisedBed.appliedOperations ?? []).map(
+                    (operation) => ({
+                        ...operation,
+                        raisedBedId: raisedBed.id,
+                    }),
+                ),
+                operationItems:
+                    operationItemsByRaisedBedId.get(raisedBed.id) ?? [],
+                operations,
+            });
+            const state = resolveRaisedBedHarvestBasketState({
+                fields: raisedBed.fields,
+                raisedBedId: raisedBed.id,
+                visualRewards,
+            });
+
+            return state
+                ? [
+                      {
+                          blockIds: getRaisedBedBlockIds(garden, raisedBed.id),
+                          raisedBed,
+                          visualRewards,
+                      },
+                  ]
+                : [];
+        });
+    }, [garden, operationItems, operations]);
     const deliveryRequests = useDeliveryRequests({
-        enabled:
-            Boolean(raisedBed) &&
-            hasHarvestRewards &&
-            !isMock &&
-            !isLocalSandbox,
+        enabled: harvestCandidates.length > 0 && !isMock && !isLocalSandbox,
     });
     const hiddenHarvestOperationIds = useMemo(
         () =>
@@ -247,53 +309,71 @@ export function RaisedBedHarvestBasketForBlock({
             ),
         [deliveryRequests.data],
     );
-    const harvestBasketState =
-        raisedBed && raisedBed.blockId === blockId
-            ? resolveRaisedBedHarvestBasketState({
-                  fields: raisedBed.fields,
-                  hiddenOperationIds: hiddenHarvestOperationIds,
-                  raisedBedId: raisedBed.id,
-                  visualRewards,
-              })
-            : null;
-    const harvestBasketPlacement =
-        garden && raisedBed && harvestBasketState
-            ? resolveRaisedBedHarvestBasketPlacement({
-                  blockData,
-                  blockIds: getRaisedBedBlockIds(garden, raisedBed.id),
-                  stacks: garden.stacks,
-              })
-            : null;
+    const harvestBaskets = useMemo(
+        () =>
+            harvestCandidates.flatMap((candidate) => {
+                const state = resolveRaisedBedHarvestBasketState({
+                    fields: candidate.raisedBed.fields,
+                    hiddenOperationIds: hiddenHarvestOperationIds,
+                    raisedBedId: candidate.raisedBed.id,
+                    visualRewards: candidate.visualRewards,
+                });
+
+                return state ? [{ ...candidate, state }] : [];
+            }),
+        [harvestCandidates, hiddenHarvestOperationIds],
+    );
+    const harvestBasketPlacements = useMemo(
+        () =>
+            garden
+                ? resolveRaisedBedHarvestBasketPlacements({
+                      blockData,
+                      raisedBeds: harvestBaskets.map((basket) => ({
+                          blockIds: basket.blockIds,
+                          raisedBedId: basket.raisedBed.id,
+                      })),
+                      stacks: garden.stacks,
+                  })
+                : new Map(),
+        [blockData, garden, harvestBaskets],
+    );
     const sortDataById = useMemo(
         () => new Map((sortData ?? []).map((sort) => [sort.id, sort])),
         [sortData],
     );
-    const harvestProduceKinds = useMemo(
-        () =>
-            harvestBasketState?.producePlantSortIds.map((plantSortId) => {
-                const sort = sortDataById.get(plantSortId);
-
-                return resolveHarvestProduceKind([
-                    sort?.information.name,
-                    sort?.information.plant.information?.name,
-                    sort?.information.plant.information?.latinName,
-                ]);
-            }) ?? [],
-        [harvestBasketState?.producePlantSortIds, sortDataById],
-    );
-
-    if (!harvestBasketState || !harvestBasketPlacement) {
-        return null;
-    }
 
     return (
         <Suspense fallback={null}>
-            <RaisedBedHarvestBasketVisual
-                fillLevel={harvestBasketState.fillLevel}
-                position={harvestBasketPlacement.position}
-                produceKinds={harvestProduceKinds}
-                rotation={harvestBasketPlacement.rotation}
-            />
+            {harvestBaskets.map((basket) => {
+                const placement = harvestBasketPlacements.get(
+                    basket.raisedBed.id,
+                );
+                if (!placement) {
+                    return null;
+                }
+
+                const produceKinds = basket.state.producePlantSortIds.map(
+                    (plantSortId) => {
+                        const sort = sortDataById.get(plantSortId);
+
+                        return resolveHarvestProduceKind([
+                            sort?.information.name,
+                            sort?.information.plant.information?.name,
+                            sort?.information.plant.information?.latinName,
+                        ]);
+                    },
+                );
+
+                return (
+                    <RaisedBedHarvestBasketVisual
+                        key={`raised-bed-harvest-basket-${basket.raisedBed.id}`}
+                        fillLevel={basket.state.fillLevel}
+                        position={placement.position}
+                        produceKinds={produceKinds}
+                        rotation={placement.rotation}
+                    />
+                );
+            })}
         </Suspense>
     );
 }

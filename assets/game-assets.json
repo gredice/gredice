@@ -1605,6 +1605,7 @@
             "name": "HarvestBasket",
             "source": "HarvestBasket.blend",
             "output": "HarvestBasket.glb",
+            "version": "5361f192e361",
             "preload": "lazy",
             "objects": [
                 "HarvestBasket_Weave",
