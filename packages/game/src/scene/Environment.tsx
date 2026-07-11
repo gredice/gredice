@@ -697,6 +697,9 @@ export function Environment({
     const closeupCameraActive = useGameState(
         (state) => state.closeupCameraActive,
     );
+    const closeupCameraSettled = useGameState(
+        (state) => state.closeupCameraSettled,
+    );
     const isGroundView = view === 'closeup' || closeupCameraActive;
     const closeupBlockId = useGameState((state) => state.closeupBlock?.id);
     const pickupBlockId = useGameState((state) => state.pickupBlock?.id);
@@ -1144,6 +1147,7 @@ export function Environment({
                         backgroundPaletteIndex={backgroundPaletteIndex}
                         currentTime={currentTime}
                         groundView={isGroundView}
+                        hideCelestialGlow={closeupCameraSettled}
                         location={location}
                         moonlight={sky.moonlight}
                         timeOfDay={timeOfDay}
@@ -1211,10 +1215,12 @@ export function Environment({
                 />
             )}
             {showStars && (
-                <Stars visibility={isGroundView ? 0 : starVisibility} />
+                <Stars visibility={closeupCameraSettled ? 0 : starVisibility} />
             )}
             {!noBackground && (
-                <SunMoon visibility={isGroundView ? 0 : bodyVisibility} />
+                <SunMoon
+                    visibility={closeupCameraSettled ? 0 : bodyVisibility}
+                />
             )}
             {!weatherDisabled && fog > 0 && (
                 <fog attach="fog" args={[fogColor, fogNear, 190]} />

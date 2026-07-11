@@ -357,7 +357,9 @@ export type GameState = {
     view: 'normal' | 'closeup';
     closeupBlock: Block | null;
     closeupCameraActive: boolean;
+    closeupCameraSettled: boolean;
     setCloseupCameraActive: (active: boolean) => void;
+    setCloseupCameraSettled: (settled: boolean) => void;
     setView: (
         options:
             | { view: 'normal'; block?: Block }
@@ -839,8 +841,11 @@ export function createGameState({
         view: 'normal',
         closeupBlock: null,
         closeupCameraActive: false,
+        closeupCameraSettled: false,
         setCloseupCameraActive: (closeupCameraActive) =>
             set({ closeupCameraActive }),
+        setCloseupCameraSettled: (closeupCameraSettled) =>
+            set({ closeupCameraSettled }),
         setView: ({ view, block }) => {
             const currentView = get().view;
 
