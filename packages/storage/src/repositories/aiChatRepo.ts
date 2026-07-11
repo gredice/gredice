@@ -43,6 +43,11 @@ export type AiChatLimitState = {
     usedMicroUsd: number;
     reservedMicroUsd: number;
     remainingMicroUsd: number;
+    weekStartUsageDate: string;
+    weeklyLimitMicroUsd: number;
+    weeklyUsedMicroUsd: number;
+    weeklyReservedMicroUsd: number;
+    weeklyRemainingMicroUsd: number;
     usedInputTokens: number;
     usedOutputTokens: number;
     usedTotalTokens: number;
@@ -103,6 +108,13 @@ function addDaysToDateKey(dateKey: string, days: number) {
     const date = new Date(Date.UTC(year, (month ?? 1) - 1, day ?? 1));
     date.setUTCDate(date.getUTCDate() + days);
     return date.toISOString().slice(0, 10);
+}
+
+function startOfIsoWeekDateKey(dateKey: string) {
+    const [year, month, day] = dateKey.split('-').map(Number);
+    const date = new Date(Date.UTC(year, (month ?? 1) - 1, day ?? 1));
+    const daysSinceMonday = (date.getUTCDay() + 6) % 7;
+    return addDaysToDateKey(dateKey, -daysSinceMonday);
 }
 
 function zonedLocalMidnightToUtc(dateKey: string, timeZone: string) {
@@ -264,6 +276,7 @@ function toolCallValue(value: unknown): Record<string, unknown> | undefined {
 function extractToolCallRows(
     conversationId: string,
     messages: AiChatMessageForStorage[],
+    approvedByUserId?: string,
 ) {
     const rows: Array<typeof aiChatToolCalls.$inferInsert> = [];
 
@@ -275,6 +288,8 @@ function extractToolCallRows(
             }
 
             const approval = toolCallValue(part.approval);
+            const approved =
+                approval?.approved === true || approval?.state === 'approved';
             rows.push({
                 id: randomUUID(),
                 conversationId,
@@ -298,8 +313,8 @@ function extractToolCallRows(
                 error:
                     typeof part.errorText === 'string' ? part.errorText : null,
                 needsApproval: Boolean(approval),
-                approvedAt:
-                    approval?.state === 'approved' ? new Date() : undefined,
+                approvedByUserId: approved ? approvedByUserId : undefined,
+                approvedAt: approved ? new Date() : undefined,
             });
         }
     }
@@ -339,12 +354,29 @@ export async function getAiChatAccountLimitState(
     const timeZone = validTimeZone(account?.timeZone);
     const usageDate = aiChatUsageDateKey(now, timeZone);
     const todayRows = ledgerRows.filter((row) => row.usageDate === usageDate);
+    const weekStartUsageDate = startOfIsoWeekDateKey(usageDate);
+    const weekRows = ledgerRows.filter(
+        (row) =>
+            row.usageDate >= weekStartUsageDate && row.usageDate <= usageDate,
+    );
     const usedMicroUsd = todayRows.reduce(
         (sum, row) =>
             statusCountsAsFinalized(row.status) ? sum + row.totalMicroUsd : sum,
         0,
     );
     const reservedMicroUsd = todayRows.reduce(
+        (sum, row) =>
+            statusCountsAsReserved(row.status)
+                ? sum + row.reservedMicroUsd
+                : sum,
+        0,
+    );
+    const weeklyUsedMicroUsd = weekRows.reduce(
+        (sum, row) =>
+            statusCountsAsFinalized(row.status) ? sum + row.totalMicroUsd : sum,
+        0,
+    );
+    const weeklyReservedMicroUsd = weekRows.reduce(
         (sum, row) =>
             statusCountsAsReserved(row.status)
                 ? sum + row.reservedMicroUsd
@@ -387,7 +419,10 @@ export async function getAiChatAccountLimitState(
         (activeRaisedBed
             ? override?.activeDailyLimitMicroUsd
             : override?.trialDailyLimitMicroUsd) ?? defaultDailyLimit;
+    const weeklyLimitMicroUsd = dailyLimitMicroUsd * 7;
     const spentOrReservedMicroUsd = usedMicroUsd + reservedMicroUsd;
+    const weeklySpentOrReservedMicroUsd =
+        weeklyUsedMicroUsd + weeklyReservedMicroUsd;
     const disabled = Boolean(override?.disabled);
     const blockedReason = disabled
         ? 'disabled'
@@ -408,6 +443,14 @@ export async function getAiChatAccountLimitState(
         remainingMicroUsd: Math.max(
             0,
             dailyLimitMicroUsd - spentOrReservedMicroUsd,
+        ),
+        weekStartUsageDate,
+        weeklyLimitMicroUsd,
+        weeklyUsedMicroUsd,
+        weeklyReservedMicroUsd,
+        weeklyRemainingMicroUsd: Math.max(
+            0,
+            weeklyLimitMicroUsd - weeklySpentOrReservedMicroUsd,
         ),
         usedInputTokens,
         usedOutputTokens,
@@ -591,9 +634,11 @@ export async function ensureAiChatConversation({
 }
 
 export async function replaceAiChatMessages({
+    approvedByUserId,
     conversationId,
     messages,
 }: {
+    approvedByUserId?: string;
     conversationId: string;
     messages: unknown[];
 }) {
@@ -622,6 +667,7 @@ export async function replaceAiChatMessages({
         const toolCalls = extractToolCallRows(
             conversationId,
             normalizedMessages,
+            approvedByUserId,
         );
         if (toolCalls.length > 0) {
             await tx.insert(aiChatToolCalls).values(toolCalls);

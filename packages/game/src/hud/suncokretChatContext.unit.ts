@@ -3,13 +3,12 @@ import test from 'node:test';
 import { sanitizeSuncokretAssistantText } from '@gredice/js/ai';
 import {
     estimateSuncokretTextTokens,
-    formatSuncokretTokenUsage,
+    formatSuncokretUsagePercent,
     resolveSuncokretUiContext,
     resolveSuncokretVisibleUsage,
     suncokretContextConversationLabel,
     suncokretContextSuggestions,
     suncokretConversationLabel,
-    suncokretUsageFromMetadata,
 } from './suncokretChatContext';
 
 test('settings context takes precedence over the raised-bed closeup', () => {
@@ -89,25 +88,24 @@ test('contextual surfaces use distinct labels and suggestions', () => {
     assert.strictEqual(new Set(plantPrompts).size, 3);
 });
 
-test('token usage metadata supports exact totals and a live text estimate', () => {
-    assert.deepStrictEqual(
-        suncokretUsageFromMetadata({
-            suncokret: {
-                requestId: 'request-1',
-                usage: { totalTokens: 1_234 },
-            },
-        }),
-        { requestId: 'request-1', totalTokens: 1_234 },
-    );
+test('usage percentages include a live text estimate without exposing tokens', () => {
     assert.strictEqual(estimateSuncokretTextTokens('12345678'), 2);
     assert.deepStrictEqual(
         resolveSuncokretVisibleUsage({
-            dailyUsageTokens: 1_234,
             streamingText: '12345678',
+            usage: {
+                day: { usedPercent: 10, remainingPercent: 90 },
+                week: { usedPercent: 5, remainingPercent: 95 },
+                liveOutputPercentPerToken: { day: 0.5, week: 0.1 },
+            },
         }),
-        { approximate: true, tokens: 1_236 },
+        {
+            day: { usedPercent: 11, remainingPercent: 89 },
+            week: { usedPercent: 5.2, remainingPercent: 94.8 },
+        },
     );
-    assert.match(formatSuncokretTokenUsage(1_234, true), /^Danas korišteno ≈/);
+    assert.strictEqual(formatSuncokretUsagePercent(5.25), '5,3%');
+    assert.strictEqual(formatSuncokretUsagePercent(94.75), '94,8%');
 });
 
 test('provider tool protocol variants are replaced with a friendly retry message', () => {

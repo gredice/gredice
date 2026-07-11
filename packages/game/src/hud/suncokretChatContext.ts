@@ -292,60 +292,64 @@ export function estimateSuncokretTextTokens(text: string) {
     return text.length > 0 ? Math.max(1, Math.ceil(text.length / 4)) : 0;
 }
 
+export type SuncokretUsagePeriod = {
+    usedPercent: number;
+    remainingPercent: number;
+};
+
+export type SuncokretUsageStatus = {
+    day: SuncokretUsagePeriod;
+    week: SuncokretUsagePeriod;
+    liveOutputPercentPerToken: {
+        day: number;
+        week: number;
+    };
+};
+
+function usagePeriodWithLiveOutput(
+    period: SuncokretUsagePeriod,
+    estimatedOutputTokens: number,
+    percentPerToken: number,
+) {
+    const livePercent = Math.max(0, estimatedOutputTokens * percentPerToken);
+    const usedPercent = Math.min(100, period.usedPercent + livePercent);
+
+    return {
+        usedPercent,
+        remainingPercent: Math.max(0, 100 - usedPercent),
+    };
+}
+
 export function resolveSuncokretVisibleUsage({
-    dailyUsageTokens,
     streamingText,
+    usage,
 }: {
-    dailyUsageTokens: number | null;
     streamingText: string;
+    usage: SuncokretUsageStatus | null | undefined;
 }) {
+    if (!usage) {
+        return null;
+    }
+
     const streamingTokenEstimate = estimateSuncokretTextTokens(streamingText);
-    if (dailyUsageTokens == null && streamingTokenEstimate === 0) {
-        return null;
-    }
 
     return {
-        approximate: streamingTokenEstimate > 0,
-        tokens: (dailyUsageTokens ?? 0) + streamingTokenEstimate,
+        day: usagePeriodWithLiveOutput(
+            usage.day,
+            streamingTokenEstimate,
+            usage.liveOutputPercentPerToken.day,
+        ),
+        week: usagePeriodWithLiveOutput(
+            usage.week,
+            streamingTokenEstimate,
+            usage.liveOutputPercentPerToken.week,
+        ),
     };
 }
 
-export function formatSuncokretTokenUsage(tokens: number, approximate = false) {
-    const normalizedTokens = Math.max(0, Math.round(tokens));
-    const formatted = new Intl.NumberFormat('hr-HR', {
-        notation: 'compact',
+export function formatSuncokretUsagePercent(value: number) {
+    const normalized = Math.min(100, Math.max(0, value));
+    return `${new Intl.NumberFormat('hr-HR', {
         maximumFractionDigits: 1,
-    }).format(normalizedTokens);
-    const tokenLabel = normalizedTokens === 1 ? 'token' : 'tokena';
-
-    return `Danas korišteno ${approximate ? '≈' : ''}${formatted} ${tokenLabel}`;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
-
-export function suncokretUsageFromMetadata(metadata: unknown) {
-    if (!isRecord(metadata) || !isRecord(metadata.suncokret)) {
-        return null;
-    }
-
-    const { requestId, usage } = metadata.suncokret;
-    if (typeof requestId !== 'string' || !isRecord(usage)) {
-        return null;
-    }
-
-    const totalTokens = usage.totalTokens;
-    if (
-        typeof totalTokens !== 'number' ||
-        !Number.isFinite(totalTokens) ||
-        totalTokens < 0
-    ) {
-        return null;
-    }
-
-    return {
-        requestId,
-        totalTokens: Math.round(totalTokens),
-    };
+    }).format(normalized)}%`;
 }

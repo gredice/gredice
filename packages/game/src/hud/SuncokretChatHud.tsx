@@ -21,13 +21,26 @@ import {
     Sun,
     Warning,
 } from '@gredice/ui/icons';
+import { Popper } from '@gredice/ui/Popper';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
-import { DefaultChatTransport, type UIMessage } from 'ai';
+import {
+    DefaultChatTransport,
+    lastAssistantMessageIsCompleteWithApprovalResponses,
+    type UIMessage,
+} from 'ai';
 import Image from 'next/image';
-import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import {
+    type FormEvent,
+    type ReactNode,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+    useSyncExternalStore,
+} from 'react';
 import { useGameFlags } from '../GameFlagsContext';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useGameState } from '../useGameState';
@@ -37,12 +50,13 @@ import { HudCard } from './components/HudCard';
 import { useSuncokretChat } from './SuncokretChatProvider';
 import { SuncokretChatTrigger } from './SuncokretChatTrigger';
 import {
-    formatSuncokretTokenUsage,
+    formatSuncokretUsagePercent,
     resolveSuncokretUiContext,
     resolveSuncokretVisibleUsage,
+    type SuncokretUsagePeriod,
+    type SuncokretUsageStatus,
     suncokretContextSuggestions,
     suncokretConversationLabel,
-    suncokretUsageFromMetadata,
 } from './suncokretChatContext';
 
 type SuncokretLimit = {
@@ -50,9 +64,6 @@ type SuncokretLimit = {
     blockedReason: string | null;
     trialChatDaysUsed: number;
     trialChatDaysLimit: number;
-    usedInputTokens: number;
-    usedOutputTokens: number;
-    usedTotalTokens: number;
 };
 
 type SuncokretStatus = {
@@ -60,12 +71,123 @@ type SuncokretStatus = {
     debugEnabled?: boolean;
     model: { id: string; label: string } | null;
     limit: SuncokretLimit;
+    usage: SuncokretUsageStatus;
 };
 
 type SuncokretModel = {
     id: string;
     label: string;
 };
+
+const desktopChatQuery = '(min-width: 768px)';
+
+function subscribeToDesktopChatLayout(onChange: () => void) {
+    const mediaQuery = window.matchMedia(desktopChatQuery);
+    mediaQuery.addEventListener('change', onChange);
+    return () => mediaQuery.removeEventListener('change', onChange);
+}
+
+function desktopChatLayoutSnapshot() {
+    return window.matchMedia(desktopChatQuery).matches;
+}
+
+function SuncokretChatPositioner({
+    anchorElement,
+    children,
+    isCloseup,
+    onClose,
+}: {
+    anchorElement: HTMLElement | null;
+    children: ReactNode;
+    isCloseup: boolean;
+    onClose: () => void;
+}) {
+    const desktop = useSyncExternalStore(
+        subscribeToDesktopChatLayout,
+        desktopChatLayoutSnapshot,
+        () => false,
+    );
+    const virtualRef = useMemo(
+        () => (anchorElement ? { current: anchorElement } : undefined),
+        [anchorElement],
+    );
+
+    if (desktop && anchorElement && virtualRef) {
+        const anchorRect = anchorElement.getBoundingClientRect();
+        const anchorCenter = anchorRect.left + anchorRect.width / 2;
+        const side = anchorCenter < window.innerWidth / 2 ? 'right' : 'left';
+
+        return (
+            <Popper
+                align="center"
+                className="!w-[440px] max-w-[calc(100vw-1rem)] border-0 bg-transparent p-0 shadow-none"
+                data-suncokret-placement="anchored"
+                onOpenChange={(nextOpen) => {
+                    if (!nextOpen) {
+                        onClose();
+                    }
+                }}
+                open
+                side={side}
+                sideOffset={12}
+                virtualRef={virtualRef}
+            >
+                {children}
+            </Popper>
+        );
+    }
+
+    return (
+        <div
+            className={cx(
+                'pointer-events-auto fixed inset-x-2 bottom-2 z-50 flex justify-center md:inset-auto md:bottom-2 md:block',
+                isCloseup
+                    ? 'md:right-auto md:left-2'
+                    : 'md:right-2 md:left-auto',
+            )}
+            data-suncokret-placement={
+                isCloseup ? 'bottom-left' : 'bottom-right'
+            }
+        >
+            {children}
+        </div>
+    );
+}
+
+function UsagePeriodIndicator({
+    label,
+    period,
+}: {
+    label: string;
+    period: SuncokretUsagePeriod;
+}) {
+    const used = formatSuncokretUsagePercent(period.usedPercent);
+    const remaining = formatSuncokretUsagePercent(period.remainingPercent);
+
+    return (
+        <div className="min-w-0 flex-1">
+            <Row justifyContent="space-between" className="gap-2 text-[11px]">
+                <span className="font-medium text-foreground">{label}</span>
+                <span className="truncate text-muted-foreground">
+                    {used} iskorišteno · {remaining} preostalo
+                </span>
+            </Row>
+            <div
+                aria-label={`${label}: ${used} iskorišteno, ${remaining} preostalo`}
+                aria-valuemax={100}
+                aria-valuemin={0}
+                aria-valuenow={Math.round(period.usedPercent)}
+                className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted"
+                role="progressbar"
+            >
+                <div
+                    className="h-full rounded-full bg-amber-400 transition-[width] duration-300 dark:bg-amber-500"
+                    style={{ width: `${period.usedPercent}%` }}
+                />
+            </div>
+        </div>
+    );
+}
 
 function randomChatId() {
     return typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -611,10 +733,6 @@ export function SuncokretChatHud() {
     const [statusInfo, setStatusInfo] = useState<SuncokretStatus | null>(null);
     const [models, setModels] = useState<SuncokretModel[]>([]);
     const [modelId, setModelId] = useState<string | null>(null);
-    const [dailyUsageTokens, setDailyUsageTokens] = useState<number | null>(
-        null,
-    );
-    const appliedUsageRequestIds = useRef(new Set<string>());
     const chatId = useMemo(randomChatId, []);
     const apiOrigin = getBrowserGrediceAppOrigin('api');
     const featureFlags = useMemo(
@@ -660,38 +778,50 @@ export function SuncokretChatHud() {
             raisedBedName: raisedBed?.name,
             settingsSection,
         });
+    const requestContextRef = useRef({
+        debug,
+        featureFlags,
+        gardenId,
+        modelId,
+        positionIndex,
+        raisedBedId: contextRaisedBedId,
+        uiContext,
+    });
+    requestContextRef.current = {
+        debug,
+        featureFlags,
+        gardenId,
+        modelId,
+        positionIndex,
+        raisedBedId: contextRaisedBedId,
+        uiContext,
+    };
 
     const transport = useMemo(
         () =>
             new DefaultChatTransport({
                 api: `${apiOrigin}/api/ai/suncokret/chat`,
                 credentials: 'include',
-                prepareSendMessagesRequest: ({ id, messages }) => ({
-                    body: {
-                        id,
-                        conversationId: id,
-                        messages,
-                        gardenId,
-                        raisedBedId: contextRaisedBedId,
-                        positionIndex,
-                        modelId,
-                        uiContext,
-                        debug,
-                        featureFlags,
-                    },
-                    credentials: 'include',
-                }),
+                prepareSendMessagesRequest: ({ id, messages }) => {
+                    const requestContext = requestContextRef.current;
+                    return {
+                        body: {
+                            id,
+                            conversationId: id,
+                            messages,
+                            gardenId: requestContext.gardenId,
+                            raisedBedId: requestContext.raisedBedId,
+                            positionIndex: requestContext.positionIndex,
+                            modelId: requestContext.modelId,
+                            uiContext: requestContext.uiContext,
+                            debug: requestContext.debug,
+                            featureFlags: requestContext.featureFlags,
+                        },
+                        credentials: 'include',
+                    };
+                },
             }),
-        [
-            apiOrigin,
-            contextRaisedBedId,
-            debug,
-            featureFlags,
-            gardenId,
-            modelId,
-            positionIndex,
-            uiContext,
-        ],
+        [apiOrigin],
     );
 
     const { addToolApprovalResponse, error, messages, sendMessage, status } =
@@ -699,6 +829,8 @@ export function SuncokretChatHud() {
             id: chatId,
             transport,
             experimental_throttle: 80,
+            sendAutomaticallyWhen:
+                lastAssistantMessageIsCompleteWithApprovalResponses,
         });
 
     const loading = status === 'submitted' || status === 'streaming';
@@ -716,7 +848,6 @@ export function SuncokretChatHud() {
             .then((nextStatus) => {
                 if (cancelled) return;
                 setStatusInfo(nextStatus);
-                setDailyUsageTokens(nextStatus.limit.usedTotalTokens);
                 setModelId((current) =>
                     debug ? (current ?? nextStatus.model?.id ?? null) : null,
                 );
@@ -724,7 +855,6 @@ export function SuncokretChatHud() {
             .catch(() => {
                 if (!cancelled) {
                     setStatusInfo(null);
-                    setDailyUsageTokens(null);
                 }
             });
 
@@ -767,24 +897,6 @@ export function SuncokretChatHud() {
         };
     }, [apiOrigin, debug, enabled, featureFlagQuery, open]);
 
-    useEffect(() => {
-        let tokenDelta = 0;
-
-        for (const message of messages) {
-            const usage = suncokretUsageFromMetadata(message.metadata);
-            if (!usage || appliedUsageRequestIds.current.has(usage.requestId)) {
-                continue;
-            }
-
-            appliedUsageRequestIds.current.add(usage.requestId);
-            tokenDelta += usage.totalTokens;
-        }
-
-        if (tokenDelta > 0) {
-            setDailyUsageTokens((current) => (current ?? 0) + tokenDelta);
-        }
-    }, [messages]);
-
     if (!enabled || !chat) {
         return null;
     }
@@ -811,8 +923,8 @@ export function SuncokretChatHud() {
             ? messages[messages.length - 1]
             : undefined;
     const visibleUsage = resolveSuncokretVisibleUsage({
-        dailyUsageTokens,
         streamingText: messageTextContent(streamingMessage),
+        usage: statusInfo?.usage,
     });
     const contextSuggestions = suncokretContextSuggestions(uiContext);
     const isCloseup = view === 'closeup';
@@ -834,16 +946,10 @@ export function SuncokretChatHud() {
                 </HudCard>
             )}
             {open && (
-                <div
-                    className={cx(
-                        'pointer-events-auto fixed inset-x-2 bottom-2 z-50 flex justify-center md:inset-auto md:bottom-2 md:block',
-                        isCloseup
-                            ? 'md:right-auto md:left-2'
-                            : 'md:right-2 md:left-auto',
-                    )}
-                    data-suncokret-placement={
-                        isCloseup ? 'bottom-left' : 'bottom-right'
-                    }
+                <SuncokretChatPositioner
+                    anchorElement={chat.anchorElement}
+                    isCloseup={isCloseup}
+                    onClose={chat.closeChat}
                 >
                     <div
                         aria-label="Razgovor sa Suncokretom"
@@ -1012,6 +1118,21 @@ export function SuncokretChatHud() {
                             spacing={2}
                             className="border-t bg-background/95 p-3"
                         >
+                            {visibleUsage && (
+                                <div
+                                    className="grid gap-2 rounded-xl bg-muted/40 px-3 py-2"
+                                    data-suncokret-usage
+                                >
+                                    <UsagePeriodIndicator
+                                        label="Danas"
+                                        period={visibleUsage.day}
+                                    />
+                                    <UsagePeriodIndicator
+                                        label="Ovaj tjedan"
+                                        period={visibleUsage.week}
+                                    />
+                                </div>
+                            )}
                             {blocked && (
                                 <div className="rounded-xl border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
                                     Dnevni limit je iskorišten. Nastavak je
@@ -1054,12 +1175,7 @@ export function SuncokretChatHud() {
                                         aria-live="polite"
                                         className="px-1 text-xs text-muted-foreground"
                                     >
-                                        {visibleUsage
-                                            ? formatSuncokretTokenUsage(
-                                                  visibleUsage.tokens,
-                                                  visibleUsage.approximate,
-                                              )
-                                            : 'Enter šalje poruku'}
+                                        Enter šalje poruku
                                     </span>
                                     <IconButton
                                         title={
@@ -1095,7 +1211,7 @@ export function SuncokretChatHud() {
                             )}
                         </Stack>
                     </div>
-                </div>
+                </SuncokretChatPositioner>
             )}
         </>
     );

@@ -19,11 +19,12 @@ export type SuncokretChatTarget = {
 };
 
 type SuncokretChatController = {
+    anchorElement: HTMLElement | null;
     closeChat: () => void;
     open: boolean;
-    openChat: (target: SuncokretChatTarget) => void;
+    openChat: (target: SuncokretChatTarget, anchorElement: HTMLElement) => void;
     target: SuncokretChatTarget | null;
-    toggleDefaultChat: () => void;
+    toggleDefaultChat: (anchorElement: HTMLElement) => void;
 };
 
 const SuncokretChatContext = createContext<SuncokretChatController | null>(
@@ -33,24 +34,42 @@ const SuncokretChatContext = createContext<SuncokretChatController | null>(
 export function SuncokretChatProvider({ children }: PropsWithChildren) {
     const [open, setOpen] = useState(false);
     const [target, setTarget] = useState<SuncokretChatTarget | null>(null);
+    const [anchorElement, setAnchorElement] = useState<HTMLElement | null>(
+        null,
+    );
 
     const closeChat = useCallback(() => setOpen(false), []);
-    const openChat = useCallback((nextTarget: SuncokretChatTarget) => {
-        setTarget(nextTarget);
-        setOpen(true);
-    }, []);
-    const toggleDefaultChat = useCallback(() => {
-        if (open) {
-            setOpen(false);
-            return;
-        }
+    const openChat = useCallback(
+        (nextTarget: SuncokretChatTarget, nextAnchorElement: HTMLElement) => {
+            setTarget(nextTarget);
+            setAnchorElement(nextAnchorElement);
+            setOpen(true);
+        },
+        [],
+    );
+    const toggleDefaultChat = useCallback(
+        (nextAnchorElement: HTMLElement) => {
+            if (open) {
+                setOpen(false);
+                return;
+            }
 
-        setTarget(null);
-        setOpen(true);
-    }, [open]);
+            setTarget(null);
+            setAnchorElement(nextAnchorElement);
+            setOpen(true);
+        },
+        [open],
+    );
     const value = useMemo(
-        () => ({ closeChat, open, openChat, target, toggleDefaultChat }),
-        [closeChat, open, openChat, target, toggleDefaultChat],
+        () => ({
+            anchorElement,
+            closeChat,
+            open,
+            openChat,
+            target,
+            toggleDefaultChat,
+        }),
+        [anchorElement, closeChat, open, openChat, target, toggleDefaultChat],
     );
 
     return (

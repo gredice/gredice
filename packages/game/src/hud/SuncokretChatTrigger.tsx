@@ -36,14 +36,14 @@ export function SuncokretChatTrigger({
             aria-haspopup="dialog"
             title={title}
             variant="plain"
-            onClick={() => {
+            onClick={(event) => {
                 if (action === 'toggle-default') {
-                    chat.toggleDefaultChat();
+                    chat.toggleDefaultChat(event.currentTarget);
                     return;
                 }
 
                 if (target) {
-                    chat.openChat(target);
+                    chat.openChat(target, event.currentTarget);
                 }
             }}
             className={cx(
