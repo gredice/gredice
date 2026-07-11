@@ -39,6 +39,7 @@ export * from './repositories/deliveryUtilsRepo';
 export * from './repositories/emailsRepo';
 export * from './repositories/entitiesRepo';
 export * from './repositories/entityHierarchyRepo';
+export * from './repositories/entityPriceHistoryRepo';
 export * from './repositories/entitySearchRepo';
 export * from './repositories/entityTypeCategoriesRepo';
 export * from './repositories/entityTypesRepo';
