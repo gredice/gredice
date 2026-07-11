@@ -1,6 +1,26 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import { OutletHudStory } from './OutletHudStory';
 
+test('outlet HUD uses a neutral badge for the available item count', async ({
+    mount,
+    page,
+}) => {
+    await mount(<OutletHudStory searchParams="vrt=1" />);
+
+    const outletButton = page.locator('button[title="Outlet sadnica"]');
+    const availabilityBadge = outletButton.locator(
+        '[data-outlet-availability-badge]',
+    );
+
+    await expect(outletButton).toBeVisible();
+    await expect(availabilityBadge).toHaveText('4');
+    await expect(availabilityBadge).toHaveClass(/bg-muted/u);
+    await expect(availabilityBadge).toHaveClass(/text-muted-foreground/u);
+    await expect(outletButton.getByText('Outlet', { exact: true })).toHaveCount(
+        0,
+    );
+});
+
 test('outlet modal collapses offers and lets user pick a not-yet-active raised bed', async ({
     mount,
     page,
