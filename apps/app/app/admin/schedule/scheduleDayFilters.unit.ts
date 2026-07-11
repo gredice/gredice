@@ -15,6 +15,7 @@ import type { Operation, RaisedBed, RaisedBedField } from './types.ts';
 
 const today = new Date(2026, 4, 14);
 const yesterdayNoon = new Date(2026, 4, 13, 12);
+const scheduleTimeZone = 'Europe/Zagreb';
 
 function buildField(overrides: Partial<RaisedBedField>): RaisedBedField {
     return {
@@ -90,10 +91,12 @@ test('pending verification sowing remains visible today until verified', () => {
     });
 
     assert.deepEqual(
-        getScheduledFieldsForDay(true, today, [
-            buildRaisedBed(pendingField),
-            buildRaisedBed(verifiedField),
-        ]).map((field) => field.id),
+        getScheduledFieldsForDay(
+            true,
+            today,
+            [buildRaisedBed(pendingField), buildRaisedBed(verifiedField)],
+            scheduleTimeZone,
+        ).map((field) => field.id),
         [1],
     );
 });
@@ -110,11 +113,54 @@ test('pending verification operation remains visible today until verified', () =
     });
 
     assert.deepEqual(
-        getScheduledOperationsForDay(true, today, [
-            pendingOperation,
-            verifiedOperation,
-        ]).map((operation) => operation.id),
+        getScheduledOperationsForDay(
+            true,
+            today,
+            [pendingOperation, verifiedOperation],
+            scheduleTimeZone,
+        ).map((operation) => operation.id),
         [1],
+    );
+});
+
+test('tomorrow tasks stay out of today when local midnight is the previous UTC day', () => {
+    const july11 = new Date('2026-07-11T00:00:00.000Z');
+    const july12 = new Date('2026-07-12T00:00:00.000Z');
+    const july12InZagreb = new Date('2026-07-11T22:00:56.865Z');
+    const operation = buildOperation({ scheduledDate: july12InZagreb });
+    const field = buildField({ plantScheduledDate: july12InZagreb });
+    const raisedBeds = [buildRaisedBed(field)];
+
+    assert.deepEqual(
+        getScheduledOperationsForDay(
+            true,
+            july11,
+            [operation],
+            scheduleTimeZone,
+        ),
+        [],
+    );
+    assert.deepEqual(
+        getScheduledFieldsForDay(true, july11, raisedBeds, scheduleTimeZone),
+        [],
+    );
+    assert.deepEqual(
+        getScheduledOperationsForDay(
+            false,
+            july12,
+            [operation],
+            scheduleTimeZone,
+        ).map((item) => item.id),
+        [operation.id],
+    );
+    assert.deepEqual(
+        getScheduledFieldsForDay(
+            false,
+            july12,
+            raisedBeds,
+            scheduleTimeZone,
+        ).map((item) => item.id),
+        [field.id],
     );
 });
 

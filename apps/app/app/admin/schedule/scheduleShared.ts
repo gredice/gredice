@@ -1,4 +1,5 @@
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
+import { getScheduleDateKey } from './scheduleTimeZone';
 import type { RaisedBed } from './types';
 
 export type RaisedBedScheduleGroup = {
@@ -138,6 +139,7 @@ export function getScheduleTaskRowClassName({
 export function isSameScheduleDay(
     left: Date | string | null | undefined,
     right: Date | string | null | undefined,
+    timeZone: string,
 ) {
     if (!left || !right) {
         return false;
@@ -154,9 +156,8 @@ export function isSameScheduleDay(
     }
 
     return (
-        leftDate.getFullYear() === rightDate.getFullYear() &&
-        leftDate.getMonth() === rightDate.getMonth() &&
-        leftDate.getDate() === rightDate.getDate()
+        getScheduleDateKey(leftDate, timeZone) ===
+        getScheduleDateKey(rightDate, timeZone)
     );
 }
 

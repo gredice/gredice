@@ -22,10 +22,11 @@ export async function ScheduleDayPlantingsSection({
     isToday,
     date,
 }: ScheduleDayPlantingsSectionProps) {
-    const [{ raisedBeds, scheduledFields }, plantSorts] = await Promise.all([
-        getScheduleDayData(date.toISOString(), isToday),
-        getSchedulePlantSorts(),
-    ]);
+    const [{ raisedBeds, scheduledFields, timeZone }, plantSorts] =
+        await Promise.all([
+            getScheduleDayData(date.toISOString(), isToday),
+            getSchedulePlantSorts(),
+        ]);
     if (scheduledFields.length === 0) {
         return null;
     }
@@ -102,6 +103,7 @@ export async function ScheduleDayPlantingsSection({
                             <RaisedBedPlantingScheduleSection
                                 key={key}
                                 date={date}
+                                timeZone={timeZone}
                                 physicalId={physicalId}
                                 raisedBeds={beds}
                                 scheduledFields={scheduledFields}

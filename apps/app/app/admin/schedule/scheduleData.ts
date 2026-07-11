@@ -2,10 +2,14 @@ import 'server-only';
 
 import {
     cacheScheduleRead,
+    DEFAULT_ADMIN_TIME_ZONE,
     getAllOperations,
     getAllRaisedBeds,
     getDeliveryRequestsSummary,
     getEntitiesFormatted,
+    getSetting,
+    isAdminGeneralSettingValue,
+    SettingsKeys,
     scheduleCacheKeys,
     scheduleCacheTtls,
 } from '@gredice/storage';
@@ -45,6 +49,14 @@ export const getSchedulePlantSorts = cache(async () => {
 
 export const getScheduleOperationsData = cache(async () => {
     return getEntitiesFormatted<EntityStandardized>('operation');
+});
+
+export const getScheduleTimeZone = cache(async () => {
+    const setting = await getSetting(SettingsKeys.AdminGeneral);
+
+    return isAdminGeneralSettingValue(setting?.value)
+        ? setting.value.timeZone
+        : DEFAULT_ADMIN_TIME_ZONE;
 });
 
 export const getScheduleOperations = cache(async () => {
@@ -91,8 +103,10 @@ export const getScheduleDeliveryRequests = cache(async () => {
 
 export const getScheduleDayData = cache(
     async (dateKey: string, isToday: boolean) => {
+        const timeZone = await getScheduleTimeZone();
+
         return cacheScheduleRead(
-            scheduleCacheKeys.adminDay(dateKey, isToday),
+            `${scheduleCacheKeys.adminDay(dateKey, isToday)}:timeZone:${encodeURIComponent(timeZone)}`,
             async () => {
                 const date = new Date(dateKey);
                 const [raisedBeds, operations, deliveryRequests] =
@@ -104,20 +118,24 @@ export const getScheduleDayData = cache(
 
                 return {
                     raisedBeds,
+                    timeZone,
                     scheduledFields: getScheduledFieldsForDay(
                         isToday,
                         date,
                         raisedBeds,
+                        timeZone,
                     ),
                     scheduledOperations: getScheduledOperationsForDay(
                         isToday,
                         date,
                         operations,
+                        timeZone,
                     ),
                     todaysDeliveryRequests: getDayDeliveryRequests(
                         isToday,
                         date,
                         deliveryRequests,
+                        timeZone,
                     ),
                 };
             },

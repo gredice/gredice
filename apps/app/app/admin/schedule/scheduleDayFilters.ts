@@ -6,15 +6,16 @@ import {
     isOperationPendingVerification,
     OPERATION_STATUSES_TO_INCLUDE,
 } from './scheduleShared';
+import { getScheduleDateKey } from './scheduleTimeZone';
 import type { DeliveryRequest, Operation, RaisedBed } from './types';
 
 export function getScheduledFieldsForDay(
     isToday: boolean,
     date: Date,
     raisedBeds: RaisedBed[],
+    timeZone: string,
 ) {
-    const normalizedDate = new Date(date);
-    normalizedDate.setHours(0, 0, 0, 0);
+    const dateKey = getScheduleDateKey(date, timeZone);
 
     return raisedBeds
         .filter((raisedBed) => Boolean(raisedBed.physicalId))
@@ -35,28 +36,36 @@ export function getScheduledFieldsForDay(
                     return isToday;
                 }
 
-                const sowDate = new Date(field.plantSowDate);
+                const sowDateKey = getScheduleDateKey(
+                    new Date(field.plantSowDate),
+                    timeZone,
+                );
                 return (
-                    sowDate.toDateString() === normalizedDate.toDateString() ||
-                    (isToday && normalizedDate > sowDate)
+                    sowDateKey === dateKey || (isToday && sowDateKey < dateKey)
                 );
             }
 
             if (field.plantStatus === 'sowed' && field.plantSowDate) {
-                const sowDate = new Date(field.plantSowDate);
-                return sowDate.toDateString() === normalizedDate.toDateString();
+                return (
+                    getScheduleDateKey(
+                        new Date(field.plantSowDate),
+                        timeZone,
+                    ) === dateKey
+                );
             }
 
             if (!field.plantScheduledDate) {
                 return isToday;
             }
 
-            const scheduledDate = new Date(field.plantScheduledDate);
+            const scheduledDateKey = getScheduleDateKey(
+                new Date(field.plantScheduledDate),
+                timeZone,
+            );
 
             return (
-                normalizedDate.toDateString() ===
-                    scheduledDate.toDateString() ||
-                (isToday && normalizedDate > scheduledDate)
+                scheduledDateKey === dateKey ||
+                (isToday && scheduledDateKey < dateKey)
             );
         });
 }
@@ -65,9 +74,9 @@ export function getScheduledOperationsForDay(
     isToday: boolean,
     date: Date,
     operations: Operation[],
+    timeZone: string,
 ) {
-    const normalizedDate = new Date(date);
-    normalizedDate.setHours(0, 0, 0, 0);
+    const dateKey = getScheduleDateKey(date, timeZone);
 
     return operations.filter((operation) => {
         if (!OPERATION_STATUSES_TO_INCLUDE.has(operation.status)) {
@@ -86,32 +95,35 @@ export function getScheduledOperationsForDay(
                 return isToday;
             }
 
-            const completedDate = new Date(operation.completedAt);
+            const completedDateKey = getScheduleDateKey(
+                new Date(operation.completedAt),
+                timeZone,
+            );
             return (
-                completedDate.toDateString() ===
-                    normalizedDate.toDateString() ||
-                (isToday && normalizedDate > completedDate)
+                completedDateKey === dateKey ||
+                (isToday && completedDateKey < dateKey)
             );
         }
 
         if (isOperationCompleted(operation.status) && operation.completedAt) {
-            const completedDate = new Date(operation.completedAt);
             return (
-                completedDate.toDateString() === normalizedDate.toDateString()
+                getScheduleDateKey(
+                    new Date(operation.completedAt),
+                    timeZone,
+                ) === dateKey
             );
         }
 
-        const scheduledDate = operation.scheduledDate
-            ? new Date(operation.scheduledDate)
+        const scheduledDateKey = operation.scheduledDate
+            ? getScheduleDateKey(new Date(operation.scheduledDate), timeZone)
             : undefined;
         const sameDay =
-            scheduledDate !== undefined &&
-            normalizedDate.toDateString() === scheduledDate.toDateString();
-        const isUnscheduledToday = scheduledDate === undefined && isToday;
+            scheduledDateKey !== undefined && scheduledDateKey === dateKey;
+        const isUnscheduledToday = scheduledDateKey === undefined && isToday;
         const isOverdueToday =
-            scheduledDate !== undefined &&
+            scheduledDateKey !== undefined &&
             isToday &&
-            normalizedDate > scheduledDate &&
+            scheduledDateKey < dateKey &&
             !isOperationCompleted(operation.status) &&
             !isOperationPendingVerification(operation.status) &&
             !isOperationCancelled(operation.status);
@@ -124,10 +136,9 @@ export function getDayDeliveryRequests(
     isToday: boolean,
     date: Date,
     deliveryRequests: DeliveryRequest[],
+    timeZone: string,
 ) {
-    const normalizedDate = new Date(date);
-    normalizedDate.setHours(0, 0, 0, 0);
-    const dateString = normalizedDate.toDateString();
+    const dateKey = getScheduleDateKey(date, timeZone);
 
     return deliveryRequests
         .filter((request) => {
@@ -136,10 +147,11 @@ export function getDayDeliveryRequests(
                 : undefined;
 
             if (slotStart) {
-                const sameDay = slotStart.toDateString() === dateString;
+                const slotDateKey = getScheduleDateKey(slotStart, timeZone);
+                const sameDay = slotDateKey === dateKey;
                 const overdueToday =
                     isToday &&
-                    slotStart < normalizedDate &&
+                    slotDateKey < dateKey &&
                     request.state !== 'fulfilled' &&
                     request.state !== 'cancelled';
                 return sameDay || overdueToday;
