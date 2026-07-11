@@ -107,13 +107,17 @@ test('closeup camera stays active while the requested view returns to normal', (
 
     try {
         store.getState().setCloseupCameraActive(true);
+        store.getState().setCloseupCameraSettled(true);
         store.getState().setView({ view: 'normal' });
 
         assert.equal(store.getState().view, 'normal');
         assert.equal(store.getState().closeupCameraActive, true);
+        assert.equal(store.getState().closeupCameraSettled, true);
 
         store.getState().setCloseupCameraActive(false);
+        store.getState().setCloseupCameraSettled(false);
         assert.equal(store.getState().closeupCameraActive, false);
+        assert.equal(store.getState().closeupCameraSettled, false);
     } finally {
         store.getState().audio.dispose();
     }

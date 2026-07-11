@@ -91,6 +91,7 @@ type SkyGradientBackgroundProps = {
     backgroundPaletteIndex: number;
     currentTime: Date;
     groundView?: boolean;
+    hideCelestialGlow?: boolean;
     location: { lat: number; lon: number };
     moonlight: number;
     timeOfDay: number;
@@ -139,6 +140,7 @@ export function SkyGradientBackground({
     backgroundPaletteIndex,
     currentTime,
     groundView = false,
+    hideCelestialGlow = false,
     location,
     moonlight,
     timeOfDay,
@@ -300,9 +302,10 @@ export function SkyGradientBackground({
             const activeGradient = displayed;
             applyGradientUniforms(material, activeGradient);
             material.uniforms.uSunGlowIntensity.value =
-                (groundView ? 0 : activeGradient.sunGlowIntensity) * sunOpacity;
+                (hideCelestialGlow ? 0 : activeGradient.sunGlowIntensity) *
+                sunOpacity;
             material.uniforms.uMoonGlowIntensity.value =
-                (groundView ? 0 : activeGradient.moonGlowIntensity) *
+                (hideCelestialGlow ? 0 : activeGradient.moonGlowIntensity) *
                 moonOpacity;
         }
     });

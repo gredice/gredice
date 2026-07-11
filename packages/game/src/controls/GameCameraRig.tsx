@@ -177,6 +177,9 @@ export function GameCameraRig({
     const setCloseupCameraActive = useGameState(
         (state) => state.setCloseupCameraActive,
     );
+    const setCloseupCameraSettled = useGameState(
+        (state) => state.setCloseupCameraSettled,
+    );
     const [isAnimating, setIsAnimating] = useState(false);
     const setIsDragging = useGameState((state) => state.setIsDragging);
     const worldRotation = useGameState((state) => state.worldRotation);
@@ -840,6 +843,7 @@ export function GameCameraRig({
 
         if (view === 'closeup' && closeupTarget) {
             setCloseupCameraActive(true);
+            setCloseupCameraSettled(false);
             if (previousView !== 'closeup') {
                 normalCameraRef.current = {
                     position: camera.position.clone(),
@@ -857,6 +861,7 @@ export function GameCameraRig({
                 }),
                 endTarget: closeupTarget.target,
                 endZoom: closeupZoom,
+                onComplete: () => setCloseupCameraSettled(true),
             });
             previousViewRef.current = view;
             return;
@@ -868,7 +873,10 @@ export function GameCameraRig({
                 endPosition: normalCameraRef.current.position,
                 endTarget: normalCameraRef.current.target,
                 endZoom: normalCameraRef.current.zoom,
-                onComplete: () => setCloseupCameraActive(false),
+                onComplete: () => {
+                    setCloseupCameraActive(false);
+                    setCloseupCameraSettled(false);
+                },
             });
         }
         previousViewRef.current = view;
@@ -877,14 +885,17 @@ export function GameCameraRig({
         closeupTarget,
         isOrthographicCamera,
         setCloseupCameraActive,
+        setCloseupCameraSettled,
         startAnimation,
         view,
     ]);
 
-    useEffect(
-        () => () => setCloseupCameraActive(false),
-        [setCloseupCameraActive],
-    );
+    useEffect(() => {
+        return () => {
+            setCloseupCameraActive(false);
+            setCloseupCameraSettled(false);
+        };
+    }, [setCloseupCameraActive, setCloseupCameraSettled]);
 
     useFrame((_, delta) => {
         if (!isOrthographicCamera) {
