@@ -153,7 +153,7 @@ async function getGardenOperationsPage(
         query: {
             cursor: input.cursor.toString(),
             limit: input.pageSize.toString(),
-            includeCompleted: input.includeCompleted.toString(),
+            includeCompleted: input.includeCompleted ? 'true' : 'false',
             ...(input.raisedBedId !== undefined
                 ? { raisedBedId: input.raisedBedId.toString() }
                 : {}),

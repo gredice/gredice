@@ -137,19 +137,23 @@ test('context trigger opens weather suggestions anchored to the trigger', async 
         page.locator('[data-suncokret-placement="anchored"]'),
     ).toBeVisible();
 
-    const triggerBox = await page
-        .getByRole('button', { name: 'Pitaj Suncokreta u kontekstu' })
-        .boundingBox();
-    const chatBox = await chat.boundingBox();
-    expect(triggerBox).not.toBeNull();
-    expect(chatBox).not.toBeNull();
-    if (triggerBox && chatBox) {
-        const horizontalGap = Math.min(
-            Math.abs(chatBox.x - (triggerBox.x + triggerBox.width)),
-            Math.abs(triggerBox.x - (chatBox.x + chatBox.width)),
-        );
-        expect(horizontalGap).toBeLessThanOrEqual(16);
-    }
+    const contextTrigger = page.getByRole('button', {
+        name: 'Pitaj Suncokreta u kontekstu',
+    });
+    await expect
+        .poll(async () => {
+            const triggerBox = await contextTrigger.boundingBox();
+            const chatBox = await chat.boundingBox();
+            if (!triggerBox || !chatBox) {
+                return Number.POSITIVE_INFINITY;
+            }
+
+            return Math.min(
+                Math.abs(chatBox.x - (triggerBox.x + triggerBox.width)),
+                Math.abs(triggerBox.x - (chatBox.x + chatBox.width)),
+            );
+        })
+        .toBeLessThanOrEqual(16);
 });
 
 test('raised-bed closeup uses the contextual trigger and anchored chat', async ({

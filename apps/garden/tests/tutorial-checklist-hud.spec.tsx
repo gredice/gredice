@@ -154,18 +154,28 @@ test('tutorial checklist modal uses claimable checklist cards and collapses comp
     const activeGroupHeader = groups
         .nth(0)
         .getByRole('button', { name: /Dan 1/ });
-    const activeGroupBox = await groups.nth(0).boundingBox();
-    const activeGroupHeaderBox = await activeGroupHeader.boundingBox();
-    expect(activeGroupBox).not.toBeNull();
-    expect(activeGroupHeaderBox).not.toBeNull();
-    expect(
-        Math.abs((activeGroupHeaderBox?.x ?? 0) - (activeGroupBox?.x ?? 0)),
-    ).toBeLessThanOrEqual(2);
-    expect(
-        Math.abs(
-            (activeGroupHeaderBox?.width ?? 0) - (activeGroupBox?.width ?? 0),
-        ),
-    ).toBeLessThanOrEqual(2);
+    await expect
+        .poll(async () => {
+            const activeGroupBox = await groups.nth(0).boundingBox();
+            const activeGroupHeaderBox = await activeGroupHeader.boundingBox();
+            if (!activeGroupBox || !activeGroupHeaderBox) {
+                return Number.POSITIVE_INFINITY;
+            }
+
+            return Math.abs(activeGroupHeaderBox.x - activeGroupBox.x);
+        })
+        .toBeLessThanOrEqual(2);
+    await expect
+        .poll(async () => {
+            const activeGroupBox = await groups.nth(0).boundingBox();
+            const activeGroupHeaderBox = await activeGroupHeader.boundingBox();
+            if (!activeGroupBox || !activeGroupHeaderBox) {
+                return Number.POSITIVE_INFINITY;
+            }
+
+            return Math.abs(activeGroupHeaderBox.width - activeGroupBox.width);
+        })
+        .toBeLessThanOrEqual(2);
     const activeGroupProgressClassName = await groups
         .nth(0)
         .getByText('1/3')

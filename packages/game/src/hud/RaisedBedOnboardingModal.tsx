@@ -1133,10 +1133,7 @@ export function RaisedBedOnboardingModal({
                                         <Sprout className="size-5" />
                                         Prva gredica
                                     </span>
-                                    <Typography
-                                        level="h2"
-                                        className="text-2xl"
-                                    >
+                                    <Typography level="h2" className="text-2xl">
                                         Tvoja nova personalizirana gredica
                                     </Typography>
                                     <Typography level="body2" secondary>
