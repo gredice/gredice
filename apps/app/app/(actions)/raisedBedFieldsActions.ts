@@ -12,6 +12,7 @@ import {
     getFarmUserRaisedBeds,
     getRaisedBed,
     getRaisedBedFieldContext,
+    getRaisedBedFieldSunflowerRefundAmount,
     getRaisedBedFieldsWithEvents,
     knownEvents,
     moveRaisedBedFieldPlantHistory,
@@ -550,9 +551,25 @@ export async function cancelRaisedBedFieldAction(formData: FormData) {
             field.plantSortId,
         );
         plantName = sortData?.information?.name ?? plantName;
-        refundAmount = sortData?.prices?.perPlant
-            ? Math.round(sortData.prices.perPlant * 1000)
-            : 0;
+        const activePlantCycle = field.plantCycles.find(
+            (cycle) => cycle.active,
+        );
+        const perPlantPrice =
+            sortData?.prices?.perPlant ??
+            sortData?.information?.plant?.prices?.perPlant;
+        if (raisedBed.accountId && activePlantCycle) {
+            refundAmount = await getRaisedBedFieldSunflowerRefundAmount({
+                accountId: raisedBed.accountId,
+                fallbackAmount:
+                    typeof perPlantPrice === 'number' && perPlantPrice > 0
+                        ? Math.round(perPlantPrice * 1000)
+                        : 0,
+                plantCycleStartedAt: activePlantCycle.startedAt,
+                positionIndex,
+                purchase: activePlantCycle.purchase,
+                raisedBedId,
+            });
+        }
     }
 
     const header = 'Sijanje biljke je otkazano';

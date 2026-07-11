@@ -4,27 +4,36 @@ import {
     acceptOperation,
     cancelGardenDiaryOperation,
     cancelGardenDiaryRaisedBedField,
+    convertOutletReservationForCartItem,
     createAccount,
     createAttributeDefinition,
     createEntity,
     createEvent,
     createOperation,
+    createOutletOffer,
+    earnSunflowers,
     GardenDiaryCancelError,
     GardenDiaryRescheduleError,
     getAttributeDefinitions,
     getNotificationsByAccount,
     getOperationById,
+    getOrCreateShoppingCart,
     getRaisedBed,
     getRaisedBedDiaryEntries,
     getRaisedBedFieldDiaryEntries,
     getRaisedBedFieldPlantCycles,
     getSunflowers,
     knownEvents,
+    type RaisedBedFieldPlantPurchase,
     rescheduleGardenDiaryOperation,
     rescheduleGardenDiaryRaisedBedField,
+    reserveOutletOffer,
+    setCartItemPaid,
+    spendSunflowers,
     updateEntity,
     upsertAttributeValue,
     upsertEntityType,
+    upsertOrRemoveCartItem,
     upsertRaisedBedField,
 } from '@gredice/storage';
 import {
@@ -123,10 +132,28 @@ async function createPricedOperationEntity() {
 
 async function createPricedPlantSortEntity() {
     await upsertEntityType({
+        name: 'plant',
+        label: 'Biljka',
+    });
+    await upsertEntityType({
         name: 'plantSort',
         label: 'Sorta biljke',
     });
 
+    const plantNameDefinitionId = await ensureAttributeDefinition({
+        category: 'information',
+        dataType: 'text',
+        entityTypeName: 'plant',
+        label: 'Name',
+        name: 'name',
+    });
+    const priceDefinitionId = await ensureAttributeDefinition({
+        category: 'prices',
+        dataType: 'number',
+        entityTypeName: 'plant',
+        label: 'Price per plant',
+        name: 'perPlant',
+    });
     const nameDefinitionId = await ensureAttributeDefinition({
         category: 'information',
         dataType: 'text',
@@ -134,16 +161,24 @@ async function createPricedPlantSortEntity() {
         label: 'Name',
         name: 'name',
     });
-    const priceDefinitionId = await ensureAttributeDefinition({
-        category: 'prices',
-        dataType: 'number',
+    const plantDefinitionId = await ensureAttributeDefinition({
+        category: 'information',
+        dataType: 'ref:plant',
         entityTypeName: 'plantSort',
-        label: 'Price per plant',
-        name: 'perPlant',
+        label: 'Plant',
+        name: 'plant',
     });
+    const plantId = await createEntity('plant');
     const entityId = await createEntity('plantSort');
 
+    await updateEntity({ id: plantId, state: 'published' });
     await updateEntity({ id: entityId, state: 'published' });
+    await upsertAttributeValue({
+        attributeDefinitionId: plantNameDefinitionId,
+        entityTypeName: 'plant',
+        entityId: plantId,
+        value: 'Rajčica',
+    });
     await upsertAttributeValue({
         attributeDefinitionId: nameDefinitionId,
         entityTypeName: 'plantSort',
@@ -152,12 +187,65 @@ async function createPricedPlantSortEntity() {
     });
     await upsertAttributeValue({
         attributeDefinitionId: priceDefinitionId,
+        entityTypeName: 'plant',
+        entityId: plantId,
+        value: '1.5',
+    });
+    await upsertAttributeValue({
+        attributeDefinitionId: plantDefinitionId,
         entityTypeName: 'plantSort',
         entityId,
-        value: '1.5',
+        value: plantId.toString(),
     });
 
     return entityId;
+}
+
+async function createPaidPlantCartItem({
+    accountId,
+    amount,
+    currency = 'sunflower',
+    gardenId,
+    plantSortId,
+    positionIndex,
+    raisedBedId,
+}: {
+    accountId: string;
+    amount: number;
+    currency?: 'eur' | 'inventory' | 'sunflower';
+    gardenId: number;
+    plantSortId: number;
+    positionIndex: number;
+    raisedBedId: number;
+}) {
+    const cart = await getOrCreateShoppingCart(accountId);
+    assert.ok(cart);
+    const cartItemId = await upsertOrRemoveCartItem(
+        undefined,
+        cart.id,
+        plantSortId.toString(),
+        'plantSort',
+        1,
+        gardenId,
+        raisedBedId,
+        positionIndex,
+        undefined,
+        currency,
+        true,
+    );
+    assert.ok(cartItemId);
+
+    if (currency === 'sunflower') {
+        await earnSunflowers(accountId, amount, 'test-funding');
+        await spendSunflowers(
+            accountId,
+            amount,
+            `shoppingCartItem:${cartItemId.toString()}`,
+        );
+    }
+    await setCartItemPaid(cartItemId);
+
+    return cartItemId;
 }
 
 async function createScheduledOperation({
@@ -221,11 +309,13 @@ async function createUnscheduledPlannedOperation({
 
 async function createScheduledField({
     plantSortId = 101,
+    purchase,
     raisedBedId,
     positionIndex,
     scheduledDate,
 }: {
     plantSortId?: number;
+    purchase?: RaisedBedFieldPlantPurchase;
     raisedBedId: number;
     positionIndex: number;
     scheduledDate: string;
@@ -240,6 +330,7 @@ async function createScheduledField({
             `${raisedBedId.toString()}|${positionIndex.toString()}`,
             {
                 plantSortId: plantSortId.toString(),
+                ...(purchase ? { purchase } : {}),
                 scheduledDate,
             },
         ),
@@ -666,9 +757,25 @@ test('cancelGardenDiaryRaisedBedField removes future planned sowing with refund 
     const { accountId, gardenId, raisedBedId } =
         await createDiaryRescheduleContext();
     const plantSortId = await createPricedPlantSortEntity();
+    const paidAmount = 1750;
+    const balanceBeforePurchase = await getSunflowers(accountId);
+
+    const cartItemId = await createPaidPlantCartItem({
+        accountId,
+        amount: paidAmount,
+        gardenId,
+        plantSortId,
+        positionIndex: 0,
+        raisedBedId,
+    });
 
     await createScheduledField({
         plantSortId,
+        purchase: {
+            cartItemId,
+            currency: 'sunflower',
+            sunflowerAmount: paidAmount,
+        },
         raisedBedId,
         positionIndex: 0,
         scheduledDate: '2026-06-04T00:00:00.000Z',
@@ -695,7 +802,7 @@ test('cancelGardenDiaryRaisedBedField removes future planned sowing with refund 
         10,
     );
 
-    assert.equal(result.refundAmount, 1500);
+    assert.equal(result.refundAmount, paidAmount);
     assert.equal(field?.active, false);
     assert.equal(field?.plantStatus, 'deleted');
     assert.equal(field?.plantSortId, undefined);
@@ -703,6 +810,11 @@ test('cancelGardenDiaryRaisedBedField removes future planned sowing with refund 
     assert.equal(plantCycle?.active, false);
     assert.equal(plantCycle?.plantStatus, 'deleted');
     assert.equal(plantCycle?.plantSortId, plantSortId);
+    assert.deepEqual(plantCycle?.purchase, {
+        cartItemId,
+        currency: 'sunflower',
+        sunflowerAmount: paidAmount,
+    });
     assert.equal(plantCycle?.cancellationReason, 'Korisnik je otkazao.');
     const [cancelDiaryEntry] = await getRaisedBedFieldDiaryEntries(
         raisedBedId,
@@ -713,10 +825,13 @@ test('cancelGardenDiaryRaisedBedField removes future planned sowing with refund 
         cancelDiaryEntry?.description,
         'Razlog otkazivanja: Korisnik je otkazao.',
     );
-    assert.equal(await getSunflowers(accountId), 2500);
+    assert.equal(
+        await getSunflowers(accountId),
+        balanceBeforePurchase + paidAmount,
+    );
     assert.equal(notifications.length, 1);
     assert.equal(notifications[0]?.header, 'Sijanje je otkazano');
-    assert.match(notifications[0]?.content ?? '', /1500 🌻/);
+    assert.match(notifications[0]?.content ?? '', /1750 🌻/);
 });
 
 test('cancelGardenDiaryRaisedBedField removes future confirmed sowing', async () => {
@@ -725,6 +840,15 @@ test('cancelGardenDiaryRaisedBedField removes future confirmed sowing', async ()
         await createDiaryRescheduleContext();
     const plantSortId = await createPricedPlantSortEntity();
     const aggregateId = `${raisedBedId.toString()}|0`;
+
+    await createPaidPlantCartItem({
+        accountId,
+        amount: 1500,
+        gardenId,
+        plantSortId,
+        positionIndex: 0,
+        raisedBedId,
+    });
 
     await createScheduledField({
         plantSortId,
@@ -755,6 +879,147 @@ test('cancelGardenDiaryRaisedBedField removes future confirmed sowing', async ()
     assert.equal(field?.active, false);
     assert.equal(field?.plantStatus, 'deleted');
     assert.equal(field?.cancellationReason, 'Korisnik je otkazao.');
+});
+
+test('cancelGardenDiaryRaisedBedField refunds euro plant purchases in sunflowers', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createDiaryRescheduleContext();
+    const plantSortId = await createPricedPlantSortEntity();
+    const balanceBeforeCancel = await getSunflowers(accountId);
+
+    const cartItemId = await createPaidPlantCartItem({
+        accountId,
+        amount: 1500,
+        currency: 'eur',
+        gardenId,
+        plantSortId,
+        positionIndex: 0,
+        raisedBedId,
+    });
+    await createScheduledField({
+        plantSortId,
+        purchase: {
+            cartItemId,
+            currency: 'eur',
+            euroAmountCents: 150,
+        },
+        raisedBedId,
+        positionIndex: 0,
+        scheduledDate: '2026-06-04T00:00:00.000Z',
+    });
+
+    const result = await cancelGardenDiaryRaisedBedField({
+        accountId,
+        canceledBy: 'user-1',
+        gardenId,
+        raisedBedId,
+        positionIndex: 0,
+        referenceDate: new Date('2026-06-03T12:00:00.000Z'),
+    });
+
+    assert.equal(result.refundAmount, 1500);
+    assert.equal(await getSunflowers(accountId), balanceBeforeCancel + 1500);
+});
+
+test('cancelGardenDiaryRaisedBedField refunds the legacy outlet price', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createDiaryRescheduleContext();
+    const plantSortId = await createPricedPlantSortEntity();
+    const balanceBeforeCancel = await getSunflowers(accountId);
+    const now = new Date();
+
+    const cartItemId = await createPaidPlantCartItem({
+        accountId,
+        amount: 1500,
+        currency: 'eur',
+        gardenId,
+        plantSortId,
+        positionIndex: 0,
+        raisedBedId,
+    });
+    const cart = await getOrCreateShoppingCart(accountId);
+    assert.ok(cart);
+    const outletOfferId = await createOutletOffer({
+        plantSortId,
+        sowingDate: new Date(now.getTime() - 24 * 60 * 60 * 1000),
+        initialPlantStatus: 'sprouted',
+        imageUrls: [],
+        outletPriceCents: 75,
+        comparePriceCents: 150,
+        quantity: 1,
+        startAt: new Date(now.getTime() - 60 * 60 * 1000),
+        endAt: new Date(now.getTime() + 60 * 60 * 1000),
+        status: 'published',
+        adminNotes: null,
+    });
+    await reserveOutletOffer({
+        offerId: outletOfferId,
+        accountId,
+        cartId: cart.id,
+        cartItemId,
+        now,
+    });
+    await convertOutletReservationForCartItem(cartItemId, now);
+    await createScheduledField({
+        plantSortId,
+        raisedBedId,
+        positionIndex: 0,
+        scheduledDate: '2026-06-04T00:00:00.000Z',
+    });
+
+    const result = await cancelGardenDiaryRaisedBedField({
+        accountId,
+        canceledBy: 'user-1',
+        gardenId,
+        raisedBedId,
+        positionIndex: 0,
+        referenceDate: new Date('2026-06-03T12:00:00.000Z'),
+    });
+
+    assert.equal(result.refundAmount, 750);
+    assert.equal(await getSunflowers(accountId), balanceBeforeCancel + 750);
+});
+
+test('cancelGardenDiaryRaisedBedField does not refund inventory plantings', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createDiaryRescheduleContext();
+    const plantSortId = await createPricedPlantSortEntity();
+    const balanceBeforeCancel = await getSunflowers(accountId);
+
+    const cartItemId = await createPaidPlantCartItem({
+        accountId,
+        amount: 0,
+        currency: 'inventory',
+        gardenId,
+        plantSortId,
+        positionIndex: 0,
+        raisedBedId,
+    });
+    await createScheduledField({
+        plantSortId,
+        purchase: {
+            cartItemId,
+            currency: 'inventory',
+        },
+        raisedBedId,
+        positionIndex: 0,
+        scheduledDate: '2026-06-04T00:00:00.000Z',
+    });
+
+    const result = await cancelGardenDiaryRaisedBedField({
+        accountId,
+        canceledBy: 'user-1',
+        gardenId,
+        raisedBedId,
+        positionIndex: 0,
+        referenceDate: new Date('2026-06-03T12:00:00.000Z'),
+    });
+
+    assert.equal(result.refundAmount, 0);
+    assert.equal(await getSunflowers(accountId), balanceBeforeCancel);
 });
 
 test('cancelGardenDiaryRaisedBedField rejects sowing scheduled for today', async () => {
