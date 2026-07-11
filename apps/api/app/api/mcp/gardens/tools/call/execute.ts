@@ -6,7 +6,10 @@ import {
     getRaisedBedAiHistoryEntries,
 } from '@gredice/storage';
 import { z } from 'zod';
-import { visibleRaisedBedsForGarden } from '../../../../../../lib/ai/suncokretGardenContext';
+import {
+    visibleOperationsForGarden,
+    visibleRaisedBedsForGarden,
+} from '../../../../../../lib/ai/suncokretGardenContext';
 
 type McpAuthContext = {
     accountId: string;
@@ -163,10 +166,13 @@ export async function executeGardenTool(
             ) {
                 throw new Error('Raised bed not found in garden');
             }
-            const operations = await getOperations(
-                auth.accountId,
-                garden.id,
-                input.raisedBedId,
+            const operations = visibleOperationsForGarden(
+                garden,
+                await getOperations(
+                    auth.accountId,
+                    garden.id,
+                    input.raisedBedId,
+                ),
             );
             const sliced = operations.slice(
                 input.offset,

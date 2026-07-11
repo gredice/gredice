@@ -2,7 +2,10 @@ import { getAccountGardens, getGarden, getOperations } from '@gredice/storage';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { visibleRaisedBedsForGarden } from '../../../../../../lib/ai/suncokretGardenContext';
+import {
+    visibleOperationsForGarden,
+    visibleRaisedBedsForGarden,
+} from '../../../../../../lib/ai/suncokretGardenContext';
 import {
     checkMCPPermission,
     createMCPAuthError,
@@ -200,10 +203,13 @@ export async function POST(request: NextRequest) {
                         -32602,
                     );
                 }
-                const operations = await getOperations(
-                    auth.accountId,
-                    garden.id,
-                    input.raisedBedId,
+                const operations = visibleOperationsForGarden(
+                    garden,
+                    await getOperations(
+                        auth.accountId,
+                        garden.id,
+                        input.raisedBedId,
+                    ),
                 );
                 const sliced = operations.slice(
                     input.offset,
