@@ -232,9 +232,10 @@ function WeedChip({ level = 'none' }: { level?: MockField['weedLevel'] }) {
             color={current.color}
             startDecorator={<CurrentIcon aria-hidden />}
             title="Promijeni stanje korova"
-            className={raisedBedFieldCardChipClassName}
+            aria-label={`${current.label}. Promijeni stanje korova`}
+            className="size-6 justify-center !p-0"
         >
-            <span className="min-w-0 truncate">{current.label}</span>
+            <span className="sr-only">{current.label}</span>
         </Chip>
     );
 }
