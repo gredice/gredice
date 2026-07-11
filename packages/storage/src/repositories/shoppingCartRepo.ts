@@ -7,6 +7,7 @@ import {
 } from './eventsRepo';
 import { getInventory } from './inventoryRepo';
 import {
+    getOutletOfferReservationForCartItem,
     releaseOutletReservationForCartItem,
     releaseOutletReservationsForCart,
     reserveOutletOffer,
@@ -38,7 +39,8 @@ function parsePositiveInteger(value: unknown) {
  * New planting events carry their cart item, currency, and paid amount. Older
  * events fall back to matching the paid cart item around the cycle start;
  * immediate sunflower checkouts can still recover the exact spend event while
- * euro and aggregate-cart purchases use the catalog-derived equivalent.
+ * euro and aggregate-cart purchases use an outlet reservation snapshot when
+ * available, then the catalog-derived equivalent as a final fallback.
  */
 export async function getRaisedBedFieldSunflowerRefundAmount({
     accountId,
@@ -99,6 +101,16 @@ export async function getRaisedBedFieldSunflowerRefundAmount({
 
     if (!matchedCartItem || matchedCartItem.currency === 'inventory') {
         return 0;
+    }
+
+    const outletReservation = await getOutletOfferReservationForCartItem(
+        matchedCartItem.cartItemId,
+    );
+    const outletAmount = parsePositiveInteger(
+        (outletReservation?.heldOutletPriceCents ?? 0) * 10,
+    );
+    if (outletAmount) {
+        return outletAmount;
     }
 
     if (matchedCartItem.currency === 'sunflower') {

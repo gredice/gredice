@@ -4,11 +4,13 @@ import {
     acceptOperation,
     cancelGardenDiaryOperation,
     cancelGardenDiaryRaisedBedField,
+    convertOutletReservationForCartItem,
     createAccount,
     createAttributeDefinition,
     createEntity,
     createEvent,
     createOperation,
+    createOutletOffer,
     earnSunflowers,
     GardenDiaryCancelError,
     GardenDiaryRescheduleError,
@@ -25,6 +27,7 @@ import {
     type RaisedBedFieldPlantPurchase,
     rescheduleGardenDiaryOperation,
     rescheduleGardenDiaryRaisedBedField,
+    reserveOutletOffer,
     setCartItemPaid,
     spendSunflowers,
     updateEntity,
@@ -917,6 +920,66 @@ test('cancelGardenDiaryRaisedBedField refunds euro plant purchases in sunflowers
 
     assert.equal(result.refundAmount, 1500);
     assert.equal(await getSunflowers(accountId), balanceBeforeCancel + 1500);
+});
+
+test('cancelGardenDiaryRaisedBedField refunds the legacy outlet price', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createDiaryRescheduleContext();
+    const plantSortId = await createPricedPlantSortEntity();
+    const balanceBeforeCancel = await getSunflowers(accountId);
+    const now = new Date();
+
+    const cartItemId = await createPaidPlantCartItem({
+        accountId,
+        amount: 1500,
+        currency: 'eur',
+        gardenId,
+        plantSortId,
+        positionIndex: 0,
+        raisedBedId,
+    });
+    const cart = await getOrCreateShoppingCart(accountId);
+    assert.ok(cart);
+    const outletOfferId = await createOutletOffer({
+        plantSortId,
+        sowingDate: new Date(now.getTime() - 24 * 60 * 60 * 1000),
+        initialPlantStatus: 'sprouted',
+        imageUrls: [],
+        outletPriceCents: 75,
+        comparePriceCents: 150,
+        quantity: 1,
+        startAt: new Date(now.getTime() - 60 * 60 * 1000),
+        endAt: new Date(now.getTime() + 60 * 60 * 1000),
+        status: 'published',
+        adminNotes: null,
+    });
+    await reserveOutletOffer({
+        offerId: outletOfferId,
+        accountId,
+        cartId: cart.id,
+        cartItemId,
+        now,
+    });
+    await convertOutletReservationForCartItem(cartItemId, now);
+    await createScheduledField({
+        plantSortId,
+        raisedBedId,
+        positionIndex: 0,
+        scheduledDate: '2026-06-04T00:00:00.000Z',
+    });
+
+    const result = await cancelGardenDiaryRaisedBedField({
+        accountId,
+        canceledBy: 'user-1',
+        gardenId,
+        raisedBedId,
+        positionIndex: 0,
+        referenceDate: new Date('2026-06-03T12:00:00.000Z'),
+    });
+
+    assert.equal(result.refundAmount, 750);
+    assert.equal(await getSunflowers(accountId), balanceBeforeCancel + 750);
 });
 
 test('cancelGardenDiaryRaisedBedField does not refund inventory plantings', async () => {
