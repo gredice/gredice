@@ -14,7 +14,7 @@ interface ScheduleLabelPrintSectionProps {
     dayDataPromise: Promise<FarmScheduleDayData>;
     operationsDataPromise: ReturnType<typeof getFarmScheduleOperationsData>;
     plantSortsPromise: ReturnType<typeof getFarmSchedulePlantSorts>;
-    date: Date;
+    dateKey: string;
 }
 
 function formatLabelCount(count: number) {
@@ -52,7 +52,7 @@ export async function ScheduleLabelPrintSection({
     dayDataPromise,
     operationsDataPromise,
     plantSortsPromise,
-    date,
+    dateKey,
 }: ScheduleLabelPrintSectionProps) {
     const [dayData, operationsData, plantSorts] = await Promise.all([
         dayDataPromise,
@@ -63,7 +63,7 @@ export async function ScheduleLabelPrintSection({
         dayData,
         plantSorts,
         operationsData,
-        date,
+        dateKey,
     );
 
     if (printData.labels.length === 0) {

@@ -6,6 +6,7 @@ import {
     type EntityStandardized,
 } from '@gredice/storage';
 import type { FarmScheduleDayData } from './scheduleData';
+import { formatScheduleLabelDate } from './scheduleLabelDate';
 import {
     getFieldPhysicalPositionIndex,
     groupRaisedBedsForSchedule,
@@ -46,12 +47,6 @@ function getPlantsPerFieldCount(
 
 function formatPieceCountLabel(count: number) {
     return `${count} ${count === 1 ? 'KOMAD' : 'KOMADA'}`;
-}
-
-function formatScheduleLabelDate(date: Date) {
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    return `${day}.${month}.${date.getFullYear()}.`;
 }
 
 function formatFieldRange(fields: SowingLabelField[]) {
@@ -501,11 +496,11 @@ export async function buildScheduleLabelPrintData(
     dayData: FarmScheduleDayData,
     plantSorts: EntityStandardized[] | null | undefined,
     operationsData: EntityStandardized[] | null | undefined,
-    date: Date,
+    dateKey: string,
 ) {
     const plantSortById = getEntityById(plantSorts);
     const operationDataById = getEntityById(operationsData);
-    const dateLabel = formatScheduleLabelDate(date);
+    const dateLabel = formatScheduleLabelDate(dateKey);
     const sowingLabels = buildSowingLabels(dayData, plantSortById, dateLabel);
     const harvestLabels = await buildHarvestLabels(
         dayData,

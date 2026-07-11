@@ -1,8 +1,4 @@
-import {
-    calendarDateKeyToUtcDate,
-    getTimeZoneDateKey,
-    isCalendarDateKey,
-} from '@gredice/storage';
+import { getTimeZoneDateKey, isCalendarDateKey } from '@gredice/storage';
 import { Suspense } from 'react';
 import LoginDialog from '../../components/auth/LoginDialog';
 import { auth } from '../../lib/auth/auth';
@@ -46,7 +42,6 @@ function FarmScheduleContent({
     const isToday =
         getTimeZoneDateKey(new Date(), FARM_SCHEDULE_TIME_ZONE) ===
         selectedDateKey;
-    const printDate = calendarDateKeyToUtcDate(selectedDateKey);
     const dayDataPromise = getFarmScheduleDayData(
         userId,
         selectedDateKey,
@@ -82,7 +77,7 @@ function FarmScheduleContent({
                         dayDataPromise={dayDataPromise}
                         operationsDataPromise={operationsDataPromise}
                         plantSortsPromise={plantSortsPromise}
-                        date={printDate}
+                        dateKey={selectedDateKey}
                     />
                 </Suspense>
             }

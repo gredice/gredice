@@ -51,15 +51,6 @@ export function addCalendarDays(dateKey: string, days: number) {
     return date.toISOString().slice(0, 10);
 }
 
-export function calendarDateKeyToUtcDate(dateKey: string) {
-    const parts = calendarDateParts(dateKey);
-    if (!parts) {
-        throw new Error('Invalid calendar date.');
-    }
-
-    return new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
-}
-
 export function zonedCalendarDateStart(dateKey: string, timeZone: string) {
     const parts = calendarDateParts(dateKey);
     if (!parts) {

@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
     addCalendarDays,
-    calendarDateKeyToUtcDate,
     getTimeZoneDateKey,
     getTimeZoneDayRange,
     isCalendarDateKey,
@@ -19,10 +18,6 @@ test('validates calendar date keys', () => {
 test('adds calendar days without depending on the runtime time zone', () => {
     assert.equal(addCalendarDays('2026-12-31', 1), '2027-01-01');
     assert.equal(addCalendarDays('2026-03-01', -1), '2026-02-28');
-    assert.equal(
-        calendarDateKeyToUtcDate('2026-07-10').toISOString(),
-        '2026-07-10T00:00:00.000Z',
-    );
 });
 
 test('uses the Zagreb calendar date across the summer UTC rollover', () => {
