@@ -158,7 +158,12 @@ export function EntityViewer({
                         enableRainWetOverlayFlag: debugHud,
                     }}
                 >
-                    <GameSceneDetailContext.Provider value={{ renderDetails }}>
+                    <GameSceneDetailContext.Provider
+                        value={{
+                            includePendingCartPlants: false,
+                            renderDetails,
+                        }}
+                    >
                         <Scene
                             debugStats={debugHud}
                             position={cameraPosition ?? 100}

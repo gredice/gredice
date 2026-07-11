@@ -608,7 +608,10 @@ export function OperationCoverSnapshotViewer({
                     }}
                 >
                     <GameSceneDetailContext.Provider
-                        value={{ renderDetails: false }}
+                        value={{
+                            includePendingCartPlants: false,
+                            renderDetails: false,
+                        }}
                     >
                         <Scene
                             position={cameraPosition}

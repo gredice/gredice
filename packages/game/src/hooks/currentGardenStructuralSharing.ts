@@ -155,7 +155,9 @@ export function shareCurrentGardenData(
         previousGarden.isSandbox !== nextGarden.isSandbox ||
         previousGarden.isPublic !== nextGarden.isPublic ||
         previousGarden.backgroundPalette !== nextGarden.backgroundPalette ||
-        previousGarden.farmId !== nextGarden.farmId
+        previousGarden.farmId !== nextGarden.farmId ||
+        previousGarden.previewSourceRevision !==
+            nextGarden.previewSourceRevision
     ) {
         return nextGarden;
     }
@@ -173,12 +175,17 @@ export function shareCurrentGardenData(
         previousGarden.raisedBeds,
         nextGarden.raisedBeds,
     );
+    const previewImage = shareJsonValue(
+        previousGarden.previewImage,
+        nextGarden.previewImage,
+    );
 
     if (
         homeCamera === previousGarden.homeCamera &&
         stacks === previousGarden.stacks &&
         location === previousGarden.location &&
-        raisedBeds === previousGarden.raisedBeds
+        raisedBeds === previousGarden.raisedBeds &&
+        previewImage === previousGarden.previewImage
     ) {
         return previousGarden;
     }
@@ -189,6 +196,7 @@ export function shareCurrentGardenData(
         stacks,
         location,
         raisedBeds,
+        previewImage,
     };
 }
 

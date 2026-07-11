@@ -1,4 +1,13 @@
 import { gameBackgroundPaletteKeys } from '@gredice/js/gameBackground';
+import {
+    gardenPreviewContentType,
+    gardenPreviewHeight,
+    gardenPreviewMaxSizeBytes,
+    gardenPreviewRendererVersion,
+    gardenPreviewRendererVersionHeader,
+    gardenPreviewSourceRevisionHeader,
+    gardenPreviewWidth,
+} from '@gredice/js/gardenPreviews';
 import { userAllowedPlantStatusTransitions } from '@gredice/js/plants';
 import {
     isRaisedBedAbandoned,
@@ -9,12 +18,15 @@ import { notifyOperationUpdate } from '@gredice/notifications';
 import { signalcoClient } from '@gredice/signalco';
 import {
     abandonRaisedBed,
+    acquireGardenPreviewCaptureLease,
     addGardenBoxInventoryItem,
     buildRaisedBedFieldPlantUpdatePayload,
     CannotLikeOwnGardenError,
     cancelGardenDiaryOperation,
     cancelGardenDiaryRaisedBedField,
+    claimGardenPreviewBlobDeletion,
     clearSandboxField,
+    completeGardenPreviewBlobDeletions,
     countAiRequestEventsSince,
     countRaisedBedsByAccount,
     createDefaultGardenForAccount,
@@ -29,6 +41,8 @@ import {
     GardenBoxInventoryLimitError,
     GardenDiaryCancelError,
     GardenDiaryRescheduleError,
+    type GardenPreviewBlobDeletionReason,
+    type GardenPreviewImage,
     getAccount,
     getAccountGardensMetadata,
     getAllEvents,
@@ -37,6 +51,7 @@ import {
     getGarden,
     getGardenBlocks,
     getGardenLikeCounts,
+    getGardenPreview,
     getGardenStack,
     getGardenStackForUpdate,
     getGardenVisitState,
@@ -56,6 +71,10 @@ import {
     knownEventTypes,
     markGardenVisitSummarySeen,
     PublicGardenLikeTargetNotFoundError,
+    queueGardenPreviewBlobDeletion,
+    recordGardenPreviewBlobDeletionFailures,
+    releaseGardenPreviewCaptureLease,
+    replaceGardenPreview,
     rescheduleGardenDiaryOperation,
     rescheduleGardenDiaryRaisedBedField,
     setGardenLike,
@@ -63,12 +82,14 @@ import {
     spendSunflowers,
     storage,
     deleteGardenBlock as storageDeleteGardenBlock,
+    toGardenPreviewImage,
     updateGarden,
     updateGardenBlock,
     updateGardenStack,
     updateRaisedBed,
     upsertGardenOpenedAt,
 } from '@gredice/storage';
+import { del, put } from '@vercel/blob';
 import { type Context, Hono } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
@@ -82,6 +103,16 @@ import {
 import { resolveGardenBlockPlacement } from '../../../lib/garden/blockPlacementService';
 import { deleteGardenBlock } from '../../../lib/garden/gardenBlocksService';
 import { serializeGardenOperationEvidence } from '../../../lib/garden/gardenOperationsSerialization';
+import {
+    canAccessGardenPreviewSource,
+    createGardenPreviewSourceRevision,
+    getGardenPreviewUploadDecision,
+    readWebpDimensions,
+} from '../../../lib/garden/gardenPreview';
+import {
+    getGardenPreviewBlobDeletionRetryAt,
+    processGardenPreviewBlobDeletions,
+} from '../../../lib/garden/gardenPreviewBlobDeletion';
 import { synchronizeGardenStacksAndRaisedBeds } from '../../../lib/garden/gardenStacksSyncService';
 import {
     generateGardenVisitSummaryFacts,
@@ -491,6 +522,21 @@ function getAbandonReason(data: unknown) {
     return data.reason;
 }
 
+function serializePublicGardenPreviewImage(
+    previewImage: GardenPreviewImage | null,
+) {
+    if (!previewImage) {
+        return null;
+    }
+
+    return {
+        url: previewImage.url,
+        width: previewImage.width,
+        height: previewImage.height,
+        capturedAt: previewImage.capturedAt,
+    };
+}
+
 type GardenDetail = NonNullable<Awaited<ReturnType<typeof getGarden>>>;
 type GardenBlocks = Awaited<ReturnType<typeof getGardenBlocks>>;
 type AppliedGardenOperations = Awaited<
@@ -636,6 +682,7 @@ async function serializeGardenDetails(
         isPublic: garden.isPublic,
         backgroundPalette: garden.backgroundPalette,
         homeCamera: garden.homeCamera ?? null,
+        previewImage: garden.previewImage,
         farmId: garden.farmId,
         latitude: garden.farm.latitude,
         longitude: garden.farm.longitude,
@@ -661,6 +708,121 @@ async function serializeGardenDetails(
         createdAt: garden.createdAt,
         updatedAt: garden.updatedAt,
     };
+}
+
+const gardenPreviewRevisionPattern = /^[a-f0-9]{64}$/;
+const gardenPreviewCacheMaxAgeSeconds = 365 * 24 * 60 * 60;
+const gardenPreviewCaptureLeaseDurationMs = 60_000;
+const gardenPreviewBlobDeletionClaimDurationMs = 60_000;
+
+async function getAuthorizedGardenPreviewSource(
+    gardenId: number,
+    {
+        accountId,
+        role,
+    }: {
+        accountId: string;
+        role: string;
+    },
+) {
+    const garden = await getGarden(gardenId);
+    if (
+        !garden ||
+        !canAccessGardenPreviewSource({
+            gardenAccountId: garden.accountId,
+            gardenIsPublic: garden.isPublic,
+            requestAccountId: accountId,
+            requestRole: role,
+        })
+    ) {
+        return null;
+    }
+
+    const [blocks, operations] = await Promise.all([
+        getGardenBlocks(gardenId),
+        getAppliedRaisedBedOperationsForGarden(garden.accountId, gardenId),
+    ]);
+
+    const details = await serializeGardenDetails(garden, blocks, operations);
+    return {
+        details,
+        garden,
+        sourceRevision: createGardenPreviewSourceRevision(details),
+    };
+}
+
+async function deleteGardenPreviewBlob({
+    gardenId,
+    imageUrl,
+    pathname,
+    reason,
+}: {
+    gardenId: number;
+    imageUrl: string;
+    pathname: string;
+    reason: GardenPreviewBlobDeletionReason;
+}) {
+    const claimId = globalThis.crypto.randomUUID();
+    const attemptedAt = new Date();
+
+    try {
+        await queueGardenPreviewBlobDeletion({ imageUrl, pathname, reason });
+        const deletion = await claimGardenPreviewBlobDeletion({
+            claimId,
+            expiresAt: new Date(
+                attemptedAt.getTime() +
+                    gardenPreviewBlobDeletionClaimDurationMs,
+            ),
+            now: attemptedAt,
+            pathname,
+        });
+        if (!deletion) {
+            return;
+        }
+
+        const result = await processGardenPreviewBlobDeletions({
+            concurrency: 1,
+            deleteBlob: async (url) => del(url),
+            deletions: [deletion],
+        });
+        if (result.completedIds.length > 0) {
+            const completed = await completeGardenPreviewBlobDeletions({
+                claimId,
+                ids: result.completedIds,
+            });
+            if (completed !== result.completedIds.length) {
+                throw new Error(
+                    'Garden preview Blob deletion completion claim was lost',
+                );
+            }
+        }
+        if (result.failures.length > 0) {
+            const failed = await recordGardenPreviewBlobDeletionFailures({
+                attemptedAt,
+                claimId,
+                failures: result.failures.map((failure) => ({
+                    ...failure,
+                    retryAt: getGardenPreviewBlobDeletionRetryAt({
+                        attempts: deletion.attempts,
+                        now: attemptedAt,
+                    }),
+                })),
+            });
+            if (failed !== result.failures.length) {
+                throw new Error(
+                    'Garden preview Blob deletion failure claim was lost',
+                );
+            }
+        }
+    } catch (error) {
+        console.error('Failed to delete garden preview blob', {
+            error,
+            gardenId,
+            imageUrl,
+            pathname,
+            reason,
+        });
+    }
 }
 
 async function getGardenQueuedTasks(garden: GardenDetail) {
@@ -758,6 +920,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         isSandbox: garden.isSandbox,
                         backgroundPalette: garden.backgroundPalette,
                         homeCamera: garden.homeCamera ?? null,
+                        previewImage: serializePublicGardenPreviewImage(
+                            garden.previewImage,
+                        ),
                         activePlantCount:
                             countPublicGardenActivePlants(raisedBeds),
                         likeCount: likeCounts.get(garden.id) ?? 0,
@@ -1271,10 +1436,371 @@ const app = new Hono<{ Variables: AuthVariables }>()
             return context.json({ state: serializeGardenVisitState(state) });
         },
     )
+    .put(
+        '/:gardenId/preview',
+        describeRoute({
+            description:
+                'Upload a current 3D preview for a public garden. Owners may capture their own public gardens; administrators may backfill any public garden.',
+            security: authSecurity,
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId } = context.req.valid('param');
+            const gardenIdNumber = Number.parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            const sourceRevision = context.req
+                .header(gardenPreviewSourceRevisionHeader)
+                ?.trim();
+            if (
+                !sourceRevision ||
+                !gardenPreviewRevisionPattern.test(sourceRevision)
+            ) {
+                return context.json(
+                    { error: 'Invalid garden preview source revision' },
+                    400,
+                );
+            }
+
+            const rendererVersion = context.req
+                .header(gardenPreviewRendererVersionHeader)
+                ?.trim();
+            if (rendererVersion !== gardenPreviewRendererVersion) {
+                return context.json(
+                    { error: 'Unsupported garden preview renderer version' },
+                    409,
+                );
+            }
+
+            const contentType = context.req
+                .header('Content-Type')
+                ?.split(';', 1)[0]
+                ?.trim()
+                .toLowerCase();
+            if (contentType !== gardenPreviewContentType) {
+                return context.json(
+                    { error: 'Garden preview must be a WebP image' },
+                    415,
+                );
+            }
+
+            const contentLengthHeader = context.req.header('Content-Length');
+            if (contentLengthHeader) {
+                const contentLength = Number.parseInt(contentLengthHeader, 10);
+                if (
+                    !Number.isFinite(contentLength) ||
+                    contentLength < 1 ||
+                    contentLength > gardenPreviewMaxSizeBytes
+                ) {
+                    return context.json(
+                        { error: 'Garden preview is too large' },
+                        413,
+                    );
+                }
+            }
+
+            const { accountId, user } = context.get('authContext');
+            const source = await getAuthorizedGardenPreviewSource(
+                gardenIdNumber,
+                { accountId, role: user.role },
+            );
+            if (!source) {
+                return context.json({ error: 'Garden not found' }, 404);
+            }
+            if (!source.garden.isPublic) {
+                return context.json(
+                    {
+                        error: 'Garden must be public before uploading a preview',
+                    },
+                    409,
+                );
+            }
+            if (source.sourceRevision !== sourceRevision) {
+                return context.json(
+                    {
+                        error: 'Garden changed before preview upload',
+                        previewSourceRevision: source.sourceRevision,
+                    },
+                    409,
+                );
+            }
+
+            const currentPreview = source.garden.previewImage;
+            const uploadDecision = getGardenPreviewUploadDecision({
+                currentPreview,
+                height: gardenPreviewHeight,
+                rendererVersion,
+                sourceRevision,
+                width: gardenPreviewWidth,
+            });
+            if (uploadDecision.status === 'unchanged') {
+                return context.json(
+                    { previewImage: uploadDecision.preview },
+                    200,
+                );
+            }
+            if (uploadDecision.status === 'rate-limited') {
+                context.header(
+                    'Retry-After',
+                    uploadDecision.retryAfterSeconds.toString(),
+                );
+                return context.json(
+                    { error: 'Garden preview was updated too recently' },
+                    429,
+                );
+            }
+
+            const imageBytes = new Uint8Array(
+                await context.req.raw.arrayBuffer(),
+            );
+            if (
+                imageBytes.byteLength < 1 ||
+                imageBytes.byteLength > gardenPreviewMaxSizeBytes
+            ) {
+                return context.json(
+                    { error: 'Garden preview is too large' },
+                    413,
+                );
+            }
+
+            const dimensions = readWebpDimensions(imageBytes);
+            if (
+                !dimensions ||
+                dimensions.width !== gardenPreviewWidth ||
+                dimensions.height !== gardenPreviewHeight
+            ) {
+                return context.json(
+                    {
+                        error: `Garden preview must be ${gardenPreviewWidth.toString()}x${gardenPreviewHeight.toString()} WebP`,
+                    },
+                    422,
+                );
+            }
+
+            const captureRequestId = globalThis.crypto.randomUUID();
+            let lease: Awaited<
+                ReturnType<typeof acquireGardenPreviewCaptureLease>
+            >;
+            try {
+                const now = new Date();
+                lease = await acquireGardenPreviewCaptureLease({
+                    expiresAt: new Date(
+                        now.getTime() + gardenPreviewCaptureLeaseDurationMs,
+                    ),
+                    gardenId: gardenIdNumber,
+                    leaseId: captureRequestId,
+                    now,
+                });
+            } catch (error) {
+                console.error(
+                    'Failed to acquire garden preview capture lease',
+                    {
+                        error,
+                        gardenId: gardenIdNumber,
+                    },
+                );
+                return context.json(
+                    { error: 'Failed to reserve garden preview capture' },
+                    503,
+                );
+            }
+            if (!lease) {
+                context.header('Retry-After', '5');
+                return context.json(
+                    { error: 'Garden preview capture is already in progress' },
+                    429,
+                );
+            }
+
+            try {
+                const leasedSource = await getAuthorizedGardenPreviewSource(
+                    gardenIdNumber,
+                    { accountId, role: user.role },
+                );
+                if (
+                    !leasedSource?.garden.isPublic ||
+                    leasedSource.sourceRevision !== sourceRevision
+                ) {
+                    return context.json(
+                        {
+                            error: 'Garden changed before preview upload',
+                            previewSourceRevision:
+                                leasedSource?.sourceRevision ?? null,
+                        },
+                        409,
+                    );
+                }
+
+                const leasedUploadDecision = getGardenPreviewUploadDecision({
+                    currentPreview: leasedSource.garden.previewImage,
+                    height: gardenPreviewHeight,
+                    rendererVersion,
+                    sourceRevision,
+                    width: gardenPreviewWidth,
+                });
+                if (leasedUploadDecision.status === 'unchanged') {
+                    return context.json(
+                        { previewImage: leasedUploadDecision.preview },
+                        200,
+                    );
+                }
+                if (leasedUploadDecision.status === 'rate-limited') {
+                    context.header(
+                        'Retry-After',
+                        leasedUploadDecision.retryAfterSeconds.toString(),
+                    );
+                    return context.json(
+                        { error: 'Garden preview was updated too recently' },
+                        429,
+                    );
+                }
+
+                const captureRequestedAt = new Date();
+                const pathname = `garden-previews/${gardenIdNumber.toString()}/${captureRequestId}.webp`;
+                let uploadedPreview: Awaited<ReturnType<typeof put>>;
+
+                try {
+                    uploadedPreview = await put(
+                        pathname,
+                        Buffer.from(imageBytes),
+                        {
+                            access: 'public',
+                            addRandomSuffix: false,
+                            allowOverwrite: false,
+                            cacheControlMaxAge: gardenPreviewCacheMaxAgeSeconds,
+                            contentType: gardenPreviewContentType,
+                            maximumSizeInBytes: gardenPreviewMaxSizeBytes,
+                        },
+                    );
+                } catch (error) {
+                    console.error('Failed to upload garden preview blob', {
+                        error,
+                        gardenId: gardenIdNumber,
+                    });
+                    return context.json(
+                        { error: 'Failed to upload garden preview' },
+                        502,
+                    );
+                }
+
+                const latestSource = await getAuthorizedGardenPreviewSource(
+                    gardenIdNumber,
+                    { accountId, role: user.role },
+                );
+                if (
+                    !latestSource?.garden.isPublic ||
+                    latestSource.sourceRevision !== sourceRevision
+                ) {
+                    await deleteGardenPreviewBlob({
+                        gardenId: gardenIdNumber,
+                        imageUrl: uploadedPreview.url,
+                        pathname: uploadedPreview.pathname,
+                        reason: 'orphaned',
+                    });
+                    return context.json(
+                        {
+                            error: 'Garden changed during preview upload',
+                            previewSourceRevision:
+                                latestSource?.sourceRevision ?? null,
+                        },
+                        409,
+                    );
+                }
+
+                let replacement: Awaited<
+                    ReturnType<typeof replaceGardenPreview>
+                >;
+                try {
+                    replacement = await replaceGardenPreview({
+                        gardenId: gardenIdNumber,
+                        captureRequestId,
+                        imageUrl: uploadedPreview.url,
+                        pathname: uploadedPreview.pathname,
+                        contentType: gardenPreviewContentType,
+                        byteSize: imageBytes.byteLength,
+                        width: dimensions.width,
+                        height: dimensions.height,
+                        sourceRevision,
+                        rendererVersion,
+                        captureRequestedAt,
+                        capturedAt: new Date(),
+                    });
+                } catch (error) {
+                    await deleteGardenPreviewBlob({
+                        gardenId: gardenIdNumber,
+                        imageUrl: uploadedPreview.url,
+                        pathname: uploadedPreview.pathname,
+                        reason: 'orphaned',
+                    });
+                    console.error('Failed to persist garden preview', {
+                        error,
+                        gardenId: gardenIdNumber,
+                    });
+                    return context.json(
+                        { error: 'Failed to save garden preview' },
+                        500,
+                    );
+                }
+
+                if (replacement.status === 'rejected') {
+                    await deleteGardenPreviewBlob({
+                        gardenId: gardenIdNumber,
+                        imageUrl: uploadedPreview.url,
+                        pathname: uploadedPreview.pathname,
+                        reason: 'orphaned',
+                    });
+                    return context.json(
+                        { error: 'A newer garden preview already exists' },
+                        409,
+                    );
+                }
+
+                if (
+                    replacement.previousPreview &&
+                    replacement.previousPreview.imageUrl !== uploadedPreview.url
+                ) {
+                    await deleteGardenPreviewBlob({
+                        gardenId: gardenIdNumber,
+                        imageUrl: replacement.previousPreview.imageUrl,
+                        pathname: replacement.previousPreview.pathname,
+                        reason: 'preview_replaced',
+                    });
+                }
+
+                return context.json(
+                    {
+                        previewImage: toGardenPreviewImage(replacement.preview),
+                    },
+                    201,
+                );
+            } finally {
+                try {
+                    await releaseGardenPreviewCaptureLease({
+                        gardenId: gardenIdNumber,
+                        leaseId: captureRequestId,
+                    });
+                } catch (error) {
+                    console.error(
+                        'Failed to release garden preview capture lease',
+                        { error, gardenId: gardenIdNumber },
+                    );
+                }
+            }
+        },
+    )
     .get(
         '/:gardenId',
         describeRoute({
-            description: 'Get garden information',
+            description:
+                'Get garden information for its owner, or for an administrator backfilling a public garden preview.',
         }),
         zValidator(
             'param',
@@ -1290,23 +1816,19 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Invalid garden ID' }, 400);
             }
 
-            const { accountId } = context.get('authContext');
-            const [garden, /*blockPlaceEventsRaw,*/ blocks, operations] =
-                await Promise.all([
-                    getGarden(gardenIdNumber),
-                    getGardenBlocks(gardenIdNumber),
-                    getAppliedRaisedBedOperationsForGarden(
-                        accountId,
-                        gardenIdNumber,
-                    ),
-                ]);
-            if (!garden || garden.accountId !== accountId) {
+            const { accountId, user } = context.get('authContext');
+            const source = await getAuthorizedGardenPreviewSource(
+                gardenIdNumber,
+                { accountId, role: user.role },
+            );
+            if (!source) {
                 return context.json({ error: 'Garden not found' }, 404);
             }
 
-            return context.json(
-                await serializeGardenDetails(garden, blocks, operations),
-            );
+            return context.json({
+                ...source.details,
+                previewSourceRevision: source.sourceRevision,
+            });
         },
     )
     .get(
@@ -1349,10 +1871,14 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 operations,
                 { publicView: true },
             );
+            const { previewImage: ownerPreviewImage, ...publicGardenDetails } =
+                gardenDetails;
             const likeCounts = await getGardenLikeCounts([garden.id]);
 
             return context.json({
-                ...gardenDetails,
+                ...publicGardenDetails,
+                previewImage:
+                    serializePublicGardenPreviewImage(ownerPreviewImage),
                 likeCount: likeCounts.get(garden.id) ?? 0,
                 queuedTasks,
             });
@@ -1412,7 +1938,19 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 updateData.isPublic = isPublic;
             }
 
+            const existingPreview =
+                isPublic === false
+                    ? await getGardenPreview(gardenIdNumber)
+                    : null;
             await updateGarden(updateData);
+            if (existingPreview) {
+                await deleteGardenPreviewBlob({
+                    gardenId: gardenIdNumber,
+                    imageUrl: existingPreview.imageUrl,
+                    pathname: existingPreview.pathname,
+                    reason: 'garden_unpublished',
+                });
+            }
 
             return context.json({ success: true });
         },
@@ -1450,6 +1988,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             if (!user.accountIds.includes(garden.accountId)) {
                 return context.json({ error: 'Garden not found' }, 404);
             }
+            const existingPreview = await getGardenPreview(gardenIdNumber);
 
             if (!garden.isSandbox) {
                 const result =
@@ -1464,6 +2003,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     );
                 }
 
+                if (existingPreview) {
+                    await deleteGardenPreviewBlob({
+                        gardenId: gardenIdNumber,
+                        imageUrl: existingPreview.imageUrl,
+                        pathname: existingPreview.pathname,
+                        reason: 'garden_deleted',
+                    });
+                }
+
                 return context.json(
                     {
                         success: true,
@@ -1475,6 +2023,14 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             const result = await deleteSandboxGardenCompletely(gardenIdNumber);
+            if (existingPreview) {
+                await deleteGardenPreviewBlob({
+                    gardenId: gardenIdNumber,
+                    imageUrl: existingPreview.imageUrl,
+                    pathname: existingPreview.pathname,
+                    reason: 'garden_deleted',
+                });
+            }
 
             return context.json(
                 { success: true, ...result },

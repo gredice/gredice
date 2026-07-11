@@ -7,6 +7,7 @@ export type CurrentUser = {
     userName: string;
     displayName?: string;
     avatarUrl?: string | null;
+    role: string;
 };
 
 export const currentUserQueryKey = ['currentUser'];

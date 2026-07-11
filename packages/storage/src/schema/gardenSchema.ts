@@ -53,6 +53,94 @@ export const gardens = pgTable(
     ],
 );
 
+export const gardenPreviews = pgTable(
+    'garden_previews',
+    {
+        gardenId: integer('garden_id')
+            .primaryKey()
+            .references(() => gardens.id, { onDelete: 'cascade' }),
+        captureRequestId: text('capture_request_id').notNull(),
+        imageUrl: text('image_url').notNull(),
+        pathname: text('pathname').notNull(),
+        contentType: text('content_type').notNull(),
+        byteSize: integer('byte_size').notNull(),
+        width: integer('width').notNull(),
+        height: integer('height').notNull(),
+        sourceRevision: text('source_revision').notNull(),
+        rendererVersion: text('renderer_version').notNull(),
+        captureRequestedAt: timestamp('capture_requested_at').notNull(),
+        capturedAt: timestamp('captured_at').notNull(),
+        createdAt: timestamp('created_at').notNull().defaultNow(),
+        updatedAt: timestamp('updated_at')
+            .notNull()
+            .defaultNow()
+            .$onUpdate(() => new Date()),
+    },
+    (table) => [
+        uniqueIndex('garden_previews_capture_request_id_uq').on(
+            table.captureRequestId,
+        ),
+        uniqueIndex('garden_previews_pathname_uq').on(table.pathname),
+        index('garden_previews_captured_at_idx').on(table.capturedAt),
+    ],
+);
+
+export const gardenPreviewCaptureLeases = pgTable(
+    'garden_preview_capture_leases',
+    {
+        gardenId: integer('garden_id')
+            .primaryKey()
+            .references(() => gardens.id, { onDelete: 'cascade' }),
+        leaseId: text('lease_id').notNull(),
+        acquiredAt: timestamp('acquired_at').notNull(),
+        expiresAt: timestamp('expires_at').notNull(),
+        updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    },
+    (table) => [
+        index('garden_preview_capture_leases_expires_at_idx').on(
+            table.expiresAt,
+        ),
+    ],
+);
+
+export const gardenPreviewBlobDeletions = pgTable(
+    'garden_preview_blob_deletions',
+    {
+        id: serial('id').primaryKey(),
+        pathname: text('pathname').notNull(),
+        imageUrl: text('image_url').notNull(),
+        reason: text('reason').notNull(),
+        attempts: integer('attempts').notNull().default(0),
+        lastError: text('last_error'),
+        lastAttemptAt: timestamp('last_attempt_at'),
+        nextAttemptAt: timestamp('next_attempt_at').notNull().defaultNow(),
+        claimId: text('claim_id'),
+        claimExpiresAt: timestamp('claim_expires_at'),
+        createdAt: timestamp('created_at').notNull().defaultNow(),
+        updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    },
+    (table) => [
+        uniqueIndex('garden_preview_blob_deletions_pathname_uq').on(
+            table.pathname,
+        ),
+        index('garden_preview_blob_deletions_next_attempt_at_idx').on(
+            table.nextAttemptAt,
+        ),
+        index('garden_preview_blob_deletions_claim_expires_at_idx').on(
+            table.claimExpiresAt,
+        ),
+    ],
+);
+
+export const gardenPreviewBlobScanStates = pgTable(
+    'garden_preview_blob_scan_states',
+    {
+        name: text('name').primaryKey(),
+        cursor: text('cursor'),
+        updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    },
+);
+
 export const gardenLikes = pgTable(
     'garden_likes',
     {
@@ -99,7 +187,36 @@ export const gardenRelations = relations(gardens, ({ one, many }) => ({
     likes: many(gardenLikes, {
         relationName: 'gardenLikes',
     }),
+    preview: one(gardenPreviews, {
+        fields: [gardens.id],
+        references: [gardenPreviews.gardenId],
+        relationName: 'gardenPreview',
+    }),
+    previewCaptureLease: one(gardenPreviewCaptureLeases, {
+        fields: [gardens.id],
+        references: [gardenPreviewCaptureLeases.gardenId],
+        relationName: 'gardenPreviewCaptureLease',
+    }),
 }));
+
+export const gardenPreviewRelations = relations(gardenPreviews, ({ one }) => ({
+    garden: one(gardens, {
+        fields: [gardenPreviews.gardenId],
+        references: [gardens.id],
+        relationName: 'gardenPreview',
+    }),
+}));
+
+export const gardenPreviewCaptureLeaseRelations = relations(
+    gardenPreviewCaptureLeases,
+    ({ one }) => ({
+        garden: one(gardens, {
+            fields: [gardenPreviewCaptureLeases.gardenId],
+            references: [gardens.id],
+            relationName: 'gardenPreviewCaptureLease',
+        }),
+    }),
+);
 
 export const gardenLikesRelations = relations(gardenLikes, ({ one }) => ({
     garden: one(gardens, {
@@ -130,6 +247,12 @@ export type UpdateGarden = Partial<
     Pick<typeof gardens.$inferSelect, 'id'>;
 export type SelectGarden = typeof gardens.$inferSelect;
 export type SelectGardenLike = typeof gardenLikes.$inferSelect;
+export type InsertGardenPreview = typeof gardenPreviews.$inferInsert;
+export type SelectGardenPreview = typeof gardenPreviews.$inferSelect;
+export type SelectGardenPreviewCaptureLease =
+    typeof gardenPreviewCaptureLeases.$inferSelect;
+export type SelectGardenPreviewBlobDeletion =
+    typeof gardenPreviewBlobDeletions.$inferSelect;
 
 export const gardenVisitStates = pgTable(
     'garden_visit_states',

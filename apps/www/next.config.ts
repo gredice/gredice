@@ -119,7 +119,7 @@ const nextConfig: NextConfig = {
                 protocol: 'https',
                 hostname: 'vrt.gredice.com',
                 port: '',
-                pathname: '/vrtovi/**',
+                pathname: '/assets/**',
             },
             {
                 protocol: 'https',

@@ -39,6 +39,14 @@
             "schedule": "* * * * *"
         },
         {
+            "path": "/api/internal/cron/garden-preview-blobs",
+            "schedule": "23 3 * * *"
+        },
+        {
+            "path": "/api/internal/cron/garden-preview-blob-deletions",
+            "schedule": "*/5 * * * *"
+        },
+        {
             "path": "/api/internal/cron/outlet-lifecycle",
             "schedule": "*/5 * * * *"
         },

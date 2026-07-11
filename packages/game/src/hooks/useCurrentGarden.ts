@@ -11,6 +11,7 @@ import {
 } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
 import { Vector3 } from 'three';
+import type { GardenPreviewImage } from '../gardenPreview';
 import {
     loadLocalSandboxGarden,
     localSandboxGardenId,
@@ -63,9 +64,13 @@ type useCurrentGardenResponse = Omit<
     | 'longitude'
     | 'createdAt'
     | 'updatedAt'
+    | 'previewImage'
+    | 'previewSourceRevision'
 > & {
     backgroundPalette: GameBackgroundPaletteKey;
     farmId?: number | null;
+    previewImage?: GardenPreviewImage | null;
+    previewSourceRevision?: string | null;
     stacks: Stack[];
     location: {
         lat: number;
@@ -1277,6 +1282,8 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
                     lat: garden.latitude,
                     lon: garden.longitude,
                 },
+                previewImage: garden.previewImage,
+                previewSourceRevision: garden.previewSourceRevision,
                 raisedBeds: garden.raisedBeds,
             };
         },
