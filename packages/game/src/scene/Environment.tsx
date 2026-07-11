@@ -29,6 +29,7 @@ import { SunMoon } from './SunMoon';
 import {
     resolveEnvironmentSkyBackgroundColors,
     resolveSkyBackgroundColor,
+    resolveSkyGradientColors,
     resolveThemedSkyBackgroundColors,
 } from './skyGradient';
 import { altAzToScenePosition, timeOfDayToDate } from './sunPosition';
@@ -71,7 +72,6 @@ const DEBUG_WEATHER_BLEND_CONFIG: WeatherBlendConfig = {
 const WEATHER_BLEND_EPSILON = 0.0005;
 const BACKGROUND_COLOR_TRANSITION_SECONDS = 0.55;
 const BACKGROUND_COLOR_EPSILON = 0.001;
-const raisedBedCloseupGroundColor = new Color('#9eb64a');
 
 function dampNumber(
     current: number,
@@ -415,6 +415,24 @@ function useEnvironmentElements({
             weather,
         ],
     );
+    const moonlight = moonlitNightScales.visibleMoonlight;
+    const skyLowerColor = useMemo(
+        () =>
+            resolveSkyGradientColors({
+                backgroundColor,
+                backgroundPaletteIndex,
+                moonlight,
+                timeOfDay,
+                weather,
+            }).lower,
+        [
+            backgroundColor,
+            backgroundPaletteIndex,
+            moonlight,
+            timeOfDay,
+            weather,
+        ],
+    );
 
     const waterColors = resolveWaterColors({
         skyColor: backgroundColor,
@@ -477,7 +495,8 @@ function useEnvironmentElements({
             intensity: directionalLightIntensity,
         },
         sky: {
-            moonlight: moonlitNightScales.visibleMoonlight,
+            lowerColor: skyLowerColor,
+            moonlight,
         },
         waterColors,
     };
@@ -1117,22 +1136,14 @@ export function Environment({
                 <>
                     <SceneBackgroundColor
                         animate
-                        color={
-                            isGroundView
-                                ? raisedBedCloseupGroundColor
-                                : background
-                        }
+                        color={isGroundView ? sky.lowerColor : background}
                     />
                     <SkyGradientBackground
                         animate
                         backgroundColor={background}
                         backgroundPaletteIndex={backgroundPaletteIndex}
                         currentTime={currentTime}
-                        groundColor={
-                            isGroundView
-                                ? raisedBedCloseupGroundColor
-                                : undefined
-                        }
+                        groundView={isGroundView}
                         location={location}
                         moonlight={sky.moonlight}
                         timeOfDay={timeOfDay}

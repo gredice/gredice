@@ -130,22 +130,18 @@ test('moonlight and cloud cover tune glow strength at night', () => {
     );
 });
 
-test('ground view collapses the sky to the ground color without celestial glow', () => {
+test('ground view collapses the sky to the gradient lower color without celestial glow', () => {
     const gradient = resolveGradient({
         moonlight: 0.9,
         timeOfDay: 0.5,
     });
-    const groundColor = gradient.lower.clone().set('#9eb64a');
-    const groundView = resolveGroundViewSkyGradientColors(
-        gradient,
-        groundColor,
-    );
+    const groundView = resolveGroundViewSkyGradientColors(gradient);
 
-    assert.ok(colorDistance(groundView.zenith, groundColor) < 0.001);
-    assert.ok(colorDistance(groundView.upper, groundColor) < 0.001);
-    assert.ok(colorDistance(groundView.horizon, groundColor) < 0.001);
-    assert.ok(colorDistance(groundView.lower, groundColor) < 0.001);
+    assert.ok(colorDistance(groundView.zenith, gradient.lower) < 0.001);
+    assert.ok(colorDistance(groundView.upper, gradient.lower) < 0.001);
+    assert.ok(colorDistance(groundView.horizon, gradient.lower) < 0.001);
+    assert.ok(colorDistance(groundView.lower, gradient.lower) < 0.001);
     assert.equal(groundView.sunGlowIntensity, 0);
     assert.equal(groundView.moonGlowIntensity, 0);
-    assert.notEqual(groundView.lower, groundColor);
+    assert.notEqual(groundView.lower, gradient.lower);
 });
