@@ -21,6 +21,7 @@ import {
     getAllEvents,
     knownEvents,
     knownEventTypes,
+    type RaisedBedFieldPlantPurchase,
     type RaisedBedFieldSowingLocation,
     type RaisedBedWeedStateLevel,
     type RaisedBedWeedStateSetPayload,
@@ -83,6 +84,7 @@ export type RaisedBedFieldPlantCycle = {
     plantSortId?: number;
     plantScheduledDate?: Date;
     sowingLocation: RaisedBedFieldSowingLocation;
+    purchase?: RaisedBedFieldPlantPurchase;
     plantSowDate?: Date;
     plantGrowthDate?: Date;
     plantReadyDate?: Date;
@@ -605,6 +607,44 @@ function parseSowingLocation(
     return value === 'direct' || value === 'greenhouse' ? value : undefined;
 }
 
+function parseNonNegativeInteger(value: unknown) {
+    return typeof value === 'number' && Number.isInteger(value) && value >= 0
+        ? value
+        : undefined;
+}
+
+function parsePlantPurchase(
+    value: unknown,
+): RaisedBedFieldPlantPurchase | undefined {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        return undefined;
+    }
+
+    const record = value as Record<string, unknown>;
+    const cartItemId = parseNonNegativeInteger(record.cartItemId);
+    if (!cartItemId || cartItemId < 1) {
+        return undefined;
+    }
+
+    if (record.currency === 'inventory') {
+        return { cartItemId, currency: 'inventory' };
+    }
+    if (record.currency === 'sunflower') {
+        const sunflowerAmount = parseNonNegativeInteger(record.sunflowerAmount);
+        return typeof sunflowerAmount === 'number'
+            ? { cartItemId, currency: 'sunflower', sunflowerAmount }
+            : undefined;
+    }
+    if (record.currency === 'eur') {
+        const euroAmountCents = parseNonNegativeInteger(record.euroAmountCents);
+        return typeof euroAmountCents === 'number'
+            ? { cartItemId, currency: 'eur', euroAmountCents }
+            : undefined;
+    }
+
+    return undefined;
+}
+
 function parseWeedStateLevel(value: unknown): RaisedBedWeedStateLevel | null {
     switch (value) {
         case 'none':
@@ -711,6 +751,7 @@ function summarizePlantCycle(
     let plantSortId: number | undefined;
     let plantScheduledDate: Date | undefined;
     let sowingLocation: RaisedBedFieldSowingLocation = 'direct';
+    let purchase: RaisedBedFieldPlantPurchase | undefined;
     let plantSowDate: Date | undefined;
     let plantGrowthDate: Date | undefined;
     let plantReadyDate: Date | undefined;
@@ -742,6 +783,7 @@ function summarizePlantCycle(
             plantSortId = parsePlantSortId(data?.plantSortId);
             sowingLocation =
                 parseSowingLocation(data?.sowingLocation) ?? 'direct';
+            purchase = parsePlantPurchase(data?.purchase);
 
             if (data?.scheduledDate && typeof data.scheduledDate === 'string') {
                 plantScheduledDate = new Date(data.scheduledDate);
@@ -931,6 +973,7 @@ function summarizePlantCycle(
         plantSortId,
         plantScheduledDate,
         sowingLocation,
+        purchase,
         plantSowDate,
         plantGrowthDate,
         plantReadyDate,

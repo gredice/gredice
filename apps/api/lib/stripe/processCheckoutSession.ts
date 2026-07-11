@@ -1520,6 +1520,39 @@ function checkoutScheduledDateFromAdditionalData(
     );
 }
 
+function plantingPurchaseFromCheckoutItem(itemData: {
+    amount_total: number;
+    cartItemId?: number | null;
+    currency: string | null;
+}) {
+    if (!itemData.cartItemId) {
+        return undefined;
+    }
+
+    if (itemData.currency === 'sunflower') {
+        return {
+            cartItemId: itemData.cartItemId,
+            currency: 'sunflower' as const,
+            sunflowerAmount: itemData.amount_total,
+        };
+    }
+    if (itemData.currency === 'eur') {
+        return {
+            cartItemId: itemData.cartItemId,
+            currency: 'eur' as const,
+            euroAmountCents: itemData.amount_total,
+        };
+    }
+    if (itemData.currency === 'inventory') {
+        return {
+            cartItemId: itemData.cartItemId,
+            currency: 'inventory' as const,
+        };
+    }
+
+    return undefined;
+}
+
 export async function processItem(
     itemData: {
         entityId: string | null | undefined;
@@ -1777,6 +1810,7 @@ export async function processItem(
             dependencies,
         );
         const aggregateId = `${itemData.raisedBedId}|${itemData.positionIndex}`;
+        const purchase = plantingPurchaseFromCheckoutItem(itemData);
 
         await dependencies.upsertRaisedBedField({
             positionIndex: itemData.positionIndex,
@@ -1796,6 +1830,7 @@ export async function processItem(
                     : greenhouseSowingLocationFromAdditionalData(
                           itemData.additionalData,
                       ),
+                ...(purchase ? { purchase } : {}),
             }),
         );
         if (outletReservation) {

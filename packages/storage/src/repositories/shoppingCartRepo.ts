@@ -1,7 +1,10 @@
 import { and, asc, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import { events, shoppingCartItems, shoppingCarts } from '../schema';
 import { storage } from '../storage';
-import { knownEventTypes } from './eventsRepo';
+import {
+    knownEventTypes,
+    type RaisedBedFieldPlantPurchase,
+} from './eventsRepo';
 import { getInventory } from './inventoryRepo';
 import {
     releaseOutletReservationForCartItem,
@@ -32,31 +35,43 @@ function parsePositiveInteger(value: unknown) {
  * Resolve the sunflower amount actually paid for the plant purchase that
  * started the current raised-bed field cycle.
  *
- * Older immediate sunflower checkouts recorded one spend event per cart item.
- * Euro purchases and legacy aggregate-cart sunflower checkouts use the
- * catalog-derived sunflower equivalent after confirming the matched cart item
- * was paid rather than sourced from inventory.
+ * New planting events carry their cart item, currency, and paid amount. Older
+ * events fall back to matching the paid cart item around the cycle start;
+ * immediate sunflower checkouts can still recover the exact spend event while
+ * euro and aggregate-cart purchases use the catalog-derived equivalent.
  */
 export async function getRaisedBedFieldSunflowerRefundAmount({
     accountId,
     fallbackAmount = 0,
     plantCycleStartedAt,
     positionIndex,
+    purchase,
     raisedBedId,
 }: {
     accountId: string;
     fallbackAmount?: number;
     plantCycleStartedAt: Date;
     positionIndex: number;
+    purchase?: RaisedBedFieldPlantPurchase;
     raisedBedId: number;
 }) {
+    if (purchase?.currency === 'inventory') {
+        return 0;
+    }
+    if (purchase?.currency === 'sunflower') {
+        return parsePositiveInteger(purchase.sunflowerAmount) ?? 0;
+    }
+    if (purchase?.currency === 'eur') {
+        return parsePositiveInteger(purchase.euroAmountCents * 10) ?? 0;
+    }
+
     const windowStart = new Date(
         plantCycleStartedAt.getTime() - raisedBedFieldPurchaseMatchWindowMs,
     );
     const windowEnd = new Date(
         plantCycleStartedAt.getTime() + raisedBedFieldPurchaseMatchWindowMs,
     );
-    const [purchase] = await storage()
+    const [matchedCartItem] = await storage()
         .select({
             cartItemId: shoppingCartItems.id,
             currency: shoppingCartItems.currency,
@@ -82,16 +97,16 @@ export async function getRaisedBedFieldSunflowerRefundAmount({
         .orderBy(desc(shoppingCartItems.updatedAt), desc(shoppingCartItems.id))
         .limit(1);
 
-    if (!purchase || purchase.currency === 'inventory') {
+    if (!matchedCartItem || matchedCartItem.currency === 'inventory') {
         return 0;
     }
 
-    if (purchase.currency === 'sunflower') {
+    if (matchedCartItem.currency === 'sunflower') {
         const paymentEvent = await storage().query.events.findFirst({
             where: and(
                 eq(events.aggregateId, accountId),
                 eq(events.type, knownEventTypes.accounts.spendSunflowers),
-                sql`${events.data}->>'reason' = ${`shoppingCartItem:${purchase.cartItemId.toString()}`}`,
+                sql`${events.data}->>'reason' = ${`shoppingCartItem:${matchedCartItem.cartItemId.toString()}`}`,
             ),
             orderBy: [desc(events.createdAt), desc(events.id)],
         });

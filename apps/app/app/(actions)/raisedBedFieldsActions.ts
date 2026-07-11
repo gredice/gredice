@@ -566,6 +566,7 @@ export async function cancelRaisedBedFieldAction(formData: FormData) {
                         : 0,
                 plantCycleStartedAt: activePlantCycle.startedAt,
                 positionIndex,
+                purchase: activePlantCycle.purchase,
                 raisedBedId,
             });
         }

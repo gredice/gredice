@@ -266,6 +266,7 @@ export async function cancelGardenDiaryRaisedBedField({
               ),
               plantCycleStartedAt: activePlantCycle.startedAt,
               positionIndex,
+              purchase: activePlantCycle.purchase,
               raisedBedId,
           })
         : 0;

@@ -1203,7 +1203,7 @@ describe('processItem', () => {
                 },
                 cartId: 100,
                 cartItemId: 1,
-                currency: 'eur',
+                currency: 'sunflower',
                 entityId: '42',
                 entityTypeName: 'plantSort',
                 gardenId: 200,
@@ -1221,6 +1221,11 @@ describe('processItem', () => {
                     plantSortId: '42',
                     scheduledDate: '2026-07-01',
                     sowingLocation: 'greenhouse',
+                    purchase: {
+                        cartItemId: 1,
+                        currency: 'sunflower',
+                        sunflowerAmount: 2500,
+                    },
                 },
             },
         ]);
@@ -1320,6 +1325,11 @@ describe('processItem', () => {
                 plantSortId: '101',
                 scheduledDate: '2026-07-01',
                 sowingLocation: 'greenhouse',
+                purchase: {
+                    cartItemId: 1,
+                    currency: 'eur',
+                    euroAmountCents: 2500,
+                },
             },
         });
     });

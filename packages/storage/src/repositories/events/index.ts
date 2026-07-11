@@ -81,6 +81,7 @@ export type {
     RaisedBedFieldPlantEventsAnyPayload,
     RaisedBedFieldPlantEventsPayload,
     RaisedBedFieldPlantPlacePayload,
+    RaisedBedFieldPlantPurchase,
     RaisedBedFieldPlantReplaceSortPayload,
     RaisedBedFieldPlantSchedulePayload,
     RaisedBedFieldPlantUpdatePayload,

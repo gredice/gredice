@@ -191,10 +191,27 @@ export type RaisedBedFieldDeletePayload = {
 
 export type RaisedBedFieldSowingLocation = 'direct' | 'greenhouse';
 
+export type RaisedBedFieldPlantPurchase =
+    | {
+          cartItemId: number;
+          currency: 'sunflower';
+          sunflowerAmount: number;
+      }
+    | {
+          cartItemId: number;
+          currency: 'eur';
+          euroAmountCents: number;
+      }
+    | {
+          cartItemId: number;
+          currency: 'inventory';
+      };
+
 export type RaisedBedFieldPlantPlacePayload = {
     plantSortId: string;
     scheduledDate: string | null | undefined;
     sowingLocation?: RaisedBedFieldSowingLocation;
+    purchase?: RaisedBedFieldPlantPurchase;
 };
 
 export type RaisedBedFieldPlantSchedulePayload = {
