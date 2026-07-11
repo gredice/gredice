@@ -47,7 +47,7 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
     mount,
     page,
 }) => {
-    test.setTimeout(45_000);
+    test.setTimeout(90_000);
     const blockData = getLocalSandboxBlockData();
     const browserErrors: string[] = [];
     const apiRequests: string[] = [];
@@ -178,7 +178,7 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
                     );
                     return result.status;
                 },
-                { timeout: 35_000 },
+                { timeout: 80_000 },
             )
             .not.toBe('waiting');
     } catch (error) {

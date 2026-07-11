@@ -13,7 +13,8 @@ import {
 const minimumWarmupMs = 1500;
 const minimumStableMs = 500;
 const minimumStableFrames = 12;
-const encodeTimeoutMs = 10_000;
+const snapshotTimeoutMs = 45_000;
+const encodeTimeoutMs = 30_000;
 const maximumCaptureWaitMs = 30_000;
 const webpQuality = 0.9;
 
@@ -69,16 +70,20 @@ function validateEncodedBlob(blob: Blob) {
     return blob;
 }
 
-function withEncodeTimeout(promise: Promise<Blob>) {
-    return new Promise<Blob>((resolve, reject) => {
+function withTimeout<T>(
+    promise: Promise<T>,
+    timeoutMs: number,
+    timeoutMessage: string,
+) {
+    return new Promise<T>((resolve, reject) => {
         const timeout = window.setTimeout(() => {
-            reject(new Error('Garden preview encoding timed out.'));
-        }, encodeTimeoutMs);
+            reject(new Error(timeoutMessage));
+        }, timeoutMs);
 
         void promise.then(
-            (blob) => {
+            (value) => {
                 window.clearTimeout(timeout);
-                resolve(blob);
+                resolve(value);
             },
             (error: unknown) => {
                 window.clearTimeout(timeout);
@@ -88,62 +93,150 @@ function withEncodeTimeout(promise: Promise<Blob>) {
     });
 }
 
-function encodeWithHtmlCanvas(sourceCanvas: HTMLCanvasElement) {
+function canvasElementToBlob(canvas: HTMLCanvasElement) {
+    return new Promise<Blob>((resolve, reject) => {
+        try {
+            canvas.toBlob(
+                (blob) => {
+                    if (blob) {
+                        resolve(blob);
+                        return;
+                    }
+                    reject(
+                        new Error('Garden preview encoder returned no image.'),
+                    );
+                },
+                'image/webp',
+                webpQuality,
+            );
+        } catch (error) {
+            reject(toError(error));
+        }
+    });
+}
+
+function encodeWithHtmlCanvas(
+    source: CanvasImageSource,
+    width: number,
+    height: number,
+) {
     const encodingCanvas = document.createElement('canvas');
-    encodingCanvas.width = sourceCanvas.width;
-    encodingCanvas.height = sourceCanvas.height;
+    encodingCanvas.width = width;
+    encodingCanvas.height = height;
     const context = encodingCanvas.getContext('2d');
     if (!context) {
-        throw new Error('Garden preview encoder is unavailable.');
-    }
-
-    context.drawImage(sourceCanvas, 0, 0);
-    const dataUrl = encodingCanvas.toDataURL('image/webp', webpQuality);
-    const prefix = 'data:image/webp;base64,';
-    if (!dataUrl.startsWith(prefix)) {
-        throw new Error(
-            `Garden preview encoder returned unsupported content type for ${gardenPreviewRendererVersion}.`,
+        return Promise.reject(
+            new Error('Garden preview encoder is unavailable.'),
         );
     }
 
-    const binary = window.atob(dataUrl.slice(prefix.length));
-    const bytes = new Uint8Array(binary.length);
-    for (let index = 0; index < binary.length; index += 1) {
-        bytes[index] = binary.charCodeAt(index);
-    }
-    return new Blob([bytes], { type: 'image/webp' });
+    context.drawImage(source, 0, 0, width, height);
+    return canvasElementToBlob(encodingCanvas);
+}
+
+class GardenPreviewSnapshotTimeoutError extends Error {}
+
+function createSnapshot(sourceCanvas: HTMLCanvasElement) {
+    const snapshotPromise = window.createImageBitmap(sourceCanvas);
+    let timedOut = false;
+
+    return new Promise<ImageBitmap>((resolve, reject) => {
+        const timeout = window.setTimeout(() => {
+            timedOut = true;
+            reject(
+                new GardenPreviewSnapshotTimeoutError(
+                    'Garden preview snapshot timed out.',
+                ),
+            );
+        }, snapshotTimeoutMs);
+
+        void snapshotPromise.then(
+            (bitmap) => {
+                window.clearTimeout(timeout);
+                if (timedOut) {
+                    bitmap.close();
+                    return;
+                }
+                resolve(bitmap);
+            },
+            (error: unknown) => {
+                window.clearTimeout(timeout);
+                if (!timedOut) {
+                    reject(toError(error));
+                }
+            },
+        );
+    });
 }
 
 async function canvasToWebp(sourceCanvas: HTMLCanvasElement) {
     validateSourceCanvas(sourceCanvas);
 
-    if (typeof OffscreenCanvas === 'undefined') {
-        return validateEncodedBlob(encodeWithHtmlCanvas(sourceCanvas));
-    }
-
-    const encodingCanvas = new OffscreenCanvas(
-        sourceCanvas.width,
-        sourceCanvas.height,
-    );
-    const context = encodingCanvas.getContext('2d');
-    if (!context) {
-        return validateEncodedBlob(encodeWithHtmlCanvas(sourceCanvas));
-    }
-
-    // WebGL canvases cannot be encoded reliably across browsers. Copy the
-    // preserved frame to a 2D canvas so the exact rendered scene, including
-    // shader output, can be encoded without reimplementing the renderer.
-    context.drawImage(sourceCanvas, 0, 0);
-    try {
-        const blob = await withEncodeTimeout(
-            encodingCanvas.convertToBlob({
-                quality: webpQuality,
-                type: 'image/webp',
-            }),
+    if (typeof window.createImageBitmap !== 'function') {
+        const blob = await withTimeout(
+            canvasElementToBlob(sourceCanvas),
+            encodeTimeoutMs,
+            'Garden preview encoding timed out.',
         );
         return validateEncodedBlob(blob);
-    } catch {
-        return validateEncodedBlob(encodeWithHtmlCanvas(sourceCanvas));
+    }
+
+    let snapshot: ImageBitmap;
+    try {
+        snapshot = await createSnapshot(sourceCanvas);
+    } catch (error) {
+        if (error instanceof GardenPreviewSnapshotTimeoutError) {
+            throw error;
+        }
+        const blob = await withTimeout(
+            canvasElementToBlob(sourceCanvas),
+            encodeTimeoutMs,
+            'Garden preview encoding timed out.',
+        );
+        return validateEncodedBlob(blob);
+    }
+
+    try {
+        if (typeof OffscreenCanvas !== 'undefined') {
+            const encodingCanvas = new OffscreenCanvas(
+                sourceCanvas.width,
+                sourceCanvas.height,
+            );
+            const context = encodingCanvas.getContext('2d');
+            if (context) {
+                // ImageBitmap moves the expensive WebGL readback off the main
+                // thread. The 2D copy keeps the exact rendered frame, including
+                // shader output, without reimplementing the renderer.
+                context.drawImage(snapshot, 0, 0);
+                try {
+                    const blob = await withTimeout(
+                        encodingCanvas.convertToBlob({
+                            quality: webpQuality,
+                            type: 'image/webp',
+                        }),
+                        encodeTimeoutMs,
+                        'Garden preview encoding timed out.',
+                    );
+                    return validateEncodedBlob(blob);
+                } catch {
+                    // Some browsers expose OffscreenCanvas without WebP
+                    // encoding support. Fall through to HTML canvas encoding.
+                }
+            }
+        }
+
+        const blob = await withTimeout(
+            encodeWithHtmlCanvas(
+                snapshot,
+                sourceCanvas.width,
+                sourceCanvas.height,
+            ),
+            encodeTimeoutMs,
+            'Garden preview encoding timed out.',
+        );
+        return validateEncodedBlob(blob);
+    } finally {
+        snapshot.close();
     }
 }
 
