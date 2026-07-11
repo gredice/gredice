@@ -1,11 +1,45 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { getPublicGardenRaisedBedInteractionTargets } from './PublicGardenRaisedBedInteractions';
 import {
     getPublicGardenInitialView,
+    getPublicGardenRaisedBedsWithBlocks,
     getPublicGardenStacksCenter,
     normalizePublicGardenStacks,
     type PublicGardenStack,
 } from './PublicGardenViewer';
+
+describe('getPublicGardenRaisedBedsWithBlocks', () => {
+    it('excludes raised beds that cannot be selected in the rendered garden', () => {
+        const stacks = normalizePublicGardenStacks([
+            {
+                x: 2,
+                y: 5,
+                blocks: [
+                    {
+                        id: 'raised-bed-1',
+                        name: 'Raised_Bed',
+                        rotation: 0,
+                    },
+                ],
+            },
+        ]);
+
+        const raisedBeds = getPublicGardenRaisedBedsWithBlocks(
+            [
+                { id: 1, blockId: 'raised-bed-1' },
+                { id: 2, blockId: 'removed-raised-bed' },
+                { id: 3, blockId: null },
+            ],
+            stacks,
+        );
+
+        assert.deepEqual(
+            raisedBeds.map((raisedBed) => raisedBed.id),
+            [1],
+        );
+    });
+});
 
 describe('normalizePublicGardenStacks', () => {
     it('maps public garden rows onto the game z axis', () => {
@@ -85,5 +119,34 @@ describe('getPublicGardenInitialView', () => {
         assert.equal(view.cameraTarget.y, 0);
         assert.equal(view.cameraTarget.z, 7);
         assert.equal(view.cameraZoom, 90);
+    });
+});
+
+describe('getPublicGardenRaisedBedInteractionTargets', () => {
+    it('registers only raised-bed blocks for public selection', () => {
+        const stacks = normalizePublicGardenStacks([
+            {
+                x: 2,
+                y: 5,
+                blocks: [
+                    {
+                        id: 'raised-bed-1',
+                        name: 'Raised_Bed',
+                        rotation: 0,
+                    },
+                    {
+                        id: 'decoration-1',
+                        name: 'Bucket',
+                        rotation: 0,
+                    },
+                ],
+            },
+        ]);
+
+        const targets = getPublicGardenRaisedBedInteractionTargets(stacks);
+
+        assert.equal(targets.length, 1);
+        assert.equal(targets[0]?.block.id, 'raised-bed-1');
+        assert.equal(targets[0]?.blockIndex, 0);
     });
 });

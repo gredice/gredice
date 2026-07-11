@@ -4,13 +4,12 @@ import { PageHeader } from '@gredice/ui/PageHeader';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
-import Image from 'next/image';
 import { KnownPages } from '../../src/KnownPages';
 import { PublicGardenLikeButton } from './PublicGardenLikeButton';
+import { PublicGardenPreviewImage } from './PublicGardenPreviewImage';
 import { PublicGardenTransitionLink } from './PublicGardenTransitionLink';
 import { getPublicGardensForWww } from './publicGardenData';
 import { formatGardenDate, formatGardenNumber } from './publicGardenFormatting';
-import { getPublicGardenOgImageUrl } from './publicGardenUrls';
 import { getPublicGardenCardViewTransitionName } from './publicGardenViewTransition';
 
 const pageDescription =
@@ -65,16 +64,10 @@ export default async function PublicGardensPage() {
                             </PublicGardenTransitionLink>
                             <div className="relative h-full text-card-foreground">
                                 <div className="overflow-hidden bg-muted">
-                                    <Image
-                                        src={getPublicGardenOgImageUrl(
-                                            garden.id,
-                                        )}
-                                        alt={`Prikaz vrta ${garden.name}`}
-                                        width={1200}
-                                        height={630}
-                                        sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                                    <PublicGardenPreviewImage
+                                        gardenId={garden.id}
+                                        gardenName={garden.name}
                                         priority={gardenIndex === 0}
-                                        className="aspect-[1200/630] w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                                     />
                                 </div>
                                 <div className="grid grid-cols-3 divide-x border-t bg-card">

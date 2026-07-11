@@ -1,13 +1,15 @@
 import { clientPublic, directoriesClient } from '@gredice/client';
 import { getBlockImageUrl } from '@gredice/ui/BlockImage';
 import { ImageResponse } from 'next/og';
-import sharp from 'sharp';
+import type sharp from 'sharp';
 import {
     GardenDisplay2D,
     type GardenDisplay2DProps,
     getGardenDisplayBlockImageKey,
+    getGardenDisplayProjectedPosition,
     getGardenDisplayRotationSuffix,
     getGardenDisplayViewportOffset,
+    getGardenDisplayViewportPosition,
 } from '../../../components/GardenDisplay2D';
 import { Logotype } from '../../../components/Logotype';
 
@@ -27,6 +29,8 @@ const gardenOgViewportSize = 1200;
 const gardenOgViewportCenter = { x: 576, y: 184 };
 const gardenOgDefaultBlockSize = 128;
 const gardenOgDefaultViewportOffset = { x: 24, y: 630 / 2 + 24 * 2 + 106 / 2 };
+const transparentPngDataUrl =
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+4N1vWQAAAABJRU5ErkJggg==';
 
 type GardenOgStacks = GardenDisplay2DProps['garden']['stacks'];
 type GardenOgHomeCamera = {
@@ -35,12 +39,44 @@ type GardenOgHomeCamera = {
 } | null;
 
 const spritePngDataUrlBySrc = new Map<string, Promise<string>>();
+type SharpFactory = typeof sharp;
+let sharpModulePromise: Promise<SharpFactory> | undefined;
 
-export function getGardenOgBlockSpriteRequests(stacks: GardenOgStacks) {
+export function getGardenOgBlockSpriteRequests(
+    stacks: GardenOgStacks,
+    viewport?: {
+        blockSize: number;
+        viewportOffset: { x: number; y: number };
+        viewportSize: number;
+    },
+) {
     const requests = new Map<string, string>();
 
-    for (const rows of Object.values(stacks)) {
-        for (const blocks of Object.values(rows)) {
+    for (const [x, rows] of Object.entries(stacks)) {
+        for (const [y, blocks] of Object.entries(rows)) {
+            if (viewport) {
+                const projectedPosition = getGardenDisplayProjectedPosition({
+                    blockSize: viewport.blockSize,
+                    position: { x: Number(x), y: Number(y) },
+                    viewportSize: viewport.viewportSize,
+                });
+                const viewportPosition = getGardenDisplayViewportPosition({
+                    projectedPosition,
+                    viewportOffset: viewport.viewportOffset,
+                });
+                const visibilityMargin = viewport.blockSize * 1.5;
+                if (
+                    viewportPosition.top + visibilityMargin <= 0 ||
+                    viewportPosition.left + visibilityMargin <= 0 ||
+                    viewportPosition.top - visibilityMargin >=
+                        viewport.viewportSize ||
+                    viewportPosition.left - visibilityMargin >=
+                        viewport.viewportSize
+                ) {
+                    continue;
+                }
+            }
+
             for (const block of blocks) {
                 const rotationSuffix = getGardenDisplayRotationSuffix(
                     block.rotation,
@@ -60,6 +96,46 @@ export function getGardenOgBlockSpriteRequests(stacks: GardenOgStacks) {
     return [...requests].map(([key, src]) => ({ key, src }));
 }
 
+function isSharpFactory(value: unknown): value is SharpFactory {
+    return typeof value === 'function';
+}
+
+function resolveSharpFactory(value: unknown): SharpFactory | undefined {
+    if (isSharpFactory(value)) {
+        return value;
+    }
+
+    if (typeof value !== 'object' || value === null || !('default' in value)) {
+        return undefined;
+    }
+
+    return resolveSharpFactory(value.default);
+}
+
+async function loadSharp() {
+    const sharpModule: unknown = await import('sharp');
+    const sharpFactory = resolveSharpFactory(sharpModule);
+    if (!sharpFactory) {
+        throw new Error('Sharp module does not expose a default factory');
+    }
+
+    return sharpFactory;
+}
+
+async function getSharp() {
+    const currentPromise = sharpModulePromise ?? loadSharp();
+    sharpModulePromise = currentPromise;
+
+    try {
+        return await currentPromise;
+    } catch (error) {
+        if (sharpModulePromise === currentPromise) {
+            sharpModulePromise = undefined;
+        }
+        throw error;
+    }
+}
+
 async function getPngDataUrlForSprite(src: string) {
     const absoluteSrc = new URL(src, gardenOgImageAssetBaseUrl).toString();
 
@@ -67,6 +143,7 @@ async function getPngDataUrlForSprite(src: string) {
         spritePngDataUrlBySrc.set(
             absoluteSrc,
             (async () => {
+                const sharp = await getSharp();
                 const response = await fetch(absoluteSrc);
                 if (!response.ok) {
                     throw new Error(
@@ -91,20 +168,33 @@ async function getPngDataUrlForSprite(src: string) {
     }
 
     return sprite.catch((error: unknown) => {
+        if (spritePngDataUrlBySrc.get(absoluteSrc) === sprite) {
+            spritePngDataUrlBySrc.delete(absoluteSrc);
+        }
         console.error(error);
-        return absoluteSrc;
+        return null;
     });
 }
 
-async function getGardenOgBlockImageSrcByKey(stacks: GardenOgStacks) {
-    return new Map(
-        await Promise.all(
-            getGardenOgBlockSpriteRequests(stacks).map(
-                async ({ key, src }) =>
-                    [key, await getPngDataUrlForSprite(src)] as const,
-            ),
-        ),
+async function getGardenOgBlockImageSrcByKey(
+    requests: ReturnType<typeof getGardenOgBlockSpriteRequests>,
+) {
+    const resolvedSprites = await Promise.all(
+        requests.map(async ({ key, src }) => ({
+            key,
+            src: await getPngDataUrlForSprite(src),
+        })),
     );
+
+    return {
+        failedSpriteCount: resolvedSprites.filter(({ src }) => !src).length,
+        imageSrcByKey: new Map(
+            resolvedSprites.map(({ key, src }) => [
+                key,
+                src ?? transparentPngDataUrl,
+            ]),
+        ),
+    };
 }
 
 function clampGardenOgZoomScale(zoom: number) {
@@ -130,6 +220,101 @@ function getGardenOgViewportOffset(homeCamera: GardenOgHomeCamera) {
     });
 }
 
+function createGardenOgFallbackImage(gardenName: string) {
+    return new ImageResponse(
+        <div
+            style={{
+                alignItems: 'center',
+                background: 'linear-gradient(145deg, #eff3cf, #b9d48d)',
+                color: '#2E6F40',
+                display: 'flex',
+                height: '100%',
+                justifyContent: 'center',
+                overflow: 'hidden',
+                position: 'relative',
+                width: '100%',
+            }}
+        >
+            <div
+                style={{
+                    background: '#79ad64',
+                    borderRadius: 999,
+                    display: 'flex',
+                    height: 260,
+                    position: 'absolute',
+                    right: -40,
+                    top: -70,
+                    width: 260,
+                }}
+            />
+            <div
+                style={{
+                    background: '#593a2a',
+                    border: '24px solid #a86f4d',
+                    borderRadius: 54,
+                    boxShadow: '0 24px 42px rgba(42, 28, 15, 0.18)',
+                    display: 'flex',
+                    height: 250,
+                    left: 170,
+                    position: 'absolute',
+                    top: 120,
+                    transform: 'rotate(-5deg)',
+                    width: 660,
+                }}
+            >
+                <div
+                    style={{
+                        alignItems: 'center',
+                        color: '#8fca62',
+                        display: 'flex',
+                        fontSize: 108,
+                        height: '100%',
+                        justifyContent: 'center',
+                        letterSpacing: 24,
+                        width: '100%',
+                    }}
+                >
+                    • • • • •
+                </div>
+            </div>
+            <div
+                style={{
+                    alignItems: 'center',
+                    background: 'rgba(254, 250, 246, 0.94)',
+                    bottom: 0,
+                    display: 'flex',
+                    height: 116,
+                    justifyContent: 'space-between',
+                    left: 0,
+                    padding: '0 42px',
+                    position: 'absolute',
+                    right: 0,
+                }}
+            >
+                <div
+                    style={{
+                        display: 'flex',
+                        fontSize: 42,
+                        maxWidth: 820,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                    }}
+                >
+                    {gardenName}
+                </div>
+                <Logotype width={220} color="#2E6F40" />
+            </div>
+        </div>,
+        {
+            ...size,
+            headers: {
+                'Cache-Control': gardenOgImageCacheControl,
+            },
+        },
+    );
+}
+
 export default async function GardenOgImage({
     params,
 }: {
@@ -147,22 +332,37 @@ export default async function GardenOgImage({
             gardenId: gardenId.toString(),
         },
     });
-    if (gardenResponse.status === 400 || gardenResponse.status === 404) {
+    if (!gardenResponse.ok) {
         console.error(`Garden with ID ${gardenId} not found`);
-        return null;
+        return new Response('Garden not found', {
+            status:
+                gardenResponse.status === 400 || gardenResponse.status === 404
+                    ? gardenResponse.status
+                    : 502,
+        });
     }
     const garden = await gardenResponse.json();
 
     const blockData = (await directoriesClient().GET('/entities/block')).data;
     if (!blockData) {
         console.error(`Block data not found`);
-        return null;
+        return createGardenOgFallbackImage(garden.name);
     }
-    const blockImageSrcByKey = await getGardenOgBlockImageSrcByKey(
-        garden.stacks,
-    );
     const viewportOffset = getGardenOgViewportOffset(garden.homeCamera);
     const blockSize = getGardenOgBlockSize(garden.homeCamera);
+    const spriteRequests = getGardenOgBlockSpriteRequests(garden.stacks, {
+        blockSize,
+        viewportOffset,
+        viewportSize: gardenOgViewportSize,
+    });
+    const { failedSpriteCount, imageSrcByKey } =
+        await getGardenOgBlockImageSrcByKey(spriteRequests);
+    if (
+        spriteRequests.length === 0 ||
+        failedSpriteCount === spriteRequests.length
+    ) {
+        return createGardenOgFallbackImage(garden.name);
+    }
 
     return new ImageResponse(
         <div
@@ -194,7 +394,7 @@ export default async function GardenOgImage({
                 <GardenDisplay2D
                     garden={garden}
                     blockData={blockData}
-                    blockImageSrcByKey={blockImageSrcByKey}
+                    blockImageSrcByKey={imageSrcByKey}
                     blockSize={blockSize}
                     viewportSize={gardenOgViewportSize}
                     viewportOffset={viewportOffset}
