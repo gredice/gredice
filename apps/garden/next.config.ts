@@ -1,3 +1,5 @@
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import vercelToolbar from '@vercel/toolbar/plugins/next';
 import type { NextConfig } from 'next';
 import {
@@ -9,6 +11,13 @@ import {
 
 const app = getAppByName('garden');
 const apiApp = getAppByName('api');
+const workspaceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+const gardenOgImageRoute = '/vrtovi/*/opengraph-image';
+const gardenOgSharpRuntimeFiles = [
+    '../../node_modules/.pnpm/sharp@*/node_modules/sharp/**/*',
+    '../../node_modules/.pnpm/@img+sharp-linux-x64@*/node_modules/@img/sharp-linux-x64/**/*',
+    '../../node_modules/.pnpm/@img+sharp-libvips-linux-x64@*/node_modules/@img/sharp-libvips-linux-x64/**/*',
+];
 // Use the Vercel deployment ID (or git commit SHA) as a cache-busting tag.
 // Assets are not truly immutable – they change when game models or sprites are updated.
 // CDN (s-maxage) is purged automatically by Vercel on each deployment.
@@ -31,6 +40,10 @@ const assetCacheHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+    outputFileTracingRoot: workspaceRoot,
+    outputFileTracingIncludes: {
+        [gardenOgImageRoute]: gardenOgSharpRuntimeFiles,
+    },
     reactStrictMode: true,
     typedRoutes: true,
     reactCompiler: true,

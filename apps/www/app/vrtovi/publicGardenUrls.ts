@@ -1,5 +1,11 @@
 import { KnownPages } from '../../src/KnownPages';
 
+const publicGardenOgImageVersion = '2';
+
 export function getPublicGardenOgImageUrl(gardenId: number) {
-    return `${KnownPages.GardenApp}${KnownPages.PublicGarden(gardenId)}/opengraph-image`;
+    const url = new URL(
+        `${KnownPages.GardenApp}${KnownPages.PublicGarden(gardenId)}/opengraph-image`,
+    );
+    url.searchParams.set('v', publicGardenOgImageVersion);
+    return url.toString();
 }

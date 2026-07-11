@@ -24,6 +24,8 @@ export const runtime = 'nodejs';
 
 const gardenOgImageCacheControl =
     'public, max-age=86400, s-maxage=86400, stale-while-revalidate=86400';
+const gardenOgFallbackCacheControl = 'no-store';
+const gardenOgRenderHeader = 'X-Gredice-Garden-Preview';
 const gardenOgImageAssetBaseUrl = 'https://vrt.gredice.com';
 const gardenOgViewportSize = 1200;
 const gardenOgViewportCenter = { x: 576, y: 184 };
@@ -309,7 +311,8 @@ function createGardenOgFallbackImage(gardenName: string) {
         {
             ...size,
             headers: {
-                'Cache-Control': gardenOgImageCacheControl,
+                'Cache-Control': gardenOgFallbackCacheControl,
+                [gardenOgRenderHeader]: 'fallback',
             },
         },
     );
@@ -361,6 +364,11 @@ export default async function GardenOgImage({
         spriteRequests.length === 0 ||
         failedSpriteCount === spriteRequests.length
     ) {
+        console.error('Garden OG preview could not render any block sprites', {
+            failedSpriteCount,
+            gardenId,
+            spriteRequestCount: spriteRequests.length,
+        });
         return createGardenOgFallbackImage(garden.name);
     }
 
@@ -436,6 +444,7 @@ export default async function GardenOgImage({
             height: 630,
             headers: {
                 'Cache-Control': gardenOgImageCacheControl,
+                [gardenOgRenderHeader]: 'rendered',
             },
         },
     );
