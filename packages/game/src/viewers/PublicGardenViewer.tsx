@@ -313,7 +313,21 @@ function PublicGardenScene({
     const renderTransientDetails = renderLivingDetails && !capture;
 
     return (
-        <div className={cx('relative h-full w-full', className)}>
+        <div
+            className={cx('relative h-full w-full', className)}
+            data-public-garden-capture-blocks-ready={
+                capture ? blockDataLoaded : undefined
+            }
+            data-public-garden-capture-cache-ready={
+                capture ? gardenCacheReady : undefined
+            }
+            data-public-garden-capture-fetching={
+                capture ? fetchingQueryCount : undefined
+            }
+            data-public-garden-capture-plants-ready={
+                capture ? plantSortsLoaded : undefined
+            }
+        >
             {blockDataLoaded && gardenCacheReady ? (
                 <Scene
                     fixedTimeSeconds={

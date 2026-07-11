@@ -49,6 +49,57 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
 }) => {
     test.setTimeout(45_000);
     const blockData = getLocalSandboxBlockData();
+    const browserErrors: string[] = [];
+    const apiRequests: string[] = [];
+    const apiResponses: string[] = [];
+
+    page.on('console', (message) => {
+        if (message.type() === 'error' && browserErrors.length < 20) {
+            browserErrors.push(message.text());
+        }
+    });
+    page.on('pageerror', (error) => {
+        if (browserErrors.length < 20) {
+            browserErrors.push(error.message);
+        }
+    });
+    page.on('request', (request) => {
+        const url = request.url();
+        if (url.includes('/api/gredice/')) {
+            apiRequests.push(new URL(url).pathname);
+        }
+    });
+    page.on('response', (response) => {
+        const url = response.url();
+        if (url.includes('/api/gredice/')) {
+            apiResponses.push(
+                `${response.status().toString()} ${new URL(url).pathname}`,
+            );
+        }
+    });
+
+    const webgl = await page.evaluate(() => {
+        const canvas = document.createElement('canvas');
+        const context =
+            canvas.getContext('webgl2') ?? canvas.getContext('webgl');
+        if (!context) {
+            return { available: false };
+        }
+
+        const rendererInfo = context.getExtension('WEBGL_debug_renderer_info');
+        return {
+            available: true,
+            renderer: rendererInfo
+                ? String(
+                      context.getParameter(
+                          rendererInfo.UNMASKED_RENDERER_WEBGL,
+                      ),
+                  )
+                : 'masked',
+            version: String(context.getParameter(context.VERSION)),
+        };
+    });
+    expect(webgl.available, JSON.stringify(webgl)).toBe(true);
 
     await page.route(
         '**/api/gredice/api/directories/entities/**',
@@ -118,17 +169,51 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
     await mount(<GardenPreviewCaptureStory />);
 
     const resultOutput = page.getByTestId('garden-preview-capture-result');
-    await expect
-        .poll(
-            async () => {
-                const result = JSON.parse(
-                    (await resultOutput.textContent()) ?? '{}',
-                );
-                return result.status;
-            },
-            { timeout: 35_000 },
-        )
-        .not.toBe('waiting');
+    try {
+        await expect
+            .poll(
+                async () => {
+                    const result = JSON.parse(
+                        (await resultOutput.textContent()) ?? '{}',
+                    );
+                    return result.status;
+                },
+                { timeout: 35_000 },
+            )
+            .not.toBe('waiting');
+    } catch (error) {
+        const captureScene = page.locator(
+            '[data-public-garden-capture-blocks-ready]',
+        );
+        const diagnostics = {
+            apiRequests,
+            apiResponses,
+            browserErrors,
+            canvasCount: await page.locator('canvas').count(),
+            readiness:
+                (await captureScene.count()) === 0
+                    ? null
+                    : {
+                          blocks: await captureScene.getAttribute(
+                              'data-public-garden-capture-blocks-ready',
+                          ),
+                          cache: await captureScene.getAttribute(
+                              'data-public-garden-capture-cache-ready',
+                          ),
+                          fetching: await captureScene.getAttribute(
+                              'data-public-garden-capture-fetching',
+                          ),
+                          plants: await captureScene.getAttribute(
+                              'data-public-garden-capture-plants-ready',
+                          ),
+                      },
+            webgl,
+        };
+        throw new Error(
+            `Garden preview capture did not leave its waiting state. Diagnostics: ${JSON.stringify(diagnostics)}`,
+            { cause: error },
+        );
+    }
 
     const result = JSON.parse((await resultOutput.textContent()) ?? '{}');
     expect(result.status, result.error).toBe('captured');

@@ -77,7 +77,7 @@ export const config: PlaywrightTestConfig = {
                     // isolated to our trusted 3D capture fixture.
                     args: [
                         '--use-gl=angle',
-                        '--use-angle=swiftshader-webgl',
+                        '--use-angle=swiftshader',
                         '--enable-unsafe-swiftshader',
                     ],
                 },
