@@ -86,6 +86,30 @@ describe('serializePublicRaisedBedField', () => {
         assert.equal(plantCycle.plantSortId, 7);
     });
 
+    it('preserves public planting state and lifecycle dates', () => {
+        const plantScheduledDate = new Date('2026-05-30T08:00:00.000Z');
+        const plantSowDate = new Date('2026-06-01T08:00:00.000Z');
+        const plantGrowthDate = new Date('2026-06-10T08:00:00.000Z');
+        const plantReadyDate = new Date('2026-07-10T08:00:00.000Z');
+        const field = createField({
+            plantGrowthDate,
+            plantReadyDate,
+            plantScheduledDate,
+            plantSowDate,
+            plantStatus: 'ready',
+            sowingLocation: 'direct',
+        });
+
+        const publicField = serializePublicRaisedBedField(field);
+
+        assert.equal(publicField.plantStatus, 'ready');
+        assert.equal(publicField.sowingLocation, 'direct');
+        assert.equal(publicField.plantScheduledDate, plantScheduledDate);
+        assert.equal(publicField.plantSowDate, plantSowDate);
+        assert.equal(publicField.plantGrowthDate, plantGrowthDate);
+        assert.equal(publicField.plantReadyDate, plantReadyDate);
+    });
+
     it('counts only active planted fields for public garden summaries', () => {
         assert.equal(
             countPublicGardenActivePlants([

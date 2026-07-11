@@ -11,12 +11,15 @@ import {
     type HTMLAttributes,
     type ReactNode,
     Suspense,
+    useCallback,
     useEffect,
     useMemo,
     useRef,
     useState,
 } from 'react';
 import { Vector3 } from 'three';
+import { BlockInteractionLayer } from '../controls/BlockInteractionLayer';
+import { BlockInteractionRegistryProvider } from '../controls/BlockInteractionRegistry';
 import { GameCameraRig } from '../controls/GameCameraRig';
 import { Bees } from '../entities/bees/Bees';
 import { Birds } from '../entities/birds/Birds';
@@ -44,7 +47,11 @@ import {
     type GameStateStore,
     useDisposeGameStateStore,
 } from '../useGameState';
+import { findRaisedBedByBlockId } from '../utils/raisedBedBlocks';
 import type { GameLocation } from '../utils/timeOfDay';
+import { PublicGardenRaisedBedDetails } from './PublicGardenRaisedBedDetails';
+import { PublicGardenRaisedBedInteractions } from './PublicGardenRaisedBedInteractions';
+import { PublicGardenRaisedBedPicker } from './PublicGardenRaisedBedPicker';
 
 export type PublicGardenBlock = Block;
 
@@ -97,6 +104,20 @@ export function publicGardenStacksFromResponse(
                 variant: block.variant,
             })),
         })),
+    );
+}
+
+export function getPublicGardenRaisedBedsWithBlocks<
+    TRaisedBed extends { blockId?: string | null },
+>(raisedBeds: TRaisedBed[], stacks: Stack[]) {
+    const renderedBlockIds = new Set(
+        stacks.flatMap((stack) => stack.blocks.map((block) => block.id)),
+    );
+
+    return raisedBeds.filter(
+        (raisedBed) =>
+            typeof raisedBed.blockId === 'string' &&
+            renderedBlockIds.has(raisedBed.blockId),
     );
 }
 
@@ -219,6 +240,7 @@ function PublicGardenScene({
     garden,
     gardenCacheReady,
     normalizedStacks,
+    onSelectRaisedBedBlock,
     renderDetails,
 }: {
     enableBlockGeometryMerging: boolean;
@@ -227,6 +249,7 @@ function PublicGardenScene({
     garden?: ReturnType<typeof publicGardenForGameState>;
     gardenCacheReady: boolean;
     normalizedStacks: Stack[];
+    onSelectRaisedBedBlock: (blockId: string) => void;
     renderDetails: boolean;
 }) {
     const blockDataQuery = useBlockData();
@@ -244,80 +267,94 @@ function PublicGardenScene({
                     className="h-full w-full"
                 >
                     <ParticleSystemProvider>
-                        <Environment
-                            noSound
-                            quality={qualityProfile}
-                            weather={undefined}
-                        />
-                        <Suspense fallback={null}>
-                            <group name="PublicGardenScene:Entities">
-                                {normalizedStacks.map((stack) =>
-                                    stack.blocks.map((block) => (
-                                        <EntityFactory
-                                            key={`${stack.position.x}|${stack.position.z}|${block.id}-${block.name}`}
-                                            name={block.name}
-                                            stack={stack}
-                                            block={block}
-                                            stacks={normalizedStacks}
-                                            rotation={block.rotation}
-                                            variant={block.variant}
-                                            noRenderInView={instancedBlockNames}
-                                            noControl
-                                        />
-                                    )),
-                                )}
-                                <EntityInstances
-                                    enableBlockGeometryMerging={
-                                        enableBlockGeometryMerging
-                                    }
-                                    farmId={garden?.farmId}
-                                    quality={qualityProfile}
-                                    renderGroundDecorations={
-                                        renderLivingDetails
-                                    }
-                                    stacks={normalizedStacks}
-                                    renderDetails={renderLivingDetails}
-                                />
-                                {renderLivingDetails && (
-                                    <Suspense fallback={null}>
-                                        <Birds stacks={normalizedStacks} />
-                                    </Suspense>
-                                )}
-                                {renderLivingDetails && (
-                                    <Suspense fallback={null}>
-                                        <Cats
-                                            farmId={garden?.farmId}
-                                            stacks={normalizedStacks}
-                                        />
-                                    </Suspense>
-                                )}
-                                {renderLivingDetails && (
-                                    <Suspense fallback={null}>
-                                        <Dogs
-                                            farmId={garden?.farmId}
-                                            stacks={normalizedStacks}
-                                        />
-                                    </Suspense>
-                                )}
-                                {renderLivingDetails && garden && (
-                                    <Suspense fallback={null}>
-                                        <Bees
-                                            farmId={garden.farmId}
-                                            garden={garden}
-                                            groundDecorationDensity={
-                                                qualityProfile.groundDecorationDensity
-                                            }
-                                        />
-                                    </Suspense>
-                                )}
-                            </group>
-                        </Suspense>
-                        <GameCameraRig
-                            controlsEnabled
-                            initialSnapshot={garden?.homeCamera ?? undefined}
-                            initialTarget={initialView.cameraTarget}
-                            initialViewKey={garden?.id ?? 'stacks'}
-                        />
+                        <BlockInteractionRegistryProvider>
+                            <Environment
+                                noSound
+                                quality={qualityProfile}
+                                weather={undefined}
+                            />
+                            <Suspense fallback={null}>
+                                <group name="PublicGardenScene:Entities">
+                                    {normalizedStacks.map((stack) =>
+                                        stack.blocks.map((block) => (
+                                            <EntityFactory
+                                                key={`${stack.position.x}|${stack.position.z}|${block.id}-${block.name}`}
+                                                name={block.name}
+                                                stack={stack}
+                                                block={block}
+                                                stacks={normalizedStacks}
+                                                rotation={block.rotation}
+                                                variant={block.variant}
+                                                noRenderInView={
+                                                    instancedBlockNames
+                                                }
+                                                noControl
+                                            />
+                                        )),
+                                    )}
+                                    <EntityInstances
+                                        enableBlockGeometryMerging={
+                                            enableBlockGeometryMerging
+                                        }
+                                        farmId={garden?.farmId}
+                                        quality={qualityProfile}
+                                        renderGroundDecorations={
+                                            renderLivingDetails
+                                        }
+                                        stacks={normalizedStacks}
+                                        renderDetails={renderLivingDetails}
+                                    />
+                                    <PublicGardenRaisedBedInteractions
+                                        onSelect={onSelectRaisedBedBlock}
+                                        stacks={normalizedStacks}
+                                    />
+                                    <BlockInteractionLayer
+                                        controlsEnabled
+                                        stacks={normalizedStacks}
+                                    />
+                                    {renderLivingDetails && (
+                                        <Suspense fallback={null}>
+                                            <Birds stacks={normalizedStacks} />
+                                        </Suspense>
+                                    )}
+                                    {renderLivingDetails && (
+                                        <Suspense fallback={null}>
+                                            <Cats
+                                                farmId={garden?.farmId}
+                                                stacks={normalizedStacks}
+                                            />
+                                        </Suspense>
+                                    )}
+                                    {renderLivingDetails && (
+                                        <Suspense fallback={null}>
+                                            <Dogs
+                                                farmId={garden?.farmId}
+                                                stacks={normalizedStacks}
+                                            />
+                                        </Suspense>
+                                    )}
+                                    {renderLivingDetails && garden && (
+                                        <Suspense fallback={null}>
+                                            <Bees
+                                                farmId={garden.farmId}
+                                                garden={garden}
+                                                groundDecorationDensity={
+                                                    qualityProfile.groundDecorationDensity
+                                                }
+                                            />
+                                        </Suspense>
+                                    )}
+                                </group>
+                            </Suspense>
+                            <GameCameraRig
+                                controlsEnabled
+                                initialSnapshot={
+                                    garden?.homeCamera ?? undefined
+                                }
+                                initialTarget={initialView.cameraTarget}
+                                initialViewKey={garden?.id ?? 'stacks'}
+                            />
+                        </BlockInteractionRegistryProvider>
                     </ParticleSystemProvider>
                 </Scene>
             ) : (
@@ -413,6 +450,16 @@ export function PublicGardenViewer({
                 : undefined,
         [garden, normalizedStacks],
     );
+    const selectableRaisedBeds = useMemo(
+        () =>
+            gameGarden
+                ? getPublicGardenRaisedBedsWithBlocks(
+                      gameGarden.raisedBeds,
+                      normalizedStacks,
+                  )
+                : [],
+        [gameGarden, normalizedStacks],
+    );
     const initialView = useMemo(
         () =>
             getPublicGardenInitialView({
@@ -423,12 +470,73 @@ export function PublicGardenViewer({
     );
     const renderDetails = useDeferredSceneDetails(deferDetails);
     const cacheKey = getPublicGardenCacheKey(garden);
+    const [selectedRaisedBedId, setSelectedRaisedBedId] = useState<
+        number | null
+    >(null);
+    const selectedRaisedBed = gameGarden?.raisedBeds.find(
+        (raisedBed) => raisedBed.id === selectedRaisedBedId,
+    );
+
+    const openRaisedBed = useCallback(
+        (raisedBedId: number) => {
+            if (!gameGarden) {
+                return;
+            }
+
+            const raisedBed = gameGarden.raisedBeds.find(
+                (candidate) => candidate.id === raisedBedId,
+            );
+            if (!raisedBed?.blockId) {
+                return;
+            }
+
+            const block = gameGarden.stacks
+                .flatMap((stack) => stack.blocks)
+                .find((candidate) => candidate.id === raisedBed.blockId);
+            if (!block) {
+                return;
+            }
+
+            setSelectedRaisedBedId(raisedBed.id);
+            storeRef.current?.getState().setView({
+                view: 'closeup',
+                block,
+            });
+        },
+        [gameGarden],
+    );
+
+    const openRaisedBedByBlockId = useCallback(
+        (blockId: string) => {
+            const raisedBed = findRaisedBedByBlockId(gameGarden, blockId);
+            if (raisedBed) {
+                openRaisedBed(raisedBed.id);
+            }
+        },
+        [gameGarden, openRaisedBed],
+    );
+
+    const closeRaisedBed = useCallback(() => {
+        setSelectedRaisedBedId(null);
+        storeRef.current?.getState().setView({ view: 'normal' });
+    }, []);
 
     useEffect(() => {
         storeRef.current
             ?.getState()
             .setBackgroundPaletteKey(gameGarden?.backgroundPalette);
     }, [gameGarden?.backgroundPalette]);
+
+    useEffect(() => {
+        if (gameGarden?.id === undefined) {
+            setSelectedRaisedBedId(null);
+            storeRef.current?.getState().setView({ view: 'normal' });
+            return;
+        }
+
+        setSelectedRaisedBedId(null);
+        storeRef.current?.getState().setView({ view: 'normal' });
+    }, [gameGarden?.id]);
 
     return (
         <QueryClientProvider client={clientRef.current}>
@@ -440,17 +548,40 @@ export function PublicGardenViewer({
                         garden={gameGarden}
                     >
                         {(gardenCacheReady) => (
-                            <PublicGardenScene
-                                className={className}
-                                enableBlockGeometryMerging={
-                                    enableBlockGeometryMerging
-                                }
-                                garden={gameGarden}
-                                gardenCacheReady={gardenCacheReady}
-                                initialView={initialView}
-                                normalizedStacks={normalizedStacks}
-                                renderDetails={renderDetails}
-                            />
+                            <div
+                                className={cx(
+                                    'relative h-full w-full',
+                                    className,
+                                )}
+                            >
+                                <PublicGardenScene
+                                    className="size-full"
+                                    enableBlockGeometryMerging={
+                                        enableBlockGeometryMerging
+                                    }
+                                    garden={gameGarden}
+                                    gardenCacheReady={gardenCacheReady}
+                                    initialView={initialView}
+                                    normalizedStacks={normalizedStacks}
+                                    onSelectRaisedBedBlock={
+                                        openRaisedBedByBlockId
+                                    }
+                                    renderDetails={renderDetails}
+                                />
+                                {gameGarden ? (
+                                    <PublicGardenRaisedBedPicker
+                                        onSelect={openRaisedBed}
+                                        raisedBeds={selectableRaisedBeds}
+                                    />
+                                ) : null}
+                                {selectedRaisedBed ? (
+                                    <PublicGardenRaisedBedDetails
+                                        key={selectedRaisedBed.id}
+                                        onClose={closeRaisedBed}
+                                        raisedBed={selectedRaisedBed}
+                                    />
+                                ) : null}
+                            </div>
                         )}
                     </SeedPublicGardenQueryCache>
                 </GameSceneDetailContext.Provider>
