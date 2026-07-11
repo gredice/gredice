@@ -117,6 +117,12 @@ const nextConfig: NextConfig = {
             },
             {
                 protocol: 'https',
+                hostname: 'vrt.gredice.com',
+                port: '',
+                pathname: '/assets/**',
+            },
+            {
+                protocol: 'https',
                 hostname: '*.public.blob.vercel-storage.com',
                 port: '',
                 pathname: '/**',
