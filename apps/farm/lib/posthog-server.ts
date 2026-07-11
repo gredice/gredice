@@ -50,15 +50,15 @@ let pendingLogFlush: Promise<void> | null = null;
 
 const postHogLogsProcessor =
     postHogApiKey && postHogLogsUrl
-        ? new BatchLogRecordProcessor(
-              new OTLPLogExporter({
+        ? new BatchLogRecordProcessor({
+              exporter: new OTLPLogExporter({
                   headers: {
                       Authorization: `Bearer ${postHogApiKey}`,
                       'Content-Type': 'application/json',
                   },
                   url: postHogLogsUrl,
               }),
-          )
+          })
         : null;
 
 export const loggerProvider = new LoggerProvider({
@@ -193,10 +193,11 @@ export async function getPostHogClient(): Promise<PostHogCaptureClient> {
         return noopPostHogClient;
     }
 
-    const { getPostHog } = await import('@posthog/next');
+    const { createPostHog } = await import('@posthog/next');
+    const { getPostHog } = createPostHog({
+        apiKey: postHogApiKey,
+        options: postHogServerHost ? { host: postHogServerHost } : undefined,
+    });
 
-    return getPostHog(
-        postHogApiKey,
-        postHogServerHost ? { host: postHogServerHost } : undefined,
-    );
+    return getPostHog();
 }

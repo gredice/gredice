@@ -35,9 +35,7 @@ export async function AccountUsersCard({ accountId }: { accountId: string }) {
                                 <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                     <div className="min-w-0">
                                         <Link
-                                            href={KnownPages.User(
-                                                user.user.id,
-                                            )}
+                                            href={KnownPages.User(user.user.id)}
                                             className="min-w-0 break-words text-sm font-medium text-primary underline-offset-4 hover:underline"
                                         >
                                             {user.user.userName}
