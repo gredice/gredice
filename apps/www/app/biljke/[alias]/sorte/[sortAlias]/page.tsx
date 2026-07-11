@@ -179,6 +179,8 @@ export default async function PlantSortPage(
     const sortPath = KnownPages.PlantSort(alias, sortData.information.name);
     const sortUrl = `https://www.gredice.com${sortPath}`;
     const hasPerPlantPrice = typeof basePlantData.prices?.perPlant === 'number';
+    const hasPricedOffer =
+        hasPerPlantPrice && basePlantData.prices.perPlant > 0;
     const relationships = hasPlantRelationships(sortData.relationships)
         ? sortData.relationships
         : basePlantData.relationships;
@@ -223,19 +225,25 @@ export default async function PlantSortPage(
                                   url: `https://www.gredice.com${KnownPages.Plant(alias)}`,
                               },
                               url: sortUrl,
-                              offers: {
-                                  '@type': 'Offer',
-                                  price: basePlantData.prices.perPlant.toFixed(
-                                      2,
-                                  ),
-                                  priceCurrency: 'EUR',
-                                  availability:
-                                      sortData.store?.availableInStore === false
-                                          ? 'https://schema.org/OutOfStock'
-                                          : 'https://schema.org/InStock',
-                                  url: sortUrl,
-                                  hasMerchantReturnPolicy: merchantReturnPolicy,
-                              },
+                              ...(hasPricedOffer
+                                  ? {
+                                        offers: {
+                                            '@type': 'Offer',
+                                            price: basePlantData.prices.perPlant.toFixed(
+                                                2,
+                                            ),
+                                            priceCurrency: 'EUR',
+                                            availability:
+                                                sortData.store
+                                                    ?.availableInStore === false
+                                                    ? 'https://schema.org/OutOfStock'
+                                                    : 'https://schema.org/InStock',
+                                            url: sortUrl,
+                                            hasMerchantReturnPolicy:
+                                                merchantReturnPolicy,
+                                        },
+                                    }
+                                  : {}),
                           }
                         : {
                               '@context': 'https://schema.org',

@@ -111,7 +111,8 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                     },
                     url: `https://www.gredice.com${KnownPages.Plant(alias)}`,
                     offers:
-                        typeof plant.prices?.perPlant === 'number'
+                        typeof plant.prices?.perPlant === 'number' &&
+                        plant.prices.perPlant > 0
                             ? {
                                   '@type': 'Offer',
                                   price: plant.prices.perPlant.toFixed(2),

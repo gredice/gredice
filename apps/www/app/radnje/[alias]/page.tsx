@@ -15,6 +15,7 @@ import { PriceAttributeCard } from '../../../components/attributes/PriceAttribut
 import { CommunityEditButton } from '../../../components/community-edits/CommunityEditButton';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { StructuredDataScript } from '../../../components/shared/seo/StructuredDataScript';
+import { getOperationPriceAvailability } from '../../../lib/operationPricing';
 import { getOperationsData } from '../../../lib/plants/getOperationsData';
 import { KnownPages } from '../../../src/KnownPages';
 import { merchantReturnPolicy } from '../../../src/merchantReturnPolicy';
@@ -75,6 +76,7 @@ export default async function OperationPage(
     const operationPath = KnownPages.Operation(
         operation.slug || operation.information.label,
     );
+    const priceAvailability = getOperationPriceAvailability(operation);
 
     return (
         <div className="operation-page py-8">
@@ -93,14 +95,20 @@ export default async function OperationPage(
                         name: 'Gredice',
                     },
                     url: `https://www.gredice.com${operationPath}`,
-                    offers: {
-                        '@type': 'Offer',
-                        price: operation.prices.perOperation.toFixed(2),
-                        priceCurrency: 'EUR',
-                        availability: 'https://schema.org/InStock',
-                        url: `https://www.gredice.com${operationPath}`,
-                        hasMerchantReturnPolicy: merchantReturnPolicy,
-                    },
+                    ...(priceAvailability === 'available'
+                        ? {
+                              offers: {
+                                  '@type': 'Offer',
+                                  price: operation.prices.perOperation.toFixed(
+                                      2,
+                                  ),
+                                  priceCurrency: 'EUR',
+                                  availability: 'https://schema.org/InStock',
+                                  url: `https://www.gredice.com${operationPath}`,
+                                  hasMerchantReturnPolicy: merchantReturnPolicy,
+                              },
+                          }
+                        : {}),
                 }}
             />
             <Stack spacing={8}>
@@ -139,6 +147,7 @@ export default async function OperationPage(
                                     entityId={operation.id}
                                     entityTypeName="operation"
                                     currentPrice={operation.prices.perOperation}
+                                    availability={priceAvailability}
                                 />
                             </div>
                             <Row spacing={1} className="self-end">
@@ -157,16 +166,18 @@ export default async function OperationPage(
                                     }}
                                 />
                             </Row>
-                            <Typography level="body2" secondary>
-                                Nisi zadovoljan uslugom? Dostupan je{' '}
-                                <Link
-                                    className="underline"
-                                    href={KnownPages.Refunds}
-                                >
-                                    povrat novca do 30 dana
-                                </Link>
-                                .
-                            </Typography>
+                            {priceAvailability === 'available' && (
+                                <Typography level="body2" secondary>
+                                    Nisi zadovoljan uslugom? Dostupan je{' '}
+                                    <Link
+                                        className="underline"
+                                        href={KnownPages.Refunds}
+                                    >
+                                        povrat novca do 30 dana
+                                    </Link>
+                                    .
+                                </Typography>
+                            )}
                             {harvestPlantRemovalDescription && (
                                 <Typography level="body2" secondary>
                                     {harvestPlantRemovalDescription}

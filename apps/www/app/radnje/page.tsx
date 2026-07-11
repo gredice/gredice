@@ -7,6 +7,7 @@ import { Suspense } from 'react';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { PageFilterInput } from '../../components/shared/PageFilterInput';
 import { StructuredDataScript } from '../../components/shared/seo/StructuredDataScript';
+import { getOperationPriceAvailability } from '../../lib/operationPricing';
 import { getOperationsData } from '../../lib/plants/getOperationsData';
 import { KnownPages } from '../../src/KnownPages';
 import { merchantReturnPolicy } from '../../src/merchantReturnPolicy';
@@ -66,15 +67,20 @@ export default async function OperationsPage({
                                 name: operation.information.label,
                                 url: `https://www.gredice.com${KnownPages.Operation(operation.information.label)}`,
                                 image: operation.image?.cover?.url,
-                                offers: {
-                                    '@type': 'Offer',
-                                    price: operation.prices.perOperation.toFixed(
-                                        2,
-                                    ),
-                                    priceCurrency: 'EUR',
-                                    hasMerchantReturnPolicy:
-                                        merchantReturnPolicy,
-                                },
+                                ...(getOperationPriceAvailability(operation) ===
+                                'available'
+                                    ? {
+                                          offers: {
+                                              '@type': 'Offer',
+                                              price: operation.prices.perOperation.toFixed(
+                                                  2,
+                                              ),
+                                              priceCurrency: 'EUR',
+                                              hasMerchantReturnPolicy:
+                                                  merchantReturnPolicy,
+                                          },
+                                      }
+                                    : {}),
                             },
                         }),
                     ),
