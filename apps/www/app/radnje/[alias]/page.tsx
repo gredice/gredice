@@ -11,7 +11,7 @@ import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { AttributeCard } from '../../../components/attributes/DetailCard';
+import { PriceAttributeCard } from '../../../components/attributes/PriceAttributeCard';
 import { CommunityEditButton } from '../../../components/community-edits/CommunityEditButton';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { StructuredDataScript } from '../../../components/shared/seo/StructuredDataScript';
@@ -133,10 +133,12 @@ export default async function OperationPage(
                         </Typography>
                         <Stack spacing={2}>
                             <div className="grid grid-cols-2 gap-2">
-                                <AttributeCard
+                                <PriceAttributeCard
                                     icon={<Euro />}
                                     header="Cijena"
-                                    value={`${operation.prices.perOperation.toFixed(2)}€`}
+                                    entityId={operation.id}
+                                    entityTypeName="operation"
+                                    currentPrice={operation.prices.perOperation}
                                 />
                             </div>
                             <Row spacing={1} className="self-end">

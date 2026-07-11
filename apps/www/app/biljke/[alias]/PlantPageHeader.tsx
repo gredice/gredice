@@ -12,6 +12,7 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
+import { PriceAttributeCard } from '../../../components/attributes/PriceAttributeCard';
 import { CommunityEditButton } from '../../../components/community-edits/CommunityEditButton';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { KnownPages } from '../../../src/KnownPages';
@@ -115,6 +116,15 @@ export function PlantPageHeader({
     const alternativeNames =
         formatAlternativeNames(sort?.information) ||
         formatAlternativeNames(plant.information);
+    const plantPrice = plant.prices?.perPlant;
+    const price =
+        typeof plantPrice === 'number'
+            ? {
+                  currentPrice: plantPrice,
+                  entityId: plant.id,
+                  entityTypeName: 'plant' as const,
+              }
+            : null;
 
     return (
         <PageHeader
@@ -235,11 +245,13 @@ export function PlantPageHeader({
                         Informacije
                     </Typography>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {plant.prices?.perPlant && (
-                            <AttributeCard
+                        {price && (
+                            <PriceAttributeCard
                                 icon={<Sprout />}
                                 header="Cijena sijanja"
-                                value={`${plant.prices.perPlant.toFixed(2)}€`}
+                                entityId={price.entityId}
+                                entityTypeName={price.entityTypeName}
+                                currentPrice={price.currentPrice}
                                 description="Cijena jedne biljke uključuje troškove sjemena, pripreme tla, sjetve i sezonske pogodnosti. Više o samoj sjetvi u gredicama možeš pročitati u nastavku."
                                 navigateHref={KnownPages.Sowing}
                                 navigateLabel="Više o sjetvi"
