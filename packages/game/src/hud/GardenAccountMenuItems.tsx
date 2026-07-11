@@ -130,8 +130,8 @@ export function GardenAccountMenuItems({
                 await switchGardenAccount.mutateAsync({
                     accountId: accountGroup.accountId,
                 });
-                await queryClient.invalidateQueries();
                 await setSelectedGardenId(garden.id);
+                void queryClient.invalidateQueries();
                 return;
             }
 

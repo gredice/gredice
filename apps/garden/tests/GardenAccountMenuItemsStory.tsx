@@ -15,6 +15,7 @@ import {
     createGameState,
     GameStateContext,
 } from '../../../packages/game/src/useGameState';
+import { useCurrentGardenIdParam } from '../../../packages/game/src/useUrlState';
 
 const currentGarden = {
     id: 1,
@@ -27,6 +28,13 @@ const sandboxGarden = {
     id: 2,
     name: 'Vrt za igru 1',
     isSandbox: true,
+    createdAt: '2026-06-01T00:00:00.000Z',
+};
+
+const otherAccountGarden = {
+    id: 3,
+    name: 'Drugi vrt',
+    isSandbox: false,
     createdAt: '2026-06-01T00:00:00.000Z',
 };
 
@@ -44,6 +52,12 @@ function createGardenAccountMenuQueryClient() {
             name: 'test@example.com račun',
             isCurrent: true,
             gardens: [currentGarden, sandboxGarden],
+        },
+        {
+            accountId: 'other-account',
+            name: 'other@example.com račun',
+            isCurrent: false,
+            gardens: [otherAccountGarden],
         },
     ]);
     queryClient.setQueryData(currentGardenKeys('summer', currentGarden.id), {
@@ -71,13 +85,40 @@ function GardenAccountMenuItemsTestProviders({ children }: PropsWithChildren) {
     );
 
     return (
-        <ReactQuery.QueryClientProvider client={queryClient}>
-            <NuqsTestingAdapter>
-                <GameStateContext.Provider value={gameState}>
+        <NuqsTestingAdapter hasMemory>
+            <ReactQuery.QueryClientProvider client={queryClient}>
+                <GardenAccountMenuItemsTestContent gameState={gameState}>
                     {children}
-                </GameStateContext.Provider>
-            </NuqsTestingAdapter>
-        </ReactQuery.QueryClientProvider>
+                </GardenAccountMenuItemsTestContent>
+            </ReactQuery.QueryClientProvider>
+        </NuqsTestingAdapter>
+    );
+}
+
+function GardenAccountMenuItemsTestContent({
+    children,
+    gameState,
+}: PropsWithChildren<{
+    gameState: ReturnType<typeof createGameState>;
+}>) {
+    const [selectedGardenId] = useCurrentGardenIdParam();
+
+    // Keep one active refetch pending so the switcher test can prove that URL
+    // selection no longer waits for every invalidated query to settle.
+    ReactQuery.useQuery({
+        queryKey: ['accounts', 'current', 'switch-delay-probe'],
+        queryFn: () => new Promise<never>(() => undefined),
+        initialData: 'ready',
+        staleTime: Number.POSITIVE_INFINITY,
+    });
+
+    return (
+        <GameStateContext.Provider value={gameState}>
+            {children}
+            <output className="sr-only" data-testid="selected-garden-id">
+                {selectedGardenId ?? 'default'}
+            </output>
+        </GameStateContext.Provider>
     );
 }
 
