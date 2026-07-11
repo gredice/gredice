@@ -129,7 +129,7 @@ test('buildPlantPricingRows includes plant sorts with their own numeric price an
     );
 });
 
-test('buildPlantPricingRows keeps zero-price entries so they can be marked unavailable', () => {
+test('buildPlantPricingRows keeps zero-price plants and sorts so they can be marked unavailable', () => {
     const rows = buildPlantPricingRows(
         [
             {
@@ -138,11 +138,28 @@ test('buildPlantPricingRows keeps zero-price entries so they can be marked unava
                 prices: { perPlant: 0 },
             },
         ],
-        [],
+        [
+            {
+                id: 15,
+                information: {
+                    name: 'Nedostupna sorta',
+                    plant: {
+                        id: 14,
+                        information: { name: 'Nedostupna biljka' },
+                    },
+                },
+                prices: { perPlant: 0 },
+            },
+        ],
     );
 
-    assert.equal(rows.length, 1);
-    assert.equal(rows[0]?.price, 0);
+    assert.deepEqual(
+        rows.map(({ kind, price }) => ({ kind, price })),
+        [
+            { kind: 'plant', price: 0 },
+            { kind: 'sort', price: 0 },
+        ],
+    );
 });
 
 test('buildOperationPricingRows includes operations only when numeric prices exist and links public operation pages', () => {

@@ -1,4 +1,4 @@
-import type { PlantData, PlantSortData } from '@gredice/client';
+import type { PlantData } from '@gredice/client';
 import { calculatePlantsPerField, FIELD_SIZE_LABEL } from '@gredice/js/plants';
 import { slug } from '@gredice/js/slug';
 import { Chip } from '@gredice/ui/Chip';
@@ -15,6 +15,7 @@ import { AttributeCard } from '../../../components/attributes/DetailCard';
 import { PriceAttributeCard } from '../../../components/attributes/PriceAttributeCard';
 import { CommunityEditButton } from '../../../components/community-edits/CommunityEditButton';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
+import type { PlantSortDataWithRelationships } from '../../../lib/plants/getPlantSortsData';
 import { KnownPages } from '../../../src/KnownPages';
 import { getPlantImageViewTransitionName } from '../plantViewTransition';
 import { getPlantInforationSections } from './getPlantInforationSections';
@@ -27,10 +28,6 @@ type InformationWithAlternativeName = {
     name?: unknown;
     alternativeName?: unknown;
 };
-type PlantSortWithRelationships = PlantSortData & {
-    relationships?: PlantData['relationships'];
-};
-
 type OverviewEditTarget = {
     entityTypeName: 'plant' | 'plantSort';
     entityId: number;
@@ -71,7 +68,7 @@ export function PlantPageHeader({
 }: {
     overviewEditTarget?: OverviewEditTarget;
     plant: PlantData & { isRecommended: boolean | null | undefined };
-    sort?: PlantSortWithRelationships;
+    sort?: PlantSortDataWithRelationships;
 }) {
     const informationSections = getPlantInforationSections(plant, sort);
     const { totalPlants } = calculatePlantsPerField(
@@ -116,13 +113,15 @@ export function PlantPageHeader({
     const alternativeNames =
         formatAlternativeNames(sort?.information) ||
         formatAlternativeNames(plant.information);
-    const plantPrice = plant.prices?.perPlant;
+    const plantPrice = sort ? sort.prices?.perPlant : plant.prices?.perPlant;
     const price =
         typeof plantPrice === 'number'
             ? {
                   currentPrice: plantPrice,
-                  entityId: plant.id,
-                  entityTypeName: 'plant' as const,
+                  entityId: sort?.id ?? plant.id,
+                  entityTypeName: sort
+                      ? ('plantSort' as const)
+                      : ('plant' as const),
               }
             : null;
 
