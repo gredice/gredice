@@ -1,78 +1,48 @@
 'use client';
 
 import { Sprout } from '@gredice/ui/icons';
-import { cx } from '@gredice/ui/utils';
 import Image from 'next/image';
 import { useState } from 'react';
-import { getPublicGardenOgImageUrl } from './publicGardenUrls';
-
-const gardenPreviewPlantDots = [
-    'dot-1',
-    'dot-2',
-    'dot-3',
-    'dot-4',
-    'dot-5',
-    'dot-6',
-    'dot-7',
-    'dot-8',
-    'dot-9',
-    'dot-10',
-];
 
 export function PublicGardenPreviewImage({
-    gardenId,
     gardenName,
+    previewImageUrl,
     priority = false,
 }: {
-    gardenId: number;
     gardenName: string;
+    previewImageUrl?: string | null;
     priority?: boolean;
 }) {
-    const [imageFailed, setImageFailed] = useState(false);
+    const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
+    const visibleImageUrl =
+        previewImageUrl && previewImageUrl !== failedImageUrl
+            ? previewImageUrl
+            : null;
 
     return (
-        <div className="relative aspect-[1200/630] w-full overflow-hidden bg-[#dce8b8]">
+        <div className="relative aspect-[1200/630] w-full overflow-hidden bg-muted">
             <div
-                aria-hidden={!imageFailed}
-                aria-label={`Ilustrirani prikaz vrta ${gardenName}`}
-                className="absolute inset-0 overflow-hidden"
+                aria-hidden={Boolean(visibleImageUrl)}
+                aria-label={`Pregled vrta ${gardenName} još nije dostupan`}
+                className="absolute inset-0 grid place-items-center overflow-hidden bg-[radial-gradient(circle_at_1px_1px,color-mix(in_oklab,var(--color-border)_55%,transparent)_1px,transparent_0)] bg-[size:18px_18px]"
                 role="img"
-                style={{
-                    backgroundImage:
-                        'linear-gradient(145deg, #eff3cf 0%, #dce8b8 45%, #b9d48d 100%)',
-                }}
             >
-                <div className="absolute -top-8 -right-6 size-36 rounded-full bg-[#79ad64]/70 shadow-[inset_-12px_-14px_0_rgba(56,103,56,0.16)]" />
-                <div className="absolute top-[26%] left-[14%] h-[32%] w-[58%] -rotate-6 rounded-[18%] border-[10px] border-[#a86f4d] bg-[#593a2a] shadow-xl">
-                    <div className="grid size-full grid-cols-5 gap-2 overflow-hidden p-3 opacity-90">
-                        {gardenPreviewPlantDots.map((dot) => (
-                            <span
-                                className="rounded-full bg-[#77b255] shadow-sm"
-                                key={dot}
-                            />
-                        ))}
-                    </div>
-                </div>
-                <div className="absolute right-[9%] bottom-[22%] h-[14%] w-[28%] rotate-6 rounded-[20%] border-[7px] border-[#bb805d] bg-[#674533] shadow-lg" />
-                <div className="absolute inset-x-0 bottom-0 flex h-[28%] items-center gap-2 bg-background/92 px-4 text-primary backdrop-blur-sm">
-                    <Sprout aria-hidden className="size-5 shrink-0" />
-                    <span className="truncate text-sm font-semibold">
-                        {gardenName}
+                <div className="flex max-w-[80%] items-center gap-2 rounded-full border bg-background/85 px-4 py-2 text-muted-foreground shadow-sm backdrop-blur-sm">
+                    <Sprout aria-hidden className="size-4 shrink-0" />
+                    <span className="truncate text-sm font-medium">
+                        Pregled se priprema
                     </span>
                 </div>
             </div>
-            {!imageFailed ? (
+            {visibleImageUrl ? (
                 <Image
-                    src={getPublicGardenOgImageUrl(gardenId)}
+                    src={visibleImageUrl}
                     alt={`Prikaz vrta ${gardenName}`}
                     fill
                     sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
                     priority={priority}
-                    className={cx(
-                        'object-cover transition-[opacity,transform] duration-300 group-hover:scale-[1.02]',
-                        imageFailed && 'opacity-0',
-                    )}
-                    onError={() => setImageFailed(true)}
+                    className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                    onError={() => setFailedImageUrl(visibleImageUrl)}
                 />
             ) : null}
         </div>

@@ -6,6 +6,7 @@ import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { KnownPages } from '../../src/KnownPages';
 import { PublicGardenLikeButton } from './PublicGardenLikeButton';
+import { PublicGardenPreviewBackfill } from './PublicGardenPreviewBackfill';
 import { PublicGardenPreviewImage } from './PublicGardenPreviewImage';
 import { PublicGardenTransitionLink } from './PublicGardenTransitionLink';
 import { getPublicGardensForWww } from './publicGardenData';
@@ -32,9 +33,13 @@ export const metadata: Metadata = {
 
 export default async function PublicGardensPage() {
     const gardens = await getPublicGardensForWww();
+    const publicGardenIds = gardens.items.map((garden) => garden.id);
 
     return (
         <Stack spacing={8} className="py-8">
+            {publicGardenIds.length > 0 ? (
+                <PublicGardenPreviewBackfill gardenIds={publicGardenIds} />
+            ) : null}
             <PageHeader
                 padded
                 header="Vidljivi vrtovi"
@@ -65,8 +70,10 @@ export default async function PublicGardensPage() {
                             <div className="relative h-full text-card-foreground">
                                 <div className="overflow-hidden bg-muted">
                                     <PublicGardenPreviewImage
-                                        gardenId={garden.id}
                                         gardenName={garden.name}
+                                        previewImageUrl={
+                                            garden.previewImage?.url
+                                        }
                                         priority={gardenIndex === 0}
                                     />
                                 </div>

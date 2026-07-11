@@ -13,7 +13,12 @@ import {
     useEffect,
     useRef,
 } from 'react';
-import { Material, type Object3D, PCFShadowMap } from 'three';
+import {
+    Material,
+    type Object3D,
+    PCFShadowMap,
+    type WebGLRendererParameters,
+} from 'three';
 import {
     HoverOutlineEffect,
     HoverOutlineProvider,
@@ -29,8 +34,11 @@ import { SceneTimeProvider } from './SceneTime';
 export type SceneProps = HTMLAttributes<HTMLDivElement> &
     PropsWithChildren<{
         debugStats?: boolean;
+        fixedTimeSeconds?: number;
+        pixelRatio?: number;
         position: FiberVector3;
         quality?: GameQualityProfile;
+        rendererOptions?: WebGLRendererParameters;
         zoom: number;
     }>;
 
@@ -177,8 +185,11 @@ function SceneDebugName() {
 export function Scene({
     children,
     debugStats,
+    fixedTimeSeconds,
+    pixelRatio,
     position,
     quality,
+    rendererOptions,
     zoom,
     ...rest
 }: SceneProps) {
@@ -202,7 +213,8 @@ export function Scene({
     return (
         <Canvas
             orthographic
-            dpr={[1, qualityProfile.dpr]}
+            dpr={pixelRatio ?? [1, qualityProfile.dpr]}
+            gl={rendererOptions}
             shadows={
                 qualityProfile.shadows
                     ? {
@@ -219,7 +231,7 @@ export function Scene({
             }}
             {...rest}
         >
-            <SceneTimeProvider>
+            <SceneTimeProvider fixedTimeSeconds={fixedTimeSeconds}>
                 <HoverOutlineProvider>
                     <SceneDebugName />
                     {debugStats && <RendererStatsReporter />}

@@ -13,8 +13,11 @@ import {
     getRaisedBedFieldsWithEvents,
     getSandboxGardenDeletionCandidate,
     knownEvents,
+    listGardenPreviewBlobDeletions,
+    replaceGardenPreview,
     sowSandboxField,
     storage,
+    updateGarden,
     updateGardenStack,
 } from '@gredice/storage';
 import { and, eq, inArray, like, or } from 'drizzle-orm';
@@ -73,6 +76,23 @@ test('deleteSandboxGardenCompletely removes sandbox garden dependencies across r
     await ensureFarmId();
     const accountId = await createAccount();
     const gardenId = await createSandboxGarden({ accountId });
+    await updateGarden({ id: gardenId, isPublic: true });
+    const previewPathname = `garden-previews/${gardenId.toString()}/sandbox.webp`;
+    const capturedAt = new Date();
+    await replaceGardenPreview({
+        byteSize: 100,
+        captureRequestId: `sandbox-delete-${gardenId.toString()}`,
+        captureRequestedAt: capturedAt,
+        capturedAt,
+        contentType: 'image/webp',
+        gardenId,
+        height: 630,
+        imageUrl: `https://example.test/${previewPathname}`,
+        pathname: previewPathname,
+        rendererVersion: 'garden-preview-v1',
+        sourceRevision: 'a'.repeat(64),
+        width: 1200,
+    });
     const blockId = await createTestBlock(gardenId, 'sandbox-delete-block');
     const raisedBedId = await createTestRaisedBed(gardenId, accountId, blockId);
 
@@ -154,6 +174,14 @@ test('deleteSandboxGardenCompletely removes sandbox garden dependencies across r
     assert.ok(attempts > 1, 'test should exercise retry continuation');
     assert.equal(await getGarden(gardenId), null);
     assert.equal(await getSandboxGardenDeletionCandidate(gardenId), undefined);
+    assert.equal(
+        (
+            await listGardenPreviewBlobDeletions({
+                now: new Date('2100-07-11T12:00:00.000Z'),
+            })
+        ).find((row) => row.pathname === previewPathname)?.reason,
+        'garden_deleted',
+    );
 
     const gardenRows = await storage()
         .select({ id: gardens.id })

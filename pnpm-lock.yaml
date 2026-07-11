@@ -80,6 +80,9 @@ importers:
       '@upstash/redis':
         specifier: 1.38.0
         version: 1.38.0
+      '@vercel/blob':
+        specifier: 2.6.1
+        version: 2.6.1
       '@valibot/to-json-schema':
         specifier: 1.7.1
         version: 1.7.1(valibot@1.4.2(typescript@6.0.3))

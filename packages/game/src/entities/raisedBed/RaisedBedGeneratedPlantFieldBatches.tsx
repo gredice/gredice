@@ -252,7 +252,7 @@ export function RaisedBedGeneratedPlantFieldBatches({
 }: {
     blocks: RaisedBedGeneratedPlantFieldBatchBlock[];
 }) {
-    const { renderDetails } = useGameSceneDetails();
+    const { includePendingCartPlants, renderDetails } = useGameSceneDetails();
     const { data: currentGarden } = useCurrentGarden();
     const { data: sortData } = useAllSorts();
     const isMock = useGameState((state) => state.isMock);
@@ -261,7 +261,9 @@ export function RaisedBedGeneratedPlantFieldBatches({
         (state) => state.localSandboxStorageKey !== null,
     );
     const currentTime = useSnapshotTime();
-    const { data: cart } = useShoppingCart(renderDetails && !isLocalSandbox);
+    const { data: cart } = useShoppingCart(
+        includePendingCartPlants && renderDetails && !isLocalSandbox,
+    );
     const generatedFields = useMemo(() => {
         const fields: GeneratedPlantField[] = [];
 

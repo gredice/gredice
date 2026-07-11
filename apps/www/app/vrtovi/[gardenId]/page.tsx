@@ -20,7 +20,6 @@ import {
     formatGardenDate,
     formatGardenNumber,
 } from '../publicGardenFormatting';
-import { getPublicGardenOgImageUrl } from '../publicGardenUrls';
 import { getPublicGardenCardViewTransitionName } from '../publicGardenViewTransition';
 
 export const dynamic = 'force-dynamic';
@@ -49,7 +48,7 @@ export async function generateMetadata({
     const title = garden.name;
     const description = `Zaviri u Gredice vrt ${garden.name}: prošetaj među gredicama, biljkama i malim vrtnim detaljima.`;
     const path = KnownPages.PublicGarden(garden.id);
-    const ogImageUrl = getPublicGardenOgImageUrl(garden.id);
+    const previewImage = garden.previewImage;
 
     return {
         title,
@@ -61,20 +60,24 @@ export async function generateMetadata({
             title,
             description,
             url: path,
-            images: [
-                {
-                    url: ogImageUrl,
-                    width: 1200,
-                    height: 630,
-                    alt: `Prikaz vrta ${garden.name}`,
-                },
-            ],
+            ...(previewImage
+                ? {
+                      images: [
+                          {
+                              url: previewImage.url,
+                              width: previewImage.width,
+                              height: previewImage.height,
+                              alt: `Prikaz vrta ${garden.name}`,
+                          },
+                      ],
+                  }
+                : {}),
         },
         twitter: {
-            card: 'summary_large_image',
+            card: previewImage ? 'summary_large_image' : 'summary',
             title,
             description,
-            images: [ogImageUrl],
+            ...(previewImage ? { images: [previewImage.url] } : {}),
         },
     };
 }

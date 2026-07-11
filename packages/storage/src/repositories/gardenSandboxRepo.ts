@@ -16,6 +16,7 @@ import { raisedBedFields, raisedBedSensors } from '../schema/gardenSchema';
 import { storage } from '../storage';
 import { createEvent, knownEvents, knownEventTypes } from './eventsRepo';
 import { getFarms } from './farmsRepo';
+import { removeGardenPreviewAndQueueBlobDeletionUsing } from './gardenPreviewsRepo';
 import {
     createGarden,
     deleteRaisedBedField,
@@ -800,12 +801,19 @@ export async function deleteSandboxGardenCompletely(
     let batches = 0;
     let deletedRows = 0;
 
-    if (!garden.isDeleted) {
-        await storage()
-            .update(gardens)
-            .set({ isDeleted: true })
-            .where(eq(gardens.id, garden.id));
-    }
+    await storage().transaction(async (tx) => {
+        if (!garden.isDeleted) {
+            await tx
+                .update(gardens)
+                .set({ isDeleted: true })
+                .where(eq(gardens.id, garden.id));
+        }
+        await removeGardenPreviewAndQueueBlobDeletionUsing(
+            tx,
+            garden.id,
+            'garden_deleted',
+        );
+    });
 
     while (batches < maxBatches && Date.now() - startedAt < maxDurationMs) {
         const deletedBatchRows = await deleteNextSandboxGardenDependencyBatch(

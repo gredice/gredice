@@ -19,8 +19,17 @@ type SceneTimeContextValue = {
 
 const SceneTimeContext = createContext<SceneTimeContextValue | null>(null);
 
-export function SceneTimeProvider({ children }: PropsWithChildren) {
-    const timeUniform = useMemo<IUniform<number>>(() => ({ value: 0 }), []);
+export function SceneTimeProvider({
+    children,
+    fixedTimeSeconds,
+}: PropsWithChildren<{ fixedTimeSeconds?: number }>) {
+    const fixedTime = Number.isFinite(fixedTimeSeconds)
+        ? Math.max(0, fixedTimeSeconds ?? 0)
+        : undefined;
+    const timeUniform = useMemo<IUniform<number>>(
+        () => ({ value: fixedTime ?? 0 }),
+        [fixedTime],
+    );
     const invalidate = useThree((state) => state.invalidate);
     const setFrameloop = useThree((state) => state.setFrameloop);
     const frameloop = useThree((state) => state.frameloop);
@@ -50,14 +59,15 @@ export function SceneTimeProvider({ children }: PropsWithChildren) {
 
         const requestFrame = (timestamp: number) => {
             startTimestampRef.current ??= timestamp;
-            timeUniform.value = (timestamp - startTimestampRef.current) / 1000;
+            timeUniform.value =
+                fixedTime ?? (timestamp - startTimestampRef.current) / 1000;
             invalidate();
             animationFrameRef.current =
                 window.requestAnimationFrame(requestFrame);
         };
 
         animationFrameRef.current = window.requestAnimationFrame(requestFrame);
-    }, [invalidate, timeUniform]);
+    }, [fixedTime, invalidate, timeUniform]);
 
     const acquireContinuousRender = useCallback(() => {
         continuousRenderLeaseCountRef.current += 1;
@@ -111,7 +121,7 @@ export function SceneTimeProvider({ children }: PropsWithChildren) {
     useFrame(({ clock }) => {
         startTimestampRef.current ??=
             performance.now() - clock.elapsedTime * 1000;
-        timeUniform.value = clock.elapsedTime;
+        timeUniform.value = fixedTime ?? clock.elapsedTime;
     });
 
     const contextValue = useMemo(

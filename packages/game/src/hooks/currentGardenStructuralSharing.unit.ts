@@ -116,4 +116,29 @@ describe('shareCurrentGardenData', () => {
             nextGarden,
         );
     });
+
+    it('keeps preview metadata updates without discarding the garden change', () => {
+        const previousGarden = createGarden({
+            previewImage: null,
+            previewSourceRevision: 'revision-1',
+        });
+        const previewImage = {
+            url: 'https://blob.example/garden.webp',
+            width: 1200,
+            height: 630,
+            capturedAt: '2026-07-11T10:00:00.000Z',
+            sourceRevision: 'revision-1',
+            rendererVersion: 'garden-preview-v1',
+        };
+        const nextGarden = createGarden({
+            previewImage,
+            previewSourceRevision: 'revision-1',
+        });
+
+        const sharedGarden = shareCurrentGardenData(previousGarden, nextGarden);
+
+        assert.notEqual(sharedGarden, previousGarden);
+        assert.equal(sharedGarden?.previewImage, previewImage);
+        assert.equal(sharedGarden?.stacks, previousGarden.stacks);
+    });
 });

@@ -23,6 +23,7 @@ import {
     getGardenBlock,
     getGardenBlocks,
     getGardenLikeCounts,
+    getGardenPreview,
     getGardenStack,
     getGardenStacks,
     getGardens,
@@ -37,6 +38,8 @@ import {
     listUserGardenLikes,
     PublicGardenLikeTargetNotFoundError,
     RAISED_BED_PHOTO_OPERATION_ID,
+    removeGardenPreview,
+    replaceGardenPreview,
     setGardenLike,
     storage,
     updateGarden,
@@ -201,6 +204,96 @@ test('gardens are private by default and public helpers only return public garde
     const publicGarden = await getPublicGarden(publicGardenId);
     assert.ok(publicGarden);
     assert.strictEqual(publicGarden.name, 'Public Garden');
+});
+
+test('garden previews replace atomically and reject older captures', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    await updateGarden({ id: gardenId, isPublic: true });
+
+    const firstRequestedAt = new Date('2026-07-11T10:00:00.000Z');
+    const first = await replaceGardenPreview({
+        gardenId,
+        captureRequestId: randomUUID(),
+        imageUrl: 'https://example.test/first.webp',
+        pathname: `garden-previews/${gardenId.toString()}/first.webp`,
+        contentType: 'image/webp',
+        byteSize: 100,
+        width: 1200,
+        height: 630,
+        sourceRevision: 'a'.repeat(64),
+        rendererVersion: 'garden-preview-v1',
+        captureRequestedAt: firstRequestedAt,
+        capturedAt: firstRequestedAt,
+    });
+    assert.equal(first.status, 'accepted');
+    assert.equal(
+        (await getGarden(gardenId))?.previewImage?.sourceRevision,
+        'a'.repeat(64),
+    );
+    assert.equal(
+        (await getPublicGarden(gardenId))?.previewImage?.url,
+        first.preview.imageUrl,
+    );
+    assert.equal(
+        (await getPublicGardens()).find((garden) => garden.id === gardenId)
+            ?.previewImage?.url,
+        first.preview.imageUrl,
+    );
+
+    const older = await replaceGardenPreview({
+        gardenId,
+        captureRequestId: randomUUID(),
+        imageUrl: 'https://example.test/older.webp',
+        pathname: `garden-previews/${gardenId.toString()}/older.webp`,
+        contentType: 'image/webp',
+        byteSize: 101,
+        width: 1200,
+        height: 630,
+        sourceRevision: 'b'.repeat(64),
+        rendererVersion: 'garden-preview-v1',
+        captureRequestedAt: new Date('2026-07-11T09:59:59.000Z'),
+        capturedAt: new Date('2026-07-11T10:00:01.000Z'),
+    });
+    assert.equal(older.status, 'rejected');
+    assert.equal(
+        (await getGardenPreview(gardenId))?.imageUrl,
+        first.preview.imageUrl,
+    );
+
+    const removed = await removeGardenPreview(gardenId);
+    assert.equal(removed?.imageUrl, first.preview.imageUrl);
+    assert.equal(await getGardenPreview(gardenId), null);
+});
+
+test('garden preview persistence rejects private gardens', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const capturedAt = new Date();
+
+    const result = await replaceGardenPreview({
+        gardenId,
+        captureRequestId: randomUUID(),
+        imageUrl: 'https://example.test/private.webp',
+        pathname: `garden-previews/${gardenId.toString()}/private.webp`,
+        contentType: 'image/webp',
+        byteSize: 100,
+        width: 1200,
+        height: 630,
+        sourceRevision: 'd'.repeat(64),
+        rendererVersion: 'garden-preview-v1',
+        captureRequestedAt: capturedAt,
+        capturedAt,
+    });
+
+    assert.equal(result.status, 'rejected');
+    if (result.status === 'rejected') {
+        assert.equal(result.reason, 'garden_unavailable');
+    }
 });
 
 test('garden likes are limited to visible gardens owned by other accounts', async () => {

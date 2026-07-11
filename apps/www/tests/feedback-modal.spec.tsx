@@ -12,6 +12,7 @@ const currentUser = {
     id: 'user-1',
     userName: 'ana',
     displayName: 'Ana',
+    role: 'user',
 };
 
 test('submits the selected thumbs rating immediately', async ({

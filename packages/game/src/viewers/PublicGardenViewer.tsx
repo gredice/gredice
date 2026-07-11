@@ -6,7 +6,11 @@ import {
     isGameBackgroundPaletteKey,
 } from '@gredice/js/gameBackground';
 import { cx } from '@gredice/ui/utils';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+    QueryClient,
+    QueryClientProvider,
+    useIsFetching,
+} from '@tanstack/react-query';
 import {
     type HTMLAttributes,
     type ReactNode,
@@ -30,14 +34,20 @@ import {
     EntityInstances,
     instancedBlockNames,
 } from '../entities/EntityInstances';
+import { RaisedBedMulchOverlays } from '../entities/raisedBed/RaisedBedMulchOverlays';
 import { GameSceneDetailContext } from '../GameSceneDetailContext';
 import { useBlockData } from '../hooks/useBlockData';
 import { currentGardenKeys } from '../hooks/useCurrentGarden';
 import { useDeferredSceneDetails } from '../hooks/useDeferredSceneDetails';
 import { useGardensKeys } from '../hooks/useGardens';
+import { useAllSorts } from '../hooks/usePlantSorts';
 import { ParticleSystemProvider } from '../particles/ParticleSystem';
 import { Environment } from '../scene/Environment';
-import { resolveGameQualityProfile } from '../scene/gameQuality';
+import {
+    type GameQualityProfile,
+    gameQualityProfiles,
+    resolveGameQualityProfile,
+} from '../scene/gameQuality';
 import { Scene } from '../scene/Scene';
 import type { Block } from '../types/Block';
 import type { Stack } from '../types/Stack';
@@ -49,6 +59,7 @@ import {
 } from '../useGameState';
 import { findRaisedBedByBlockId } from '../utils/raisedBedBlocks';
 import type { GameLocation } from '../utils/timeOfDay';
+import { PublicGardenCaptureProbe } from './PublicGardenCaptureProbe';
 import { PublicGardenRaisedBedDetails } from './PublicGardenRaisedBedDetails';
 import { PublicGardenRaisedBedInteractions } from './PublicGardenRaisedBedInteractions';
 import { PublicGardenRaisedBedPicker } from './PublicGardenRaisedBedPicker';
@@ -61,7 +72,21 @@ export type PublicGardenStack = {
     blocks: PublicGardenBlock[];
 };
 
-export type PublicGardenDetail = PublicGardenResponse;
+export type PublicGardenDetail = Pick<
+    PublicGardenResponse,
+    | 'backgroundPalette'
+    | 'farmId'
+    | 'homeCamera'
+    | 'id'
+    | 'isPublic'
+    | 'isSandbox'
+    | 'latitude'
+    | 'longitude'
+    | 'name'
+    | 'raisedBeds'
+    | 'stacks'
+    | 'updatedAt'
+>;
 
 type PublicGardenHomeCamera = NonNullable<PublicGardenDetail['homeCamera']>;
 
@@ -79,7 +104,27 @@ export type PublicGardenViewerProps = HTMLAttributes<HTMLDivElement> & {
     enableBlockGeometryMerging?: boolean;
     deferDetails?: boolean;
     className?: string;
+    capture?: {
+        key: string;
+        onCapture: (blob: Blob) => void;
+        onError: (error: Error) => void;
+    };
 };
+
+const publicGardenCaptureQuality = {
+    ...gameQualityProfiles.high,
+    dpr: 1,
+    shadowMapSize: 2048,
+    tier: 'custom',
+} satisfies GameQualityProfile;
+const publicGardenCaptureSceneTimeSeconds = 2.5;
+
+function getPublicGardenCaptureDate() {
+    const now = new Date();
+    return new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 10),
+    );
+}
 
 export function normalizePublicGardenStacks(
     stacks: PublicGardenStack[],
@@ -234,6 +279,7 @@ function publicGardenTimeLocation(
 }
 
 function PublicGardenScene({
+    capture,
     enableBlockGeometryMerging,
     initialView,
     className,
@@ -243,6 +289,7 @@ function PublicGardenScene({
     onSelectRaisedBedBlock,
     renderDetails,
 }: {
+    capture?: PublicGardenViewerProps['capture'];
     enableBlockGeometryMerging: boolean;
     initialView: PublicGardenInitialView;
     className?: string;
@@ -254,15 +301,32 @@ function PublicGardenScene({
 }) {
     const blockDataQuery = useBlockData();
     const blockDataLoaded = Boolean(blockDataQuery.data);
-    const qualityProfile = useMemo(() => resolveGameQualityProfile(), []);
+    const plantSortsQuery = useAllSorts();
+    const plantSortsLoaded = Boolean(plantSortsQuery.data);
+    const fetchingQueryCount = useIsFetching();
+    const qualityProfile = useMemo(
+        () =>
+            capture ? publicGardenCaptureQuality : resolveGameQualityProfile(),
+        [capture],
+    );
     const renderLivingDetails = renderDetails && gardenCacheReady;
+    const renderTransientDetails = renderLivingDetails && !capture;
 
     return (
         <div className={cx('relative h-full w-full', className)}>
             {blockDataLoaded && gardenCacheReady ? (
                 <Scene
+                    fixedTimeSeconds={
+                        capture
+                            ? publicGardenCaptureSceneTimeSeconds
+                            : undefined
+                    }
+                    pixelRatio={capture ? 1 : undefined}
                     position={initialView.cameraPosition}
                     quality={qualityProfile}
+                    rendererOptions={
+                        capture ? { preserveDrawingBuffer: true } : undefined
+                    }
                     zoom={initialView.cameraZoom}
                     className="h-full w-full"
                 >
@@ -270,6 +334,7 @@ function PublicGardenScene({
                         <BlockInteractionRegistryProvider>
                             <Environment
                                 noSound
+                                noWeather={Boolean(capture)}
                                 quality={qualityProfile}
                                 weather={undefined}
                             />
@@ -304,20 +369,33 @@ function PublicGardenScene({
                                         stacks={normalizedStacks}
                                         renderDetails={renderLivingDetails}
                                     />
-                                    <PublicGardenRaisedBedInteractions
-                                        onSelect={onSelectRaisedBedBlock}
-                                        stacks={normalizedStacks}
-                                    />
-                                    <BlockInteractionLayer
-                                        controlsEnabled
-                                        stacks={normalizedStacks}
-                                    />
-                                    {renderLivingDetails && (
+                                    {renderLivingDetails && garden ? (
+                                        <Suspense fallback={null}>
+                                            <RaisedBedMulchOverlays
+                                                quality={qualityProfile}
+                                            />
+                                        </Suspense>
+                                    ) : null}
+                                    {!capture ? (
+                                        <>
+                                            <PublicGardenRaisedBedInteractions
+                                                onSelect={
+                                                    onSelectRaisedBedBlock
+                                                }
+                                                stacks={normalizedStacks}
+                                            />
+                                            <BlockInteractionLayer
+                                                controlsEnabled
+                                                stacks={normalizedStacks}
+                                            />
+                                        </>
+                                    ) : null}
+                                    {renderTransientDetails && (
                                         <Suspense fallback={null}>
                                             <Birds stacks={normalizedStacks} />
                                         </Suspense>
                                     )}
-                                    {renderLivingDetails && (
+                                    {renderTransientDetails && (
                                         <Suspense fallback={null}>
                                             <Cats
                                                 farmId={garden?.farmId}
@@ -325,7 +403,7 @@ function PublicGardenScene({
                                             />
                                         </Suspense>
                                     )}
-                                    {renderLivingDetails && (
+                                    {renderTransientDetails && (
                                         <Suspense fallback={null}>
                                             <Dogs
                                                 farmId={garden?.farmId}
@@ -333,7 +411,7 @@ function PublicGardenScene({
                                             />
                                         </Suspense>
                                     )}
-                                    {renderLivingDetails && garden && (
+                                    {renderTransientDetails && garden && (
                                         <Suspense fallback={null}>
                                             <Bees
                                                 farmId={garden.farmId}
@@ -347,13 +425,24 @@ function PublicGardenScene({
                                 </group>
                             </Suspense>
                             <GameCameraRig
-                                controlsEnabled
+                                controlsEnabled={!capture}
                                 initialSnapshot={
                                     garden?.homeCamera ?? undefined
                                 }
                                 initialTarget={initialView.cameraTarget}
                                 initialViewKey={garden?.id ?? 'stacks'}
                             />
+                            {capture ? (
+                                <PublicGardenCaptureProbe
+                                    key={capture.key}
+                                    enabled={
+                                        renderLivingDetails && plantSortsLoaded
+                                    }
+                                    onCapture={capture.onCapture}
+                                    onError={capture.onError}
+                                    queriesIdle={fetchingQueryCount === 0}
+                                />
+                            ) : null}
                         </BlockInteractionRegistryProvider>
                     </ParticleSystemProvider>
                 </Scene>
@@ -405,6 +494,7 @@ function SeedPublicGardenQueryCache({
 
 export function PublicGardenViewer({
     appBaseUrl,
+    capture,
     spriteBaseUrl,
     enableBlockGeometryMerging = false,
     deferDetails = true,
@@ -412,7 +502,7 @@ export function PublicGardenViewer({
     stacks,
     className,
 }: PublicGardenViewerProps) {
-    const resolvedAppBaseUrl = appBaseUrl || 'https://vrt.gredice.com';
+    const resolvedAppBaseUrl = appBaseUrl ?? 'https://vrt.gredice.com';
     const resolvedSpriteBaseUrl = spriteBaseUrl ?? resolvedAppBaseUrl;
     const initialTimeLocation = publicGardenTimeLocation(garden);
     const storeRef = useRef<GameStateStore>(null);
@@ -420,7 +510,7 @@ export function PublicGardenViewer({
         storeRef.current = createGameState({
             appBaseUrl: resolvedAppBaseUrl,
             spriteBaseUrl: resolvedSpriteBaseUrl,
-            freezeTime: null,
+            freezeTime: capture ? getPublicGardenCaptureDate() : null,
             isMock: false,
             timeLocation: initialTimeLocation,
             winterMode: 'summer',
@@ -432,6 +522,10 @@ export function PublicGardenViewer({
     if (!clientRef.current) {
         clientRef.current = new QueryClient();
     }
+    useEffect(() => {
+        const client = clientRef.current;
+        return () => client?.clear();
+    }, []);
     const publicStacks = useMemo(
         () =>
             garden
@@ -541,7 +635,12 @@ export function PublicGardenViewer({
     return (
         <QueryClientProvider client={clientRef.current}>
             <GameStateContext.Provider value={storeRef.current}>
-                <GameSceneDetailContext.Provider value={{ renderDetails }}>
+                <GameSceneDetailContext.Provider
+                    value={{
+                        includePendingCartPlants: false,
+                        renderDetails,
+                    }}
+                >
                     <SeedPublicGardenQueryCache
                         cacheKey={cacheKey}
                         client={clientRef.current}
@@ -555,6 +654,7 @@ export function PublicGardenViewer({
                                 )}
                             >
                                 <PublicGardenScene
+                                    capture={capture}
                                     className="size-full"
                                     enableBlockGeometryMerging={
                                         enableBlockGeometryMerging
@@ -568,13 +668,13 @@ export function PublicGardenViewer({
                                     }
                                     renderDetails={renderDetails}
                                 />
-                                {gameGarden ? (
+                                {gameGarden && !capture ? (
                                     <PublicGardenRaisedBedPicker
                                         onSelect={openRaisedBed}
                                         raisedBeds={selectableRaisedBeds}
                                     />
                                 ) : null}
-                                {selectedRaisedBed ? (
+                                {selectedRaisedBed && !capture ? (
                                     <PublicGardenRaisedBedDetails
                                         key={selectedRaisedBed.id}
                                         onClose={closeRaisedBed}

@@ -27,22 +27,28 @@ import { AdminGardenVisibilityToggle } from './AdminGardenVisibilityToggle';
 export const dynamic = 'force-dynamic';
 
 function GardenPreviewCard({
-    gardenId,
     gardenName,
+    previewImageUrl,
 }: {
-    gardenId: number;
     gardenName: string;
+    previewImageUrl?: string | null;
 }) {
     return (
         <Card className="overflow-hidden">
             <CardOverflow>
-                <Image
-                    src={`https://vrt.gredice.com/vrtovi/${gardenId}/opengraph-image?fullscreen=true`}
-                    alt={gardenName}
-                    layout="responsive"
-                    width={1200}
-                    height={630}
-                />
+                {previewImageUrl ? (
+                    <Image
+                        src={previewImageUrl}
+                        alt={`Prikaz vrta ${gardenName}`}
+                        width={1200}
+                        height={630}
+                        className="h-auto w-full"
+                    />
+                ) : (
+                    <div className="grid aspect-[1200/630] place-items-center bg-muted px-6 text-center text-muted-foreground text-sm">
+                        Pregled vrta još nije generiran.
+                    </div>
+                )}
             </CardOverflow>
         </Card>
     );
@@ -148,8 +154,8 @@ export default async function GardenPage({
                     <Stack spacing={8}>
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                             <GardenPreviewCard
-                                gardenId={gardenId}
                                 gardenName={garden.name}
+                                previewImageUrl={garden.previewImage?.url}
                             />
                         </div>
                         <RaisedBedsTableCard gardenId={gardenId} />

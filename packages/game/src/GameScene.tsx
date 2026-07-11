@@ -35,6 +35,7 @@ import { GameHud } from './GameHud';
 import { useGameLoading } from './GameLoadingContext';
 import styles from './GameScene.module.css';
 import { GameSceneDetailContext } from './GameSceneDetailContext';
+import { GardenPreviewCaptureController } from './GardenPreviewCaptureController';
 import {
     defaultGameCameraPosition,
     defaultGameCameraZoom,
@@ -304,7 +305,9 @@ export function GameScene({
             )}
             {...rest}
         >
-            <GameSceneDetailContext.Provider value={{ renderDetails }}>
+            <GameSceneDetailContext.Provider
+                value={{ includePendingCartPlants: true, renderDetails }}
+            >
                 <Scene
                     debugStats={showDebugHud}
                     position={sceneCameraPosition}
@@ -456,6 +459,10 @@ export function GameScene({
                     </ParticleSystemProvider>
                 </Scene>
             </GameSceneDetailContext.Provider>
+            <GardenPreviewCaptureController
+                enabled={!isLocalSandbox && !isMock}
+                garden={garden}
+            />
             {!hideHud && (
                 <GameHud
                     debugHud={showDebugHud}

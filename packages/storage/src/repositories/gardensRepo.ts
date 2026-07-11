@@ -18,6 +18,10 @@ import {
 import { createEvent, knownEvents } from './eventsRepo';
 import { getFarms } from './farmsRepo';
 import {
+    removeGardenPreviewAndQueueBlobDeletionUsing,
+    toGardenPreviewImage,
+} from './gardenPreviewsRepo';
+import {
     createRaisedBed,
     getRaisedBeds,
     getRaisedBedsForGardens,
@@ -148,10 +152,18 @@ export async function getGardens() {
 }
 
 export async function getPublicGardens() {
-    return storage().query.gardens.findMany({
+    const publicGardens = await storage().query.gardens.findMany({
         where: and(eq(gardens.isDeleted, false), eq(gardens.isPublic, true)),
         orderBy: desc(gardens.updatedAt),
+        with: {
+            preview: true,
+        },
     });
+
+    return publicGardens.map(({ preview, ...garden }) => ({
+        ...garden,
+        previewImage: toGardenPreviewImage(preview),
+    }));
 }
 
 export async function getAccountGardensMetadata(accountId: string) {
@@ -232,6 +244,7 @@ export async function getGarden(gardenId: number) {
             where: and(eq(gardens.id, gardenId), eq(gardens.isDeleted, false)),
             with: {
                 farm: true,
+                preview: true,
                 stacks: {
                     where: eq(gardenStacks.isDeleted, false),
                 },
@@ -242,9 +255,12 @@ export async function getGarden(gardenId: number) {
     if (!garden) {
         return null;
     }
+    const { preview, ...gardenData } = garden;
+
     // Attach raised beds with event-sourced info
     return {
-        ...garden,
+        ...gardenData,
+        previewImage: toGardenPreviewImage(preview),
         raisedBeds,
     };
 }
@@ -259,6 +275,7 @@ export async function getPublicGarden(gardenId: number) {
             ),
             with: {
                 farm: true,
+                preview: true,
                 stacks: {
                     where: eq(gardenStacks.isDeleted, false),
                 },
@@ -270,8 +287,11 @@ export async function getPublicGarden(gardenId: number) {
         return null;
     }
 
+    const { preview, ...gardenData } = garden;
+
     return {
-        ...garden,
+        ...gardenData,
+        previewImage: toGardenPreviewImage(preview),
         raisedBeds,
     };
 }
@@ -426,10 +446,17 @@ export async function setGardenLike({
 }
 
 export async function updateGarden(garden: UpdateGarden) {
-    await storage()
-        .update(gardens)
-        .set(garden)
-        .where(eq(gardens.id, garden.id));
+    await storage().transaction(async (tx) => {
+        await tx.update(gardens).set(garden).where(eq(gardens.id, garden.id));
+
+        if (garden.isPublic === false) {
+            await removeGardenPreviewAndQueueBlobDeletionUsing(
+                tx,
+                garden.id,
+                'garden_unpublished',
+            );
+        }
+    });
 
     if (garden.name) {
         await createEvent(
@@ -442,10 +469,17 @@ export async function updateGarden(garden: UpdateGarden) {
 }
 
 export async function deleteGarden(gardenId: number) {
-    await storage()
-        .update(gardens)
-        .set({ isDeleted: true })
-        .where(eq(gardens.id, gardenId));
+    await storage().transaction(async (tx) => {
+        await tx
+            .update(gardens)
+            .set({ isDeleted: true })
+            .where(eq(gardens.id, gardenId));
+        await removeGardenPreviewAndQueueBlobDeletionUsing(
+            tx,
+            gardenId,
+            'garden_deleted',
+        );
+    });
     await createEvent(knownEvents.gardens.deletedV1(gardenId.toString()));
     await bustScheduleCache();
 }
@@ -466,9 +500,20 @@ export async function deleteGardenIfNoActiveRaisedBeds(gardenId: number) {
 
         if (updatedGarden) {
             deleted = true;
+            await removeGardenPreviewAndQueueBlobDeletionUsing(
+                tx,
+                gardenId,
+                'garden_deleted',
+            );
             await createEvent(
                 knownEvents.gardens.deletedV1(gardenId.toString()),
                 tx,
+            );
+        } else {
+            await removeGardenPreviewAndQueueBlobDeletionUsing(
+                tx,
+                gardenId,
+                'garden_deleted',
             );
         }
 
