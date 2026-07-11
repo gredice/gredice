@@ -7,6 +7,7 @@ import { Color, DoubleSide, type Mesh, ShaderMaterial, Vector2 } from 'three';
 import {
     cloneSkyGradientColors,
     lerpSkyGradientColors,
+    resolveGroundViewSkyGradientColors,
     resolveSkyGradientColors,
     type SkyGradientColors,
     type SkyGradientWeather,
@@ -89,6 +90,7 @@ type SkyGradientBackgroundProps = {
     backgroundColor: Color;
     backgroundPaletteIndex: number;
     currentTime: Date;
+    groundColor?: Color;
     location: { lat: number; lon: number };
     moonlight: number;
     timeOfDay: number;
@@ -136,6 +138,7 @@ export function SkyGradientBackground({
     backgroundColor,
     backgroundPaletteIndex,
     currentTime,
+    groundColor,
     location,
     moonlight,
     timeOfDay,
@@ -180,29 +183,32 @@ export function SkyGradientBackground({
         [],
     );
 
-    const targetGradient = useMemo(
-        () =>
-            resolveSkyGradientColors({
-                backgroundColor: new Color(
-                    backgroundRed,
-                    backgroundGreen,
-                    backgroundBlue,
-                ),
-                backgroundPaletteIndex,
-                moonlight,
-                timeOfDay,
-                weather,
-            }),
-        [
-            backgroundBlue,
-            backgroundGreen,
+    const targetGradient = useMemo(() => {
+        const gradient = resolveSkyGradientColors({
+            backgroundColor: new Color(
+                backgroundRed,
+                backgroundGreen,
+                backgroundBlue,
+            ),
             backgroundPaletteIndex,
-            backgroundRed,
             moonlight,
             timeOfDay,
             weather,
-        ],
-    );
+        });
+
+        return groundColor
+            ? resolveGroundViewSkyGradientColors(gradient, groundColor)
+            : gradient;
+    }, [
+        backgroundBlue,
+        backgroundGreen,
+        backgroundPaletteIndex,
+        backgroundRed,
+        groundColor,
+        moonlight,
+        timeOfDay,
+        weather,
+    ]);
 
     useEffect(() => {
         targetGradientRef.current = targetGradient;
@@ -294,9 +300,11 @@ export function SkyGradientBackground({
             const activeGradient = displayed;
             applyGradientUniforms(material, activeGradient);
             material.uniforms.uSunGlowIntensity.value =
-                activeGradient.sunGlowIntensity * sunOpacity;
+                (groundColor ? 0 : activeGradient.sunGlowIntensity) *
+                sunOpacity;
             material.uniforms.uMoonGlowIntensity.value =
-                activeGradient.moonGlowIntensity * moonOpacity;
+                (groundColor ? 0 : activeGradient.moonGlowIntensity) *
+                moonOpacity;
         }
     });
 
