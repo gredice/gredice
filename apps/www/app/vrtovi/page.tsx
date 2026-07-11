@@ -19,13 +19,13 @@ const pageDescription =
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-    title: 'Vidljivi vrtovi',
+    title: 'Vrtovi',
     description: pageDescription,
     alternates: {
         canonical: KnownPages.PublicGardens,
     },
     openGraph: {
-        title: 'Vidljivi vrtovi',
+        title: 'Vrtovi',
         description: pageDescription,
         url: KnownPages.PublicGardens,
     },
@@ -40,11 +40,7 @@ export default async function PublicGardensPage() {
             {publicGardenIds.length > 0 ? (
                 <PublicGardenPreviewBackfill gardenIds={publicGardenIds} />
             ) : null}
-            <PageHeader
-                padded
-                header="Vidljivi vrtovi"
-                subHeader={pageDescription}
-            />
+            <PageHeader padded header="Vrtovi" subHeader={pageDescription} />
             {gardens.items.length > 0 ? (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {gardens.items.map((garden, gardenIndex) => (
