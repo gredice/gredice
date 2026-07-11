@@ -117,7 +117,7 @@ export function PageNav({
                     className={cx(
                         'pointer-events-auto relative flex h-16 items-center border-transparent bg-background/75 backdrop-blur-md transition-[height,border-color,background-color,box-shadow] duration-300 ease-out',
                         isFloating &&
-                            'h-14 rounded-2xl border border-border/70 bg-background/80 shadow-lg shadow-foreground/10 backdrop-blur-xl',
+                            'h-14 rounded-full border border-border/70 bg-background/80 shadow-lg shadow-foreground/10 backdrop-blur-xl',
                     )}
                 >
                     <div className="relative flex h-full w-full min-w-0 items-center justify-between gap-1 px-2 sm:gap-2 sm:px-3 md:px-4">
