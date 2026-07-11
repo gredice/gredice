@@ -13,6 +13,7 @@ import { useEffect, useState, useTransition } from 'react';
 import { HomeButton } from '../../components/HomeButton';
 import { FarmScheduleSectionSkeleton } from './FarmScheduleSectionSkeleton';
 import { ScheduleDaySummarySkeleton } from './ScheduleDaySummarySkeleton';
+import { getFarmScheduleDateKey } from './scheduleShared';
 
 interface FarmScheduleNavigationFrameProps {
     children: ReactNode;
@@ -91,7 +92,7 @@ export function FarmScheduleNavigationFrame({
         month: 'long',
         year: 'numeric',
     }).format(date);
-    const isToday = new Date().toDateString() === date.toDateString();
+    const isToday = getFarmScheduleDateKey(new Date()) === optimisticDateKey;
 
     const prevDateKey = formatDateParam(getOffsetDate(date, -1));
     const nextDateKey = formatDateParam(getOffsetDate(date, 1));
