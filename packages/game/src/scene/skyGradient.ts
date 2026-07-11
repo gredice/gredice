@@ -394,6 +394,22 @@ export function cloneSkyGradientColors(
     };
 }
 
+export function resolveGroundViewSkyGradientColors(
+    gradient: SkyGradientColors,
+    groundColor: Color,
+): SkyGradientColors {
+    return {
+        horizon: groundColor.clone(),
+        lower: groundColor.clone(),
+        moonGlow: gradient.moonGlow.clone(),
+        moonGlowIntensity: 0,
+        sunGlow: gradient.sunGlow.clone(),
+        sunGlowIntensity: 0,
+        upper: groundColor.clone(),
+        zenith: groundColor.clone(),
+    };
+}
+
 export function lerpSkyGradientColors(
     current: SkyGradientColors,
     target: SkyGradientColors,

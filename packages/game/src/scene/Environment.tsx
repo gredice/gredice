@@ -71,6 +71,7 @@ const DEBUG_WEATHER_BLEND_CONFIG: WeatherBlendConfig = {
 const WEATHER_BLEND_EPSILON = 0.0005;
 const BACKGROUND_COLOR_TRANSITION_SECONDS = 0.55;
 const BACKGROUND_COLOR_EPSILON = 0.001;
+const raisedBedCloseupGroundColor = new Color('#9eb64a');
 
 function dampNumber(
     current: number,
@@ -674,6 +675,10 @@ export function Environment({
         (state) => state.backgroundPaletteIndex,
     );
     const view = useGameState((state) => state.view);
+    const closeupCameraActive = useGameState(
+        (state) => state.closeupCameraActive,
+    );
+    const isGroundView = view === 'closeup' || closeupCameraActive;
     const closeupBlockId = useGameState((state) => state.closeupBlock?.id);
     const pickupBlockId = useGameState((state) => state.pickupBlock?.id);
     const winterMode = useGameState((state) => state.winterMode);
@@ -1110,12 +1115,24 @@ export function Environment({
             />
             {!noBackground && (
                 <>
-                    <SceneBackgroundColor animate color={background} />
+                    <SceneBackgroundColor
+                        animate
+                        color={
+                            isGroundView
+                                ? raisedBedCloseupGroundColor
+                                : background
+                        }
+                    />
                     <SkyGradientBackground
                         animate
                         backgroundColor={background}
                         backgroundPaletteIndex={backgroundPaletteIndex}
                         currentTime={currentTime}
+                        groundColor={
+                            isGroundView
+                                ? raisedBedCloseupGroundColor
+                                : undefined
+                        }
                         location={location}
                         moonlight={sky.moonlight}
                         timeOfDay={timeOfDay}
@@ -1182,8 +1199,12 @@ export function Environment({
                     windSpeed={windSpeed}
                 />
             )}
-            {showStars && <Stars visibility={starVisibility} />}
-            {!noBackground && <SunMoon visibility={bodyVisibility} />}
+            {showStars && (
+                <Stars visibility={isGroundView ? 0 : starVisibility} />
+            )}
+            {!noBackground && (
+                <SunMoon visibility={isGroundView ? 0 : bodyVisibility} />
+            )}
             {!weatherDisabled && fog > 0 && (
                 <fog attach="fog" args={[fogColor, fogNear, 190]} />
             )}

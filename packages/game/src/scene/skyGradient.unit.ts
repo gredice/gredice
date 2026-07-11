@@ -7,6 +7,7 @@ import {
 import { resolveMoonlitNightScales } from './moonlight';
 import {
     resolveEnvironmentSkyBackgroundColors,
+    resolveGroundViewSkyGradientColors,
     resolveSkyBackgroundColor,
     resolveSkyGradientColors,
 } from './skyGradient';
@@ -127,4 +128,24 @@ test('moonlight and cloud cover tune glow strength at night', () => {
     assert.ok(
         overcastGradient.moonGlowIntensity < moonlitGradient.moonGlowIntensity,
     );
+});
+
+test('ground view collapses the sky to the ground color without celestial glow', () => {
+    const gradient = resolveGradient({
+        moonlight: 0.9,
+        timeOfDay: 0.5,
+    });
+    const groundColor = gradient.lower.clone().set('#9eb64a');
+    const groundView = resolveGroundViewSkyGradientColors(
+        gradient,
+        groundColor,
+    );
+
+    assert.ok(colorDistance(groundView.zenith, groundColor) < 0.001);
+    assert.ok(colorDistance(groundView.upper, groundColor) < 0.001);
+    assert.ok(colorDistance(groundView.horizon, groundColor) < 0.001);
+    assert.ok(colorDistance(groundView.lower, groundColor) < 0.001);
+    assert.equal(groundView.sunGlowIntensity, 0);
+    assert.equal(groundView.moonGlowIntensity, 0);
+    assert.notEqual(groundView.lower, groundColor);
 });
