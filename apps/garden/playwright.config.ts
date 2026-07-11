@@ -63,7 +63,21 @@ export const config: PlaywrightTestConfig = {
     projects: [
         {
             name: 'chromium',
+            testIgnore: /garden-preview-capture\.spec\.tsx/,
             use: { ...devices['Desktop Chrome'] },
+        },
+        {
+            name: 'chromium-webgl',
+            testMatch: /garden-preview-capture\.spec\.tsx/,
+            use: {
+                ...devices['Desktop Chrome'],
+                launchOptions: {
+                    // GPU-less CI runners must explicitly opt in to Chromium's
+                    // software WebGL fallback. Keep the lower-security switch
+                    // isolated to our trusted 3D capture fixture.
+                    args: ['--enable-unsafe-swiftshader'],
+                },
+            },
         },
     ],
     webServer: {
