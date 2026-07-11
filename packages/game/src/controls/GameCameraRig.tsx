@@ -51,6 +51,7 @@ type CameraAnimation = {
     startPosition: Vector3;
     startTarget: Vector3;
     startZoom: number;
+    onComplete?: () => void;
 };
 
 type PointerState = {
@@ -172,6 +173,9 @@ export function GameCameraRig({
     const setGameCamera = useGameState((state) => state.setGameCamera);
     const setGameCameraSnapshot = useGameState(
         (state) => state.setGameCameraSnapshot,
+    );
+    const setCloseupCameraActive = useGameState(
+        (state) => state.setCloseupCameraActive,
     );
     const [isAnimating, setIsAnimating] = useState(false);
     const setIsDragging = useGameState((state) => state.setIsDragging);
@@ -418,11 +422,13 @@ export function GameCameraRig({
             endPosition,
             endTarget,
             endZoom,
+            onComplete,
         }: {
             duration: number;
             endPosition: Vector3;
             endTarget: Vector3;
             endZoom: number;
+            onComplete?: () => void;
         }) => {
             if (!isOrthographicCamera) {
                 return;
@@ -435,6 +441,7 @@ export function GameCameraRig({
                 targetRef.current.copy(endTarget);
                 camera.zoom = MathUtils.clamp(endZoom, minZoom, maxZoom);
                 applyCamera();
+                onComplete?.();
                 return;
             }
 
@@ -447,6 +454,7 @@ export function GameCameraRig({
                 startPosition: camera.position.clone(),
                 startTarget: targetRef.current.clone(),
                 startZoom: camera.zoom,
+                onComplete,
             };
             setIsAnimating(true);
         },
@@ -831,6 +839,7 @@ export function GameCameraRig({
         const previousView = previousViewRef.current;
 
         if (view === 'closeup' && closeupTarget) {
+            setCloseupCameraActive(true);
             if (previousView !== 'closeup') {
                 normalCameraRef.current = {
                     position: camera.position.clone(),
@@ -859,10 +868,23 @@ export function GameCameraRig({
                 endPosition: normalCameraRef.current.position,
                 endTarget: normalCameraRef.current.target,
                 endZoom: normalCameraRef.current.zoom,
+                onComplete: () => setCloseupCameraActive(false),
             });
         }
         previousViewRef.current = view;
-    }, [camera, closeupTarget, isOrthographicCamera, startAnimation, view]);
+    }, [
+        camera,
+        closeupTarget,
+        isOrthographicCamera,
+        setCloseupCameraActive,
+        startAnimation,
+        view,
+    ]);
+
+    useEffect(
+        () => () => setCloseupCameraActive(false),
+        [setCloseupCameraActive],
+    );
 
     useFrame((_, delta) => {
         if (!isOrthographicCamera) {
@@ -922,6 +944,7 @@ export function GameCameraRig({
                 setIsAnimating(false);
                 applyCamera();
                 saveNormalCamera();
+                animation.onComplete?.();
             }
             flushSnapshot();
             return;

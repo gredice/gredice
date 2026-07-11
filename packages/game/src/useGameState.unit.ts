@@ -98,6 +98,27 @@ test('setActiveDragPreview skips equivalent drag preview updates', () => {
     }
 });
 
+test('closeup camera stays active while the requested view returns to normal', () => {
+    const store = createGameState({
+        appBaseUrl: '',
+        freezeTime: new Date('2026-01-01T12:00:00.000Z'),
+        isMock: true,
+    });
+
+    try {
+        store.getState().setCloseupCameraActive(true);
+        store.getState().setView({ view: 'normal' });
+
+        assert.equal(store.getState().view, 'normal');
+        assert.equal(store.getState().closeupCameraActive, true);
+
+        store.getState().setCloseupCameraActive(false);
+        assert.equal(store.getState().closeupCameraActive, false);
+    } finally {
+        store.getState().audio.dispose();
+    }
+});
+
 test('addPickupSelectionTarget appends new targets and prevents duplicates', () => {
     const store = createGameState({
         appBaseUrl: '',

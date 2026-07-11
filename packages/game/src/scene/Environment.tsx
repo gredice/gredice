@@ -675,7 +675,10 @@ export function Environment({
         (state) => state.backgroundPaletteIndex,
     );
     const view = useGameState((state) => state.view);
-    const isGroundView = view === 'closeup';
+    const closeupCameraActive = useGameState(
+        (state) => state.closeupCameraActive,
+    );
+    const isGroundView = view === 'closeup' || closeupCameraActive;
     const closeupBlockId = useGameState((state) => state.closeupBlock?.id);
     const pickupBlockId = useGameState((state) => state.pickupBlock?.id);
     const winterMode = useGameState((state) => state.winterMode);
