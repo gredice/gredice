@@ -19,7 +19,6 @@ import { useGroundPatchMaterial } from './helpers/groundPatchMaterial';
 import { HoverOutline } from './helpers/HoverOutline';
 import { useEntityNeighbors } from './helpers/useEntityNeighbors';
 import { RaisedBedFields } from './raisedBed/RaisedBedFields';
-import { RaisedBedHarvestBasketForBlock } from './raisedBed/RaisedBedHarvestBasket';
 import { getRaisedBedSoilWetPatches } from './raisedBed/raisedBedSoilWetPatches';
 
 const combinedOverlap = 0.1;
@@ -219,7 +218,6 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
             <group position={raisedBedPosition}>
                 <RaisedBedFields blockId={block.id} />
             </group>
-            <RaisedBedHarvestBasketForBlock blockId={block.id} />
         </>
     );
 }

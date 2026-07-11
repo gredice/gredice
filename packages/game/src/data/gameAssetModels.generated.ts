@@ -119,7 +119,7 @@ export const gameAssetModels = {
     PotSquatRidged: { url: '/assets/models/PotSquatRidged.glb' },
     PotTallSlenderCone: { url: '/assets/models/PotTallSlenderCone.glb' },
     PotWideLippedCup: { url: '/assets/models/PotWideLippedCup.glb' },
-    HarvestBasket: { url: '/assets/models/HarvestBasket.glb' },
+    HarvestBasket: { url: '/assets/models/HarvestBasket.glb?v=5361f192e361' },
 } satisfies Record<string, { url: string }>;
 
 export type GameAssetName = keyof typeof gameAssetModels;
