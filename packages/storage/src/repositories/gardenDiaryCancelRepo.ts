@@ -13,6 +13,7 @@ import {
 import { deleteRaisedBedField, getRaisedBed } from './gardensRepo';
 import { createNotification } from './notificationsRepo';
 import { getOperationsByIds } from './operationsRepo';
+import { getRaisedBedFieldSunflowerRefundAmount } from './shoppingCartRepo';
 
 export type GardenDiaryCancelStatusCode = 400 | 404 | 409;
 
@@ -255,9 +256,19 @@ export async function cancelGardenDiaryRaisedBedField({
     );
     const plantName =
         plantSortData?.information?.name ?? `Biljka #${field.plantSortId}`;
-    const refundAmount = calculateSunflowerRefund(
-        plantSortData?.prices?.perPlant,
-    );
+    const activePlantCycle = field.plantCycles.find((cycle) => cycle.active);
+    const refundAmount = activePlantCycle
+        ? await getRaisedBedFieldSunflowerRefundAmount({
+              accountId,
+              fallbackAmount: calculateSunflowerRefund(
+                  plantSortData?.prices?.perPlant ??
+                      plantSortData?.information?.plant?.prices?.perPlant,
+              ),
+              plantCycleStartedAt: activePlantCycle.startedAt,
+              positionIndex,
+              raisedBedId,
+          })
+        : 0;
     let content = `Sijanje biljke **${plantName}** na gredici **${raisedBed.name}** za polje **${positionIndex + 1}** je otkazano.`;
 
     if (refundAmount > 0) {

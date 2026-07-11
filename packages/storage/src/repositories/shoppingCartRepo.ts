@@ -1,6 +1,7 @@
-import { and, asc, eq } from 'drizzle-orm';
-import { shoppingCartItems, shoppingCarts } from '../schema';
+import { and, asc, desc, eq, gte, lte, sql } from 'drizzle-orm';
+import { events, shoppingCartItems, shoppingCarts } from '../schema';
 import { storage } from '../storage';
+import { knownEventTypes } from './eventsRepo';
 import { getInventory } from './inventoryRepo';
 import {
     releaseOutletReservationForCartItem,
@@ -13,6 +14,99 @@ type TransactionClient = Parameters<
     Parameters<StorageClient['transaction']>[0]
 >[0];
 type DatabaseClient = StorageClient | TransactionClient;
+
+const raisedBedFieldPurchaseMatchWindowMs = 10 * 60 * 1000;
+
+function parsePositiveInteger(value: unknown) {
+    if (typeof value === 'number' && Number.isInteger(value) && value > 0) {
+        return value;
+    }
+    if (typeof value === 'string') {
+        const parsed = Number.parseInt(value, 10);
+        return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+    }
+    return null;
+}
+
+/**
+ * Resolve the sunflower amount actually paid for the plant purchase that
+ * started the current raised-bed field cycle.
+ *
+ * Older immediate sunflower checkouts recorded one spend event per cart item.
+ * Euro purchases and legacy aggregate-cart sunflower checkouts use the
+ * catalog-derived sunflower equivalent after confirming the matched cart item
+ * was paid rather than sourced from inventory.
+ */
+export async function getRaisedBedFieldSunflowerRefundAmount({
+    accountId,
+    fallbackAmount = 0,
+    plantCycleStartedAt,
+    positionIndex,
+    raisedBedId,
+}: {
+    accountId: string;
+    fallbackAmount?: number;
+    plantCycleStartedAt: Date;
+    positionIndex: number;
+    raisedBedId: number;
+}) {
+    const windowStart = new Date(
+        plantCycleStartedAt.getTime() - raisedBedFieldPurchaseMatchWindowMs,
+    );
+    const windowEnd = new Date(
+        plantCycleStartedAt.getTime() + raisedBedFieldPurchaseMatchWindowMs,
+    );
+    const [purchase] = await storage()
+        .select({
+            cartItemId: shoppingCartItems.id,
+            currency: shoppingCartItems.currency,
+        })
+        .from(shoppingCartItems)
+        .innerJoin(
+            shoppingCarts,
+            eq(shoppingCarts.id, shoppingCartItems.cartId),
+        )
+        .where(
+            and(
+                eq(shoppingCarts.accountId, accountId),
+                eq(shoppingCarts.isDeleted, false),
+                eq(shoppingCartItems.entityTypeName, 'plantSort'),
+                eq(shoppingCartItems.raisedBedId, raisedBedId),
+                eq(shoppingCartItems.positionIndex, positionIndex),
+                eq(shoppingCartItems.status, 'paid'),
+                eq(shoppingCartItems.isDeleted, false),
+                gte(shoppingCartItems.updatedAt, windowStart),
+                lte(shoppingCartItems.updatedAt, windowEnd),
+            ),
+        )
+        .orderBy(desc(shoppingCartItems.updatedAt), desc(shoppingCartItems.id))
+        .limit(1);
+
+    if (!purchase || purchase.currency === 'inventory') {
+        return 0;
+    }
+
+    if (purchase.currency === 'sunflower') {
+        const paymentEvent = await storage().query.events.findFirst({
+            where: and(
+                eq(events.aggregateId, accountId),
+                eq(events.type, knownEventTypes.accounts.spendSunflowers),
+                sql`${events.data}->>'reason' = ${`shoppingCartItem:${purchase.cartItemId.toString()}`}`,
+            ),
+            orderBy: [desc(events.createdAt), desc(events.id)],
+        });
+        const eventData = paymentEvent?.data as
+            | Record<string, unknown>
+            | null
+            | undefined;
+        const paidAmount = parsePositiveInteger(eventData?.amount);
+        if (paidAmount) {
+            return paidAmount;
+        }
+    }
+
+    return parsePositiveInteger(fallbackAmount) ?? 0;
+}
 
 function startOfUtcDay(date: Date) {
     return new Date(
