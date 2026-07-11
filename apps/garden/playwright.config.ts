@@ -75,7 +75,11 @@ export const config: PlaywrightTestConfig = {
                     // GPU-less CI runners must explicitly opt in to Chromium's
                     // software WebGL fallback. Keep the lower-security switch
                     // isolated to our trusted 3D capture fixture.
-                    args: ['--enable-unsafe-swiftshader'],
+                    args: [
+                        '--use-gl=angle',
+                        '--use-angle=swiftshader-webgl',
+                        '--enable-unsafe-swiftshader',
+                    ],
                 },
             },
         },
