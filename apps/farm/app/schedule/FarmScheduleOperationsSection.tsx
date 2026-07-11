@@ -19,12 +19,14 @@ import type {
     FarmScheduleDayData,
     FarmScheduleRaisedBedPhotoPreview,
 } from './scheduleData';
+import type { FarmScheduleOperationsMode } from './scheduleShared';
 import {
     compareScheduleDates,
     getFieldPhysicalPositionIndex,
     getOperationDurationMinutes,
     groupRaisedBedsForSchedule,
     isOperationCompleted,
+    shouldDisplayScheduleOperation,
 } from './scheduleShared';
 
 type FarmRaisedBed = FarmScheduleDayData['raisedBeds'][number];
@@ -42,6 +44,7 @@ interface FarmScheduleOperationsSectionProps {
     raisedBedPhotoPreviewByIdPromise: Promise<
         Map<number, FarmScheduleRaisedBedPhotoPreview>
     >;
+    mode: FarmScheduleOperationsMode;
     userId: string;
 }
 
@@ -78,6 +81,7 @@ export function FarmScheduleOperationsSection({
     plantSorts,
     operationsData,
     raisedBedPhotoPreviewByIdPromise,
+    mode,
     userId,
 }: FarmScheduleOperationsSectionProps) {
     if (scheduledOperations.length === 0) {
@@ -98,9 +102,21 @@ export function FarmScheduleOperationsSection({
         }
     }
 
+    const visibleScheduledOperations = scheduledOperations.filter((operation) =>
+        shouldDisplayScheduleOperation(
+            operation,
+            operationDataById.get(operation.entityId),
+            mode,
+        ),
+    );
+
+    if (visibleScheduledOperations.length === 0) {
+        return null;
+    }
+
     const affectedRaisedBedIds = [
         ...new Set(
-            scheduledOperations
+            visibleScheduledOperations
                 .map((operation) => operation.raisedBedId)
                 .filter((id): id is number => id !== null),
         ),
@@ -109,7 +125,7 @@ export function FarmScheduleOperationsSection({
         raisedBeds,
         affectedRaisedBedIds,
     );
-    const farmOperations = scheduledOperations
+    const farmOperations = visibleScheduledOperations
         .filter(
             (operation) =>
                 typeof operation.farmId === 'number' &&
@@ -264,11 +280,78 @@ export function FarmScheduleOperationsSection({
         0,
     );
 
+    if (mode === 'watering') {
+        const wateringOperations = raisedBedGroups.flatMap(
+            ({ physicalId, raisedBeds: groupedRaisedBeds }) => {
+                const raisedBedLabel = physicalId
+                    ? `Gr ${physicalId}`
+                    : `Gredica ${groupedRaisedBeds[0]?.id ?? ''}`;
+
+                return visibleScheduledOperations
+                    .filter(
+                        (operation) =>
+                            operation.raisedBedId !== null &&
+                            groupedRaisedBeds.some(
+                                (raisedBed) =>
+                                    raisedBed.id === operation.raisedBedId,
+                            ),
+                    )
+                    .map((operation) => ({
+                        ...operation,
+                        durationMinutes: getOperationDurationMinutes(
+                            operationDataById.get(operation.entityId),
+                        ),
+                        label: `${raisedBedLabel} · ${buildOperationLabel(
+                            operation,
+                            groupedRaisedBeds,
+                            plantSortById,
+                            operationDataById,
+                        )}`,
+                    }))
+                    .sort((left, right) => {
+                        const dateComparison = compareScheduleDates(
+                            left.scheduledDate,
+                            right.scheduledDate,
+                        );
+
+                        return (
+                            dateComparison ||
+                            left.label.localeCompare(right.label, undefined, {
+                                numeric: true,
+                            })
+                        );
+                    });
+            },
+        );
+        const wateringTotalDuration = wateringOperations.reduce(
+            (sum, operation) => sum + operation.durationMinutes,
+            0,
+        );
+
+        return (
+            <Stack spacing={2}>
+                <Row spacing={2} className="items-center flex-wrap gap-y-1">
+                    <Typography semiBold>Zalijevanje</Typography>
+                    <ScheduleSectionSummaryBadges
+                        count={wateringOperations.length}
+                        countLabel="zadataka"
+                        durationMinutes={wateringTotalDuration}
+                    />
+                </Row>
+                <Stack spacing={2}>
+                    {wateringOperations.map((operation) =>
+                        renderOperationCard(operation),
+                    )}
+                </Stack>
+            </Stack>
+        );
+    }
+
     return (
         <Stack spacing={6}>
             {raisedBedGroups.map(
                 ({ key, physicalId, raisedBeds: groupedRaisedBeds }) => {
-                    const dayOperations = scheduledOperations
+                    const dayOperations = visibleScheduledOperations
                         .filter(
                             (operation) =>
                                 operation.raisedBedId !== null &&

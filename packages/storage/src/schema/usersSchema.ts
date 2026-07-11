@@ -126,6 +126,11 @@ export const users = pgTable(
         whatsNewPopupDisabled: boolean('whats_new_popup_disabled')
             .notNull()
             .default(false),
+        farmScheduleGroupedWateringEnabled: boolean(
+            'farm_schedule_grouped_watering_enabled',
+        )
+            .notNull()
+            .default(true),
         createdAt: timestamp('created_at').notNull().defaultNow(),
         updatedAt: timestamp('updated_at')
             .notNull()

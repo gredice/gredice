@@ -3,7 +3,10 @@ import type { FarmScheduleDayData } from './scheduleData';
 
 type FarmRaisedBed = FarmScheduleDayData['raisedBeds'][number];
 type FarmRaisedBedField = FarmRaisedBed['fields'][number];
+type FarmOperation = FarmScheduleDayData['scheduledOperations'][number];
 type ScheduleTaskAgeIndicatorLevel = 'warning' | 'critical';
+
+export type FarmScheduleOperationsMode = 'all' | 'watering' | 'withoutWatering';
 
 const RAISED_BED_FIELDS_PER_BLOCK = 9;
 export const FARM_SCHEDULE_TIME_ZONE = 'Europe/Zagreb';
@@ -195,6 +198,42 @@ export function getOperationDurationMinutes(
     }
 
     return 0;
+}
+
+export function isWateringOperationData(
+    operationData: EntityStandardized | undefined,
+) {
+    return operationData?.attributes?.stage?.information.name === 'watering';
+}
+
+export function isGroupedWateringScheduleOperation(
+    operation: Pick<FarmOperation, 'raisedBedId'>,
+    operationData: EntityStandardized | undefined,
+) {
+    return (
+        operation.raisedBedId !== null && isWateringOperationData(operationData)
+    );
+}
+
+export function shouldDisplayScheduleOperation(
+    operation: Pick<FarmOperation, 'raisedBedId'>,
+    operationData: EntityStandardized | undefined,
+    mode: FarmScheduleOperationsMode,
+) {
+    const isGroupedWatering = isGroupedWateringScheduleOperation(
+        operation,
+        operationData,
+    );
+
+    if (mode === 'watering') {
+        return isGroupedWatering;
+    }
+
+    if (mode === 'withoutWatering') {
+        return !isGroupedWatering;
+    }
+
+    return true;
 }
 
 export const PLANTING_TASK_DURATION_MINUTES = 5;
