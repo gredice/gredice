@@ -81,6 +81,7 @@ export type PlantPricingRow<
           kind: 'plant';
           label: string;
           href: Route;
+          entityId: EntityId;
           price: number;
           plant: TPlant;
       }
@@ -90,6 +91,7 @@ export type PlantPricingRow<
           label: string;
           parentLabel: string;
           href: Route;
+          entityId: EntityId;
           price: number;
           plantSort: TPlantSort;
       };
@@ -100,6 +102,7 @@ export type OperationPricingRow<
     id: string;
     label: string;
     href: Route;
+    entityId: EntityId;
     price: number;
     operation: TOperation;
 };
@@ -108,6 +111,7 @@ export type DeliveryPricingRow = {
     id: string;
     label: string;
     href: Route;
+    entityId: EntityId;
     freeRadius: number;
     zoneRadius: number;
     pricePerKilometer: number;
@@ -158,6 +162,7 @@ export function buildPlantPricingRows<
             kind: 'plant',
             label: plant.information.name,
             href: toRoute(PublicDirectoryPaths.Plant(plant.information.name)),
+            entityId: plant.id,
             price: plant.prices.perPlant,
             plant,
         }),
@@ -185,6 +190,7 @@ export function buildPlantPricingRows<
                         sort.information.name,
                     ),
                 ),
+                entityId: sort.id,
                 price: sort.prices.perPlant,
                 plantSort: sort,
             };
@@ -204,6 +210,7 @@ export function buildOperationPricingRows<TOperation extends NamedOperation>(
             href: toRoute(
                 PublicDirectoryPaths.Operation(operation.information.label),
             ),
+            entityId: operation.id,
             price: operation.prices.perOperation,
             operation,
         }))
@@ -221,6 +228,7 @@ export function buildDeliveryPricingRows(
             id: `delivery-${location.id}`,
             label: location.information.label,
             href: deliveryHref,
+            entityId: location.id,
             freeRadius: location.delivery.freeRadius,
             zoneRadius: location.delivery.zoneRadius,
             pricePerKilometer: location.prices.pricePerKilometer,

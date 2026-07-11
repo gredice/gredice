@@ -15,11 +15,13 @@ import { getPlantSortsData } from '../../lib/plants/getPlantSortsData';
 import { getPlantsData } from '../../lib/plants/getPlantsData';
 import { getPublicSunflowerPackages } from '../../lib/sunflowerPackages';
 import { KnownPages } from '../../src/KnownPages';
+import { getPricingCatalogHistory, pricingHistoryKey } from './pricingHistory';
 import {
     buildDeliveryPricingRows,
     buildOperationPricingRows,
     buildPlantPricingRows,
 } from './pricingRows';
+import { ThirtyDayMinimumPrice } from './ThirtyDayMinimumPrice';
 
 export const metadata: Metadata = {
     title: 'Cjenik',
@@ -52,6 +54,12 @@ export default async function PricingPage() {
         hqLocations,
         KnownPages.Delivery,
     );
+    const pricingHistory = await getPricingCatalogHistory({
+        sunflowerPackages,
+        plantRows: plantPricingRows,
+        operationRows: operationPricingRows,
+        deliveryRows: deliveryPricingRows,
+    });
 
     return (
         <Container maxWidth="lg">
@@ -92,6 +100,9 @@ export default async function PricingPage() {
                                                 <th className="py-2 text-right">
                                                     Cijena
                                                 </th>
+                                                <th className="py-2 pl-4 text-right">
+                                                    Najniža cijena u 30 dana
+                                                </th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -128,6 +139,21 @@ export default async function PricingPage() {
                                                         {formatPrice(
                                                             pkg.priceEur,
                                                         )}
+                                                    </td>
+                                                    <td className="py-2 pl-4 text-right">
+                                                        <ThirtyDayMinimumPrice
+                                                            currentPrice={
+                                                                pkg.priceEur
+                                                            }
+                                                            history={
+                                                                pricingHistory[
+                                                                    pricingHistoryKey(
+                                                                        'sunflowerPackage',
+                                                                        pkg.entityId,
+                                                                    )
+                                                                ]
+                                                            }
+                                                        />
                                                     </td>
                                                 </tr>
                                             ))}
@@ -171,6 +197,9 @@ export default async function PricingPage() {
                                         </th>
                                         <th className="text-right py-2">
                                             Cijena
+                                        </th>
+                                        <th className="py-2 pl-4 text-right">
+                                            Najniža cijena u 30 dana
                                         </th>
                                     </tr>
                                 </thead>
@@ -220,6 +249,22 @@ export default async function PricingPage() {
                                             <td className="py-2 text-right font-medium">
                                                 {formatPrice(row.price)}
                                             </td>
+                                            <td className="py-2 pl-4 text-right">
+                                                <ThirtyDayMinimumPrice
+                                                    currentPrice={row.price}
+                                                    history={
+                                                        pricingHistory[
+                                                            pricingHistoryKey(
+                                                                row.kind ===
+                                                                    'plant'
+                                                                    ? 'plant'
+                                                                    : 'plantSort',
+                                                                row.entityId,
+                                                            )
+                                                        ]
+                                                    }
+                                                />
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -254,6 +299,9 @@ export default async function PricingPage() {
                                         <th className="text-right py-2">
                                             Cijena
                                         </th>
+                                        <th className="py-2 pl-4 text-right">
+                                            Najniža cijena u 30 dana
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -281,6 +329,19 @@ export default async function PricingPage() {
                                             </td>
                                             <td className="py-2 text-right font-medium">
                                                 {formatPrice(row.price)}
+                                            </td>
+                                            <td className="py-2 pl-4 text-right">
+                                                <ThirtyDayMinimumPrice
+                                                    currentPrice={row.price}
+                                                    history={
+                                                        pricingHistory[
+                                                            pricingHistoryKey(
+                                                                'operation',
+                                                                row.entityId,
+                                                            )
+                                                        ]
+                                                    }
+                                                />
                                             </td>
                                         </tr>
                                     ))}
@@ -322,6 +383,9 @@ export default async function PricingPage() {
                                         <th className="text-right py-2">
                                             Cijena po km
                                         </th>
+                                        <th className="py-2 pl-4 text-right">
+                                            Najniža cijena u 30 dana
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -348,6 +412,21 @@ export default async function PricingPage() {
                                                 {formatPrice(
                                                     row.pricePerKilometer,
                                                 )}
+                                            </td>
+                                            <td className="py-2 pl-4 text-right">
+                                                <ThirtyDayMinimumPrice
+                                                    currentPrice={
+                                                        row.pricePerKilometer
+                                                    }
+                                                    history={
+                                                        pricingHistory[
+                                                            pricingHistoryKey(
+                                                                'hqLocations',
+                                                                row.entityId,
+                                                            )
+                                                        ]
+                                                    }
+                                                />
                                             </td>
                                         </tr>
                                     ))}

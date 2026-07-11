@@ -181,6 +181,7 @@ test('buildDeliveryPricingRows links delivery rows to the delivery page', () => 
                 id: 'delivery-31',
                 label: 'Zagreb',
                 href: '/dostava',
+                entityId: 31,
                 freeRadius: 10,
                 zoneRadius: 60,
                 pricePerKilometer: 0.2,
