@@ -9,6 +9,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@gredice/ui/Menu';
+import { cx } from '@gredice/ui/utils';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useTransition } from 'react';
 import { setRaisedBedFieldWeedState } from '../../../(actions)/raisedBedFieldsActions';
@@ -81,10 +82,11 @@ export function RaisedBedFieldWeedStateSelector({
                     color={currentPresentation.color}
                     startDecorator={<CurrentIcon aria-hidden />}
                     title={`Promijeni stanje korova za polje ${positionIndex + 1}`}
-                    className={className}
+                    aria-label={`${currentItem?.label ?? optimisticLevel}. Promijeni stanje korova za polje ${positionIndex + 1}`}
+                    className={cx('size-6 justify-center !p-0', className)}
                     onClick={() => {}}
                 >
-                    <span className="min-w-0 truncate">
+                    <span className="sr-only">
                         {currentItem?.label ?? optimisticLevel}
                     </span>
                 </Chip>

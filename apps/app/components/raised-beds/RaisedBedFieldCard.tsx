@@ -72,16 +72,18 @@ export function RaisedBedFieldCard({
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/55 via-background/10 to-background/70" />
             <div className="relative z-10 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-1.5 p-2">
                 <div className="min-w-0">{locationControl}</div>
-                <div className="shrink-0">{fieldBadge}</div>
+                <div className="flex shrink-0 items-center gap-1">
+                    {weedControl}
+                    {fieldBadge}
+                </div>
             </div>
             {historyControl && (
                 <div className="absolute left-2 top-11 z-10">
                     {historyControl}
                 </div>
             )}
-            <div className="relative z-10 mt-auto flex min-w-0 flex-col gap-0.5 px-2 pb-2 pt-2">
+            <div className="relative z-10 mt-auto flex min-w-0 flex-col gap-0.5 px-2 pb-2 pt-8">
                 <div className="min-w-0">{plantSortControl}</div>
-                {weedControl && <div className="min-w-0">{weedControl}</div>}
                 {statusControl && (
                     <div className="w-full min-w-0">{statusControl}</div>
                 )}
