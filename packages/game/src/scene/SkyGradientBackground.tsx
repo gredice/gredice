@@ -90,7 +90,7 @@ type SkyGradientBackgroundProps = {
     backgroundColor: Color;
     backgroundPaletteIndex: number;
     currentTime: Date;
-    groundColor?: Color;
+    groundView?: boolean;
     location: { lat: number; lon: number };
     moonlight: number;
     timeOfDay: number;
@@ -138,7 +138,7 @@ export function SkyGradientBackground({
     backgroundColor,
     backgroundPaletteIndex,
     currentTime,
-    groundColor,
+    groundView = false,
     location,
     moonlight,
     timeOfDay,
@@ -196,15 +196,15 @@ export function SkyGradientBackground({
             weather,
         });
 
-        return groundColor
-            ? resolveGroundViewSkyGradientColors(gradient, groundColor)
+        return groundView
+            ? resolveGroundViewSkyGradientColors(gradient)
             : gradient;
     }, [
         backgroundBlue,
         backgroundGreen,
         backgroundPaletteIndex,
         backgroundRed,
-        groundColor,
+        groundView,
         moonlight,
         timeOfDay,
         weather,
@@ -300,10 +300,9 @@ export function SkyGradientBackground({
             const activeGradient = displayed;
             applyGradientUniforms(material, activeGradient);
             material.uniforms.uSunGlowIntensity.value =
-                (groundColor ? 0 : activeGradient.sunGlowIntensity) *
-                sunOpacity;
+                (groundView ? 0 : activeGradient.sunGlowIntensity) * sunOpacity;
             material.uniforms.uMoonGlowIntensity.value =
-                (groundColor ? 0 : activeGradient.moonGlowIntensity) *
+                (groundView ? 0 : activeGradient.moonGlowIntensity) *
                 moonOpacity;
         }
     });

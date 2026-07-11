@@ -396,8 +396,9 @@ export function cloneSkyGradientColors(
 
 export function resolveGroundViewSkyGradientColors(
     gradient: SkyGradientColors,
-    groundColor: Color,
 ): SkyGradientColors {
+    const groundColor = gradient.lower;
+
     return {
         horizon: groundColor.clone(),
         lower: groundColor.clone(),
