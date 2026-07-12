@@ -1,4 +1,5 @@
 import { Button } from '@gredice/ui/Button';
+import { IconButton } from '@gredice/ui/IconButton';
 import { Check, Discount, Navigate } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -61,6 +62,14 @@ export function OutletHud() {
     const selectedOffer =
         offers?.find((offer) => offer.id === highlightedOfferId) ?? null;
     const selectedOfferId = selectedOffer?.id ?? null;
+    const availableItemsCount = useMemo(
+        () =>
+            offers?.reduce(
+                (total, offer) => total + offer.remainingQuantity,
+                0,
+            ) ?? 0,
+        [offers],
+    );
     const emptyFieldTargets = useMemo(
         () =>
             findEmptyRaisedBedFieldTargets(currentGarden, cart?.items, {
@@ -138,20 +147,31 @@ export function OutletHud() {
                 headerIcon={<Discount className="size-7 shrink-0" />}
                 hudLayer
                 trigger={
-                    <Button
+                    <IconButton
+                        aria-label="Outlet sadnica"
                         title="Outlet sadnica"
                         variant="plain"
-                        className="relative rounded-full p-2 gap-2"
+                        className="size-10 rounded-full"
                     >
-                        <Discount className="size-6 shrink-0" />
-                        <Typography
-                            level="body2"
-                            semiBold
-                            className="text-foreground"
-                        >
-                            Outlet
-                        </Typography>
-                    </Button>
+                        <div className="relative flex items-center justify-center">
+                            <Discount className="size-6" />
+                            {availableItemsCount > 0 && (
+                                <div
+                                    aria-hidden="true"
+                                    className={cx(
+                                        'absolute -top-4 -right-4 flex size-6 items-center justify-center rounded-full border border-border bg-muted px-1.5 text-sm font-semibold leading-none text-muted-foreground shadow-sm',
+                                        availableItemsCount > 99 &&
+                                            'text-[10px]',
+                                    )}
+                                    data-outlet-availability-badge
+                                >
+                                    {availableItemsCount > 99
+                                        ? '99+'
+                                        : availableItemsCount}
+                                </div>
+                            )}
+                        </div>
+                    </IconButton>
                 }
             >
                 <Stack spacing={4}>
