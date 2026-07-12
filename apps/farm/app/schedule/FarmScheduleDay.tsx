@@ -20,6 +20,7 @@ interface FarmScheduleDayProps {
         typeof import('./scheduleData').getFarmScheduleOperationsData
     >;
     plantSortsPromise: ReturnType<typeof getFarmSchedulePlantSorts>;
+    groupWateringOperations: boolean;
     userId: string;
 }
 
@@ -29,6 +30,7 @@ export function FarmScheduleDay({
     operationsDataPromise,
     plantingsDayDataPromise,
     plantSortsPromise,
+    groupWateringOperations,
     userId,
 }: FarmScheduleDayProps) {
     const raisedBedPhotoPreviewByIdPromise =
@@ -39,6 +41,20 @@ export function FarmScheduleDay({
             <Suspense fallback={null}>
                 <FarmScheduleEmptyState dayDataPromise={dayDataPromise} />
             </Suspense>
+            {groupWateringOperations && (
+                <Suspense fallback={<FarmScheduleSectionSkeleton />}>
+                    <FarmScheduleOperationsSectionContent
+                        dayDataPromise={operationsDayDataPromise}
+                        plantSortsPromise={plantSortsPromise}
+                        operationsDataPromise={operationsDataPromise}
+                        raisedBedPhotoPreviewByIdPromise={
+                            raisedBedPhotoPreviewByIdPromise
+                        }
+                        mode="watering"
+                        userId={userId}
+                    />
+                </Suspense>
+            )}
             <Suspense fallback={<FarmScheduleSectionSkeleton />}>
                 <FarmSchedulePlantingsSectionContent
                     dayDataPromise={plantingsDayDataPromise}
@@ -57,6 +73,7 @@ export function FarmScheduleDay({
                     raisedBedPhotoPreviewByIdPromise={
                         raisedBedPhotoPreviewByIdPromise
                     }
+                    mode={groupWateringOperations ? 'withoutWatering' : 'all'}
                     userId={userId}
                 />
             </Suspense>

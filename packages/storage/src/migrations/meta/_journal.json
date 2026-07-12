@@ -470,6 +470,13 @@
       "when": 1783771209517,
       "tag": "0066_wooden_ben_parker",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1783807025355,
+      "tag": "0067_mixed_maddog",
+      "breakpoints": true
     }
   ]
 }

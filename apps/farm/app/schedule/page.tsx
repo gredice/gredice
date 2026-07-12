@@ -1,4 +1,8 @@
-import { getTimeZoneDateKey, isCalendarDateKey } from '@gredice/storage';
+import {
+    getTimeZoneDateKey,
+    getUser,
+    isCalendarDateKey,
+} from '@gredice/storage';
 import { Suspense } from 'react';
 import LoginDialog from '../../components/auth/LoginDialog';
 import { auth } from '../../lib/auth/auth';
@@ -32,13 +36,14 @@ async function getFarmAuth() {
     }
 }
 
-function FarmScheduleContent({
+async function FarmScheduleContent({
     selectedDateKey,
     userId,
 }: {
     selectedDateKey: string;
     userId: string;
 }) {
+    const userPromise = getUser(userId);
     const isToday =
         getTimeZoneDateKey(new Date(), FARM_SCHEDULE_TIME_ZONE) ===
         selectedDateKey;
@@ -59,6 +64,7 @@ function FarmScheduleContent({
     );
     const operationsDataPromise = getFarmScheduleOperationsData();
     const plantSortsPromise = getFarmSchedulePlantSorts();
+    const user = await userPromise;
 
     return (
         <FarmScheduleNavigationFrame
@@ -89,6 +95,9 @@ function FarmScheduleContent({
                 operationsDayDataPromise={operationsDayDataPromise}
                 operationsDataPromise={operationsDataPromise}
                 plantSortsPromise={plantSortsPromise}
+                groupWateringOperations={
+                    user?.farmScheduleGroupedWateringEnabled ?? true
+                }
                 userId={userId}
             />
         </FarmScheduleNavigationFrame>
