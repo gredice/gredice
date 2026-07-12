@@ -24,7 +24,10 @@ import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useCreateGarden } from '../hooks/useCreateGarden';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useDeleteSandboxGarden } from '../hooks/useDeleteSandboxGarden';
-import { useGardenAccountGroups } from '../hooks/useGardenAccountGroups';
+import {
+    gardenAccountGroupsKeys,
+    useGardenAccountGroups,
+} from '../hooks/useGardenAccountGroups';
 import { useGardens } from '../hooks/useGardens';
 import { useSwitchGardenAccount } from '../hooks/useSwitchGardenAccount';
 import { useCurrentGardenIdParam } from '../useUrlState';
@@ -130,12 +133,21 @@ export function GardenAccountMenuItems({
                 await switchGardenAccount.mutateAsync({
                     accountId: accountGroup.accountId,
                 });
+                queryClient.setQueryData<typeof accountGroups>(
+                    gardenAccountGroupsKeys,
+                    (groups) =>
+                        groups?.map((group) => ({
+                            ...group,
+                            isCurrent:
+                                group.accountId === accountGroup.accountId,
+                        })) ?? groups,
+                );
                 await setSelectedGardenId(garden.id);
                 void queryClient.invalidateQueries();
                 return;
             }
 
-            const isDefault = currentAccountGardens?.[0]?.id === garden.id;
+            const isDefault = accountGroup.gardens[0]?.id === garden.id;
             await setSelectedGardenId(isDefault ? null : garden.id);
         } catch (error) {
             console.error('Failed to switch garden account:', error);
