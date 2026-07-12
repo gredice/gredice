@@ -53,7 +53,7 @@ import { useOptimisticScheduleActions } from './useOptimisticScheduleActions';
 import { VerifyPlantingModal } from './VerifyPlantingModal';
 
 interface RaisedBedPlantingScheduleSectionProps {
-    date: Date;
+    dateKey: string;
     timeZone: string;
     physicalId: string;
     raisedBeds: RaisedBed[];
@@ -84,7 +84,7 @@ function getSowingTaskLabel({
 }
 
 export function RaisedBedPlantingScheduleSection({
-    date,
+    dateKey,
     timeZone,
     physicalId,
     raisedBeds,
@@ -480,7 +480,7 @@ export function RaisedBedPlantingScheduleSection({
                         !!field.plantScheduledDate &&
                         !isSameScheduleDay(
                             field.plantScheduledDate,
-                            date,
+                            dateKey,
                             timeZone,
                         );
 

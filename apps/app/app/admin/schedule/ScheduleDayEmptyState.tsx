@@ -11,7 +11,7 @@ export async function ScheduleDayEmptyState({
     date,
 }: ScheduleDayEmptyStateProps) {
     const { scheduledFields, scheduledOperations, todaysDeliveryRequests } =
-        await getScheduleDayData(date.toISOString(), isToday);
+        await getScheduleDayData(date, isToday);
 
     if (
         scheduledFields.length +

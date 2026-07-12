@@ -20,6 +20,7 @@ import {
     getScheduledFieldsForDay,
     getScheduledOperationsForDay,
 } from './scheduleDayFilters';
+import { getScheduleCalendarDateKey } from './scheduleTimeZone';
 
 const operationsBackDays = 90;
 
@@ -101,14 +102,13 @@ export const getScheduleDeliveryRequests = cache(async () => {
     return getDeliveryRequestsSummary();
 });
 
-export const getScheduleDayData = cache(
+const getScheduleDayDataByDateKey = cache(
     async (dateKey: string, isToday: boolean) => {
         const timeZone = await getScheduleTimeZone();
 
         return cacheScheduleRead(
             `${scheduleCacheKeys.adminDay(dateKey, isToday)}:timeZone:${encodeURIComponent(timeZone)}`,
             async () => {
-                const date = new Date(dateKey);
                 const [raisedBeds, operations, deliveryRequests] =
                     await Promise.all([
                         getScheduleRaisedBeds(),
@@ -117,23 +117,24 @@ export const getScheduleDayData = cache(
                     ]);
 
                 return {
+                    dateKey,
                     raisedBeds,
                     timeZone,
                     scheduledFields: getScheduledFieldsForDay(
                         isToday,
-                        date,
+                        dateKey,
                         raisedBeds,
                         timeZone,
                     ),
                     scheduledOperations: getScheduledOperationsForDay(
                         isToday,
-                        date,
+                        dateKey,
                         operations,
                         timeZone,
                     ),
                     todaysDeliveryRequests: getDayDeliveryRequests(
                         isToday,
-                        date,
+                        dateKey,
                         deliveryRequests,
                         timeZone,
                     ),
@@ -143,3 +144,10 @@ export const getScheduleDayData = cache(
         );
     },
 );
+
+export function getScheduleDayData(date: Date, isToday: boolean) {
+    return getScheduleDayDataByDateKey(
+        getScheduleCalendarDateKey(date),
+        isToday,
+    );
+}

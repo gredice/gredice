@@ -11,12 +11,10 @@ import type { DeliveryRequest, Operation, RaisedBed } from './types';
 
 export function getScheduledFieldsForDay(
     isToday: boolean,
-    date: Date,
+    dateKey: string,
     raisedBeds: RaisedBed[],
     timeZone: string,
 ) {
-    const dateKey = getScheduleDateKey(date, timeZone);
-
     return raisedBeds
         .filter((raisedBed) => Boolean(raisedBed.physicalId))
         .flatMap((raisedBed) => raisedBed.fields)
@@ -72,12 +70,10 @@ export function getScheduledFieldsForDay(
 
 export function getScheduledOperationsForDay(
     isToday: boolean,
-    date: Date,
+    dateKey: string,
     operations: Operation[],
     timeZone: string,
 ) {
-    const dateKey = getScheduleDateKey(date, timeZone);
-
     return operations.filter((operation) => {
         if (!OPERATION_STATUSES_TO_INCLUDE.has(operation.status)) {
             return false;
@@ -134,12 +130,10 @@ export function getScheduledOperationsForDay(
 
 export function getDayDeliveryRequests(
     isToday: boolean,
-    date: Date,
+    dateKey: string,
     deliveryRequests: DeliveryRequest[],
     timeZone: string,
 ) {
-    const dateKey = getScheduleDateKey(date, timeZone);
-
     return deliveryRequests
         .filter((request) => {
             const slotStart = request.slot?.startAt

@@ -58,7 +58,7 @@ import { useOptimisticScheduleActions } from './useOptimisticScheduleActions';
 import { VerifyOperationModal } from './VerifyOperationModal';
 
 interface RaisedBedOperationsScheduleSectionProps {
-    date: Date;
+    dateKey: string;
     timeZone: string;
     physicalId: string;
     raisedBeds: RaisedBed[];
@@ -72,7 +72,7 @@ interface RaisedBedOperationsScheduleSectionProps {
 }
 
 export function RaisedBedOperationsScheduleSection({
-    date,
+    dateKey,
     timeZone,
     physicalId,
     raisedBeds,
@@ -504,7 +504,7 @@ export function RaisedBedOperationsScheduleSection({
                         !!operation.scheduledDate &&
                         !isSameScheduleDay(
                             operation.scheduledDate,
-                            date,
+                            dateKey,
                             timeZone,
                         );
 

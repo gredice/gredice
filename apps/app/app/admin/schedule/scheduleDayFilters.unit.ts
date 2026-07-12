@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    getDayDeliveryRequests,
     getScheduledFieldsForDay,
     getScheduledOperationsForDay,
 } from './scheduleDayFilters.ts';
@@ -11,9 +12,15 @@ import {
     isDayBulkOperationApprovalTargetVisible,
     isDayBulkOperationAssignmentTargetVisible,
 } from './scheduleOptimisticHelpers.ts';
-import type { Operation, RaisedBed, RaisedBedField } from './types.ts';
+import { isSameScheduleDay } from './scheduleShared.ts';
+import type {
+    DeliveryRequest,
+    Operation,
+    RaisedBed,
+    RaisedBedField,
+} from './types.ts';
 
-const today = new Date(2026, 4, 14);
+const todayKey = '2026-05-14';
 const yesterdayNoon = new Date(2026, 4, 13, 12);
 const scheduleTimeZone = 'Europe/Zagreb';
 
@@ -93,7 +100,7 @@ test('pending verification sowing remains visible today until verified', () => {
     assert.deepEqual(
         getScheduledFieldsForDay(
             true,
-            today,
+            todayKey,
             [buildRaisedBed(pendingField), buildRaisedBed(verifiedField)],
             scheduleTimeZone,
         ).map((field) => field.id),
@@ -115,7 +122,7 @@ test('pending verification operation remains visible today until verified', () =
     assert.deepEqual(
         getScheduledOperationsForDay(
             true,
-            today,
+            todayKey,
             [pendingOperation, verifiedOperation],
             scheduleTimeZone,
         ).map((operation) => operation.id),
@@ -124,8 +131,8 @@ test('pending verification operation remains visible today until verified', () =
 });
 
 test('tomorrow tasks stay out of today when local midnight is the previous UTC day', () => {
-    const july11 = new Date('2026-07-11T00:00:00.000Z');
-    const july12 = new Date('2026-07-12T00:00:00.000Z');
+    const july11 = '2026-07-11';
+    const july12 = '2026-07-12';
     const july12InZagreb = new Date('2026-07-11T22:00:56.865Z');
     const operation = buildOperation({ scheduledDate: july12InZagreb });
     const field = buildField({ plantScheduledDate: july12InZagreb });
@@ -161,6 +168,72 @@ test('tomorrow tasks stay out of today when local midnight is the previous UTC d
             scheduleTimeZone,
         ).map((item) => item.id),
         [field.id],
+    );
+});
+
+test('selected calendar day does not shift in a time zone west of UTC', () => {
+    const newYorkTimeZone = 'America/New_York';
+    const selectedDateKey = '2026-07-11';
+    const operation = buildOperation({
+        scheduledDate: new Date('2026-07-11T12:00:00.000Z'),
+    });
+    const field = buildField({
+        plantScheduledDate: new Date('2026-07-11T12:00:00.000Z'),
+    });
+    const slotDate = new Date('2026-07-11T12:00:00.000Z');
+    const deliveryRequest: DeliveryRequest = {
+        id: 'delivery-1',
+        state: 'scheduled',
+        slot: {
+            id: 1,
+            locationId: 1,
+            type: 'delivery',
+            startAt: slotDate,
+            endAt: new Date('2026-07-11T14:00:00.000Z'),
+            closesAt: null,
+            status: 'scheduled',
+            createdAt: slotDate,
+            updatedAt: slotDate,
+        },
+        surveySent: false,
+        createdAt: slotDate,
+        updatedAt: slotDate,
+    };
+
+    assert.deepEqual(
+        getScheduledOperationsForDay(
+            false,
+            selectedDateKey,
+            [operation],
+            newYorkTimeZone,
+        ).map((item) => item.id),
+        [operation.id],
+    );
+    assert.deepEqual(
+        getScheduledFieldsForDay(
+            false,
+            selectedDateKey,
+            [buildRaisedBed(field)],
+            newYorkTimeZone,
+        ).map((item) => item.id),
+        [field.id],
+    );
+    assert.deepEqual(
+        getDayDeliveryRequests(
+            false,
+            selectedDateKey,
+            [deliveryRequest],
+            newYorkTimeZone,
+        ).map((item) => item.id),
+        [deliveryRequest.id],
+    );
+    assert.equal(
+        isSameScheduleDay(
+            operation.scheduledDate,
+            selectedDateKey,
+            newYorkTimeZone,
+        ),
+        true,
     );
 });
 

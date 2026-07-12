@@ -20,9 +20,9 @@ export async function ScheduleDayHeaderSection({
     isToday,
     date,
 }: ScheduleDayHeaderSectionProps) {
-    const [{ scheduledFields, scheduledOperations, timeZone }, operationsData] =
+    const [{ dateKey, scheduledFields, scheduledOperations }, operationsData] =
         await Promise.all([
-            getScheduleDayData(date.toISOString(), isToday),
+            getScheduleDayData(date, isToday),
             getScheduleOperationsData(),
         ]);
 
@@ -77,8 +77,8 @@ export async function ScheduleDayHeaderSection({
     const summaryCopyText = [
         `Sažetak za ${new Intl.DateTimeFormat('hr-HR', {
             dateStyle: 'full',
-            timeZone,
-        }).format(date)}`,
+            timeZone: 'UTC',
+        }).format(new Date(`${dateKey}T00:00:00.000Z`))}`,
         `Odobreni zadaci: ${approvedTasksCount}`,
         `Odobreno vrijeme: ${formatMinutes(approvedDuration)}`,
     ].join('\n');

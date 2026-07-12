@@ -61,7 +61,7 @@ type FarmSummary = {
 };
 
 interface FarmOperationsScheduleSectionProps {
-    date: Date;
+    dateKey: string;
     timeZone: string;
     farm: FarmSummary;
     scheduledOperations: Operation[];
@@ -85,7 +85,7 @@ function getOperationLabel(
 }
 
 export function FarmOperationsScheduleSection({
-    date,
+    dateKey,
     timeZone,
     farm,
     scheduledOperations,
@@ -421,7 +421,7 @@ export function FarmOperationsScheduleSection({
                         !!operation.scheduledDate &&
                         !isSameScheduleDay(
                             operation.scheduledDate,
-                            date,
+                            dateKey,
                             timeZone,
                         );
 
