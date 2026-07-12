@@ -2,6 +2,45 @@ import { expect, test } from '@playwright/experimental-ct-react';
 import { GardenAccountMenuItemsStory } from './GardenAccountMenuItemsStory';
 
 test.describe('Garden account menu items', () => {
+    test('switches gardens in both directions before account queries refresh', async ({
+        mount,
+        page,
+    }) => {
+        const accountSwitchRequests: string[] = [];
+        await page.route(
+            '**/api/gredice/api/accounts/switch',
+            async (route) => {
+                accountSwitchRequests.push(route.request().postData() ?? '');
+                await route.fulfill({
+                    contentType: 'application/json',
+                    body: JSON.stringify({
+                        success: true,
+                        accountId: 'other-account',
+                    }),
+                });
+            },
+        );
+        await mount(<GardenAccountMenuItemsStory />);
+
+        await page.getByRole('button', { name: 'Otvori izbornik' }).click();
+        await page.getByRole('menuitem', { name: /Drugi vrt/ }).click();
+
+        await expect(page.getByTestId('selected-garden-id')).toHaveText('3', {
+            timeout: 1_000,
+        });
+
+        await page.getByRole('button', { name: 'Otvori izbornik' }).click();
+        await page.getByRole('menuitem', { name: /Test/ }).click();
+
+        await expect(page.getByTestId('selected-garden-id')).toHaveText('1', {
+            timeout: 1_000,
+        });
+        expect(accountSwitchRequests).toEqual([
+            JSON.stringify({ accountId: 'other-account' }),
+            JSON.stringify({ accountId: 'test-account' }),
+        ]);
+    });
+
     test('shows sandbox gardens inline on mobile', async ({ mount, page }) => {
         await page.setViewportSize({ width: 600, height: 800 });
         await mount(<GardenAccountMenuItemsStory />);
