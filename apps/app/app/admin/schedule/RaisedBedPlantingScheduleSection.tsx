@@ -53,7 +53,8 @@ import { useOptimisticScheduleActions } from './useOptimisticScheduleActions';
 import { VerifyPlantingModal } from './VerifyPlantingModal';
 
 interface RaisedBedPlantingScheduleSectionProps {
-    date: Date;
+    dateKey: string;
+    timeZone: string;
     physicalId: string;
     raisedBeds: RaisedBed[];
     scheduledFields: RaisedBedField[];
@@ -83,7 +84,8 @@ function getSowingTaskLabel({
 }
 
 export function RaisedBedPlantingScheduleSection({
-    date,
+    dateKey,
+    timeZone,
     physicalId,
     raisedBeds,
     scheduledFields,
@@ -476,7 +478,11 @@ export function RaisedBedPlantingScheduleSection({
                         !fieldApproved && !fieldLocked;
                     const showScheduledDate =
                         !!field.plantScheduledDate &&
-                        !isSameScheduleDay(field.plantScheduledDate, date);
+                        !isSameScheduleDay(
+                            field.plantScheduledDate,
+                            dateKey,
+                            timeZone,
+                        );
 
                     return (
                         <div key={field.id}>
@@ -586,7 +592,15 @@ export function RaisedBedPlantingScheduleSection({
                                             className="shrink-0 select-none"
                                         >
                                             {showScheduledDate ? (
-                                                <LocalDateTime time={false}>
+                                                <LocalDateTime
+                                                    time={false}
+                                                    format={{
+                                                        year: 'numeric',
+                                                        month: 'numeric',
+                                                        day: 'numeric',
+                                                        timeZone,
+                                                    }}
+                                                >
                                                     {field.plantScheduledDate}
                                                 </LocalDateTime>
                                             ) : (

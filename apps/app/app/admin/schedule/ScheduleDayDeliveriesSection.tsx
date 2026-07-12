@@ -10,10 +10,7 @@ export async function ScheduleDayDeliveriesSection({
     isToday,
     date,
 }: ScheduleDayDeliveriesSectionProps) {
-    const { todaysDeliveryRequests } = await getScheduleDayData(
-        date.toISOString(),
-        isToday,
-    );
+    const { todaysDeliveryRequests } = await getScheduleDayData(date, isToday);
 
     return <DeliveryRequestsSection requests={todaysDeliveryRequests} />;
 }

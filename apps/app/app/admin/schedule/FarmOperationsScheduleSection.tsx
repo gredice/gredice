@@ -61,7 +61,8 @@ type FarmSummary = {
 };
 
 interface FarmOperationsScheduleSectionProps {
-    date: Date;
+    dateKey: string;
+    timeZone: string;
     farm: FarmSummary;
     scheduledOperations: Operation[];
     operationsData: EntityStandardized[] | null | undefined;
@@ -84,7 +85,8 @@ function getOperationLabel(
 }
 
 export function FarmOperationsScheduleSection({
-    date,
+    dateKey,
+    timeZone,
     farm,
     scheduledOperations,
     operationsData,
@@ -417,7 +419,11 @@ export function FarmOperationsScheduleSection({
                               : 'text-muted-foreground';
                     const showScheduledDate =
                         !!operation.scheduledDate &&
-                        !isSameScheduleDay(operation.scheduledDate, date);
+                        !isSameScheduleDay(
+                            operation.scheduledDate,
+                            dateKey,
+                            timeZone,
+                        );
 
                     return (
                         <Row
@@ -560,7 +566,15 @@ export function FarmOperationsScheduleSection({
                                         className="shrink-0 select-none"
                                     >
                                         {showScheduledDate ? (
-                                            <LocalDateTime time={false}>
+                                            <LocalDateTime
+                                                time={false}
+                                                format={{
+                                                    year: 'numeric',
+                                                    month: 'numeric',
+                                                    day: 'numeric',
+                                                    timeZone,
+                                                }}
+                                            >
                                                 {operation.scheduledDate}
                                             </LocalDateTime>
                                         ) : (

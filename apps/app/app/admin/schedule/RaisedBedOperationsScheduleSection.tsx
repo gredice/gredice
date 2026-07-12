@@ -58,7 +58,8 @@ import { useOptimisticScheduleActions } from './useOptimisticScheduleActions';
 import { VerifyOperationModal } from './VerifyOperationModal';
 
 interface RaisedBedOperationsScheduleSectionProps {
-    date: Date;
+    dateKey: string;
+    timeZone: string;
     physicalId: string;
     raisedBeds: RaisedBed[];
     scheduledOperations: Operation[];
@@ -71,7 +72,8 @@ interface RaisedBedOperationsScheduleSectionProps {
 }
 
 export function RaisedBedOperationsScheduleSection({
-    date,
+    dateKey,
+    timeZone,
     physicalId,
     raisedBeds,
     scheduledOperations,
@@ -500,7 +502,11 @@ export function RaisedBedOperationsScheduleSection({
                     );
                     const showScheduledDate =
                         !!operation.scheduledDate &&
-                        !isSameScheduleDay(operation.scheduledDate, date);
+                        !isSameScheduleDay(
+                            operation.scheduledDate,
+                            dateKey,
+                            timeZone,
+                        );
 
                     return (
                         <div key={operation.id}>
@@ -648,7 +654,15 @@ export function RaisedBedOperationsScheduleSection({
                                             className="shrink-0 select-none"
                                         >
                                             {showScheduledDate ? (
-                                                <LocalDateTime time={false}>
+                                                <LocalDateTime
+                                                    time={false}
+                                                    format={{
+                                                        year: 'numeric',
+                                                        month: 'numeric',
+                                                        day: 'numeric',
+                                                        timeZone,
+                                                    }}
+                                                >
                                                     {operation.scheduledDate}
                                                 </LocalDateTime>
                                             ) : (

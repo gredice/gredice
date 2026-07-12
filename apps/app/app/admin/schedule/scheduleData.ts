@@ -2,10 +2,14 @@ import 'server-only';
 
 import {
     cacheScheduleRead,
+    DEFAULT_ADMIN_TIME_ZONE,
     getAllOperations,
     getAllRaisedBeds,
     getDeliveryRequestsSummary,
     getEntitiesFormatted,
+    getSetting,
+    isAdminGeneralSettingValue,
+    SettingsKeys,
     scheduleCacheKeys,
     scheduleCacheTtls,
 } from '@gredice/storage';
@@ -16,6 +20,7 @@ import {
     getScheduledFieldsForDay,
     getScheduledOperationsForDay,
 } from './scheduleDayFilters';
+import { getScheduleCalendarDateKey } from './scheduleTimeZone';
 
 const operationsBackDays = 90;
 
@@ -45,6 +50,14 @@ export const getSchedulePlantSorts = cache(async () => {
 
 export const getScheduleOperationsData = cache(async () => {
     return getEntitiesFormatted<EntityStandardized>('operation');
+});
+
+export const getScheduleTimeZone = cache(async () => {
+    const setting = await getSetting(SettingsKeys.AdminGeneral);
+
+    return isAdminGeneralSettingValue(setting?.value)
+        ? setting.value.timeZone
+        : DEFAULT_ADMIN_TIME_ZONE;
 });
 
 export const getScheduleOperations = cache(async () => {
@@ -89,12 +102,13 @@ export const getScheduleDeliveryRequests = cache(async () => {
     return getDeliveryRequestsSummary();
 });
 
-export const getScheduleDayData = cache(
+const getScheduleDayDataByDateKey = cache(
     async (dateKey: string, isToday: boolean) => {
+        const timeZone = await getScheduleTimeZone();
+
         return cacheScheduleRead(
-            scheduleCacheKeys.adminDay(dateKey, isToday),
+            `${scheduleCacheKeys.adminDay(dateKey, isToday)}:timeZone:${encodeURIComponent(timeZone)}`,
             async () => {
-                const date = new Date(dateKey);
                 const [raisedBeds, operations, deliveryRequests] =
                     await Promise.all([
                         getScheduleRaisedBeds(),
@@ -103,21 +117,26 @@ export const getScheduleDayData = cache(
                     ]);
 
                 return {
+                    dateKey,
                     raisedBeds,
+                    timeZone,
                     scheduledFields: getScheduledFieldsForDay(
                         isToday,
-                        date,
+                        dateKey,
                         raisedBeds,
+                        timeZone,
                     ),
                     scheduledOperations: getScheduledOperationsForDay(
                         isToday,
-                        date,
+                        dateKey,
                         operations,
+                        timeZone,
                     ),
                     todaysDeliveryRequests: getDayDeliveryRequests(
                         isToday,
-                        date,
+                        dateKey,
                         deliveryRequests,
+                        timeZone,
                     ),
                 };
             },
@@ -125,3 +144,10 @@ export const getScheduleDayData = cache(
         );
     },
 );
+
+export function getScheduleDayData(date: Date, isToday: boolean) {
+    return getScheduleDayDataByDateKey(
+        getScheduleCalendarDateKey(date),
+        isToday,
+    );
+}

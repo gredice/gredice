@@ -30,12 +30,15 @@ export async function ScheduleDayOperationsSection({
     isToday,
     date,
 }: ScheduleDayOperationsSectionProps) {
-    const [{ raisedBeds, scheduledOperations }, plantSorts, operationsData] =
-        await Promise.all([
-            getScheduleDayData(date.toISOString(), isToday),
-            getSchedulePlantSorts(),
-            getScheduleOperationsData(),
-        ]);
+    const [
+        { dateKey, raisedBeds, scheduledOperations, timeZone },
+        plantSorts,
+        operationsData,
+    ] = await Promise.all([
+        getScheduleDayData(date, isToday),
+        getSchedulePlantSorts(),
+        getScheduleOperationsData(),
+    ]);
     if (scheduledOperations.length === 0) {
         return null;
     }
@@ -130,7 +133,8 @@ export async function ScheduleDayOperationsSection({
                         return (
                             <RaisedBedOperationsScheduleSection
                                 key={key}
-                                date={date}
+                                dateKey={dateKey}
+                                timeZone={timeZone}
                                 physicalId={physicalId}
                                 raisedBeds={beds}
                                 scheduledOperations={scheduledOperations}
@@ -146,7 +150,8 @@ export async function ScheduleDayOperationsSection({
                 {operationFarms.map((farm) => (
                     <FarmOperationsScheduleSection
                         key={farm.id}
-                        date={date}
+                        dateKey={dateKey}
+                        timeZone={timeZone}
                         farm={farm}
                         scheduledOperations={scheduledOperations}
                         operationsData={operationsData}
