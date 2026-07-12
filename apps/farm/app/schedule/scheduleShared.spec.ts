@@ -8,11 +8,12 @@ import {
 const wateringOperationData = {
     id: 167,
     attributes: {
+        visualReward: 'watering',
         stage: {
             id: 1,
             information: {
-                name: 'watering',
-                label: 'Zalijevanje',
+                name: 'maintenance',
+                label: 'Održavanje',
             },
         },
     },
@@ -31,7 +32,7 @@ const maintenanceOperationData = {
     },
 } satisfies EntityStandardized;
 
-test('identifies watering from the operation stage', () => {
+test('identifies watering from its visual reward regardless of plant stage', () => {
     expect(isWateringOperationData(wateringOperationData)).toBe(true);
     expect(isWateringOperationData(maintenanceOperationData)).toBe(false);
     expect(isWateringOperationData(undefined)).toBe(false);

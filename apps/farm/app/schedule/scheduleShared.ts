@@ -203,7 +203,7 @@ export function getOperationDurationMinutes(
 export function isWateringOperationData(
     operationData: EntityStandardized | undefined,
 ) {
-    return operationData?.attributes?.stage?.information.name === 'watering';
+    return operationData?.attributes?.visualReward === 'watering';
 }
 
 export function isGroupedWateringScheduleOperation(
