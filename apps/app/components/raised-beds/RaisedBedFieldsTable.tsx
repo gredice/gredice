@@ -103,9 +103,11 @@ function getCurrentDateKey(status?: string | null) {
         case 'sowed':
             return 'plantSowDate';
         case 'sprouted':
-        case 'firstFlowers':
-        case 'firstFruitSet':
             return 'plantGrowthDate';
+        case 'firstFlowers':
+            return 'plantFirstFlowersDate';
+        case 'firstFruitSet':
+            return 'plantFirstFruitSetDate';
         case 'ready':
             return 'plantReadyDate';
         case 'harvested':
@@ -132,6 +134,21 @@ function normalizeDate(value?: Date | string | null) {
     }
 
     return value;
+}
+
+function getPlantStatusDate(
+    plantCycle: RaisedBedFieldPlantCycle | undefined,
+    status: string,
+) {
+    const statusChanges = plantCycle?.statusChanges ?? [];
+    for (let index = statusChanges.length - 1; index >= 0; index -= 1) {
+        const statusChange = statusChanges[index];
+        if (statusChange?.status === status) {
+            return statusChange.occurredAt;
+        }
+    }
+
+    return null;
 }
 
 interface RaisedBedFieldsTableProps {
@@ -260,6 +277,18 @@ export async function RaisedBedFieldsTable({
                                 plantGrowthDate: normalizeDate(
                                     plantCycle.plantGrowthDate,
                                 ),
+                                plantFirstFlowersDate: normalizeDate(
+                                    getPlantStatusDate(
+                                        plantCycle,
+                                        'firstFlowers',
+                                    ),
+                                ),
+                                plantFirstFruitSetDate: normalizeDate(
+                                    getPlantStatusDate(
+                                        plantCycle,
+                                        'firstFruitSet',
+                                    ),
+                                ),
                                 plantReadyDate: normalizeDate(
                                     plantCycle.plantReadyDate,
                                 ),
@@ -356,6 +385,22 @@ function RaisedBedFieldTile({
             label: 'Proklijalo',
             value: normalizeDate(field?.plantGrowthDate),
             current: currentDateKey === 'plantGrowthDate',
+        },
+        {
+            key: 'plantFirstFlowersDate',
+            label: 'Prvi cvjetovi',
+            value: normalizeDate(
+                getPlantStatusDate(activePlantCycle, 'firstFlowers'),
+            ),
+            current: currentDateKey === 'plantFirstFlowersDate',
+        },
+        {
+            key: 'plantFirstFruitSetDate',
+            label: 'Prvi plodovi',
+            value: normalizeDate(
+                getPlantStatusDate(activePlantCycle, 'firstFruitSet'),
+            ),
+            current: currentDateKey === 'plantFirstFruitSetDate',
         },
         {
             key: 'plantReadyDate',
