@@ -178,23 +178,13 @@ export default async function PlantSortPage(
 
     const sortPath = KnownPages.PlantSort(alias, sortData.information.name);
     const sortUrl = `https://www.gredice.com${sortPath}`;
-    const hasPerPlantPrice = typeof basePlantData.prices?.perPlant === 'number';
+    const sortPrice = sortData.prices?.perPlant;
+    const hasPerPlantPrice = typeof sortPrice === 'number';
+    const hasPricedOffer = hasPerPlantPrice && sortPrice > 0;
     const relationships = hasPlantRelationships(sortData.relationships)
         ? sortData.relationships
         : basePlantData.relationships;
     const health = basePlantData.health;
-
-    if (!hasPerPlantPrice) {
-        console.error('Missing per-plant price for plant sort product schema', {
-            alias,
-            plantId: basePlantData.id,
-            plantName: basePlantData.information.name,
-            sortAlias: sort,
-            sortId: sortData.id,
-            sortName: sortData.information.name,
-            sortUrl,
-        });
-    }
 
     return (
         <div className="py-8">
@@ -223,19 +213,23 @@ export default async function PlantSortPage(
                                   url: `https://www.gredice.com${KnownPages.Plant(alias)}`,
                               },
                               url: sortUrl,
-                              offers: {
-                                  '@type': 'Offer',
-                                  price: basePlantData.prices.perPlant.toFixed(
-                                      2,
-                                  ),
-                                  priceCurrency: 'EUR',
-                                  availability:
-                                      sortData.store?.availableInStore === false
-                                          ? 'https://schema.org/OutOfStock'
-                                          : 'https://schema.org/InStock',
-                                  url: sortUrl,
-                                  hasMerchantReturnPolicy: merchantReturnPolicy,
-                              },
+                              ...(hasPricedOffer
+                                  ? {
+                                        offers: {
+                                            '@type': 'Offer',
+                                            price: sortPrice.toFixed(2),
+                                            priceCurrency: 'EUR',
+                                            availability:
+                                                sortData.store
+                                                    ?.availableInStore === false
+                                                    ? 'https://schema.org/OutOfStock'
+                                                    : 'https://schema.org/InStock',
+                                            url: sortUrl,
+                                            hasMerchantReturnPolicy:
+                                                merchantReturnPolicy,
+                                        },
+                                    }
+                                  : {}),
                           }
                         : {
                               '@context': 'https://schema.org',

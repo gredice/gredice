@@ -80,24 +80,29 @@ export async function getPricingCatalogHistory({
                 currentPrice: pkg.priceEur,
             }),
         ),
-        ...plantRows.map((row) =>
-            priceHistoryRequest({
-                entityId: row.entityId,
-                entityTypeName: row.kind === 'plant' ? 'plant' : 'plantSort',
-                attributeCategory: 'prices',
-                attributeName: 'perPlant',
-                currentPrice: row.price,
-            }),
-        ),
-        ...operationRows.map((row) =>
-            priceHistoryRequest({
-                entityId: row.entityId,
-                entityTypeName: 'operation',
-                attributeCategory: 'prices',
-                attributeName: 'perOperation',
-                currentPrice: row.price,
-            }),
-        ),
+        ...plantRows
+            .filter((row) => row.price > 0)
+            .map((row) =>
+                priceHistoryRequest({
+                    entityId: row.entityId,
+                    entityTypeName:
+                        row.kind === 'plant' ? 'plant' : 'plantSort',
+                    attributeCategory: 'prices',
+                    attributeName: 'perPlant',
+                    currentPrice: row.price,
+                }),
+            ),
+        ...operationRows
+            .filter((row) => row.availability === 'available')
+            .map((row) =>
+                priceHistoryRequest({
+                    entityId: row.entityId,
+                    entityTypeName: 'operation',
+                    attributeCategory: 'prices',
+                    attributeName: 'perOperation',
+                    currentPrice: row.price,
+                }),
+            ),
         ...deliveryRows.map((row) =>
             priceHistoryRequest({
                 entityId: row.entityId,

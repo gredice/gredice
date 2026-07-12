@@ -66,7 +66,8 @@ export default async function PlantsPage({
                                 url: `https://www.gredice.com${KnownPages.Plant(plant.information.name)}`,
                                 image: plant.image?.cover?.url,
                                 offers:
-                                    typeof plant.prices?.perPlant === 'number'
+                                    typeof plant.prices?.perPlant ===
+                                        'number' && plant.prices.perPlant > 0
                                         ? {
                                               '@type': 'Offer',
                                               price: plant.prices.perPlant.toFixed(

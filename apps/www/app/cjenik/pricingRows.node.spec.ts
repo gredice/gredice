@@ -129,6 +129,39 @@ test('buildPlantPricingRows includes plant sorts with their own numeric price an
     );
 });
 
+test('buildPlantPricingRows keeps zero-price plants and sorts so they can be marked unavailable', () => {
+    const rows = buildPlantPricingRows(
+        [
+            {
+                id: 14,
+                information: { name: 'Nedostupna biljka' },
+                prices: { perPlant: 0 },
+            },
+        ],
+        [
+            {
+                id: 15,
+                information: {
+                    name: 'Nedostupna sorta',
+                    plant: {
+                        id: 14,
+                        information: { name: 'Nedostupna biljka' },
+                    },
+                },
+                prices: { perPlant: 0 },
+            },
+        ],
+    );
+
+    assert.deepEqual(
+        rows.map(({ kind, price }) => ({ kind, price })),
+        [
+            { kind: 'plant', price: 0 },
+            { kind: 'sort', price: 0 },
+        ],
+    );
+});
+
 test('buildOperationPricingRows includes operations only when numeric prices exist and links public operation pages', () => {
     const rows = buildOperationPricingRows([
         {
@@ -159,6 +192,63 @@ test('buildOperationPricingRows includes operations only when numeric prices exi
                 price: 4,
             },
             { href: '/radnje/zalijevanje', label: 'Zalijevanje', price: 1.25 },
+        ],
+    );
+});
+
+test('buildOperationPricingRows distinguishes paid, internal, and unavailable operations', () => {
+    const rows = buildOperationPricingRows([
+        {
+            id: 24,
+            information: { label: 'Plaćena radnja' },
+            attributes: {
+                internal: false,
+                stage: { information: { label: 'Održavanje' } },
+            },
+            prices: { perOperation: 0.5 },
+        },
+        {
+            id: 25,
+            information: { label: 'Interna radnja' },
+            attributes: {
+                internal: true,
+                stage: { information: { label: 'Evidencija' } },
+            },
+            prices: { perOperation: 99 },
+        },
+        {
+            id: 26,
+            information: { label: 'Nedostupna radnja' },
+            attributes: {
+                internal: false,
+                stage: { information: { label: 'Berba' } },
+            },
+            prices: { perOperation: 0 },
+        },
+    ]);
+
+    assert.deepEqual(
+        rows.map(({ availability, label, stageLabel }) => ({
+            availability,
+            label,
+            stageLabel,
+        })),
+        [
+            {
+                availability: 'internal',
+                label: 'Interna radnja',
+                stageLabel: 'Evidencija',
+            },
+            {
+                availability: 'unavailable',
+                label: 'Nedostupna radnja',
+                stageLabel: 'Berba',
+            },
+            {
+                availability: 'available',
+                label: 'Plaćena radnja',
+                stageLabel: 'Održavanje',
+            },
         ],
     );
 });

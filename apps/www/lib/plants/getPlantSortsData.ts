@@ -6,6 +6,7 @@ import {
 import { cache } from 'react';
 
 export type PlantSortDataWithRelationships = PlantSortData & {
+    prices?: PlantData['prices'];
     relationships?: PlantData['relationships'];
 };
 

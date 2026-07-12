@@ -1,5 +1,9 @@
 import type { Route } from 'next';
 import { PublicDirectoryPaths } from '../../../../packages/directory-types/src/publicUrls.ts';
+import {
+    getOperationPriceAvailability,
+    type OperationPriceAvailability,
+} from '../../lib/operationPricing.ts';
 
 type EntityId = number | string;
 
@@ -53,6 +57,14 @@ type NamedPlantSort = PerPlantPrice & {
 type NamedOperation = PerOperationPrice & {
     id: EntityId;
     slug?: string | null;
+    attributes?: {
+        internal?: boolean;
+        stage?: {
+            information?: {
+                label?: string | null;
+            } | null;
+        } | null;
+    } | null;
     information: {
         label: string;
     };
@@ -104,6 +116,8 @@ export type OperationPricingRow<
     href: Route;
     entityId: EntityId;
     price: number;
+    availability: OperationPriceAvailability;
+    stageLabel: string;
     operation: TOperation;
 };
 
@@ -212,6 +226,9 @@ export function buildOperationPricingRows<TOperation extends NamedOperation>(
             ),
             entityId: operation.id,
             price: operation.prices.perOperation,
+            availability: getOperationPriceAvailability(operation),
+            stageLabel:
+                operation.attributes?.stage?.information?.label ?? 'Radnja',
             operation,
         }))
         .sort((first, second) =>
