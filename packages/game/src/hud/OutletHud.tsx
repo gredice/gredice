@@ -148,6 +148,7 @@ export function OutletHud() {
                 hudLayer
                 trigger={
                     <IconButton
+                        aria-label="Outlet sadnica"
                         title="Outlet sadnica"
                         variant="plain"
                         className="size-10 rounded-full"
@@ -156,6 +157,7 @@ export function OutletHud() {
                             <Discount className="size-6" />
                             {availableItemsCount > 0 && (
                                 <div
+                                    aria-hidden="true"
                                     className={cx(
                                         'absolute -top-4 -right-4 flex size-6 items-center justify-center rounded-full border border-border bg-muted px-1.5 text-sm font-semibold leading-none text-muted-foreground shadow-sm',
                                         availableItemsCount > 99 &&

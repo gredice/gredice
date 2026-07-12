@@ -7,12 +7,15 @@ test('outlet HUD uses a neutral badge for the available item count', async ({
 }) => {
     await mount(<OutletHudStory searchParams="vrt=1" />);
 
-    const outletButton = page.locator('button[title="Outlet sadnica"]');
+    const outletButton = page.getByRole('button', {
+        name: 'Outlet sadnica',
+    });
     const availabilityBadge = outletButton.locator(
         '[data-outlet-availability-badge]',
     );
 
     await expect(outletButton).toBeVisible();
+    await expect(outletButton).toHaveAccessibleName('Outlet sadnica');
     await expect(availabilityBadge).toHaveText('4');
     await expect(availabilityBadge).toHaveClass(/bg-muted/u);
     await expect(availabilityBadge).toHaveClass(/text-muted-foreground/u);
