@@ -1,7 +1,26 @@
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 
 test.describe.configure({ mode: 'default' });
+
+async function expectPillBorderRadius(locator: Locator) {
+    await expect
+        .poll(async () =>
+            locator.evaluate((element) => {
+                const styles = window.getComputedStyle(element);
+                const radii = [
+                    styles.borderTopLeftRadius,
+                    styles.borderTopRightRadius,
+                    styles.borderBottomRightRadius,
+                    styles.borderBottomLeftRadius,
+                ].map((radius) => Number.parseFloat(radius));
+                const { height } = element.getBoundingClientRect();
+
+                return Math.min(...radii) - height / 2;
+            }),
+        )
+        .toBeGreaterThanOrEqual(0);
+}
 
 async function expectMobileNavActionsDoNotOverlap(page: Page) {
     const cta = page.getByRole('link', { name: 'Moj novi vrt' });
@@ -192,7 +211,7 @@ test('navbar floats on scroll and landing game frame is rounded', async ({
         .toBeGreaterThan(10);
 
     await page.evaluate(() => window.scrollTo(0, 160));
-    await expect(header).toHaveCSS('border-radius', '16px');
+    await expectPillBorderRadius(header);
     await expect(header).toHaveCSS('border-bottom-width', '1px');
     await expectMobileNavActionsDoNotOverlap(page);
 
@@ -216,7 +235,7 @@ test('desktop floating navbar keeps container width', async ({ page }) => {
 
     const header = page.locator('header');
     await page.evaluate(() => window.scrollTo(0, 160));
-    await expect(header).toHaveCSS('border-radius', '16px');
+    await expectPillBorderRadius(header);
 
     const headerBox = await header.boundingBox();
     expect(headerBox).not.toBeNull();
