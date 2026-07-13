@@ -47,8 +47,8 @@ function isDeliveryDashboard(value: unknown): value is DeliveryDashboardData {
     return value.kind === 'driver'
         ? 'batches' in value &&
               Array.isArray(value.batches) &&
-              'maximumRouteDeliveries' in value &&
-              typeof value.maximumRouteDeliveries === 'number' &&
+              'maximumRouteStops' in value &&
+              typeof value.maximumRouteStops === 'number' &&
               'maximumRouteWindowHours' in value &&
               typeof value.maximumRouteWindowHours === 'number'
         : value.kind === 'customer' &&

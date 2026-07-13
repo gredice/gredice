@@ -7,35 +7,23 @@ const secondRequestId = 'c724532a-79fe-4c77-93e3-e92dc0aeb143';
 
 test('accepts multiple unique delivery request IDs', () => {
     assert.deepEqual(
-        parseDeliveryRunRequestBody(
-            { deliveryRequestIds: [firstRequestId, secondRequestId] },
-            26,
-        ),
+        parseDeliveryRunRequestBody({
+            deliveryRequestIds: [firstRequestId, secondRequestId],
+        }),
         [firstRequestId, secondRequestId],
     );
 });
 
-test('rejects duplicate, malformed, empty, and oversized selections', () => {
+test('rejects duplicate, malformed, and empty selections', () => {
     assert.equal(
-        parseDeliveryRunRequestBody(
-            { deliveryRequestIds: [firstRequestId, firstRequestId] },
-            26,
-        ),
+        parseDeliveryRunRequestBody({
+            deliveryRequestIds: [firstRequestId, firstRequestId],
+        }),
         null,
     );
     assert.equal(
-        parseDeliveryRunRequestBody({ deliveryRequestIds: ['invalid'] }, 26),
+        parseDeliveryRunRequestBody({ deliveryRequestIds: ['invalid'] }),
         null,
     );
-    assert.equal(
-        parseDeliveryRunRequestBody({ deliveryRequestIds: [] }, 26),
-        null,
-    );
-    assert.equal(
-        parseDeliveryRunRequestBody(
-            { deliveryRequestIds: [firstRequestId, secondRequestId] },
-            1,
-        ),
-        null,
-    );
+    assert.equal(parseDeliveryRunRequestBody({ deliveryRequestIds: [] }), null);
 });

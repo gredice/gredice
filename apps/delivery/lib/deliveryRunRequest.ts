@@ -1,17 +1,13 @@
 const deliveryRequestIdPattern =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-export function parseDeliveryRunRequestBody(
-    value: unknown,
-    maximumRequestCount: number,
-) {
+export function parseDeliveryRunRequestBody(value: unknown) {
     if (
         typeof value !== 'object' ||
         value === null ||
         !('deliveryRequestIds' in value) ||
         !Array.isArray(value.deliveryRequestIds) ||
-        value.deliveryRequestIds.length === 0 ||
-        value.deliveryRequestIds.length > maximumRequestCount
+        value.deliveryRequestIds.length === 0
     ) {
         return null;
     }

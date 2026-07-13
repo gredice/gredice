@@ -9,6 +9,7 @@ import {
     formatDeliveryDateTime,
     formatDeliveryTime,
 } from '../lib/deliveryFormatting';
+import { groupByDeliveryStop } from '../lib/deliveryStopGrouping';
 import { DeliverySelectionItem } from './DeliverySelectionItem';
 
 export function DeliveryBatchCard({
@@ -16,6 +17,7 @@ export function DeliveryBatchCard({
     disabled,
     selectionLimitReached,
     selectedRequestIds,
+    selectedStopKeys,
     onToggleBatch,
     onToggleOrder,
 }: {
@@ -23,9 +25,11 @@ export function DeliveryBatchCard({
     disabled: boolean;
     selectionLimitReached: boolean;
     selectedRequestIds: ReadonlySet<string>;
+    selectedStopKeys: ReadonlySet<string>;
     onToggleBatch: (checked: boolean) => void;
     onToggleOrder: (requestId: string, checked: boolean) => void;
 }) {
+    const stopGroups = groupByDeliveryStop(batch.orders);
     const selectedCount = batch.orders.filter((order) =>
         selectedRequestIds.has(order.requestId),
     ).length;
@@ -55,11 +59,13 @@ export function DeliveryBatchCard({
                             >
                                 <Truck className="size-4" />
                                 {batch.deliveryCount}{' '}
-                                {batch.deliveryCount === 1
-                                    ? 'dostava'
-                                    : batch.deliveryCount < 5
-                                      ? 'dostave'
-                                      : 'dostava'}
+                                {batch.deliveryCount === 1 ? 'urod' : 'uroda'} ·{' '}
+                                {batch.stopCount}{' '}
+                                {batch.stopCount === 1
+                                    ? 'stanica'
+                                    : batch.stopCount < 5
+                                      ? 'stanice'
+                                      : 'stanica'}
                             </Typography>
                             {batch.pickupLocationName ? (
                                 <Typography
@@ -93,22 +99,27 @@ export function DeliveryBatchCard({
                     />
                 </div>
                 <div className="divide-y border-t">
-                    {batch.orders.map((order) => {
-                        const checked = selectedRequestIds.has(order.requestId);
-                        return (
+                    {stopGroups.flatMap((group) => {
+                        const firstOrder = group.items[0];
+                        if (!firstOrder) return [];
+                        const checked = group.items.every((order) =>
+                            selectedRequestIds.has(order.requestId),
+                        );
+                        return [
                             <DeliverySelectionItem
-                                key={order.requestId}
-                                order={order}
+                                key={group.stopKey}
+                                orders={group.items}
                                 checked={checked}
                                 disabled={
                                     disabled ||
-                                    (selectionLimitReached && !checked)
+                                    (selectionLimitReached &&
+                                        !selectedStopKeys.has(group.stopKey))
                                 }
                                 onCheckedChange={(value) =>
-                                    onToggleOrder(order.requestId, value)
+                                    onToggleOrder(firstOrder.requestId, value)
                                 }
-                            />
-                        );
+                            />,
+                        ];
                     })}
                 </div>
             </CardContent>
