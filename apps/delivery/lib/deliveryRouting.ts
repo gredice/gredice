@@ -166,6 +166,22 @@ export function nearestNeighborStopOrder(
     return ordered;
 }
 
+function estimatedRoadLeg(
+    first: DeliveryCoordinates,
+    second: DeliveryCoordinates,
+) {
+    const estimatedDistanceMeters = Math.round(
+        haversineDistanceMeters(first, second) * 1.25,
+    );
+    return {
+        estimatedDistanceMeters,
+        estimatedTravelSeconds: Math.max(
+            60,
+            Math.round(estimatedDistanceMeters / (25_000 / 3600)),
+        ),
+    };
+}
+
 function windowTimestamp(value: Date | undefined, fallback: number) {
     return value?.getTime() ?? fallback;
 }
@@ -177,41 +193,90 @@ function deliveryWindowKey(stop: GeocodedDeliveryRouteCandidate) {
 export function orderDeliveryStopsByTimeWindow(
     origin: DeliveryCoordinates,
     stops: GeocodedDeliveryRouteCandidate[],
+    departureTime = new Date(),
 ) {
-    const groups = new Map<string, GeocodedDeliveryRouteCandidate[]>();
-    for (const stop of stops) {
-        const key = deliveryWindowKey(stop);
-        const group = groups.get(key);
-        if (group) {
-            group.push(stop);
-        } else {
-            groups.set(key, [stop]);
-        }
-    }
-
-    const orderedGroups = Array.from(groups.values()).sort((first, second) => {
-        const firstStop = first[0];
-        const secondStop = second[0];
-        if (!firstStop || !secondStop) return 0;
-
-        const endDifference =
-            windowTimestamp(firstStop.windowEndAt, Number.POSITIVE_INFINITY) -
-            windowTimestamp(secondStop.windowEndAt, Number.POSITIVE_INFINITY);
-        if (endDifference !== 0) return endDifference;
-
-        return (
-            windowTimestamp(firstStop.windowStartAt, 0) -
-            windowTimestamp(secondStop.windowStartAt, 0)
-        );
-    });
-
+    const remaining = [...stops];
     const ordered: GeocodedDeliveryRouteCandidate[] = [];
     let current = origin;
-    for (const group of orderedGroups) {
-        const orderedGroup = nearestNeighborStopOrder(current, group);
-        ordered.push(...orderedGroup);
-        const last = orderedGroup.at(-1);
-        if (last) current = last;
+    let currentTime = departureTime.getTime();
+
+    while (remaining.length > 0) {
+        const candidates = remaining.map((stop, index) => {
+            const { estimatedTravelSeconds } = estimatedRoadLeg(current, stop);
+            const physicalArrivalTime =
+                currentTime + estimatedTravelSeconds * 1_000;
+            const scheduledArrivalTime = Math.max(
+                physicalArrivalTime,
+                windowTimestamp(stop.windowStartAt, physicalArrivalTime),
+            );
+            const windowEndTime = windowTimestamp(
+                stop.windowEndAt,
+                Number.POSITIVE_INFINITY,
+            );
+            const departureAfterService =
+                scheduledArrivalTime + deliveryStopServiceSeconds * 1_000;
+            const leavesRemainingReachable = remaining.every(
+                (other, otherIndex) => {
+                    if (otherIndex === index) return true;
+                    const nextLeg = estimatedRoadLeg(stop, other);
+                    const nextPhysicalArrival =
+                        departureAfterService +
+                        nextLeg.estimatedTravelSeconds * 1_000;
+                    const nextScheduledArrival = Math.max(
+                        nextPhysicalArrival,
+                        windowTimestamp(
+                            other.windowStartAt,
+                            nextPhysicalArrival,
+                        ),
+                    );
+                    return (
+                        nextScheduledArrival <=
+                        windowTimestamp(
+                            other.windowEndAt,
+                            Number.POSITIVE_INFINITY,
+                        )
+                    );
+                },
+            );
+
+            return {
+                index,
+                stop,
+                estimatedTravelSeconds,
+                scheduledArrivalTime,
+                windowEndTime,
+                feasible: scheduledArrivalTime <= windowEndTime,
+                leavesRemainingReachable,
+            };
+        });
+        const feasibleCandidates = candidates.filter(
+            (candidate) => candidate.feasible,
+        );
+        const candidatesKeepingOptionsOpen = feasibleCandidates.filter(
+            (candidate) => candidate.leavesRemainingReachable,
+        );
+        const viableCandidates =
+            candidatesKeepingOptionsOpen.length > 0
+                ? candidatesKeepingOptionsOpen
+                : feasibleCandidates.length > 0
+                  ? feasibleCandidates
+                  : candidates;
+        const rankedCandidates = viableCandidates.sort(
+            (first, second) =>
+                first.scheduledArrivalTime - second.scheduledArrivalTime ||
+                first.windowEndTime - second.windowEndTime ||
+                first.estimatedTravelSeconds - second.estimatedTravelSeconds,
+        );
+        const nextCandidate = rankedCandidates[0];
+        if (!nextCandidate) break;
+
+        const [next] = remaining.splice(nextCandidate.index, 1);
+        if (!next) break;
+        ordered.push(next);
+        current = next;
+        currentTime =
+            nextCandidate.scheduledArrivalTime +
+            (remaining.length > 0 ? deliveryStopServiceSeconds * 1_000 : 0);
     }
 
     return ordered;
@@ -459,12 +524,8 @@ export function estimateDeliveryRoute({
     let elapsedSeconds = 0;
     let totalDistanceMeters = 0;
     const plannedStops = orderedStops.map((stop, index) => {
-        const directDistance = haversineDistanceMeters(current, stop);
-        const estimatedDistanceMeters = Math.round(directDistance * 1.25);
-        const estimatedTravelSeconds = Math.max(
-            60,
-            Math.round(estimatedDistanceMeters / (25_000 / 3600)),
-        );
+        const { estimatedDistanceMeters, estimatedTravelSeconds } =
+            estimatedRoadLeg(current, stop);
         totalDistanceMeters += estimatedDistanceMeters;
         const scheduled = scheduledArrival({
             departureTime,
@@ -554,7 +615,7 @@ export async function planDeliveryRoute({
     const optimizeAsOneWindow = stopsShareDeliveryWindow(geocodedStops);
     const orderedStops = optimizeAsOneWindow
         ? geocodedStops
-        : orderDeliveryStopsByTimeWindow(origin, geocodedStops);
+        : orderDeliveryStopsByTimeWindow(origin, geocodedStops, departureTime);
 
     try {
         return await computeGoogleRoute({
