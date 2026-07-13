@@ -1,17 +1,21 @@
 'use client';
 
 import { Alert } from '@gredice/ui/Alert';
+import { Button } from '@gredice/ui/Button';
 import { Card, CardContent } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
 import {
     Map as MapIcon,
     MapPin,
     MyLocation,
+    Play,
+    Reset,
     Timer,
     Truck,
     Warning,
 } from '@gredice/ui/icons';
 import { Typography } from '@gredice/ui/Typography';
+import { useState } from 'react';
 import type { DriverTrackingState } from '../hooks/useDriverTracking';
 import type { DriverDeliveryDashboard } from '../lib/deliveryDashboardTypes';
 import {
@@ -52,12 +56,80 @@ export function DriverDashboard({
     dashboard: DriverDeliveryDashboard;
     trackingState: DriverTrackingState;
     pendingAction: string | null;
-    onStartRun: (slotId: number) => void;
+    onStartRun: (deliveryRequestIds: string[]) => void;
     onArrive: (runId: string, stopId: number) => void;
     onDeliver: (runId: string, stopId: number, notes?: string) => void;
 }) {
     const run = dashboard.activeRun;
     const locationMessage = trackingMessage(trackingState);
+    const [selectedRequestIds, setSelectedRequestIds] = useState<string[]>([]);
+    const availableRequestIds = dashboard.batches.flatMap((batch) =>
+        batch.orders.map((order) => order.requestId),
+    );
+    const availableRequestIdSet = new Set(availableRequestIds);
+    const effectiveSelectedRequestIds = selectedRequestIds.filter((requestId) =>
+        availableRequestIdSet.has(requestId),
+    );
+    const selectedRequestIdSet = new Set(effectiveSelectedRequestIds);
+    const selectionLimitReached =
+        effectiveSelectedRequestIds.length >= dashboard.maximumRouteDeliveries;
+    const selectedSlotCount = dashboard.batches.filter((batch) =>
+        batch.orders.some((order) => selectedRequestIdSet.has(order.requestId)),
+    ).length;
+    const selectedLocationCount = new Set(
+        dashboard.batches.flatMap((batch) =>
+            batch.orders.flatMap((order) =>
+                selectedRequestIdSet.has(order.requestId)
+                    ? [order.address]
+                    : [],
+            ),
+        ),
+    ).size;
+
+    const toggleOrder = (requestId: string, checked: boolean) => {
+        setSelectedRequestIds((current) => {
+            const availableCurrent = current.filter((id) =>
+                availableRequestIdSet.has(id),
+            );
+            if (!checked) {
+                return availableCurrent.filter((id) => id !== requestId);
+            }
+            if (
+                availableCurrent.includes(requestId) ||
+                availableCurrent.length >= dashboard.maximumRouteDeliveries
+            ) {
+                return availableCurrent;
+            }
+            return [...availableCurrent, requestId];
+        });
+    };
+
+    const toggleBatch = (
+        batch: DriverDeliveryDashboard['batches'][number],
+        checked: boolean,
+    ) => {
+        const batchIds = new Set(batch.orders.map((order) => order.requestId));
+        setSelectedRequestIds((current) => {
+            const availableCurrent = current.filter((id) =>
+                availableRequestIdSet.has(id),
+            );
+            if (!checked) {
+                return availableCurrent.filter((id) => !batchIds.has(id));
+            }
+
+            const next = [...availableCurrent];
+            for (const requestId of batchIds) {
+                if (
+                    next.length >= dashboard.maximumRouteDeliveries ||
+                    next.includes(requestId)
+                ) {
+                    continue;
+                }
+                next.push(requestId);
+            }
+            return next;
+        });
+    };
 
     return (
         <div className="min-h-[100dvh] bg-background">
@@ -73,7 +145,7 @@ export function DriverDashboard({
                     <Typography className="mt-1 text-muted-foreground">
                         {run
                             ? 'Slijedi redoslijed stanica, potvrdi dolazak i nastavi nakon svake dostave.'
-                            : 'Odaberi termin. Preuzimanjem se urod označava spremnim i računa optimalna ruta.'}
+                            : 'Odaberi narudžbe iz jednog ili više termina. Preuzimanjem se urodi označavaju spremnima i računa povezana ruta kroz sve lokacije.'}
                     </Typography>
                 </div>
 
@@ -148,7 +220,7 @@ export function DriverDashboard({
                                                 level="body3"
                                                 className="text-muted-foreground"
                                             >
-                                                Preuzeto
+                                                Dostavljeno
                                             </Typography>
                                             <Chip color="success" size="sm">
                                                 {
@@ -213,18 +285,151 @@ export function DriverDashboard({
                 ) : (
                     <section className="space-y-3">
                         {dashboard.batches.length > 0 ? (
-                            dashboard.batches.map((batch) => (
-                                <DeliveryBatchCard
-                                    key={batch.slotId}
-                                    batch={batch}
-                                    loading={
-                                        pendingAction ===
-                                        `start:${batch.slotId}`
-                                    }
-                                    disabled={Boolean(pendingAction)}
-                                    onStart={() => onStartRun(batch.slotId)}
-                                />
-                            ))
+                            <>
+                                <Card className="shadow-md">
+                                    <CardContent
+                                        noHeader
+                                        className="flex flex-col gap-4 p-4 lg:flex-row lg:items-center lg:justify-between"
+                                    >
+                                        <div>
+                                            <Typography level="body1" semiBold>
+                                                Plan povezane rute
+                                            </Typography>
+                                            <div className="mt-2 flex flex-wrap gap-2">
+                                                <Chip color="info" size="sm">
+                                                    {
+                                                        effectiveSelectedRequestIds.length
+                                                    }{' '}
+                                                    odabrano
+                                                </Chip>
+                                                <Chip color="neutral" size="sm">
+                                                    {selectedSlotCount}{' '}
+                                                    {selectedSlotCount === 1
+                                                        ? 'termin'
+                                                        : 'termina'}
+                                                </Chip>
+                                                <Chip color="neutral" size="sm">
+                                                    {selectedLocationCount}{' '}
+                                                    {selectedLocationCount === 1
+                                                        ? 'lokacija'
+                                                        : selectedLocationCount <
+                                                            5
+                                                          ? 'lokacije'
+                                                          : 'lokacija'}
+                                                </Chip>
+                                            </div>
+                                            <Typography
+                                                level="body3"
+                                                className="mt-2 text-muted-foreground"
+                                            >
+                                                Najviše{' '}
+                                                {
+                                                    dashboard.maximumRouteDeliveries
+                                                }{' '}
+                                                dostava po ruti i termini unutar
+                                                najviše{' '}
+                                                {
+                                                    dashboard.maximumRouteWindowHours
+                                                }{' '}
+                                                sata. Termini se poštuju pri
+                                                izračunu dolazaka.
+                                            </Typography>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            <Button
+                                                variant="outlined"
+                                                disabled={Boolean(
+                                                    pendingAction,
+                                                )}
+                                                onClick={() =>
+                                                    setSelectedRequestIds(
+                                                        availableRequestIds.slice(
+                                                            0,
+                                                            dashboard.maximumRouteDeliveries,
+                                                        ),
+                                                    )
+                                                }
+                                            >
+                                                Odaberi sve
+                                            </Button>
+                                            <Button
+                                                variant="plain"
+                                                disabled={
+                                                    Boolean(pendingAction) ||
+                                                    effectiveSelectedRequestIds.length ===
+                                                        0
+                                                }
+                                                onClick={() =>
+                                                    setSelectedRequestIds([])
+                                                }
+                                                startDecorator={
+                                                    <Reset className="size-4" />
+                                                }
+                                            >
+                                                Poništi
+                                            </Button>
+                                            <Button
+                                                loading={
+                                                    pendingAction ===
+                                                    'start-route'
+                                                }
+                                                disabled={
+                                                    Boolean(pendingAction) ||
+                                                    effectiveSelectedRequestIds.length ===
+                                                        0
+                                                }
+                                                onClick={() =>
+                                                    onStartRun(
+                                                        effectiveSelectedRequestIds,
+                                                    )
+                                                }
+                                                startDecorator={
+                                                    <Play className="size-4" />
+                                                }
+                                            >
+                                                Preuzmi{' '}
+                                                {
+                                                    effectiveSelectedRequestIds.length
+                                                }{' '}
+                                                i pokreni rutu
+                                            </Button>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                {selectionLimitReached &&
+                                availableRequestIds.length >
+                                    dashboard.maximumRouteDeliveries ? (
+                                    <Alert
+                                        color="info"
+                                        startDecorator={
+                                            <Warning className="size-5" />
+                                        }
+                                    >
+                                        Dosegnut je najveći broj dostava za
+                                        jednu rutu. Poništi neku dostavu kako bi
+                                        odabrao drugu.
+                                    </Alert>
+                                ) : null}
+
+                                {dashboard.batches.map((batch) => (
+                                    <DeliveryBatchCard
+                                        key={batch.slotId}
+                                        batch={batch}
+                                        disabled={Boolean(pendingAction)}
+                                        selectionLimitReached={
+                                            selectionLimitReached
+                                        }
+                                        selectedRequestIds={
+                                            selectedRequestIdSet
+                                        }
+                                        onToggleBatch={(checked) =>
+                                            toggleBatch(batch, checked)
+                                        }
+                                        onToggleOrder={toggleOrder}
+                                    />
+                                ))}
+                            </>
                         ) : (
                             <Card>
                                 <CardContent

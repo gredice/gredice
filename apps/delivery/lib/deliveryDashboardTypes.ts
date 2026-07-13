@@ -53,7 +53,19 @@ export type DeliveryBatchSummary = {
     slotId: number;
     startAt: string;
     endAt: string;
+    pickupLocationName: string | null;
+    pickupAddress: string | null;
     deliveryCount: number;
+    orders: DeliveryRouteOrderSummary[];
+};
+
+export type DeliveryRouteOrderSummary = {
+    requestId: string;
+    contactName: string;
+    address: string;
+    addressLabel: string | null;
+    requestNotes: string | null;
+    harvest: DeliveryHarvestSummary;
 };
 
 export type ActiveDeliveryRunSummary = {
@@ -78,6 +90,8 @@ export type DriverDeliveryDashboard = {
     };
     activeRun: ActiveDeliveryRunSummary | null;
     batches: DeliveryBatchSummary[];
+    maximumRouteDeliveries: number;
+    maximumRouteWindowHours: number;
     refreshedAt: string;
 };
 

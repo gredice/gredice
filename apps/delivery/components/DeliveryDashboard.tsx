@@ -45,7 +45,12 @@ function isDeliveryDashboard(value: unknown): value is DeliveryDashboardData {
     }
 
     return value.kind === 'driver'
-        ? 'batches' in value && Array.isArray(value.batches)
+        ? 'batches' in value &&
+              Array.isArray(value.batches) &&
+              'maximumRouteDeliveries' in value &&
+              typeof value.maximumRouteDeliveries === 'number' &&
+              'maximumRouteWindowHours' in value &&
+              typeof value.maximumRouteWindowHours === 'number'
         : value.kind === 'customer' &&
               'deliveries' in value &&
               Array.isArray(value.deliveries);
@@ -156,9 +161,9 @@ export function DeliveryDashboard() {
                     dashboard={dashboard}
                     trackingState={trackingState}
                     pendingAction={pendingAction}
-                    onStartRun={(slotId) =>
-                        void perform(`start:${slotId}`, '/api/driver/runs', {
-                            slotId,
+                    onStartRun={(deliveryRequestIds) =>
+                        void perform('start-route', '/api/driver/runs', {
+                            deliveryRequestIds,
                         })
                     }
                     onArrive={(runId, stopId) =>

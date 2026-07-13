@@ -8,6 +8,8 @@ export type DeliveryCoordinates = {
 export type DeliveryRouteCandidate = {
     deliveryRequestId: string;
     formattedAddress: string;
+    windowStartAt?: Date;
+    windowEndAt?: Date;
 };
 
 export type GeocodedDeliveryRouteCandidate = DeliveryRouteCandidate &
@@ -41,8 +43,13 @@ type GoogleRoute = {
 };
 
 const deliveryStopServiceSeconds = 5 * 60;
-const maximumRouteStops = 26;
+export const maximumDeliveryRouteStops = 26;
+export const maximumDeliveryRouteWindowHours = 24;
 const defaultHqAddress = 'Ulica Julija Knifera 3, 10000 Zagreb, Hrvatska';
+
+export class DeliveryRoutePlanningError extends Error {
+    override name = 'DeliveryRoutePlanningError';
+}
 
 function googleMapsApiKey() {
     const apiKey = process.env.GREDICE_GOOGLE_MAPS_API_KEY?.trim();
@@ -159,6 +166,170 @@ export function nearestNeighborStopOrder(
     return ordered;
 }
 
+function estimatedRoadLeg(
+    first: DeliveryCoordinates,
+    second: DeliveryCoordinates,
+) {
+    const estimatedDistanceMeters = Math.round(
+        haversineDistanceMeters(first, second) * 1.25,
+    );
+    return {
+        estimatedDistanceMeters,
+        estimatedTravelSeconds: Math.max(
+            60,
+            Math.round(estimatedDistanceMeters / (25_000 / 3600)),
+        ),
+    };
+}
+
+function windowTimestamp(value: Date | undefined, fallback: number) {
+    return value?.getTime() ?? fallback;
+}
+
+function deliveryWindowKey(stop: GeocodedDeliveryRouteCandidate) {
+    return `${windowTimestamp(stop.windowStartAt, 0)}:${windowTimestamp(stop.windowEndAt, 0)}`;
+}
+
+export function orderDeliveryStopsByTimeWindow(
+    origin: DeliveryCoordinates,
+    stops: GeocodedDeliveryRouteCandidate[],
+    departureTime = new Date(),
+) {
+    const remaining = [...stops];
+    const ordered: GeocodedDeliveryRouteCandidate[] = [];
+    let current = origin;
+    let currentTime = departureTime.getTime();
+
+    while (remaining.length > 0) {
+        const candidates = remaining.map((stop, index) => {
+            const { estimatedTravelSeconds } = estimatedRoadLeg(current, stop);
+            const physicalArrivalTime =
+                currentTime + estimatedTravelSeconds * 1_000;
+            const scheduledArrivalTime = Math.max(
+                physicalArrivalTime,
+                windowTimestamp(stop.windowStartAt, physicalArrivalTime),
+            );
+            const windowEndTime = windowTimestamp(
+                stop.windowEndAt,
+                Number.POSITIVE_INFINITY,
+            );
+            const departureAfterService =
+                scheduledArrivalTime + deliveryStopServiceSeconds * 1_000;
+            const leavesRemainingReachable = remaining.every(
+                (other, otherIndex) => {
+                    if (otherIndex === index) return true;
+                    const nextLeg = estimatedRoadLeg(stop, other);
+                    const nextPhysicalArrival =
+                        departureAfterService +
+                        nextLeg.estimatedTravelSeconds * 1_000;
+                    const nextScheduledArrival = Math.max(
+                        nextPhysicalArrival,
+                        windowTimestamp(
+                            other.windowStartAt,
+                            nextPhysicalArrival,
+                        ),
+                    );
+                    return (
+                        nextScheduledArrival <=
+                        windowTimestamp(
+                            other.windowEndAt,
+                            Number.POSITIVE_INFINITY,
+                        )
+                    );
+                },
+            );
+
+            return {
+                index,
+                stop,
+                estimatedTravelSeconds,
+                scheduledArrivalTime,
+                windowEndTime,
+                feasible: scheduledArrivalTime <= windowEndTime,
+                leavesRemainingReachable,
+            };
+        });
+        const feasibleCandidates = candidates.filter(
+            (candidate) => candidate.feasible,
+        );
+        const candidatesKeepingOptionsOpen = feasibleCandidates.filter(
+            (candidate) => candidate.leavesRemainingReachable,
+        );
+        const viableCandidates =
+            candidatesKeepingOptionsOpen.length > 0
+                ? candidatesKeepingOptionsOpen
+                : feasibleCandidates.length > 0
+                  ? feasibleCandidates
+                  : candidates;
+        const rankedCandidates = viableCandidates.sort(
+            (first, second) =>
+                first.scheduledArrivalTime - second.scheduledArrivalTime ||
+                first.windowEndTime - second.windowEndTime ||
+                first.estimatedTravelSeconds - second.estimatedTravelSeconds,
+        );
+        const nextCandidate = rankedCandidates[0];
+        if (!nextCandidate) break;
+
+        const [next] = remaining.splice(nextCandidate.index, 1);
+        if (!next) break;
+        ordered.push(next);
+        current = next;
+        currentTime =
+            nextCandidate.scheduledArrivalTime +
+            (remaining.length > 0 ? deliveryStopServiceSeconds * 1_000 : 0);
+    }
+
+    return ordered;
+}
+
+function stopsShareDeliveryWindow(stops: GeocodedDeliveryRouteCandidate[]) {
+    const first = stops[0];
+    return Boolean(
+        first &&
+            stops.every(
+                (stop) => deliveryWindowKey(stop) === deliveryWindowKey(first),
+            ),
+    );
+}
+
+function scheduledArrival({
+    departureTime,
+    elapsedSeconds,
+    travelSeconds,
+    stop,
+    enforceTimeWindows,
+}: {
+    departureTime: Date;
+    elapsedSeconds: number;
+    travelSeconds: number;
+    stop: GeocodedDeliveryRouteCandidate;
+    enforceTimeWindows: boolean;
+}) {
+    const physicalArrivalTime =
+        departureTime.getTime() + (elapsedSeconds + travelSeconds) * 1_000;
+    const arrivalTime = Math.max(
+        physicalArrivalTime,
+        windowTimestamp(stop.windowStartAt, physicalArrivalTime),
+    );
+    const windowEndTime = stop.windowEndAt?.getTime();
+    if (
+        enforceTimeWindows &&
+        windowEndTime !== undefined &&
+        arrivalTime > windowEndTime
+    ) {
+        throw new DeliveryRoutePlanningError(
+            'Odabrane dostave nije moguće obaviti unutar svih termina. Ukloni dio dostava ili izradi zasebnu rutu.',
+        );
+    }
+
+    return {
+        estimatedArrivalAt: new Date(arrivalTime),
+        elapsedSeconds: Math.round(
+            (arrivalTime - departureTime.getTime()) / 1_000,
+        ),
+    };
+}
+
 async function geocodeAddress(
     formattedAddress: string,
 ): Promise<DeliveryCoordinates> {
@@ -172,7 +343,7 @@ async function geocodeAddress(
     const response = await fetch(url, { cache: 'no-store' });
     const body: unknown = await response.json().catch(() => null);
     if (!response.ok || !isRecord(body) || body.status !== 'OK') {
-        throw new Error(`Adresa se ne može pronaći: ${formattedAddress}`);
+        throw new Error('Jednu od adresa nije moguće pronaći.');
     }
 
     const firstResult = Array.isArray(body.results) ? body.results[0] : null;
@@ -184,7 +355,7 @@ async function geocodeAddress(
         : undefined;
 
     if (latitude === undefined || longitude === undefined) {
-        throw new Error(`Adresa nema valjane koordinate: ${formattedAddress}`);
+        throw new Error('Jedna od adresa nema valjane koordinate.');
     }
 
     return { latitude, longitude };
@@ -222,15 +393,17 @@ async function computeGoogleRoute({
     stops,
     optimize,
     departureTime,
+    enforceTimeWindows,
 }: {
     origin: DeliveryCoordinates;
     stops: GeocodedDeliveryRouteCandidate[];
     optimize: boolean;
     departureTime: Date;
+    enforceTimeWindows: boolean;
 }): Promise<DeliveryRoutePlan> {
-    if (stops.length > maximumRouteStops) {
+    if (stops.length > maximumDeliveryRouteStops) {
         throw new Error(
-            `Jedna ruta može sadržavati najviše ${maximumRouteStops} dostava.`,
+            `Jedna ruta može sadržavati najviše ${maximumDeliveryRouteStops} dostava.`,
         );
     }
 
@@ -294,10 +467,14 @@ async function computeGoogleRoute({
         const leg = legs[index];
         const estimatedTravelSeconds = durationSeconds(leg?.duration) ?? 0;
         const estimatedDistanceMeters = numberField(leg?.distanceMeters) ?? 0;
-        elapsedSeconds += estimatedTravelSeconds;
-        const estimatedArrivalAt = new Date(
-            departureTime.getTime() + elapsedSeconds * 1000,
-        );
+        const scheduled = scheduledArrival({
+            departureTime,
+            elapsedSeconds,
+            travelSeconds: estimatedTravelSeconds,
+            stop,
+            enforceTimeWindows,
+        });
+        elapsedSeconds = scheduled.elapsedSeconds;
         if (index < orderedStops.length - 1) {
             elapsedSeconds += deliveryStopServiceSeconds;
         }
@@ -305,7 +482,7 @@ async function computeGoogleRoute({
         return {
             ...stop,
             sequence: index + 1,
-            estimatedArrivalAt,
+            estimatedArrivalAt: scheduled.estimatedArrivalAt,
             estimatedTravelSeconds,
             estimatedDistanceMeters,
         };
@@ -327,16 +504,18 @@ async function computeGoogleRoute({
     };
 }
 
-function computeFallbackRoute({
+export function estimateDeliveryRoute({
     origin,
     stops,
     departureTime,
     optimize = true,
+    enforceTimeWindows = true,
 }: {
     origin: DeliveryCoordinates;
     stops: GeocodedDeliveryRouteCandidate[];
     departureTime: Date;
     optimize?: boolean;
+    enforceTimeWindows?: boolean;
 }): DeliveryRoutePlan {
     const orderedStops = optimize
         ? nearestNeighborStopOrder(origin, stops)
@@ -345,17 +524,17 @@ function computeFallbackRoute({
     let elapsedSeconds = 0;
     let totalDistanceMeters = 0;
     const plannedStops = orderedStops.map((stop, index) => {
-        const directDistance = haversineDistanceMeters(current, stop);
-        const estimatedDistanceMeters = Math.round(directDistance * 1.25);
-        const estimatedTravelSeconds = Math.max(
-            60,
-            Math.round(estimatedDistanceMeters / (25_000 / 3600)),
-        );
+        const { estimatedDistanceMeters, estimatedTravelSeconds } =
+            estimatedRoadLeg(current, stop);
         totalDistanceMeters += estimatedDistanceMeters;
-        elapsedSeconds += estimatedTravelSeconds;
-        const estimatedArrivalAt = new Date(
-            departureTime.getTime() + elapsedSeconds * 1000,
-        );
+        const scheduled = scheduledArrival({
+            departureTime,
+            elapsedSeconds,
+            travelSeconds: estimatedTravelSeconds,
+            stop,
+            enforceTimeWindows,
+        });
+        elapsedSeconds = scheduled.elapsedSeconds;
         if (index < orderedStops.length - 1) {
             elapsedSeconds += deliveryStopServiceSeconds;
         }
@@ -364,7 +543,7 @@ function computeFallbackRoute({
         return {
             ...stop,
             sequence: index + 1,
-            estimatedArrivalAt,
+            estimatedArrivalAt: scheduled.estimatedArrivalAt,
             estimatedTravelSeconds,
             estimatedDistanceMeters,
         };
@@ -387,9 +566,38 @@ export async function planDeliveryRoute({
     if (candidates.length === 0) {
         throw new Error('Nema dostava za planiranje rute.');
     }
-    if (candidates.length > maximumRouteStops) {
+    if (candidates.length > maximumDeliveryRouteStops) {
         throw new Error(
-            `Jedna ruta može sadržavati najviše ${maximumRouteStops} dostava.`,
+            `Jedna ruta može sadržavati najviše ${maximumDeliveryRouteStops} dostava.`,
+        );
+    }
+    for (const candidate of candidates) {
+        if (
+            !candidate.windowStartAt ||
+            !candidate.windowEndAt ||
+            !Number.isFinite(candidate.windowStartAt.getTime()) ||
+            !Number.isFinite(candidate.windowEndAt.getTime()) ||
+            candidate.windowStartAt >= candidate.windowEndAt
+        ) {
+            throw new DeliveryRoutePlanningError(
+                'Jedna ili više odabranih dostava nema valjani termin.',
+            );
+        }
+    }
+    const earliestWindowStart = Math.min(
+        ...candidates.map(
+            (candidate) => candidate.windowStartAt?.getTime() ?? 0,
+        ),
+    );
+    const latestWindowEnd = Math.max(
+        ...candidates.map((candidate) => candidate.windowEndAt?.getTime() ?? 0),
+    );
+    if (
+        latestWindowEnd - earliestWindowStart >
+        maximumDeliveryRouteWindowHours * 60 * 60 * 1_000
+    ) {
+        throw new DeliveryRoutePlanningError(
+            `Jedna ruta može povezati termine unutar najviše ${maximumDeliveryRouteWindowHours} sata. Za udaljenije termine izradi zasebne rute.`,
         );
     }
 
@@ -404,23 +612,33 @@ export async function planDeliveryRoute({
             })),
         ),
     ]);
+    const optimizeAsOneWindow = stopsShareDeliveryWindow(geocodedStops);
+    const orderedStops = optimizeAsOneWindow
+        ? geocodedStops
+        : orderDeliveryStopsByTimeWindow(origin, geocodedStops, departureTime);
 
     try {
         return await computeGoogleRoute({
             origin,
-            stops: geocodedStops,
-            optimize: true,
+            stops: orderedStops,
+            optimize: optimizeAsOneWindow,
             departureTime,
+            enforceTimeWindows: true,
         });
     } catch (error) {
+        if (error instanceof DeliveryRoutePlanningError) {
+            throw error;
+        }
         console.warn('Google route optimization failed; using local fallback', {
             error,
-            stopCount: geocodedStops.length,
+            stopCount: orderedStops.length,
         });
-        return computeFallbackRoute({
+        return estimateDeliveryRoute({
             origin,
-            stops: geocodedStops,
+            stops: orderedStops,
             departureTime,
+            optimize: optimizeAsOneWindow,
+            enforceTimeWindows: true,
         });
     }
 }
@@ -448,17 +666,19 @@ export async function recalculateDeliveryRoute({
             stops,
             optimize: false,
             departureTime,
+            enforceTimeWindows: false,
         });
     } catch (error) {
         console.warn('Google ETA refresh failed; using local estimate', {
             error,
             stopCount: stops.length,
         });
-        return computeFallbackRoute({
+        return estimateDeliveryRoute({
             origin,
             stops,
             departureTime,
             optimize: false,
+            enforceTimeWindows: false,
         });
     }
 }

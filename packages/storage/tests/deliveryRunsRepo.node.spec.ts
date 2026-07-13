@@ -19,7 +19,7 @@ import {
 import { createTestAccount } from './helpers/testHelpers';
 import { createTestDb } from './testDb';
 
-test('delivery run enforces stop order and limits live tracking to active deliveries', async () => {
+test('delivery run enforces stop order and limits tracking to the current delivery', async () => {
     createTestDb();
     const accountId = await createTestAccount();
     const otherAccountId = await createTestAccount();
@@ -65,7 +65,7 @@ test('delivery run enforces stop order and limits live tracking to active delive
             {
                 entityId: 2,
                 entityTypeName: 'operation',
-                accountId,
+                accountId: otherAccountId,
             },
         ])
         .returning({ id: operations.id });
@@ -147,6 +147,17 @@ test('delivery run enforces stop order and limits live tracking to active delive
         runId: run.id,
         stopId: firstStop.id,
     });
+    assert.equal(
+        await accountCanTrackDeliveryRun({ accountId, runId: run.id }),
+        false,
+    );
+    assert.equal(
+        await accountCanTrackDeliveryRun({
+            accountId: otherAccountId,
+            runId: run.id,
+        }),
+        true,
+    );
     await fulfillDeliveryRunStop({
         driverUserId,
         runId: run.id,
@@ -159,6 +170,13 @@ test('delivery run enforces stop order and limits live tracking to active delive
     assert.equal(completedRun?.currentLongitude, null);
     assert.equal(
         await accountCanTrackDeliveryRun({ accountId, runId: run.id }),
+        false,
+    );
+    assert.equal(
+        await accountCanTrackDeliveryRun({
+            accountId: otherAccountId,
+            runId: run.id,
+        }),
         false,
     );
 });

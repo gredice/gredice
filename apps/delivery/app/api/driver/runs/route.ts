@@ -1,20 +1,23 @@
 import { withAuth } from '../../../../lib/auth/auth';
-import { startDeliveryRun } from '../../../../lib/deliveryDashboard';
+import {
+    deliveryRunStartErrorMessage,
+    startDeliveryRun,
+} from '../../../../lib/deliveryDashboard';
+import { maximumDeliveryRouteStops } from '../../../../lib/deliveryRouting';
+import { parseDeliveryRunRequestBody } from '../../../../lib/deliveryRunRequest';
 
 export async function POST(request: Request) {
     return await withAuth(['driver', 'admin'], async ({ userId }) => {
         const body: unknown = await request.json().catch(() => null);
-        const slotId =
-            typeof body === 'object' &&
-            body !== null &&
-            'slotId' in body &&
-            typeof body.slotId === 'number' &&
-            Number.isInteger(body.slotId)
-                ? body.slotId
-                : null;
-        if (!slotId) {
+        const deliveryRequestIds = parseDeliveryRunRequestBody(
+            body,
+            maximumDeliveryRouteStops,
+        );
+        if (!deliveryRequestIds) {
             return Response.json(
-                { error: 'Odaberi valjani termin dostave.' },
+                {
+                    error: `Odaberi između 1 i ${maximumDeliveryRouteStops} valjanih dostava.`,
+                },
                 { status: 400 },
             );
         }
@@ -22,18 +25,20 @@ export async function POST(request: Request) {
         try {
             const run = await startDeliveryRun({
                 driverUserId: userId,
-                slotId,
+                deliveryRequestIds,
             });
             return Response.json({ id: run.id }, { status: 201 });
         } catch (error) {
             console.error('Failed to start delivery run', {
                 error,
-                slotId,
+                requestCount: deliveryRequestIds.length,
                 userId,
             });
             return Response.json(
                 {
-                    error: 'Rutu nije moguće pokrenuti. Provjeri adrese i pokušaj ponovno.',
+                    error:
+                        deliveryRunStartErrorMessage(error) ??
+                        'Rutu nije moguće pokrenuti. Provjeri adrese i pokušaj ponovno.',
                 },
                 { status: 409 },
             );
