@@ -23,6 +23,7 @@ import {
     formatDistance,
     formatTravelDuration,
 } from '../lib/deliveryFormatting';
+import { groupByDeliveryStop } from '../lib/deliveryStopGrouping';
 import { DeliveryAppHeader } from './DeliveryAppHeader';
 import { DeliveryBatchCard } from './DeliveryBatchCard';
 import { DeliveryMap } from './DeliveryMap';
@@ -63,44 +64,60 @@ export function DriverDashboard({
     const run = dashboard.activeRun;
     const locationMessage = trackingMessage(trackingState);
     const [selectedRequestIds, setSelectedRequestIds] = useState<string[]>([]);
-    const availableRequestIds = dashboard.batches.flatMap((batch) =>
-        batch.orders.map((order) => order.requestId),
-    );
+    const availableOrders = dashboard.batches.flatMap((batch) => batch.orders);
+    const availableRequestIds = availableOrders.map((order) => order.requestId);
     const availableRequestIdSet = new Set(availableRequestIds);
+    const ordersByRequestId = new Map(
+        availableOrders.map((order) => [order.requestId, order]),
+    );
+    const availableStopGroups = groupByDeliveryStop(availableOrders);
     const effectiveSelectedRequestIds = selectedRequestIds.filter((requestId) =>
         availableRequestIdSet.has(requestId),
     );
     const selectedRequestIdSet = new Set(effectiveSelectedRequestIds);
+    const selectedStopKeys = new Set(
+        effectiveSelectedRequestIds.flatMap((requestId) => {
+            const order = ordersByRequestId.get(requestId);
+            return order ? [order.stopKey] : [];
+        }),
+    );
     const selectionLimitReached =
-        effectiveSelectedRequestIds.length >= dashboard.maximumRouteDeliveries;
+        selectedStopKeys.size >= dashboard.maximumRouteStops;
     const selectedSlotCount = dashboard.batches.filter((batch) =>
         batch.orders.some((order) => selectedRequestIdSet.has(order.requestId)),
     ).length;
-    const selectedLocationCount = new Set(
-        dashboard.batches.flatMap((batch) =>
-            batch.orders.flatMap((order) =>
-                selectedRequestIdSet.has(order.requestId)
-                    ? [order.address]
-                    : [],
-            ),
-        ),
-    ).size;
 
     const toggleOrder = (requestId: string, checked: boolean) => {
+        const order = ordersByRequestId.get(requestId);
+        if (!order) return;
+        const groupedRequestIds = availableOrders.flatMap((candidate) =>
+            candidate.stopKey === order.stopKey ? [candidate.requestId] : [],
+        );
+        const groupedRequestIdSet = new Set(groupedRequestIds);
         setSelectedRequestIds((current) => {
             const availableCurrent = current.filter((id) =>
                 availableRequestIdSet.has(id),
             );
             if (!checked) {
-                return availableCurrent.filter((id) => id !== requestId);
+                return availableCurrent.filter(
+                    (id) => !groupedRequestIdSet.has(id),
+                );
             }
+            const currentStopKeys = new Set(
+                availableCurrent.flatMap((id) => {
+                    const currentOrder = ordersByRequestId.get(id);
+                    return currentOrder ? [currentOrder.stopKey] : [];
+                }),
+            );
             if (
-                availableCurrent.includes(requestId) ||
-                availableCurrent.length >= dashboard.maximumRouteDeliveries
+                !currentStopKeys.has(order.stopKey) &&
+                currentStopKeys.size >= dashboard.maximumRouteStops
             ) {
                 return availableCurrent;
             }
-            return [...availableCurrent, requestId];
+            return Array.from(
+                new Set([...availableCurrent, ...groupedRequestIds]),
+            );
         });
     };
 
@@ -117,18 +134,36 @@ export function DriverDashboard({
                 return availableCurrent.filter((id) => !batchIds.has(id));
             }
 
-            const next = [...availableCurrent];
-            for (const requestId of batchIds) {
-                if (
-                    next.length >= dashboard.maximumRouteDeliveries ||
-                    next.includes(requestId)
-                ) {
-                    continue;
+            const next = new Set(availableCurrent);
+            const nextStopKeys = new Set(
+                availableCurrent.flatMap((id) => {
+                    const order = ordersByRequestId.get(id);
+                    return order ? [order.stopKey] : [];
+                }),
+            );
+            for (const group of groupByDeliveryStop(batch.orders)) {
+                if (!nextStopKeys.has(group.stopKey)) {
+                    if (nextStopKeys.size >= dashboard.maximumRouteStops) {
+                        continue;
+                    }
+                    nextStopKeys.add(group.stopKey);
                 }
-                next.push(requestId);
+                for (const order of group.items) {
+                    next.add(order.requestId);
+                }
             }
-            return next;
+            return Array.from(next);
         });
+    };
+
+    const selectAllAvailable = () => {
+        setSelectedRequestIds(
+            availableStopGroups
+                .slice(0, dashboard.maximumRouteStops)
+                .flatMap((group) =>
+                    group.items.map((order) => order.requestId),
+                ),
+        );
     };
 
     return (
@@ -234,6 +269,19 @@ export function DriverDashboard({
                                             </Chip>
                                         </div>
                                         <Typography
+                                            level="body3"
+                                            className="mt-1 text-muted-foreground"
+                                        >
+                                            {run.deliveryCount}{' '}
+                                            {run.deliveryCount === 1
+                                                ? 'urod'
+                                                : 'uroda'}{' '}
+                                            na {run.stops.length}{' '}
+                                            {run.stops.length === 1
+                                                ? 'stanici'
+                                                : 'stanica'}
+                                        </Typography>
+                                        <Typography
                                             level="body2"
                                             className="mt-1"
                                         >
@@ -256,7 +304,7 @@ export function DriverDashboard({
                             <div className="grid gap-3 lg:grid-cols-2">
                                 {run.stops.map((stop) => (
                                     <DeliveryStopCard
-                                        key={stop.requestId}
+                                        key={stop.id ?? stop.requestId}
                                         stop={stop}
                                         mode="driver"
                                         pendingAction={
@@ -300,7 +348,19 @@ export function DriverDashboard({
                                                     {
                                                         effectiveSelectedRequestIds.length
                                                     }{' '}
-                                                    odabrano
+                                                    {effectiveSelectedRequestIds.length ===
+                                                    1
+                                                        ? 'urod'
+                                                        : 'uroda'}
+                                                </Chip>
+                                                <Chip color="neutral" size="sm">
+                                                    {selectedStopKeys.size}{' '}
+                                                    {selectedStopKeys.size === 1
+                                                        ? 'stanica'
+                                                        : selectedStopKeys.size <
+                                                            5
+                                                          ? 'stanice'
+                                                          : 'stanica'}
                                                 </Chip>
                                                 <Chip color="neutral" size="sm">
                                                     {selectedSlotCount}{' '}
@@ -308,31 +368,23 @@ export function DriverDashboard({
                                                         ? 'termin'
                                                         : 'termina'}
                                                 </Chip>
-                                                <Chip color="neutral" size="sm">
-                                                    {selectedLocationCount}{' '}
-                                                    {selectedLocationCount === 1
-                                                        ? 'lokacija'
-                                                        : selectedLocationCount <
-                                                            5
-                                                          ? 'lokacije'
-                                                          : 'lokacija'}
-                                                </Chip>
                                             </div>
                                             <Typography
                                                 level="body3"
                                                 className="mt-2 text-muted-foreground"
                                             >
                                                 Najviše{' '}
-                                                {
-                                                    dashboard.maximumRouteDeliveries
-                                                }{' '}
-                                                dostava po ruti i termini unutar
-                                                najviše{' '}
+                                                {dashboard.maximumRouteStops}{' '}
+                                                fizičkih stanica po ruti. Svi
+                                                urodi za istu adresu u istom
+                                                terminu računaju se kao jedna
+                                                skupna stanica. Termini moraju
+                                                biti unutar najviše{' '}
                                                 {
                                                     dashboard.maximumRouteWindowHours
                                                 }{' '}
-                                                sata. Termini se poštuju pri
-                                                izračunu dolazaka.
+                                                sata i poštuju se pri izračunu
+                                                dolazaka.
                                             </Typography>
                                         </div>
                                         <div className="flex flex-wrap gap-2">
@@ -341,14 +393,7 @@ export function DriverDashboard({
                                                 disabled={Boolean(
                                                     pendingAction,
                                                 )}
-                                                onClick={() =>
-                                                    setSelectedRequestIds(
-                                                        availableRequestIds.slice(
-                                                            0,
-                                                            dashboard.maximumRouteDeliveries,
-                                                        ),
-                                                    )
-                                                }
+                                                onClick={selectAllAvailable}
                                             >
                                                 Odaberi sve
                                             </Button>
@@ -391,6 +436,10 @@ export function DriverDashboard({
                                                 {
                                                     effectiveSelectedRequestIds.length
                                                 }{' '}
+                                                {effectiveSelectedRequestIds.length ===
+                                                1
+                                                    ? 'urod'
+                                                    : 'uroda'}{' '}
                                                 i pokreni rutu
                                             </Button>
                                         </div>
@@ -398,17 +447,18 @@ export function DriverDashboard({
                                 </Card>
 
                                 {selectionLimitReached &&
-                                availableRequestIds.length >
-                                    dashboard.maximumRouteDeliveries ? (
+                                availableStopGroups.length >
+                                    dashboard.maximumRouteStops ? (
                                     <Alert
                                         color="info"
                                         startDecorator={
                                             <Warning className="size-5" />
                                         }
                                     >
-                                        Dosegnut je najveći broj dostava za
-                                        jednu rutu. Poništi neku dostavu kako bi
-                                        odabrao drugu.
+                                        Dosegnut je najveći broj fizičkih
+                                        stanica za jednu rutu. Urodi na već
+                                        odabranoj adresi i u istom terminu i
+                                        dalje se dodaju skupno.
                                     </Alert>
                                 ) : null}
 
@@ -423,6 +473,7 @@ export function DriverDashboard({
                                         selectedRequestIds={
                                             selectedRequestIdSet
                                         }
+                                        selectedStopKeys={selectedStopKeys}
                                         onToggleBatch={(checked) =>
                                             toggleBatch(batch, checked)
                                         }

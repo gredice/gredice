@@ -318,34 +318,45 @@ export async function updateDeliveryRunEstimates({
     });
 }
 
-async function ensureOwnedActiveRunStop({
+async function ensureOwnedDeliveryRunStops({
     driverUserId,
     runId,
-    stopId,
+    stopIds,
     db = storage(),
 }: {
     driverUserId: string;
     runId: string;
-    stopId: number;
+    stopIds: number[];
     db?: DatabaseClient;
 }) {
-    const stop = await db.query.deliveryRunStops.findFirst({
+    const uniqueStopIds = Array.from(new Set(stopIds));
+    if (uniqueStopIds.length === 0) {
+        throw new Error('Active delivery stop not found');
+    }
+
+    const stops = await db.query.deliveryRunStops.findMany({
         where: and(
-            eq(deliveryRunStops.id, stopId),
             eq(deliveryRunStops.runId, runId),
+            inArray(deliveryRunStops.id, uniqueStopIds),
         ),
         with: { run: true },
+        orderBy: [asc(deliveryRunStops.sequence)],
     });
+    const run = stops[0]?.run;
 
     if (
-        !stop ||
-        stop.run.driverUserId !== driverUserId ||
-        stop.run.state !== DeliveryRunStates.ACTIVE
+        stops.length !== uniqueStopIds.length ||
+        !run ||
+        run.driverUserId !== driverUserId ||
+        run.state !== DeliveryRunStates.ACTIVE
     ) {
         throw new Error('Active delivery stop not found');
     }
 
-    if (stop.state !== DeliveryRunStopStates.DELIVERED) {
+    const hasUndeliveredStops = stops.some(
+        (stop) => stop.state !== DeliveryRunStopStates.DELIVERED,
+    );
+    if (hasUndeliveredStops) {
         const currentStop = await db.query.deliveryRunStops.findFirst({
             columns: { id: true },
             where: and(
@@ -354,12 +365,47 @@ async function ensureOwnedActiveRunStop({
             ),
             orderBy: [asc(deliveryRunStops.sequence)],
         });
-        if (currentStop?.id !== stopId) {
+        if (currentStop && !uniqueStopIds.includes(currentStop.id)) {
             throw new Error('Delivery stops must be completed in route order');
         }
     }
 
-    return stop;
+    return stops;
+}
+
+export async function markDeliveryRunStopsArrived({
+    driverUserId,
+    runId,
+    stopIds,
+}: {
+    driverUserId: string;
+    runId: string;
+    stopIds: number[];
+}) {
+    return await storage().transaction(async (tx) => {
+        const stops = await ensureOwnedDeliveryRunStops({
+            driverUserId,
+            runId,
+            stopIds,
+            db: tx,
+        });
+        const now = new Date();
+
+        for (const stop of stops) {
+            if (stop.state === DeliveryRunStopStates.DELIVERED) {
+                continue;
+            }
+            await tx
+                .update(deliveryRunStops)
+                .set({
+                    state: DeliveryRunStopStates.ARRIVED,
+                    arrivedAt: stop.arrivedAt ?? now,
+                })
+                .where(eq(deliveryRunStops.id, stop.id));
+        }
+
+        return stops;
+    });
 }
 
 export async function markDeliveryRunStopArrived({
@@ -371,26 +417,12 @@ export async function markDeliveryRunStopArrived({
     runId: string;
     stopId: number;
 }) {
-    const stop = await ensureOwnedActiveRunStop({
+    const stops = await markDeliveryRunStopsArrived({
         driverUserId,
         runId,
-        stopId,
+        stopIds: [stopId],
     });
-
-    if (stop.state === DeliveryRunStopStates.DELIVERED) {
-        return stop;
-    }
-
-    const rows = await storage()
-        .update(deliveryRunStops)
-        .set({
-            state: DeliveryRunStopStates.ARRIVED,
-            arrivedAt: stop.arrivedAt ?? new Date(),
-        })
-        .where(eq(deliveryRunStops.id, stopId))
-        .returning();
-
-    return rows[0] ?? stop;
+    return stops[0];
 }
 
 export async function markDeliveryRunStopDelivered({
@@ -402,36 +434,40 @@ export async function markDeliveryRunStopDelivered({
     runId: string;
     stopId: number;
 }) {
-    return await storage().transaction(async (tx) =>
-        markDeliveryRunStopDeliveredInDatabase({
+    const requestIds = await storage().transaction(async (tx) =>
+        markDeliveryRunStopsDeliveredInDatabase({
             driverUserId,
             runId,
-            stopId,
+            stopIds: [stopId],
             db: tx,
         }),
     );
+    return requestIds[0];
 }
 
-async function markDeliveryRunStopDeliveredInDatabase({
+async function markDeliveryRunStopsDeliveredInDatabase({
     driverUserId,
     runId,
-    stopId,
+    stopIds,
     db,
 }: {
     driverUserId: string;
     runId: string;
-    stopId: number;
+    stopIds: number[];
     db: DatabaseClient;
 }) {
-    const stop = await ensureOwnedActiveRunStop({
+    const stops = await ensureOwnedDeliveryRunStops({
         driverUserId,
         runId,
-        stopId,
+        stopIds,
         db,
     });
+    const now = new Date();
 
-    if (stop.state !== DeliveryRunStopStates.DELIVERED) {
-        const now = new Date();
+    for (const stop of stops) {
+        if (stop.state === DeliveryRunStopStates.DELIVERED) {
+            continue;
+        }
         await db
             .update(deliveryRunStops)
             .set({
@@ -439,7 +475,7 @@ async function markDeliveryRunStopDeliveredInDatabase({
                 arrivedAt: stop.arrivedAt ?? now,
                 deliveredAt: now,
             })
-            .where(eq(deliveryRunStops.id, stopId));
+            .where(eq(deliveryRunStops.id, stop.id));
     }
 
     const remaining = await db.query.deliveryRunStops.findFirst({
@@ -463,10 +499,49 @@ async function markDeliveryRunStopDeliveredInDatabase({
                 currentLocationSpeed: null,
                 currentLocationRecordedAt: null,
             })
-            .where(eq(deliveryRuns.id, runId));
+            .where(
+                and(
+                    eq(deliveryRuns.id, runId),
+                    eq(deliveryRuns.state, DeliveryRunStates.ACTIVE),
+                ),
+            );
     }
 
-    return stop.deliveryRequestId;
+    return stops.map((stop) => stop.deliveryRequestId);
+}
+
+export async function fulfillDeliveryRunStops({
+    driverUserId,
+    runId,
+    stopIds,
+    deliveryNotes,
+}: {
+    driverUserId: string;
+    runId: string;
+    stopIds: number[];
+    deliveryNotes?: string;
+}) {
+    return await storage().transaction(async (tx) => {
+        const stops = await ensureOwnedDeliveryRunStops({
+            driverUserId,
+            runId,
+            stopIds,
+            db: tx,
+        });
+        for (const stop of stops) {
+            await fulfillDeliveryRequest(
+                stop.deliveryRequestId,
+                deliveryNotes,
+                tx,
+            );
+        }
+        return await markDeliveryRunStopsDeliveredInDatabase({
+            driverUserId,
+            runId,
+            stopIds,
+            db: tx,
+        });
+    });
 }
 
 export async function fulfillDeliveryRunStop({
@@ -480,19 +555,11 @@ export async function fulfillDeliveryRunStop({
     stopId: number;
     deliveryNotes?: string;
 }) {
-    return await storage().transaction(async (tx) => {
-        const stop = await ensureOwnedActiveRunStop({
-            driverUserId,
-            runId,
-            stopId,
-            db: tx,
-        });
-        await fulfillDeliveryRequest(stop.deliveryRequestId, deliveryNotes, tx);
-        return await markDeliveryRunStopDeliveredInDatabase({
-            driverUserId,
-            runId,
-            stopId,
-            db: tx,
-        });
+    const requestIds = await fulfillDeliveryRunStops({
+        driverUserId,
+        runId,
+        stopIds: [stopId],
+        deliveryNotes,
     });
+    return requestIds[0];
 }

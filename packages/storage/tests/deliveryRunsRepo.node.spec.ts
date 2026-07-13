@@ -6,9 +6,11 @@ import {
     createDeliveryRun,
     deliveryRequests,
     fulfillDeliveryRunStop,
+    fulfillDeliveryRunStops,
     getDeliveryRequest,
     getDeliveryRun,
     markDeliveryRunStopArrived,
+    markDeliveryRunStopsArrived,
     operations,
     pickupLocations,
     storage,
@@ -19,7 +21,7 @@ import {
 import { createTestAccount } from './helpers/testHelpers';
 import { createTestDb } from './testDb';
 
-test('delivery run enforces stop order and limits tracking to the current delivery', async () => {
+test('delivery run fulfills a current bulk stop atomically and preserves route order', async () => {
     createTestDb();
     const accountId = await createTestAccount();
     const otherAccountId = await createTestAccount();
@@ -65,12 +67,17 @@ test('delivery run enforces stop order and limits tracking to the current delive
             {
                 entityId: 2,
                 entityTypeName: 'operation',
+                accountId,
+            },
+            {
+                entityId: 3,
+                entityTypeName: 'operation',
                 accountId: otherAccountId,
             },
         ])
         .returning({ id: operations.id });
-    assert.equal(operationRows.length, 2);
-    const requestIds = [randomUUID(), randomUUID()];
+    assert.equal(operationRows.length, 3);
+    const requestIds = [randomUUID(), randomUUID(), randomUUID()];
     await storage()
         .insert(deliveryRequests)
         .values(
@@ -88,20 +95,22 @@ test('delivery run enforces stop order and limits tracking to the current delive
         stops: requestIds.map((deliveryRequestId, index) => ({
             deliveryRequestId,
             sequence: index + 1,
-            latitude: 45.8 + index * 0.01,
-            longitude: 15.97 + index * 0.01,
-            formattedAddress: `Testna ${index + 1}, Zagreb, HR`,
+            latitude: index < 2 ? 45.8 : 45.81,
+            longitude: index < 2 ? 15.97 : 15.98,
+            formattedAddress: `Testna ${index < 2 ? 1 : 2}, Zagreb, HR`,
             estimatedArrivalAt: new Date(
-                Date.parse('2026-07-13T08:15:00.000Z') + index * 900_000,
+                Date.parse('2026-07-13T08:15:00.000Z') +
+                    (index < 2 ? 0 : 900_000),
             ),
             estimatedTravelSeconds: 600,
             estimatedDistanceMeters: 2_250,
         })),
     });
-    assert.equal(run.stops.length, 2);
-    const [firstStop, secondStop] = run.stops;
+    assert.equal(run.stops.length, 3);
+    const [firstStop, secondStop, thirdStop] = run.stops;
     assert.ok(firstStop);
     assert.ok(secondStop);
+    assert.ok(thirdStop);
 
     assert.equal(
         await accountCanTrackDeliveryRun({ accountId, runId: run.id }),
@@ -118,7 +127,7 @@ test('delivery run enforces stop order and limits tracking to the current delive
         markDeliveryRunStopArrived({
             driverUserId,
             runId: run.id,
-            stopId: secondStop.id,
+            stopId: thirdStop.id,
         }),
         /route order/,
     );
@@ -126,12 +135,12 @@ test('delivery run enforces stop order and limits tracking to the current delive
         fulfillDeliveryRunStop({
             driverUserId,
             runId: run.id,
-            stopId: secondStop.id,
+            stopId: thirdStop.id,
         }),
         /route order/,
     );
     assert.notEqual(
-        (await getDeliveryRequest(secondStop.deliveryRequestId))?.state,
+        (await getDeliveryRequest(thirdStop.deliveryRequestId))?.state,
         'fulfilled',
     );
 
@@ -142,11 +151,29 @@ test('delivery run enforces stop order and limits tracking to the current delive
         longitude: 15.971,
         recordedAt: new Date('2026-07-13T08:05:00.000Z'),
     });
-    await fulfillDeliveryRunStop({
+    await markDeliveryRunStopsArrived({
         driverUserId,
         runId: run.id,
-        stopId: firstStop.id,
+        stopIds: [firstStop.id, secondStop.id],
     });
+    const arrivedRun = await getDeliveryRun(run.id);
+    assert.deepEqual(
+        arrivedRun?.stops.slice(0, 2).map((stop) => stop.state),
+        ['arrived', 'arrived'],
+    );
+    await fulfillDeliveryRunStops({
+        driverUserId,
+        runId: run.id,
+        stopIds: [firstStop.id, secondStop.id],
+    });
+    assert.equal(
+        (await getDeliveryRequest(firstStop.deliveryRequestId))?.state,
+        'fulfilled',
+    );
+    assert.equal(
+        (await getDeliveryRequest(secondStop.deliveryRequestId))?.state,
+        'fulfilled',
+    );
     assert.equal(
         await accountCanTrackDeliveryRun({ accountId, runId: run.id }),
         false,
@@ -161,7 +188,7 @@ test('delivery run enforces stop order and limits tracking to the current delive
     await fulfillDeliveryRunStop({
         driverUserId,
         runId: run.id,
-        stopId: secondStop.id,
+        stopId: thirdStop.id,
     });
 
     const completedRun = await getDeliveryRun(run.id);
@@ -178,5 +205,13 @@ test('delivery run enforces stop order and limits tracking to the current delive
             runId: run.id,
         }),
         false,
+    );
+    await assert.rejects(
+        fulfillDeliveryRunStops({
+            driverUserId,
+            runId: run.id,
+            stopIds: [firstStop.id, secondStop.id],
+        }),
+        /Active delivery stop not found/,
     );
 });

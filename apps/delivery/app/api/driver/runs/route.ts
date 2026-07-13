@@ -3,20 +3,16 @@ import {
     deliveryRunStartErrorMessage,
     startDeliveryRun,
 } from '../../../../lib/deliveryDashboard';
-import { maximumDeliveryRouteStops } from '../../../../lib/deliveryRouting';
 import { parseDeliveryRunRequestBody } from '../../../../lib/deliveryRunRequest';
 
 export async function POST(request: Request) {
     return await withAuth(['driver', 'admin'], async ({ userId }) => {
         const body: unknown = await request.json().catch(() => null);
-        const deliveryRequestIds = parseDeliveryRunRequestBody(
-            body,
-            maximumDeliveryRouteStops,
-        );
+        const deliveryRequestIds = parseDeliveryRunRequestBody(body);
         if (!deliveryRequestIds) {
             return Response.json(
                 {
-                    error: `Odaberi između 1 i ${maximumDeliveryRouteStops} valjanih dostava.`,
+                    error: 'Odaberi barem jednu valjanu dostavu.',
                 },
                 { status: 400 },
             );

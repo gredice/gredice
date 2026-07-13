@@ -22,6 +22,18 @@ export type DeliveryContactSummary = {
     avatarUrl: string | null;
 };
 
+export type DeliveryStopDeliverySummary = {
+    requestId: string;
+    requestState: string;
+    contactName: string;
+    phone: string | null;
+    addressLabel: string | null;
+    requestNotes: string | null;
+    deliveryNotes: string | null;
+    harvest: DeliveryHarvestSummary;
+    accountContacts: DeliveryContactSummary[];
+};
+
 export type DeliveryStopSummary = {
     id: number | null;
     requestId: string;
@@ -47,6 +59,8 @@ export type DeliveryStopSummary = {
     accountContacts: DeliveryContactSummary[];
     tracking: DeliveryTrackingLocation | null;
     runId: string | null;
+    deliveryCount: number;
+    deliveries: DeliveryStopDeliverySummary[];
 };
 
 export type DeliveryBatchSummary = {
@@ -56,11 +70,13 @@ export type DeliveryBatchSummary = {
     pickupLocationName: string | null;
     pickupAddress: string | null;
     deliveryCount: number;
+    stopCount: number;
     orders: DeliveryRouteOrderSummary[];
 };
 
 export type DeliveryRouteOrderSummary = {
     requestId: string;
+    stopKey: string;
     contactName: string;
     address: string;
     addressLabel: string | null;
@@ -78,6 +94,7 @@ export type ActiveDeliveryRunSummary = {
     location: DeliveryTrackingLocation | null;
     estimatesUpdatedAt: string | null;
     mapUrl: string;
+    deliveryCount: number;
     stops: DeliveryStopSummary[];
 };
 
@@ -90,7 +107,7 @@ export type DriverDeliveryDashboard = {
     };
     activeRun: ActiveDeliveryRunSummary | null;
     batches: DeliveryBatchSummary[];
-    maximumRouteDeliveries: number;
+    maximumRouteStops: number;
     maximumRouteWindowHours: number;
     refreshedAt: string;
 };

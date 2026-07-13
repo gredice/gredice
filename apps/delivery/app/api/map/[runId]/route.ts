@@ -1,10 +1,9 @@
+import { DeliveryRunStopStates, getDeliveryRun } from '@gredice/storage';
+import { withAuth } from '../../../../lib/auth/auth';
 import {
     accountCanTrackDeliveryRun,
-    DeliveryRunStopStates,
-    getDeliveryRequest,
-    getDeliveryRun,
-} from '@gredice/storage';
-import { withAuth } from '../../../../lib/auth/auth';
+    resolveDeliveryRunStopGroups,
+} from '../../../../lib/deliveryDashboard';
 import {
     buildGoogleStaticMapUrl,
     unavailableMapSvg,
@@ -42,20 +41,31 @@ export async function GET(
                 return new Response(null, { status: 403 });
             }
 
-            const stops = driverView
-                ? run.stops
-                : (
-                      await Promise.all(
-                          run.stops.map(async (stop) => ({
-                              request: await getDeliveryRequest(
-                                  stop.deliveryRequestId,
-                              ),
-                              stop,
-                          })),
-                      )
-                  )
-                      .filter(({ request }) => request?.accountId === accountId)
-                      .map(({ stop }) => stop);
+            const groups = await resolveDeliveryRunStopGroups(run);
+            const stops = groups.flatMap((group, index) => {
+                const customerOwnsStop = group.items.some(
+                    ({ request }) => request?.accountId === accountId,
+                );
+                const delivered = group.items.every(
+                    ({ stop }) =>
+                        stop.state === DeliveryRunStopStates.DELIVERED,
+                );
+                const representative = group.items[0]?.stop;
+                if (
+                    !representative ||
+                    (!driverView && !customerOwnsStop) ||
+                    (driverView && delivered)
+                ) {
+                    return [];
+                }
+                return [
+                    {
+                        latitude: representative.latitude,
+                        longitude: representative.longitude,
+                        sequence: index + 1,
+                    },
+                ];
+            });
             const url = buildGoogleStaticMapUrl({
                 driverLocation:
                     run.currentLatitude !== null &&
@@ -65,17 +75,7 @@ export async function GET(
                               longitude: run.currentLongitude,
                           }
                         : null,
-                stops: stops
-                    .filter(
-                        (stop) =>
-                            stop.state !== DeliveryRunStopStates.DELIVERED ||
-                            customerView,
-                    )
-                    .map((stop) => ({
-                        latitude: stop.latitude,
-                        longitude: stop.longitude,
-                        sequence: stop.sequence,
-                    })),
+                stops,
                 encodedPolyline: run.encodedPolyline,
                 customerView,
             });

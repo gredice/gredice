@@ -403,7 +403,7 @@ async function computeGoogleRoute({
 }): Promise<DeliveryRoutePlan> {
     if (stops.length > maximumDeliveryRouteStops) {
         throw new Error(
-            `Jedna ruta može sadržavati najviše ${maximumDeliveryRouteStops} dostava.`,
+            `Jedna ruta može sadržavati najviše ${maximumDeliveryRouteStops} fizičkih stanica.`,
         );
     }
 
@@ -568,7 +568,7 @@ export async function planDeliveryRoute({
     }
     if (candidates.length > maximumDeliveryRouteStops) {
         throw new Error(
-            `Jedna ruta može sadržavati najviše ${maximumDeliveryRouteStops} dostava.`,
+            `Jedna ruta može sadržavati najviše ${maximumDeliveryRouteStops} fizičkih stanica.`,
         );
     }
     for (const candidate of candidates) {

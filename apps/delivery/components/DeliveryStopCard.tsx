@@ -88,7 +88,9 @@ export function DeliveryStopCard({
                                 className="truncate"
                             >
                                 {driverMode
-                                    ? stop.contactName
+                                    ? stop.deliveryCount > 1
+                                        ? `${stop.deliveryCount} uroda · skupna dostava`
+                                        : stop.contactName
                                     : stop.harvest.plantName}
                             </Typography>
                             <Typography
@@ -96,7 +98,9 @@ export function DeliveryStopCard({
                                 className="mt-0.5 text-muted-foreground"
                             >
                                 {driverMode
-                                    ? stop.harvest.plantName
+                                    ? stop.deliveryCount > 1
+                                        ? 'Ista adresa i termin'
+                                        : stop.harvest.plantName
                                     : formatDeliveryDateTime(stop.slotStartAt)}
                             </Typography>
                         </div>
@@ -163,32 +167,113 @@ export function DeliveryStopCard({
                             <span>{stop.address}</span>
                         </div>
                     ) : null}
-                    {driverMode && stop.phone ? (
-                        <a
-                            href={`tel:${stop.phone}`}
-                            className="flex items-center gap-2 text-primary hover:underline"
-                        >
-                            <Mobile className="size-4" />
-                            {stop.phone}
-                        </a>
-                    ) : null}
-                    <div className="flex items-start gap-2">
-                        <Leaf className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                        <span>
-                            {[
-                                stop.harvest.plantName,
-                                stop.harvest.raisedBedName,
-                                stop.harvest.fieldName,
-                            ]
-                                .filter(Boolean)
-                                .join(' · ')}
-                        </span>
-                    </div>
-                    {stop.requestNotes ? (
-                        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-950">
-                            <strong>Napomena:</strong> {stop.requestNotes}
+                    {driverMode ? (
+                        <div className="space-y-2">
+                            {stop.deliveries.map((delivery) => (
+                                <div
+                                    key={delivery.requestId}
+                                    className="space-y-2 rounded-md border p-3"
+                                >
+                                    <Typography
+                                        level="body3"
+                                        semiBold
+                                        className="flex items-center gap-2"
+                                    >
+                                        <User className="size-4" />
+                                        {delivery.contactName}
+                                    </Typography>
+                                    {delivery.phone ? (
+                                        <a
+                                            href={`tel:${delivery.phone}`}
+                                            className="flex items-center gap-2 text-primary hover:underline"
+                                        >
+                                            <Mobile className="size-4" />
+                                            {delivery.phone}
+                                        </a>
+                                    ) : null}
+                                    <div className="flex items-start gap-2">
+                                        <Leaf className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                                        <span>
+                                            {[
+                                                delivery.harvest.plantName,
+                                                delivery.harvest.raisedBedName,
+                                                delivery.harvest.fieldName,
+                                            ]
+                                                .filter(Boolean)
+                                                .join(' · ')}
+                                        </span>
+                                    </div>
+                                    {delivery.requestNotes ? (
+                                        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-950 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
+                                            <strong>Napomena:</strong>{' '}
+                                            {delivery.requestNotes}
+                                        </div>
+                                    ) : null}
+                                    {delivery.accountContacts.length > 0 ? (
+                                        <div className="border-t pt-2">
+                                            <Typography
+                                                level="body3"
+                                                semiBold
+                                                className="mb-1"
+                                            >
+                                                Korisnici računa
+                                            </Typography>
+                                            {delivery.accountContacts.map(
+                                                (contact) => (
+                                                    <div
+                                                        key={contact.id}
+                                                        className="text-sm"
+                                                    >
+                                                        {contact.displayName} ·{' '}
+                                                        <a
+                                                            href={`mailto:${contact.email}`}
+                                                            className="text-primary hover:underline"
+                                                        >
+                                                            {contact.email}
+                                                        </a>
+                                                    </div>
+                                                ),
+                                            )}
+                                        </div>
+                                    ) : null}
+                                    {delivery.harvest.tracePath ? (
+                                        <Button
+                                            href={`https://www.gredice.com${delivery.harvest.tracePath}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            variant="plain"
+                                            startDecorator={
+                                                <ExternalLink className="size-4" />
+                                            }
+                                        >
+                                            Trag uroda
+                                        </Button>
+                                    ) : null}
+                                </div>
+                            ))}
                         </div>
-                    ) : null}
+                    ) : (
+                        <>
+                            <div className="flex items-start gap-2">
+                                <Leaf className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                                <span>
+                                    {[
+                                        stop.harvest.plantName,
+                                        stop.harvest.raisedBedName,
+                                        stop.harvest.fieldName,
+                                    ]
+                                        .filter(Boolean)
+                                        .join(' · ')}
+                                </span>
+                            </div>
+                            {stop.requestNotes ? (
+                                <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-950 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
+                                    <strong>Napomena:</strong>{' '}
+                                    {stop.requestNotes}
+                                </div>
+                            ) : null}
+                        </>
+                    )}
                     {estimatedOutsideWindow && !delivered ? (
                         <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-950 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
                             <Warning className="mt-0.5 size-4 shrink-0" />
@@ -196,28 +281,6 @@ export function DeliveryStopCard({
                                 Trenutačna procjena dolaska je nakon završetka
                                 termina. Obavijesti korisnika o kašnjenju.
                             </span>
-                        </div>
-                    ) : null}
-                    {driverMode && stop.accountContacts.length > 0 ? (
-                        <div className="rounded-md border p-3">
-                            <Typography
-                                level="body3"
-                                semiBold
-                                className="mb-2 flex items-center gap-2"
-                            >
-                                <User className="size-4" /> Korisnici računa
-                            </Typography>
-                            {stop.accountContacts.map((contact) => (
-                                <div key={contact.id} className="text-sm">
-                                    {contact.displayName} ·{' '}
-                                    <a
-                                        href={`mailto:${contact.email}`}
-                                        className="text-primary hover:underline"
-                                    >
-                                        {contact.email}
-                                    </a>
-                                </div>
-                            ))}
                         </div>
                     ) : null}
                 </div>
@@ -234,7 +297,7 @@ export function DeliveryStopCard({
                             Navigacija
                         </Button>
                     ) : null}
-                    {stop.harvest.tracePath ? (
+                    {!driverMode && stop.harvest.tracePath ? (
                         <Button
                             href={`https://www.gredice.com${stop.harvest.tracePath}`}
                             target="_blank"
@@ -253,7 +316,9 @@ export function DeliveryStopCard({
                             className="block text-sm font-medium"
                             htmlFor={`notes-${stop.id}`}
                         >
-                            Napomena o dostavi
+                            {stop.deliveryCount > 1
+                                ? 'Napomena za skupnu dostavu'
+                                : 'Napomena o dostavi'}
                         </label>
                         <textarea
                             id={`notes-${stop.id}`}
@@ -284,7 +349,9 @@ export function DeliveryStopCard({
                                 onClick={() => onDeliver?.(notes || undefined)}
                                 startDecorator={<Approved className="size-4" />}
                             >
-                                Dostavljeno · dalje
+                                {stop.deliveryCount > 1
+                                    ? `Dostavi ${stop.deliveryCount} uroda · dalje`
+                                    : 'Dostavljeno · dalje'}
                             </Button>
                         </div>
                     </div>
