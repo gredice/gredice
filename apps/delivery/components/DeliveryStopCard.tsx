@@ -25,6 +25,7 @@ import {
     formatDistance,
     formatTravelDuration,
 } from '../lib/deliveryFormatting';
+import { DeliveryHarvestVerification } from './DeliveryHarvestVerification';
 
 function statusColor(
     status: string,
@@ -312,6 +313,20 @@ export function DeliveryStopCard({
 
                 {driverMode && stop.isCurrent && !delivered ? (
                     <div className="space-y-3 border-t pt-4">
+                        {stop.stopState === 'arrived' ? (
+                            <DeliveryHarvestVerification
+                                deliveries={stop.deliveries}
+                                disabled={Boolean(pendingAction)}
+                            />
+                        ) : (
+                            <Typography
+                                level="body3"
+                                className="rounded-md bg-muted/70 p-3 text-muted-foreground"
+                            >
+                                Nakon potvrde dolaska možeš opcionalno skenirati
+                                QR etikete i provjeriti urode za ovu stanicu.
+                            </Typography>
+                        )}
                         <label
                             className="block text-sm font-medium"
                             htmlFor={`notes-${stop.id}`}
