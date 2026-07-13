@@ -23,11 +23,16 @@ import type {
     ActiveDeliveryRunSummary,
     DeliveryContactSummary,
     DeliveryDashboard,
+    DeliveryHarvestSummary,
+    DeliveryRouteOrderSummary,
     DeliveryStopSummary,
     DeliveryTrackingLocation,
 } from './deliveryDashboardTypes';
 import {
+    DeliveryRoutePlanningError,
     formatDeliveryDestinationAddress,
+    maximumDeliveryRouteStops,
+    maximumDeliveryRouteWindowHours,
     planDeliveryRoute,
     recalculateDeliveryRoute,
 } from './deliveryRouting';
@@ -51,6 +56,10 @@ const batchStates: ReadonlySet<string> = new Set([
     DeliveryRequestStates.READY,
 ]);
 const etaRefreshIntervalMs = 2 * 60 * 1000;
+
+export class DeliveryRunStartError extends Error {
+    override name = 'DeliveryRunStartError';
+}
 
 function iso(value?: Date | null) {
     return value?.toISOString() ?? null;
@@ -119,6 +128,16 @@ function fieldName(request: DeliveryRequest) {
     return typeof positionIndex === 'number'
         ? `Polje ${positionIndex + 1}`
         : null;
+}
+
+function harvestSummary(request: DeliveryRequest): DeliveryHarvestSummary {
+    return {
+        plantName: plantName(request),
+        operationName: request.operationData?.information?.label ?? null,
+        raisedBedName: raisedBedName(request),
+        fieldName: fieldName(request),
+        tracePath: request.trace?.publicPath ?? null,
+    };
 }
 
 function statusLabel({
@@ -220,13 +239,7 @@ function deliveryStopSummary({
         estimatedDistanceMeters: stop?.estimatedDistanceMeters ?? null,
         arrivedAt: iso(stop?.arrivedAt),
         deliveredAt: iso(stop?.deliveredAt),
-        harvest: {
-            plantName: plantName(request),
-            operationName: request.operationData?.information?.label ?? null,
-            raisedBedName: raisedBedName(request),
-            fieldName: fieldName(request),
-            tracePath: request.trace?.publicPath ?? null,
-        },
+        harvest: harvestSummary(request),
         accountContacts: accountContacts(request.accountId, contacts),
         tracking: includeTracking ? runLocation : null,
         runId: run?.id ?? null,
@@ -303,7 +316,7 @@ async function driverDashboard({
             request.address &&
             request.slot &&
             batchStates.has(request.state) &&
-            request.slot.endAt.getTime() >= now - 6 * 60 * 60 * 1000 &&
+            request.slot.endAt.getTime() >= now &&
             request.slot.startAt.getTime() <= now + 14 * 24 * 60 * 60 * 1000,
     );
     const assigned = await getDeliveryRunStopsForRequestIds(
@@ -314,20 +327,43 @@ async function driverDashboard({
     );
     const batchesBySlot = new Map<
         number,
-        { startAt: Date; endAt: Date; deliveryCount: number }
+        {
+            startAt: Date;
+            endAt: Date;
+            pickupLocationName: string | null;
+            pickupAddress: string | null;
+            orders: DeliveryRouteOrderSummary[];
+        }
     >();
     for (const request of candidateRequests) {
-        if (!request.slot || assignedRequestIds.has(request.id)) {
+        if (
+            !request.slot ||
+            !request.address ||
+            assignedRequestIds.has(request.id)
+        ) {
             continue;
         }
+        const order = {
+            requestId: request.id,
+            contactName: request.address.contactName,
+            address: formatDeliveryDestinationAddress(request.address),
+            addressLabel: request.address.label,
+            requestNotes: request.requestNotes ?? null,
+            harvest: harvestSummary(request),
+        } satisfies DeliveryRouteOrderSummary;
         const batch = batchesBySlot.get(request.slot.id);
         if (batch) {
-            batch.deliveryCount += 1;
+            batch.orders.push(order);
         } else {
+            const pickupLocation = request.slot.location;
             batchesBySlot.set(request.slot.id, {
                 startAt: request.slot.startAt,
                 endAt: request.slot.endAt,
-                deliveryCount: 1,
+                pickupLocationName: pickupLocation?.name ?? null,
+                pickupAddress: pickupLocation
+                    ? formatDeliveryDestinationAddress(pickupLocation)
+                    : null,
+                orders: [order],
             });
         }
     }
@@ -344,10 +380,17 @@ async function driverDashboard({
             slotId,
             startAt: batch.startAt.toISOString(),
             endAt: batch.endAt.toISOString(),
-            deliveryCount: batch.deliveryCount,
+            pickupLocationName: batch.pickupLocationName,
+            pickupAddress: batch.pickupAddress,
+            deliveryCount: batch.orders.length,
+            orders: batch.orders.sort((first, second) =>
+                first.address.localeCompare(second.address, 'hr'),
+            ),
         })).sort((first, second) =>
             first.startAt.localeCompare(second.startAt),
         ),
+        maximumRouteDeliveries: maximumDeliveryRouteStops,
+        maximumRouteWindowHours: maximumDeliveryRouteWindowHours,
         refreshedAt: new Date().toISOString(),
     };
 }
@@ -376,17 +419,21 @@ async function customerDashboard({
         runRows.map((row) => [row.stop.deliveryRequestId, row]),
     );
     const contacts = await getDeliveryAccountContacts([accountId]);
-    const activeStops = runRows
-        .filter(
-            ({ run, stop }) =>
-                run.state === DeliveryRunStates.ACTIVE &&
-                stop.state !== DeliveryRunStopStates.DELIVERED,
-        )
-        .sort((first, second) => first.stop.sequence - second.stop.sequence);
+    const activeRunIds = Array.from(
+        new Set(
+            runRows.flatMap(({ run }) =>
+                run.state === DeliveryRunStates.ACTIVE ? [run.id] : [],
+            ),
+        ),
+    );
+    const activeRuns = await Promise.all(activeRunIds.map(getDeliveryRun));
     const currentByRunId = new Map<string, number>();
-    for (const row of activeStops) {
-        if (!currentByRunId.has(row.run.id)) {
-            currentByRunId.set(row.run.id, row.stop.id);
+    for (const run of activeRuns) {
+        const currentStop = run?.stops.find(
+            (stop) => stop.state !== DeliveryRunStopStates.DELIVERED,
+        );
+        if (run && currentStop) {
+            currentByRunId.set(run.id, currentStop.id);
         }
     }
 
@@ -404,7 +451,8 @@ async function customerDashboard({
                 contacts,
                 includeTracking:
                     row?.run.state === DeliveryRunStates.ACTIVE &&
-                    row.stop.state !== DeliveryRunStopStates.DELIVERED,
+                    row.stop.state !== DeliveryRunStopStates.DELIVERED &&
+                    isCurrent,
             });
         })
         .sort((first, second) => {
@@ -468,57 +516,88 @@ async function ensureRunRequestsReady(run: DeliveryRun) {
 
 export async function startDeliveryRun({
     driverUserId,
-    slotId,
+    deliveryRequestIds,
 }: {
     driverUserId: string;
-    slotId: number;
+    deliveryRequestIds: string[];
 }) {
     const existingRun = await getActiveDeliveryRunForDriver(driverUserId);
     if (existingRun) {
         await ensureRunRequestsReady(existingRun);
         return existingRun;
     }
+    if (
+        deliveryRequestIds.length === 0 ||
+        deliveryRequestIds.length > maximumDeliveryRouteStops
+    ) {
+        throw new DeliveryRunStartError(
+            `Odaberi između 1 i ${maximumDeliveryRouteStops} dostava.`,
+        );
+    }
 
-    const requests = await getDeliveryRequestsWithEvents(
-        undefined,
-        undefined,
-        slotId,
+    const requests = await getDeliveryRequestsWithEvents();
+    const requestsById = new Map(
+        requests.map((request) => [request.id, request]),
     );
-    const candidates = requests.filter(
-        (request) =>
-            request.mode === 'delivery' &&
-            request.address &&
-            batchStates.has(request.state),
-    );
+    const candidates: ListedDeliveryRequest[] = [];
+    const now = new Date();
+    for (const requestId of deliveryRequestIds) {
+        const request = requestsById.get(requestId);
+        if (
+            request?.mode !== 'delivery' ||
+            !request.address ||
+            !request.slot ||
+            !batchStates.has(request.state) ||
+            request.slot.endAt < now
+        ) {
+            throw new DeliveryRunStartError(
+                'Jedna ili više odabranih dostava više nije dostupna za preuzimanje. Osvježi popis i pokušaj ponovno.',
+            );
+        }
+        candidates.push(request);
+    }
+
     const existingStops = await getDeliveryRunStopsForRequestIds(
         candidates.map((request) => request.id),
     );
-    const assignedIds = new Set(
-        existingStops.map(({ stop }) => stop.deliveryRequestId),
-    );
-    const unassigned = candidates.filter(
-        (request) => !assignedIds.has(request.id) && request.address,
-    );
-    if (unassigned.length === 0) {
-        throw new Error('U odabranom terminu nema dostava za preuzimanje.');
+    if (existingStops.length > 0) {
+        throw new DeliveryRunStartError(
+            'Jedna ili više odabranih dostava već je dodijeljena drugoj ruti. Osvježi popis i odaberi ponovno.',
+        );
     }
 
     const plan = await planDeliveryRoute({
-        candidates: unassigned.map((request) => {
-            if (!request.address) {
-                throw new Error('Dostava nema valjanu adresu.');
+        candidates: candidates.map((request) => {
+            if (!request.address || !request.slot) {
+                throw new DeliveryRunStartError(
+                    'Odabrana dostava nema valjanu adresu ili termin.',
+                );
             }
             return {
                 deliveryRequestId: request.id,
                 formattedAddress: formatDeliveryDestinationAddress(
                     request.address,
                 ),
+                windowStartAt: request.slot.startAt,
+                windowEndAt: request.slot.endAt,
             };
         }),
     });
+    const primarySlot = candidates
+        .map((request) => request.slot)
+        .filter((slot): slot is NonNullable<typeof slot> => Boolean(slot))
+        .sort(
+            (first, second) =>
+                first.startAt.getTime() - second.startAt.getTime(),
+        )[0];
+    if (!primarySlot) {
+        throw new DeliveryRunStartError(
+            'Odabrane dostave nemaju valjani termin.',
+        );
+    }
     const run = await createDeliveryRun({
         driverUserId,
-        timeSlotId: slotId,
+        timeSlotId: primarySlot.id,
         encodedPolyline: plan.encodedPolyline,
         totalDistanceMeters: plan.totalDistanceMeters,
         totalDurationSeconds: plan.totalDurationSeconds,
@@ -623,14 +702,29 @@ export async function recordDriverLocation({
     const remainingStops = run.stops.filter(
         (stop) => stop.state !== DeliveryRunStopStates.DELIVERED,
     );
+    const requests = await Promise.all(
+        remainingStops.map((stop) =>
+            getDeliveryRequest(stop.deliveryRequestId),
+        ),
+    );
+    const requestsById = new Map(
+        requests.flatMap((request) =>
+            request ? [[request.id, request] as const] : [],
+        ),
+    );
     const plan = await recalculateDeliveryRoute({
         origin: { latitude, longitude },
-        stops: remainingStops.map((stop) => ({
-            deliveryRequestId: stop.deliveryRequestId,
-            formattedAddress: stop.formattedAddress,
-            latitude: stop.latitude,
-            longitude: stop.longitude,
-        })),
+        stops: remainingStops.map((stop) => {
+            const request = requestsById.get(stop.deliveryRequestId);
+            return {
+                deliveryRequestId: stop.deliveryRequestId,
+                formattedAddress: stop.formattedAddress,
+                latitude: stop.latitude,
+                longitude: stop.longitude,
+                windowStartAt: request?.slot?.startAt,
+                windowEndAt: request?.slot?.endAt,
+            };
+        }),
     });
     await updateDeliveryRunEstimates({
         runId,
@@ -639,4 +733,11 @@ export async function recordDriverLocation({
         totalDurationSeconds: plan.totalDurationSeconds,
         estimates: plan.stops,
     });
+}
+
+export function deliveryRunStartErrorMessage(error: unknown) {
+    return error instanceof DeliveryRunStartError ||
+        error instanceof DeliveryRoutePlanningError
+        ? error.message
+        : null;
 }

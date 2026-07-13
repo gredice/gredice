@@ -193,8 +193,8 @@ export async function accountCanTrackDeliveryRun({
     accountId: string;
     runId: string;
 }) {
-    const row = await storage()
-        .select({ id: deliveryRunStops.id })
+    const rows = await storage()
+        .select({ accountId: operations.accountId })
         .from(deliveryRunStops)
         .innerJoin(deliveryRuns, eq(deliveryRunStops.runId, deliveryRuns.id))
         .innerJoin(
@@ -207,12 +207,12 @@ export async function accountCanTrackDeliveryRun({
                 eq(deliveryRunStops.runId, runId),
                 eq(deliveryRuns.state, DeliveryRunStates.ACTIVE),
                 ne(deliveryRunStops.state, DeliveryRunStopStates.DELIVERED),
-                eq(operations.accountId, accountId),
             ),
         )
+        .orderBy(asc(deliveryRunStops.sequence))
         .limit(1);
 
-    return row.length > 0;
+    return rows[0]?.accountId === accountId;
 }
 
 export async function updateDeliveryRunLocation({

@@ -11,7 +11,7 @@
         "dev": "node ../../scripts/run-app-command.mjs dev",
         "build": "next build",
         "start": "node ../../scripts/run-app-command.mjs start",
-        "test": "NODE_OPTIONS=\"${NODE_OPTIONS:+$NODE_OPTIONS }--conditions=react-server\" node --import tsx --test lib/deliveryRouting.node.spec.ts"
+        "test": "NODE_OPTIONS=\"${NODE_OPTIONS:+$NODE_OPTIONS }--conditions=react-server\" node --import tsx --test lib/*.node.spec.ts"
     },
     "dependencies": {
         "next": "16.2.10",

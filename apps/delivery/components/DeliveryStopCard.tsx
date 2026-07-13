@@ -5,6 +5,7 @@ import { Card, CardContent } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
 import {
     Approved,
+    Calendar,
     ExternalLink,
     Leaf,
     MapPin,
@@ -13,6 +14,7 @@ import {
     Navigate,
     Timer,
     User,
+    Warning,
 } from '@gredice/ui/icons';
 import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
@@ -53,6 +55,11 @@ export function DeliveryStopCard({
     const navigationUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(stop.address)}`;
     const driverMode = mode === 'driver';
     const delivered = stop.statusLabel === 'Dostavljeno';
+    const estimatedOutsideWindow = Boolean(
+        stop.estimatedArrivalAt &&
+            stop.slotEndAt &&
+            new Date(stop.estimatedArrivalAt) > new Date(stop.slotEndAt),
+    );
 
     return (
         <Card
@@ -140,6 +147,16 @@ export function DeliveryStopCard({
                 ) : null}
 
                 <div className="space-y-2 text-sm">
+                    {driverMode && stop.slotStartAt && stop.slotEndAt ? (
+                        <div className="flex items-start gap-2">
+                            <Calendar className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                            <span>
+                                Termin:{' '}
+                                {formatDeliveryDateTime(stop.slotStartAt)} –{' '}
+                                {formatDeliveryTime(stop.slotEndAt)}
+                            </span>
+                        </div>
+                    ) : null}
                     {driverMode ? (
                         <div className="flex items-start gap-2">
                             <MapPin className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
@@ -170,6 +187,15 @@ export function DeliveryStopCard({
                     {stop.requestNotes ? (
                         <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-950">
                             <strong>Napomena:</strong> {stop.requestNotes}
+                        </div>
+                    ) : null}
+                    {estimatedOutsideWindow && !delivered ? (
+                        <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-950 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
+                            <Warning className="mt-0.5 size-4 shrink-0" />
+                            <span>
+                                Trenutačna procjena dolaska je nakon završetka
+                                termina. Obavijesti korisnika o kašnjenju.
+                            </span>
                         </div>
                     ) : null}
                     {driverMode && stop.accountContacts.length > 0 ? (

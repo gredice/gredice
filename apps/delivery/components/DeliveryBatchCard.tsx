@@ -1,56 +1,116 @@
 'use client';
 
-import { Button } from '@gredice/ui/Button';
 import { Card, CardContent } from '@gredice/ui/Card';
-import { Calendar, Play, Truck } from '@gredice/ui/icons';
+import { Checkbox } from '@gredice/ui/Checkbox';
+import { Calendar, MapPin, Truck } from '@gredice/ui/icons';
 import { Typography } from '@gredice/ui/Typography';
 import type { DeliveryBatchSummary } from '../lib/deliveryDashboardTypes';
-import { formatDeliveryDateTime } from '../lib/deliveryFormatting';
+import {
+    formatDeliveryDateTime,
+    formatDeliveryTime,
+} from '../lib/deliveryFormatting';
+import { DeliverySelectionItem } from './DeliverySelectionItem';
 
 export function DeliveryBatchCard({
     batch,
-    loading,
     disabled,
-    onStart,
+    selectionLimitReached,
+    selectedRequestIds,
+    onToggleBatch,
+    onToggleOrder,
 }: {
     batch: DeliveryBatchSummary;
-    loading: boolean;
     disabled: boolean;
-    onStart: () => void;
+    selectionLimitReached: boolean;
+    selectedRequestIds: ReadonlySet<string>;
+    onToggleBatch: (checked: boolean) => void;
+    onToggleOrder: (requestId: string, checked: boolean) => void;
 }) {
+    const selectedCount = batch.orders.filter((order) =>
+        selectedRequestIds.has(order.requestId),
+    ).length;
+    const allSelected = selectedCount === batch.orders.length;
+    const batchSelectionState = allSelected
+        ? true
+        : selectedCount > 0
+          ? 'indeterminate'
+          : false;
+
     return (
         <Card>
-            <CardContent
-                noHeader
-                className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between"
-            >
-                <div className="flex min-w-0 items-start gap-3">
-                    <div className="rounded-lg bg-secondary p-2 text-secondary-foreground">
-                        <Calendar className="size-5" />
+            <CardContent noHeader className="p-0">
+                <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex min-w-0 items-start gap-3">
+                        <div className="rounded-lg bg-secondary p-2 text-secondary-foreground">
+                            <Calendar className="size-5" />
+                        </div>
+                        <div className="min-w-0">
+                            <Typography level="body1" semiBold>
+                                {formatDeliveryDateTime(batch.startAt)} –{' '}
+                                {formatDeliveryTime(batch.endAt)}
+                            </Typography>
+                            <Typography
+                                level="body3"
+                                className="mt-1 flex items-center gap-1 text-muted-foreground"
+                            >
+                                <Truck className="size-4" />
+                                {batch.deliveryCount}{' '}
+                                {batch.deliveryCount === 1
+                                    ? 'dostava'
+                                    : batch.deliveryCount < 5
+                                      ? 'dostave'
+                                      : 'dostava'}
+                            </Typography>
+                            {batch.pickupLocationName ? (
+                                <Typography
+                                    level="body3"
+                                    className="mt-1 flex items-start gap-1 text-muted-foreground"
+                                >
+                                    <MapPin className="mt-0.5 size-4 shrink-0" />
+                                    <span>
+                                        {batch.pickupLocationName}
+                                        {batch.pickupAddress
+                                            ? ` · ${batch.pickupAddress}`
+                                            : ''}
+                                    </span>
+                                </Typography>
+                            ) : null}
+                        </div>
                     </div>
-                    <div className="min-w-0">
-                        <Typography level="body1" semiBold>
-                            {formatDeliveryDateTime(batch.startAt)}
-                        </Typography>
-                        <Typography
-                            level="body3"
-                            className="mt-1 flex items-center gap-1 text-muted-foreground"
-                        >
-                            <Truck className="size-4" />
-                            {batch.deliveryCount}{' '}
-                            {batch.deliveryCount === 1 ? 'dostava' : 'dostava'}
-                        </Typography>
-                    </div>
+                    <Checkbox
+                        checked={batchSelectionState}
+                        disabled={
+                            disabled || (selectionLimitReached && !allSelected)
+                        }
+                        onCheckedChange={(value) =>
+                            onToggleBatch(value === true)
+                        }
+                        label={
+                            allSelected
+                                ? 'Poništi termin'
+                                : 'Odaberi cijeli termin'
+                        }
+                    />
                 </div>
-                <Button
-                    loading={loading}
-                    disabled={disabled}
-                    onClick={onStart}
-                    startDecorator={<Play className="size-4" />}
-                    className="sm:min-w-48"
-                >
-                    Preuzmi i pokreni rutu
-                </Button>
+                <div className="divide-y border-t">
+                    {batch.orders.map((order) => {
+                        const checked = selectedRequestIds.has(order.requestId);
+                        return (
+                            <DeliverySelectionItem
+                                key={order.requestId}
+                                order={order}
+                                checked={checked}
+                                disabled={
+                                    disabled ||
+                                    (selectionLimitReached && !checked)
+                                }
+                                onCheckedChange={(value) =>
+                                    onToggleOrder(order.requestId, value)
+                                }
+                            />
+                        );
+                    })}
+                </div>
             </CardContent>
         </Card>
     );
