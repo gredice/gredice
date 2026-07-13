@@ -5,9 +5,10 @@ import {
     accountCanTrackDeliveryRun,
     createDeliveryRun,
     deliveryRequests,
+    fulfillDeliveryRunStop,
+    getDeliveryRequest,
     getDeliveryRun,
     markDeliveryRunStopArrived,
-    markDeliveryRunStopDelivered,
     operations,
     pickupLocations,
     storage,
@@ -121,6 +122,18 @@ test('delivery run enforces stop order and limits live tracking to active delive
         }),
         /route order/,
     );
+    await assert.rejects(
+        fulfillDeliveryRunStop({
+            driverUserId,
+            runId: run.id,
+            stopId: secondStop.id,
+        }),
+        /route order/,
+    );
+    assert.notEqual(
+        (await getDeliveryRequest(secondStop.deliveryRequestId))?.state,
+        'fulfilled',
+    );
 
     await updateDeliveryRunLocation({
         runId: run.id,
@@ -129,12 +142,12 @@ test('delivery run enforces stop order and limits live tracking to active delive
         longitude: 15.971,
         recordedAt: new Date('2026-07-13T08:05:00.000Z'),
     });
-    await markDeliveryRunStopDelivered({
+    await fulfillDeliveryRunStop({
         driverUserId,
         runId: run.id,
         stopId: firstStop.id,
     });
-    await markDeliveryRunStopDelivered({
+    await fulfillDeliveryRunStop({
         driverUserId,
         runId: run.id,
         stopId: secondStop.id,

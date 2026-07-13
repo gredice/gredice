@@ -12,6 +12,13 @@ import {
     users,
 } from '../schema';
 import { storage } from '../storage';
+import { fulfillDeliveryRequest } from './deliveryRequestsRepo';
+
+type StorageClient = ReturnType<typeof storage>;
+type TransactionClient = Parameters<
+    Parameters<StorageClient['transaction']>[0]
+>[0];
+type DatabaseClient = StorageClient | TransactionClient;
 
 export type CreateDeliveryRunStopInput = {
     deliveryRequestId: string;
@@ -315,12 +322,14 @@ async function ensureOwnedActiveRunStop({
     driverUserId,
     runId,
     stopId,
+    db = storage(),
 }: {
     driverUserId: string;
     runId: string;
     stopId: number;
+    db?: DatabaseClient;
 }) {
-    const stop = await storage().query.deliveryRunStops.findFirst({
+    const stop = await db.query.deliveryRunStops.findFirst({
         where: and(
             eq(deliveryRunStops.id, stopId),
             eq(deliveryRunStops.runId, runId),
@@ -337,7 +346,7 @@ async function ensureOwnedActiveRunStop({
     }
 
     if (stop.state !== DeliveryRunStopStates.DELIVERED) {
-        const currentStop = await storage().query.deliveryRunStops.findFirst({
+        const currentStop = await db.query.deliveryRunStops.findFirst({
             columns: { id: true },
             where: and(
                 eq(deliveryRunStops.runId, runId),
@@ -393,15 +402,37 @@ export async function markDeliveryRunStopDelivered({
     runId: string;
     stopId: number;
 }) {
+    return await storage().transaction(async (tx) =>
+        markDeliveryRunStopDeliveredInDatabase({
+            driverUserId,
+            runId,
+            stopId,
+            db: tx,
+        }),
+    );
+}
+
+async function markDeliveryRunStopDeliveredInDatabase({
+    driverUserId,
+    runId,
+    stopId,
+    db,
+}: {
+    driverUserId: string;
+    runId: string;
+    stopId: number;
+    db: DatabaseClient;
+}) {
     const stop = await ensureOwnedActiveRunStop({
         driverUserId,
         runId,
         stopId,
+        db,
     });
 
     if (stop.state !== DeliveryRunStopStates.DELIVERED) {
         const now = new Date();
-        await storage()
+        await db
             .update(deliveryRunStops)
             .set({
                 state: DeliveryRunStopStates.DELIVERED,
@@ -411,7 +442,7 @@ export async function markDeliveryRunStopDelivered({
             .where(eq(deliveryRunStops.id, stopId));
     }
 
-    const remaining = await storage().query.deliveryRunStops.findFirst({
+    const remaining = await db.query.deliveryRunStops.findFirst({
         columns: { id: true },
         where: and(
             eq(deliveryRunStops.runId, runId),
@@ -420,7 +451,7 @@ export async function markDeliveryRunStopDelivered({
     });
 
     if (!remaining) {
-        await storage()
+        await db
             .update(deliveryRuns)
             .set({
                 state: DeliveryRunStates.COMPLETED,
@@ -436,4 +467,32 @@ export async function markDeliveryRunStopDelivered({
     }
 
     return stop.deliveryRequestId;
+}
+
+export async function fulfillDeliveryRunStop({
+    driverUserId,
+    runId,
+    stopId,
+    deliveryNotes,
+}: {
+    driverUserId: string;
+    runId: string;
+    stopId: number;
+    deliveryNotes?: string;
+}) {
+    return await storage().transaction(async (tx) => {
+        const stop = await ensureOwnedActiveRunStop({
+            driverUserId,
+            runId,
+            stopId,
+            db: tx,
+        });
+        await fulfillDeliveryRequest(stop.deliveryRequestId, deliveryNotes, tx);
+        return await markDeliveryRunStopDeliveredInDatabase({
+            driverUserId,
+            runId,
+            stopId,
+            db: tx,
+        });
+    });
 }

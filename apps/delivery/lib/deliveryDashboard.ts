@@ -4,7 +4,7 @@ import {
     DeliveryRequestStates,
     DeliveryRunStates,
     DeliveryRunStopStates,
-    fulfillDeliveryRequest,
+    fulfillDeliveryRunStop,
     getActiveDeliveryRunForDriver,
     getDeliveryAccountContacts,
     getDeliveryRequest,
@@ -14,7 +14,6 @@ import {
     getDeliveryRunStopsForRequestIds,
     getUser,
     markDeliveryRunStopArrived,
-    markDeliveryRunStopDelivered,
     readyDeliveryRequest,
     updateDeliveryRunEstimates,
     updateDeliveryRunLocation,
@@ -568,8 +567,12 @@ export async function deliverDeliveryStop({
         throw new Error('Aktivna dostava nije pronađena.');
     }
 
-    await fulfillDeliveryRequest(stop.deliveryRequestId, notes);
-    await markDeliveryRunStopDelivered({ driverUserId, runId, stopId });
+    await fulfillDeliveryRunStop({
+        driverUserId,
+        runId,
+        stopId,
+        deliveryNotes: notes,
+    });
     await notifyDeliveryRequestEvent(stop.deliveryRequestId, 'updated', {
         status: DeliveryRequestStates.FULFILLED,
         note: notes,

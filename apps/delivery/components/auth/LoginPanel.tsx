@@ -1,5 +1,6 @@
 'use client';
 
+import { getBrowserGrediceAppOrigin } from '@gredice/client';
 import { Alert } from '@gredice/ui/Alert';
 import {
     FacebookLoginButton,
@@ -54,8 +55,8 @@ export function LoginPanel() {
                 ? '/prijava/google-prijava/povratak'
                 : '/prijava/facebook-prijava/povratak';
         const authUrl = new URL(
-            `/api/gredice/api/auth/${provider}`,
-            window.location.origin,
+            `/api/auth/${provider}`,
+            getBrowserGrediceAppOrigin('api'),
         );
         authUrl.searchParams.set(
             'redirect',
