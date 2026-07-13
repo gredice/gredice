@@ -1,5 +1,6 @@
 import { withAuth } from '../../../../lib/auth/auth';
 import {
+    deliveryRunStartErrorLogContext,
     deliveryRunStartErrorMessage,
     startDeliveryRun,
 } from '../../../../lib/deliveryDashboard';
@@ -25,15 +26,16 @@ export async function POST(request: Request) {
             });
             return Response.json({ id: run.id }, { status: 201 });
         } catch (error) {
+            const startErrorMessage = deliveryRunStartErrorMessage(error);
             console.error('Failed to start delivery run', {
-                error,
+                ...deliveryRunStartErrorLogContext(error),
                 requestCount: deliveryRequestIds.length,
                 userId,
             });
             return Response.json(
                 {
                     error:
-                        deliveryRunStartErrorMessage(error) ??
+                        startErrorMessage ??
                         'Rutu nije moguće pokrenuti. Provjeri adrese i pokušaj ponovno.',
                 },
                 { status: 409 },
