@@ -1,0 +1,17 @@
+{
+    "name": "Gredice dostava",
+    "short_name": "Dostava",
+    "description": "Preuzimanje, dostava i praćenje Gredice uroda.",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#f8fbf8",
+    "theme_color": "#166534",
+    "icons": [
+        {
+            "src": "/icon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any"
+        }
+    ]
+}

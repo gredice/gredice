@@ -6,6 +6,7 @@ export type AppName =
     | 'news'
     | 'garden'
     | 'farm'
+    | 'delivery'
     | 'app'
     | 'storybook'
     | 'api'
@@ -66,6 +67,17 @@ export const appRegistry: AppRegistryEntry[] = [
         testPort: 3002,
         componentTestPort: 3102,
         vercelProjectName: 'farm',
+        startsInDefaultDev: true,
+    },
+    {
+        name: 'delivery',
+        packagePath: 'apps/delivery',
+        localDomain: 'dostava.gredice.test',
+        devPort: 3008,
+        startPort: 3008,
+        testPort: 3008,
+        componentTestPort: null,
+        vercelProjectName: 'delivery',
         startsInDefaultDev: true,
     },
     {

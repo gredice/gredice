@@ -1,0 +1,27 @@
+{
+    "$schema": "https://v2-9-16.turborepo.dev/schema.json",
+    "extends": ["//"],
+    "tasks": {
+        "build": {
+            "env": [
+                "COOKIE_DOMAIN",
+                "GREDICE_API_HOST",
+                "GREDICE_DELIVERY_HQ_ADDRESS",
+                "GREDICE_GOOGLE_MAPS_API_KEY",
+                "GREDICE_GOOGLE_MAPS_URL_SIGNING_SECRET",
+                "GREDICE_JWT_SIGN_SECRET",
+                "NEXT_PUBLIC_GREDICE_API_ORIGIN",
+                "NEXT_PUBLIC_GREDICE_DELIVERY_ORIGIN",
+                "POSTGRES_DATABASE",
+                "POSTGRES_HOST",
+                "POSTGRES_PASSWORD",
+                "POSTGRES_PRISMA_URL",
+                "POSTGRES_URL",
+                "POSTGRES_URL_NON_POOLING",
+                "POSTGRES_URL_NO_SSL",
+                "POSTGRES_USER",
+                "VERCEL_OIDC_TOKEN"
+            ]
+        }
+    }
+}

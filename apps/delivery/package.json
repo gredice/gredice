@@ -1,0 +1,42 @@
+{
+    "name": "delivery",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "clean": "rimraf .next .turbo dist build out coverage .vercel",
+        "lint": "biome check --write",
+        "lint:migrate": "biome migrate --write",
+        "typecheck": "next typegen && tsc --noEmit --pretty false",
+        "dev": "node ../../scripts/run-app-command.mjs dev",
+        "build": "next build",
+        "start": "node ../../scripts/run-app-command.mjs start",
+        "test": "NODE_OPTIONS=\"${NODE_OPTIONS:+$NODE_OPTIONS }--conditions=react-server\" node --import tsx --test lib/deliveryRouting.node.spec.ts"
+    },
+    "dependencies": {
+        "next": "16.2.10",
+        "react": "19.2.7",
+        "react-dom": "19.2.7",
+        "server-only": "0.0.1"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "2.5.3",
+        "@gredice/auth": "workspace:*",
+        "@gredice/client": "workspace:*",
+        "@gredice/notifications": "workspace:*",
+        "@gredice/storage": "workspace:*",
+        "@gredice/ui": "workspace:*",
+        "@tailwindcss/postcss": "4.3.2",
+        "@tailwindcss/typography": "0.5.20",
+        "@tanstack/react-query": "5.101.2",
+        "@types/node": "24.12.4",
+        "@types/react": "19.2.17",
+        "@types/react-dom": "19.2.3",
+        "@vercel/analytics": "2.0.1",
+        "babel-plugin-react-compiler": "19.1.0-rc.3",
+        "postcss": "8.5.16",
+        "tailwindcss": "4.3.2",
+        "tsx": "4.23.0",
+        "typescript": "6.0.3"
+    }
+}

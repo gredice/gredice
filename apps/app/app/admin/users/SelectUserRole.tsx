@@ -1,7 +1,7 @@
 'use client';
 
 import type { getUsers } from '@gredice/storage';
-import { Fence, Security, User } from '@gredice/ui/icons';
+import { Fence, Security, Truck, User } from '@gredice/ui/icons';
 import { ModalConfirm } from '@gredice/ui/ModalConfirm';
 import { SelectItems } from '@gredice/ui/SelectItems';
 import { Typography } from '@gredice/ui/Typography';
@@ -31,7 +31,12 @@ export function SelectUserRole({
             label: 'Poljoprivrednik',
             icon: <Fence className="size-5" />,
         },
-    ] as const;
+        {
+            value: 'driver',
+            label: 'Vozač dostave',
+            icon: <Truck className="size-5" />,
+        },
+    ];
 
     const roleLabels = roleItems.reduce<Record<string, string>>((acc, item) => {
         acc[item.value] = item.label;

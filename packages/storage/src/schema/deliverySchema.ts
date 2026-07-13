@@ -1,15 +1,17 @@
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import {
     boolean,
+    doublePrecision,
     index,
     integer,
     pgTable,
     serial,
     text,
     timestamp,
+    uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import { operations } from './operationsSchema';
-import { accounts } from './usersSchema';
+import { accounts, users } from './usersSchema';
 
 // Delivery Addresses - stores reusable addresses per account
 export const deliveryAddresses = pgTable(
@@ -154,6 +156,122 @@ export const deliveryRequestsRelations = relations(
     }),
 );
 
+// Delivery Runs - one optimized route picked up and driven by a driver/admin.
+export const deliveryRuns = pgTable(
+    'delivery_runs',
+    {
+        id: text('id').primaryKey(),
+        driverUserId: text('driver_user_id')
+            .notNull()
+            .references(() => users.id),
+        timeSlotId: integer('time_slot_id')
+            .notNull()
+            .references(() => timeSlots.id),
+        state: text('state').notNull().default('active'),
+        encodedPolyline: text('encoded_polyline'),
+        totalDistanceMeters: integer('total_distance_meters'),
+        totalDurationSeconds: integer('total_duration_seconds'),
+        currentLatitude: doublePrecision('current_latitude'),
+        currentLongitude: doublePrecision('current_longitude'),
+        currentLocationAccuracy: doublePrecision('current_location_accuracy'),
+        currentLocationHeading: doublePrecision('current_location_heading'),
+        currentLocationSpeed: doublePrecision('current_location_speed'),
+        currentLocationRecordedAt: timestamp('current_location_recorded_at'),
+        estimatesUpdatedAt: timestamp('estimates_updated_at'),
+        startedAt: timestamp('started_at').notNull().defaultNow(),
+        completedAt: timestamp('completed_at'),
+        createdAt: timestamp('created_at').notNull().defaultNow(),
+        updatedAt: timestamp('updated_at')
+            .notNull()
+            .$onUpdate(() => new Date()),
+    },
+    (table) => [
+        index('delivery_runs_driver_user_id_idx').on(table.driverUserId),
+        index('delivery_runs_time_slot_id_idx').on(table.timeSlotId),
+        index('delivery_runs_state_idx').on(table.state),
+        uniqueIndex('delivery_runs_driver_active_unique')
+            .on(table.driverUserId)
+            .where(sql`${table.state} = 'active'`),
+        index('delivery_runs_location_recorded_at_idx').on(
+            table.currentLocationRecordedAt,
+        ),
+    ],
+);
+
+// Delivery Run Stops - immutable destination coordinates plus mutable progress/ETAs.
+export const deliveryRunStops = pgTable(
+    'delivery_run_stops',
+    {
+        id: serial('id').primaryKey(),
+        runId: text('run_id')
+            .notNull()
+            .references(() => deliveryRuns.id, { onDelete: 'cascade' }),
+        deliveryRequestId: text('delivery_request_id')
+            .notNull()
+            .references(() => deliveryRequests.id),
+        sequence: integer('sequence').notNull(),
+        state: text('state').notNull().default('pending'),
+        latitude: doublePrecision('latitude').notNull(),
+        longitude: doublePrecision('longitude').notNull(),
+        formattedAddress: text('formatted_address').notNull(),
+        estimatedArrivalAt: timestamp('estimated_arrival_at'),
+        estimatedTravelSeconds: integer('estimated_travel_seconds'),
+        estimatedDistanceMeters: integer('estimated_distance_meters'),
+        arrivedAt: timestamp('arrived_at'),
+        deliveredAt: timestamp('delivered_at'),
+        createdAt: timestamp('created_at').notNull().defaultNow(),
+        updatedAt: timestamp('updated_at')
+            .notNull()
+            .$onUpdate(() => new Date()),
+    },
+    (table) => [
+        uniqueIndex('delivery_run_stops_delivery_request_id_unique').on(
+            table.deliveryRequestId,
+        ),
+        uniqueIndex('delivery_run_stops_run_sequence_unique').on(
+            table.runId,
+            table.sequence,
+        ),
+        index('delivery_run_stops_run_id_idx').on(table.runId),
+        index('delivery_run_stops_state_idx').on(table.state),
+    ],
+);
+
+export const deliveryRunsRelations = relations(
+    deliveryRuns,
+    ({ many, one }) => ({
+        driver: one(users, {
+            fields: [deliveryRuns.driverUserId],
+            references: [users.id],
+            relationName: 'driverDeliveryRuns',
+        }),
+        timeSlot: one(timeSlots, {
+            fields: [deliveryRuns.timeSlotId],
+            references: [timeSlots.id],
+            relationName: 'timeSlotDeliveryRuns',
+        }),
+        stops: many(deliveryRunStops, {
+            relationName: 'deliveryRunStops',
+        }),
+    }),
+);
+
+export const deliveryRunStopsRelations = relations(
+    deliveryRunStops,
+    ({ one }) => ({
+        run: one(deliveryRuns, {
+            fields: [deliveryRunStops.runId],
+            references: [deliveryRuns.id],
+            relationName: 'deliveryRunStops',
+        }),
+        deliveryRequest: one(deliveryRequests, {
+            fields: [deliveryRunStops.deliveryRequestId],
+            references: [deliveryRequests.id],
+            relationName: 'deliveryRequestRunStop',
+        }),
+    }),
+);
+
 // Type exports
 export type InsertDeliveryAddress = Omit<
     typeof deliveryAddresses.$inferInsert,
@@ -197,6 +315,8 @@ export type UpdateDeliveryRequest = Partial<
 > &
     Pick<typeof deliveryRequests.$inferSelect, 'id'>;
 export type SelectDeliveryRequest = typeof deliveryRequests.$inferSelect;
+export type SelectDeliveryRun = typeof deliveryRuns.$inferSelect;
+export type SelectDeliveryRunStop = typeof deliveryRunStops.$inferSelect;
 
 // Enums for type safety
 export const DeliveryModes = {
@@ -219,8 +339,24 @@ export const TimeSlotStatuses = {
     ARCHIVED: 'archived',
 } as const;
 
+export const DeliveryRunStates = {
+    ACTIVE: 'active',
+    COMPLETED: 'completed',
+    CANCELLED: 'cancelled',
+} as const;
+
+export const DeliveryRunStopStates = {
+    PENDING: 'pending',
+    ARRIVED: 'arrived',
+    DELIVERED: 'delivered',
+} as const;
+
 export type DeliveryMode = (typeof DeliveryModes)[keyof typeof DeliveryModes];
 export type DeliveryRequestState =
     (typeof DeliveryRequestStates)[keyof typeof DeliveryRequestStates];
 export type TimeSlotStatus =
     (typeof TimeSlotStatuses)[keyof typeof TimeSlotStatuses];
+export type DeliveryRunState =
+    (typeof DeliveryRunStates)[keyof typeof DeliveryRunStates];
+export type DeliveryRunStopState =
+    (typeof DeliveryRunStopStates)[keyof typeof DeliveryRunStopStates];

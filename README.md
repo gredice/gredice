@@ -16,13 +16,14 @@
 
 ## Overview
 
-Gredice is a Turborepo monorepo for the Gredice platform. It includes the public website, customer garden experience, farm back office, internal operations tools, API routes, Storybook, status page, shared packages, and product assets.
+Gredice is a Turborepo monorepo for the Gredice platform. It includes the public website, customer garden experience, farm back office, delivery operations, internal tools, API routes, Storybook, status page, shared packages, and product assets.
 
 ## Repository Map
 
 - `apps/www`: public marketing and commerce site.
 - `apps/garden`: customer garden experience and game-facing UI.
 - `apps/farm`: farm back-office application.
+- `apps/delivery`: driver routes and customer delivery tracking.
 - `apps/app`: internal operations and admin application.
 - `apps/api`: API routes and API documentation.
 - `apps/storybook`: public component documentation.

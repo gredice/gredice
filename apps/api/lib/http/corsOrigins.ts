@@ -1,6 +1,7 @@
 const allowedProductionOrigins = new Set([
     'https://api.gredice.com',
     'https://app.gredice.com',
+    'https://dostava.gredice.com',
     'https://farma.gredice.com',
     'https://gredice.com',
     'https://status.gredice.com',
@@ -11,6 +12,7 @@ const allowedProductionOrigins = new Set([
 const vercelPreviewProjectPrefixes = [
     'api',
     'app',
+    'delivery',
     'farm',
     'garden',
     'news',
