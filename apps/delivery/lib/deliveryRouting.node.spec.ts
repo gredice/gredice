@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    buildGoogleGeocodingUrl,
     DeliveryRoutePlanningError,
     estimateDeliveryRoute,
     formatDeliveryDestinationAddress,
+    formatDeliveryGeocodingAddress,
     haversineDistanceMeters,
     nearestNeighborStopOrder,
     orderDeliveryStopsByTimeWindow,
@@ -21,6 +23,123 @@ test('formats a Croatian delivery address without empty lines', () => {
         }),
         'Ilica 1, 10000 Zagreb, HR',
     );
+});
+
+test('keeps address details for display but omits them from geocoding', () => {
+    const address = {
+        street1: 'Ilica 1',
+        street2: '2. kat',
+        postalCode: '10000',
+        city: 'Zagreb',
+        countryCode: 'HR',
+    };
+
+    assert.equal(
+        formatDeliveryDestinationAddress(address),
+        'Ilica 1, 2. kat, 10000 Zagreb, HR',
+    );
+    assert.equal(
+        formatDeliveryGeocodingAddress(address),
+        'Ilica 1, 10000 Zagreb, HR',
+    );
+});
+
+test('geocoding uses a Croatian region bias without a duplicate country filter', () => {
+    const url = buildGoogleGeocodingUrl(
+        'Ilica 1, 10000 Zagreb, HR',
+        'test-key',
+    );
+
+    assert.equal(url.searchParams.get('address'), 'Ilica 1, 10000 Zagreb, HR');
+    assert.equal(url.searchParams.get('language'), 'hr');
+    assert.equal(url.searchParams.get('region'), 'hr');
+    assert.equal(url.searchParams.get('components'), null);
+});
+
+test('route planning retries the display address when the simplified address is not found', async () => {
+    const originalFetch = globalThis.fetch;
+    const originalApiKey = process.env.GREDICE_GOOGLE_MAPS_API_KEY;
+    const originalHqAddress = process.env.GREDICE_DELIVERY_HQ_ADDRESS;
+    const geocodingQueries: string[] = [];
+    process.env.GREDICE_GOOGLE_MAPS_API_KEY = 'test-key';
+    process.env.GREDICE_DELIVERY_HQ_ADDRESS =
+        'Ulica Julija Knifera 3, 10000 Zagreb, HR';
+    globalThis.fetch = async (input) => {
+        const url = new URL(
+            typeof input === 'string'
+                ? input
+                : input instanceof URL
+                  ? input.toString()
+                  : input.url,
+        );
+        if (url.hostname === 'maps.googleapis.com') {
+            const address = url.searchParams.get('address') ?? '';
+            geocodingQueries.push(address);
+            if (address === 'Ilica 1, 10000 Zagreb, HR') {
+                return Response.json({ status: 'ZERO_RESULTS', results: [] });
+            }
+            const location = address.startsWith('Ilica')
+                ? { lat: 45.813, lng: 15.977 }
+                : { lat: 45.776, lng: 15.963 };
+            return Response.json({
+                status: 'OK',
+                results: [{ geometry: { location } }],
+            });
+        }
+        if (url.hostname === 'routes.googleapis.com') {
+            return Response.json({
+                routes: [
+                    {
+                        distanceMeters: 1_000,
+                        duration: '600s',
+                        legs: [{ distanceMeters: 1_000, duration: '600s' }],
+                        polyline: { encodedPolyline: 'encoded' },
+                    },
+                ],
+            });
+        }
+        return new Response(null, { status: 404 });
+    };
+
+    try {
+        const plan = await planDeliveryRoute({
+            candidates: [
+                {
+                    deliveryRequestId: 'delivery-1',
+                    formattedAddress: 'Ilica 1, 2. kat, 10000 Zagreb, HR',
+                    geocodingAddress: 'Ilica 1, 10000 Zagreb, HR',
+                    windowStartAt: new Date('2026-07-14T08:00:00.000Z'),
+                    windowEndAt: new Date('2026-07-14T10:00:00.000Z'),
+                },
+            ],
+            departureTime: new Date('2026-07-14T07:30:00.000Z'),
+        });
+
+        assert.equal(
+            plan.stops[0]?.formattedAddress,
+            'Ilica 1, 2. kat, 10000 Zagreb, HR',
+        );
+        assert.deepEqual(
+            new Set(geocodingQueries),
+            new Set([
+                'Ulica Julija Knifera 3, 10000 Zagreb, HR',
+                'Ilica 1, 10000 Zagreb, HR',
+                'Ilica 1, 2. kat, 10000 Zagreb, HR',
+            ]),
+        );
+    } finally {
+        globalThis.fetch = originalFetch;
+        if (originalApiKey === undefined) {
+            delete process.env.GREDICE_GOOGLE_MAPS_API_KEY;
+        } else {
+            process.env.GREDICE_GOOGLE_MAPS_API_KEY = originalApiKey;
+        }
+        if (originalHqAddress === undefined) {
+            delete process.env.GREDICE_DELIVERY_HQ_ADDRESS;
+        } else {
+            process.env.GREDICE_DELIVERY_HQ_ADDRESS = originalHqAddress;
+        }
+    }
 });
 
 test('orders the closest remaining delivery stop first', () => {

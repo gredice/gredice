@@ -8,6 +8,7 @@ export type DeliveryCoordinates = {
 export type DeliveryRouteCandidate = {
     deliveryRequestId: string;
     formattedAddress: string;
+    geocodingAddress?: string;
     windowStartAt?: Date;
     windowEndAt?: Date;
 };
@@ -49,6 +50,14 @@ const defaultHqAddress = 'Ulica Julija Knifera 3, 10000 Zagreb, Hrvatska';
 
 export class DeliveryRoutePlanningError extends Error {
     override name = 'DeliveryRoutePlanningError';
+
+    constructor(
+        message: string,
+        readonly code = 'route-planning',
+        readonly deliveryRequestId?: string,
+    ) {
+        super(message);
+    }
 }
 
 function googleMapsApiKey() {
@@ -112,6 +121,36 @@ export function formatDeliveryDestinationAddress(address: {
         .map((value) => value?.trim())
         .filter((value): value is string => Boolean(value))
         .join(', ');
+}
+
+export function formatDeliveryGeocodingAddress(address: {
+    street1: string;
+    postalCode: string;
+    city: string;
+    countryCode: string;
+}) {
+    return [
+        address.street1,
+        `${address.postalCode} ${address.city}`,
+        address.countryCode,
+    ]
+        .map((value) => value.trim())
+        .filter(Boolean)
+        .join(', ');
+}
+
+export function buildGoogleGeocodingUrl(
+    formattedAddress: string,
+    apiKey: string,
+) {
+    const url = new URL('https://maps.googleapis.com/maps/api/geocode/json');
+    url.searchParams.set('address', formattedAddress);
+    // The address already contains its country. A region bias improves local
+    // matching without redundantly applying a strict country component filter.
+    url.searchParams.set('language', 'hr');
+    url.searchParams.set('region', 'hr');
+    url.searchParams.set('key', apiKey);
+    return url;
 }
 
 export function haversineDistanceMeters(
@@ -330,35 +369,67 @@ function scheduledArrival({
     };
 }
 
-async function geocodeAddress(
-    formattedAddress: string,
-): Promise<DeliveryCoordinates> {
-    const url = new URL('https://maps.googleapis.com/maps/api/geocode/json');
-    url.searchParams.set('address', formattedAddress);
-    url.searchParams.set('components', 'country:HR');
-    url.searchParams.set('language', 'hr');
-    url.searchParams.set('region', 'hr');
-    url.searchParams.set('key', googleMapsApiKey());
+async function geocodeAddress({
+    formattedAddress,
+    geocodingAddress,
+    deliveryRequestId,
+}: {
+    formattedAddress: string;
+    geocodingAddress?: string;
+    deliveryRequestId?: string;
+}): Promise<DeliveryCoordinates> {
+    const queries = Array.from(
+        new Set(
+            [geocodingAddress, formattedAddress].filter(
+                (value): value is string => Boolean(value),
+            ),
+        ),
+    );
 
-    const response = await fetch(url, { cache: 'no-store' });
-    const body: unknown = await response.json().catch(() => null);
-    if (!response.ok || !isRecord(body) || body.status !== 'OK') {
-        throw new Error('Jednu od adresa nije moguće pronaći.');
+    for (const query of queries) {
+        const response = await fetch(
+            buildGoogleGeocodingUrl(query, googleMapsApiKey()),
+            { cache: 'no-store' },
+        );
+        const body: unknown = await response.json().catch(() => null);
+        if (response.ok && isRecord(body) && body.status === 'ZERO_RESULTS') {
+            continue;
+        }
+        if (!response.ok || !isRecord(body) || body.status !== 'OK') {
+            throw new Error(
+                'Google Maps trenutačno nije mogao provjeriti adrese dostave.',
+            );
+        }
+
+        const firstResult = Array.isArray(body.results)
+            ? body.results[0]
+            : null;
+        const geometry = isRecord(firstResult) ? firstResult.geometry : null;
+        const location = isRecord(geometry) ? geometry.location : null;
+        const latitude = isRecord(location)
+            ? numberField(location.lat)
+            : undefined;
+        const longitude = isRecord(location)
+            ? numberField(location.lng)
+            : undefined;
+
+        if (latitude === undefined || longitude === undefined) {
+            throw new Error(
+                'Google Maps nije vratio valjane koordinate dostave.',
+            );
+        }
+
+        return { latitude, longitude };
     }
 
-    const firstResult = Array.isArray(body.results) ? body.results[0] : null;
-    const geometry = isRecord(firstResult) ? firstResult.geometry : null;
-    const location = isRecord(geometry) ? geometry.location : null;
-    const latitude = isRecord(location) ? numberField(location.lat) : undefined;
-    const longitude = isRecord(location)
-        ? numberField(location.lng)
-        : undefined;
-
-    if (latitude === undefined || longitude === undefined) {
-        throw new Error('Jedna od adresa nema valjane koordinate.');
-    }
-
-    return { latitude, longitude };
+    const addressType = deliveryRequestId ? 'dostave' : 'sjedišta';
+    throw new DeliveryRoutePlanningError(
+        `Adresu ${addressType} "${formattedAddress}" nije moguće pronaći na karti. Provjeri zapis adrese i pokušaj ponovno.`,
+        deliveryRequestId
+            ? 'delivery-address-not-found'
+            : 'hq-address-not-found',
+        deliveryRequestId,
+    );
 }
 
 function locationWaypoint(coordinates: DeliveryCoordinates) {
@@ -604,11 +675,15 @@ export async function planDeliveryRoute({
     const hqAddress =
         process.env.GREDICE_DELIVERY_HQ_ADDRESS?.trim() || defaultHqAddress;
     const [origin, geocodedStops] = await Promise.all([
-        geocodeAddress(hqAddress),
+        geocodeAddress({ formattedAddress: hqAddress }),
         Promise.all(
             candidates.map(async (candidate) => ({
                 ...candidate,
-                ...(await geocodeAddress(candidate.formattedAddress)),
+                ...(await geocodeAddress({
+                    formattedAddress: candidate.formattedAddress,
+                    geocodingAddress: candidate.geocodingAddress,
+                    deliveryRequestId: candidate.deliveryRequestId,
+                })),
             })),
         ),
     ]);

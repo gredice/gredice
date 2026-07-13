@@ -31,6 +31,7 @@ import type {
 import {
     DeliveryRoutePlanningError,
     formatDeliveryDestinationAddress,
+    formatDeliveryGeocodingAddress,
     maximumDeliveryRouteStops,
     maximumDeliveryRouteWindowHours,
     planDeliveryRoute,
@@ -719,6 +720,9 @@ export async function startDeliveryRun({
                 formattedAddress: formatDeliveryDestinationAddress(
                     representative.address,
                 ),
+                geocodingAddress: formatDeliveryGeocodingAddress(
+                    representative.address,
+                ),
                 windowStartAt: representative.slot.startAt,
                 windowEndAt: representative.slot.endAt,
             };
@@ -994,4 +998,21 @@ export function deliveryRunStartErrorMessage(error: unknown) {
         error instanceof DeliveryRoutePlanningError
         ? error.message
         : null;
+}
+
+export function deliveryRunStartErrorLogContext(error: unknown) {
+    if (error instanceof DeliveryRoutePlanningError) {
+        return {
+            errorName: error.name,
+            errorCode: error.code,
+            deliveryRequestId: error.deliveryRequestId,
+        };
+    }
+    if (error instanceof DeliveryRunStartError) {
+        return {
+            errorName: error.name,
+            errorCode: 'invalid-selection',
+        };
+    }
+    return { error };
 }
