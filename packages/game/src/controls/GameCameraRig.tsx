@@ -3,10 +3,6 @@
 import { useFrame, useThree } from '@react-three/fiber';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MathUtils, OrthographicCamera, Vector2, Vector3 } from 'three';
-import {
-    defaultGameCameraPosition,
-    defaultGameCameraTarget,
-} from '../gameCamera';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useGameState } from '../useGameState';
 import {
@@ -18,6 +14,7 @@ import {
     hasDragEdgeAutopanDelta,
 } from './dragEdgeAutopan';
 import type { GameCameraRigApi, GameCameraSnapshot } from './GameCameraRigApi';
+import { resolveGameCameraInitialView } from './gameCameraInitialView';
 
 const closeupZoom = 300;
 const animationDurationSeconds = 1;
@@ -159,14 +156,18 @@ function toSnapshot({
 
 export function GameCameraRig({
     controlsEnabled,
+    initialPosition,
     initialSnapshot,
     initialTarget,
     initialViewKey,
+    initialZoom,
 }: {
     controlsEnabled: boolean;
+    initialPosition?: Vector3;
     initialSnapshot?: Pick<GameCameraSnapshot, 'position' | 'target' | 'zoom'>;
     initialTarget?: Vector3;
     initialViewKey?: string | number | null;
+    initialZoom?: number;
 }) {
     const { camera, gl, size } = useThree();
     const isOrthographicCamera = camera instanceof OrthographicCamera;
@@ -185,6 +186,7 @@ export function GameCameraRig({
     const worldRotation = useGameState((state) => state.worldRotation);
     const worldRotate = useGameState((state) => state.worldRotate);
     const view = useGameState((state) => state.view);
+    const setView = useGameState((state) => state.setView);
     const closeupBlock = useGameState((state) => state.closeupBlock);
     const isBlockPlacementActive = useGameState(
         (state) =>
@@ -192,22 +194,17 @@ export function GameCameraRig({
     );
     const { data: garden } = useCurrentGarden();
 
-    const resolvedInitialTarget = useMemo(
+    const resolvedInitialView = useMemo(
         () =>
-            initialSnapshot
-                ? new Vector3(...initialSnapshot.target)
-                : (initialTarget?.clone() ??
-                  new Vector3(...defaultGameCameraTarget)),
-        [initialSnapshot, initialTarget],
+            resolveGameCameraInitialView({
+                initialPosition,
+                initialSnapshot,
+                initialTarget,
+                initialZoom,
+            }),
+        [initialPosition, initialSnapshot, initialTarget, initialZoom],
     );
-    const resolvedInitialPosition = useMemo(
-        () =>
-            initialSnapshot
-                ? new Vector3(...initialSnapshot.position)
-                : undefined,
-        [initialSnapshot],
-    );
-    const targetRef = useRef(resolvedInitialTarget.clone());
+    const targetRef = useRef(resolvedInitialView.target.clone());
     const animationRef = useRef<CameraAnimation | null>(null);
     const apiRef = useRef<GameCameraRigApi | null>(null);
     const cameraListenersRef = useRef(
@@ -224,10 +221,11 @@ export function GameCameraRig({
     const initialViewKeyRef = useRef<string | number | null | undefined>(
         undefined,
     );
+    const skipCloseupTransitionRef = useRef(false);
     const normalCameraRef = useRef<NormalCameraSnapshot>({
-        position: new Vector3(...defaultGameCameraPosition),
-        target: new Vector3(...defaultGameCameraTarget),
-        zoom: camera instanceof OrthographicCamera ? camera.zoom : 100,
+        position: resolvedInitialView.position.clone(),
+        target: resolvedInitialView.target.clone(),
+        zoom: resolvedInitialView.zoom,
     });
     const scratchForwardRef = useRef(new Vector3());
     const scratchRightRef = useRef(new Vector3());
@@ -566,15 +564,23 @@ export function GameCameraRig({
             !initializedRef.current ||
             initialViewKeyRef.current !== initialViewKey;
         if (shouldApplyInitialView) {
-            if (resolvedInitialPosition) {
-                camera.position.copy(resolvedInitialPosition);
-                camera.zoom = MathUtils.clamp(
-                    initialSnapshot?.zoom ?? camera.zoom,
-                    minZoom,
-                    maxZoom,
-                );
+            const initialViewChanged = initializedRef.current;
+            animationRef.current = null;
+            setIsAnimating(false);
+            camera.position.copy(resolvedInitialView.position);
+            camera.zoom = MathUtils.clamp(
+                resolvedInitialView.zoom,
+                minZoom,
+                maxZoom,
+            );
+            targetRef.current.copy(resolvedInitialView.target);
+            if (initialViewChanged) {
+                skipCloseupTransitionRef.current = true;
+                previousViewRef.current = 'normal';
+                setCloseupCameraActive(false);
+                setCloseupCameraSettled(false);
+                setView({ view: 'normal' });
             }
-            targetRef.current.copy(resolvedInitialTarget);
             normalCameraRef.current = {
                 position: camera.position.clone(),
                 target: targetRef.current.clone(),
@@ -593,12 +599,13 @@ export function GameCameraRig({
         applyCamera,
         camera,
         flushSnapshot,
-        initialSnapshot?.zoom,
         initialViewKey,
         isOrthographicCamera,
-        resolvedInitialPosition,
-        resolvedInitialTarget,
+        resolvedInitialView,
+        setCloseupCameraActive,
+        setCloseupCameraSettled,
         setGameCamera,
+        setView,
     ]);
 
     useEffect(() => {
@@ -836,6 +843,12 @@ export function GameCameraRig({
 
     useEffect(() => {
         if (!initializedRef.current || !isOrthographicCamera) {
+            return;
+        }
+
+        if (skipCloseupTransitionRef.current) {
+            skipCloseupTransitionRef.current = false;
+            previousViewRef.current = 'normal';
             return;
         }
 

@@ -1,12 +1,8 @@
 import { decodeUriComponentSafe } from '@gredice/js/uri';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useCurrentGarden } from './hooks/useCurrentGarden';
 import { useGameState } from './useGameState';
-import {
-    useRaisedBedCloseupParam,
-    useRaisedBedCloseupParams,
-    useRaisedBedFieldDetailsParam,
-} from './useUrlState';
+import { useRaisedBedCloseupParams } from './useUrlState';
 
 export function useRemoveRaisedBedCloseupParam() {
     const [, setRaisedBedCloseupParams] = useRaisedBedCloseupParams();
@@ -31,11 +27,12 @@ export function useSetRaisedBedCloseupParam() {
 
 export function useRaisedBedCloseup() {
     const { data: garden } = useCurrentGarden();
-    const [raisedBedParam, setRaisedBedParam] = useRaisedBedCloseupParam();
-    const [, setFieldDetailsParam] = useRaisedBedFieldDetailsParam();
+    const [{ gredica: raisedBedParam }, setRaisedBedCloseupParams] =
+        useRaisedBedCloseupParams();
     const setView = useGameState((state) => state.setView);
     const closeupBlock = useGameState((state) => state.closeupBlock);
     const view = useGameState((state) => state.view);
+    const previousGardenIdRef = useRef(garden?.id);
 
     const blocks = useMemo(
         () => garden?.stacks.flatMap((stack) => stack.blocks) ?? [],
@@ -43,6 +40,26 @@ export function useRaisedBedCloseup() {
     );
 
     useEffect(() => {
+        const previousGardenId = previousGardenIdRef.current;
+        if (garden?.id !== undefined) {
+            previousGardenIdRef.current = garden.id;
+        }
+
+        if (
+            garden?.id !== undefined &&
+            previousGardenId !== undefined &&
+            previousGardenId !== garden.id
+        ) {
+            if (view === 'closeup') {
+                setView({ view: 'normal' });
+            }
+            void setRaisedBedCloseupParams({
+                gredica: null,
+                polje: null,
+            });
+            return;
+        }
+
         if (!garden || !raisedBedParam) {
             // No raised bed param, reset view if needed
             if (view === 'closeup') {
@@ -68,8 +85,10 @@ export function useRaisedBedCloseup() {
             if (view === 'closeup') {
                 setView({ view: 'normal' });
             }
-            setRaisedBedParam(null);
-            setFieldDetailsParam(null);
+            void setRaisedBedCloseupParams({
+                gredica: null,
+                polje: null,
+            });
             return;
         }
 
@@ -81,8 +100,10 @@ export function useRaisedBedCloseup() {
             if (view === 'closeup') {
                 setView({ view: 'normal' });
             }
-            setRaisedBedParam(null);
-            setFieldDetailsParam(null);
+            void setRaisedBedCloseupParams({
+                gredica: null,
+                polje: null,
+            });
             return;
         }
 
@@ -98,8 +119,7 @@ export function useRaisedBedCloseup() {
         closeupBlock?.id,
         garden,
         raisedBedParam,
-        setFieldDetailsParam,
-        setRaisedBedParam,
+        setRaisedBedCloseupParams,
         setView,
         view,
     ]);
