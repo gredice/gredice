@@ -15,7 +15,7 @@ import {
     Warning,
 } from '@gredice/ui/icons';
 import { Typography } from '@gredice/ui/Typography';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { DriverTrackingState } from '../hooks/useDriverTracking';
 import type { DriverDeliveryDashboard } from '../lib/deliveryDashboardTypes';
 import {
@@ -24,10 +24,12 @@ import {
     formatTravelDuration,
 } from '../lib/deliveryFormatting';
 import { groupByDeliveryStop } from '../lib/deliveryStopGrouping';
+import { selectDeliveryStopFromHarvestTrace } from '../lib/harvestTraceScan';
 import { DeliveryAppHeader } from './DeliveryAppHeader';
 import { DeliveryBatchCard } from './DeliveryBatchCard';
 import { DeliveryMap } from './DeliveryMap';
 import { DeliveryStopCard } from './DeliveryStopCard';
+import { HarvestTraceScanner } from './HarvestTraceScanner';
 
 function trackingMessage(state: DriverTrackingState) {
     switch (state) {
@@ -63,14 +65,22 @@ export function DriverDashboard({
 }) {
     const run = dashboard.activeRun;
     const locationMessage = trackingMessage(trackingState);
-    const [selectedRequestIds, setSelectedRequestIds] = useState<string[]>([]);
+    const [selectedRequestIds, setSelectedRequestIdsState] = useState<string[]>(
+        [],
+    );
+    const selectedRequestIdsRef = useRef<string[]>([]);
     const availableOrders = dashboard.batches.flatMap((batch) => batch.orders);
-    const availableRequestIds = availableOrders.map((order) => order.requestId);
+    const selectableOrders = availableOrders.filter(
+        (order) => order.readyForPickup,
+    );
+    const availableRequestIds = selectableOrders.map(
+        (order) => order.requestId,
+    );
     const availableRequestIdSet = new Set(availableRequestIds);
     const ordersByRequestId = new Map(
         availableOrders.map((order) => [order.requestId, order]),
     );
-    const availableStopGroups = groupByDeliveryStop(availableOrders);
+    const availableStopGroups = groupByDeliveryStop(selectableOrders);
     const effectiveSelectedRequestIds = selectedRequestIds.filter((requestId) =>
         availableRequestIdSet.has(requestId),
     );
@@ -86,15 +96,32 @@ export function DriverDashboard({
     const selectedSlotCount = dashboard.batches.filter((batch) =>
         batch.orders.some((order) => selectedRequestIdSet.has(order.requestId)),
     ).length;
+    const availableTraceCount = new Set(
+        selectableOrders.flatMap((order) =>
+            order.harvest.tracePath ? [order.harvest.tracePath] : [],
+        ),
+    ).size;
+
+    const replaceSelectedRequestIds = (requestIds: string[]) => {
+        selectedRequestIdsRef.current = requestIds;
+        setSelectedRequestIdsState(requestIds);
+    };
+
+    const updateSelectedRequestIds = (
+        update: (current: string[]) => string[],
+    ) => {
+        const nextRequestIds = update(selectedRequestIdsRef.current);
+        replaceSelectedRequestIds(nextRequestIds);
+    };
 
     const toggleOrder = (requestId: string, checked: boolean) => {
         const order = ordersByRequestId.get(requestId);
-        if (!order) return;
-        const groupedRequestIds = availableOrders.flatMap((candidate) =>
+        if (!order?.readyForPickup) return;
+        const groupedRequestIds = selectableOrders.flatMap((candidate) =>
             candidate.stopKey === order.stopKey ? [candidate.requestId] : [],
         );
         const groupedRequestIdSet = new Set(groupedRequestIds);
-        setSelectedRequestIds((current) => {
+        updateSelectedRequestIds((current) => {
             const availableCurrent = current.filter((id) =>
                 availableRequestIdSet.has(id),
             );
@@ -125,8 +152,13 @@ export function DriverDashboard({
         batch: DriverDeliveryDashboard['batches'][number],
         checked: boolean,
     ) => {
-        const batchIds = new Set(batch.orders.map((order) => order.requestId));
-        setSelectedRequestIds((current) => {
+        const readyBatchOrders = batch.orders.filter(
+            (order) => order.readyForPickup,
+        );
+        const batchIds = new Set(
+            readyBatchOrders.map((order) => order.requestId),
+        );
+        updateSelectedRequestIds((current) => {
             const availableCurrent = current.filter((id) =>
                 availableRequestIdSet.has(id),
             );
@@ -141,7 +173,7 @@ export function DriverDashboard({
                     return order ? [order.stopKey] : [];
                 }),
             );
-            for (const group of groupByDeliveryStop(batch.orders)) {
+            for (const group of groupByDeliveryStop(readyBatchOrders)) {
                 if (!nextStopKeys.has(group.stopKey)) {
                     if (nextStopKeys.size >= dashboard.maximumRouteStops) {
                         continue;
@@ -157,13 +189,28 @@ export function DriverDashboard({
     };
 
     const selectAllAvailable = () => {
-        setSelectedRequestIds(
+        replaceSelectedRequestIds(
             availableStopGroups
                 .slice(0, dashboard.maximumRouteStops)
                 .flatMap((group) =>
                     group.items.map((order) => order.requestId),
                 ),
         );
+    };
+
+    const scanHarvestTrace = (value: string) => {
+        const result = selectDeliveryStopFromHarvestTrace({
+            orders: availableOrders,
+            selectedRequestIds: selectedRequestIdsRef.current,
+            maximumRouteStops: dashboard.maximumRouteStops,
+            scanValue: value,
+        });
+
+        if (result.status === 'selected') {
+            replaceSelectedRequestIds(result.nextSelectedRequestIds);
+        }
+
+        return result;
     };
 
     return (
@@ -180,7 +227,7 @@ export function DriverDashboard({
                     <Typography className="mt-1 text-muted-foreground">
                         {run
                             ? 'Slijedi redoslijed stanica, potvrdi dolazak i nastavi nakon svake dostave.'
-                            : 'Odaberi narudžbe iz jednog ili više termina. Preuzimanjem se urodi označavaju spremnima i računa povezana ruta kroz sve lokacije.'}
+                            : 'Odaberi urode koje je lokacija preuzimanja označila spremnima. Zatim se računa povezana ruta kroz sve lokacije.'}
                     </Typography>
                 </div>
 
@@ -384,18 +431,37 @@ export function DriverDashboard({
                                                     dashboard.maximumRouteWindowHours
                                                 }{' '}
                                                 sata i poštuju se pri izračunu
-                                                dolazaka.
+                                                dolazaka. Urodi koji se još
+                                                pripremaju ostaju vidljivi, ali
+                                                ih nije moguće odabrati.
                                             </Typography>
                                         </div>
                                         <div className="flex flex-wrap gap-2">
+                                            <HarvestTraceScanner
+                                                variant="pickup"
+                                                availableTraceCount={
+                                                    availableTraceCount
+                                                }
+                                                disabled={
+                                                    Boolean(pendingAction) ||
+                                                    selectableOrders.length ===
+                                                        0
+                                                }
+                                                completedTraceCount={
+                                                    effectiveSelectedRequestIds.length
+                                                }
+                                                onScan={scanHarvestTrace}
+                                            />
                                             <Button
                                                 variant="outlined"
-                                                disabled={Boolean(
-                                                    pendingAction,
-                                                )}
+                                                disabled={
+                                                    Boolean(pendingAction) ||
+                                                    selectableOrders.length ===
+                                                        0
+                                                }
                                                 onClick={selectAllAvailable}
                                             >
-                                                Odaberi sve
+                                                Odaberi sve spremne
                                             </Button>
                                             <Button
                                                 variant="plain"
@@ -405,7 +471,9 @@ export function DriverDashboard({
                                                         0
                                                 }
                                                 onClick={() =>
-                                                    setSelectedRequestIds([])
+                                                    replaceSelectedRequestIds(
+                                                        [],
+                                                    )
                                                 }
                                                 startDecorator={
                                                     <Reset className="size-4" />
@@ -493,7 +561,7 @@ export function DriverDashboard({
                                     </Typography>
                                     <Typography className="max-w-md text-muted-foreground">
                                         Novi termini pojavit će se ovdje kada su
-                                        dostave potvrđene ili u pripremi.
+                                        dostave potvrđene.
                                     </Typography>
                                 </CardContent>
                             </Card>

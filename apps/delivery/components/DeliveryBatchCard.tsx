@@ -30,10 +30,12 @@ export function DeliveryBatchCard({
     onToggleOrder: (requestId: string, checked: boolean) => void;
 }) {
     const stopGroups = groupByDeliveryStop(batch.orders);
-    const selectedCount = batch.orders.filter((order) =>
+    const readyOrders = batch.orders.filter((order) => order.readyForPickup);
+    const selectedCount = readyOrders.filter((order) =>
         selectedRequestIds.has(order.requestId),
     ).length;
-    const allSelected = selectedCount === batch.orders.length;
+    const allSelected =
+        readyOrders.length > 0 && selectedCount === readyOrders.length;
     const batchSelectionState = allSelected
         ? true
         : selectedCount > 0
@@ -60,7 +62,8 @@ export function DeliveryBatchCard({
                                 <Truck className="size-4" />
                                 {batch.deliveryCount}{' '}
                                 {batch.deliveryCount === 1 ? 'urod' : 'uroda'} ·{' '}
-                                {batch.stopCount}{' '}
+                                {readyOrders.length}/{batch.deliveryCount}{' '}
+                                spremno · {batch.stopCount}{' '}
                                 {batch.stopCount === 1
                                     ? 'stanica'
                                     : batch.stopCount < 5
@@ -86,15 +89,19 @@ export function DeliveryBatchCard({
                     <Checkbox
                         checked={batchSelectionState}
                         disabled={
-                            disabled || (selectionLimitReached && !allSelected)
+                            disabled ||
+                            readyOrders.length === 0 ||
+                            (selectionLimitReached && !allSelected)
                         }
                         onCheckedChange={(value) =>
                             onToggleBatch(value === true)
                         }
                         label={
                             allSelected
-                                ? 'Poništi termin'
-                                : 'Odaberi cijeli termin'
+                                ? 'Poništi spremne'
+                                : readyOrders.length === 0
+                                  ? 'Nema spremnih uroda'
+                                  : 'Odaberi sve spremne'
                         }
                     />
                 </div>
@@ -102,9 +109,15 @@ export function DeliveryBatchCard({
                     {stopGroups.flatMap((group) => {
                         const firstOrder = group.items[0];
                         if (!firstOrder) return [];
-                        const checked = group.items.every((order) =>
-                            selectedRequestIds.has(order.requestId),
+                        const readyGroupOrders = group.items.filter(
+                            (order) => order.readyForPickup,
                         );
+                        const firstReadyOrder = readyGroupOrders[0];
+                        const checked =
+                            readyGroupOrders.length > 0 &&
+                            readyGroupOrders.every((order) =>
+                                selectedRequestIds.has(order.requestId),
+                            );
                         return [
                             <DeliverySelectionItem
                                 key={group.stopKey}
@@ -112,12 +125,18 @@ export function DeliveryBatchCard({
                                 checked={checked}
                                 disabled={
                                     disabled ||
+                                    readyGroupOrders.length === 0 ||
                                     (selectionLimitReached &&
                                         !selectedStopKeys.has(group.stopKey))
                                 }
-                                onCheckedChange={(value) =>
-                                    onToggleOrder(firstOrder.requestId, value)
-                                }
+                                onCheckedChange={(value) => {
+                                    if (firstReadyOrder) {
+                                        onToggleOrder(
+                                            firstReadyOrder.requestId,
+                                            value,
+                                        );
+                                    }
+                                }}
                             />,
                         ];
                     })}

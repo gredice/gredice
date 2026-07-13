@@ -1,6 +1,7 @@
 'use client';
 
 import { Checkbox } from '@gredice/ui/Checkbox';
+import { Chip } from '@gredice/ui/Chip';
 import { Leaf, MapPin } from '@gredice/ui/icons';
 import { Typography } from '@gredice/ui/Typography';
 import type { DeliveryRouteOrderSummary } from '../lib/deliveryDashboardTypes';
@@ -18,19 +19,23 @@ export function DeliverySelectionItem({
 }) {
     const firstOrder = orders[0];
     if (!firstOrder) return null;
+    const readyOrders = orders.filter((order) => order.readyForPickup);
+    const hasReadyOrders = readyOrders.length > 0;
 
     return (
         <div
             className={
                 checked
                     ? 'bg-primary/5 px-4 py-3'
-                    : 'px-4 py-3 transition-colors hover:bg-muted/50'
+                    : hasReadyOrders
+                      ? 'px-4 py-3 transition-colors hover:bg-muted/50'
+                      : 'bg-muted/30 px-4 py-3'
             }
         >
             <Checkbox
                 id={`delivery-stop-${firstOrder.requestId}`}
                 checked={checked}
-                disabled={disabled}
+                disabled={disabled || !hasReadyOrders}
                 onCheckedChange={(value) => onCheckedChange(value === true)}
                 className="mt-1 size-5"
                 label={
@@ -44,15 +49,18 @@ export function DeliverySelectionItem({
                             level="body3"
                             className="block text-muted-foreground"
                         >
-                            {orders.length}{' '}
-                            {orders.length === 1 ? 'urod' : 'uroda'} na ovoj
-                            stanici
+                            {readyOrders.length} / {orders.length} spremno za
+                            preuzimanje na ovoj stanici
                         </Typography>
                         <span className="block space-y-2 pt-1">
                             {orders.map((order) => (
                                 <span
                                     key={order.requestId}
-                                    className="block rounded-md border bg-background/70 p-2"
+                                    className={
+                                        order.readyForPickup
+                                            ? 'block rounded-md border bg-background/70 p-2'
+                                            : 'block rounded-md border border-dashed bg-muted/30 p-2'
+                                    }
                                 >
                                     <span className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                                         <Typography
@@ -70,6 +78,17 @@ export function DeliverySelectionItem({
                                             {order.harvest.plantName}
                                         </Typography>
                                     </span>
+                                    <Chip
+                                        color={
+                                            order.readyForPickup
+                                                ? 'success'
+                                                : 'warning'
+                                        }
+                                        size="sm"
+                                        className="mt-2"
+                                    >
+                                        {order.pickupStatusLabel}
+                                    </Chip>
                                     {order.requestNotes ? (
                                         <span className="mt-1 flex items-start gap-2 text-sm font-normal text-amber-800 dark:text-amber-200">
                                             <Leaf className="mt-0.5 size-4 shrink-0" />

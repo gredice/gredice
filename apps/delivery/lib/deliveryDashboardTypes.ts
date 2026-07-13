@@ -77,6 +77,8 @@ export type DeliveryBatchSummary = {
 export type DeliveryRouteOrderSummary = {
     requestId: string;
     stopKey: string;
+    readyForPickup: boolean;
+    pickupStatusLabel: string;
     contactName: string;
     address: string;
     addressLabel: string | null;

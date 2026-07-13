@@ -229,6 +229,16 @@ function statusLabel({
     }
 }
 
+function pickupStatusLabel(requestState: string) {
+    if (requestState === DeliveryRequestStates.READY) {
+        return 'Spremno za preuzimanje';
+    }
+    if (requestState === DeliveryRequestStates.PREPARING) {
+        return 'U pripremi na lokaciji preuzimanja';
+    }
+    return 'Još nije spremno za preuzimanje';
+}
+
 type DeliveryRunSnapshot = Pick<
     DeliveryRun,
     | 'id'
@@ -444,6 +454,8 @@ async function driverDashboard({
         const order = {
             requestId: request.id,
             stopKey: deliveryRequestStopKey(request),
+            readyForPickup: request.state === DeliveryRequestStates.READY,
+            pickupStatusLabel: pickupStatusLabel(request.state),
             contactName: request.address.contactName,
             address: formatDeliveryDestinationAddress(request.address),
             addressLabel: request.address.label,
@@ -649,11 +661,11 @@ export async function startDeliveryRun({
             request?.mode !== 'delivery' ||
             !request.address ||
             !request.slot ||
-            !batchStates.has(request.state) ||
+            request.state !== DeliveryRequestStates.READY ||
             request.slot.endAt < now
         ) {
             throw new DeliveryRunStartError(
-                'Jedna ili više odabranih dostava više nije dostupna za preuzimanje. Osvježi popis i pokušaj ponovno.',
+                'Jedna ili više odabranih dostava još nije spremna za preuzimanje. Osvježi popis i pokušaj ponovno.',
             );
         }
         selectedStopKeys.add(deliveryRequestStopKey(request));
@@ -669,7 +681,7 @@ export async function startDeliveryRun({
             request.mode === 'delivery' &&
             request.address &&
             request.slot &&
-            batchStates.has(request.state) &&
+            request.state === DeliveryRequestStates.READY &&
             request.slot.endAt >= now &&
             selectedStopKeys.has(deliveryRequestStopKey(request)),
     );
@@ -757,8 +769,6 @@ export async function startDeliveryRun({
         totalDurationSeconds: plan.totalDurationSeconds,
         stops: storedStops,
     });
-
-    await ensureRunRequestsReady(run);
 
     return run;
 }
