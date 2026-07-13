@@ -8,6 +8,7 @@
                 "GREDICE_API_HOST",
                 "GREDICE_DELIVERY_HQ_ADDRESS",
                 "GREDICE_GOOGLE_MAPS_API_KEY",
+                "GREDICE_GOOGLE_MAPS_SERVER_API_KEY",
                 "GREDICE_GOOGLE_MAPS_URL_SIGNING_SECRET",
                 "GREDICE_JWT_SIGN_SECRET",
                 "NEXT_PUBLIC_GREDICE_API_ORIGIN",
