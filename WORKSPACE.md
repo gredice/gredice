@@ -9,6 +9,7 @@ Use this guide for repo layout, setup, commands, package boundaries, and local d
 - `apps/news`: public Novosti app served through `www.gredice.com/novosti` for CMS-backed blog posts and changelog updates.
 - `apps/garden`: customer garden experience and game-facing UI.
 - `apps/farm`: farm back-office application.
+- `apps/delivery`: driver route execution and customer delivery tracking.
 - `apps/app`: internal operations/admin application.
 - `apps/desktop`: Electron desktop release shells for `garden`, `farm`, and `app`.
 - `apps/storybook`: public Storybook documentation for shared and app-adjacent UI.
@@ -120,6 +121,7 @@ The dev proxy writes its Caddyfile from the registry at startup.
 - `news`: <https://novosti.gredice.test>
 - `garden`: <https://vrt.gredice.test>
 - `farm`: <https://farma.gredice.test>
+- `delivery`: <https://dostava.gredice.test>
 - `app`: <https://app.gredice.test>
 - `storybook`: <https://storybook.dev.gredice.test>
 - `api`: <https://api.gredice.test>
@@ -138,7 +140,7 @@ not `443`, use the printed port-qualified form such as
 The dev script verifies the hosts entries for the local `gredice.test` domains and attempts to add missing entries automatically. If it cannot modify the hosts file, add this entry manually and rerun the command:
 
 ```text
-127.0.0.1 www.gredice.test novosti.gredice.test vrt.gredice.test farma.gredice.test app.gredice.test storybook.dev.gredice.test api.gredice.test status.gredice.test
+127.0.0.1 www.gredice.test novosti.gredice.test vrt.gredice.test farma.gredice.test dostava.gredice.test app.gredice.test storybook.dev.gredice.test api.gredice.test status.gredice.test
 ```
 
 Docker must be running for the proxy. Use `SKIP_DEV_PROXY=1 pnpm dev` only when the local proxy is not needed.
@@ -174,7 +176,7 @@ pnpm vercel:link
 pnpm env:pull
 ```
 
-`pnpm env:pull` runs `vercel env pull .env` in every app with a Vercel project in `scripts/app-registry.ts`, including `apps/www`, `apps/news`, `apps/garden`, `apps/farm`, `apps/app`, `apps/storybook`, `apps/api`, and `apps/status`.
+`pnpm env:pull` runs `vercel env pull .env` in every app with a Vercel project in `scripts/app-registry.ts`, including `apps/www`, `apps/news`, `apps/garden`, `apps/farm`, `apps/delivery`, `apps/app`, `apps/storybook`, `apps/api`, and `apps/status`.
 
 ### Turborepo remote cache
 

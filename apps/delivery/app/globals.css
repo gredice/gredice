@@ -1,0 +1,64 @@
+@import "tailwindcss";
+@import "@gredice/ui/utilities.css";
+@config "../tailwind.config.ts";
+@source "../../../packages/ui/src";
+
+@layer base {
+    :root {
+        interpolate-size: allow-keywords;
+        --background: 120 33% 98%;
+        --foreground: 142 32% 10%;
+        --muted: 120 17% 91%;
+        --muted-foreground: 140 10% 38%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 142 32% 10%;
+        --card: 0 0% 100%;
+        --card-transparent: 0 0% 100%;
+        --card-foreground: 142 32% 10%;
+        --border: 125 16% 84%;
+        --input: 125 16% 84%;
+        --primary: 142 72% 29%;
+        --primary-foreground: 0 0% 100%;
+        --secondary: 91 43% 88%;
+        --secondary-foreground: 142 45% 22%;
+        --tertiary: 120 17% 91%;
+        --tertiary-foreground: 142 22% 25%;
+        --accent: 91 43% 88%;
+        --accent-foreground: 142 45% 22%;
+        --destructive: 0 72% 51%;
+        --destructive-foreground: 0 0% 100%;
+        --ring: 142 72% 29%;
+        --radius: 0.75rem;
+        --light-display: visible;
+        --dark-display: none;
+        --bg-selection: #166534;
+        --text-selection: #fff;
+    }
+
+    * {
+        border-color: hsl(var(--border));
+    }
+
+    body {
+        background-color: hsl(var(--background));
+        color: hsl(var(--foreground));
+        font-feature-settings:
+            "rlig" 1,
+            "calt" 1;
+    }
+
+    @media (max-width: 767px) {
+        html {
+            font-size: 17px;
+        }
+    }
+
+    ::selection {
+        background: var(--bg-selection);
+        color: var(--text-selection);
+    }
+}
+
+svg.lucide {
+    stroke-width: 1.75px;
+}

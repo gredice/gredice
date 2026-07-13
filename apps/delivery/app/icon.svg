@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Gredice dostava</title>
+  <rect width="64" height="64" rx="14" fill="#166534"/>
+  <path d="M11 20h29v23H11z" fill="#fff"/>
+  <path d="M40 28h8l6 8v7H40z" fill="#dcfce7"/>
+  <circle cx="22" cy="46" r="5" fill="#052e16" stroke="#fff" stroke-width="3"/>
+  <circle cx="47" cy="46" r="5" fill="#052e16" stroke="#fff" stroke-width="3"/>
+  <path d="M19 27c4-7 10-8 16-8-1 7-5 12-13 12" fill="none" stroke="#166534" stroke-width="3" stroke-linecap="round"/>
+</svg>

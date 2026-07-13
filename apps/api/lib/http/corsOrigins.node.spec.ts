@@ -7,6 +7,7 @@ describe('CORS origins', () => {
         assert.equal(isAllowedCorsOrigin('https://vrt.gredice.com'), true);
         assert.equal(isAllowedCorsOrigin('https://www.gredice.com'), true);
         assert.equal(isAllowedCorsOrigin('https://app.gredice.com'), true);
+        assert.equal(isAllowedCorsOrigin('https://dostava.gredice.com'), true);
         assert.equal(isAllowedCorsOrigin('https://farma.gredice.com'), true);
     });
 
@@ -26,6 +27,12 @@ describe('CORS origins', () => {
         );
         assert.equal(
             isAllowedCorsOrigin('https://api-1lj8kdwr0-gredice.vercel.app'),
+            true,
+        );
+        assert.equal(
+            isAllowedCorsOrigin(
+                'https://delivery-git-route-ui-gredice.vercel.app',
+            ),
             true,
         );
     });

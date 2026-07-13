@@ -81,6 +81,18 @@ jobs:
               - pnpm-lock.yaml
               - pnpm-workspace.yaml
               - turbo.json
+            app_delivery:
+              - apps/delivery/**
+              - packages/auth/**
+              - packages/client/**
+              - packages/notifications/**
+              - packages/storage/**
+              - packages/ui/**
+              - .github/workflows/**
+              - package.json
+              - pnpm-lock.yaml
+              - pnpm-workspace.yaml
+              - turbo.json
             app_app:
               - apps/app/**
               - packages/auth/**
@@ -167,6 +179,7 @@ jobs:
       app_news: ${{ steps.filter.outputs.app_news }}
       app_garden: ${{ steps.filter.outputs.app_garden }}
       app_farm: ${{ steps.filter.outputs.app_farm }}
+      app_delivery: ${{ steps.filter.outputs.app_delivery }}
       app_app: ${{ steps.filter.outputs.app_app }}
       app_api: ${{ steps.filter.outputs.app_api }}
       app_storybook: ${{ steps.filter.outputs.app_storybook }}
@@ -214,6 +227,17 @@ jobs:
       name: "farm"
       path: "apps/farm"
       vercelProjectIdSecretName: "VERCEL_PROJECT_ID_FARM"
+    secrets: inherit
+
+  ci_delivery:
+    name: "CI - delivery"
+    needs: changes
+    if: success() && needs.changes.outputs.app_delivery == 'true'
+    uses: ./.github/workflows/nextjs_ci_reusable.yml
+    with:
+      name: "delivery"
+      path: "apps/delivery"
+      vercelProjectIdSecretName: "VERCEL_PROJECT_ID_DELIVERY"
     secrets: inherit
 
   ci_app:
@@ -360,6 +384,7 @@ jobs:
         ci_www,
         ci_garden,
         ci_farm,
+        ci_delivery,
         ci_app,
         ci_api,
         ci_status,

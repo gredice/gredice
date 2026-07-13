@@ -35,6 +35,7 @@ export * from './repositories/cmsPagesRepo';
 export * from './repositories/communityEditRequestsRepo';
 export * from './repositories/deliveryAddressesRepo';
 export * from './repositories/deliveryRequestsRepo';
+export * from './repositories/deliveryRunsRepo';
 export * from './repositories/deliveryUtilsRepo';
 export * from './repositories/emailsRepo';
 export * from './repositories/entitiesRepo';

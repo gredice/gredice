@@ -50,6 +50,11 @@ import { getOperationById, getOperationsByIds } from './operationsRepo';
 import { getPickupLocation } from './pickupLocationsRepo';
 import { closeTimeSlot, getTimeSlot } from './timeSlotsRepo';
 
+type StorageClient = ReturnType<typeof storage>;
+type TransactionClient = Parameters<
+    Parameters<StorageClient['transaction']>[0]
+>[0];
+type DatabaseClient = StorageClient | TransactionClient;
 type DbEvent = Awaited<ReturnType<typeof getAllEvents>>[number];
 type DeliveryTraceLink = Awaited<
     ReturnType<typeof getHarvestTraceLinksForOperationIds>
@@ -945,15 +950,18 @@ export function getDeliveryRequests(
 // Get a specific delivery request by ID with events
 export async function getDeliveryRequest(
     requestId: string,
+    db: DatabaseClient = storage(),
 ): Promise<DeliveryRequestWithEvents | undefined> {
-    const request = await storage().query.deliveryRequests.findFirst({
+    const request = await db.query.deliveryRequests.findFirst({
         where: and(eq(deliveryRequests.id, requestId)),
     });
 
     if (!request) return undefined;
 
     // Get events for this request
-    const events = await getAllEvents(deliveryRequestEventTypes, [request.id]);
+    const events = await getAllEvents(deliveryRequestEventTypes, [request.id], {
+        db,
+    });
 
     return reconstructDeliveryRequestFromEvents(request, events);
 }
@@ -1407,8 +1415,9 @@ export async function markDeliveryReadyEmailsProcessed({
 export async function fulfillDeliveryRequest(
     requestId: string,
     deliveryNotes?: string,
+    db: DatabaseClient = storage(),
 ): Promise<void> {
-    const request = await getDeliveryRequest(requestId);
+    const request = await getDeliveryRequest(requestId, db);
 
     if (!request) {
         throw new Error('Delivery request not found');
@@ -1429,6 +1438,7 @@ export async function fulfillDeliveryRequest(
             status: DeliveryRequestStates.FULFILLED,
             deliveryNotes,
         }),
+        db,
     );
 }
 
