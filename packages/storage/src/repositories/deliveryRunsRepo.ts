@@ -347,7 +347,8 @@ async function ensureOwnedDeliveryRunStops({
     if (
         stops.length !== uniqueStopIds.length ||
         !run ||
-        run.driverUserId !== driverUserId
+        run.driverUserId !== driverUserId ||
+        run.state !== DeliveryRunStates.ACTIVE
     ) {
         throw new Error('Active delivery stop not found');
     }
@@ -356,9 +357,6 @@ async function ensureOwnedDeliveryRunStops({
         (stop) => stop.state !== DeliveryRunStopStates.DELIVERED,
     );
     if (hasUndeliveredStops) {
-        if (run.state !== DeliveryRunStates.ACTIVE) {
-            throw new Error('Active delivery stop not found');
-        }
         const currentStop = await db.query.deliveryRunStops.findFirst({
             columns: { id: true },
             where: and(

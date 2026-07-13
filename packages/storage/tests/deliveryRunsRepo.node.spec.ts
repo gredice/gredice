@@ -206,4 +206,12 @@ test('delivery run fulfills a current bulk stop atomically and preserves route o
         }),
         false,
     );
+    await assert.rejects(
+        fulfillDeliveryRunStops({
+            driverUserId,
+            runId: run.id,
+            stopIds: [firstStop.id, secondStop.id],
+        }),
+        /Active delivery stop not found/,
+    );
 });
