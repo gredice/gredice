@@ -1,5 +1,9 @@
-import { expect, test } from '@playwright/experimental-ct-react';
+import { expect, type Page, test } from '@playwright/experimental-ct-react';
 import { GardenTabStory } from './GardenTabStory';
+
+async function openDangerZone(page: Page) {
+    await page.getByRole('button', { name: /Zona opasnosti/ }).click();
+}
 
 test.describe('Garden tab', () => {
     test('saves the current camera snapshot as the garden home position', async ({
@@ -52,13 +56,58 @@ test.describe('Garden tab', () => {
         ).toBeVisible();
     });
 
+    test('keeps destructive actions collapsed under the danger zone by default', async ({
+        mount,
+        page,
+    }) => {
+        await mount(<GardenTabStory activeRaisedBedCount={0} />);
+
+        const dangerZoneButton = page.getByRole('button', {
+            name: /Zona opasnosti/,
+        });
+        await expect(dangerZoneButton).toBeVisible();
+        await expect(
+            page.getByText('Napuštanje gredice', { exact: true }),
+        ).toHaveCount(0);
+        await expect(
+            page.getByText('Brisanje vrta', { exact: true }),
+        ).toHaveCount(0);
+
+        await openDangerZone(page);
+
+        await expect(
+            page.getByText('Napuštanje gredice', { exact: true }),
+        ).toBeVisible();
+        await expect(
+            page.getByText('Brisanje vrta', { exact: true }),
+        ).toBeVisible();
+        const deleteButton = page.getByRole('button', {
+            name: 'Obriši vrt',
+        });
+        const [dangerZoneBackground, deleteButtonBackground] =
+            await Promise.all([
+                dangerZoneButton.evaluate(
+                    (element) => getComputedStyle(element).backgroundColor,
+                ),
+                deleteButton.evaluate(
+                    (element) => getComputedStyle(element).backgroundColor,
+                ),
+            ]);
+        expect(deleteButtonBackground).not.toBe(dangerZoneBackground);
+        await expect(deleteButton).toHaveCSS('border-top-width', '0px');
+        await expect(deleteButton).toHaveCSS('padding-top', '0px');
+    });
+
     test('disables garden deletion while raised beds are active', async ({
         mount,
         page,
     }) => {
         await mount(<GardenTabStory activeRaisedBedCount={2} />);
+        await openDangerZone(page);
 
-        await expect(page.getByText('Brisanje vrta')).toBeVisible();
+        await expect(
+            page.getByText('Brisanje vrta', { exact: true }),
+        ).toBeVisible();
         await expect(
             page.getByText(
                 'Vrt ima 2 aktivnih gredica. Prvo napusti aktivne gredice, zatim obriši vrt.',
@@ -92,6 +141,7 @@ test.describe('Garden tab', () => {
         );
 
         await mount(<GardenTabStory activeRaisedBedCount={2} />);
+        await openDangerZone(page);
 
         const abandonButton = page.getByRole('button', {
             name: 'Napusti gredicu',
@@ -130,6 +180,7 @@ test.describe('Garden tab', () => {
         page,
     }) => {
         await mount(<GardenTabStory activeRaisedBedCount={0} />);
+        await openDangerZone(page);
 
         await expect(page.getByLabel('Aktivna gredica')).toBeDisabled();
         await expect(
@@ -158,6 +209,7 @@ test.describe('Garden tab', () => {
         );
 
         await mount(<GardenTabStory activeRaisedBedCount={1} />);
+        await openDangerZone(page);
 
         await page.getByLabel('Aktivna gredica').click();
         await page.getByRole('option', { name: 'Gredica 1' }).click();
@@ -197,6 +249,7 @@ test.describe('Garden tab', () => {
         });
 
         await mount(<GardenTabStory activeRaisedBedCount={0} />);
+        await openDangerZone(page);
 
         await page.getByRole('button', { name: 'Obriši vrt' }).click();
         const dialog = page.getByRole('alertdialog', {
@@ -237,6 +290,7 @@ test.describe('Garden tab', () => {
         });
 
         await mount(<GardenTabStory activeRaisedBedCount={0} isSandbox />);
+        await openDangerZone(page);
 
         await page.getByRole('button', { name: 'Obriši vrt' }).click();
         const dialog = page.getByRole('alertdialog', {
@@ -269,6 +323,7 @@ test.describe('Garden tab', () => {
         });
 
         await mount(<GardenTabStory activeRaisedBedCount={0} />);
+        await openDangerZone(page);
 
         await page.getByRole('button', { name: 'Obriši vrt' }).click();
         const dialog = page.getByRole('alertdialog', {
