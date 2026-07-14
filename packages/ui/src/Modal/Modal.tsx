@@ -176,6 +176,7 @@ function MobileModal({
             modal={modal}
             onOpenChange={onOpenChange}
             open={open}
+            repositionInputs={false}
             shouldScaleBackground
         >
             {trigger ? (
