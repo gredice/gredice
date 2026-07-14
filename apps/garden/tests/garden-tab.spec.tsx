@@ -60,11 +60,12 @@ test.describe('Garden tab', () => {
         mount,
         page,
     }) => {
-        await mount(<GardenTabStory activeRaisedBedCount={2} />);
+        await mount(<GardenTabStory activeRaisedBedCount={0} />);
 
-        await expect(
-            page.getByRole('button', { name: /Zona opasnosti/ }),
-        ).toBeVisible();
+        const dangerZoneButton = page.getByRole('button', {
+            name: /Zona opasnosti/,
+        });
+        await expect(dangerZoneButton).toBeVisible();
         await expect(
             page.getByText('Napuštanje gredice', { exact: true }),
         ).toHaveCount(0);
@@ -80,6 +81,21 @@ test.describe('Garden tab', () => {
         await expect(
             page.getByText('Brisanje vrta', { exact: true }),
         ).toBeVisible();
+        const deleteButton = page.getByRole('button', {
+            name: 'Obriši vrt',
+        });
+        const [dangerZoneBackground, deleteButtonBackground] =
+            await Promise.all([
+                dangerZoneButton.evaluate(
+                    (element) => getComputedStyle(element).backgroundColor,
+                ),
+                deleteButton.evaluate(
+                    (element) => getComputedStyle(element).backgroundColor,
+                ),
+            ]);
+        expect(deleteButtonBackground).not.toBe(dangerZoneBackground);
+        await expect(deleteButton).toHaveCSS('border-top-width', '0px');
+        await expect(deleteButton).toHaveCSS('padding-top', '0px');
     });
 
     test('disables garden deletion while raised beds are active', async ({

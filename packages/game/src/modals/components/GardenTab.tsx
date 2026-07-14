@@ -160,7 +160,7 @@ export function GardenTab() {
                                     isPublic={selectedGarden.isPublic}
                                 />
                                 <Accordion
-                                    className="[&_button]:rounded-lg [&_button]:border [&_button]:border-red-200 [&_button]:bg-red-50/80 [&_button]:p-4 [&_button]:shadow-xs [&_button]:hover:bg-red-100/80 dark:[&_button]:border-red-900/60 dark:[&_button]:bg-red-950/80 dark:[&_button]:hover:bg-red-950"
+                                    className="[&>div:first-child>button]:rounded-lg [&>div:first-child>button]:border [&>div:first-child>button]:border-red-200 [&>div:first-child>button]:bg-red-50/80 [&>div:first-child>button]:p-4 [&>div:first-child>button]:shadow-xs [&>div:first-child>button]:hover:bg-red-100/80 dark:[&>div:first-child>button]:border-red-900/60 dark:[&>div:first-child>button]:bg-red-950/80 dark:[&>div:first-child>button]:hover:bg-red-950"
                                     unmountOnExit
                                     variant="plain"
                                 >
