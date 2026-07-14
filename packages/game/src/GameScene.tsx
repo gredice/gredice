@@ -252,7 +252,10 @@ export function GameScene({
     }
     const gardenHomeCamera =
         gardenInitialHomeCameraRef.current.homeCamera ?? undefined;
-    const sceneCameraPosition = gardenHomeCamera?.position ?? cameraPosition;
+    const sceneCameraPosition = useMemo(
+        () => new Vector3(...(gardenHomeCamera?.position ?? cameraPosition)),
+        [cameraPosition, gardenHomeCamera],
+    );
     const sceneCameraTarget = useMemo(
         () =>
             gardenHomeCamera
@@ -451,9 +454,11 @@ export function GameScene({
                             </group>
                             <GameCameraRig
                                 controlsEnabled={!noControls}
+                                initialPosition={sceneCameraPosition}
                                 initialSnapshot={gardenHomeCamera}
                                 initialTarget={sceneCameraTarget}
                                 initialViewKey={gardenInitialViewKey}
+                                initialZoom={sceneCameraZoom}
                             />
                         </BlockInteractionRegistryProvider>
                     </ParticleSystemProvider>

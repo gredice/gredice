@@ -440,11 +440,13 @@ function PublicGardenScene({
                             </Suspense>
                             <GameCameraRig
                                 controlsEnabled={!capture}
+                                initialPosition={initialView.cameraPosition}
                                 initialSnapshot={
                                     garden?.homeCamera ?? undefined
                                 }
                                 initialTarget={initialView.cameraTarget}
                                 initialViewKey={garden?.id ?? 'stacks'}
+                                initialZoom={initialView.cameraZoom}
                             />
                             {capture ? (
                                 <PublicGardenCaptureProbe
