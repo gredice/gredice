@@ -60,14 +60,23 @@ export class DeliveryRoutePlanningError extends Error {
     }
 }
 
-function googleMapsApiKey() {
-    const apiKey = process.env.GREDICE_GOOGLE_MAPS_API_KEY?.trim();
+function googleMapsServerApiKey() {
+    const apiKey = process.env.GREDICE_GOOGLE_MAPS_SERVER_API_KEY?.trim();
     if (!apiKey) {
-        throw new Error(
-            'Google Maps API ključ nije konfiguriran za aplikaciju dostave.',
+        throw new DeliveryRoutePlanningError(
+            'Planiranje rute nije ispravno konfigurirano. Obrati se administratoru.',
+            'google-maps-server-key-missing',
         );
     }
     return apiKey;
+}
+
+function googleServiceErrorCode(prefix: string, status: unknown) {
+    const normalizedStatus =
+        typeof status === 'string'
+            ? status.toLowerCase().replaceAll('_', '-')
+            : 'unknown';
+    return `${prefix}-${normalizedStatus}`;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -388,16 +397,19 @@ async function geocodeAddress({
 
     for (const query of queries) {
         const response = await fetch(
-            buildGoogleGeocodingUrl(query, googleMapsApiKey()),
+            buildGoogleGeocodingUrl(query, googleMapsServerApiKey()),
             { cache: 'no-store' },
         );
         const body: unknown = await response.json().catch(() => null);
-        if (response.ok && isRecord(body) && body.status === 'ZERO_RESULTS') {
+        const googleStatus = isRecord(body) ? body.status : undefined;
+        if (response.ok && googleStatus === 'ZERO_RESULTS') {
             continue;
         }
-        if (!response.ok || !isRecord(body) || body.status !== 'OK') {
-            throw new Error(
-                'Google Maps trenutačno nije mogao provjeriti adrese dostave.',
+        if (!response.ok || !isRecord(body) || googleStatus !== 'OK') {
+            throw new DeliveryRoutePlanningError(
+                'Google Maps trenutačno nije mogao provjeriti adrese dostave. Obrati se administratoru.',
+                googleServiceErrorCode('google-geocoding', googleStatus),
+                deliveryRequestId,
             );
         }
 
@@ -495,7 +507,7 @@ async function computeGoogleRoute({
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-Goog-Api-Key': googleMapsApiKey(),
+                'X-Goog-Api-Key': googleMapsServerApiKey(),
                 'X-Goog-FieldMask':
                     'routes.distanceMeters,routes.duration,routes.legs.distanceMeters,routes.legs.duration,routes.optimizedIntermediateWaypointIndex,routes.polyline.encodedPolyline',
             },

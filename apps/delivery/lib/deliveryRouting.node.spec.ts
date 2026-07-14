@@ -58,10 +58,10 @@ test('geocoding uses a Croatian region bias without a duplicate country filter',
 
 test('route planning retries the display address when the simplified address is not found', async () => {
     const originalFetch = globalThis.fetch;
-    const originalApiKey = process.env.GREDICE_GOOGLE_MAPS_API_KEY;
+    const originalApiKey = process.env.GREDICE_GOOGLE_MAPS_SERVER_API_KEY;
     const originalHqAddress = process.env.GREDICE_DELIVERY_HQ_ADDRESS;
     const geocodingQueries: string[] = [];
-    process.env.GREDICE_GOOGLE_MAPS_API_KEY = 'test-key';
+    process.env.GREDICE_GOOGLE_MAPS_SERVER_API_KEY = 'test-key';
     process.env.GREDICE_DELIVERY_HQ_ADDRESS =
         'Ulica Julija Knifera 3, 10000 Zagreb, HR';
     globalThis.fetch = async (input) => {
@@ -130,9 +130,62 @@ test('route planning retries the display address when the simplified address is 
     } finally {
         globalThis.fetch = originalFetch;
         if (originalApiKey === undefined) {
-            delete process.env.GREDICE_GOOGLE_MAPS_API_KEY;
+            delete process.env.GREDICE_GOOGLE_MAPS_SERVER_API_KEY;
         } else {
-            process.env.GREDICE_GOOGLE_MAPS_API_KEY = originalApiKey;
+            process.env.GREDICE_GOOGLE_MAPS_SERVER_API_KEY = originalApiKey;
+        }
+        if (originalHqAddress === undefined) {
+            delete process.env.GREDICE_DELIVERY_HQ_ADDRESS;
+        } else {
+            process.env.GREDICE_DELIVERY_HQ_ADDRESS = originalHqAddress;
+        }
+    }
+});
+
+test('reports a server key restriction without exposing Google error details', async () => {
+    const originalFetch = globalThis.fetch;
+    const originalApiKey = process.env.GREDICE_GOOGLE_MAPS_SERVER_API_KEY;
+    const originalHqAddress = process.env.GREDICE_DELIVERY_HQ_ADDRESS;
+    process.env.GREDICE_GOOGLE_MAPS_SERVER_API_KEY = 'restricted-key';
+    process.env.GREDICE_DELIVERY_HQ_ADDRESS =
+        'Ulica Julija Knifera 3, 10000 Zagreb, HR';
+    globalThis.fetch = async () =>
+        Response.json({
+            status: 'REQUEST_DENIED',
+            error_message: 'API key restriction details',
+            results: [],
+        });
+
+    try {
+        await assert.rejects(
+            planDeliveryRoute({
+                candidates: [
+                    {
+                        deliveryRequestId: 'delivery-1',
+                        formattedAddress: 'Ilica 1, 10000 Zagreb, HR',
+                        windowStartAt: new Date('2026-07-14T08:00:00.000Z'),
+                        windowEndAt: new Date('2026-07-14T10:00:00.000Z'),
+                    },
+                ],
+                departureTime: new Date('2026-07-14T07:30:00.000Z'),
+            }),
+            (error: unknown) => {
+                assert.ok(error instanceof DeliveryRoutePlanningError);
+                assert.equal(error.code, 'google-geocoding-request-denied');
+                assert.equal(
+                    error.message,
+                    'Google Maps trenutačno nije mogao provjeriti adrese dostave. Obrati se administratoru.',
+                );
+                assert.doesNotMatch(error.message, /restriction details/);
+                return true;
+            },
+        );
+    } finally {
+        globalThis.fetch = originalFetch;
+        if (originalApiKey === undefined) {
+            delete process.env.GREDICE_GOOGLE_MAPS_SERVER_API_KEY;
+        } else {
+            process.env.GREDICE_GOOGLE_MAPS_SERVER_API_KEY = originalApiKey;
         }
         if (originalHqAddress === undefined) {
             delete process.env.GREDICE_DELIVERY_HQ_ADDRESS;
