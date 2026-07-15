@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
     accountCanTrackCurrentDeliveryGroup,
+    deliveryTrackingStopIds,
     expandLegacyCurrentDeliveryStopIds,
     pickupManifestTracePath,
 } from './deliveryDashboard';
@@ -164,6 +165,51 @@ test('legacy current delivery keeps the execution stop when its group cannot be 
     });
 
     assert.deepEqual([...currentStopIds], [21]);
+});
+
+test('legacy route tracking authorizes every account in the current bulk group', () => {
+    const groups = [
+        group([{ id: 11, state: pending, accountId: 'account-1' }]),
+        group([
+            { id: 21, state: pending, accountId: 'account-2' },
+            { id: 22, state: pending, accountId: 'account-3' },
+        ]),
+    ];
+    const currentDeliveryStopIds = deliveryTrackingStopIds({
+        routePlanVersion: 1,
+        currentStopIds: new Set([21]),
+        groups,
+    });
+
+    assert.equal(
+        accountCanTrackCurrentDeliveryGroup({
+            accountId: 'account-3',
+            runState: 'active',
+            groups,
+            currentDeliveryStopIds,
+        }),
+        true,
+    );
+});
+
+test('current route tracking keeps the server-confirmed physical stop ids', () => {
+    const groups = [
+        group([
+            { id: 21, state: pending, accountId: 'account-2' },
+            { id: 22, state: pending, accountId: 'account-3' },
+        ]),
+    ];
+
+    assert.deepEqual(
+        [
+            ...deliveryTrackingStopIds({
+                routePlanVersion: 2,
+                currentStopIds: new Set([21]),
+                groups,
+            }),
+        ],
+        [21],
+    );
 });
 
 test('pickup manifest advertises only persisted trace provenance', () => {

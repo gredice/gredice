@@ -825,15 +825,13 @@ async function customerDashboard({
             currentStopIdsByRunId.set(run.id, null);
             continue;
         }
-        const currentStopIds = new Set(current.stopIds);
         currentStopIdsByRunId.set(
             run.id,
-            run.routePlanVersion < 2
-                ? expandLegacyCurrentDeliveryStopIds({
-                      currentStopIds,
-                      groups: await resolveDeliveryRunStopGroups(run),
-                  })
-                : currentStopIds,
+            deliveryTrackingStopIds({
+                routePlanVersion: run.routePlanVersion,
+                currentStopIds: new Set(current.stopIds),
+                groups: await resolveDeliveryRunStopGroups(run),
+            }),
         );
     }
 
@@ -896,6 +894,22 @@ export function expandLegacyCurrentDeliveryStopIds({
             stop.id === undefined ? [] : [stop.id],
         ),
     );
+}
+
+export function deliveryTrackingStopIds({
+    routePlanVersion,
+    currentStopIds,
+    groups,
+}: {
+    routePlanVersion: number;
+    currentStopIds: ReadonlySet<number>;
+    groups: ReadonlyArray<{
+        items: ReadonlyArray<{ stop: { id?: number } }>;
+    }>;
+}) {
+    return routePlanVersion < 2
+        ? expandLegacyCurrentDeliveryStopIds({ currentStopIds, groups })
+        : new Set(currentStopIds);
 }
 
 export async function getDeliveryDashboard({
@@ -1067,14 +1081,19 @@ export async function accountCanTrackDeliveryRun({
         getDeliveryRunExecutionProgress(run.id),
     ]);
     const current = progress.find((step) => step.state === 'current');
+    const currentDeliveryStopIds =
+        current?.kind === 'delivery' && current.pickupConfirmed
+            ? deliveryTrackingStopIds({
+                  routePlanVersion: run.routePlanVersion,
+                  currentStopIds: new Set(current.stopIds),
+                  groups,
+              })
+            : null;
     return accountCanTrackCurrentDeliveryGroup({
         accountId,
         runState: run.state,
         groups,
-        currentDeliveryStopIds:
-            current?.kind === 'delivery' && current.pickupConfirmed
-                ? new Set(current.stopIds)
-                : null,
+        currentDeliveryStopIds,
     });
 }
 
