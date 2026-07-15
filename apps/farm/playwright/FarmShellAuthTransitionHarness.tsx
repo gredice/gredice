@@ -1,17 +1,12 @@
 'use client';
 
-import { AuthProvider } from '@gredice/ui/auth';
+import { AuthProvider, useCurrentUser } from '@gredice/ui/auth';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useCallback, useState } from 'react';
 import { FarmAnalyticsProvider } from '../components/analytics/FarmAnalyticsProvider';
 import { FarmTodayViewTracker } from '../components/analytics/FarmTodayViewTracker';
 import type { FarmAnalyticsCapture } from '../components/analytics/farmAnalytics';
 import { FarmShellAuthGate } from '../components/navigation/FarmShellAuthGate';
-
-async function delayedCurrentUser() {
-    await new Promise((resolve) => window.setTimeout(resolve, 250));
-    return { id: 'farmer-test' };
-}
 
 function TodayMountProbe() {
     const [mountMarker] = useState(() => crypto.randomUUID());
@@ -28,7 +23,21 @@ function TodayMountProbe() {
     );
 }
 
-export function FarmShellAuthTransitionHarness() {
+function AuthResolutionProbe() {
+    const currentUser = useCurrentUser();
+
+    return (
+        <output data-auth-resolution>
+            {currentUser.data ? 'resolved' : 'loading'}
+        </output>
+    );
+}
+
+export function FarmShellAuthTransitionHarness({
+    userRole = 'farmer',
+}: {
+    userRole?: string;
+}) {
     const [capturedEvents, setCapturedEvents] = useState<string[]>([]);
     const [queryClient] = useState(
         () =>
@@ -41,11 +50,20 @@ export function FarmShellAuthTransitionHarness() {
     const capture = useCallback<FarmAnalyticsCapture>((eventName) => {
         setCapturedEvents((current) => [...current, eventName]);
     }, []);
+    const currentUserFactory = useCallback(async () => {
+        await new Promise((resolve) => window.setTimeout(resolve, 250));
+        return {
+            id: 'farmer-test',
+            role: userRole,
+            userName: 'Farmer Test',
+        };
+    }, [userRole]);
 
     return (
         <QueryClientProvider client={queryClient}>
-            <AuthProvider currentUserFactory={delayedCurrentUser}>
+            <AuthProvider currentUserFactory={currentUserFactory}>
                 <FarmAnalyticsProvider capture={capture}>
+                    <AuthResolutionProbe />
                     <FarmShellAuthGate pathname="/">
                         <TodayMountProbe />
                     </FarmShellAuthGate>

@@ -487,3 +487,18 @@ test('does not remount or recount Today when authentication resolves', async ({
     );
     await expect(viewCount).toHaveText('1');
 });
+
+test('keeps the farm shell hidden from signed-in users without a farm role', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(phoneViewports[0]);
+    const component = await mount(
+        <FarmShellAuthTransitionHarness userRole="customer" />,
+    );
+
+    await expect(component.locator('[data-auth-resolution]')).toHaveText(
+        'resolved',
+    );
+    await expect(visibleNavigation(component)).toHaveCount(0);
+});

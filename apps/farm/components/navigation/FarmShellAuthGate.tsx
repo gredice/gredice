@@ -2,6 +2,7 @@
 
 import { useCurrentUser } from '@gredice/ui/auth';
 import type { PropsWithChildren } from 'react';
+import { isFarmCurrentUser } from '../providers/AuthAppProvider';
 import { FarmAuthenticatedShell } from './FarmAuthenticatedShell';
 
 type FarmShellAuthGateProps = PropsWithChildren<{
@@ -13,10 +14,13 @@ export function FarmShellAuthGate({
     pathname,
 }: FarmShellAuthGateProps) {
     const currentUser = useCurrentUser();
+    const authenticated =
+        Boolean(currentUser.data?.isLogginedIn) &&
+        isFarmCurrentUser(currentUser.data?.user);
 
     return (
         <FarmAuthenticatedShell
-            authenticated={Boolean(currentUser.data?.isLogginedIn)}
+            authenticated={authenticated}
             pathname={pathname}
         >
             {children}

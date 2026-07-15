@@ -8,16 +8,30 @@ export type User = {
     userName: string;
     displayName?: string;
     avatarUrl?: string | null;
-    role: string;
+    role: 'admin' | 'farmer';
     createdAt?: string;
 };
+
+export function isFarmCurrentUser(value: unknown): value is User {
+    return (
+        typeof value === 'object' &&
+        value !== null &&
+        'id' in value &&
+        typeof value.id === 'string' &&
+        'role' in value &&
+        (value.role === 'admin' || value.role === 'farmer') &&
+        'userName' in value &&
+        typeof value.userName === 'string'
+    );
+}
 
 async function currentUserFactory() {
     const response = await fetch('/api/users/current-claims', {
         cache: 'no-store',
     });
     if (response.ok) {
-        return (await response.json()) as User;
+        const responseBody: unknown = await response.json();
+        return isFarmCurrentUser(responseBody) ? responseBody : null;
     }
 
     return null;
