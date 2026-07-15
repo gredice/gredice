@@ -2905,10 +2905,12 @@ test('delivery exceptions persist item outcomes, replay safely, and keep custome
         firstStop.deliveryRequestId,
     );
     assert.equal(customerRequest?.state, DeliveryRunStopStates.DEFERRED);
-    assert.deepEqual(customerRequest?.deliveryException, {
-        outcome: DeliveryRunExceptionOutcomes.DEFERRED,
-        retryable: true,
-    });
+    assert.equal(
+        customerRequest?.deliveryException?.outcome,
+        DeliveryRunExceptionOutcomes.DEFERRED,
+    );
+    assert.equal(customerRequest?.deliveryException?.retryable, true);
+    assert.ok(customerRequest?.deliveryException?.recordedAt instanceof Date);
     assert.ok(!JSON.stringify(customerRequest).includes(privateNote));
     assert.ok(
         !JSON.stringify(customerRequest).includes(

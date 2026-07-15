@@ -210,6 +210,7 @@ interface DeliveryRequestStateProjection {
     deliveryException?: {
         outcome: 'deferred' | 'failed' | 'cancelled';
         retryable: boolean;
+        recordedAt: Date;
     };
 }
 
@@ -291,6 +292,7 @@ function reconstructDeliveryRequestState(
         | {
               outcome: 'deferred' | 'failed' | 'cancelled';
               retryable: boolean;
+              recordedAt: Date;
           }
         | undefined;
 
@@ -360,6 +362,10 @@ function reconstructDeliveryRequestState(
                 retryable:
                     data.exceptionOutcome === 'deferred' &&
                     data.exceptionRetryable === true,
+                // Use the server-created audit timestamp. The event payload's
+                // occurredAt value originates on the driver's device and must
+                // not define public pickup policy deadlines.
+                recordedAt: event.createdAt,
             };
         } else if (
             event.type === knownEventTypes.delivery.requestExceptionRecovered &&

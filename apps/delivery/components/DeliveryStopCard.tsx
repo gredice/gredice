@@ -22,11 +22,20 @@ import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 import type { DeliveryStopSummary } from '../lib/deliveryDashboardTypes';
 import {
+    actionableDeliveryExceptionItems,
+    type DeliveryExceptionMutation,
+    type DeliveryExceptionSubmitResult,
+    deliveryExceptionOutcomeLabel,
+    deliveryExceptionReasonLabel,
+} from '../lib/deliveryExceptionPresentation';
+import {
     formatDeliveryDateTime,
     formatDeliveryTime,
     formatDistance,
     formatTravelDuration,
 } from '../lib/deliveryFormatting';
+import { DeliveryCustomerRecovery } from './DeliveryCustomerRecovery';
+import { DeliveryExceptionSheet } from './DeliveryExceptionSheet';
 import { DeliveryHarvestVerification } from './DeliveryHarvestVerification';
 
 function statusColor(
@@ -34,7 +43,14 @@ function statusColor(
 ): 'success' | 'info' | 'error' | 'warning' | 'neutral' {
     if (status === 'Dostavljeno') return 'success';
     if (status === 'Vozač je stigao') return 'info';
-    if (status === 'Otkazano') return 'error';
+    if (
+        status === 'Otkazano' ||
+        status === 'Dostava je otkazana' ||
+        status === 'Dostava nije uspjela'
+    ) {
+        return 'error';
+    }
+    if (status === 'Dostava je odgođena') return 'warning';
     if (status === 'Vozač stiže' || status === 'U dostavi') {
         return 'warning';
     }
@@ -45,16 +61,22 @@ export function DeliveryStopCard({
     stop,
     mode,
     pendingAction,
+    routeRevision,
     onRetry,
     onArrive,
     onDeliver,
+    onException,
 }: {
     stop: DeliveryStopSummary;
     mode: 'driver' | 'customer';
-    pendingAction?: 'retry' | 'arrive' | 'deliver' | null;
+    pendingAction?: 'retry' | 'arrive' | 'deliver' | 'exception' | null;
+    routeRevision?: number;
     onRetry?: () => void;
     onArrive?: () => void;
     onDeliver?: (notes?: string) => void;
+    onException?: (
+        mutation: DeliveryExceptionMutation,
+    ) => Promise<DeliveryExceptionSubmitResult>;
 }) {
     const [notes, setNotes] = useState('');
     const navigationUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(stop.address)}`;
@@ -64,11 +86,33 @@ export function DeliveryStopCard({
         stop.actionState ??
         (delivered ? 'completed' : stop.isCurrent ? 'current' : 'upcoming');
     const customerActionAvailable = driverActionState === 'current';
+    const actionableDeliveries = actionableDeliveryExceptionItems(
+        stop.deliveries,
+    );
+    const currentDeliveryCount =
+        stop.stopState === 'deferred'
+            ? stop.deliveryCount
+            : actionableDeliveries.length;
+    const displayedDeliveryCount =
+        driverMode && customerActionAvailable && !delivered
+            ? currentDeliveryCount
+            : stop.deliveryCount;
+    const groupedDelivery = stop.deliveries.length > 1;
     const estimatedOutsideWindow = Boolean(
         stop.estimatedArrivalAt &&
             stop.slotEndAt &&
             new Date(stop.estimatedArrivalAt) > new Date(stop.slotEndAt),
     );
+    const completedDriverException =
+        driverMode &&
+        driverActionState === 'completed' &&
+        (stop.stopState === 'failed' || stop.stopState === 'cancelled');
+    const showRouteEstimates =
+        Boolean(stop.estimatedArrivalAt || stop.estimatedTravelSeconds) &&
+        !completedDriverException &&
+        (driverMode ||
+            !stop.recovery ||
+            stop.recovery.kind === 'retry-planned');
 
     return (
         <Card
@@ -97,8 +141,8 @@ export function DeliveryStopCard({
                                 className="truncate"
                             >
                                 {driverMode
-                                    ? stop.deliveryCount > 1
-                                        ? `${stop.deliveryCount} uroda · skupna dostava`
+                                    ? groupedDelivery
+                                        ? `${displayedDeliveryCount} ${displayedDeliveryCount === 1 ? 'urod' : 'uroda'} · skupna dostava`
                                         : stop.contactName
                                     : stop.harvest.plantName}
                             </Typography>
@@ -107,7 +151,7 @@ export function DeliveryStopCard({
                                 className="mt-0.5 text-muted-foreground"
                             >
                                 {driverMode
-                                    ? stop.deliveryCount > 1
+                                    ? groupedDelivery
                                         ? 'Ista adresa i termin'
                                         : stop.harvest.plantName
                                     : formatDeliveryDateTime(stop.slotStartAt)}
@@ -119,7 +163,7 @@ export function DeliveryStopCard({
                     </Chip>
                 </div>
 
-                {stop.estimatedArrivalAt || stop.estimatedTravelSeconds ? (
+                {showRouteEstimates ? (
                     <div className="grid grid-cols-3 gap-2 rounded-lg bg-muted/70 p-3 text-center">
                         <div>
                             <Typography
@@ -159,6 +203,10 @@ export function DeliveryStopCard({
                     </div>
                 ) : null}
 
+                {!driverMode && stop.recovery ? (
+                    <DeliveryCustomerRecovery recovery={stop.recovery} />
+                ) : null}
+
                 {driverMode ? (
                     <div className="space-y-2 text-sm">
                         {stop.slotStartAt && stop.slotEndAt ? (
@@ -175,7 +223,9 @@ export function DeliveryStopCard({
                             <MapPin className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                             <span>{stop.address}</span>
                         </div>
-                        {estimatedOutsideWindow && !delivered ? (
+                        {showRouteEstimates &&
+                        estimatedOutsideWindow &&
+                        !delivered ? (
                             <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-950 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
                                 <Warning className="mt-0.5 size-4 shrink-0" />
                                 <span>
@@ -220,18 +270,31 @@ export function DeliveryStopCard({
                 !delivered &&
                 stop.stopState !== 'deferred' ? (
                     <div className="space-y-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
-                        <Button
-                            href={navigationUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            variant="outlined"
-                            startDecorator={<Navigate className="size-4" />}
-                        >
-                            Navigacija
-                        </Button>
+                        <div className="flex flex-wrap gap-2">
+                            <Button
+                                href={navigationUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                variant="outlined"
+                                startDecorator={<Navigate className="size-4" />}
+                            >
+                                Navigacija
+                            </Button>
+                            {stop.runId &&
+                            routeRevision !== undefined &&
+                            onException ? (
+                                <DeliveryExceptionSheet
+                                    runId={stop.runId}
+                                    routeRevision={routeRevision}
+                                    stop={stop}
+                                    disabled={Boolean(pendingAction)}
+                                    onSubmit={onException}
+                                />
+                            ) : null}
+                        </div>
                         {stop.stopState === 'arrived' ? (
                             <DeliveryHarvestVerification
-                                deliveries={stop.deliveries}
+                                deliveries={actionableDeliveries}
                                 disabled={Boolean(pendingAction)}
                             />
                         ) : (
@@ -247,7 +310,7 @@ export function DeliveryStopCard({
                             className="block text-sm font-medium"
                             htmlFor={`notes-${stop.id}`}
                         >
-                            {stop.deliveryCount > 1
+                            {groupedDelivery
                                 ? 'Napomena za skupnu dostavu'
                                 : 'Napomena o dostavi'}
                         </label>
@@ -280,12 +343,15 @@ export function DeliveryStopCard({
                             <Button
                                 color="success"
                                 loading={pendingAction === 'deliver'}
-                                disabled={Boolean(pendingAction)}
+                                disabled={
+                                    Boolean(pendingAction) ||
+                                    actionableDeliveries.length === 0
+                                }
                                 onClick={() => onDeliver?.(notes || undefined)}
                                 startDecorator={<Approved className="size-4" />}
                             >
-                                {stop.deliveryCount > 1
-                                    ? `Dostavi ${stop.deliveryCount} uroda · dalje`
+                                {groupedDelivery
+                                    ? `Dostavi ${actionableDeliveries.length} ${actionableDeliveries.length === 1 ? 'urod' : 'uroda'} · dalje`
                                     : 'Dostavljeno · dalje'}
                             </Button>
                         </div>
@@ -329,37 +395,53 @@ export function DeliveryStopCard({
                                                 .join(' · ')}
                                         </span>
                                     </div>
+                                    {delivery.exception ? (
+                                        <div className="space-y-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-950 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <Chip
+                                                    color={
+                                                        delivery.exception
+                                                            .outcome ===
+                                                        'deferred'
+                                                            ? 'warning'
+                                                            : 'error'
+                                                    }
+                                                    size="sm"
+                                                >
+                                                    {deliveryExceptionOutcomeLabel(
+                                                        delivery.exception
+                                                            .outcome,
+                                                    )}
+                                                </Chip>
+                                                <span className="font-medium">
+                                                    {deliveryExceptionReasonLabel(
+                                                        delivery.exception
+                                                            .reason,
+                                                    )}
+                                                </span>
+                                            </div>
+                                            {delivery.exception.note ? (
+                                                <Typography level="body3">
+                                                    Interna napomena:{' '}
+                                                    {delivery.exception.note}
+                                                </Typography>
+                                            ) : null}
+                                            <Typography
+                                                level="body3"
+                                                className="text-current/70"
+                                            >
+                                                Zabilježeno{' '}
+                                                {formatDeliveryDateTime(
+                                                    delivery.exception
+                                                        .occurredAt,
+                                                )}
+                                            </Typography>
+                                        </div>
+                                    ) : null}
                                     {delivery.requestNotes ? (
                                         <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-950 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
                                             <strong>Napomena:</strong>{' '}
                                             {delivery.requestNotes}
-                                        </div>
-                                    ) : null}
-                                    {delivery.accountContacts.length > 0 ? (
-                                        <div className="border-t pt-2">
-                                            <Typography
-                                                level="body3"
-                                                semiBold
-                                                className="mb-1"
-                                            >
-                                                Korisnici računa
-                                            </Typography>
-                                            {delivery.accountContacts.map(
-                                                (contact) => (
-                                                    <div
-                                                        key={contact.id}
-                                                        className="text-sm"
-                                                    >
-                                                        {contact.displayName} ·{' '}
-                                                        <a
-                                                            href={`mailto:${contact.email}`}
-                                                            className="text-primary hover:underline"
-                                                        >
-                                                            {contact.email}
-                                                        </a>
-                                                    </div>
-                                                ),
-                                            )}
                                         </div>
                                     ) : null}
                                     {delivery.harvest.tracePath ? (
@@ -400,12 +482,16 @@ export function DeliveryStopCard({
                             ) : null}
                         </>
                     )}
-                    {!driverMode && estimatedOutsideWindow && !delivered ? (
+                    {!driverMode &&
+                    showRouteEstimates &&
+                    estimatedOutsideWindow &&
+                    !delivered ? (
                         <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-950 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
                             <Warning className="mt-0.5 size-4 shrink-0" />
                             <span>
                                 Trenutačna procjena dolaska je nakon završetka
-                                termina. Obavijesti korisnika o kašnjenju.
+                                termina. Prikaz će se ažurirati kada vozač
+                                nastavi rutu.
                             </span>
                         </div>
                     ) : null}

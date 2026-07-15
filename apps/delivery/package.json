@@ -11,7 +11,12 @@
         "dev": "node ../../scripts/run-app-command.mjs dev",
         "build": "next build",
         "start": "node ../../scripts/run-app-command.mjs start",
-        "test": "NODE_OPTIONS=\"${NODE_OPTIONS:+$NODE_OPTIONS }--conditions=react-server\" node --import tsx --test lib/*.node.spec.ts"
+        "test": "pnpm run test:run",
+        "test:unit": "NODE_OPTIONS=\"${NODE_OPTIONS:+$NODE_OPTIONS }--conditions=react-server\" node --import tsx --test lib/*.node.spec.ts",
+        "test:component": "playwright test --project=chromium",
+        "test:run": "pnpm run test:unit && pnpm run test:component",
+        "test-ui": "playwright test --project=chromium --ui",
+        "test:local": "pnpm run test:run"
     },
     "dependencies": {
         "next": "16.2.10",
@@ -26,6 +31,8 @@
         "@gredice/notifications": "workspace:*",
         "@gredice/storage": "workspace:*",
         "@gredice/ui": "workspace:*",
+        "@playwright/experimental-ct-react": "1.61.1",
+        "@playwright/test": "1.61.1",
         "@tailwindcss/postcss": "4.3.2",
         "@tailwindcss/typography": "0.5.20",
         "@tanstack/react-query": "5.101.2",

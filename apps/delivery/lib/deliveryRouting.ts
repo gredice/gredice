@@ -49,6 +49,10 @@ export const maximumDeliveryRouteStops = 26;
 export const maximumDeliveryRouteWindowHours = 24;
 const defaultHqAddress = 'Ulica Julija Knifera 3, 10000 Zagreb, Hrvatska';
 
+export function configuredDeliveryHqAddress() {
+    return process.env.GREDICE_DELIVERY_HQ_ADDRESS?.trim() || defaultHqAddress;
+}
+
 export class DeliveryRoutePlanningError extends Error {
     override name = 'DeliveryRoutePlanningError';
 
@@ -737,8 +741,7 @@ export async function planDeliveryRoute({
         );
     }
 
-    const hqAddress =
-        process.env.GREDICE_DELIVERY_HQ_ADDRESS?.trim() || defaultHqAddress;
+    const hqAddress = configuredDeliveryHqAddress();
     const [origin, geocodedStops] = await Promise.all([
         geocodeAddress({ formattedAddress: hqAddress }),
         Promise.all(

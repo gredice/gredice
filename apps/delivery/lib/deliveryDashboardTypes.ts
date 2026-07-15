@@ -1,4 +1,8 @@
-import type { DeliveryRunEstimateSource } from '@gredice/storage';
+import type {
+    DeliveryRunEstimateSource,
+    DeliveryRunExceptionOutcome,
+    DeliveryRunExceptionReason,
+} from '@gredice/storage';
 
 export type DeliveryTrackingLocation = {
     latitude: number;
@@ -17,14 +21,32 @@ export type DeliveryHarvestSummary = {
     tracePath: string | null;
 };
 
-export type DeliveryContactSummary = {
-    id: string;
-    email: string;
-    displayName: string;
-    avatarUrl: string | null;
+export type DeliveryExceptionOutcome = DeliveryRunExceptionOutcome;
+
+export type DeliveryExceptionReason = DeliveryRunExceptionReason;
+
+export type DriverDeliveryExceptionSummary = {
+    outcome: DeliveryExceptionOutcome;
+    reason: DeliveryExceptionReason;
+    note: string | null;
+    occurredAt: string;
 };
 
+export type CustomerDeliveryRecoverySummary =
+    | { kind: 'retry-planned' }
+    | {
+          kind: 'hq-pickup';
+          pickupAddress: string;
+          pickupDeadlineAt: string;
+          pickupWindowHours: 72;
+      }
+    | { kind: 'hq-pickup-expired' }
+    | { kind: 'support' }
+    | { kind: 'cancelled' };
+
 export type DeliveryStopDeliverySummary = {
+    stopId: number | null;
+    stopState: string | null;
     requestId: string;
     requestState: string;
     contactName: string;
@@ -33,7 +55,7 @@ export type DeliveryStopDeliverySummary = {
     requestNotes: string | null;
     deliveryNotes: string | null;
     harvest: DeliveryHarvestSummary;
-    accountContacts: DeliveryContactSummary[];
+    exception: DriverDeliveryExceptionSummary | null;
 };
 
 export type DeliveryStopSummary = {
@@ -59,7 +81,7 @@ export type DeliveryStopSummary = {
     arrivedAt: string | null;
     deliveredAt: string | null;
     harvest: DeliveryHarvestSummary;
-    accountContacts: DeliveryContactSummary[];
+    recovery: CustomerDeliveryRecoverySummary | null;
     tracking: DeliveryTrackingLocation | null;
     runId: string | null;
     deliveryCount: number;

@@ -10,7 +10,6 @@ import {
     fulfillDeliveryRunStops,
     getActiveDeliveryRunForDriver,
     getActiveDeliveryRunStopsForRequestIds,
-    getDeliveryAccountContacts,
     getDeliveryRequest,
     getDeliveryRequestsWithEvents,
     getDeliveryRun,
@@ -31,7 +30,6 @@ import {
 import 'server-only';
 import type {
     ActiveDeliveryRunSummary,
-    DeliveryContactSummary,
     DeliveryDashboard,
     DeliveryHarvestSummary,
     DeliveryPickupManifestItemState,
@@ -44,6 +42,11 @@ import type {
     DeliveryTrackingLocation,
 } from './deliveryDashboardTypes';
 import {
+    customerDeliveryRecoverySummary,
+    driverDeliveryExceptionSummary,
+} from './deliveryExceptionPresentation';
+import {
+    configuredDeliveryHqAddress,
     DeliveryRoutePlanningError,
     formatDeliveryDestinationAddress,
     maximumDeliveryRouteStops,
@@ -76,9 +79,6 @@ export type DeliveryRun = NonNullable<
 type DeliveryRunStop = DeliveryRun['stops'][number];
 type DeliveryRunExecutionStep = Awaited<
     ReturnType<typeof getDeliveryRunExecutionProgress>
->[number];
-type DeliveryAccountContact = Awaited<
-    ReturnType<typeof getDeliveryAccountContacts>
 >[number];
 
 const driverRoles = new Set(['driver', 'admin']);
@@ -124,24 +124,6 @@ function trackingLocation(run: {
     };
 }
 
-function accountContacts(
-    accountId: string | undefined,
-    contacts: DeliveryAccountContact[],
-): DeliveryContactSummary[] {
-    if (!accountId) {
-        return [];
-    }
-
-    return contacts
-        .filter((contact) => contact.accountId === accountId)
-        .map((contact) => ({
-            id: contact.id,
-            email: contact.userName,
-            displayName: contact.displayName ?? contact.userName,
-            avatarUrl: contact.avatarUrl,
-        }));
-}
-
 function plantName(request: DeliveryRequest) {
     return (
         request.plantSort?.information?.name ??
@@ -149,6 +131,13 @@ function plantName(request: DeliveryRequest) {
         request.operationData?.information?.label ??
         'Urod'
     );
+}
+
+export function visibleDeliveryNotes(
+    audience: 'driver' | 'customer',
+    notes: string | null | undefined,
+) {
+    return audience === 'driver' ? (notes ?? null) : null;
 }
 
 function raisedBedName(request: DeliveryRequest) {
@@ -369,11 +358,13 @@ export function visibleDeliveryRunTotals({
 
 function deliverySummaryItem(
     request: DeliveryRequest,
-    contacts: DeliveryAccountContact[],
-    stop?: DeliveryRunStop | null,
+    stop: DeliveryRunStop | null | undefined,
+    audience: 'driver' | 'customer',
 ): DeliveryStopDeliverySummary {
     const address = request.address;
     return {
+        stopId: stop?.id ?? null,
+        stopState: stop?.state ?? null,
         requestId: request.id,
         requestState: request.state,
         contactName:
@@ -383,9 +374,17 @@ function deliverySummaryItem(
         phone: stop?.deliveryPhone ?? address?.phone ?? null,
         addressLabel: stop?.deliveryAddressLabel ?? address?.label ?? null,
         requestNotes: request.requestNotes ?? null,
-        deliveryNotes: request.deliveryNotes ?? null,
+        deliveryNotes: visibleDeliveryNotes(audience, request.deliveryNotes),
         harvest: harvestSummary(request),
-        accountContacts: accountContacts(request.accountId, contacts),
+        exception:
+            audience === 'driver' && stop
+                ? driverDeliveryExceptionSummary({
+                      state: stop.state,
+                      reason: stop.exceptionReason,
+                      note: stop.exceptionNote,
+                      occurredAt: stop.exceptionOccurredAt,
+                  })
+                : null,
     };
 }
 
@@ -393,7 +392,8 @@ function deliveryStopSummary({
     items,
     run,
     isCurrent,
-    contacts,
+    audience,
+    now,
     includeTracking,
     sequence,
     actionState,
@@ -402,7 +402,8 @@ function deliveryStopSummary({
     items: { request: DeliveryRequest; stop?: DeliveryRunStop | null }[];
     run?: DeliveryRunSnapshot | null;
     isCurrent: boolean;
-    contacts: DeliveryAccountContact[];
+    audience: 'driver' | 'customer';
+    now: Date;
     includeTracking: boolean;
     sequence?: number | null;
     actionState?: DeliveryStopSummary['actionState'];
@@ -482,7 +483,7 @@ function deliveryStopSummary({
         addressLabel:
             representativeStop?.deliveryAddressLabel ?? address?.label ?? null,
         requestNotes: request.requestNotes ?? null,
-        deliveryNotes: request.deliveryNotes ?? null,
+        deliveryNotes: visibleDeliveryNotes(audience, request.deliveryNotes),
         slotStartAt: iso(runSlot?.windowStartAt ?? request.slot?.startAt),
         slotEndAt: iso(runSlot?.windowEndAt ?? request.slot?.endAt),
         ...estimates,
@@ -490,12 +491,23 @@ function deliveryStopSummary({
         arrivedAt: iso(stops.find((stop) => stop.arrivedAt)?.arrivedAt),
         deliveredAt: iso(stops.find((stop) => stop.deliveredAt)?.deliveredAt),
         harvest: harvestSummary(request),
-        accountContacts: accountContacts(request.accountId, contacts),
+        recovery:
+            audience === 'customer'
+                ? customerDeliveryRecoverySummary({
+                      requestState: request.state,
+                      stopState,
+                      exceptionReason: representativeStop?.exceptionReason,
+                      exceptionRecordedAt:
+                          request.deliveryException?.recordedAt,
+                      hqAddress: configuredDeliveryHqAddress(),
+                      now,
+                  })
+                : null,
         tracking: includeTracking ? runLocation : null,
         runId: run?.id ?? null,
         deliveryCount: items.length,
         deliveries: items.map((item) =>
-            deliverySummaryItem(item.request, contacts, item.stop),
+            deliverySummaryItem(item.request, item.stop, audience),
         ),
         ...(actionState
             ? { actionState, lockedReason: lockedReason ?? null }
@@ -672,17 +684,7 @@ async function activeRunSummary(
     const requestsById = new Map(
         requests.map((request) => [request.id, request]),
     );
-    const accountIds = Array.from(
-        new Set(
-            requests
-                .map((request) => request?.accountId)
-                .filter((accountId): accountId is string => Boolean(accountId)),
-        ),
-    );
-    const [contacts, executionSteps] = await Promise.all([
-        getDeliveryAccountContacts(accountIds),
-        getDeliveryRunExecutionProgress(run.id),
-    ]);
+    const executionSteps = await getDeliveryRunExecutionProgress(run.id);
     const groupsByStopId = new Map<number, ResolvedDeliveryRunStopGroup>();
     for (const group of groups) {
         for (const { stop } of group.items) {
@@ -762,7 +764,8 @@ async function activeRunSummary(
             items,
             run,
             isCurrent: actionState === 'current',
-            contacts,
+            audience: 'driver',
+            now: new Date(),
             includeTracking: true,
             sequence: Number.isFinite(itinerarySequence)
                 ? itinerarySequence
@@ -962,7 +965,6 @@ async function customerDashboard({
     const rowsByRequestId = new Map(
         runRows.map((row) => [row.stop.deliveryRequestId, row]),
     );
-    const contacts = await getDeliveryAccountContacts([accountId]);
     const activeRunIds = Array.from(
         new Set(
             runRows.flatMap(({ run }) =>
@@ -990,6 +992,7 @@ async function customerDashboard({
         );
     }
 
+    const projectedAt = new Date();
     const deliveries = requests
         .map((request) => {
             const historicalRow = rowsByRequestId.get(request.id);
@@ -1006,7 +1009,8 @@ async function customerDashboard({
                 items: [{ request, stop: row?.stop }],
                 run: row?.run,
                 isCurrent,
-                contacts,
+                audience: 'customer',
+                now: projectedAt,
                 includeTracking:
                     row?.run.state === DeliveryRunStates.ACTIVE &&
                     isDeliveryRunStopActionable(row.stop.state) &&

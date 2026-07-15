@@ -57,6 +57,8 @@ function delivery({
     token: string | null;
 }): DeliveryStopDeliverySummary {
     return {
+        stopId: 1,
+        stopState: 'pending',
         requestId,
         requestState: 'in_delivery',
         contactName: `Kontakt ${requestId}`,
@@ -71,7 +73,7 @@ function delivery({
             fieldName: null,
             tracePath: token ? `/trag/${token}` : null,
         },
-        accountContacts: [],
+        exception: null,
     };
 }
 

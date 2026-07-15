@@ -8,6 +8,7 @@ import {
     expandLegacyCurrentDeliveryStopIds,
     pickupManifestTracePath,
     recordedExceptionNeedsReroute,
+    visibleDeliveryNotes,
     visibleDeliveryRunTotals,
     visibleDeliveryStopEstimates,
 } from './deliveryDashboard';
@@ -378,6 +379,24 @@ test('pending reroutes suppress stale customer arrival and travel estimates', ()
             estimatedDistanceMeters: 4_000,
         },
     );
+});
+
+test('customer dashboard serialization excludes driver delivery notes', () => {
+    const sentinel = 'PRIVATE DRIVER DELIVERY NOTE';
+    const customerProjection = {
+        deliveryNotes: visibleDeliveryNotes('customer', sentinel),
+        deliveries: [
+            {
+                deliveryNotes: visibleDeliveryNotes('customer', sentinel),
+                exception: null,
+            },
+        ],
+    };
+
+    assert.equal(customerProjection.deliveryNotes, null);
+    assert.equal(customerProjection.deliveries[0]?.deliveryNotes, null);
+    assert.equal(JSON.stringify(customerProjection).includes(sentinel), false);
+    assert.equal(visibleDeliveryNotes('driver', sentinel), sentinel);
 });
 
 test('exception receipt replay returns current revision without rerouting a stale receipt', () => {

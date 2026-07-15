@@ -33,6 +33,18 @@ export function deliveryRunExecutionErrorDetails(
                 message:
                     'Ruta je u međuvremenu promijenjena. Osvježi podatke i pokušaj ponovno.',
             };
+        case 'exception-operation-conflict':
+            return {
+                code: error.code,
+                message:
+                    'Ova prijava problema već je korištena s drugim podacima. Provjeri osvježenu rutu i ponovno potvrdi odabir.',
+            };
+        case 'exception-transition-invalid':
+            return {
+                code: error.code,
+                message:
+                    'Stanje odabranog uroda promijenilo se. Provjeri osvježenu rutu i ponovno potvrdi odabir.',
+            };
         default:
             return {
                 code: error.code,
