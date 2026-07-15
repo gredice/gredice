@@ -534,6 +534,9 @@ importers:
         specifier: 0.0.1
         version: 0.0.1
     devDependencies:
+      '@axe-core/playwright':
+        specifier: 4.12.1
+        version: 4.12.1(playwright-core@1.61.1)
       '@biomejs/biome':
         specifier: 2.5.3
         version: 2.5.3

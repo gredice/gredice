@@ -10,14 +10,13 @@ import {
 import { Button } from '@gredice/ui/Button';
 import { Input } from '@gredice/ui/Input';
 import { Mail, Warning } from '@gredice/ui/icons';
-import { Modal } from '@gredice/ui/Modal';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { usePostHog } from '@posthog/next';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useActionState, useCallback, useState } from 'react';
 import { queryClient } from '../providers/ClientAppProvider';
+import { FarmSignInShell } from './FarmSignInShell';
 
 type OAuthProvider = 'google' | 'facebook';
 
@@ -117,107 +116,130 @@ export function LoginDialog() {
     };
 
     return (
-        <div className="min-h-[100dvh] flex items-center justify-center bg-gradient-to-br from-primary/10 via-transparent to-success/10 p-4">
-            <Image
-                src="/login-bg.webp"
-                alt="Pozadina"
-                fill
-                className="object-cover"
-                quality={100}
-                priority
-            />
-            <Modal
-                open
-                dismissible={false}
-                title="Prijava u Gredice farmu"
-                className="md:max-w-md"
-            >
-                <Stack spacing={8}>
-                    <Stack spacing={2}>
-                        <Typography level="h3" className="text-2xl" semiBold>
-                            Dobrodošli
-                        </Typography>
-                        <Typography className="text-muted-foreground">
-                            Prijavi se s Gredice računom kako bi upravljao
-                            svojom farmom.
-                        </Typography>
-                    </Stack>
-                    {!emailExpanded ? (
-                        <Stack spacing={2}>
-                            <GoogleLoginButton
-                                onClick={() => handleOAuthLogin('google')}
-                                lastUsed={lastLoginProvider === 'google'}
-                            >
-                                Google prijava
-                            </GoogleLoginButton>
-                            <FacebookLoginButton
-                                onClick={() => handleOAuthLogin('facebook')}
-                                lastUsed={lastLoginProvider === 'facebook'}
-                            >
-                                Facebook prijava
-                            </FacebookLoginButton>
-                            <Button
-                                type="button"
-                                variant="outlined"
-                                color="neutral"
-                                fullWidth
-                                startDecorator={
-                                    <Mail className="h-4 w-4 shrink-0" />
-                                }
-                                onClick={() => setEmailExpanded(true)}
-                            >
-                                Email prijava
-                            </Button>
-                        </Stack>
-                    ) : (
-                        <form
-                            action={submitAction}
-                            className="w-full space-y-4"
-                        >
-                            <Stack spacing={6}>
-                                <Stack spacing={2}>
-                                    <Input
-                                        name="email"
-                                        label="Email"
-                                        placeholder="ime@primjer.com"
-                                        type="email"
-                                        autoComplete="email"
-                                        fullWidth
-                                        required
-                                    />
-                                    <Input
-                                        name="password"
-                                        label="Zaporka"
-                                        type="password"
-                                        autoComplete="current-password"
-                                        fullWidth
-                                        required
-                                    />
-                                </Stack>
-                                <Button
-                                    type="submit"
-                                    loading={isPending}
-                                    variant="solid"
-                                    fullWidth
-                                >
-                                    Prijavi se
-                                </Button>
-                                {error && (
-                                    <Alert
-                                        color="danger"
-                                        startDecorator={
-                                            <Warning className="size-5" />
-                                        }
-                                    >
-                                        {error}
-                                    </Alert>
-                                )}
-                            </Stack>
-                        </form>
-                    )}
+        <FarmSignInShell>
+            <Stack spacing={7}>
+                <Stack spacing={2}>
+                    <Typography level="h2" className="text-xl" semiBold>
+                        Dobrodošli
+                    </Typography>
+                    <Typography className="text-muted-foreground">
+                        Prijavi se s Gredice računom kako bi upravljao svojom
+                        farmom.
+                    </Typography>
                 </Stack>
-            </Modal>
-        </div>
+                {!emailExpanded ? (
+                    <Stack spacing={2}>
+                        <GoogleLoginButton
+                            aria-describedby={
+                                lastLoginProvider === 'google'
+                                    ? 'farm-google-last-used'
+                                    : undefined
+                            }
+                            lastUsed={lastLoginProvider === 'google'}
+                            onClick={() => handleOAuthLogin('google')}
+                            size="lg"
+                        >
+                            Google prijava
+                        </GoogleLoginButton>
+                        {lastLoginProvider === 'google' ? (
+                            <Typography
+                                className="text-center text-xs text-muted-foreground sm:sr-only"
+                                id="farm-google-last-used"
+                                level="body3"
+                            >
+                                Zadnje korišteno
+                            </Typography>
+                        ) : null}
+                        <FacebookLoginButton
+                            aria-describedby={
+                                lastLoginProvider === 'facebook'
+                                    ? 'farm-facebook-last-used'
+                                    : undefined
+                            }
+                            lastUsed={lastLoginProvider === 'facebook'}
+                            onClick={() => handleOAuthLogin('facebook')}
+                            size="lg"
+                        >
+                            Facebook prijava
+                        </FacebookLoginButton>
+                        {lastLoginProvider === 'facebook' ? (
+                            <Typography
+                                className="text-center text-xs text-muted-foreground sm:sr-only"
+                                id="farm-facebook-last-used"
+                                level="body3"
+                            >
+                                Zadnje korišteno
+                            </Typography>
+                        ) : null}
+                        <Button
+                            color="neutral"
+                            fullWidth
+                            onClick={() => setEmailExpanded(true)}
+                            size="lg"
+                            startDecorator={
+                                <Mail
+                                    aria-hidden="true"
+                                    className="h-4 w-4 shrink-0"
+                                />
+                            }
+                            type="button"
+                            variant="outlined"
+                        >
+                            Email prijava
+                        </Button>
+                    </Stack>
+                ) : (
+                    <form action={submitAction} className="w-full space-y-4">
+                        <Stack spacing={6}>
+                            <Stack spacing={2}>
+                                <Input
+                                    autoComplete="email"
+                                    className="h-11 [&>input]:h-full"
+                                    fullWidth
+                                    label="Email"
+                                    name="email"
+                                    placeholder="ime@primjer.com"
+                                    required
+                                    type="email"
+                                />
+                                <Input
+                                    autoComplete="current-password"
+                                    className="h-11 [&>input]:h-full"
+                                    fullWidth
+                                    label="Zaporka"
+                                    name="password"
+                                    required
+                                    type="password"
+                                />
+                            </Stack>
+                            <Button
+                                fullWidth
+                                loading={isPending}
+                                size="lg"
+                                type="submit"
+                                variant="solid"
+                            >
+                                Prijavi se
+                            </Button>
+                            {error && (
+                                <Alert
+                                    color="danger"
+                                    role="alert"
+                                    startDecorator={
+                                        <Warning
+                                            aria-hidden="true"
+                                            className="size-5"
+                                        />
+                                    }
+                                >
+                                    {error}
+                                </Alert>
+                            )}
+                        </Stack>
+                    </form>
+                )}
+            </Stack>
+        </FarmSignInShell>
     );
 }
 

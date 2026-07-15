@@ -34,6 +34,7 @@
         "server-only": "0.0.1"
     },
     "devDependencies": {
+        "@axe-core/playwright": "4.12.1",
         "@biomejs/biome": "2.5.3",
         "@gredice/auth": "workspace:*",
         "@gredice/client": "workspace:*",
