@@ -7,9 +7,11 @@ import {
     createEvent,
     createNotification,
     getEntityFormatted,
+    getPreviousPlantStatusChangedAtForUpdate,
     getRaisedBed,
     getRaisedBedFieldContext,
     getRaisedBedFieldsWithEvents,
+    isPlantStatusEffectiveDateAllowed,
     knownEvents,
     moveRaisedBedFieldPlantHistory,
     type RaisedBedFieldSowingLocation,
@@ -193,6 +195,35 @@ async function applyRaisedBedFieldPlantUpdate({
                     );
                 }
                 if (statusChanged || createdAt) {
+                    const activePlantCycle = existingField.plantCycles.find(
+                        (plantCycle) => plantCycle.active,
+                    );
+                    if (!activePlantCycle) {
+                        throw new Error(
+                            'Aktivni životni ciklus biljke nije pronađen.',
+                        );
+                    }
+                    const previousStatusChangedAt =
+                        getPreviousPlantStatusChangedAtForUpdate({
+                            currentStatus: existingField.plantStatus,
+                            latestStatusChangedAt:
+                                existingField.plantStatusChangedAt,
+                            nextStatus: status,
+                            statusChanges: activePlantCycle.statusChanges,
+                        });
+                    const currentDate = new Date();
+                    if (
+                        !isPlantStatusEffectiveDateAllowed({
+                            currentDate,
+                            effectiveDate: createdAt ?? currentDate,
+                            plantCycleStartedAt: activePlantCycle.startedAt,
+                            previousStatusChangedAt,
+                        })
+                    ) {
+                        throw new Error(
+                            'Datum stanja mora biti između zadnjeg datuma životnog ciklusa biljke i današnjeg datuma.',
+                        );
+                    }
                     await createEvent(
                         knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
                             status,

@@ -55,6 +55,7 @@ import {
     getGardenStackForUpdate,
     getGardenVisitState,
     getOperationsPage,
+    getPreviousPlantStatusChangedAtForUpdate,
     getPublicGarden,
     getPublicGardens,
     getRaisedBed,
@@ -67,6 +68,7 @@ import {
     getRaisedBedsForGardens,
     getSandboxGardenDeletionCandidate,
     getUserLikedGardenIds,
+    isPlantStatusEffectiveDateAllowed,
     knownEvents,
     knownEventTypes,
     markGardenVisitSummarySeen,
@@ -120,7 +122,6 @@ import {
     hashGardenVisitSummaryFacts,
 } from '../../../lib/garden/gardenVisitSummaryService';
 import { isBlockPurchaseAvailableNow } from '../../../lib/garden/nightOnlyBlockPurchases';
-import { isPlantStatusEffectiveDateAllowed } from '../../../lib/garden/plantStatusChronology';
 import {
     countPublicGardenActivePlants,
     serializePublicRaisedBedField,
@@ -4010,22 +4011,35 @@ const app = new Hono<{ Variables: AuthVariables }>()
                                 400,
                             );
                         }
-                        if (
-                            createdAt &&
-                            activePlantCycle &&
-                            !isPlantStatusEffectiveDateAllowed({
-                                effectiveDate: createdAt,
-                                plantCycleStartedAt: activePlantCycle.startedAt,
-                                previousStatusChangedAt:
-                                    field.plantStatusChangedAt,
-                            })
-                        ) {
-                            return context.json(
-                                {
-                                    error: 'Timestamp cannot be earlier than the latest field lifecycle event',
-                                },
-                                400,
-                            );
+                        if (activePlantCycle) {
+                            const currentDate = new Date();
+                            if (
+                                !isPlantStatusEffectiveDateAllowed({
+                                    currentDate,
+                                    effectiveDate: createdAt ?? currentDate,
+                                    plantCycleStartedAt:
+                                        activePlantCycle.startedAt,
+                                    previousStatusChangedAt:
+                                        getPreviousPlantStatusChangedAtForUpdate(
+                                            {
+                                                currentStatus:
+                                                    field.plantStatus,
+                                                latestStatusChangedAt:
+                                                    field.plantStatusChangedAt,
+                                                nextStatus: status,
+                                                statusChanges:
+                                                    activePlantCycle.statusChanges,
+                                            },
+                                        ),
+                                })
+                            ) {
+                                return context.json(
+                                    {
+                                        error: 'Timestamp must be between the latest field lifecycle date and today',
+                                    },
+                                    400,
+                                );
+                            }
                         }
 
                         await createEvent(

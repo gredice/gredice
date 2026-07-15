@@ -19,6 +19,7 @@ export * from './helpers/entityPageSections';
 export * from './helpers/generatedAttributeValues';
 export * from './helpers/plantHealth';
 export * from './helpers/plantRelationships';
+export * from './helpers/plantStatusChronology';
 export * from './helpers/raisedBedPhotoOperations';
 export * from './helpers/timeSlotAutomation';
 export * from './helpers/timezoneUtils';
