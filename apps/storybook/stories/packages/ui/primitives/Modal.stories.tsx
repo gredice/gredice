@@ -1,4 +1,5 @@
 import { Button } from '@gredice/ui/Button';
+import { Input } from '@gredice/ui/Input';
 import { Modal } from '@gredice/ui/Modal';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -56,6 +57,40 @@ export const NotDismissible: Story = {
     args: {
         dismissible: false,
     },
+};
+
+export const Form: Story = {
+    args: {
+        title: 'Uredi podatke',
+        description:
+            'Forma za provjeru ponašanja modala s mobilnom tipkovnicom.',
+    },
+    render: (args) => (
+        <Modal {...args} trigger={<Button>Otvori formu</Button>}>
+            <Stack spacing={4}>
+                <Stack spacing={1}>
+                    <Typography level="h5">Uredi podatke</Typography>
+                    <Typography level="body2" secondary>
+                        Polja ostaju dostupna dok je mobilna tipkovnica
+                        otvorena, a modal se nakon zatvaranja tipkovnice vraća
+                        na dno.
+                    </Typography>
+                </Stack>
+                <Input fullWidth label="Naziv" placeholder="Upiši naziv" />
+                <label className="space-y-1">
+                    <Typography level="body2">Napomena</Typography>
+                    <textarea
+                        className="min-h-28 w-full rounded-md border bg-background p-3"
+                        placeholder="Dodaj napomenu"
+                    />
+                </label>
+                <div className="flex justify-end gap-2">
+                    <Button variant="outlined">Odustani</Button>
+                    <Button>Spremi</Button>
+                </div>
+            </Stack>
+        </Modal>
+    ),
 };
 
 export const LongContent: Story = {
