@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import { OutletHudStory } from './OutletHudStory';
 
-test('outlet HUD uses a neutral badge for the available item count', async ({
+test('outlet HUD matches the inventory badge colors', async ({
     mount,
     page,
 }) => {
@@ -17,8 +17,11 @@ test('outlet HUD uses a neutral badge for the available item count', async ({
     await expect(outletButton).toBeVisible();
     await expect(outletButton).toHaveAccessibleName('Outlet sadnica');
     await expect(availabilityBadge).toHaveText('4');
-    await expect(availabilityBadge).toHaveClass(/bg-muted/u);
-    await expect(availabilityBadge).toHaveClass(/text-muted-foreground/u);
+    await expect(availabilityBadge).toHaveClass(/bg-tertiary/u);
+    await expect(availabilityBadge).toHaveClass(/text-tertiary-foreground/u);
+    await expect(availabilityBadge).toHaveClass(
+        /border-tertiary-foreground\/30/u,
+    );
     await expect(outletButton.getByText('Outlet', { exact: true })).toHaveCount(
         0,
     );

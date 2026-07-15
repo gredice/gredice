@@ -159,7 +159,7 @@ export function OutletHud() {
                                 <div
                                     aria-hidden="true"
                                     className={cx(
-                                        'absolute -top-4 -right-4 flex size-6 items-center justify-center rounded-full border border-border bg-muted px-1.5 text-sm font-semibold leading-none text-muted-foreground shadow-sm',
+                                        'absolute -top-4 -right-4 flex size-6 items-center justify-center rounded-full border border-tertiary-foreground/30 bg-tertiary px-1.5 text-sm font-semibold leading-none text-tertiary-foreground shadow-md',
                                         availableItemsCount > 99 &&
                                             'text-[10px]',
                                     )}
