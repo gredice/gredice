@@ -7,19 +7,23 @@ import {
     type DeliveryServerStateExpectation,
     useDeliveryActionSync,
 } from '../hooks/useDeliveryActionSync';
+import type { DriverRouteWakeLockState } from '../hooks/useDriverRouteWakeLock';
 import type { OfflineRouteSnapshot } from '../lib/offlineRouteCache';
 import { DeliveryAppHeader } from './DeliveryAppHeader';
+import { DriverRouteContinuity } from './DriverRouteContinuity';
 import { OfflineRoutePanel } from './OfflineRoutePanel';
 
 export function OfflineRouteRecovery({
     snapshot,
     authenticatedUserId,
     authenticatedRole,
+    routeWakeLock,
     refreshServerState,
 }: {
     snapshot: OfflineRouteSnapshot;
     authenticatedUserId: string;
     authenticatedRole: string;
+    routeWakeLock: DriverRouteWakeLockState;
     refreshServerState: (
         expectation?: DeliveryServerStateExpectation,
     ) => Promise<boolean>;
@@ -71,6 +75,12 @@ export function OfflineRouteRecovery({
             <OfflineRoutePanel
                 snapshot={snapshot}
                 actionQueue={sync.snapshot}
+                routeContinuity={
+                    <DriverRouteContinuity
+                        state={routeWakeLock}
+                        trackingAvailable={false}
+                    />
+                }
                 onArrive={(stopId, routeRevision) =>
                     report(sync.enqueueArrive(stopId, routeRevision))
                 }

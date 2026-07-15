@@ -15,6 +15,7 @@ import {
 } from '@gredice/ui/icons';
 import { Typography } from '@gredice/ui/Typography';
 import { useRef, useState } from 'react';
+import type { DriverRouteWakeLockState } from '../hooks/useDriverRouteWakeLock';
 import type { DriverTrackingState } from '../hooks/useDriverTracking';
 import {
     deliveryActionAcknowledgementBlocksRoute,
@@ -67,6 +68,7 @@ import {
     type PickupManifestSyncSummary,
 } from './DeliveryPickupCard';
 import { DeliveryStopCard } from './DeliveryStopCard';
+import { DriverRouteContinuity } from './DriverRouteContinuity';
 import { DriverTrackingStatus } from './DriverTrackingStatus';
 import { HarvestTraceScanner } from './HarvestTraceScanner';
 
@@ -396,6 +398,7 @@ export function DeliveryActionSyncStatus({
 
 export function DriverDashboard({
     dashboard,
+    routeWakeLock,
     trackingState,
     pendingAction,
     onSelectionChange,
@@ -417,6 +420,7 @@ export function DriverDashboard({
     onReconcileDeliverySync,
 }: {
     dashboard: DriverDeliveryDashboard;
+    routeWakeLock: DriverRouteWakeLockState;
     trackingState: DriverTrackingState;
     pendingAction: string | null;
     onSelectionChange: () => void;
@@ -707,6 +711,7 @@ export function DriverDashboard({
 
                 {run ? (
                     <>
+                        <DriverRouteContinuity state={routeWakeLock} />
                         <DriverTrackingStatus tracking={trackingState} />
                         <DeliveryActionSyncStatus
                             snapshot={deliveryQueue}

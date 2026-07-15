@@ -13,7 +13,7 @@ import {
     Warning,
 } from '@gredice/ui/icons';
 import { Typography } from '@gredice/ui/Typography';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import {
     deliveryActionAcknowledgementBlocksRoute,
     deliveryActionCompletionMessage,
@@ -135,6 +135,7 @@ function offlineDeliveryItems(
 export function OfflineRoutePanel({
     snapshot,
     actionQueue,
+    routeContinuity,
     onArrive,
     onDeliver,
     onException,
@@ -145,6 +146,7 @@ export function OfflineRoutePanel({
 }: {
     snapshot: OfflineRouteSnapshot;
     actionQueue: DeliveryActionQueueSnapshot;
+    routeContinuity?: ReactNode;
     onArrive: (stopId: number, routeRevision: number) => void | Promise<void>;
     onDeliver: (
         stopId: number,
@@ -213,6 +215,7 @@ export function OfflineRoutePanel({
     return (
         <main className="min-h-[100dvh] bg-muted/30 p-4">
             <div className="mx-auto max-w-3xl space-y-4">
+                {routeContinuity}
                 <Alert
                     color="warning"
                     startDecorator={<Warning className="size-5" />}

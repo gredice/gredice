@@ -1,6 +1,7 @@
 'use client';
 
 import { DriverDashboard } from '../components/DriverDashboard';
+import type { DriverRouteWakeLockState } from '../hooks/useDriverRouteWakeLock';
 import type { DriverTrackingState } from '../hooks/useDriverTracking';
 import type {
     DeliveryActionQueueEntry,
@@ -155,6 +156,15 @@ const trackingState: DriverTrackingState = {
     recheckPermission: () => undefined,
 };
 
+const routeWakeLock: DriverRouteWakeLockState = {
+    status: 'inactive',
+    consented: false,
+    documentVisible: true,
+    enable: () => undefined,
+    disable: () => undefined,
+    retry: () => undefined,
+};
+
 function DashboardStory({
     deliveryQueue,
 }: {
@@ -163,6 +173,7 @@ function DashboardStory({
     return (
         <DriverDashboard
             dashboard={dashboard}
+            routeWakeLock={routeWakeLock}
             trackingState={trackingState}
             pendingAction={null}
             onSelectionChange={() => undefined}
