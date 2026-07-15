@@ -15,21 +15,15 @@ import {
     scheduleCacheTtls,
 } from '@gredice/storage';
 import { cache } from 'react';
+import {
+    getCarryoverOperationsForToday,
+    getScheduledFieldsForDay,
+    getSelectedDateOperationsForDay,
+} from './scheduleDayFilters';
 import { FARM_SCHEDULE_TIME_ZONE } from './scheduleShared';
 
 const operationsBackDays = 90;
 const raisedBedPhotoPreviewImageLimit = 3;
-const SCHEDULE_FIELD_STATUSES = new Set([
-    'planned',
-    'pendingVerification',
-    'sowed',
-]);
-const SCHEDULE_OPERATION_STATUSES = new Set([
-    'new',
-    'planned',
-    'pendingVerification',
-    'completed',
-]);
 
 function startOfDaysAgo(days: number) {
     const todayKey = getTimeZoneDateKey(new Date(), FARM_SCHEDULE_TIME_ZONE);
@@ -41,130 +35,6 @@ function startOfDaysAgo(days: number) {
 
 function dedupeById<T extends { id: number }>(items: T[]) {
     return Array.from(new Map(items.map((item) => [item.id, item])).values());
-}
-
-function isOperationCompleted(status?: string) {
-    return status === 'completed' || status === 'pendingVerification';
-}
-
-function isFieldCompleted(status?: string) {
-    return status === 'sowed' || status === 'pendingVerification';
-}
-
-function getScheduledFieldsForDay(
-    isToday: boolean,
-    dateKey: string,
-    raisedBeds: FarmScheduleRaisedBed[],
-) {
-    return raisedBeds
-        .filter((raisedBed) => Boolean(raisedBed.physicalId))
-        .flatMap((raisedBed) => raisedBed.fields)
-        .filter((field) => {
-            if (!field.plantSortId) {
-                return false;
-            }
-
-            if (!SCHEDULE_FIELD_STATUSES.has(field.plantStatus ?? 'new')) {
-                return false;
-            }
-
-            if (isFieldCompleted(field.plantStatus) && field.plantSowDate) {
-                const sowDate = new Date(field.plantSowDate);
-                return (
-                    getTimeZoneDateKey(sowDate, FARM_SCHEDULE_TIME_ZONE) ===
-                    dateKey
-                );
-            }
-
-            if (!field.plantScheduledDate) {
-                return isToday;
-            }
-
-            const scheduledDate = new Date(field.plantScheduledDate);
-            const scheduledDateKey = getTimeZoneDateKey(
-                scheduledDate,
-                FARM_SCHEDULE_TIME_ZONE,
-            );
-
-            return (
-                scheduledDateKey === dateKey ||
-                (isToday && scheduledDateKey < dateKey)
-            );
-        });
-}
-
-function getSelectedDateOperationsForDay(
-    dateKey: string,
-    operations: FarmScheduleOperation[],
-) {
-    return operations.filter((operation) => {
-        if (!SCHEDULE_OPERATION_STATUSES.has(operation.status)) {
-            return false;
-        }
-
-        if (
-            operation.raisedBedId === null &&
-            typeof operation.farmId !== 'number'
-        ) {
-            return false;
-        }
-
-        if (isOperationCompleted(operation.status) && operation.completedAt) {
-            const completedDate = new Date(operation.completedAt);
-            return (
-                getTimeZoneDateKey(completedDate, FARM_SCHEDULE_TIME_ZONE) ===
-                dateKey
-            );
-        }
-
-        const scheduledDate = operation.scheduledDate
-            ? new Date(operation.scheduledDate)
-            : undefined;
-
-        return (
-            scheduledDate !== undefined &&
-            getTimeZoneDateKey(scheduledDate, FARM_SCHEDULE_TIME_ZONE) ===
-                dateKey
-        );
-    });
-}
-
-function getCarryoverOperationsForToday(
-    isToday: boolean,
-    dateKey: string,
-    operations: FarmScheduleOperation[],
-) {
-    if (!isToday) {
-        return [];
-    }
-
-    return operations.filter((operation) => {
-        if (!SCHEDULE_OPERATION_STATUSES.has(operation.status)) {
-            return false;
-        }
-
-        if (isOperationCompleted(operation.status)) {
-            return false;
-        }
-
-        if (
-            operation.raisedBedId === null &&
-            typeof operation.farmId !== 'number'
-        ) {
-            return false;
-        }
-
-        if (!operation.scheduledDate) {
-            return true;
-        }
-
-        return (
-            getTimeZoneDateKey(
-                new Date(operation.scheduledDate),
-                FARM_SCHEDULE_TIME_ZONE,
-            ) < dateKey
-        );
-    });
 }
 
 function sortOperationsNewestFirst(operations: FarmScheduleOperation[]) {

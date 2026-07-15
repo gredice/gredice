@@ -3,23 +3,14 @@ import type {
     EntityStandardized,
     RaisedBedFieldAssignableFarmUser,
 } from '@gredice/storage';
-import { Checkbox } from '@gredice/ui/Checkbox';
-import { Chip } from '@gredice/ui/Chip';
 import { Row } from '@gredice/ui/Row';
-import { Skeleton } from '@gredice/ui/Skeleton';
 import { Stack } from '@gredice/ui/Stack';
-import { Typography } from '@gredice/ui/Typography';
-import { cx } from '@gredice/ui/utils';
 import { Suspense } from 'react';
 import { CompletePlantingModal } from './CompletePlantingModal';
-import { PlantingAssignedUserAvatar } from './PlantingAssignedUserAvatar';
+import { FarmSchedulePlantingTaskCard } from './FarmSchedulePlantingTaskCard';
 import { RaisedBedScheduleGroupHeader } from './RaisedBedScheduleGroupHeader';
 import { RaisedBedScheduleGroupHeaderWithPhotos } from './RaisedBedScheduleGroupHeaderWithPhotos';
-import { SchedulePlantVisual } from './SchedulePlantVisual';
 import { ScheduleSectionSummaryBadges } from './ScheduleSectionSummaryBadges';
-import { ScheduleTaskAgeIndicatorChip } from './ScheduleTaskAgeIndicatorChip';
-import { ScheduleTaskDateChip } from './ScheduleTaskDateChip';
-import { ScheduleTaskDurationChip } from './ScheduleTaskDurationChip';
 import type {
     FarmScheduleDayData,
     FarmScheduleRaisedBedPhotoPreview,
@@ -28,8 +19,6 @@ import {
     compareScheduleDates,
     getFieldPhysicalPositionIndex,
     groupRaisedBedsForSchedule,
-    isFieldApproved,
-    isFieldCompleted,
     PLANTING_TASK_DURATION_MINUTES,
 } from './scheduleShared';
 
@@ -183,147 +172,32 @@ export function FarmSchedulePlantingsSection({
                             </div>
                             <Stack spacing={2}>
                                 {dayFields.map((field) => {
-                                    const completed = isFieldCompleted(
-                                        field.plantStatus,
-                                    );
-                                    const approved = isFieldApproved(
-                                        field.plantStatus,
-                                    );
-                                    const lockedByAssignment =
-                                        !completed &&
-                                        !!field.assignedUserId &&
-                                        field.assignedUserId !== userId;
-                                    const canComplete =
-                                        !completed && !lockedByAssignment;
-                                    const greenhouseSowing =
-                                        field.sowingLocation === 'greenhouse';
                                     const plantSort = field.plantSortId
                                         ? plantSortById.get(field.plantSortId)
                                         : undefined;
-                                    const statusText =
-                                        !completed && !approved
-                                            ? 'Nije potvrđeno'
-                                            : null;
 
                                     return (
-                                        <div
+                                        <FarmSchedulePlantingTaskCard
                                             key={field.id}
-                                            className={cx(
-                                                'rounded-lg border px-3 py-2 transition-opacity',
-                                                completed
-                                                    ? 'bg-white/70 opacity-70'
-                                                    : 'bg-white',
-                                                lockedByAssignment &&
-                                                    !completed &&
-                                                    'opacity-70',
-                                            )}
-                                        >
-                                            <Row
-                                                spacing={2}
-                                                className="min-w-0 items-start justify-between gap-3"
-                                            >
-                                                <Row
-                                                    spacing={2}
-                                                    className="min-w-0 grow items-start"
-                                                >
-                                                    {completed ? (
-                                                        <Checkbox
-                                                            className="size-5"
-                                                            checked
-                                                            disabled
-                                                        />
-                                                    ) : canComplete ? (
-                                                        <CompletePlantingModal
-                                                            label={field.label}
-                                                            raisedBedId={
-                                                                field.raisedBedId
-                                                            }
-                                                            positionIndex={
-                                                                field.positionIndex
-                                                            }
-                                                        />
-                                                    ) : (
-                                                        <div title="Sijanje je dodijeljeno drugom korisniku.">
-                                                            <Checkbox
-                                                                className="size-5"
-                                                                disabled
-                                                            />
-                                                        </div>
-                                                    )}
-                                                    <SchedulePlantVisual
-                                                        plantSort={plantSort}
-                                                        label={field.label}
-                                                    />
-                                                    <Stack
-                                                        spacing={1}
-                                                        className="min-w-0 grow"
-                                                    >
-                                                        <Typography
-                                                            className={
-                                                                completed
-                                                                    ? 'line-through text-muted-foreground [overflow-wrap:anywhere]'
-                                                                    : '[overflow-wrap:anywhere]'
-                                                            }
-                                                        >
-                                                            {field.label}
-                                                        </Typography>
-                                                        <Row
-                                                            spacing={2}
-                                                            className="items-center flex-wrap gap-y-1"
-                                                        >
-                                                            {statusText && (
-                                                                <Typography
-                                                                    level="body2"
-                                                                    className="text-muted-foreground"
-                                                                >
-                                                                    {statusText}
-                                                                </Typography>
-                                                            )}
-                                                            <ScheduleTaskDurationChip
-                                                                minutes={
-                                                                    PLANTING_TASK_DURATION_MINUTES
-                                                                }
-                                                            />
-                                                            {greenhouseSowing && (
-                                                                <Chip
-                                                                    size="sm"
-                                                                    color="success"
-                                                                    variant="soft"
-                                                                >
-                                                                    Staklenik
-                                                                </Chip>
-                                                            )}
-                                                            <ScheduleTaskDateChip
-                                                                scheduledDate={
-                                                                    field.plantScheduledDate
-                                                                }
-                                                            />
-                                                            {!completed && (
-                                                                <ScheduleTaskAgeIndicatorChip
-                                                                    scheduledDate={
-                                                                        field.plantScheduledDate
-                                                                    }
-                                                                />
-                                                            )}
-                                                        </Row>
-                                                    </Stack>
-                                                </Row>
-                                                {field.assignedUserId && (
-                                                    <Suspense
-                                                        fallback={
-                                                            <Skeleton className="size-7 shrink-0 rounded-full" />
-                                                        }
-                                                    >
-                                                        <PlantingAssignedUserAvatar
-                                                            assignedUserByFieldIdPromise={
-                                                                assignedUserByFieldIdPromise
-                                                            }
-                                                            fieldId={field.id}
-                                                        />
-                                                    </Suspense>
-                                                )}
-                                            </Row>
-                                        </div>
+                                            completionAction={
+                                                <CompletePlantingModal
+                                                    label={field.label}
+                                                    raisedBedId={
+                                                        field.raisedBedId
+                                                    }
+                                                    positionIndex={
+                                                        field.positionIndex
+                                                    }
+                                                />
+                                            }
+                                            field={field}
+                                            label={field.label}
+                                            plantSort={plantSort}
+                                            userId={userId}
+                                            assignedUserByFieldIdPromise={
+                                                assignedUserByFieldIdPromise
+                                            }
+                                        />
                                     );
                                 })}
                             </Stack>
