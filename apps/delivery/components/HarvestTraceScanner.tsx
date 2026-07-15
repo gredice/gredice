@@ -22,6 +22,7 @@ import {
     useRef,
     useState,
 } from 'react';
+import type { PickupManifestScanResult } from '../lib/deliveryPickupScan';
 import type {
     HarvestTraceSelectionResult,
     HarvestTraceVerificationResult,
@@ -44,33 +45,20 @@ type PickupRouteConflict = Extract<
     { status: 'route-conflict' }
 >;
 
-export type PickupManifestScanResult =
-    | { status: 'pickup-invalid' }
-    | { status: 'pickup-not-at-location'; tracePath: string }
-    | { status: 'pickup-ambiguous'; tracePath: string }
-    | {
-          status: 'pickup-already-collected';
-          tracePath: string;
-          plantName: string;
-      }
-    | {
-          status: 'pickup-not-ready';
-          tracePath: string;
-          plantName: string;
-      }
-    | {
-          status: 'pickup-queued';
-          tracePath: string;
-          plantName: string;
-          matchedCount: number;
-      };
+export type HarvestTraceScanFailureResult = {
+    status: 'scan-failed';
+    message: string;
+};
+
+type HarvestTraceScanResult =
+    | HarvestTraceSelectionResult
+    | HarvestTraceVerificationResult
+    | PickupManifestScanResult
+    | HarvestTraceScanFailureResult;
 
 function scanHistoryItem(
     id: number,
-    result:
-        | HarvestTraceSelectionResult
-        | HarvestTraceVerificationResult
-        | PickupManifestScanResult,
+    result: HarvestTraceScanResult,
 ): ScanHistoryItem {
     switch (result.status) {
         case 'selected':
@@ -155,6 +143,18 @@ function scanHistoryItem(
                 color: 'success',
                 message: `${result.plantName} · očitano ${result.matchedCount === 1 ? 'za manifest' : `za ${result.matchedCount} povezana uroda`}.`,
             };
+        case 'pickup-failed':
+            return {
+                id,
+                color: 'danger',
+                message: result.message,
+            };
+        case 'scan-failed':
+            return {
+                id,
+                color: 'danger',
+                message: result.message,
+            };
         case 'pickup-already-collected':
             return {
                 id,
@@ -221,10 +221,7 @@ export function HarvestTraceScanner({
     completedTraceCount: number;
     onScan: (
         value: string,
-    ) =>
-        | HarvestTraceSelectionResult
-        | HarvestTraceVerificationResult
-        | PickupManifestScanResult;
+    ) => HarvestTraceScanResult | Promise<HarvestTraceScanResult>;
     onReplacePickupSelection?: (requestIds: string[]) => boolean;
 }) {
     const [open, setOpen] = useState(false);
@@ -242,6 +239,7 @@ export function HarvestTraceScanner({
     const seenValuesRef = useRef(new Set<string>());
     const pickupRouteConflictScanValueRef = useRef<string | null>(null);
     const historyIdRef = useRef(0);
+    const scanSessionRef = useRef(0);
     const onScanRef = useRef(onScan);
 
     useEffect(() => {
@@ -249,8 +247,17 @@ export function HarvestTraceScanner({
     }, [onScan]);
 
     useEffect(() => {
-        if (disabled) setOpen(false);
+        if (!disabled) return;
+        scanSessionRef.current += 1;
+        setOpen(false);
     }, [disabled]);
+
+    useEffect(
+        () => () => {
+            scanSessionRef.current += 1;
+        },
+        [],
+    );
 
     const pushHistory = useCallback((item: Omit<ScanHistoryItem, 'id'>) => {
         historyIdRef.current += 1;
@@ -261,7 +268,7 @@ export function HarvestTraceScanner({
     }, []);
 
     const processScan = useCallback(
-        (value: string, source: 'camera' | 'manual') => {
+        async (value: string, source: 'camera' | 'manual') => {
             if (disabled) return;
             const normalizedValue = value.trim();
             if (!normalizedValue) return;
@@ -279,40 +286,67 @@ export function HarvestTraceScanner({
             seenValuesRef.current.add(normalizedValue);
             setUniqueScanCount(seenValuesRef.current.size);
             historyIdRef.current += 1;
-            const result = onScanRef.current(normalizedValue);
-            if (result.status === 'route-conflict') {
-                const displacedConflictScanValue =
-                    pickupRouteConflictScanValueRef.current;
+            const historyId = historyIdRef.current;
+            const scanSession = scanSessionRef.current;
+            try {
+                const result = await onScanRef.current(normalizedValue);
+                if (scanSessionRef.current !== scanSession) return;
                 if (
-                    displacedConflictScanValue &&
-                    displacedConflictScanValue !== normalizedValue
+                    result.status === 'pickup-failed' ||
+                    result.status === 'scan-failed'
                 ) {
-                    seenValuesRef.current.delete(displacedConflictScanValue);
+                    seenValuesRef.current.delete(normalizedValue);
                     setUniqueScanCount(seenValuesRef.current.size);
                 }
-                pickupRouteConflictScanValueRef.current = normalizedValue;
-                setPickupRouteConflict(result);
-            } else if (result.status === 'selected') {
-                const resolvedConflictScanValue =
-                    pickupRouteConflictScanValueRef.current;
-                if (resolvedConflictScanValue) {
-                    seenValuesRef.current.delete(resolvedConflictScanValue);
-                    setUniqueScanCount(seenValuesRef.current.size);
+                if (result.status === 'route-conflict') {
+                    const displacedConflictScanValue =
+                        pickupRouteConflictScanValueRef.current;
+                    if (
+                        displacedConflictScanValue &&
+                        displacedConflictScanValue !== normalizedValue
+                    ) {
+                        seenValuesRef.current.delete(
+                            displacedConflictScanValue,
+                        );
+                        setUniqueScanCount(seenValuesRef.current.size);
+                    }
+                    pickupRouteConflictScanValueRef.current = normalizedValue;
+                    setPickupRouteConflict(result);
+                } else if (result.status === 'selected') {
+                    const resolvedConflictScanValue =
+                        pickupRouteConflictScanValueRef.current;
+                    if (resolvedConflictScanValue) {
+                        seenValuesRef.current.delete(resolvedConflictScanValue);
+                        setUniqueScanCount(seenValuesRef.current.size);
+                    }
+                    pickupRouteConflictScanValueRef.current = null;
+                    setPickupRouteConflict(null);
                 }
-                pickupRouteConflictScanValueRef.current = null;
-                setPickupRouteConflict(null);
-            }
-            setHistory((current) => [
-                scanHistoryItem(historyIdRef.current, result),
-                ...current.slice(0, 3),
-            ]);
+                setHistory((current) => [
+                    scanHistoryItem(historyId, result),
+                    ...current.slice(0, 3),
+                ]);
 
-            if (
-                result.status === 'selected' ||
-                result.status === 'verified' ||
-                result.status === 'pickup-queued'
-            ) {
-                navigator.vibrate?.(80);
+                if (
+                    result.status === 'selected' ||
+                    result.status === 'verified' ||
+                    result.status === 'pickup-queued'
+                ) {
+                    navigator.vibrate?.(80);
+                }
+            } catch {
+                if (scanSessionRef.current !== scanSession) return;
+                seenValuesRef.current.delete(normalizedValue);
+                setUniqueScanCount(seenValuesRef.current.size);
+                setHistory((current) => [
+                    {
+                        id: historyId,
+                        color: 'danger',
+                        message:
+                            'Očitavanje nije sigurno spremljeno. Skeniraj QR kod ponovno.',
+                    },
+                    ...current.slice(0, 3),
+                ]);
             }
         },
         [disabled, pushHistory],
@@ -365,7 +399,7 @@ export function HarvestTraceScanner({
                     (result, error) => {
                         if (!active) return;
                         if (result) {
-                            processScan(result.getText(), 'camera');
+                            void processScan(result.getText(), 'camera');
                             return;
                         }
                         if (
@@ -417,6 +451,7 @@ export function HarvestTraceScanner({
     }, [disabled, open, processScan]);
 
     function openScanner() {
+        scanSessionRef.current += 1;
         seenValuesRef.current.clear();
         pickupRouteConflictScanValueRef.current = null;
         historyIdRef.current = 0;
@@ -429,9 +464,14 @@ export function HarvestTraceScanner({
         setOpen(true);
     }
 
+    function changeScannerOpen(nextOpen: boolean) {
+        if (!nextOpen) scanSessionRef.current += 1;
+        setOpen(nextOpen);
+    }
+
     function submitManualValue(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        processScan(manualValue, 'manual');
+        void processScan(manualValue, 'manual');
         setManualValue('');
     }
 
@@ -474,7 +514,7 @@ export function HarvestTraceScanner({
             </Button>
             <Modal
                 open={open}
-                onOpenChange={setOpen}
+                onOpenChange={changeScannerOpen}
                 title={
                     verificationMode
                         ? 'Provjera uroda za dostavu'
@@ -676,7 +716,10 @@ export function HarvestTraceScanner({
                         </Button>
                     </form>
 
-                    <Button className="w-full" onClick={() => setOpen(false)}>
+                    <Button
+                        className="w-full"
+                        onClick={() => changeScannerOpen(false)}
+                    >
                         {verificationMode
                             ? 'Završi provjeru'
                             : 'Završi skeniranje'}

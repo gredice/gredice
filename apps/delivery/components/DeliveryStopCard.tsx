@@ -74,6 +74,7 @@ export function DeliveryStopCard({
     onRetrySync,
     onDiscardSync,
     routeSyncBlocked = false,
+    showDriverCommand = true,
 }: {
     stop: DeliveryStopSummary;
     mode: 'driver' | 'customer';
@@ -87,10 +88,11 @@ export function DeliveryStopCard({
     ) => Promise<DeliveryExceptionSubmitResult>;
     syncEntry?: DeliveryActionQueueEntry | null;
     verifiedTracePaths?: string[];
-    onVerificationScan?: (tracePath: string) => void;
-    onRetrySync?: (operationId: string) => void | Promise<void>;
-    onDiscardSync?: (operationId: string) => void | Promise<void>;
+    onVerificationScan?: (tracePath: string) => unknown | Promise<unknown>;
+    onRetrySync?: (operationId: string) => unknown | Promise<unknown>;
+    onDiscardSync?: (operationId: string) => unknown | Promise<unknown>;
     routeSyncBlocked?: boolean;
+    showDriverCommand?: boolean;
 }) {
     const [notes, setNotes] = useState('');
     const [syncRecoveryPending, setSyncRecoveryPending] = useState(false);
@@ -133,7 +135,7 @@ export function DeliveryStopCard({
             new Date(stop.estimatedArrivalAt) > new Date(stop.slotEndAt),
     );
     const runSyncRecovery = async (
-        action: (() => void | Promise<void>) | undefined,
+        action: (() => unknown | Promise<unknown>) | undefined,
     ) => {
         if (!action || syncRecoveryPending) return;
         setSyncRecoveryPending(true);
@@ -150,6 +152,7 @@ export function DeliveryStopCard({
     const showRouteEstimates =
         Boolean(stop.estimatedArrivalAt || stop.estimatedTravelSeconds) &&
         !completedDriverException &&
+        (!driverMode || showDriverCommand) &&
         (driverMode ||
             !stop.recovery ||
             stop.recovery.kind === 'retry-planned');
@@ -247,7 +250,7 @@ export function DeliveryStopCard({
                     <DeliveryCustomerRecovery recovery={stop.recovery} />
                 ) : null}
 
-                {driverMode ? (
+                {driverMode && showDriverCommand ? (
                     <div className="space-y-2 text-sm">
                         {stop.slotStartAt && stop.slotEndAt ? (
                             <div className="flex items-start gap-2">
@@ -279,6 +282,7 @@ export function DeliveryStopCard({
                 ) : null}
 
                 {driverMode &&
+                showDriverCommand &&
                 customerActionAvailable &&
                 !delivered &&
                 stop.stopState === 'deferred' ? (
@@ -310,6 +314,7 @@ export function DeliveryStopCard({
                 ) : null}
 
                 {driverMode &&
+                showDriverCommand &&
                 customerActionAvailable &&
                 !delivered &&
                 stop.stopState !== 'deferred' ? (
@@ -527,7 +532,7 @@ export function DeliveryStopCard({
                                         <User className="size-4" />
                                         {delivery.contactName}
                                     </Typography>
-                                    {delivery.phone ? (
+                                    {delivery.phone && showDriverCommand ? (
                                         <a
                                             href={`tel:${delivery.phone}`}
                                             className="flex items-center gap-2 text-primary hover:underline"
@@ -535,6 +540,11 @@ export function DeliveryStopCard({
                                             <Mobile className="size-4" />
                                             {delivery.phone}
                                         </a>
+                                    ) : delivery.phone ? (
+                                        <div className="flex items-center gap-2 text-muted-foreground">
+                                            <Mobile className="size-4" />
+                                            <span>{delivery.phone}</span>
+                                        </div>
                                     ) : null}
                                     <div className="flex items-start gap-2">
                                         <Leaf className="mt-0.5 size-4 shrink-0 text-muted-foreground" />

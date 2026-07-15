@@ -744,18 +744,18 @@ export class PickupManifestQueue {
                 return cloneEntry(existing);
             }
 
-            const entry: PickupManifestQueueEntry = {
-                sequence: this.nextSequence,
-                command: { ...command },
-                state: 'queued',
-                attemptCount: 0,
-                updatedAt: this.now().toISOString(),
-            };
-            this.nextSequence += 1;
-            this.entries.push(entry);
-            this.publish();
-            await this.persist();
-            return cloneEntry(entry);
+            return await this.mutateAndPersist(() => {
+                const entry: PickupManifestQueueEntry = {
+                    sequence: this.nextSequence,
+                    command: { ...command },
+                    state: 'queued',
+                    attemptCount: 0,
+                    updatedAt: this.now().toISOString(),
+                };
+                this.nextSequence += 1;
+                this.entries.push(entry);
+                return cloneEntry(entry);
+            });
         });
     }
 
@@ -796,13 +796,13 @@ export class PickupManifestQueue {
             if (entry?.state !== 'failed') {
                 return false;
             }
-            entry.state = 'queued';
-            entry.updatedAt = this.now().toISOString();
-            delete entry.acknowledgement;
-            delete entry.errorCode;
-            this.publish();
-            await this.persist();
-            return true;
+            return await this.mutateAndPersist(() => {
+                entry.state = 'queued';
+                entry.updatedAt = this.now().toISOString();
+                delete entry.acknowledgement;
+                delete entry.errorCode;
+                return true;
+            });
         });
     }
 
@@ -813,10 +813,10 @@ export class PickupManifestQueue {
                 (entry) => entry.command.operationId !== operationId,
             );
             if (nextEntries.length === this.entries.length) return false;
-            this.entries = nextEntries;
-            this.publish();
-            await this.persist();
-            return true;
+            return await this.mutateAndPersist(() => {
+                this.entries = nextEntries;
+                return true;
+            });
         });
     }
 
@@ -834,13 +834,13 @@ export class PickupManifestQueue {
                 (candidate) => candidate.command.operationId === operationId,
             );
             if (!entry || entry.state === 'synced') return false;
-            entry.state = 'synced';
-            entry.acknowledgement = acknowledgement;
-            entry.updatedAt = this.now().toISOString();
-            delete entry.errorCode;
-            this.publish();
-            await this.persist();
-            return true;
+            return await this.mutateAndPersist(() => {
+                entry.state = 'synced';
+                entry.acknowledgement = acknowledgement;
+                entry.updatedAt = this.now().toISOString();
+                delete entry.errorCode;
+                return true;
+            });
         });
     }
 
@@ -915,14 +915,14 @@ export class PickupManifestQueue {
                 );
                 if (!entry || entry.state === 'conflicted') return null;
 
-                entry.state = 'sending';
-                entry.attemptCount += 1;
-                entry.updatedAt = this.now().toISOString();
-                delete entry.acknowledgement;
-                delete entry.errorCode;
-                this.publish();
-                await this.persist();
-                return { ...entry.command };
+                return await this.mutateAndPersist(() => {
+                    entry.state = 'sending';
+                    entry.attemptCount += 1;
+                    entry.updatedAt = this.now().toISOString();
+                    delete entry.acknowledgement;
+                    delete entry.errorCode;
+                    return { ...entry.command };
+                });
             });
             if (!command) break;
 
@@ -948,32 +948,34 @@ export class PickupManifestQueue {
                 if (entry.state === 'synced') return false;
                 if (entry.state === 'conflicted') return true;
 
-                entry.updatedAt = this.now().toISOString();
-                switch (result.status) {
-                    case 'applied':
-                        entry.state = 'synced';
-                        entry.acknowledgement = 'applied';
-                        break;
-                    case 'exact-duplicate':
-                        entry.state = 'synced';
-                        entry.acknowledgement = 'exact-duplicate';
-                        break;
-                    case 'permanent-failure':
-                        entry.state = 'conflicted';
-                        entry.errorCode = validErrorCode(result.code)
-                            ? result.code
-                            : 'pickup-manifest-conflict';
-                        break;
-                    case 'retryable-failure':
-                        entry.state = 'failed';
-                        entry.errorCode = validErrorCode(result.code)
-                            ? result.code
-                            : 'pickup-manifest-sync-failed';
-                        break;
-                }
-                this.publish();
-                await this.persist();
-                return entry.state === 'failed' || entry.state === 'conflicted';
+                return await this.mutateAndPersist(() => {
+                    entry.updatedAt = this.now().toISOString();
+                    switch (result.status) {
+                        case 'applied':
+                            entry.state = 'synced';
+                            entry.acknowledgement = 'applied';
+                            break;
+                        case 'exact-duplicate':
+                            entry.state = 'synced';
+                            entry.acknowledgement = 'exact-duplicate';
+                            break;
+                        case 'permanent-failure':
+                            entry.state = 'conflicted';
+                            entry.errorCode = validErrorCode(result.code)
+                                ? result.code
+                                : 'pickup-manifest-conflict';
+                            break;
+                        case 'retryable-failure':
+                            entry.state = 'failed';
+                            entry.errorCode = validErrorCode(result.code)
+                                ? result.code
+                                : 'pickup-manifest-sync-failed';
+                            break;
+                    }
+                    return (
+                        entry.state === 'failed' || entry.state === 'conflicted'
+                    );
+                });
             });
             if (shouldStop) break;
         }
@@ -992,6 +994,21 @@ export class PickupManifestQueue {
                 : 'best-effort',
         );
         for (const listener of this.listeners) listener();
+    }
+
+    private async mutateAndPersist<Result>(mutation: () => Result) {
+        const previousEntries = this.entries.map(cloneEntry);
+        const previousNextSequence = this.nextSequence;
+        try {
+            const result = mutation();
+            await this.persist();
+            return result;
+        } catch (error) {
+            this.entries = previousEntries;
+            this.nextSequence = previousNextSequence;
+            this.publish();
+            throw error;
+        }
     }
 
     private async persist() {

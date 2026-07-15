@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import {
     defineConfig,
     devices,
@@ -9,6 +10,7 @@ import {
 } from '../../scripts/app-registry.ts';
 
 const app = getAppByName('delivery');
+const deliveryRoot = fileURLToPath(new URL('.', import.meta.url));
 const reporter: PlaywrightTestConfig['reporter'] = [
     ['list'],
     ['html', { open: 'never' }],
@@ -27,6 +29,9 @@ export const config: PlaywrightTestConfig = {
         trace: 'on-first-retry',
         ctPort: getComponentTestPort(app),
         ctViteConfig: {
+            css: {
+                postcss: deliveryRoot,
+            },
             resolve: {
                 dedupe: ['react', 'react-dom'],
             },
