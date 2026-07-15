@@ -308,15 +308,3 @@ export function getScheduleTaskAgeIndicator(
 
     return null;
 }
-
-export function isOperationCompleted(status?: string) {
-    return status === 'completed' || status === 'pendingVerification';
-}
-
-export function isFieldApproved(status?: string) {
-    return status === 'planned';
-}
-
-export function isFieldCompleted(status?: string) {
-    return status === 'sowed' || status === 'pendingVerification';
-}

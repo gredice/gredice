@@ -318,6 +318,7 @@ export function CompleteOperationModal({
             onOpenChange={handleOpenChange}
             trigger={
                 <Checkbox
+                    aria-label={`Dovrši: ${label}`}
                     className="size-5"
                     checked={isOpen}
                     onCheckedChange={(checked: boolean) =>

@@ -128,7 +128,7 @@ export function FarmScheduleNavigationFrame({
             aria-busy={showPendingContent}
         >
             <div className="space-y-2">
-                <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-1 sm:gap-2">
+                <div className="grid min-w-0 grid-cols-[2.5rem_minmax(0,1fr)_2.5rem] items-start gap-1 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-2">
                     <div className="justify-self-start">
                         <HomeButton className="h-8 sm:h-10" />
                     </div>
@@ -176,7 +176,7 @@ export function FarmScheduleNavigationFrame({
                             </Link>
                         </Row>
                     </div>
-                    <div className="min-w-0 justify-self-end">
+                    <div className="col-span-3 min-w-0 justify-self-stretch sm:col-span-1 sm:justify-self-end">
                         {showPendingContent ? (
                             <ScheduleDaySummarySkeleton />
                         ) : (

@@ -1,9 +1,8 @@
-import { Row } from '@gredice/ui/Row';
 import { Skeleton } from '@gredice/ui/Skeleton';
 
 function SummaryItemSkeleton() {
     return (
-        <div className="space-y-1 text-center">
+        <div className="min-w-0 space-y-1 text-center">
             <Skeleton className="mx-auto h-3 w-6 sm:h-4 sm:w-8" />
             <Skeleton className="mx-auto h-3 w-10 sm:h-4 sm:w-14" />
         </div>
@@ -12,9 +11,11 @@ function SummaryItemSkeleton() {
 
 export function ScheduleDaySummarySkeleton() {
     return (
-        <Row className="gap-1 sm:gap-2">
+        <div className="grid w-full grid-cols-[repeat(auto-fit,minmax(4.5rem,1fr))] items-start gap-2 sm:flex sm:w-auto sm:justify-end">
             <SummaryItemSkeleton />
             <SummaryItemSkeleton />
-        </Row>
+            <SummaryItemSkeleton />
+            <SummaryItemSkeleton />
+        </div>
     );
 }

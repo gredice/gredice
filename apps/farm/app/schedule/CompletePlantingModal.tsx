@@ -42,6 +42,7 @@ export function CompletePlantingModal({
             onOpenChange={setOpen}
             trigger={
                 <Checkbox
+                    aria-label={`Dovrši: ${label}`}
                     className="size-5"
                     checked={open}
                     onCheckedChange={(checked: boolean) => setOpen(checked)}
