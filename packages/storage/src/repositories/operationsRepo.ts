@@ -836,6 +836,41 @@ export async function getFarmUserAcceptedOperations(
     );
 }
 
+export async function getFarmUserPendingVerificationOperations(userId: string) {
+    const filter = { status: 'pendingVerification' } satisfies OperationsFilter;
+
+    return cacheScheduleRead(
+        scheduleCacheKeys.farmUserOperations(userId, filter),
+        async () => {
+            const rows = await storage()
+                .select({ operation: operations })
+                .from(operations)
+                .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
+                .leftJoin(
+                    gardens,
+                    eq(gardens.id, operationGardenIdExpression()),
+                )
+                .innerJoin(
+                    farmUsers,
+                    eq(farmUsers.farmId, operationFarmIdExpression()),
+                )
+                .where(
+                    and(
+                        eq(farmUsers.userId, userId),
+                        eq(operations.isAccepted, true),
+                        eq(operations.isDeleted, false),
+                        operationLocationIntegrityWhere(),
+                        getOperationStatusWhere(filter.status),
+                    ),
+                )
+                .orderBy(desc(operations.timestamp));
+
+            return fillOperationAggregates(rows.map((row) => row.operation));
+        },
+        scheduleCacheTtls.operations,
+    );
+}
+
 async function getFarmUserAcceptedOperationsUncached(
     userId: string,
     filter?: OperationsFilter,

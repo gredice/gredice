@@ -18,6 +18,7 @@ import { ScheduleTaskStateControl } from './ScheduleTaskStateControl';
 import { ScheduleTaskStatusChip } from './ScheduleTaskStatusChip';
 import type { FarmScheduleDayData } from './scheduleData';
 import { PLANTING_TASK_DURATION_MINUTES } from './scheduleShared';
+import { getSchedulePlantingTaskAssignment } from './scheduleTaskAssignment';
 import {
     getPlantingTaskState,
     getScheduleTaskPresentation,
@@ -26,6 +27,7 @@ import {
 type FarmSchedulePlantingField = Pick<
     FarmScheduleDayData['scheduledFields'][number],
     | 'assignedUserId'
+    | 'assignedUserIds'
     | 'id'
     | 'plantScheduledDate'
     | 'plantStatus'
@@ -61,8 +63,7 @@ export function FarmSchedulePlantingTaskCard({
     const taskPresentation = getScheduleTaskPresentation(taskState);
     const lockedByAssignment =
         taskPresentation.showCompletionControl &&
-        !!field.assignedUserId &&
-        field.assignedUserId !== userId;
+        getSchedulePlantingTaskAssignment(field, userId) === 'other';
     const canComplete =
         taskPresentation.showCompletionControl && !lockedByAssignment;
     const greenhouseSowing = field.sowingLocation === 'greenhouse';

@@ -13,6 +13,10 @@ import {
 } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
 import { auth } from '../../lib/auth/auth';
+import {
+    getScheduleOperationTaskAssignment,
+    getSchedulePlantingTaskAssignment,
+} from './scheduleTaskAssignment';
 
 const MAX_COMPLETION_NOTES_LENGTH = 2000;
 
@@ -41,7 +45,7 @@ async function assertFarmerCanCompleteOperation(
         throw new Error('Nemaš dozvolu za označavanje ove radnje.');
     }
 
-    if (operation.assignedUserId && operation.assignedUserId !== userId) {
+    if (getScheduleOperationTaskAssignment(operation, userId) === 'other') {
         throw new Error('Ova radnja je dodijeljena drugom korisniku.');
     }
 
@@ -63,13 +67,7 @@ async function assertFarmerCanCompletePlanting(
         throw new Error('Nemaš dozvolu za označavanje ovog sijanja.');
     }
 
-    const assignedUserIds = field.assignedUserIds ?? [];
-    const isAssignedToAnotherUser =
-        assignedUserIds.length > 0
-            ? !assignedUserIds.includes(userId)
-            : !!field.assignedUserId && field.assignedUserId !== userId;
-
-    if (isAssignedToAnotherUser) {
+    if (getSchedulePlantingTaskAssignment(field, userId) === 'other') {
         throw new Error('Ovo sijanje je dodijeljeno drugom korisniku.');
     }
 
