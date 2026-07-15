@@ -21,6 +21,7 @@ import {
 } from '../../hooks/useShoppingCart';
 import { useSwapShoppingCartPositions } from '../../hooks/useSwapShoppingCartPositions';
 import { isRaisedBedAbandoned } from '../../raisedBedConstants';
+import { ButtonGreen } from '../../shared-ui/ButtonGreen';
 import { getRaisedBedBlockIds } from '../../utils/raisedBedBlocks';
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
 import { getPositionIndexFromGrid } from '../../utils/raisedBedOrientation';
@@ -168,14 +169,14 @@ function RaisedBedFieldLayerToggle({
     storageName: 'history' | 'relationships';
 }) {
     return (
-        <button
+        <ButtonGreen
             aria-label={label}
             aria-pressed={isPressed}
             className={cx(
-                'inline-flex size-10 items-center justify-center rounded-md border-2 border-white shadow-md ring-1 ring-black/10 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700',
+                'size-10 p-0 shadow-md ring-1 ring-black/10 dark:ring-lime-100/10',
                 isPressed
-                    ? 'bg-gradient-to-br from-lime-100/90 to-lime-100/80 text-primary hover:text-primary/80 dark:from-emerald-950/95 dark:to-lime-950/90 dark:text-lime-50 dark:hover:from-emerald-900/95 dark:hover:to-lime-900/90'
-                    : 'bg-white/85 text-lime-950 hover:bg-white dark:bg-slate-950/90 dark:text-lime-100 dark:hover:bg-slate-900',
+                    ? undefined
+                    : 'bg-white/85 bg-none text-lime-950 hover:bg-white dark:bg-slate-950/90 dark:text-lime-100 dark:hover:bg-slate-900',
             )}
             data-raised-bed-layer-control={storageName}
             onClick={onClick}
@@ -183,7 +184,7 @@ function RaisedBedFieldLayerToggle({
             type="button"
         >
             {children}
-        </button>
+        </ButtonGreen>
     );
 }
 
