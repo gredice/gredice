@@ -58,7 +58,7 @@ export function FarmPrimaryNavigation({
                                             ? `${item.label}, ima nepročitanih`
                                             : undefined
                                     }
-                                    className={`relative flex min-h-[var(--farm-mobile-navigation-height,3.5rem)] min-w-0 flex-col items-center justify-center gap-0.5 px-0.5 outline-hidden transition-colors focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
+                                    className={`relative flex min-h-[var(--farm-mobile-navigation-height,3.5rem)] min-w-0 flex-col items-center justify-center gap-0.5 outline-hidden transition-colors focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
                                         isActive
                                             ? 'bg-muted font-semibold text-foreground'
                                             : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
@@ -84,7 +84,7 @@ export function FarmPrimaryNavigation({
                                         aria-hidden
                                         className="size-5 shrink-0"
                                     />
-                                    <span className="max-w-full truncate text-[0.6875rem] leading-none">
+                                    <span className="max-w-full truncate text-[0.6875rem] leading-none tracking-tight">
                                         {item.label}
                                     </span>
                                     {hasUnread ? (
