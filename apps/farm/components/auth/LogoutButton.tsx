@@ -7,7 +7,11 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { queryClient } from '../providers/ClientAppProvider';
 
-export function LogoutButton() {
+export function LogoutButton({
+    size = 'md',
+}: {
+    size?: 'xs' | 'sm' | 'md' | 'lg';
+}) {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
 
@@ -35,6 +39,7 @@ export function LogoutButton() {
         <IconButton
             title="Odjavi se"
             variant="plain"
+            size={size}
             loading={loading}
             onClick={handleLogout}
             className="whitespace-nowrap"
