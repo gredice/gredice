@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    DeliveryRunExecutionError,
+    DeliveryRunExecutionErrorCodes,
     deliveryRunExactLocationTtlMs,
     deliveryRunTrackingLiveThresholdMs,
 } from '@gredice/storage';
@@ -8,6 +10,7 @@ import {
     customerDeliveryTrackingSummary,
     type DeliveryTrackingSnapshot,
     deliveryLocationCaptureTimeIsAcceptable,
+    deliveryLocationErrorStatus,
     deliveryTrackingRecoveryTransition,
     deliveryTrackingStatus,
     driverDeliveryTrackingLocation,
@@ -15,6 +18,39 @@ import {
 import { deliveryTrackingMapVersion } from './deliveryTrackingPresentation';
 
 const acceptedAt = new Date('2026-07-15T10:00:00.000Z');
+
+test('location endpoint retries unknown failures but preserves known domain statuses', () => {
+    assert.equal(deliveryLocationErrorStatus(new Error('storage down')), 500);
+    assert.equal(
+        deliveryLocationErrorStatus(
+            new DeliveryRunExecutionError(
+                DeliveryRunExecutionErrorCodes.ACTIVE_RUN_NOT_FOUND,
+                'missing run',
+            ),
+        ),
+        404,
+    );
+    for (const code of [
+        DeliveryRunExecutionErrorCodes.LOCATION_STALE,
+        DeliveryRunExecutionErrorCodes.LOCATION_CONFLICT,
+    ]) {
+        assert.equal(
+            deliveryLocationErrorStatus(
+                new DeliveryRunExecutionError(code, 'location conflict'),
+            ),
+            409,
+        );
+    }
+    assert.equal(
+        deliveryLocationErrorStatus(
+            new DeliveryRunExecutionError(
+                DeliveryRunExecutionErrorCodes.ROUTE_ORDER,
+                'unexpected domain failure',
+            ),
+        ),
+        500,
+    );
+});
 
 function snapshot(
     overrides: Partial<DeliveryTrackingSnapshot> = {},

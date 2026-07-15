@@ -1,4 +1,6 @@
 import {
+    DeliveryRunExecutionError,
+    DeliveryRunExecutionErrorCodes,
     DeliveryRunStates,
     deliveryRunExactLocationTtlMs,
     deliveryRunTrackingLiveThresholdMs,
@@ -10,6 +12,20 @@ import type {
 } from './deliveryDashboardTypes';
 
 const maximumLocationClockSkewMs = 5 * 60 * 1000;
+
+export function deliveryLocationErrorStatus(error: unknown) {
+    if (!(error instanceof DeliveryRunExecutionError)) return 500;
+    if (error.code === DeliveryRunExecutionErrorCodes.ACTIVE_RUN_NOT_FOUND) {
+        return 404;
+    }
+    if (
+        error.code === DeliveryRunExecutionErrorCodes.LOCATION_STALE ||
+        error.code === DeliveryRunExecutionErrorCodes.LOCATION_CONFLICT
+    ) {
+        return 409;
+    }
+    return 500;
+}
 
 export type DeliveryTrackingSnapshot = {
     state: string;

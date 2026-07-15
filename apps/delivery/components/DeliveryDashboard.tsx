@@ -390,11 +390,21 @@ export function DeliveryDashboard() {
         queryFn: readDashboard,
         refetchInterval: 10_000,
     });
-    const activeRunId =
-        query.data?.kind === 'driver'
-            ? (query.data.activeRun?.id ?? null)
+    const dashboardData = query.data;
+    const activeRun =
+        dashboardData && 'activeRun' in dashboardData
+            ? dashboardData.activeRun
             : null;
-    const trackingState = useDriverTracking(activeRunId);
+    const activeRunId = activeRun?.id ?? null;
+    const trackingState = useDriverTracking({
+        runId: activeRunId,
+        serverTracking: activeRun?.tracking ?? null,
+        dashboardRefreshedAt:
+            dashboardData?.kind === 'driver' ? dashboardData.refreshedAt : null,
+        onDashboardRefresh: async () => {
+            await query.refetch();
+        },
+    });
     const driverWithoutActiveRun =
         query.data?.kind === 'driver' && !query.data.activeRun
             ? query.data.user.id

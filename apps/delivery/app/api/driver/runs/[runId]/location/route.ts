@@ -1,10 +1,10 @@
-import {
-    DeliveryRunExecutionError,
-    DeliveryRunExecutionErrorCodes,
-} from '@gredice/storage';
+import { DeliveryRunExecutionError } from '@gredice/storage';
 import { withAuth } from '../../../../../../lib/auth/auth';
 import { recordDriverLocation } from '../../../../../../lib/deliveryDashboard';
-import { deliveryLocationCaptureTimeIsAcceptable } from '../../../../../../lib/deliveryTracking';
+import {
+    deliveryLocationCaptureTimeIsAcceptable,
+    deliveryLocationErrorStatus,
+} from '../../../../../../lib/deliveryTracking';
 
 function requiredNumber(value: unknown) {
     return typeof value === 'number' && Number.isFinite(value)
@@ -87,6 +87,7 @@ export async function POST(
                 {
                     status: result.status,
                     acceptedAt: result.acceptedAt.toISOString(),
+                    refreshedAt: new Date().toISOString(),
                     replayed: result.replayed,
                 },
                 { headers: noStoreHeaders },
@@ -108,12 +109,7 @@ export async function POST(
                         : {}),
                 },
                 {
-                    status:
-                        error instanceof DeliveryRunExecutionError &&
-                        error.code ===
-                            DeliveryRunExecutionErrorCodes.ACTIVE_RUN_NOT_FOUND
-                            ? 404
-                            : 409,
+                    status: deliveryLocationErrorStatus(error),
                     headers: noStoreHeaders,
                 },
             );
