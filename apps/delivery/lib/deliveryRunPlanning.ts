@@ -1,5 +1,5 @@
 import {
-    type CreateDeliveryRunInput,
+    type CreatePreparedDeliveryRunInput,
     DeliveryRequestStates,
     DeliveryRunPersistenceError,
     type DeliveryRunRequestSnapshotInput,
@@ -10,6 +10,10 @@ import {
     saveDeliveryRunPreparation,
 } from '@gredice/storage';
 import 'server-only';
+import {
+    type PlannedDeliveryPickupNode,
+    planPickupAwareDeliveryRoute,
+} from './deliveryPickupRouting';
 import type {
     DeliveryRouteSelectionCandidate,
     DeliveryRouteSelectionConflict,
@@ -22,7 +26,6 @@ import {
     formatDeliveryGeocodingAddress,
     maximumDeliveryRouteStops,
     maximumDeliveryRouteWindowHours,
-    planDeliveryRoute,
 } from './deliveryRouting';
 import {
     buildDeliveryStopKey,
@@ -84,7 +87,7 @@ export type DeliveryRunPlanningDependencies = {
     getAssignedStops: (
         requestIds: string[],
     ) => Promise<readonly AssignedDeliveryRunStop[]>;
-    planRoute: typeof planDeliveryRoute;
+    planRoute: typeof planPickupAwareDeliveryRoute;
     now: () => Date;
 };
 
@@ -93,7 +96,7 @@ const defaultDependencies: DeliveryRunPlanningDependencies = {
     getRequests: getDeliveryRequestsWithEvents,
     getDispatchRevision: getDeliveryDispatchRevision,
     getAssignedStops: getDeliveryRunStopsForRequestIds,
-    planRoute: planDeliveryRoute,
+    planRoute: planPickupAwareDeliveryRoute,
     now: () => new Date(),
 };
 
@@ -176,7 +179,7 @@ export type DeliveryRunPreflightSummary = DeliveryRouteSelectionSummary & {
 };
 
 export type PreparedDeliveryRun = {
-    createRunInput: CreateDeliveryRunInput;
+    createRunInput: CreatePreparedDeliveryRunInput;
     summary: DeliveryRunPreflightSummary;
     dispatchRevision: number;
     selectionRequestIds: string[];
@@ -205,6 +208,53 @@ function pickupAddress(
     return location ? formatDeliveryDestinationAddress(location) : null;
 }
 
+function pickupNodeKey(pickupLocationId: number) {
+    return `pickup:${pickupLocationId}`;
+}
+
+function customerNodeKey(deliveryStopKey: string) {
+    return `customer:${deliveryStopKey}`;
+}
+
+function pickupRouteCandidates(
+    requests: readonly DeliveryRunPlanningRequest[],
+) {
+    const firstRequestByLocationId = new Map<
+        number,
+        DeliveryRunPlanningRequest
+    >();
+    for (const request of requests) {
+        const location = request.slot?.location;
+        if (location && !firstRequestByLocationId.has(location.id)) {
+            firstRequestByLocationId.set(location.id, request);
+        }
+    }
+
+    return Array.from(firstRequestByLocationId.values())
+        .sort(
+            (first, second) =>
+                (first.slot?.startAt.getTime() ?? 0) -
+                    (second.slot?.startAt.getTime() ?? 0) ||
+                (first.slot?.locationId ?? 0) - (second.slot?.locationId ?? 0),
+        )
+        .map((request) => {
+            const location = request.slot?.location;
+            if (!location) {
+                throw new DeliveryRunPreparationError(
+                    'Lokacija preuzimanja odabrane dostave nije dostupna.',
+                    requestConflict('pickup-location-missing', request),
+                );
+            }
+            return {
+                nodeKey: pickupNodeKey(location.id),
+                pickupLocationId: location.id,
+                formattedAddress: formatDeliveryDestinationAddress(location),
+                geocodingAddress: formatDeliveryGeocodingAddress(location),
+                deliveryRequestId: request.id,
+            };
+        });
+}
+
 function selectionCandidate(
     request: DeliveryRunPlanningRequest,
 ): DeliveryRouteSelectionCandidate | null {
@@ -226,7 +276,8 @@ function selectionCandidate(
 
 function createPickupNodeInputs(
     requests: readonly DeliveryRunPlanningRequest[],
-): NonNullable<CreateDeliveryRunInput['pickupNodes']> {
+    plannedPickupNodes: readonly PlannedDeliveryPickupNode[],
+): CreatePreparedDeliveryRunInput['pickupNodes'] {
     const firstRequestByLocationId = new Map<
         number,
         DeliveryRunPlanningRequest
@@ -248,7 +299,7 @@ function createPickupNodeInputs(
                 (first.slot?.locationId ?? 0) - (second.slot?.locationId ?? 0)
             );
         })
-        .map((request, index) => {
+        .map((request) => {
             const location = request.slot?.location;
             if (!location) {
                 throw new DeliveryRunPreparationError(
@@ -256,9 +307,18 @@ function createPickupNodeInputs(
                     requestConflict('pickup-location-missing', request),
                 );
             }
+            const plannedNode = plannedPickupNodes.find(
+                (node) => node.pickupLocationId === location.id,
+            );
+            if (!plannedNode) {
+                throw new DeliveryRunPreparationError(
+                    'Planirana lokacija preuzimanja nije pronađena.',
+                    requestConflict('planned-pickup-not-found', request),
+                );
+            }
             return {
                 pickupLocationId: location.id,
-                sequence: index + 1,
+                sequence: plannedNode.sequence,
                 name: location.name,
                 street1: location.street1,
                 street2: location.street2,
@@ -266,13 +326,20 @@ function createPickupNodeInputs(
                 postalCode: location.postalCode,
                 countryCode: location.countryCode,
                 sourceUpdatedAt: location.updatedAt,
+                latitude: plannedNode.latitude,
+                longitude: plannedNode.longitude,
+                itinerarySequence: plannedNode.itinerarySequence,
+                estimatedArrivalAt: plannedNode.estimatedArrivalAt,
+                incomingTravelSeconds: plannedNode.incomingTravelSeconds,
+                incomingDistanceMeters: plannedNode.incomingDistanceMeters,
+                serviceDurationSeconds: plannedNode.serviceDurationSeconds,
             };
         });
 }
 
 function createRunSlotInputs(
     requests: readonly DeliveryRunPlanningRequest[],
-): NonNullable<CreateDeliveryRunInput['runSlots']> {
+): CreatePreparedDeliveryRunInput['runSlots'] {
     const firstRequestBySlotId = new Map<number, DeliveryRunPlanningRequest>();
     for (const request of requests) {
         const slot = request.slot;
@@ -481,9 +548,10 @@ export async function prepareDeliveryRun(
         string,
         (typeof candidateGroups)[number]
     >();
-    let plan: Awaited<ReturnType<typeof planDeliveryRoute>>;
+    let plan: Awaited<ReturnType<typeof planPickupAwareDeliveryRoute>>;
     try {
         plan = await dependencies.planRoute({
+            pickupCandidates: pickupRouteCandidates(candidates),
             candidates: candidateGroups.map((group) => {
                 const representative = group.items[0]?.request;
                 if (!representative?.address || !representative.slot) {
@@ -497,6 +565,10 @@ export async function prepareDeliveryRun(
                 }
                 groupsByRepresentativeId.set(representative.id, group);
                 return {
+                    nodeKey: customerNodeKey(group.stopKey),
+                    requiredPickupKey: pickupNodeKey(
+                        representative.slot.locationId,
+                    ),
                     deliveryRequestId: representative.id,
                     formattedAddress: formatDeliveryDestinationAddress(
                         representative.address,
@@ -570,6 +642,8 @@ export async function prepareDeliveryRun(
                 estimatedArrivalAt: plannedStop.estimatedArrivalAt,
                 estimatedTravelSeconds: plannedStop.estimatedTravelSeconds,
                 estimatedDistanceMeters: plannedStop.estimatedDistanceMeters,
+                itinerarySequence: plannedStop.itinerarySequence,
+                serviceDurationSeconds: plannedStop.serviceDurationSeconds,
             };
         });
     });
@@ -627,7 +701,9 @@ export async function prepareDeliveryRun(
             encodedPolyline: plan.encodedPolyline,
             totalDistanceMeters: plan.totalDistanceMeters,
             totalDurationSeconds: plan.totalDurationSeconds,
-            pickupNodes: createPickupNodeInputs(candidates),
+            routePlanVersion: plan.routePlanVersion,
+            estimateSource: plan.estimateSource,
+            pickupNodes: createPickupNodeInputs(candidates, plan.pickupNodes),
             runSlots: createRunSlotInputs(candidates),
             stops: storedStops,
         },

@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
     accountCanTrackDeliveryRun,
-    type CreateDeliveryRunInput,
+    type CreatePreparedDeliveryRunInput,
     cancelDeliveryRequest,
     changeDeliveryRequestSlot,
     consumeDeliveryRunPreparation,
@@ -12,8 +12,11 @@ import {
     createEvent,
     DeliveryRunPersistenceError,
     DeliveryRunPersistenceErrorCodes,
+    type DeliveryRunPreparationPlanPayloadV1,
+    type DeliveryRunPreparationPlanPayloadV2,
     type DeliveryRunRequestSnapshotInput,
     deliveryRequests,
+    deliveryRunPickupNodes,
     deliveryRunPreparations,
     deliveryRunStops,
     deliveryRuns,
@@ -366,14 +369,23 @@ async function createPreparedRunFixture({
     );
     const locations = bulk ? [firstLocation] : [firstLocation, secondLocation];
     const slots = bulk ? [firstSlot] : [firstSlot, secondSlot];
-    const createRunInput: CreateDeliveryRunInput = {
+    const createRunInput: CreatePreparedDeliveryRunInput = {
         driverUserId: fixture.driverUserIds[0] ?? '',
         timeSlotId: firstSlot.id,
         totalDistanceMeters: 8_000,
         totalDurationSeconds: 2_400,
+        routePlanVersion: 2,
+        estimateSource: 'local',
         pickupNodes: locations.map((location, index) => ({
             pickupLocationId: location.id,
             sequence: index + 1,
+            itinerarySequence: index * 2 + 1,
+            estimatedArrivalAt: new Date(
+                Date.parse('2026-07-13T08:00:00.000Z') + index * 7_200_000,
+            ),
+            incomingTravelSeconds: index === 0 ? 0 : 900,
+            incomingDistanceMeters: index === 0 ? 0 : 3_000,
+            serviceDurationSeconds: 600,
             name: location.name,
             street1: location.street1,
             street2: location.street2,
@@ -381,6 +393,8 @@ async function createPreparedRunFixture({
             postalCode: location.postalCode,
             countryCode: location.countryCode,
             sourceUpdatedAt: location.updatedAt,
+            latitude: 45.79 + index / 100,
+            longitude: 15.96 + index / 100,
         })),
         runSlots: slots.map((slot, index) => ({
             timeSlotId: slot.id,
@@ -393,15 +407,19 @@ async function createPreparedRunFixture({
         })),
         stops: fixture.requestIds.map((deliveryRequestId, index) => {
             const snapshot = snapshotsByRequestId.get(deliveryRequestId);
+            const physicalIndex = bulk ? 0 : index;
             assert.ok(snapshot);
             return {
                 deliveryRequestId,
                 sequence: index + 1,
-                latitude: 45.8 + index / 100,
-                longitude: 15.97 + index / 100,
+                itinerarySequence: physicalIndex * 2 + 2,
+                serviceDurationSeconds: 300,
+                latitude: 45.8 + physicalIndex / 100,
+                longitude: 15.97 + physicalIndex / 100,
                 formattedAddress: snapshotAddress(snapshot.address),
                 estimatedArrivalAt: new Date(
-                    Date.parse('2026-07-13T08:15:00.000Z') + index * 900_000,
+                    Date.parse('2026-07-13T08:15:00.000Z') +
+                        physicalIndex * 7_200_000,
                 ),
                 estimatedTravelSeconds: 600,
                 estimatedDistanceMeters: 2_250,
@@ -470,6 +488,60 @@ async function assertPersistenceError(promise: Promise<unknown>, code: string) {
         (error) =>
             error instanceof DeliveryRunPersistenceError && error.code === code,
     );
+}
+
+function asLegacyPreparationPlan(
+    plan: DeliveryRunPreparationPlanPayloadV2,
+): DeliveryRunPreparationPlanPayloadV1 {
+    return {
+        formatVersion: 1,
+        dispatchRevision: plan.dispatchRevision,
+        selectionRequestIds: [...plan.selectionRequestIds],
+        createRunInput: {
+            driverUserId: plan.createRunInput.driverUserId,
+            timeSlotId: plan.createRunInput.timeSlotId,
+            ...(plan.createRunInput.encodedPolyline
+                ? { encodedPolyline: plan.createRunInput.encodedPolyline }
+                : {}),
+            totalDistanceMeters: plan.createRunInput.totalDistanceMeters,
+            totalDurationSeconds: plan.createRunInput.totalDurationSeconds,
+            pickupNodes: plan.createRunInput.pickupNodes.map((node) => ({
+                pickupLocationId: node.pickupLocationId,
+                sequence: node.sequence,
+                name: node.name,
+                street1: node.street1,
+                street2: node.street2,
+                city: node.city,
+                postalCode: node.postalCode,
+                countryCode: node.countryCode,
+                sourceUpdatedAt: node.sourceUpdatedAt,
+                latitude: node.latitude,
+                longitude: node.longitude,
+            })),
+            runSlots: plan.createRunInput.runSlots.map((slot) => ({ ...slot })),
+            stops: plan.createRunInput.stops.map((stop) => ({
+                deliveryRequestId: stop.deliveryRequestId,
+                sequence: stop.sequence,
+                latitude: stop.latitude,
+                longitude: stop.longitude,
+                formattedAddress: stop.formattedAddress,
+                estimatedArrivalAt: stop.estimatedArrivalAt,
+                estimatedTravelSeconds: stop.estimatedTravelSeconds,
+                estimatedDistanceMeters: stop.estimatedDistanceMeters,
+                timeSlotId: stop.timeSlotId,
+                stopKey: stop.stopKey,
+                requestDispatchEventId: stop.requestDispatchEventId,
+                deliveryAddressId: stop.deliveryAddressId,
+                deliveryAddressUpdatedAt: stop.deliveryAddressUpdatedAt,
+            })),
+        },
+        requestSnapshots: plan.requestSnapshots.map((snapshot) => ({
+            ...snapshot,
+            address: { ...snapshot.address },
+            slot: { ...snapshot.slot },
+            pickupLocation: { ...snapshot.pickupLocation },
+        })),
+    };
 }
 
 test('delivery run fulfills a current bulk stop atomically and preserves route order', async () => {
@@ -916,6 +988,26 @@ test('[legacy] bulk fulfillment accepts a non-contiguous set containing the curr
     assert.equal((await getDeliveryRun(run.id))?.state, 'completed');
 });
 
+test('[legacy] route reads keep default provenance and nullable itinerary fields', async () => {
+    const fixture = await createDeliveryRunFixture();
+    const run = await createRun({
+        fixture,
+        driverUserId: fixture.driverUserIds[0] ?? '',
+        requestIds: fixture.requestIds,
+    });
+
+    assert.equal(run.routePlanVersion, 1);
+    assert.equal(run.estimateSource, 'legacy');
+    assert.equal(run.pickupNodes.length, 0);
+    assert.ok(
+        run.stops.every(
+            (stop) =>
+                stop.itinerarySequence === null &&
+                stop.serviceDurationSeconds === null,
+        ),
+    );
+});
+
 test('prepared run persists multiple pickup locations, slots, manifests, and stable snapshots', async () => {
     const prepared = await createPreparedRunFixture();
     const [driverUserId] = prepared.fixture.driverUserIds;
@@ -927,6 +1019,8 @@ test('prepared run persists multiple pickup locations, slots, manifests, and sta
         deliveryRequestIds: prepared.fixture.requestIds,
     });
 
+    assert.equal(run.routePlanVersion, 2);
+    assert.equal(run.estimateSource, 'local');
     assert.equal(run.pickupNodes.length, 2);
     assert.equal(run.runSlots.length, 2);
     assert.equal(new Set(run.runSlots.map((slot) => slot.manifestId)).size, 2);
@@ -938,6 +1032,40 @@ test('prepared run persists multiple pickup locations, slots, manifests, and sta
         run.pickupNodes.map((node) => node.sequence),
         [1, 2],
     );
+    assert.deepEqual(
+        run.pickupNodes.map((node) => node.itinerarySequence),
+        [1, 3],
+    );
+    assert.deepEqual(
+        run.pickupNodes.map((node) => node.incomingTravelSeconds),
+        [0, 900],
+    );
+    assert.deepEqual(
+        run.pickupNodes.map((node) => node.incomingDistanceMeters),
+        [0, 3_000],
+    );
+    assert.deepEqual(
+        run.pickupNodes.map((node) => node.serviceDurationSeconds),
+        [600, 600],
+    );
+    assert.deepEqual(
+        run.stops.map((stop) => stop.itinerarySequence),
+        [2, 4],
+    );
+    assert.deepEqual(
+        run.stops.map((stop) => stop.serviceDurationSeconds),
+        [300, 300],
+    );
+    assert.ok(
+        run.pickupNodes.every(
+            (node) => node.estimatedArrivalAt instanceof Date,
+        ),
+    );
+    const savedPreparation =
+        await storage().query.deliveryRunPreparations.findFirst({
+            where: eq(deliveryRunPreparations.id, saved.preparationId),
+        });
+    assert.equal(savedPreparation?.plan.formatVersion, 2);
 
     const [firstAddressId] = prepared.addressIds;
     const [firstNode] = run.pickupNodes;
@@ -1001,6 +1129,15 @@ test('original selection can consume a preparation expanded with bulk siblings',
         deliveryRequestIds: [selectedRequestId],
     });
     assert.equal(run.stops.length, prepared.requestSnapshots.length);
+    assert.deepEqual(
+        run.stops.map((stop) => stop.sequence),
+        [1, 2],
+    );
+    assert.deepEqual(
+        run.stops.map((stop) => stop.itinerarySequence),
+        [2, 2],
+    );
+    assert.equal(new Set(run.stops.map((stop) => stop.stopKey)).size, 1);
 });
 
 test('tampered pickup-node and run-slot snapshots are rejected', async () => {
@@ -1039,6 +1176,210 @@ test('tampered pickup-node and run-slot snapshots are rejected', async () => {
             },
         }),
         DeliveryRunPersistenceErrorCodes.INVALID_PLAN,
+    );
+});
+
+test('v2 itinerary gaps, dependency violations, bulk splits, and invalid provenance are rejected', async () => {
+    const prepared = await createPreparedRunFixture();
+    const [firstNode, secondNode] = prepared.createRunInput.pickupNodes;
+    const [firstStop, secondStop] = prepared.createRunInput.stops;
+    assert.ok(firstNode);
+    assert.ok(secondNode);
+    assert.ok(firstStop);
+    assert.ok(secondStop);
+
+    await assertPersistenceError(
+        saveDeliveryRunPreparation({
+            ...prepared,
+            createRunInput: {
+                ...prepared.createRunInput,
+                routePlanVersion: 1,
+            },
+        }),
+        DeliveryRunPersistenceErrorCodes.INVALID_PLAN,
+    );
+    await assertPersistenceError(
+        saveDeliveryRunPreparation({
+            ...prepared,
+            createRunInput: {
+                ...prepared.createRunInput,
+                pickupNodes: [
+                    { ...firstNode, sequence: 2 },
+                    { ...secondNode, sequence: 1 },
+                ],
+            },
+        }),
+        DeliveryRunPersistenceErrorCodes.INVALID_PLAN,
+    );
+    await assertPersistenceError(
+        saveDeliveryRunPreparation({
+            ...prepared,
+            createRunInput: {
+                ...prepared.createRunInput,
+                pickupNodes: [
+                    firstNode,
+                    { ...secondNode, incomingDistanceMeters: -1 },
+                ],
+            },
+        }),
+        DeliveryRunPersistenceErrorCodes.INVALID_PLAN,
+    );
+    await assertPersistenceError(
+        saveDeliveryRunPreparation({
+            ...prepared,
+            createRunInput: {
+                ...prepared.createRunInput,
+                stops: [
+                    { ...firstStop, sequence: 2 },
+                    { ...secondStop, sequence: 1 },
+                ],
+            },
+        }),
+        DeliveryRunPersistenceErrorCodes.INVALID_PLAN,
+    );
+    await assertPersistenceError(
+        saveDeliveryRunPreparation({
+            ...prepared,
+            createRunInput: {
+                ...prepared.createRunInput,
+                stops: [{ ...firstStop, itinerarySequence: 1 }, secondStop],
+            },
+        }),
+        DeliveryRunPersistenceErrorCodes.INVALID_PLAN,
+    );
+    await assertPersistenceError(
+        saveDeliveryRunPreparation({
+            ...prepared,
+            createRunInput: {
+                ...prepared.createRunInput,
+                stops: [firstStop, { ...secondStop, itinerarySequence: 5 }],
+            },
+        }),
+        DeliveryRunPersistenceErrorCodes.INVALID_PLAN,
+    );
+    await assertPersistenceError(
+        saveDeliveryRunPreparation({
+            ...prepared,
+            createRunInput: {
+                ...prepared.createRunInput,
+                stops: [
+                    { ...firstStop, formattedAddress: 'Tampered destination' },
+                    secondStop,
+                ],
+            },
+        }),
+        DeliveryRunPersistenceErrorCodes.INVALID_PLAN,
+    );
+
+    const bulkPrepared = await createPreparedRunFixture({ bulk: true });
+    const [firstBulkStop, secondBulkStop] = bulkPrepared.createRunInput.stops;
+    assert.ok(firstBulkStop);
+    assert.ok(secondBulkStop);
+    await assertPersistenceError(
+        saveDeliveryRunPreparation({
+            ...bulkPrepared,
+            createRunInput: {
+                ...bulkPrepared.createRunInput,
+                stops: [
+                    firstBulkStop,
+                    { ...secondBulkStop, itinerarySequence: 3 },
+                ],
+            },
+        }),
+        DeliveryRunPersistenceErrorCodes.INVALID_PLAN,
+    );
+});
+
+test('persisted v2 itinerary tampering is rejected before run creation', async () => {
+    const prepared = await createPreparedRunFixture();
+    const driverUserId = prepared.fixture.driverUserIds[0];
+    assert.ok(driverUserId);
+    const saved = await saveDeliveryRunPreparation(prepared);
+    const preparation = await storage().query.deliveryRunPreparations.findFirst(
+        {
+            where: eq(deliveryRunPreparations.id, saved.preparationId),
+        },
+    );
+    assert.equal(preparation?.plan.formatVersion, 2);
+    if (preparation?.plan.formatVersion !== 2) {
+        assert.fail('Expected a v2 delivery run preparation');
+    }
+    const [firstStop, ...remainingStops] =
+        preparation.plan.createRunInput.stops;
+    assert.ok(firstStop);
+    await storage()
+        .update(deliveryRunPreparations)
+        .set({
+            plan: {
+                ...preparation.plan,
+                createRunInput: {
+                    ...preparation.plan.createRunInput,
+                    stops: [
+                        { ...firstStop, serviceDurationSeconds: -1 },
+                        ...remainingStops,
+                    ],
+                },
+            },
+        })
+        .where(eq(deliveryRunPreparations.id, saved.preparationId));
+
+    await assertPersistenceError(
+        consumeDeliveryRunPreparation({
+            preparationToken: saved.preparationToken,
+            driverUserId,
+            deliveryRequestIds: prepared.fixture.requestIds,
+        }),
+        DeliveryRunPersistenceErrorCodes.INVALID_PLAN,
+    );
+    assert.equal(
+        await storage().query.deliveryRuns.findFirst({
+            where: eq(deliveryRuns.driverUserId, driverUserId),
+        }),
+        undefined,
+    );
+});
+
+test('existing v1 preparation tokens remain consumable as legacy routes', async () => {
+    const prepared = await createPreparedRunFixture();
+    const driverUserId = prepared.fixture.driverUserIds[0];
+    assert.ok(driverUserId);
+    const saved = await saveDeliveryRunPreparation(prepared);
+    const preparation = await storage().query.deliveryRunPreparations.findFirst(
+        {
+            where: eq(deliveryRunPreparations.id, saved.preparationId),
+        },
+    );
+    if (preparation?.plan.formatVersion !== 2) {
+        assert.fail('Expected a v2 delivery run preparation');
+    }
+    await storage()
+        .update(deliveryRunPreparations)
+        .set({ plan: asLegacyPreparationPlan(preparation.plan) })
+        .where(eq(deliveryRunPreparations.id, saved.preparationId));
+
+    const run = await consumeDeliveryRunPreparation({
+        preparationToken: saved.preparationToken,
+        driverUserId,
+        deliveryRequestIds: prepared.fixture.requestIds,
+    });
+    assert.equal(run.routePlanVersion, 1);
+    assert.equal(run.estimateSource, 'legacy');
+    assert.ok(
+        run.pickupNodes.every(
+            (node) =>
+                node.itinerarySequence === null &&
+                node.estimatedArrivalAt === null &&
+                node.incomingTravelSeconds === null &&
+                node.incomingDistanceMeters === null &&
+                node.serviceDurationSeconds === null,
+        ),
+    );
+    assert.ok(
+        run.stops.every(
+            (stop) =>
+                stop.itinerarySequence === null &&
+                stop.serviceDurationSeconds === null,
+        ),
     );
 });
 
@@ -1385,6 +1726,26 @@ test('route snapshot constraints reject incomplete and cross-run stop references
             error.cause instanceof Error &&
             error.cause.message.includes('snapshot_shape_check'),
     );
+    await assert.rejects(
+        storage()
+            .update(deliveryRunStops)
+            .set({ itinerarySequence: 1 })
+            .where(eq(deliveryRunStops.id, legacyStop.id)),
+        (error) =>
+            error instanceof Error &&
+            error.cause instanceof Error &&
+            error.cause.message.includes('itinerary_shape_check'),
+    );
+    await assert.rejects(
+        storage()
+            .update(deliveryRuns)
+            .set({ routePlanVersion: 2 })
+            .where(eq(deliveryRuns.id, legacyRun.id)),
+        (error) =>
+            error instanceof Error &&
+            error.cause instanceof Error &&
+            error.cause.message.includes('route_plan_provenance_check'),
+    );
 
     const firstPrepared = await createPreparedRunFixture();
     const firstSaved = await saveDeliveryRunPreparation(firstPrepared);
@@ -1393,6 +1754,18 @@ test('route snapshot constraints reject incomplete and cross-run stop references
         driverUserId: firstPrepared.fixture.driverUserIds[0] ?? '',
         deliveryRequestIds: firstPrepared.fixture.requestIds,
     });
+    const [firstPickupNode] = firstRun.pickupNodes;
+    assert.ok(firstPickupNode);
+    await assert.rejects(
+        storage()
+            .update(deliveryRunPickupNodes)
+            .set({ serviceDurationSeconds: null })
+            .where(eq(deliveryRunPickupNodes.id, firstPickupNode.id)),
+        (error) =>
+            error instanceof Error &&
+            error.cause instanceof Error &&
+            error.cause.message.includes('itinerary_shape_check'),
+    );
     const secondPrepared = await createPreparedRunFixture();
     const secondSaved = await saveDeliveryRunPreparation(secondPrepared);
     const secondRun = await consumeDeliveryRunPreparation({

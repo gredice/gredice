@@ -404,6 +404,8 @@ async function activeRunSummary(
         completedAt: iso(run.completedAt),
         totalDistanceMeters: run.totalDistanceMeters,
         totalDurationSeconds: run.totalDurationSeconds,
+        routePlanVersion: run.routePlanVersion,
+        estimateSource: run.estimateSource,
         location: trackingLocation(run),
         estimatesUpdatedAt: iso(run.estimatesUpdatedAt),
         mapUrl: `/api/map/${run.id}`,

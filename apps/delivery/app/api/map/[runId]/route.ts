@@ -75,6 +75,19 @@ export async function GET(
                               longitude: run.currentLongitude,
                           }
                         : null,
+                pickupNodes: driverView
+                    ? run.pickupNodes.flatMap((pickupNode) =>
+                          pickupNode.latitude !== null &&
+                          pickupNode.longitude !== null
+                              ? [
+                                    {
+                                        latitude: pickupNode.latitude,
+                                        longitude: pickupNode.longitude,
+                                    },
+                                ]
+                              : [],
+                      )
+                    : [],
                 stops,
                 encodedPolyline: run.encodedPolyline,
                 customerView,

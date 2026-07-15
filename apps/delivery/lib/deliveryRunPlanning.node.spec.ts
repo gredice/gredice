@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { DeliveryRunPersistenceError } from '@gredice/storage';
+import type {
+    PlannedDeliveryPickupNode,
+    PlannedPickupAwareDeliveryStop,
+} from './deliveryPickupRouting';
 import {
     DeliveryRoutePlanningError,
     maximumDeliveryRouteStops,
@@ -129,21 +133,53 @@ function planningDependencies({
             counters.plannerCalls += 1;
             if (planRoute) return await planRoute(input);
 
-            return {
-                encodedPolyline: 'prepared-polyline',
-                totalDistanceMeters: input.candidates.length * 1_000,
-                totalDurationSeconds: input.candidates.length * 600,
-                stops: input.candidates.map((candidate, index) => ({
+            const pickupNodes = input.pickupCandidates.map(
+                (candidate, index): PlannedDeliveryPickupNode => ({
                     ...candidate,
+                    kind: 'pickup',
+                    latitude: 45.8 + index / 100,
+                    longitude: 15.96 + index / 100,
+                    sequence: index + 1,
+                    itinerarySequence: index + 1,
+                    estimatedArrivalAt: new Date(
+                        now.getTime() + index * 600_000,
+                    ),
+                    incomingTravelSeconds: index === 0 ? 0 : 600,
+                    incomingDistanceMeters: index === 0 ? 0 : 1_000,
+                    estimatedTravelSeconds: index === 0 ? 0 : 600,
+                    estimatedDistanceMeters: index === 0 ? 0 : 1_000,
+                    serviceDurationSeconds: 600,
+                }),
+            );
+            const stops = input.candidates.map(
+                (candidate, index): PlannedPickupAwareDeliveryStop => ({
+                    ...candidate,
+                    kind: 'customer',
                     latitude: 45.81 + index / 100,
                     longitude: 15.97 + index / 100,
                     sequence: index + 1,
+                    itinerarySequence: pickupNodes.length + index + 1,
                     estimatedArrivalAt: new Date(
                         now.getTime() + (index + 1) * 600_000,
                     ),
                     estimatedTravelSeconds: 600,
                     estimatedDistanceMeters: 1_000,
-                })),
+                    serviceDurationSeconds: 300,
+                }),
+            );
+            return {
+                routePlanVersion: 2,
+                estimateSource: 'google',
+                encodedPolyline: 'prepared-polyline',
+                totalDistanceMeters: input.candidates.length * 1_000,
+                totalDurationSeconds: input.candidates.length * 600,
+                totalTravelSeconds: input.candidates.length * 600,
+                totalWaitingSeconds: 0,
+                totalServiceSeconds:
+                    pickupNodes.length * 600 + stops.length * 300,
+                pickupNodes,
+                stops,
+                itinerary: [...pickupNodes, ...stops],
             };
         },
         now: () => now,
@@ -197,6 +233,8 @@ test('prepares a valid single-location run and expands every ready delivery at a
         [10],
     );
     assert.equal(prepared.createRunInput.timeSlotId, 1);
+    assert.equal(prepared.createRunInput.routePlanVersion, 2);
+    assert.equal(prepared.createRunInput.estimateSource, 'google');
     assert.equal(prepared.createRunInput.totalDistanceMeters, 2_000);
     assert.deepEqual(
         prepared.createRunInput.pickupNodes?.map((node) => ({
@@ -248,6 +286,32 @@ test('prepares a valid single-location run and expands every ready delivery at a
     assert.deepEqual(
         prepared.createRunInput.stops.map((stop) => stop.sequence),
         [1, 2, 3],
+    );
+    assert.deepEqual(
+        prepared.createRunInput.stops.map((stop) => stop.itinerarySequence),
+        [2, 2, 3],
+    );
+    assert.deepEqual(
+        prepared.createRunInput.stops.map(
+            (stop) => stop.serviceDurationSeconds,
+        ),
+        [300, 300, 300],
+    );
+    assert.deepEqual(
+        prepared.createRunInput.pickupNodes.map((node) => ({
+            itinerarySequence: node.itinerarySequence,
+            incomingTravelSeconds: node.incomingTravelSeconds,
+            incomingDistanceMeters: node.incomingDistanceMeters,
+            serviceDurationSeconds: node.serviceDurationSeconds,
+        })),
+        [
+            {
+                itinerarySequence: 1,
+                incomingTravelSeconds: 0,
+                incomingDistanceMeters: 0,
+                serviceDurationSeconds: 600,
+            },
+        ],
     );
     assert.deepEqual(
         prepared.createRunInput.stops.map((stop) => stop.timeSlotId),

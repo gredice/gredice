@@ -17,7 +17,10 @@ import {
 import { Typography } from '@gredice/ui/Typography';
 import { useRef, useState } from 'react';
 import type { DriverTrackingState } from '../hooks/useDriverTracking';
-import type { DriverDeliveryDashboard } from '../lib/deliveryDashboardTypes';
+import type {
+    ActiveDeliveryRunSummary,
+    DriverDeliveryDashboard,
+} from '../lib/deliveryDashboardTypes';
 import {
     formatDeliveryDateTime,
     formatDistance,
@@ -50,6 +53,19 @@ function trackingMessage(state: DriverTrackingState) {
             return 'Lokaciju trenutačno nije moguće poslati. Provjeri vezu i GPS postavke.';
         default:
             return null;
+    }
+}
+
+function routeEstimateSourceLabel(
+    source: ActiveDeliveryRunSummary['estimateSource'],
+) {
+    switch (source) {
+        case 'google':
+            return 'Google promet';
+        case 'local':
+            return 'Lokalno, bez prometa';
+        case 'legacy':
+            return 'Starija procjena';
     }
 }
 
@@ -380,6 +396,25 @@ export function DriverDashboard({
                                                 run.totalDurationSeconds,
                                             )}
                                         </Typography>
+                                        <Chip
+                                            aria-label={`Izvor procjene rute: ${routeEstimateSourceLabel(run.estimateSource)}. Verzija plana ${run.routePlanVersion}.`}
+                                            className="mt-2"
+                                            color={
+                                                run.estimateSource === 'google'
+                                                    ? 'info'
+                                                    : run.estimateSource ===
+                                                        'local'
+                                                      ? 'warning'
+                                                      : 'neutral'
+                                            }
+                                            size="sm"
+                                            title={`Plan rute v${run.routePlanVersion}`}
+                                            variant="soft"
+                                        >
+                                            {routeEstimateSourceLabel(
+                                                run.estimateSource,
+                                            )}
+                                        </Chip>
                                     </div>
                                     <div className="col-span-2 rounded-lg border p-3">
                                         <div className="flex items-center justify-between gap-2">

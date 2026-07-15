@@ -56,6 +56,7 @@ export class DeliveryRoutePlanningError extends Error {
         message: string,
         readonly code = 'route-planning',
         readonly deliveryRequestId?: string,
+        readonly nodeKey?: string,
     ) {
         super(message);
     }
