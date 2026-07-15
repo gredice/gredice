@@ -166,6 +166,51 @@ test('accepts only provider-matched desktop callback targets', () => {
         ),
         undefined,
     );
+    assert.equal(
+        sanitizeOAuthCallbackUrl(
+            'google',
+            'gredice-farm://auth-callback/google?returnTo=%2Fnotifications%3Ffilter%3Dunread%23latest',
+        ),
+        'gredice-farm://auth-callback/google?returnTo=%2Fnotifications%3Ffilter%3Dunread%23latest',
+    );
+    assert.equal(
+        sanitizeOAuthCallbackUrl(
+            'google',
+            'gredice-farm://auth-callback/google?returnTo=%2Fnotifications&returnTo=%2Fschedule',
+        ),
+        undefined,
+    );
+});
+
+test('preserves a desktop return path through success and bounded errors', () => {
+    const callbackUrl =
+        'gredice-farm://auth-callback/google?returnTo=%2Fnotifications%3Ffilter%3Dunread%23latest';
+    const success = resolveOAuthCallback({
+        provider: 'google',
+        code: 'authorization-code',
+        storedRedirect: callbackUrl,
+        ...matchingState,
+    });
+    assert.equal(success.kind, 'continue');
+    if (success.kind === 'continue') {
+        assert.equal(success.callbackUrl, callbackUrl);
+    }
+
+    const canceled = resolveOAuthCallback({
+        provider: 'google',
+        providerError: 'access_denied',
+        storedRedirect: callbackUrl,
+        ...matchingState,
+    });
+    assert.equal(canceled.kind, 'redirect');
+    if (canceled.kind === 'redirect') {
+        const redirectUrl = new URL(canceled.redirectUrl);
+        assert.equal(
+            redirectUrl.searchParams.get('returnTo'),
+            '/notifications?filter=unread#latest',
+        );
+        assert.equal(redirectUrl.searchParams.get('error'), 'canceled');
+    }
 });
 
 test('uses callback_error without replacing a validated return path', () => {

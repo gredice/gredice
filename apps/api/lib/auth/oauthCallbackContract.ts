@@ -103,6 +103,10 @@ function isAllowedWebCallbackOrigin(url: URL) {
 }
 
 function hasOnlySupportedCallbackQuery(url: URL) {
+    if (url.searchParams.getAll('returnTo').length > 1) {
+        return false;
+    }
+
     for (const key of url.searchParams.keys()) {
         if (key !== 'returnTo') {
             return false;
