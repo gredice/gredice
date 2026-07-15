@@ -9,6 +9,39 @@ const signInViewports = [
     { name: 'desktop', width: 1280, height: 800 },
 ] as const;
 
+const emailLoginErrors = [
+    {
+        code: 'invalid_request',
+        status: 400,
+        title: 'Provjeri unesene podatke',
+    },
+    {
+        code: 'invalid_credentials',
+        status: 401,
+        title: 'Email ili zaporka nisu ispravni',
+    },
+    {
+        code: 'temporarily_locked',
+        status: 423,
+        title: 'Prijava je privremeno zaključana',
+    },
+    {
+        code: 'email_verification_required',
+        status: 403,
+        title: 'Potvrdi email prije prijave',
+    },
+    {
+        code: 'no_farm_access',
+        status: 403,
+        title: 'Račun nema pristup Farmi',
+    },
+    {
+        code: 'service_unavailable',
+        status: 503,
+        title: 'Prijava trenutačno nije dostupna',
+    },
+] as const;
+
 async function expectContainedInViewport(
     locator: import('@playwright/test').Locator,
     viewport: { height: number; width: number },
@@ -181,6 +214,345 @@ test.describe('Authentication Flow', () => {
                     violation.impact === 'critical',
             );
 
+            expect(
+                seriousViolations,
+                JSON.stringify(seriousViolations, null, 2),
+            ).toEqual([]);
+        });
+    });
+
+    test.describe('Email login recovery', () => {
+        test('moves focus into email and restores it to the provider trigger on back', async ({
+            page,
+        }) => {
+            await page.setViewportSize({ width: 390, height: 844 });
+            await page.goto('/');
+
+            const emailTrigger = page.getByRole('button', {
+                name: 'Email prijava',
+            });
+            await emailTrigger.click();
+
+            await expect(page.getByLabel('Email')).toBeFocused();
+            const backButton = page.getByRole('button', {
+                name: 'Natrag na druge načine prijave',
+            });
+            await expectMinimumTouchTarget(backButton);
+            await backButton.click();
+
+            await expect(emailTrigger).toBeFocused();
+            await expect(
+                page.getByRole('button', { name: 'Google prijava' }),
+            ).toBeVisible();
+            await expect(
+                page.getByRole('button', { name: 'Facebook prijava' }),
+            ).toBeVisible();
+        });
+
+        test('supports mobile keyboard hints, password visibility, and real recovery links', async ({
+            page,
+        }) => {
+            await page.setViewportSize({ width: 390, height: 844 });
+            await page.goto('/');
+            await page.getByRole('button', { name: 'Email prijava' }).click();
+
+            const emailInput = page.getByLabel('Email');
+            const passwordInput = page.getByLabel('Zaporka');
+            await expect(emailInput).toHaveAttribute('autocomplete', 'email');
+            await expect(emailInput).toHaveAttribute('inputmode', 'email');
+            await expect(emailInput).toHaveAttribute('enterkeyhint', 'next');
+            await expect(passwordInput).toHaveAttribute(
+                'autocomplete',
+                'current-password',
+            );
+            await expect(passwordInput).toHaveAttribute('enterkeyhint', 'go');
+
+            await emailInput.fill('farmer@example.com');
+            await passwordInput.fill('secret-password');
+            const showPassword = page.getByRole('button', {
+                name: 'Prikaži zaporku',
+            });
+            await expectMinimumTouchTarget(showPassword);
+            await showPassword.click();
+            await expect(passwordInput).toHaveAttribute('type', 'text');
+            await expect(passwordInput).toHaveValue('secret-password');
+            await page.getByRole('button', { name: 'Sakrij zaporku' }).click();
+            await expect(passwordInput).toHaveAttribute('type', 'password');
+
+            const resetLink = page.getByRole('link', {
+                name: 'Zaboravljena zaporka?',
+            });
+            const supportLink = page.getByRole('link', {
+                name: 'Trebaš pomoć? Kontaktiraj podršku',
+            });
+            await expectMinimumTouchTarget(resetLink);
+            await expectMinimumTouchTarget(supportLink);
+            const resetUrl = new URL(
+                (await resetLink.getAttribute('href')) ?? '',
+            );
+            const supportUrl = new URL(
+                (await supportLink.getAttribute('href')) ?? '',
+            );
+            expect(resetUrl.origin).not.toBe(new URL(page.url()).origin);
+            expect(resetUrl.pathname).toBe('/prijava/zaboravljena-zaporka');
+            expect(resetUrl.searchParams.get('email')).toBe(
+                'farmer@example.com',
+            );
+            expect(supportUrl.origin).not.toBe(new URL(page.url()).origin);
+            expect(supportUrl.pathname).toBe('/kontakt');
+        });
+
+        test('keeps a predictable keyboard order without trapping page focus', async ({
+            page,
+        }) => {
+            await page.setViewportSize({ width: 390, height: 844 });
+            await page.goto('/');
+            await page.getByRole('button', { name: 'Email prijava' }).click();
+
+            const emailInput = page.getByLabel('Email');
+            await expect(emailInput).toBeFocused();
+            await page.keyboard.press('Shift+Tab');
+            await expect(
+                page.getByRole('button', {
+                    name: 'Natrag na druge načine prijave',
+                }),
+            ).toBeFocused();
+            await page.keyboard.press('Tab');
+            await expect(emailInput).toBeFocused();
+            await page.keyboard.press('Tab');
+            await expect(page.getByLabel('Zaporka')).toBeFocused();
+            await page.keyboard.press('Tab');
+            await expect(
+                page.getByRole('button', { name: 'Prikaži zaporku' }),
+            ).toBeFocused();
+            await page.keyboard.press('Tab');
+            await expect(
+                page.getByRole('link', { name: 'Zaboravljena zaporka?' }),
+            ).toBeFocused();
+            await page.keyboard.press('Tab');
+            await expect(
+                page.getByRole('button', { name: 'Prijavi se' }),
+            ).toBeFocused();
+            await page.keyboard.press('Tab');
+            await expect(
+                page.getByRole('link', {
+                    name: 'Trebaš pomoć? Kontaktiraj podršku',
+                }),
+            ).toBeFocused();
+        });
+
+        test('submits email credentials without exposing tokens and preserves the protected route', async ({
+            page,
+        }) => {
+            const loginBodies: Array<Record<string, unknown>> = [];
+            await page.route('**/api/login', async (route) => {
+                loginBodies.push(route.request().postDataJSON());
+                await route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ ok: true }),
+                });
+            });
+            await page.goto('/notifications?filter=unread');
+            await page.getByRole('button', { name: 'Email prijava' }).click();
+            await page.getByLabel('Email').fill('farmer@example.com');
+            await page.getByLabel('Zaporka').fill('secret-password');
+
+            await page.getByRole('button', { name: 'Prijavi se' }).click();
+            await expect.poll(() => loginBodies.length).toBe(1);
+
+            expect(loginBodies[0]).toEqual({
+                email: 'farmer@example.com',
+                password: 'secret-password',
+            });
+            await expect(page).toHaveURL(/\/notifications\?filter=unread/);
+        });
+
+        for (const loginError of emailLoginErrors) {
+            test(`shows bounded ${loginError.code} recovery and retains the form`, async ({
+                page,
+            }) => {
+                await page.route('**/api/login', (route) =>
+                    route.fulfill({
+                        status: loginError.status,
+                        contentType: 'application/json',
+                        body: JSON.stringify({
+                            error: loginError.code,
+                            rawDetail: 'PRIVATE_UPSTREAM_LOGIN_DETAIL',
+                        }),
+                    }),
+                );
+                await page.goto('/');
+                await page
+                    .getByRole('button', { name: 'Email prijava' })
+                    .click();
+                const emailInput = page.getByLabel('Email');
+                const passwordInput = page.getByLabel('Zaporka');
+                await emailInput.fill('farmer@example.com');
+                await passwordInput.fill('secret-password');
+
+                await page.getByRole('button', { name: 'Prijavi se' }).click();
+
+                const errorFocusTarget = page.locator(
+                    '[data-farm-email-error]',
+                );
+                await expect(errorFocusTarget).toBeFocused();
+                await expect
+                    .poll(() =>
+                        errorFocusTarget.evaluate(
+                            (element) => getComputedStyle(element).boxShadow,
+                        ),
+                    )
+                    .not.toBe('none');
+                await expect(
+                    page
+                        .locator('[data-farm-email-login-form]')
+                        .getByRole('alert'),
+                ).toContainText(loginError.title);
+                await expect(errorFocusTarget).not.toContainText(
+                    'PRIVATE_UPSTREAM_LOGIN_DETAIL',
+                );
+                await expect(emailInput).toHaveValue('farmer@example.com');
+                await expect(passwordInput).toHaveValue('secret-password');
+
+                if (loginError.code === 'email_verification_required') {
+                    const verificationLink = page.getByRole('link', {
+                        name: 'Pošalji novu potvrdu emaila',
+                    });
+                    const verificationUrl = new URL(
+                        (await verificationLink.getAttribute('href')) ?? '',
+                    );
+                    expect(verificationUrl.pathname).toBe(
+                        '/prijava/potvrda-emaila/posalji',
+                    );
+                    expect(verificationUrl.searchParams.get('email')).toBe(
+                        'farmer@example.com',
+                    );
+                    await expectMinimumTouchTarget(verificationLink);
+                }
+            });
+        }
+
+        test('focuses the error again after the same failed retry', async ({
+            page,
+        }) => {
+            let attempts = 0;
+            await page.route('**/api/login', async (route) => {
+                attempts += 1;
+                await route.fulfill({
+                    status: 401,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ error: 'invalid_credentials' }),
+                });
+            });
+            await page.goto('/');
+            await page.getByRole('button', { name: 'Email prijava' }).click();
+            await page.getByLabel('Email').fill('farmer@example.com');
+            await page.getByLabel('Zaporka').fill('secret-password');
+            const submit = page.getByRole('button', { name: 'Prijavi se' });
+
+            await submit.click();
+            await expect(page.locator('[data-farm-email-error]')).toBeFocused();
+            await page.getByLabel('Zaporka').focus();
+            await submit.click();
+            await expect.poll(() => attempts).toBe(2);
+            await expect(page.locator('[data-farm-email-error]')).toBeFocused();
+        });
+
+        for (const viewport of [
+            { width: 320, height: 568 },
+            { width: 390, height: 844 },
+            { width: 430, height: 932 },
+        ]) {
+            test(`keeps long recovery usable at ${viewport.width}px`, async ({
+                page,
+            }) => {
+                await page.route('**/api/login', (route) =>
+                    route.fulfill({
+                        status: 503,
+                        contentType: 'application/json',
+                        body: JSON.stringify({ error: 'service_unavailable' }),
+                    }),
+                );
+                await page.setViewportSize(viewport);
+                await page.goto('/');
+                await page
+                    .getByRole('button', { name: 'Email prijava' })
+                    .click();
+                await page.getByLabel('Email').fill('farmer@example.com');
+                await page.getByLabel('Zaporka').fill('secret-password');
+                await page.getByRole('button', { name: 'Prijavi se' }).click();
+
+                await expect(
+                    page
+                        .locator('[data-farm-email-login-form]')
+                        .getByRole('alert'),
+                ).toContainText('Prijava trenutačno nije dostupna');
+                for (const input of [
+                    page.getByLabel('Email'),
+                    page.getByLabel('Zaporka'),
+                ]) {
+                    expect(
+                        Number.parseFloat(
+                            await input.evaluate(
+                                (element) => getComputedStyle(element).fontSize,
+                            ),
+                        ),
+                    ).toBeGreaterThanOrEqual(16);
+                }
+                expect(
+                    await page.evaluate(
+                        () =>
+                            document.documentElement.scrollWidth <=
+                            document.documentElement.clientWidth,
+                    ),
+                ).toBe(true);
+
+                for (const control of [
+                    page.getByRole('button', {
+                        name: 'Natrag na druge načine prijave',
+                    }),
+                    page.getByRole('button', { name: 'Prikaži zaporku' }),
+                    page.getByRole('link', { name: 'Zaboravljena zaporka?' }),
+                    page.getByRole('button', { name: 'Prijavi se' }),
+                    page.getByRole('link', {
+                        name: 'Trebaš pomoć? Kontaktiraj podršku',
+                    }),
+                ]) {
+                    await control.scrollIntoViewIfNeeded();
+                    await expectMinimumTouchTarget(control);
+                }
+            });
+        }
+
+        test('has no serious or critical accessibility violations in a long error state', async ({
+            page,
+        }) => {
+            await page.route('**/api/login', (route) =>
+                route.fulfill({
+                    status: 403,
+                    contentType: 'application/json',
+                    body: JSON.stringify({
+                        error: 'email_verification_required',
+                    }),
+                }),
+            );
+            await page.setViewportSize({ width: 390, height: 844 });
+            await page.goto('/');
+            await page.getByRole('button', { name: 'Email prijava' }).click();
+            await page.getByLabel('Email').fill('farmer@example.com');
+            await page.getByLabel('Zaporka').fill('secret-password');
+            await page.getByRole('button', { name: 'Prijavi se' }).click();
+            await expect(page.locator('[data-farm-email-error]')).toBeFocused();
+
+            const results = await new AxeBuilder({ page })
+                .withTags(['wcag2a', 'wcag2aa'])
+                .analyze();
+            const seriousViolations = results.violations.filter(
+                (violation) =>
+                    violation.impact === 'serious' ||
+                    violation.impact === 'critical',
+            );
             expect(
                 seriousViolations,
                 JSON.stringify(seriousViolations, null, 2),
