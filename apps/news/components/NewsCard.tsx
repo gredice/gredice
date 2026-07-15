@@ -1,4 +1,5 @@
 import type { Route } from 'next';
+import Link from 'next/link';
 import { formatNewsDate } from '../lib/news';
 
 export type NewsCardKind = 'blog' | 'changelog';
@@ -41,7 +42,7 @@ export function NewsCard({
 
     return (
         <article className="w-full">
-            <a
+            <Link
                 className={`news-card-view-transition grid overflow-hidden rounded-md border bg-card shadow-xs transition-colors hover:bg-muted/20 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring ${
                     entry.metaImageUrl
                         ? 'md:grid-cols-[minmax(0,1fr)_10rem]'
@@ -97,7 +98,7 @@ export function NewsCard({
                         />
                     </div>
                 ) : null}
-            </a>
+            </Link>
         </article>
     );
 }
