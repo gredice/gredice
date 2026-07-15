@@ -11,6 +11,7 @@ const operationStatuses = [
     'planned',
     'pendingVerification',
     'completed',
+    'blocked',
     'failed',
     'canceled',
 ] satisfies OperationsListStatus[];
@@ -28,6 +29,7 @@ test('operation list translates every operation status to Croatian', () => {
             'Planirano',
             'Čeka verifikaciju',
             'Završeno',
+            'Blokirano',
             'Neuspješno',
             'Otkazano',
         ],
@@ -47,6 +49,7 @@ test('operation list uses sowing-specific Croatian status labels', () => {
 
 test('operation list status colors distinguish success and failure states', () => {
     assert.equal(operationListStatusColor('completed'), 'success');
+    assert.equal(operationListStatusColor('blocked'), 'warning');
     assert.equal(operationListStatusColor('failed'), 'error');
     assert.equal(operationListStatusColor('canceled'), 'neutral');
 });

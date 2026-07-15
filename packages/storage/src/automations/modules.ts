@@ -1,7 +1,6 @@
 import type { EntityStandardized } from '../@types/EntityStandardized';
 import { getEntityFormatted } from '../repositories/entitiesRepo';
 import {
-    buildRaisedBedFieldPlantUpdatePayload,
     createEvent,
     knownEvents,
     knownEventTypes,
@@ -17,11 +16,17 @@ import {
 import {
     acceptOperation,
     createOperation,
+    createScheduledOperation,
     getFarmAcceptedOperationsByScheduleRange,
     getOperationById,
     getRaisedBedOperationsByScheduleRange,
 } from '../repositories/operationsRepo';
 import { getOutletOffers } from '../repositories/outletOffersRepo';
+import { getRaisedBedFieldsWithEvents } from '../repositories/raisedBedFieldsRepo';
+import {
+    withOperationScheduleTaskTransaction,
+    withPlantingScheduleTaskTransaction,
+} from '../repositories/scheduleTaskTransactionsRepo';
 import {
     queuePostTransplantWateringOperations,
     queueSeasonalSowingOfferOperations,
@@ -1037,7 +1042,83 @@ function validateRaisedBedFieldPlantAttributesConfig(
         errors.push('targetSowingLocation must be direct or greenhouse.');
     }
 
+    if (targetStatus && !automationPlantStatusTargets.has(targetStatus)) {
+        errors.push('targetStatus is not a supported plant lifecycle status.');
+    }
+
     return errors;
+}
+
+const automationPlantStatusTargets = new Set([
+    'new',
+    'planned',
+    'sowed',
+    'sprouted',
+    'firstFlowers',
+    'firstFruitSet',
+    'notSprouted',
+    'died',
+    'ready',
+    'harvested',
+    'removed',
+]);
+
+const plantingEvidenceStatuses = new Set([
+    'blocked',
+    'pendingVerification',
+    'sowed',
+    'sprouted',
+    'firstFlowers',
+    'firstFruitSet',
+    'notSprouted',
+    'died',
+    'ready',
+    'harvested',
+    'removed',
+]);
+
+function canAutomationUpdatePlantStatus(
+    currentStatus: string | null | undefined,
+    targetStatus: string,
+) {
+    if (!currentStatus || !automationPlantStatusTargets.has(targetStatus)) {
+        return false;
+    }
+    if (currentStatus === targetStatus) {
+        return true;
+    }
+    if (
+        plantingEvidenceStatuses.has(currentStatus) &&
+        (targetStatus === 'new' || targetStatus === 'planned')
+    ) {
+        return false;
+    }
+    if (currentStatus === 'blocked') {
+        return false;
+    }
+    return true;
+}
+
+function contextEventPlantCycle(
+    field: {
+        plantCycles: Array<{ plantPlaceEventId: number }>;
+    },
+    event: AutomationSourceEvent,
+) {
+    const sourceEventId = event.id;
+    if (!sourceEventId) {
+        return null;
+    }
+    return (
+        field.plantCycles
+            .filter(
+                (plantCycle) => plantCycle.plantPlaceEventId <= sourceEventId,
+            )
+            .sort(
+                (left, right) =>
+                    right.plantPlaceEventId - left.plantPlaceEventId,
+            )[0] ?? null
+    );
 }
 
 async function resolveOperationRaisedBedFieldTarget(
@@ -1083,11 +1164,28 @@ async function resolveOperationRaisedBedFieldTarget(
         };
     }
 
+    const sourcePlantCycle = contextEventPlantCycle(field, event);
+    if (!sourcePlantCycle) {
+        return {
+            ok: false as const,
+            result: skip(
+                'Operation source event has no matching plant cycle.',
+                {
+                    operationId,
+                    raisedBedId: operation.raisedBedId,
+                    raisedBedFieldId: operation.raisedBedFieldId,
+                    sourceEventId: event.id ?? null,
+                },
+            ),
+        };
+    }
+
     return {
         ok: true as const,
         operationId,
         raisedBed,
         field,
+        sourcePlantCycleEventId: sourcePlantCycle.plantPlaceEventId,
     };
 }
 
@@ -1944,20 +2042,52 @@ const createFarmInventoryOperationsActionModule: AutomationModule = {
                 ) {
                     skippedExistingCount += 1;
                     if (existingOperation && !existingOperation.scheduledDate) {
-                        repairedScheduledCount += 1;
-                        if (!context.dryRun) {
-                            await createEvent(
-                                knownEvents.operations.scheduledV1(
-                                    existingOperation.id.toString(),
-                                    {
-                                        scheduledDate:
-                                            scheduledDate.toISOString(),
+                        if (context.dryRun) {
+                            if (
+                                existingOperation.status === 'new' ||
+                                existingOperation.status === 'planned'
+                            ) {
+                                repairedScheduledCount += 1;
+                            }
+                        } else {
+                            const repaired =
+                                await withOperationScheduleTaskTransaction(
+                                    existingOperation.id,
+                                    async (transaction) => {
+                                        const currentOperation =
+                                            await getOperationById(
+                                                existingOperation.id,
+                                                transaction,
+                                            );
+                                        if (
+                                            currentOperation.status !== 'new' &&
+                                            currentOperation.status !==
+                                                'planned'
+                                        ) {
+                                            return false;
+                                        }
+                                        if (currentOperation.scheduledDate) {
+                                            return false;
+                                        }
+                                        await createEvent(
+                                            knownEvents.operations.scheduledV1(
+                                                currentOperation.id.toString(),
+                                                {
+                                                    scheduledDate:
+                                                        scheduledDate.toISOString(),
+                                                },
+                                            ),
+                                            transaction,
+                                        );
+                                        return true;
                                     },
-                                ),
-                            );
-                            repairedScheduledOperationIds.push(
-                                existingOperation.id,
-                            );
+                                );
+                            if (repaired) {
+                                repairedScheduledCount += 1;
+                                repairedScheduledOperationIds.push(
+                                    existingOperation.id,
+                                );
+                            }
                         }
                     }
                     continue;
@@ -1967,17 +2097,14 @@ const createFarmInventoryOperationsActionModule: AutomationModule = {
                     continue;
                 }
 
-                const operationId = await createOperation({
-                    entityId: operationConfig.entityId,
-                    entityTypeName: operationConfig.entityTypeName,
-                    farmId: farm.id,
-                    timestamp: scheduledDate,
-                });
-                await acceptOperation(operationId);
-                await createEvent(
-                    knownEvents.operations.scheduledV1(operationId.toString(), {
-                        scheduledDate: scheduledDate.toISOString(),
-                    }),
+                const operationId = await createScheduledOperation(
+                    {
+                        entityId: operationConfig.entityId,
+                        entityTypeName: operationConfig.entityTypeName,
+                        farmId: farm.id,
+                        timestamp: scheduledDate,
+                    },
+                    { accept: true, scheduledDate },
                 );
                 createdOperationIds.push(operationId);
                 existingOperationKeys.add(operationKey);
@@ -2220,17 +2347,42 @@ const createGreenhouseSeedlingWateringOperationsActionModule: AutomationModule =
                         scheduledDate: scheduledDate.toISOString(),
                     });
                     if (!existingOperation.scheduledDate && !context.dryRun) {
-                        await createEvent(
-                            knownEvents.operations.scheduledV1(
-                                existingOperation.id.toString(),
-                                {
-                                    scheduledDate: scheduledDate.toISOString(),
+                        const repaired =
+                            await withOperationScheduleTaskTransaction(
+                                existingOperation.id,
+                                async (transaction) => {
+                                    const currentOperation =
+                                        await getOperationById(
+                                            existingOperation.id,
+                                            transaction,
+                                        );
+                                    if (
+                                        currentOperation.status !== 'new' &&
+                                        currentOperation.status !== 'planned'
+                                    ) {
+                                        return false;
+                                    }
+                                    if (currentOperation.scheduledDate) {
+                                        return false;
+                                    }
+                                    await createEvent(
+                                        knownEvents.operations.scheduledV1(
+                                            currentOperation.id.toString(),
+                                            {
+                                                scheduledDate:
+                                                    scheduledDate.toISOString(),
+                                            },
+                                        ),
+                                        transaction,
+                                    );
+                                    return true;
                                 },
-                            ),
-                        );
-                        repairedScheduledOperationIds.push(
-                            existingOperation.id,
-                        );
+                            );
+                        if (repaired) {
+                            repairedScheduledOperationIds.push(
+                                existingOperation.id,
+                            );
+                        }
                     }
                     continue;
                 }
@@ -2239,17 +2391,14 @@ const createGreenhouseSeedlingWateringOperationsActionModule: AutomationModule =
                     continue;
                 }
 
-                const operationId = await createOperation({
-                    entityId: operationConfig.entityId,
-                    entityTypeName: operationConfig.entityTypeName,
-                    farmId: farm.farmId,
-                    timestamp: scheduledDate,
-                });
-                await acceptOperation(operationId);
-                await createEvent(
-                    knownEvents.operations.scheduledV1(operationId.toString(), {
-                        scheduledDate: scheduledDate.toISOString(),
-                    }),
+                const operationId = await createScheduledOperation(
+                    {
+                        entityId: operationConfig.entityId,
+                        entityTypeName: operationConfig.entityTypeName,
+                        farmId: farm.farmId,
+                        timestamp: scheduledDate,
+                    },
+                    { accept: true, scheduledDate },
                 );
                 createdOperationIds.push(operationId);
             }
@@ -2418,19 +2567,53 @@ const createRaisedBedOperationsActionModule: AutomationModule = {
             if (existingOperation || existingOperationKeys.has(operationKey)) {
                 skippedExistingCount += 1;
                 if (existingOperation && !context.dryRun) {
-                    if (acceptOnCreate && !existingOperation.isAccepted) {
-                        await acceptOperation(existingOperation.id);
+                    const repaired = await withOperationScheduleTaskTransaction(
+                        existingOperation.id,
+                        async (transaction) => {
+                            const currentOperation = await getOperationById(
+                                existingOperation.id,
+                                transaction,
+                            );
+                            if (
+                                currentOperation.status !== 'new' &&
+                                currentOperation.status !== 'planned'
+                            ) {
+                                return {
+                                    accepted: false,
+                                    scheduled: false,
+                                };
+                            }
+
+                            let scheduled = false;
+                            if (!currentOperation.scheduledDate) {
+                                await createEvent(
+                                    knownEvents.operations.scheduledV1(
+                                        currentOperation.id.toString(),
+                                        {
+                                            scheduledDate:
+                                                scheduledDate.toISOString(),
+                                        },
+                                    ),
+                                    transaction,
+                                );
+                                scheduled = true;
+                            }
+
+                            const accepted =
+                                acceptOnCreate && !currentOperation.isAccepted;
+                            if (accepted) {
+                                await acceptOperation(
+                                    currentOperation.id,
+                                    transaction,
+                                );
+                            }
+                            return { accepted, scheduled };
+                        },
+                    );
+                    if (repaired.accepted) {
                         repairedAcceptedOperationIds.push(existingOperation.id);
                     }
-                    if (!existingOperation.scheduledDate) {
-                        await createEvent(
-                            knownEvents.operations.scheduledV1(
-                                existingOperation.id.toString(),
-                                {
-                                    scheduledDate: scheduledDate.toISOString(),
-                                },
-                            ),
-                        );
+                    if (repaired.scheduled) {
                         repairedScheduledOperationIds.push(
                             existingOperation.id,
                         );
@@ -2443,21 +2626,16 @@ const createRaisedBedOperationsActionModule: AutomationModule = {
                 continue;
             }
 
-            const operationId = await createOperation({
-                entityId,
-                entityTypeName,
-                accountId: raisedBed.accountId,
-                gardenId: raisedBed.gardenId,
-                raisedBedId: raisedBed.id,
-                timestamp: scheduledDate,
-            });
-            if (acceptOnCreate) {
-                await acceptOperation(operationId);
-            }
-            await createEvent(
-                knownEvents.operations.scheduledV1(operationId.toString(), {
-                    scheduledDate: scheduledDate.toISOString(),
-                }),
+            const operationId = await createScheduledOperation(
+                {
+                    entityId,
+                    entityTypeName,
+                    accountId: raisedBed.accountId,
+                    gardenId: raisedBed.gardenId,
+                    raisedBedId: raisedBed.id,
+                    timestamp: scheduledDate,
+                },
+                { accept: acceptOnCreate, scheduledDate },
             );
             createdOperationIds.push(operationId);
             existingOperationKeys.add(operationKey);
@@ -2533,6 +2711,23 @@ async function updateRaisedBedFieldPlantAttributes({
         return target.result;
     }
 
+    if (targetStatus && !automationPlantStatusTargets.has(targetStatus)) {
+        throw new AutomationModuleExecutionError(
+            'Plant attribute action has an unsupported targetStatus.',
+            'invalid_config',
+        );
+    }
+    if (
+        targetStatus &&
+        !canAutomationUpdatePlantStatus(target.field.plantStatus, targetStatus)
+    ) {
+        return skip('Plant lifecycle transition is no longer allowed.', {
+            operationId: target.operationId,
+            previousStatus: target.field.plantStatus ?? null,
+            targetStatus,
+        });
+    }
+
     const statusChanged =
         Boolean(targetStatus) && target.field.plantStatus !== targetStatus;
     const sowingLocationChanged =
@@ -2568,30 +2763,116 @@ async function updateRaisedBedFieldPlantAttributes({
         });
     }
 
-    const aggregateId = `${target.raisedBed.id}|${target.field.positionIndex}`;
-    if (sowingLocationChanged && targetSowingLocation) {
-        await createEvent(
-            knownEvents.raisedBedFields.plantScheduleV1(aggregateId, {
-                scheduledDate:
-                    target.field.plantScheduledDate?.toISOString() ?? null,
-                sowingLocation: targetSowingLocation,
-            }),
-        );
-    }
-
-    if (statusChanged && targetStatus) {
-        await createEvent(
-            knownEvents.raisedBedFields.plantUpdateV1(
-                aggregateId,
-                buildRaisedBedFieldPlantUpdatePayload(
+    return withPlantingScheduleTaskTransaction(
+        target.raisedBed.id,
+        target.field.positionIndex,
+        async (transaction) => {
+            const currentField = (
+                await getRaisedBedFieldsWithEvents(
+                    target.raisedBed.id,
+                    transaction,
+                )
+            ).find(
+                (candidate) =>
+                    candidate.id === target.field.id && candidate.active,
+            );
+            if (!currentField) {
+                return skip('Operation target field is no longer active.', {
+                    operationId: target.operationId,
+                    raisedBedId: target.raisedBed.id,
+                    positionIndex: target.field.positionIndex,
+                });
+            }
+            const activePlantCycle = currentField.plantCycles.find(
+                (plantCycle) => plantCycle.active,
+            );
+            if (
+                activePlantCycle?.plantPlaceEventId !==
+                target.sourcePlantCycleEventId
+            ) {
+                return skip(
+                    'Operation target plant cycle changed before the action ran.',
+                    {
+                        operationId: target.operationId,
+                        raisedBedId: target.raisedBed.id,
+                        positionIndex: target.field.positionIndex,
+                        expectedPlantCycleEventId:
+                            target.sourcePlantCycleEventId,
+                        currentPlantCycleEventId:
+                            activePlantCycle?.plantPlaceEventId ?? null,
+                    },
+                );
+            }
+            if (
+                targetStatus &&
+                !canAutomationUpdatePlantStatus(
+                    currentField.plantStatus,
                     targetStatus,
-                    target.field.assignedUserIds,
-                ),
-            ),
-        );
-    }
+                )
+            ) {
+                return skip(
+                    'Plant lifecycle transition is no longer allowed.',
+                    {
+                        operationId: target.operationId,
+                        previousStatus: currentField.plantStatus ?? null,
+                        targetStatus,
+                    },
+                );
+            }
 
-    return success(output);
+            const currentStatusChanged =
+                Boolean(targetStatus) &&
+                currentField.plantStatus !== targetStatus;
+            const currentSowingLocationChanged =
+                Boolean(targetSowingLocation) &&
+                currentField.sowingLocation !== targetSowingLocation;
+            if (!currentStatusChanged && !currentSowingLocationChanged) {
+                return skip(noChangeReason, {
+                    operationId: target.operationId,
+                    targetStatus: targetStatus ?? null,
+                    targetSowingLocation: targetSowingLocation ?? null,
+                });
+            }
+
+            const currentOutput = {
+                operationId: target.operationId,
+                raisedBedId: target.raisedBed.id,
+                positionIndex: currentField.positionIndex,
+                previousStatus: currentField.plantStatus ?? null,
+                targetStatus: targetStatus ?? null,
+                previousSowingLocation: currentField.sowingLocation,
+                targetSowingLocation: targetSowingLocation ?? null,
+                updatedAttributes: [
+                    ...(currentStatusChanged ? ['plantStatus'] : []),
+                    ...(currentSowingLocationChanged ? ['sowingLocation'] : []),
+                ],
+            };
+            const aggregateId = `${target.raisedBed.id}|${currentField.positionIndex}`;
+
+            if (currentSowingLocationChanged && targetSowingLocation) {
+                await createEvent(
+                    knownEvents.raisedBedFields.plantScheduleV1(aggregateId, {
+                        scheduledDate:
+                            currentField.plantScheduledDate?.toISOString() ??
+                            null,
+                        sowingLocation: targetSowingLocation,
+                    }),
+                    transaction,
+                );
+            }
+
+            if (currentStatusChanged && targetStatus) {
+                await createEvent(
+                    knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+                        status: targetStatus,
+                    }),
+                    transaction,
+                );
+            }
+
+            return success(currentOutput);
+        },
+    );
 }
 
 const updateRaisedBedFieldPlantAttributesActionModule: AutomationModule = {

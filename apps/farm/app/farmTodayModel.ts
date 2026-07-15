@@ -20,6 +20,7 @@ import {
     getOperationTaskState,
     getPlantingTaskState,
     getScheduleTaskSummary,
+    isActionableTaskState,
     type ScheduleTaskState,
 } from './schedule/scheduleTaskState';
 
@@ -38,6 +39,8 @@ export type FarmTodayPlantingInput = {
     active?: boolean;
     assignedUserId?: string | null;
     assignedUserIds?: string[];
+    blockedAt?: DateInput;
+    blockReasonLabel?: string | null;
     id: number;
     plantScheduledDate?: DateInput;
     plantSortId?: number | null;
@@ -53,11 +56,14 @@ export type FarmTodayRaisedBedInput = {
     fields: FarmTodayPlantingInput[];
     id: number;
     physicalId?: string | null;
+    status?: string | null;
 };
 
 export type FarmTodayOperationInput = {
     assignedUserId?: string | null;
     assignedUserIds?: string[];
+    blockedAt?: DateInput;
+    blockReasonLabel?: string | null;
     completedAt?: DateInput;
     entityId: number;
     farmId: number | null;
@@ -112,6 +118,10 @@ export type FarmTodayTaskLocation =
 type FarmTodayTaskBase = {
     ageIndicator: ScheduleTaskAgeIndicator | null;
     assignment: FarmTodayTaskAssignment;
+    blocker?: {
+        occurredAt: string | null;
+        reason: string | null;
+    };
     durationMinutes: number | null;
     href: string;
     key: string;
@@ -143,6 +153,7 @@ export type FarmTodayPlantingTask = FarmTodayTaskBase & {
 export type FarmTodayTask = FarmTodayOperationTask | FarmTodayPlantingTask;
 
 export type FarmTodayAttentionReason =
+    | 'blocked'
     | 'canceled'
     | 'failed'
     | 'overdue'
@@ -337,6 +348,9 @@ function buildPlantingCandidates({
         if (!raisedBed || !field.plantSortId || !state) {
             continue;
         }
+        if (raisedBed.status === 'abandoned' && isActionableTaskState(state)) {
+            continue;
+        }
 
         authorizedCandidateCount += 1;
         const assignment = getSchedulePlantingTaskAssignment(field, userId);
@@ -354,6 +368,13 @@ function buildPlantingCandidates({
         tasks.push({
             ...buildTaskTiming(state, field.plantScheduledDate, referenceDate),
             assignment,
+            blocker:
+                state === 'blocked'
+                    ? {
+                          occurredAt: toIsoString(field.blockedAt),
+                          reason: field.blockReasonLabel?.trim() || null,
+                      }
+                    : undefined,
             durationMinutes: PLANTING_TASK_DURATION_MINUTES,
             fieldId: field.id,
             href: `/raised-beds/${field.raisedBedId}`,
@@ -365,7 +386,9 @@ function buildPlantingCandidates({
                 positionIndex: field.positionIndex,
                 raisedBed,
             }),
-            occurredAt: toIsoString(field.plantSowDate),
+            occurredAt: toIsoString(
+                state === 'blocked' ? field.blockedAt : field.plantSowDate,
+            ),
             plantSortId: field.plantSortId,
             proofRequirements: {
                 images: 'none',
@@ -488,6 +511,15 @@ function buildOperationCandidates({
             continue;
         }
 
+        const state = getOperationTaskState(operation.status);
+        const raisedBed =
+            typeof operation.raisedBedId === 'number'
+                ? raisedBedById.get(operation.raisedBedId)
+                : undefined;
+        if (raisedBed?.status === 'abandoned' && isActionableTaskState(state)) {
+            continue;
+        }
+
         authorizedCandidateCount += 1;
         const assignment = getScheduleOperationTaskAssignment(
             operation,
@@ -497,17 +529,12 @@ function buildOperationCandidates({
             continue;
         }
 
-        const state = getOperationTaskState(operation.status);
         const operationDefinition = operationDefinitionById.get(
             operation.entityId,
         );
         if (operationDefinitions.status === 'ready' && !operationDefinition) {
             issues.add('operationDefinitionMissing');
         }
-        const raisedBed =
-            typeof operation.raisedBedId === 'number'
-                ? raisedBedById.get(operation.raisedBedId)
-                : undefined;
         const raisedBedField = raisedBed?.fields.find(
             (field) => field.id === operation.raisedBedFieldId,
         );
@@ -541,6 +568,13 @@ function buildOperationCandidates({
         tasks.push({
             ...buildTaskTiming(state, operation.scheduledDate, referenceDate),
             assignment,
+            blocker:
+                state === 'blocked'
+                    ? {
+                          occurredAt: toIsoString(operation.blockedAt),
+                          reason: operation.blockReasonLabel?.trim() || null,
+                      }
+                    : undefined,
             durationMinutes: operationDefinition
                 ? getOperationDurationMinutes(operationDefinition)
                 : null,
@@ -552,7 +586,11 @@ function buildOperationCandidates({
                 operationDefinition?.information?.name ??
                 `Radnja #${operation.entityId}`,
             location,
-            occurredAt: toIsoString(operation.completedAt),
+            occurredAt: toIsoString(
+                state === 'blocked'
+                    ? operation.blockedAt
+                    : operation.completedAt,
+            ),
             operationId: operation.id,
             proofRequirements: getScheduleOperationCompletionRequirements(
                 operationDefinition,
@@ -588,7 +626,9 @@ function compareFocusTasks(left: FarmTodayTask, right: FarmTodayTask) {
 function getAttentionReasons(task: FarmTodayTask) {
     const reasons: FarmTodayAttentionReason[] = [];
 
-    if (task.state === 'failed') {
+    if (task.state === 'blocked') {
+        reasons.push('blocked');
+    } else if (task.state === 'failed') {
         reasons.push('failed');
     } else if (task.state === 'canceled') {
         reasons.push('canceled');
@@ -608,19 +648,22 @@ function getAttentionReasons(task: FarmTodayTask) {
 }
 
 function attentionPriority(item: FarmTodayAttentionItem) {
-    if (item.reasons.includes('failed')) {
+    if (item.reasons.includes('blocked')) {
         return 0;
     }
-    if (item.reasons.includes('canceled')) {
+    if (item.reasons.includes('failed')) {
         return 1;
     }
-    if (item.reasons.includes('pendingVerification')) {
+    if (item.reasons.includes('canceled')) {
         return 2;
     }
-    if (item.reasons.includes('overdue')) {
+    if (item.reasons.includes('pendingVerification')) {
         return 3;
     }
-    return 4;
+    if (item.reasons.includes('overdue')) {
+        return 4;
+    }
+    return 5;
 }
 
 function compareAttentionItems(
@@ -645,7 +688,12 @@ function getWorkState(
         return authorizedCandidateCount > 0 ? 'noAssignedWork' : 'empty';
     }
 
-    if (summary.remaining === 0 && summary.pendingVerification === 0) {
+    const hasBlockedWork = tasks.some((task) => task.state === 'blocked');
+    if (
+        summary.remaining === 0 &&
+        summary.pendingVerification === 0 &&
+        !hasBlockedWork
+    ) {
         return 'allDone';
     }
 

@@ -11,12 +11,16 @@ import { cx } from '@gredice/ui/utils';
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { raisedBedFieldUpdatePlant } from '../../app/(actions)/raisedBedFieldsActions';
 import { raisedBedFieldPlantStatusItems } from '../../app/admin/raised-beds/[raisedBedId]/RaisedBedFieldPlantStatusSelector';
+import { canUpdatePlantingTaskStatus } from '../../app/admin/schedule/scheduleShared';
 import type { RaisedBedFieldDateItem } from './RaisedBedFieldDatesPopover';
 
 type RaisedBedFieldStatusDateChipProps = {
     raisedBedId: number;
     positionIndex: number;
     status: string;
+    expectedPlantCycleEventId: number;
+    expectedPlantCycleVersionEventId: number;
+    expectedPlantSortId: number;
     date: string | null;
     dateItems?: RaisedBedFieldDateItem[];
     className?: string;
@@ -86,6 +90,9 @@ export function RaisedBedFieldStatusDateChip({
     raisedBedId,
     positionIndex,
     status,
+    expectedPlantCycleEventId,
+    expectedPlantCycleVersionEventId,
+    expectedPlantSortId,
     date,
     dateItems = [],
     className,
@@ -133,6 +140,9 @@ export function RaisedBedFieldStatusDateChip({
                     raisedBedId,
                     positionIndex,
                     status: selectedStatus,
+                    expectedPlantCycleEventId,
+                    expectedPlantCycleVersionEventId,
+                    expectedPlantSortId,
                     timestamp: selectedDate
                         ? dateInputToTimestamp(selectedDate)
                         : undefined,
@@ -196,7 +206,9 @@ export function RaisedBedFieldStatusDateChip({
                     label="Stanje"
                     value={selectedStatus}
                     onValueChange={handleStatusChange}
-                    items={raisedBedFieldPlantStatusItems}
+                    items={raisedBedFieldPlantStatusItems.filter((item) =>
+                        canUpdatePlantingTaskStatus(status, item.value),
+                    )}
                 />
                 <Input
                     fullWidth

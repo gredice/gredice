@@ -16,11 +16,17 @@ export function useRaisedBedFieldUpdateStatus() {
     return useMutation({
         mutationKey,
         mutationFn: async ({
+            expectedPlantCycleEventId,
+            expectedPlantCycleVersionEventId,
+            expectedPlantSortId,
             raisedBedId,
             positionIndex,
             status,
             timestamp,
         }: {
+            expectedPlantCycleEventId: number;
+            expectedPlantCycleVersionEventId: number;
+            expectedPlantSortId: number;
             raisedBedId: number;
             positionIndex: number;
             status: string;
@@ -54,6 +60,9 @@ export function useRaisedBedFieldUpdateStatus() {
                     positionIndex: positionIndex.toString(),
                 },
                 json: {
+                    expectedPlantCycleEventId,
+                    expectedPlantCycleVersionEventId,
+                    expectedPlantSortId,
                     status,
                     timestamp,
                 },

@@ -79,6 +79,7 @@ export const FIELD_STATUSES_TO_INCLUDE = new Set([
     'planned',
     'pendingVerification',
     'sowed',
+    'blocked',
 ]);
 export const FIELD_COMPLETED_STATUSES = new Set(['sowed']);
 export const OPERATION_STATUSES_TO_INCLUDE = new Set([
@@ -86,6 +87,7 @@ export const OPERATION_STATUSES_TO_INCLUDE = new Set([
     'planned',
     'pendingVerification',
     'completed',
+    'blocked',
     'canceled',
     'cancelled',
 ]);
@@ -106,6 +108,10 @@ export function isFieldPendingVerification(status?: string) {
     return status === 'pendingVerification';
 }
 
+export function isFieldBlocked(status?: string) {
+    return status === 'blocked';
+}
+
 export function isOperationCompleted(status?: string) {
     return status === 'completed';
 }
@@ -114,8 +120,117 @@ export function isOperationPendingVerification(status?: string) {
     return status === 'pendingVerification';
 }
 
+export function isOperationBlocked(status?: string) {
+    return status === 'blocked';
+}
+
 export function isOperationCancelled(status?: string) {
     return status === 'canceled' || status === 'cancelled';
+}
+
+const recoverableOperationTaskStatuses = new Set([
+    'new',
+    'planned',
+    'failed',
+    'blocked',
+]);
+const directlyEditableOperationTaskStatuses = new Set([
+    'new',
+    'planned',
+    'failed',
+]);
+const recoverablePlantingTaskStatuses = new Set(['new', 'planned', 'blocked']);
+
+export function canRescheduleOperationTask(status?: string | null) {
+    return Boolean(status && recoverableOperationTaskStatuses.has(status));
+}
+
+export function canAcceptOperationTask(status?: string | null) {
+    return status === 'new' || status === 'planned';
+}
+
+export function canCancelOperationTask(status?: string | null) {
+    return Boolean(status && recoverableOperationTaskStatuses.has(status));
+}
+
+export function canSwitchOperationTaskEntity(status?: string | null) {
+    return Boolean(status && directlyEditableOperationTaskStatuses.has(status));
+}
+
+export function canUnacceptOperationTask(status?: string | null) {
+    return Boolean(status && directlyEditableOperationTaskStatuses.has(status));
+}
+
+export function canAcceptPlantingTask(status?: string | null) {
+    return status === 'new' || status === 'planned';
+}
+
+export function canSwitchPlantingTaskSort(status?: string | null) {
+    return status === 'new' || status === 'planned';
+}
+
+export function canReschedulePlantingTask(status?: string | null) {
+    return Boolean(status && recoverablePlantingTaskStatuses.has(status));
+}
+
+export function canCancelPlantingTask(status?: string | null) {
+    return Boolean(status && recoverablePlantingTaskStatuses.has(status));
+}
+
+const plantingTaskEvidenceStatuses = new Set([
+    'blocked',
+    'pendingVerification',
+    'sowed',
+    'sprouted',
+    'firstFlowers',
+    'firstFruitSet',
+    'notSprouted',
+    'died',
+    'ready',
+    'harvested',
+    'removed',
+]);
+
+export function canUpdatePlantingTaskStatus(
+    currentStatus?: string | null,
+    nextStatus?: string | null,
+) {
+    if (!currentStatus || !nextStatus) {
+        return false;
+    }
+    if (currentStatus === nextStatus) {
+        return true;
+    }
+    if (nextStatus === 'blocked' || nextStatus === 'pendingVerification') {
+        return false;
+    }
+    if (
+        plantingTaskEvidenceStatuses.has(currentStatus) &&
+        (nextStatus === 'new' || nextStatus === 'planned')
+    ) {
+        return false;
+    }
+    if (currentStatus === 'blocked') {
+        return false;
+    }
+
+    return true;
+}
+
+export function activePlantCycleEventId(field: {
+    plantCycles?: Array<{
+        active: boolean;
+        plantPlaceEventId: number;
+        endedEventId: number;
+    }>;
+}) {
+    return field.plantCycles?.find((cycle) => cycle.active)?.plantPlaceEventId;
+}
+
+export function activePlantCycleVersionEventId(field: {
+    plantCycles?: Array<{ active: boolean; endedEventId: number }>;
+}) {
+    return field.plantCycles?.find((cycle) => cycle.active)?.endedEventId;
 }
 
 export function formatMinutes(minutes: number, hideUnit = false) {

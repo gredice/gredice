@@ -91,6 +91,7 @@ const RAISED_BED_FIELD_EVENT_TYPES = [
     knownEventTypes.raisedBedFields.plantPlace,
     knownEventTypes.raisedBedFields.plantSchedule,
     knownEventTypes.raisedBedFields.plantUpdate,
+    knownEventTypes.raisedBedFields.plantBlock,
     knownEventTypes.raisedBedFields.plantReplaceSort,
 ] as const;
 

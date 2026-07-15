@@ -21,6 +21,7 @@ import {
     groupRaisedBedsForSchedule,
     PLANTING_TASK_DURATION_MINUTES,
 } from './scheduleShared';
+import { getSchedulePlantingTaskIdentity } from './scheduleTaskIdentity';
 
 type FarmRaisedBedField = FarmScheduleDayData['scheduledFields'][number];
 
@@ -177,23 +178,29 @@ export function FarmSchedulePlantingsSection({
                                     const plantSort = field.plantSortId
                                         ? plantSortById.get(field.plantSortId)
                                         : undefined;
+                                    const plantingIdentity =
+                                        getSchedulePlantingTaskIdentity(field);
 
                                     return (
                                         <FarmSchedulePlantingTaskCard
                                             key={field.id}
                                             completionAction={
-                                                <CompletePlantingModal
-                                                    label={field.label}
-                                                    raisedBedId={
-                                                        field.raisedBedId
-                                                    }
-                                                    positionIndex={
-                                                        field.positionIndex
-                                                    }
-                                                />
+                                                plantingIdentity ? (
+                                                    <CompletePlantingModal
+                                                        {...plantingIdentity}
+                                                        label={field.label}
+                                                        raisedBedId={
+                                                            field.raisedBedId
+                                                        }
+                                                        positionIndex={
+                                                            field.positionIndex
+                                                        }
+                                                    />
+                                                ) : undefined
                                             }
                                             field={field}
                                             label={field.label}
+                                            plantingIdentity={plantingIdentity}
                                             plantSort={plantSort}
                                             selectedDateKey={selectedDateKey}
                                             userId={userId}

@@ -20,7 +20,6 @@ import {
     abandonRaisedBed,
     acquireGardenPreviewCaptureLease,
     addGardenBoxInventoryItem,
-    buildRaisedBedFieldPlantUpdatePayload,
     CannotLikeOwnGardenError,
     cancelGardenDiaryOperation,
     cancelGardenDiaryRaisedBedField,
@@ -62,6 +61,7 @@ import {
     getRaisedBedAiHistoryEntries,
     getRaisedBedDiaryEntries,
     getRaisedBedFieldDiaryEntries,
+    getRaisedBedFieldsWithEvents,
     getRaisedBedIdsByAccount,
     getRaisedBedSensors,
     getRaisedBedsForGardens,
@@ -88,6 +88,7 @@ import {
     updateGardenStack,
     updateRaisedBed,
     upsertGardenOpenedAt,
+    withPlantingScheduleTaskTransaction,
 } from '@gredice/storage';
 import { del, put } from '@vercel/blob';
 import { type Context, Hono } from 'hono';
@@ -178,9 +179,30 @@ const storeBlockInGardenBoxBodySchema = z.object({
     blockIndex: z.number().int().min(0),
 });
 
-const rescheduleDiaryItemBodySchema = z.object({
-    scheduledDate: z.string().trim().min(1),
+const operationDiaryIdentityBodySchema = z.object({
+    expectedEntityId: z.number().int().positive(),
+    expectedTaskVersionEventId: z.number().int().nonnegative(),
 });
+
+const plantingDiaryIdentityBodySchema = z.object({
+    expectedPlantCycleEventId: z.number().int().positive(),
+    expectedPlantSortId: z.number().int().positive(),
+});
+
+const plantingDiaryAttemptIdentityBodySchema =
+    plantingDiaryIdentityBodySchema.extend({
+        expectedPlantCycleVersionEventId: z.number().int().positive(),
+    });
+
+const rescheduleOperationDiaryItemBodySchema =
+    operationDiaryIdentityBodySchema.extend({
+        scheduledDate: z.string().trim().min(1),
+    });
+
+const reschedulePlantingDiaryItemBodySchema =
+    plantingDiaryAttemptIdentityBodySchema.extend({
+        scheduledDate: z.string().trim().min(1),
+    });
 
 const visitSummarySeenBodySchema = z.object({
     factsHash: z.string().trim().min(1).max(128).nullable().optional(),
@@ -432,6 +454,12 @@ function serializeGardenOperation(
                       operation.createdAt.toISOString(),
               }
             : null,
+        operation.blockedAt
+            ? {
+                  status: 'blocked',
+                  changedAt: operation.blockedAt.toISOString(),
+              }
+            : null,
         operation.completedAt
             ? {
                   status: 'pendingVerification',
@@ -455,6 +483,7 @@ function serializeGardenOperation(
     return {
         id: operation.id,
         entityId: operation.entityId,
+        taskVersionEventId: operation.taskVersionEventId,
         raisedBedId: operation.raisedBedId,
         raisedBedFieldId: operation.raisedBedFieldId,
         status: timelineStatus,
@@ -465,6 +494,10 @@ function serializeGardenOperation(
         verifiedAt: operation.verifiedAt?.toISOString() ?? null,
         canceledAt: operation.canceledAt?.toISOString() ?? null,
         cancellationReason: operation.cancelReason ?? null,
+        blockedAt: operation.blockedAt?.toISOString() ?? null,
+        blockReasonLabel: operation.blockReasonLabel ?? null,
+        blockNote: operation.blockNote ?? null,
+        blockImageUrls: operation.blockImageUrls ?? [],
         imageUrls: evidence.imageUrls,
         completionNotes: evidence.completionNotes,
         targetLabel:
@@ -1139,11 +1172,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 operationId: z.string(),
             }),
         ),
-        zValidator('json', rescheduleDiaryItemBodySchema),
+        zValidator('json', rescheduleOperationDiaryItemBodySchema),
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId, operationId } = context.req.valid('param');
-            const { scheduledDate } = context.req.valid('json');
+            const {
+                expectedEntityId,
+                expectedTaskVersionEventId,
+                scheduledDate,
+            } = context.req.valid('json');
             const gardenIdNumber = Number.parseInt(gardenId, 10);
             const operationIdNumber = Number.parseInt(operationId, 10);
 
@@ -1159,6 +1196,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
             try {
                 const result = await rescheduleGardenDiaryOperation({
                     accountId,
+                    expectedEntityId,
+                    expectedTaskVersionEventId,
                     gardenId: gardenIdNumber,
                     operationId: operationIdNumber,
                     scheduledDate,
@@ -1204,9 +1243,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 operationId: z.string(),
             }),
         ),
+        zValidator('json', operationDiaryIdentityBodySchema),
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId, operationId } = context.req.valid('param');
+            const { expectedEntityId, expectedTaskVersionEventId } =
+                context.req.valid('json');
             const gardenIdNumber = Number.parseInt(gardenId, 10);
             const operationIdNumber = Number.parseInt(operationId, 10);
 
@@ -1223,6 +1265,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 const result = await cancelGardenDiaryOperation({
                     accountId,
                     canceledBy: userId,
+                    expectedEntityId,
+                    expectedTaskVersionEventId,
                     gardenId: gardenIdNumber,
                     operationId: operationIdNumber,
                 });
@@ -3675,12 +3719,17 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 positionIndex: z.string(),
             }),
         ),
-        zValidator('json', rescheduleDiaryItemBodySchema),
+        zValidator('json', reschedulePlantingDiaryItemBodySchema),
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId, raisedBedId, positionIndex } =
                 context.req.valid('param');
-            const { scheduledDate } = context.req.valid('json');
+            const {
+                expectedPlantCycleEventId,
+                expectedPlantCycleVersionEventId,
+                expectedPlantSortId,
+                scheduledDate,
+            } = context.req.valid('json');
             const gardenIdNumber = Number.parseInt(gardenId, 10);
             const raisedBedIdNumber = Number.parseInt(raisedBedId, 10);
             const positionIndexNumber = Number.parseInt(positionIndex, 10);
@@ -3700,6 +3749,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
             try {
                 const result = await rescheduleGardenDiaryRaisedBedField({
                     accountId,
+                    expectedPlantCycleEventId,
+                    expectedPlantCycleVersionEventId,
+                    expectedPlantSortId,
                     gardenId: gardenIdNumber,
                     raisedBedId: raisedBedIdNumber,
                     positionIndex: positionIndexNumber,
@@ -3744,10 +3796,16 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 positionIndex: z.string(),
             }),
         ),
+        zValidator('json', plantingDiaryAttemptIdentityBodySchema),
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId, raisedBedId, positionIndex } =
                 context.req.valid('param');
+            const {
+                expectedPlantCycleEventId,
+                expectedPlantCycleVersionEventId,
+                expectedPlantSortId,
+            } = context.req.valid('json');
             const gardenIdNumber = Number.parseInt(gardenId, 10);
             const raisedBedIdNumber = Number.parseInt(raisedBedId, 10);
             const positionIndexNumber = Number.parseInt(positionIndex, 10);
@@ -3768,6 +3826,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 const result = await cancelGardenDiaryRaisedBedField({
                     accountId,
                     canceledBy: userId,
+                    expectedPlantCycleEventId,
+                    expectedPlantCycleVersionEventId,
+                    expectedPlantSortId,
                     gardenId: gardenIdNumber,
                     raisedBedId: raisedBedIdNumber,
                     positionIndex: positionIndexNumber,
@@ -3809,7 +3870,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         ),
         zValidator(
             'json',
-            z.object({
+            plantingDiaryAttemptIdentityBodySchema.extend({
                 status: z.string(),
                 timestamp: z.string().datetime().optional(),
             }),
@@ -3818,7 +3879,13 @@ const app = new Hono<{ Variables: AuthVariables }>()
         async (context) => {
             const { gardenId, raisedBedId, positionIndex } =
                 context.req.valid('param');
-            const { status, timestamp } = context.req.valid('json');
+            const {
+                expectedPlantCycleEventId,
+                expectedPlantCycleVersionEventId,
+                expectedPlantSortId,
+                status,
+                timestamp,
+            } = context.req.valid('json');
 
             // Build reverse lookup: target status → allowed source statuses
             const allowedTargetStatuses = new Set([
@@ -3845,98 +3912,135 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Invalid position index' }, 400);
             }
 
-            // Verify the raised bed exists and belongs to the user
             const { accountId } = context.get('authContext');
-            const raisedBed = await getRaisedBed(raisedBedIdNumber);
-            if (
-                !raisedBed ||
-                raisedBed.gardenId !== gardenIdNumber ||
-                raisedBed.accountId !== accountId
-            ) {
-                return context.json({ error: 'Raised bed not found' }, 404);
-            }
-            if (isRaisedBedAbandoned(raisedBed.status)) {
-                return context.json({ error: 'Raised bed is abandoned' }, 409);
-            }
-
-            // Find the field to validate it exists and can be updated
-            const field = raisedBed.fields.find(
-                (field) =>
-                    field.positionIndex === positionIndexNumber && field.active,
-            );
-            if (!field) {
-                return context.json(
-                    { error: 'Field not found or not active' },
-                    404,
-                );
-            }
-
-            // For removal status, check if the plant can be removed (toBeRemoved should be true)
-            if (status === 'removed' && !field.toBeRemoved) {
-                return context.json(
-                    {
-                        error: 'Plant cannot be removed at this time. Only plants that are dead, harvested, or failed to sprout can be removed.',
-                    },
-                    400,
-                );
-            }
-
-            // Validate state transition for user-allowed statuses
-            // Find allowed source states by looking up which current statuses can transition to the target
             const allowedFromStates = Object.entries(
                 userAllowedPlantStatusTransitions,
             )
                 .filter(([, targets]) => targets.includes(status))
                 .map(([source]) => source);
-            if (
-                allowedFromStates.length > 0 &&
-                (!field.plantStatus ||
-                    !allowedFromStates.includes(field.plantStatus))
-            ) {
-                return context.json(
-                    {
-                        error: `Cannot change from '${field.plantStatus}' to '${status}'. Allowed source states: ${allowedFromStates.join(', ')}`,
-                    },
-                    400,
-                );
-            }
-
-            // Validate timestamp if provided
             let createdAt: Date | undefined;
             if (timestamp) {
                 createdAt = new Date(timestamp);
                 if (Number.isNaN(createdAt.getTime())) {
                     return context.json({ error: 'Invalid timestamp' }, 400);
                 }
-                const activePlantCycle = field.plantCycles.find(
-                    (plantCycle) => plantCycle.active,
-                );
-                if (activePlantCycle && createdAt < activePlantCycle.endedAt) {
-                    return context.json(
-                        {
-                            error: 'Timestamp cannot be earlier than the latest field lifecycle event',
-                        },
-                        400,
-                    );
-                }
             }
 
-            // Call the storage function to create the event and update the plant status
             try {
-                const event = knownEvents.raisedBedFields.plantUpdateV1(
-                    `${raisedBedIdNumber.toString()}|${positionIndexNumber.toString()}`,
-                    buildRaisedBedFieldPlantUpdatePayload(
-                        status,
-                        field.assignedUserIds,
-                    ),
+                return await withPlantingScheduleTaskTransaction(
+                    raisedBedIdNumber,
+                    positionIndexNumber,
+                    async (transaction) => {
+                        const raisedBed =
+                            await transaction.query.raisedBeds.findFirst({
+                                where: (table, { and, eq }) =>
+                                    and(
+                                        eq(table.id, raisedBedIdNumber),
+                                        eq(table.isDeleted, false),
+                                    ),
+                            });
+                        if (
+                            !raisedBed ||
+                            raisedBed.gardenId !== gardenIdNumber ||
+                            raisedBed.accountId !== accountId
+                        ) {
+                            return context.json(
+                                { error: 'Raised bed not found' },
+                                404,
+                            );
+                        }
+                        if (isRaisedBedAbandoned(raisedBed.status)) {
+                            return context.json(
+                                { error: 'Raised bed is abandoned' },
+                                409,
+                            );
+                        }
+
+                        const field = (
+                            await getRaisedBedFieldsWithEvents(
+                                raisedBedIdNumber,
+                                transaction,
+                            )
+                        ).find(
+                            (candidate) =>
+                                candidate.positionIndex ===
+                                    positionIndexNumber && candidate.active,
+                        );
+                        if (!field) {
+                            return context.json(
+                                { error: 'Field not found or not active' },
+                                404,
+                            );
+                        }
+                        const activePlantCycle = field.plantCycles.find(
+                            (plantCycle) => plantCycle.active,
+                        );
+                        if (
+                            activePlantCycle?.plantPlaceEventId !==
+                                expectedPlantCycleEventId ||
+                            activePlantCycle?.endedEventId !==
+                                expectedPlantCycleVersionEventId ||
+                            field.plantSortId !== expectedPlantSortId
+                        ) {
+                            return context.json(
+                                {
+                                    error: 'Planting changed. Refresh the garden and try again.',
+                                },
+                                409,
+                            );
+                        }
+                        if (status === 'removed' && !field.toBeRemoved) {
+                            return context.json(
+                                {
+                                    error: 'Plant cannot be removed at this time. Only plants that are dead, harvested, or failed to sprout can be removed.',
+                                },
+                                400,
+                            );
+                        }
+                        if (
+                            allowedFromStates.length > 0 &&
+                            (!field.plantStatus ||
+                                !allowedFromStates.includes(field.plantStatus))
+                        ) {
+                            return context.json(
+                                {
+                                    error: `Cannot change from '${field.plantStatus}' to '${status}'. Allowed source states: ${allowedFromStates.join(', ')}`,
+                                },
+                                400,
+                            );
+                        }
+                        if (
+                            createdAt &&
+                            activePlantCycle &&
+                            createdAt < activePlantCycle.endedAt
+                        ) {
+                            return context.json(
+                                {
+                                    error: 'Timestamp cannot be earlier than the latest field lifecycle event',
+                                },
+                                400,
+                            );
+                        }
+
+                        await createEvent(
+                            knownEvents.raisedBedFields.plantUpdateV1(
+                                `${raisedBedIdNumber.toString()}|${positionIndexNumber.toString()}`,
+                                {
+                                    status,
+                                    ...(createdAt
+                                        ? {
+                                              effectiveDate:
+                                                  createdAt.toISOString(),
+                                          }
+                                        : {}),
+                                },
+                            ),
+                            transaction,
+                        );
+
+                        return context.json({ success: true }, 200);
+                    },
                 );
-
-                await createEvent({
-                    ...event,
-                    ...(createdAt && { createdAt }),
-                });
-
-                return context.json({ success: true }, 200);
             } catch (error) {
                 console.error('Error updating field plant status:', error);
                 return context.json(

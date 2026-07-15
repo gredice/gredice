@@ -14,7 +14,9 @@ import {
     getSchedulePlantSorts,
 } from './scheduleData';
 import {
+    canAcceptOperationTask,
     groupRaisedBedsForSchedule,
+    isOperationBlocked,
     isOperationCancelled,
     isOperationCompleted,
     isOperationPendingVerification,
@@ -79,12 +81,13 @@ export async function ScheduleDayOperationsSection({
         .filter(
             (operation) =>
                 !operation.isAccepted &&
-                !isOperationCompleted(operation.status) &&
-                !isOperationCancelled(operation.status) &&
+                canAcceptOperationTask(operation.status) &&
                 !!operation.assignedUserId,
         )
         .map((operation) => ({
             id: operation.id,
+            entityId: operation.entityId,
+            taskVersionEventId: operation.taskVersionEventId,
             label: operation.entityId.toString(),
         }));
 
@@ -92,17 +95,21 @@ export async function ScheduleDayOperationsSection({
         .filter(
             (operation) =>
                 !operation.assignedUserId &&
+                !isOperationBlocked(operation.status) &&
                 !isOperationCompleted(operation.status) &&
                 !isOperationPendingVerification(operation.status) &&
                 !isOperationCancelled(operation.status),
         )
         .map((operation) => ({
             id: operation.id,
+            expectedEntityId: operation.entityId,
+            expectedTaskVersionEventId: operation.taskVersionEventId,
             farmUsers: assignableFarmUsersByOperationId[operation.id] ?? [],
         }));
     const dayOperationsToCancel = scheduledOperations
         .filter(
             (operation) =>
+                !isOperationBlocked(operation.status) &&
                 !isOperationCompleted(operation.status) &&
                 !isOperationPendingVerification(operation.status) &&
                 !isOperationCancelled(operation.status) &&
@@ -110,6 +117,8 @@ export async function ScheduleDayOperationsSection({
         )
         .map((operation) => ({
             id: operation.id,
+            entityId: operation.entityId,
+            taskVersionEventId: operation.taskVersionEventId,
             label: operation.entityId.toString(),
         }));
 

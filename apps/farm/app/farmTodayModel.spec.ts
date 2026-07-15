@@ -48,16 +48,19 @@ function buildRaisedBed({
     farmId = 1,
     fields = [],
     id = 10,
+    status = 'active',
 }: {
     farmId?: number;
     fields?: FarmTodayPlantingInput[];
     id?: number;
+    status?: string;
 } = {}): FarmTodayRaisedBedInput {
     return {
         farmId,
         fields,
         id,
         physicalId: `A${id}`,
+        status,
     };
 }
 
@@ -276,6 +279,53 @@ test('composes mixed operation and planting work without merging pending into co
         notes: 'optional',
     });
     expect(operationTask?.href).toBe('/operations/701');
+});
+
+test('hides actionable work on abandoned beds but keeps blocker history visible', () => {
+    const plannedPlanting = buildField({ id: 201 });
+    const blockedPlanting = buildField({
+        blockedAt: todayDate,
+        id: 202,
+        plantStatus: 'blocked',
+    });
+    const raisedBed = buildRaisedBed({
+        fields: [plannedPlanting, blockedPlanting],
+        status: 'abandoned',
+    });
+    const plannedOperation = buildOperation({ id: 101 });
+    const blockedOperation = buildOperation({
+        blockedAt: todayDate,
+        id: 102,
+        status: 'blocked',
+    });
+    const result = composeFarmTodayData(
+        buildInput({
+            operationDefinitions: ready([buildDefinition()]),
+            operations: ready({
+                pendingOperations: [],
+                pendingOperationsComplete: true,
+                raisedBeds: [raisedBed],
+                scheduledOperations: [plannedOperation, blockedOperation],
+                scheduledOperationsComplete: true,
+            }),
+            plantings: ready({
+                raisedBeds: [raisedBed],
+                scheduledFields: [plannedPlanting, blockedPlanting],
+            }),
+            plantSorts: ready([{ id: 601, information: { name: 'Rajčica' } }]),
+        }),
+    );
+
+    expect(result.status).toBe('ready');
+    if (result.status !== 'ready') {
+        return;
+    }
+
+    expect(result.focusQueue).toEqual([]);
+    expect(result.attentionItems.map((item) => item.task.key)).toEqual([
+        'operation:102',
+        'planting:202',
+    ]);
 });
 
 test('keeps shared work actionable but omits other-farmer and unrelated-farm details', () => {
@@ -502,6 +552,89 @@ test('uses Zagreb day boundaries for overdue state and deterministic focus order
         'planting:212',
         'planting:213',
     ]);
+});
+
+test('surfaces durable blocked work as attention with its reason and timestamp', () => {
+    const operationBlockedAt = new Date('2026-07-15T08:30:00.000Z');
+    const plantingBlockedAt = new Date('2026-07-15T09:00:00.000Z');
+    const blockedOperation = buildOperation({
+        blockedAt: operationBlockedAt,
+        blockReasonLabel: 'Nedostaje materijal',
+        id: 141,
+        status: 'blocked',
+    });
+    const blockedPlanting = buildField({
+        blockedAt: plantingBlockedAt,
+        blockReasonLabel: 'Lokacija nije spremna',
+        id: 241,
+        plantStatus: 'blocked',
+    });
+    const raisedBed = buildRaisedBed({ fields: [blockedPlanting] });
+    const result = composeFarmTodayData(
+        buildInput({
+            operationDefinitions: ready([buildDefinition()]),
+            operations: ready({
+                pendingOperations: [],
+                pendingOperationsComplete: true,
+                raisedBeds: [raisedBed],
+                scheduledOperations: [blockedOperation],
+                scheduledOperationsComplete: true,
+            }),
+            plantings: ready({
+                raisedBeds: [raisedBed],
+                scheduledFields: [blockedPlanting],
+            }),
+            plantSorts: ready([{ id: 601, information: { name: 'Rajčica' } }]),
+        }),
+    );
+
+    expect(result.status).toBe('ready');
+    if (result.status !== 'ready') {
+        return;
+    }
+
+    expect(result.focusQueue).toEqual([]);
+    expect(result.summary).toEqual({
+        assignedToMe: 0,
+        completed: 0,
+        countsComplete: true,
+        overdue: 0,
+        pendingVerification: 0,
+        remaining: 0,
+        remainingDuration: { complete: true, minutes: 0 },
+        unassigned: 0,
+    });
+    expect(
+        result.attentionItems.map(({ reasons, task }) => ({
+            blocker: task.blocker,
+            key: task.key,
+            occurredAt: task.occurredAt,
+            reasons,
+            state: task.state,
+        })),
+    ).toEqual([
+        {
+            blocker: {
+                occurredAt: operationBlockedAt.toISOString(),
+                reason: 'Nedostaje materijal',
+            },
+            key: 'operation:141',
+            occurredAt: operationBlockedAt.toISOString(),
+            reasons: ['blocked'],
+            state: 'blocked',
+        },
+        {
+            blocker: {
+                occurredAt: plantingBlockedAt.toISOString(),
+                reason: 'Lokacija nije spremna',
+            },
+            key: 'planting:241',
+            occurredAt: plantingBlockedAt.toISOString(),
+            reasons: ['blocked'],
+            state: 'blocked',
+        },
+    ]);
+    expect(result.workState).toBe('hasWork');
 });
 
 test('returns explicit no-farm, empty, no-assigned-work, and all-done states', () => {

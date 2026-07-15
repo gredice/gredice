@@ -8,6 +8,8 @@ import { tutorialChecklistKeys } from './useTutorialChecklist';
 export type DiaryRescheduleTarget =
     | {
           type: 'operation';
+          expectedEntityId: number;
+          expectedTaskVersionEventId: number;
           operationId: number;
           raisedBedId: number | null;
           raisedBedFieldId: number | null;
@@ -16,6 +18,9 @@ export type DiaryRescheduleTarget =
       }
     | {
           type: 'raisedBedFieldPlant';
+          expectedPlantCycleEventId: number;
+          expectedPlantCycleVersionEventId: number;
+          expectedPlantSortId: number;
           raisedBedId: number;
           positionIndex: number;
           scheduledDate?: string | null;
@@ -138,6 +143,8 @@ async function rescheduleOperation({
             operationId: target.operationId.toString(),
         },
         json: {
+            expectedEntityId: target.expectedEntityId,
+            expectedTaskVersionEventId: target.expectedTaskVersionEventId,
             scheduledDate,
         },
     });
@@ -165,6 +172,10 @@ async function rescheduleRaisedBedFieldPlant({
             positionIndex: target.positionIndex.toString(),
         },
         json: {
+            expectedPlantCycleEventId: target.expectedPlantCycleEventId,
+            expectedPlantCycleVersionEventId:
+                target.expectedPlantCycleVersionEventId,
+            expectedPlantSortId: target.expectedPlantSortId,
             scheduledDate,
         },
     });

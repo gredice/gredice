@@ -5,6 +5,7 @@ import {
     DEFAULT_ADMIN_TIME_ZONE,
     getAllOperations,
     getAllRaisedBeds,
+    getBlockedOperations,
     getDeliveryRequestsSummary,
     getEntitiesFormatted,
     getSetting,
@@ -71,6 +72,7 @@ export const getScheduleOperations = cache(async () => {
                 newOrScheduledOperations,
                 pendingVerificationOperations,
                 completedOperationsTodayOrLater,
+                blockedOperations,
             ] = await Promise.all([
                 getAllOperations({
                     from,
@@ -84,12 +86,14 @@ export const getScheduleOperations = cache(async () => {
                     completedFrom,
                     status: 'completed',
                 }),
+                getBlockedOperations(),
             ]);
 
             const operations = [
                 ...newOrScheduledOperations,
                 ...pendingVerificationOperations,
                 ...completedOperationsTodayOrLater,
+                ...blockedOperations,
             ].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 
             return dedupeById(operations);

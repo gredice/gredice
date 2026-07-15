@@ -10,6 +10,12 @@ import type {
     PlantStatusApprovalTarget,
 } from './events/types';
 import { createEvent, knownEvents, knownEventTypes } from './eventsRepo';
+import { getRaisedBedFieldsWithEvents } from './raisedBedFieldsRepo';
+import {
+    acquireScheduleTaskAdvisoryLock,
+    type ScheduleTaskTransaction,
+    withPlantingScheduleTaskTransaction,
+} from './scheduleTaskTransactionsRepo';
 
 export type ApprovalRequestStatus = 'pending' | 'approved' | 'rejected';
 
@@ -34,6 +40,8 @@ type ApprovalRequestsFilter = {
 type CreatePlantStatusApprovalRequestInput = {
     raisedBedId: number;
     positionIndex: number;
+    plantCycleEventId: number;
+    plantCycleVersionEventId: number;
     requestedStatus: string;
     requestedBy: string;
     raisedBedFieldId?: number | null;
@@ -45,11 +53,37 @@ type CreatePlantStatusApprovalRequestInput = {
     note?: string | null;
 };
 
+type StorageClient = ReturnType<typeof storage>;
+type DatabaseClient = StorageClient | ScheduleTaskTransaction;
+
+type ApprovePlantStatusApprovalRequestDependencies = {
+    appendApprovalEvent: typeof createEvent;
+};
+
+const defaultApprovePlantStatusApprovalRequestDependencies: ApprovePlantStatusApprovalRequestDependencies =
+    {
+        appendApprovalEvent: createEvent,
+    };
+
 const approvalRequestEventTypes = [
     knownEventTypes.approvalRequests.create,
     knownEventTypes.approvalRequests.approve,
     knownEventTypes.approvalRequests.reject,
 ];
+
+const plantingTaskEvidenceStatuses = new Set([
+    'blocked',
+    'pendingVerification',
+    'sowed',
+    'sprouted',
+    'firstFlowers',
+    'firstFruitSet',
+    'notSprouted',
+    'died',
+    'ready',
+    'harvested',
+    'removed',
+]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null;
@@ -94,6 +128,10 @@ function parsePlantStatusTarget(
         kind: 'raisedBedField.plantStatus',
         raisedBedId,
         positionIndex,
+        plantCycleEventId: optionalNumber(value.plantCycleEventId),
+        plantCycleVersionEventId: optionalNumber(
+            value.plantCycleVersionEventId,
+        ),
         raisedBedFieldId: optionalNumber(value.raisedBedFieldId),
         accountId: optionalString(value.accountId),
         gardenId: optionalNumber(value.gardenId),
@@ -156,8 +194,111 @@ function isSamePlantStatusTarget(
     );
 }
 
-export async function getApprovalRequests(filter?: ApprovalRequestsFilter) {
-    const approvalEvents = await storage().query.events.findMany({
+function canApplyPlantStatusApproval(
+    currentStatus: string,
+    requestedStatus: string,
+) {
+    if (currentStatus === requestedStatus) {
+        return true;
+    }
+    if (
+        requestedStatus === 'blocked' ||
+        requestedStatus === 'pendingVerification'
+    ) {
+        return false;
+    }
+    if (
+        plantingTaskEvidenceStatuses.has(currentStatus) &&
+        (requestedStatus === 'new' || requestedStatus === 'planned')
+    ) {
+        return false;
+    }
+    return currentStatus !== 'blocked';
+}
+
+function isPositiveSafeInteger(value: number | null | undefined) {
+    return (
+        typeof value === 'number' && Number.isSafeInteger(value) && value > 0
+    );
+}
+
+async function acquireApprovalRequestReviewLock(
+    transaction: ScheduleTaskTransaction,
+    requestId: string,
+) {
+    await acquireScheduleTaskAdvisoryLock(
+        transaction,
+        `approval-request:${requestId}`,
+    );
+}
+
+type ReviewApprovalRequestInput = {
+    requestId: string;
+    reviewedBy: string;
+    status: Exclude<ApprovalRequestStatus, 'pending'>;
+    note?: string | null;
+};
+
+async function appendApprovalReview(
+    input: ReviewApprovalRequestInput,
+    transaction: ScheduleTaskTransaction,
+    dependencies: ApprovePlantStatusApprovalRequestDependencies = defaultApprovePlantStatusApprovalRequestDependencies,
+) {
+    const request = await getApprovalRequest(input.requestId, transaction);
+    if (!request) {
+        throw new Error('Zahtjev za odobrenje nije pronađen.');
+    }
+    if (request.status !== 'pending') {
+        return request;
+    }
+
+    const reviewPayload = {
+        reviewedBy: input.reviewedBy,
+        reviewedAt: new Date().toISOString(),
+        note: input.note,
+    };
+    await dependencies.appendApprovalEvent(
+        input.status === 'approved'
+            ? knownEvents.approvalRequests.approvedV1(
+                  input.requestId,
+                  reviewPayload,
+              )
+            : knownEvents.approvalRequests.rejectedV1(
+                  input.requestId,
+                  reviewPayload,
+              ),
+        transaction,
+    );
+
+    const reviewedRequest = await getApprovalRequest(
+        input.requestId,
+        transaction,
+    );
+    if (!reviewedRequest) {
+        throw new Error('Pregledani zahtjev nije pronađen.');
+    }
+    return reviewedRequest;
+}
+
+async function reviewApprovalRequest(
+    input: ReviewApprovalRequestInput,
+    transaction?: ScheduleTaskTransaction,
+) {
+    const run = async (tx: ScheduleTaskTransaction) => {
+        await acquireApprovalRequestReviewLock(tx, input.requestId);
+        return appendApprovalReview(input, tx);
+    };
+
+    return transaction
+        ? run(transaction)
+        : storage().transaction(async (tx) => run(tx));
+}
+
+export async function getApprovalRequests(
+    filter?: ApprovalRequestsFilter,
+    db: DatabaseClient = storage(),
+) {
+    const approvalEvents = await db.query.events.findMany({
         where: inArray(events.type, approvalRequestEventTypes),
         orderBy: [asc(events.createdAt), asc(events.id)],
     });
@@ -220,8 +361,125 @@ export async function getApprovalRequests(filter?: ApprovalRequestsFilter) {
         );
 }
 
-export async function getApprovalRequest(requestId: string) {
-    const requests = await getApprovalRequests();
+export async function approvePlantStatusApprovalRequest(
+    input: {
+        requestId: string;
+        reviewedBy: string;
+        note?: string | null;
+    },
+    dependencies: ApprovePlantStatusApprovalRequestDependencies = defaultApprovePlantStatusApprovalRequestDependencies,
+) {
+    const initialRequest = await getApprovalRequest(input.requestId);
+    if (!initialRequest) {
+        throw new Error('Zahtjev za odobrenje nije pronađen.');
+    }
+    if (initialRequest.status === 'approved') {
+        return initialRequest;
+    }
+    if (initialRequest.status === 'rejected') {
+        throw new Error('Zahtjev za odobrenje već je odbijen.');
+    }
+
+    const initialTarget = initialRequest.target;
+    return withPlantingScheduleTaskTransaction(
+        initialTarget.raisedBedId,
+        initialTarget.positionIndex,
+        async (transaction) => {
+            await acquireApprovalRequestReviewLock(
+                transaction,
+                input.requestId,
+            );
+            const request = await getApprovalRequest(
+                input.requestId,
+                transaction,
+            );
+            if (!request) {
+                throw new Error('Zahtjev za odobrenje nije pronađen.');
+            }
+            if (request.status === 'approved') {
+                return request;
+            }
+            if (request.status === 'rejected') {
+                throw new Error('Zahtjev za odobrenje već je odbijen.');
+            }
+
+            const target = request.target;
+            const field = (
+                await getRaisedBedFieldsWithEvents(
+                    target.raisedBedId,
+                    transaction,
+                )
+            ).find(
+                (candidate) =>
+                    candidate.positionIndex === target.positionIndex &&
+                    candidate.active,
+            );
+            const activePlantCycle = field?.plantCycles.find(
+                (plantCycle) => plantCycle.active,
+            );
+            if (
+                !field ||
+                !activePlantCycle ||
+                !isPositiveSafeInteger(target.raisedBedFieldId) ||
+                !isPositiveSafeInteger(target.plantSortId) ||
+                !isPositiveSafeInteger(target.plantCycleEventId) ||
+                !isPositiveSafeInteger(target.plantCycleVersionEventId) ||
+                field.id !== target.raisedBedFieldId ||
+                field.plantSortId !== target.plantSortId ||
+                activePlantCycle.plantPlaceEventId !==
+                    target.plantCycleEventId ||
+                activePlantCycle.endedEventId !==
+                    target.plantCycleVersionEventId ||
+                field.plantStatus !== target.currentStatus
+            ) {
+                throw new Error(
+                    'Biljka se promijenila nakon slanja zahtjeva. Osvježi podatke i pregledaj novi zahtjev.',
+                );
+            }
+            if (
+                !target.currentStatus ||
+                !canApplyPlantStatusApproval(
+                    target.currentStatus,
+                    target.requestedStatus,
+                )
+            ) {
+                throw new Error(
+                    'Tražena promjena stanja biljke više nije dopuštena.',
+                );
+            }
+
+            await createEvent(
+                knownEvents.raisedBedFields.plantUpdateV1(
+                    `${target.raisedBedId.toString()}|${target.positionIndex.toString()}`,
+                    {
+                        status: target.requestedStatus,
+                        ...(target.effectiveAt
+                            ? { effectiveDate: target.effectiveAt }
+                            : {}),
+                    },
+                ),
+                transaction,
+            );
+
+            return appendApprovalReview(
+                {
+                    note: input.note,
+                    requestId: input.requestId,
+                    reviewedBy: input.reviewedBy,
+                    status: 'approved',
+                },
+                transaction,
+                dependencies,
+            );
+        },
+    );
+}
+
+export async function getApprovalRequest(
+    requestId: string,
+    db: DatabaseClient = storage(),
+) {
+    const requests = await getApprovalRequests(undefined, db);
     return requests.find((request) => request.id === requestId) ?? null;
 }
 
@@ -267,6 +525,8 @@ export async function createPlantStatusApprovalRequest(
                 kind: 'raisedBedField.plantStatus',
                 raisedBedId: input.raisedBedId,
                 positionIndex: input.positionIndex,
+                plantCycleEventId: input.plantCycleEventId,
+                plantCycleVersionEventId: input.plantCycleVersionEventId,
                 raisedBedFieldId: input.raisedBedFieldId,
                 accountId: input.accountId,
                 gardenId: input.gardenId,
@@ -290,58 +550,22 @@ export async function approveApprovalRequest(
     requestId: string,
     reviewedBy: string,
     note?: string | null,
+    transaction?: ScheduleTaskTransaction,
 ) {
-    const request = await getApprovalRequest(requestId);
-    if (!request) {
-        throw new Error('Zahtjev za odobrenje nije pronađen.');
-    }
-
-    if (request.status !== 'pending') {
-        return request;
-    }
-
-    await createEvent(
-        knownEvents.approvalRequests.approvedV1(requestId, {
-            reviewedBy,
-            reviewedAt: new Date().toISOString(),
-            note,
-        }),
+    return reviewApprovalRequest(
+        { note, requestId, reviewedBy, status: 'approved' },
+        transaction,
     );
-
-    const approvedRequest = await getApprovalRequest(requestId);
-    if (!approvedRequest) {
-        throw new Error('Odobreni zahtjev nije pronađen.');
-    }
-
-    return approvedRequest;
 }
 
 export async function rejectApprovalRequest(
     requestId: string,
     reviewedBy: string,
     note?: string | null,
+    transaction?: ScheduleTaskTransaction,
 ) {
-    const request = await getApprovalRequest(requestId);
-    if (!request) {
-        throw new Error('Zahtjev za odobrenje nije pronađen.');
-    }
-
-    if (request.status !== 'pending') {
-        return request;
-    }
-
-    await createEvent(
-        knownEvents.approvalRequests.rejectedV1(requestId, {
-            reviewedBy,
-            reviewedAt: new Date().toISOString(),
-            note,
-        }),
+    return reviewApprovalRequest(
+        { note, requestId, reviewedBy, status: 'rejected' },
+        transaction,
     );
-
-    const rejectedRequest = await getApprovalRequest(requestId);
-    if (!rejectedRequest) {
-        throw new Error('Odbijeni zahtjev nije pronađen.');
-    }
-
-    return rejectedRequest;
 }

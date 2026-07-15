@@ -257,6 +257,9 @@ export async function OperationsTable({
                                         'pendingVerification' && (
                                         <VerifyOperationModal
                                             operationId={operation.id}
+                                            expectedTaskVersionEventId={
+                                                operation.taskVersionEventId
+                                            }
                                             label={operationLabel}
                                             trigger={
                                                 <IconButton
@@ -272,6 +275,8 @@ export async function OperationsTable({
                                         operation={{
                                             id: operation.id,
                                             entityId: operation.entityId,
+                                            taskVersionEventId:
+                                                operation.taskVersionEventId,
                                             scheduledDate:
                                                 operation.scheduledDate,
                                             status: operation.status,
@@ -282,6 +287,8 @@ export async function OperationsTable({
                                         operation={{
                                             id: operation.id,
                                             entityId: operation.entityId,
+                                            taskVersionEventId:
+                                                operation.taskVersionEventId,
                                             scheduledDate:
                                                 operation.scheduledDate,
                                             status: operation.status,

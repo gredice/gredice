@@ -11,6 +11,9 @@ export type ScheduleOperationCompletionRequirements = {
     notes: ScheduleOperationRequirementLevel;
 };
 
+export type ScheduleOperationCompletionRequirementsFingerprint =
+    `${ScheduleOperationRequirementLevel}:${ScheduleOperationRequirementLevel}`;
+
 type ScheduleOperationRequirementSource = Pick<
     EntityStandardized,
     'conditions'
@@ -56,6 +59,43 @@ export function getScheduleOperationCompletionRequirements(
             required: operationData?.conditions?.completionAttachNotesRequired,
         }),
     };
+}
+
+export function getScheduleOperationCompletionRequirementsFingerprint(
+    requirements: ScheduleOperationCompletionRequirements,
+): ScheduleOperationCompletionRequirementsFingerprint {
+    return `${requirements.images}:${requirements.notes}`;
+}
+
+function isScheduleOperationRequirementLevel(
+    value: string,
+): value is ScheduleOperationRequirementLevel {
+    return (
+        value === 'none' ||
+        value === 'optional' ||
+        value === 'required' ||
+        value === 'unknown'
+    );
+}
+
+export function parseScheduleOperationCompletionRequirementsFingerprint(
+    value: unknown,
+): ScheduleOperationCompletionRequirementsFingerprint {
+    if (typeof value !== 'string') {
+        throw new Error('Zahtjevi za dovršetak radnje nisu ispravni.');
+    }
+    const [images, notes, extra] = value.split(':');
+    if (
+        extra !== undefined ||
+        !images ||
+        !notes ||
+        !isScheduleOperationRequirementLevel(images) ||
+        !isScheduleOperationRequirementLevel(notes)
+    ) {
+        throw new Error('Zahtjevi za dovršetak radnje nisu ispravni.');
+    }
+
+    return `${images}:${notes}`;
 }
 
 export function assertScheduleOperationCompletionRequirementsAvailable(

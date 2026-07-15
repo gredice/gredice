@@ -60,6 +60,9 @@ function makeDependencies(
         notifyDeliveryRequestEvent: async (...args: unknown[]) => {
             record(calls, 'notifyDeliveryRequestEvent', args);
         },
+        notifyCheckoutFulfillmentIncident: async (...args: unknown[]) => {
+            record(calls, 'notifyCheckoutFulfillmentIncident', args);
+        },
         notifyOperationUpdate: async (...args: unknown[]) => {
             record(calls, 'notifyOperationUpdate', args);
         },
@@ -78,6 +81,19 @@ function makeDependencies(
         },
         createEvent: async (...args: unknown[]) => {
             record(calls, 'createEvent', args);
+        },
+        createNotificationWithStatus: async (...args: unknown[]) => {
+            record(calls, 'createNotificationWithStatus', args);
+            return { notificationId: 'notification-1', created: true };
+        },
+        deliverNotificationOperatorAlert: async (...args: unknown[]) => {
+            record(calls, 'deliverNotificationOperatorAlert', args.slice(0, 1));
+            const deliver = args[1];
+            if (typeof deliver !== 'function') {
+                throw new Error('Missing operator alert delivery callback.');
+            }
+            await deliver();
+            return { attempted: true, status: 'sent' as const };
         },
         createOperation: async (...args: unknown[]) => {
             record(calls, 'createOperation', args);
@@ -164,6 +180,13 @@ function makeDependencies(
             return false;
         },
         knownEvents: {
+            accounts: {
+                sunflowersEarnedV1: (aggregateId: string, data: unknown) => ({
+                    type: 'accounts.sunflowersEarned',
+                    aggregateId,
+                    data,
+                }),
+            },
             operations: {
                 scheduledV1: (aggregateId: string, data: unknown) => ({
                     type: 'operations.scheduled',
@@ -184,6 +207,12 @@ function makeDependencies(
                 }),
             },
         },
+        lockAndActivateRaisedBedForCheckoutPlanting: async (
+            ...args: unknown[]
+        ) => {
+            record(calls, 'lockAndActivateRaisedBedForCheckoutPlanting', args);
+            return { available: true, activatedAccountId: null };
+        },
         markCartPaidIfAllItemsPaid: async (cartId: unknown) => {
             record(calls, 'markCartPaidIfAllItemsPaid', [cartId]);
         },
@@ -198,6 +227,10 @@ function makeDependencies(
             record(calls, 'normalizeShoppingCartScheduledDates', args);
             return undefined;
         },
+        processReferralRewardsForAccount: async (...args: unknown[]) => {
+            record(calls, 'processReferralRewardsForAccount', args);
+            return { rewarded: false, reason: 'no_referral' as const };
+        },
         setCartItemPaid: async (...args: unknown[]) => {
             record(calls, 'setCartItemPaid', args);
         },
@@ -211,11 +244,20 @@ function makeDependencies(
                 bonus: { status: 'created', entry: { id: 802 } },
             };
         },
-        updateRaisedBed: async (...args: unknown[]) => {
-            record(calls, 'updateRaisedBed', args);
-        },
         upsertRaisedBedField: async (...args: unknown[]) => {
             record(calls, 'upsertRaisedBedField', args);
+        },
+        withPlantingScheduleTaskTransaction: async (...args: unknown[]) => {
+            record(
+                calls,
+                'withPlantingScheduleTaskTransaction',
+                args.slice(0, 2),
+            );
+            const callback = args[2];
+            if (typeof callback !== 'function') {
+                throw new Error('Missing planting transaction callback.');
+            }
+            return callback({ transaction: 'planting-test' });
         },
         withStripePaymentProcessingLock: async (
             id: string,
@@ -324,6 +366,73 @@ function makeSession() {
     };
 }
 
+function makePlantingSession() {
+    const session = makeSession();
+    const [lineItem] = session.lineItems.data;
+    const product = lineItem?.price.product;
+    if (!lineItem || !product) {
+        throw new Error('Planting checkout fixture is invalid.');
+    }
+
+    return {
+        ...session,
+        lineItems: {
+            data: [
+                {
+                    ...lineItem,
+                    price: {
+                        product: {
+                            ...product,
+                            metadata: {
+                                ...product.metadata,
+                                entityId: '101',
+                                entityTypeName: 'plantSort',
+                            },
+                        },
+                    },
+                },
+            ],
+        },
+    };
+}
+
+function makeMultiLinePlantingSession() {
+    const operationSession = makeSession();
+    const plantingSession = makePlantingSession();
+    const operationLineItem = operationSession.lineItems.data[0];
+    const plantingLineItem = plantingSession.lineItems.data[0];
+    const plantingProduct = plantingLineItem?.price.product;
+    if (!operationLineItem || !plantingLineItem || !plantingProduct) {
+        throw new Error('Multi-line checkout fixture is invalid.');
+    }
+
+    return {
+        ...operationSession,
+        amountTotal: 5000,
+        lineItems: {
+            data: [
+                operationLineItem,
+                {
+                    ...plantingLineItem,
+                    id: 'li_2',
+                    price: {
+                        product: {
+                            ...plantingProduct,
+                            id: 'prod_2',
+                            name: 'Seedling',
+                            metadata: {
+                                ...plantingProduct.metadata,
+                                cartId: '200',
+                                cartItemId: '2',
+                            },
+                        },
+                    },
+                },
+            ],
+        },
+    };
+}
+
 function makeSunflowerPackageSession({
     amountTotal = 4999,
     lineAmountTotal = 4999,
@@ -410,6 +519,23 @@ function makeCart() {
     };
 }
 
+function makePlantingCart(status: 'open' | 'paid' = 'open') {
+    return {
+        id: 100,
+        accountId: 'account-1',
+        status: status === 'paid' ? 'paid' : 'new',
+        items: [
+            {
+                id: 1,
+                status,
+                entityId: '101',
+                entityTypeName: 'plantSort',
+                raisedBedId: 300,
+            },
+        ],
+    };
+}
+
 function makeSunflowerCartItem() {
     return {
         id: 2,
@@ -429,6 +555,208 @@ function makeSunflowerCartItem() {
             discountPrice: null,
         },
     };
+}
+
+function createGate() {
+    let openGate: (() => void) | undefined;
+    const wait = new Promise<void>((resolve) => {
+        openGate = resolve;
+    });
+    return {
+        wait,
+        open: () => openGate?.(),
+    };
+}
+
+function createAsyncMutex() {
+    let previous = Promise.resolve();
+
+    return async function runLocked<T>(callback: () => Promise<T>) {
+        let release: (() => void) | undefined;
+        const current = new Promise<void>((resolve) => {
+            release = resolve;
+        });
+        const waitForPrevious = previous;
+        previous = current;
+        await waitForPrevious;
+        try {
+            return await callback();
+        } finally {
+            release?.();
+        }
+    };
+}
+
+async function assertCheckoutPlantingRace({
+    checkoutFirst,
+    terminalWriter,
+}: {
+    checkoutFirst: boolean;
+    terminalWriter: 'block' | 'completion';
+}) {
+    const calls: RecordedCall[] = [];
+    const runLocked = createAsyncMutex();
+    const checkoutReadStarted = createGate();
+    const releaseCheckoutRead = createGate();
+    const scheduleWriterStarted = createGate();
+    const releaseScheduleWriter = createGate();
+    let pauseCheckoutRead = checkoutFirst;
+    let downstreamAutomationRuns = 0;
+    const writtenEvents: Array<{
+        aggregateId: string;
+        data: unknown;
+        type: string;
+    }> = [];
+    const plantCycle = {
+        active: true,
+        plantPlaceEventId: 400,
+        plantSortId: 99,
+        plantStatus: 'planned',
+        purchase: {
+            cartItemId: 999,
+            currency: 'eur',
+            euroAmountCents: 1000,
+        },
+    };
+
+    const dependencies = makeDependencies(calls, {
+        withPlantingScheduleTaskTransaction: async (...args: unknown[]) => {
+            record(
+                calls,
+                'withPlantingScheduleTaskTransaction',
+                args.slice(0, 2),
+            );
+            const callback = args[2];
+            if (typeof callback !== 'function') {
+                throw new Error('Missing planting transaction callback.');
+            }
+            return runLocked(() => callback({ transaction: 'race-test' }));
+        },
+        getRaisedBedFieldsWithEvents: async (...args: unknown[]) => {
+            record(calls, 'getRaisedBedFieldsWithEvents', args);
+            if (pauseCheckoutRead) {
+                pauseCheckoutRead = false;
+                checkoutReadStarted.open();
+                await releaseCheckoutRead.wait;
+            }
+            return [
+                {
+                    id: 88,
+                    positionIndex: 2,
+                    active: true,
+                    plantStatus: plantCycle.plantStatus,
+                    plantCycles: [plantCycle],
+                },
+            ];
+        },
+        createEvent: async (...args: unknown[]) => {
+            record(calls, 'createEvent', args);
+            const event = args[0];
+            if (!isRecordedEvent(event)) {
+                throw new Error('Race writer created an invalid event.');
+            }
+            writtenEvents.push(event);
+            downstreamAutomationRuns += 1;
+            if (
+                event.type === 'raisedBedFields.plantUpdate' &&
+                isRecord(event.data) &&
+                typeof event.data.status === 'string'
+            ) {
+                plantCycle.plantStatus = event.data.status;
+            } else if (event.type === 'raisedBedFields.plantBlock') {
+                plantCycle.plantStatus = 'blocked';
+            }
+        },
+    });
+
+    const writeTerminalState = () =>
+        dependencies.withPlantingScheduleTaskTransaction(
+            300,
+            2,
+            async (transaction) => {
+                scheduleWriterStarted.open();
+                if (!checkoutFirst) {
+                    await releaseScheduleWriter.wait;
+                }
+                if (terminalWriter === 'completion') {
+                    await dependencies.createEvent(
+                        {
+                            type: 'raisedBedFields.plantUpdate',
+                            version: 1,
+                            aggregateId: '300|2',
+                            data: {
+                                status: 'pendingVerification',
+                                images: ['https://example.test/proof.webp'],
+                            },
+                        },
+                        transaction,
+                    );
+                } else {
+                    await dependencies.createEvent(
+                        {
+                            type: 'raisedBedFields.plantBlock',
+                            version: 1,
+                            aggregateId: '300|2',
+                            data: {
+                                reasonCode: 'weather',
+                                images: ['https://example.test/blocker.webp'],
+                            },
+                        },
+                        transaction,
+                    );
+                }
+            },
+        );
+
+    const writeCheckoutPlanting = () =>
+        processItem(
+            {
+                accountId: 'account-1',
+                amount_total: 2500,
+                additionalData: { scheduledDate: '2026-07-01' },
+                cartId: 100,
+                cartItemId: 1,
+                checkoutSessionId: 'cs_race',
+                currency: 'eur',
+                entityId: '101',
+                entityTypeName: 'plantSort',
+                gardenId: 200,
+                positionIndex: 2,
+                raisedBedId: 300,
+            },
+            dependencies,
+        );
+
+    if (checkoutFirst) {
+        const checkoutPromise = writeCheckoutPlanting();
+        await checkoutReadStarted.wait;
+        const terminalPromise = writeTerminalState();
+        releaseCheckoutRead.open();
+        await assert.rejects(checkoutPromise, /active plant cycle/);
+        await terminalPromise;
+    } else {
+        const terminalPromise = writeTerminalState();
+        await scheduleWriterStarted.wait;
+        const checkoutPromise = writeCheckoutPlanting();
+        releaseScheduleWriter.open();
+        await terminalPromise;
+        await assert.rejects(checkoutPromise, /active plant cycle/);
+    }
+
+    assert.equal(writtenEvents.length, 1);
+    assert.equal(
+        writtenEvents.filter(
+            (event) => event.type === 'raisedBedFields.plantPlace',
+        ).length,
+        0,
+    );
+    assert.equal(writtenEvents[0]?.aggregateId, '300|2');
+    assert.equal(plantCycle.plantPlaceEventId, 400);
+    assert.equal(
+        plantCycle.plantStatus,
+        terminalWriter === 'completion' ? 'pendingVerification' : 'blocked',
+    );
+    assert.equal(downstreamAutomationRuns, 1);
 }
 
 describe('processCheckoutSession', () => {
@@ -1102,6 +1430,660 @@ describe('processCheckoutSession', () => {
         );
     });
 
+    it('replays a paid planting after a crash without duplicating the cycle, reward, or outlet analytics', async () => {
+        const calls: RecordedCall[] = [];
+        let cartItemStatus: 'open' | 'paid' = 'open';
+        let failOutletAnalytics = true;
+        let raisedBedStatus = 'new';
+        let activePlantCycle:
+            | {
+                  active: boolean;
+                  plantPlaceEventId: number;
+                  plantSortId: number;
+                  plantStatus: string;
+                  purchase: {
+                      cartItemId: number;
+                      currency: 'eur';
+                      euroAmountCents: number;
+                  };
+              }
+            | undefined;
+        let nextEventId = 1;
+
+        const dependencies = makeDependencies(calls, {
+            getStripeCheckoutSession: async (...args: unknown[]) => {
+                record(calls, 'getStripeCheckoutSession', args);
+                return makePlantingSession();
+            },
+            getShoppingCart: async (...args: unknown[]) => {
+                record(calls, 'getShoppingCart', args);
+                return makePlantingCart(cartItemStatus);
+            },
+            getOutletOfferReservationForCartItem: async (
+                ...args: unknown[]
+            ) => {
+                record(calls, 'getOutletOfferReservationForCartItem', args);
+                return {
+                    id: 71,
+                    outletOfferId: 72,
+                    outletOffer: { plantSortId: 101 },
+                    heldSowingDate: new Date('2026-06-15T00:00:00.000Z'),
+                    heldInitialPlantStatus: 'sprouted',
+                };
+            },
+            convertOutletReservationForCartItem: async (...args: unknown[]) => {
+                record(calls, 'convertOutletReservationForCartItem', args);
+            },
+            getRaisedBedFieldsWithEvents: async (...args: unknown[]) => {
+                record(calls, 'getRaisedBedFieldsWithEvents', args);
+                return [
+                    {
+                        id: 88,
+                        positionIndex: 2,
+                        active: Boolean(activePlantCycle?.active),
+                        plantCycles: activePlantCycle ? [activePlantCycle] : [],
+                    },
+                ];
+            },
+            createEvent: async (...args: unknown[]) => {
+                record(calls, 'createEvent', args);
+                const event = args[0];
+                if (!isRecordedEvent(event)) {
+                    return;
+                }
+                if (event.type === 'raisedBedFields.plantPlace') {
+                    assert.ok(isRecord(event.data));
+                    assert.ok(isRecord(event.data.purchase));
+                    activePlantCycle = {
+                        active: true,
+                        plantPlaceEventId: nextEventId,
+                        plantSortId: Number(event.data.plantSortId),
+                        plantStatus: 'new',
+                        purchase: {
+                            cartItemId: Number(event.data.purchase.cartItemId),
+                            currency: 'eur',
+                            euroAmountCents: Number(
+                                event.data.purchase.euroAmountCents,
+                            ),
+                        },
+                    };
+                    nextEventId += 1;
+                } else if (
+                    event.type === 'raisedBedFields.plantUpdate' &&
+                    activePlantCycle &&
+                    isRecord(event.data) &&
+                    typeof event.data.status === 'string'
+                ) {
+                    activePlantCycle.plantStatus = event.data.status;
+                    nextEventId += 1;
+                }
+            },
+            lockAndActivateRaisedBedForCheckoutPlanting: async (
+                ...args: unknown[]
+            ) => {
+                record(
+                    calls,
+                    'lockAndActivateRaisedBedForCheckoutPlanting',
+                    args,
+                );
+                const activatedAccountId =
+                    raisedBedStatus === 'active' ? null : 'account-1';
+                raisedBedStatus = 'active';
+                return { available: true, activatedAccountId };
+            },
+            getPostHogClient: async (...args: unknown[]) => {
+                record(calls, 'getPostHogClient', args);
+                return {
+                    capture: (...captureArgs: unknown[]) => {
+                        const capture = captureArgs[0];
+                        if (
+                            failOutletAnalytics &&
+                            isRecord(capture) &&
+                            capture.event === 'outlet_reservation_converted'
+                        ) {
+                            failOutletAnalytics = false;
+                            throw new Error(
+                                'simulated crash after planting commit',
+                            );
+                        }
+                        record(calls, 'posthog.capture', captureArgs);
+                    },
+                };
+            },
+            setCartItemPaid: async (...args: unknown[]) => {
+                record(calls, 'setCartItemPaid', args);
+                cartItemStatus = 'paid';
+            },
+        });
+
+        await assert.rejects(
+            processCheckoutSession('cs_paid', dependencies),
+            /simulated crash after planting commit/,
+        );
+        assert.equal(cartItemStatus, 'open');
+        assert.equal(callsNamed(calls, 'createTransaction').length, 0);
+
+        await processCheckoutSession('cs_paid', dependencies);
+
+        const writtenEvents = callsNamed(calls, 'createEvent')
+            .map((call) => call.args[0])
+            .filter(isRecordedEvent);
+        assert.equal(
+            writtenEvents.filter(
+                (event) => event.type === 'raisedBedFields.plantPlace',
+            ).length,
+            1,
+        );
+        assert.equal(
+            writtenEvents.filter(
+                (event) => event.type === 'accounts.sunflowersEarned',
+            ).length,
+            1,
+        );
+        assert.equal(activePlantCycle?.plantStatus, 'sprouted');
+        assert.equal(raisedBedStatus, 'active');
+        assert.equal(
+            callsNamed(calls, 'lockAndActivateRaisedBedForCheckoutPlanting')
+                .length,
+            2,
+        );
+        assert.equal(
+            callsNamed(calls, 'processReferralRewardsForAccount').length,
+            1,
+        );
+        assert.equal(callsNamed(calls, 'setCartItemPaid').length, 1);
+        assert.equal(callsNamed(calls, 'createTransaction').length, 1);
+        assert.equal(
+            callsNamed(calls, 'posthog.capture').filter((call) => {
+                const capture = call.args[0];
+                return (
+                    isRecord(capture) &&
+                    capture.event === 'outlet_reservation_converted'
+                );
+            }).length,
+            1,
+        );
+        assert.equal(
+            callsNamed(calls, 'convertOutletReservationForCartItem').length,
+            2,
+        );
+    });
+
+    it('keeps a paid planting open when abandonment commits before the parent lock', async () => {
+        const calls: RecordedCall[] = [];
+        const transaction = { transaction: 'abandoned-before-parent-lock' };
+        const dependencies = makeDependencies(calls, {
+            getStripeCheckoutSession: async (...args: unknown[]) => {
+                record(calls, 'getStripeCheckoutSession', args);
+                return makePlantingSession();
+            },
+            getShoppingCart: async (...args: unknown[]) => {
+                record(calls, 'getShoppingCart', args);
+                return makePlantingCart();
+            },
+            getRaisedBed: async (...args: unknown[]) => {
+                record(calls, 'getRaisedBed', args);
+                return { status: 'active' };
+            },
+            withPlantingScheduleTaskTransaction: async (
+                _raisedBedId: number,
+                _positionIndex: number,
+                callback: (value: unknown) => Promise<unknown>,
+            ) => callback(transaction),
+            lockAndActivateRaisedBedForCheckoutPlanting: async (
+                ...args: unknown[]
+            ) => {
+                record(
+                    calls,
+                    'lockAndActivateRaisedBedForCheckoutPlanting',
+                    args,
+                );
+                assert.equal(args[1], transaction);
+                return { available: false, reason: 'abandoned' as const };
+            },
+        });
+
+        await assert.rejects(
+            processCheckoutSession('cs_paid', dependencies),
+            /raised bed is unavailable \(abandoned\)/,
+        );
+
+        assert.equal(callsNamed(calls, 'setCartItemPaid').length, 0);
+        assert.equal(callsNamed(calls, 'markCartPaidIfAllItemsPaid').length, 0);
+        assert.equal(callsNamed(calls, 'createTransaction').length, 0);
+        assert.equal(callsNamed(calls, 'upsertRaisedBedField').length, 0);
+        assert.equal(callsNamed(calls, 'createEvent').length, 0);
+        assert.equal(
+            callsNamed(calls, 'processReferralRewardsForAccount').length,
+            0,
+        );
+        assert.equal(
+            callsNamed(calls, 'createNotificationWithStatus').length,
+            1,
+        );
+        const incident = callsNamed(calls, 'createNotificationWithStatus')[0]
+            ?.args[0];
+        assert.ok(isRecord(incident));
+        assert.equal(incident.type, 'checkout_planting_raised_bed_unavailable');
+    });
+
+    it('keeps an initially abandoned paid planting recoverable and fulfills it after reactivation', async () => {
+        const calls: RecordedCall[] = [];
+        const durableIncidentKeys = new Set<string>();
+        let cartItemStatus: 'open' | 'paid' = 'open';
+        let completedTransactionId: number | undefined;
+        let raisedBedStatus: 'abandoned' | 'active' = 'abandoned';
+        const dependencies = makeDependencies(calls, {
+            getStripeCheckoutSession: async (...args: unknown[]) => {
+                record(calls, 'getStripeCheckoutSession', args);
+                return makePlantingSession();
+            },
+            getShoppingCart: async (...args: unknown[]) => {
+                record(calls, 'getShoppingCart', args);
+                return makePlantingCart(cartItemStatus);
+            },
+            getCompletedTransactionByStripePaymentId: async (
+                ...args: unknown[]
+            ) => {
+                record(calls, 'getCompletedTransactionByStripePaymentId', args);
+                return completedTransactionId
+                    ? { id: completedTransactionId }
+                    : undefined;
+            },
+            getRaisedBed: async (...args: unknown[]) => {
+                record(calls, 'getRaisedBed', args);
+                return { status: raisedBedStatus };
+            },
+            getRaisedBedFieldsWithEvents: async (...args: unknown[]) => {
+                record(calls, 'getRaisedBedFieldsWithEvents', args);
+                return [];
+            },
+            createNotificationWithStatus: async (...args: unknown[]) => {
+                record(calls, 'createNotificationWithStatus', args);
+                const options = args[1];
+                if (
+                    isRecord(options) &&
+                    typeof options.idempotencyKey === 'string'
+                ) {
+                    durableIncidentKeys.add(options.idempotencyKey);
+                }
+                return {
+                    notificationId: 'checkout-raised-bed-unavailable',
+                    created: true,
+                };
+            },
+            setCartItemPaid: async (...args: unknown[]) => {
+                record(calls, 'setCartItemPaid', args);
+                cartItemStatus = 'paid';
+            },
+            createTransaction: async (...args: unknown[]) => {
+                record(calls, 'createTransaction', args);
+                completedTransactionId = 901;
+                return completedTransactionId;
+            },
+        });
+
+        await assert.rejects(
+            processCheckoutSession('cs_paid', dependencies),
+            /raised bed is unavailable \(abandoned\)/,
+        );
+
+        assert.equal(cartItemStatus, 'open');
+        assert.equal(callsNamed(calls, 'createTransaction').length, 0);
+        assert.equal(callsNamed(calls, 'setCartItemPaid').length, 0);
+        assert.equal(
+            callsNamed(calls, 'createNotificationWithStatus').length,
+            1,
+        );
+        assert.deepStrictEqual(
+            [...durableIncidentKeys],
+            ['checkout-planting-raised-bed-unavailable:cs_paid:1'],
+        );
+        const incident = callsNamed(calls, 'createNotificationWithStatus')[0]
+            ?.args[0];
+        assert.ok(isRecord(incident));
+        assert.equal(incident.type, 'checkout_planting_raised_bed_unavailable');
+        assert.equal(incident.priority, 'critical');
+        assert.ok(isRecord(incident.metadata));
+        assert.equal(incident.metadata.fulfillmentStatus, 'open');
+        assert.equal(incident.metadata.reason, 'abandoned');
+
+        raisedBedStatus = 'active';
+        await processCheckoutSession('cs_paid', dependencies);
+
+        assert.equal(cartItemStatus, 'paid');
+        assert.equal(callsNamed(calls, 'setCartItemPaid').length, 1);
+        assert.equal(callsNamed(calls, 'createTransaction').length, 1);
+        assert.equal(
+            callsNamed(calls, 'createEvent')
+                .map((call) => call.args[0])
+                .filter(isRecordedEvent)
+                .filter((event) => event.type === 'raisedBedFields.plantPlace')
+                .length,
+            1,
+        );
+        assert.equal(
+            callsNamed(calls, 'createNotificationWithStatus').length,
+            1,
+        );
+
+        await processCheckoutSession('cs_paid', dependencies);
+        assert.equal(callsNamed(calls, 'setCartItemPaid').length, 1);
+        assert.equal(callsNamed(calls, 'createTransaction').length, 1);
+        assert.equal(
+            callsNamed(calls, 'createEvent')
+                .map((call) => call.args[0])
+                .filter(isRecordedEvent)
+                .filter((event) => event.type === 'raisedBedFields.plantPlace')
+                .length,
+            1,
+        );
+    });
+
+    it('keeps a paid planting order open and escalates when its target has an active cycle', async () => {
+        const calls: RecordedCall[] = [];
+        const durableIncidentKeys = new Set<string>();
+        let operatorAlertSent = false;
+        let failFirstOperatorAlert = true;
+        const dependencies = makeDependencies(calls, {
+            getStripeCheckoutSession: async (...args: unknown[]) => {
+                record(calls, 'getStripeCheckoutSession', args);
+                return makePlantingSession();
+            },
+            getShoppingCart: async (...args: unknown[]) => {
+                record(calls, 'getShoppingCart', args);
+                return makePlantingCart();
+            },
+            getOutletOfferReservationForCartItem: async (
+                ...args: unknown[]
+            ) => {
+                record(calls, 'getOutletOfferReservationForCartItem', args);
+                return {
+                    id: 71,
+                    outletOfferId: 72,
+                    outletOffer: { plantSortId: 101 },
+                    heldSowingDate: new Date('2026-06-15T00:00:00.000Z'),
+                    heldInitialPlantStatus: 'sprouted',
+                };
+            },
+            getRaisedBedFieldsWithEvents: async (...args: unknown[]) => {
+                record(calls, 'getRaisedBedFieldsWithEvents', args);
+                return [
+                    {
+                        id: 88,
+                        positionIndex: 2,
+                        active: true,
+                        plantCycles: [
+                            {
+                                active: true,
+                                plantPlaceEventId: 400,
+                                plantSortId: 99,
+                                plantStatus: 'planned',
+                                purchase: {
+                                    cartItemId: 999,
+                                    currency: 'eur',
+                                    euroAmountCents: 1000,
+                                },
+                            },
+                        ],
+                    },
+                ];
+            },
+            createNotificationWithStatus: async (...args: unknown[]) => {
+                record(calls, 'createNotificationWithStatus', args);
+                const options = args[1];
+                let created = false;
+                if (
+                    isRecord(options) &&
+                    typeof options.idempotencyKey === 'string'
+                ) {
+                    created = !durableIncidentKeys.has(options.idempotencyKey);
+                    durableIncidentKeys.add(options.idempotencyKey);
+                }
+                return {
+                    notificationId: 'checkout-planting-incident',
+                    created,
+                };
+            },
+            deliverNotificationOperatorAlert: async (...args: unknown[]) => {
+                record(
+                    calls,
+                    'deliverNotificationOperatorAlert',
+                    args.slice(0, 1),
+                );
+                if (operatorAlertSent) {
+                    return { attempted: false, status: 'already_sent' };
+                }
+                const deliver = args[1];
+                if (typeof deliver !== 'function') {
+                    throw new Error(
+                        'Missing operator alert delivery callback.',
+                    );
+                }
+                try {
+                    await deliver();
+                    operatorAlertSent = true;
+                    return { attempted: true, status: 'sent' };
+                } catch (error) {
+                    return { attempted: true, status: 'failed', error };
+                }
+            },
+            notifyCheckoutFulfillmentIncident: async (...args: unknown[]) => {
+                record(calls, 'notifyCheckoutFulfillmentIncident', args);
+                if (failFirstOperatorAlert) {
+                    failFirstOperatorAlert = false;
+                    throw new Error('transient Slack failure');
+                }
+            },
+        });
+
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+            await assert.rejects(
+                processCheckoutSession('cs_paid', dependencies),
+                /active plant cycle/,
+            );
+        }
+
+        assert.equal(callsNamed(calls, 'setCartItemPaid').length, 0);
+        assert.equal(callsNamed(calls, 'createTransaction').length, 0);
+        assert.equal(callsNamed(calls, 'markCartPaidIfAllItemsPaid').length, 0);
+        assert.equal(callsNamed(calls, 'createEvent').length, 0);
+        assert.equal(
+            callsNamed(calls, 'processReferralRewardsForAccount').length,
+            0,
+        );
+        assert.equal(
+            callsNamed(calls, 'convertOutletReservationForCartItem').length,
+            0,
+        );
+        assert.equal(
+            callsNamed(calls, 'createNotificationWithStatus').length,
+            2,
+        );
+        assert.equal(durableIncidentKeys.size, 1);
+        assert.equal(
+            durableIncidentKeys.has(
+                'checkout-planting-target-conflict:cs_paid:1',
+            ),
+            true,
+        );
+        const incident = callsNamed(calls, 'createNotificationWithStatus')[0]
+            ?.args[0];
+        assert.ok(isRecord(incident));
+        assert.equal(incident.type, 'checkout_planting_target_conflict');
+        assert.equal(incident.priority, 'critical');
+        assert.ok(isRecord(incident.metadata));
+        assert.equal(incident.metadata.fulfillmentStatus, 'open');
+        assert.equal(incident.metadata.operatorOwner, 'farm_operations');
+        assert.equal(
+            callsNamed(calls, 'notifyCheckoutFulfillmentIncident').length,
+            2,
+        );
+        assert.deepStrictEqual(
+            callsNamed(calls, 'notifyCheckoutFulfillmentIncident')[1]?.args,
+            [
+                {
+                    accountId: 'account-1',
+                    cartItemId: 1,
+                    checkoutSessionId: 'cs_paid',
+                    incidentId: 'checkout-planting-incident',
+                    positionIndex: 2,
+                    raisedBedId: 300,
+                },
+            ],
+        );
+        assert.equal(
+            callsNamed(calls, 'deliverNotificationOperatorAlert').length,
+            2,
+        );
+        assert.equal(operatorAlertSent, true);
+        const conflictCaptures = callsNamed(calls, 'posthog.capture').filter(
+            (call) => {
+                const capture = call.args[0];
+                return (
+                    isRecord(capture) &&
+                    capture.event === 'checkout_planting_target_conflict'
+                );
+            },
+        );
+        assert.equal(conflictCaptures.length, 2);
+    });
+
+    it('rebuilds all invoice lines and cart finalization after a later planting item retries', async () => {
+        const calls: RecordedCall[] = [];
+        let operationItemStatus: 'open' | 'paid' = 'open';
+        let plantingItemStatus: 'open' | 'paid' = 'open';
+        let targetOccupied = true;
+        const cartForId = (cartId: number) =>
+            cartId === 100
+                ? {
+                      id: 100,
+                      accountId: 'account-1',
+                      status: operationItemStatus === 'paid' ? 'paid' : 'new',
+                      items: [
+                          {
+                              id: 1,
+                              status: operationItemStatus,
+                              entityId: '42',
+                              entityTypeName: 'operation',
+                              raisedBedId: 300,
+                          },
+                      ],
+                  }
+                : {
+                      id: 200,
+                      accountId: 'account-1',
+                      status: plantingItemStatus === 'paid' ? 'paid' : 'new',
+                      items: [
+                          {
+                              id: 2,
+                              status: plantingItemStatus,
+                              entityId: '101',
+                              entityTypeName: 'plantSort',
+                              raisedBedId: 300,
+                          },
+                      ],
+                  };
+        const dependencies = makeDependencies(calls, {
+            getStripeCheckoutSession: async (...args: unknown[]) => {
+                record(calls, 'getStripeCheckoutSession', args);
+                return makeMultiLinePlantingSession();
+            },
+            getShoppingCart: async (...args: unknown[]) => {
+                record(calls, 'getShoppingCart', args);
+                return cartForId(Number(args[0]));
+            },
+            getRaisedBedFieldsWithEvents: async (...args: unknown[]) => {
+                record(calls, 'getRaisedBedFieldsWithEvents', args);
+                return [
+                    {
+                        id: 88,
+                        positionIndex: 2,
+                        active: targetOccupied,
+                        plantCycles: targetOccupied
+                            ? [
+                                  {
+                                      active: true,
+                                      plantPlaceEventId: 400,
+                                      plantSortId: 99,
+                                      plantStatus: 'planned',
+                                      purchase: {
+                                          cartItemId: 999,
+                                          currency: 'eur',
+                                          euroAmountCents: 1000,
+                                      },
+                                  },
+                              ]
+                            : [],
+                    },
+                ];
+            },
+            setCartItemPaid: async (...args: unknown[]) => {
+                record(calls, 'setCartItemPaid', args);
+                if (args[0] === 1) {
+                    operationItemStatus = 'paid';
+                }
+                if (args[0] === 2) {
+                    plantingItemStatus = 'paid';
+                }
+            },
+            isBillingAutomationEnabled: (...args: unknown[]) => {
+                record(calls, 'isBillingAutomationEnabled', args);
+                return true;
+            },
+        });
+
+        await assert.rejects(
+            processCheckoutSession('cs_paid', dependencies),
+            /active plant cycle/,
+        );
+        assert.equal(operationItemStatus, 'paid');
+        assert.equal(plantingItemStatus, 'open');
+        assert.equal(callsNamed(calls, 'createOperation').length, 1);
+        assert.equal(callsNamed(calls, 'createTransaction').length, 0);
+
+        targetOccupied = false;
+        await processCheckoutSession('cs_paid', dependencies);
+
+        assert.equal(operationItemStatus, 'paid');
+        assert.equal(plantingItemStatus, 'paid');
+        assert.equal(callsNamed(calls, 'createOperation').length, 1);
+        assert.deepStrictEqual(
+            callsNamed(calls, 'markCartPaidIfAllItemsPaid')
+                .slice(-2)
+                .map((call) => call.args[0]),
+            [100, 200],
+        );
+        assert.equal(callsNamed(calls, 'createTransaction').length, 1);
+        const invoiceInput = callsNamed(calls, 'ensureInvoiceForTransaction')[0]
+            ?.args[0];
+        assert.ok(isRecord(invoiceInput));
+        assert.ok(Array.isArray(invoiceInput.items));
+        assert.deepStrictEqual(
+            invoiceInput.items.map((item) =>
+                isRecord(item) ? item.entityTypeName : null,
+            ),
+            ['operation', 'plantSort'],
+        );
+        assert.equal(
+            callsNamed(calls, 'createEvent')
+                .map((call) => call.args[0])
+                .filter(isRecordedEvent)
+                .filter(
+                    (event) =>
+                        event.type === 'raisedBedFields.plantPlace' ||
+                        event.type === 'accounts.sunflowersEarned',
+                ).length,
+            2,
+        );
+        const billingEmailInput = callsNamed(
+            calls,
+            'notifyBillingDocumentsEmail',
+        )[0]?.args[0];
+        assert.ok(isRecord(billingEmailInput));
+        assert.deepStrictEqual(billingEmailInput.cartIds, [100, 200]);
+    });
+
     it('continues when sunflower spending fails for non-Stripe cart items but leaves them unpaid', async () => {
         const calls: RecordedCall[] = [];
         const sunflowerItem = makeSunflowerCartItem();
@@ -1213,22 +2195,20 @@ describe('processItem', () => {
             dependencies,
         );
 
-        assert.deepStrictEqual(callsNamed(calls, 'createEvent')[0]?.args, [
-            {
-                type: 'raisedBedFields.plantPlace',
-                aggregateId: '300|2',
-                data: {
-                    plantSortId: '42',
-                    scheduledDate: '2026-07-01',
-                    sowingLocation: 'greenhouse',
-                    purchase: {
-                        cartItemId: 1,
-                        currency: 'sunflower',
-                        sunflowerAmount: 2500,
-                    },
+        assert.deepStrictEqual(callsNamed(calls, 'createEvent')[0]?.args[0], {
+            type: 'raisedBedFields.plantPlace',
+            aggregateId: '300|2',
+            data: {
+                plantSortId: '42',
+                scheduledDate: '2026-07-01',
+                sowingLocation: 'greenhouse',
+                purchase: {
+                    cartItemId: 1,
+                    currency: 'sunflower',
+                    sunflowerAmount: 2500,
                 },
             },
-        ]);
+        });
     });
 
     it('continues operation processing when earning sunflowers fails', async () => {
@@ -1331,6 +2311,266 @@ describe('processItem', () => {
                     euroAmountCents: 2500,
                 },
             },
+        });
+    });
+
+    it('finds the same checkout planting after its cycle moves to another field', async () => {
+        const calls: RecordedCall[] = [];
+        const dependencies = makeDependencies(calls, {
+            getRaisedBedFieldsWithEvents: async (...args: unknown[]) => {
+                record(calls, 'getRaisedBedFieldsWithEvents', args);
+                return [
+                    {
+                        id: 88,
+                        positionIndex: 2,
+                        active: false,
+                        plantCycles: [],
+                    },
+                    {
+                        id: 89,
+                        positionIndex: 5,
+                        active: true,
+                        plantCycles: [
+                            {
+                                active: true,
+                                plantPlaceEventId: 400,
+                                plantSortId: 101,
+                                plantStatus: 'planned',
+                                purchase: {
+                                    cartItemId: 1,
+                                    currency: 'eur',
+                                    euroAmountCents: 2500,
+                                },
+                            },
+                        ],
+                    },
+                ];
+            },
+        });
+
+        await processItem(
+            {
+                accountId: 'account-1',
+                amount_total: 2500,
+                additionalData: { scheduledDate: '2026-07-01' },
+                cartId: 100,
+                cartItemId: 1,
+                checkoutSessionId: 'cs_moved',
+                currency: 'eur',
+                entityId: '101',
+                entityTypeName: 'plantSort',
+                gardenId: 200,
+                positionIndex: 2,
+                raisedBedId: 300,
+            },
+            dependencies,
+        );
+
+        assert.equal(callsNamed(calls, 'createEvent').length, 0);
+        assert.equal(
+            callsNamed(calls, 'lockAndActivateRaisedBedForCheckoutPlanting')
+                .length,
+            1,
+        );
+        assert.equal(
+            callsNamed(calls, 'withPlantingScheduleTaskTransaction').length,
+            1,
+        );
+    });
+
+    it('restores a field deleted before the checkout lock in the same planting transaction', async () => {
+        const calls: RecordedCall[] = [];
+        const transaction = { transaction: 'delete-before-checkout-lock' };
+        let fieldDeleted = true;
+        let restoredDeletedRow = false;
+        const dependencies = makeDependencies(calls, {
+            withPlantingScheduleTaskTransaction: async (
+                _raisedBedId: number,
+                _positionIndex: number,
+                callback: (value: unknown) => Promise<unknown>,
+            ) => callback(transaction),
+            upsertRaisedBedField: async (...args: unknown[]) => {
+                record(calls, 'upsertRaisedBedField', args);
+                assert.equal(args[1], transaction);
+                restoredDeletedRow = fieldDeleted;
+                fieldDeleted = false;
+            },
+            getRaisedBedFieldsWithEvents: async (...args: unknown[]) => {
+                record(calls, 'getRaisedBedFieldsWithEvents', args);
+                assert.equal(args[1], transaction);
+                return fieldDeleted
+                    ? []
+                    : [
+                          {
+                              id: 88,
+                              positionIndex: 2,
+                              active: false,
+                              plantCycles: [],
+                          },
+                      ];
+            },
+            createEvent: async (...args: unknown[]) => {
+                record(calls, 'createEvent', args);
+                assert.equal(args[1], transaction);
+            },
+        });
+
+        await processItem(
+            {
+                accountId: 'account-1',
+                amount_total: 2500,
+                additionalData: { scheduledDate: '2026-07-01' },
+                cartId: 100,
+                cartItemId: 1,
+                checkoutSessionId: 'cs_delete_before_lock',
+                currency: 'eur',
+                entityId: '101',
+                entityTypeName: 'plantSort',
+                gardenId: 200,
+                positionIndex: 2,
+                raisedBedId: 300,
+            },
+            dependencies,
+        );
+
+        assert.equal(restoredDeletedRow, true);
+        assert.equal(fieldDeleted, false);
+        assert.equal(callsNamed(calls, 'upsertRaisedBedField').length, 1);
+        assert.equal(
+            callsNamed(calls, 'getRaisedBedFieldsWithEvents').length,
+            1,
+        );
+        assert.equal(
+            callsNamed(calls, 'createEvent')
+                .map((call) => call.args[0])
+                .filter(isRecordedEvent)
+                .filter((event) => event.type === 'raisedBedFields.plantPlace')
+                .length,
+            1,
+        );
+    });
+
+    it('lets abandonment win after checkout commits its locked planting', async () => {
+        const calls: RecordedCall[] = [];
+        const runParentLocked = createAsyncMutex();
+        const checkoutHasParentLock = createGate();
+        const releaseCheckout = createGate();
+        const abandonmentAttempted = createGate();
+        const transaction = { transaction: 'checkout-parent-lock' };
+        let raisedBedStatus = 'new';
+        const dependencies = makeDependencies(calls, {
+            getRaisedBed: async (...args: unknown[]) => {
+                record(calls, 'getRaisedBed', args);
+                return { status: raisedBedStatus };
+            },
+            withPlantingScheduleTaskTransaction: async (
+                _raisedBedId: number,
+                _positionIndex: number,
+                callback: (value: unknown) => Promise<unknown>,
+            ) => runParentLocked(() => callback(transaction)),
+            lockAndActivateRaisedBedForCheckoutPlanting: async (
+                ...args: unknown[]
+            ) => {
+                record(
+                    calls,
+                    'lockAndActivateRaisedBedForCheckoutPlanting',
+                    args,
+                );
+                assert.equal(args[1], transaction);
+                assert.equal(raisedBedStatus, 'new');
+                raisedBedStatus = 'active';
+                checkoutHasParentLock.open();
+                await releaseCheckout.wait;
+                return {
+                    available: true,
+                    activatedAccountId: 'account-1',
+                };
+            },
+        });
+
+        const checkoutPromise = processItem(
+            {
+                accountId: 'account-1',
+                amount_total: 2500,
+                additionalData: { scheduledDate: '2026-07-01' },
+                cartId: 100,
+                cartItemId: 1,
+                checkoutSessionId: 'cs_checkout_first',
+                currency: 'eur',
+                entityId: '101',
+                entityTypeName: 'plantSort',
+                gardenId: 200,
+                positionIndex: 2,
+                raisedBedId: 300,
+            },
+            dependencies,
+        );
+        await checkoutHasParentLock.wait;
+
+        const abandonmentPromise = (async () => {
+            abandonmentAttempted.open();
+            return runParentLocked(async () => {
+                raisedBedStatus = 'abandoned';
+            });
+        })();
+        await abandonmentAttempted.wait;
+        assert.equal(raisedBedStatus, 'active');
+
+        releaseCheckout.open();
+        await Promise.all([checkoutPromise, abandonmentPromise]);
+
+        assert.equal(raisedBedStatus, 'abandoned');
+        assert.equal(
+            callsNamed(calls, 'processReferralRewardsForAccount').length,
+            1,
+        );
+        assert.equal(
+            callsNamed(calls, 'processReferralRewardsForAccount')[0]?.args[1],
+            transaction,
+        );
+        assert.equal(
+            callsNamed(calls, 'createEvent')
+                .map((call) => call.args[0])
+                .filter(isRecordedEvent)
+                .filter((event) => event.type === 'raisedBedFields.plantPlace')
+                .length,
+            1,
+        );
+        assert.equal(
+            callsNamed(calls, 'createEvent')
+                .map((call) => call.args[0])
+                .filter(isRecordedEvent)
+                .filter((event) => event.type === 'accounts.sunflowersEarned')
+                .length,
+            1,
+        );
+    });
+
+    it('serializes checkout replacement after completion without splitting the plant cycle', async () => {
+        await assertCheckoutPlantingRace({
+            checkoutFirst: false,
+            terminalWriter: 'completion',
+        });
+    });
+
+    it('serializes completion after checkout replacement without splitting the plant cycle', async () => {
+        await assertCheckoutPlantingRace({
+            checkoutFirst: true,
+            terminalWriter: 'completion',
+        });
+    });
+
+    it('serializes checkout replacement after a blocker without splitting the plant cycle', async () => {
+        await assertCheckoutPlantingRace({
+            checkoutFirst: false,
+            terminalWriter: 'block',
+        });
+    });
+
+    it('serializes a blocker after checkout replacement without splitting the plant cycle', async () => {
+        await assertCheckoutPlantingRace({
+            checkoutFirst: true,
+            terminalWriter: 'block',
         });
     });
 });

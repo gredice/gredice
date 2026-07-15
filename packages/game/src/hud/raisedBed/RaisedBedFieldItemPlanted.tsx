@@ -30,6 +30,7 @@ import { GameModal } from '../../shared-ui/game-modal';
 import {
     findRaisedBedFieldWithPlant,
     findRaisedBedOccupiedField,
+    getRaisedBedFieldActivePlantIdentity,
     type RaisedBedFieldPlantHistoryEntry,
 } from '../../utils/raisedBedFields';
 import { SuncokretChatTrigger } from '../SuncokretChatTrigger';
@@ -277,8 +278,10 @@ export function RaisedBedFieldItemPlanted({
     const localizedStatus = plantFieldStatusLabel(
         field.plantStatus ?? undefined,
     );
+    const currentPlantIdentity = getRaisedBedFieldActivePlantIdentity(field);
     const canChangeStatus = Boolean(
-        field.plantStatus &&
+        currentPlantIdentity &&
+            field.plantStatus &&
             userAllowedPlantStatusTransitions[field.plantStatus]?.length,
     );
     const statusContent = (
@@ -291,26 +294,27 @@ export function RaisedBedFieldItemPlanted({
             </Typography>
         </>
     );
-    const statusTrigger = field.active ? (
-        <button
-            type="button"
-            className="border bg-card rounded-full shrink-0 size-[100px] aspect-square shadow flex flex-col gap-1 items-center justify-center pointer-events-auto transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700 focus-visible:ring-offset-2"
-            aria-label={
-                canChangeStatus
-                    ? `Promijeni stanje biljke: ${localizedStatus.shortLabel}`
-                    : `Stanje biljke: ${localizedStatus.shortLabel}`
-            }
-        >
-            {statusContent}
-        </button>
-    ) : (
-        <Stack
-            alignItems="center"
-            className="border bg-card rounded-full shrink-0 size-[100px] aspect-square shadow flex items-center justify-center"
-        >
-            {statusContent}
-        </Stack>
-    );
+    const statusTrigger =
+        field.active && currentPlantIdentity ? (
+            <button
+                type="button"
+                className="border bg-card rounded-full shrink-0 size-[100px] aspect-square shadow flex flex-col gap-1 items-center justify-center pointer-events-auto transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700 focus-visible:ring-offset-2"
+                aria-label={
+                    canChangeStatus
+                        ? `Promijeni stanje biljke: ${localizedStatus.shortLabel}`
+                        : `Stanje biljke: ${localizedStatus.shortLabel}`
+                }
+            >
+                {statusContent}
+            </button>
+        ) : (
+            <Stack
+                alignItems="center"
+                className="border bg-card rounded-full shrink-0 size-[100px] aspect-square shadow flex items-center justify-center"
+            >
+                {statusContent}
+            </Stack>
+        );
     const avatarTrigger = (
         <button
             type="button"
@@ -595,8 +599,17 @@ export function RaisedBedFieldItemPlanted({
                                     }
                                     plantDetailsUrl={plantDetailsUrl}
                                     statusTrigger={
-                                        field.active ? (
+                                        field.active && currentPlantIdentity ? (
                                             <RaisedBedFieldStatusChange
+                                                expectedPlantCycleEventId={
+                                                    currentPlantIdentity.plantPlaceEventId
+                                                }
+                                                expectedPlantCycleVersionEventId={
+                                                    currentPlantIdentity.plantCycleVersionEventId
+                                                }
+                                                expectedPlantSortId={
+                                                    currentPlantIdentity.plantSortId
+                                                }
                                                 raisedBedId={raisedBedId}
                                                 positionIndex={positionIndex}
                                                 currentStatus={

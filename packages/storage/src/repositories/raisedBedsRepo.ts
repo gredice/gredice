@@ -54,6 +54,7 @@ import {
     type RaisedBedWeedState,
 } from './raisedBedFieldsRepo';
 import { processReferralRewardsForAccount } from './referralsRepo';
+import type { ScheduleTaskTransaction } from './scheduleTaskTransactionsRepo';
 
 const RAISED_BED_FIELDS_PER_BLOCK = 9;
 
@@ -72,6 +73,7 @@ type RaisedBedWithFields = typeof raisedBeds.$inferSelect & {
 const raisedBedPhotoOperationStatusEventTypes = [
     knownEventTypes.operations.schedule,
     knownEventTypes.operations.complete,
+    knownEventTypes.operations.block,
     knownEventTypes.operations.verify,
     knownEventTypes.operations.fail,
     knownEventTypes.operations.cancel,
@@ -595,6 +597,71 @@ export async function updateRaisedBed(raisedBed: UpdateRaisedBed) {
     }
 }
 
+export type CheckoutPlantingRaisedBedActivation =
+    | {
+          available: false;
+          reason: 'abandoned' | 'not_found' | 'status_changed';
+      }
+    | {
+          available: true;
+          activatedAccountId: string | null;
+      };
+
+/**
+ * Serializes checkout planting against abandonment on the parent raised bed.
+ * The caller must keep this in the same transaction as the planting events.
+ */
+export async function lockAndActivateRaisedBedForCheckoutPlanting(
+    raisedBedId: number,
+    transaction: ScheduleTaskTransaction,
+): Promise<CheckoutPlantingRaisedBedActivation> {
+    const [raisedBed] = await transaction
+        .select({
+            accountId: raisedBeds.accountId,
+            status: raisedBeds.status,
+        })
+        .from(raisedBeds)
+        .where(
+            and(
+                eq(raisedBeds.id, raisedBedId),
+                eq(raisedBeds.isDeleted, false),
+            ),
+        )
+        .limit(1)
+        .for('update');
+
+    if (!raisedBed) {
+        return { available: false, reason: 'not_found' };
+    }
+    if (raisedBed.status === 'abandoned') {
+        return { available: false, reason: 'abandoned' };
+    }
+    if (raisedBed.status === 'active') {
+        return { available: true, activatedAccountId: null };
+    }
+
+    const [activatedRaisedBed] = await transaction
+        .update(raisedBeds)
+        .set({ status: 'active' })
+        .where(
+            and(
+                eq(raisedBeds.id, raisedBedId),
+                eq(raisedBeds.isDeleted, false),
+                eq(raisedBeds.status, raisedBed.status),
+            ),
+        )
+        .returning({ accountId: raisedBeds.accountId });
+
+    if (!activatedRaisedBed) {
+        return { available: false, reason: 'status_changed' };
+    }
+
+    return {
+        available: true,
+        activatedAccountId: activatedRaisedBed.accountId,
+    };
+}
+
 export async function abandonRaisedBed({
     accountId,
     gardenId,
@@ -771,6 +838,7 @@ export async function mergeRaisedBeds(
                             knownEventTypes.raisedBedFields.plantPlace,
                             knownEventTypes.raisedBedFields.plantSchedule,
                             knownEventTypes.raisedBedFields.plantUpdate,
+                            knownEventTypes.raisedBedFields.plantBlock,
                             knownEventTypes.raisedBedFields.plantReplaceSort,
                         ]),
                     ),

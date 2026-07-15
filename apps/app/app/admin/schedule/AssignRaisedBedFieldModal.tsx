@@ -22,6 +22,9 @@ type AssignableUser = Pick<
 
 interface AssignRaisedBedFieldModalProps {
     raisedBedFieldId: number;
+    expectedPlantCycleEventId: number;
+    expectedPlantCycleVersionEventId: number;
+    expectedPlantSortId: number;
     label: string;
     farmUsers: AssignableUser[];
     assignedUserIds?: string[];
@@ -37,6 +40,9 @@ function getUserLabel(user: AssignableUser) {
 
 export function AssignRaisedBedFieldModal({
     raisedBedFieldId,
+    expectedPlantCycleEventId,
+    expectedPlantCycleVersionEventId,
+    expectedPlantSortId,
     label,
     farmUsers,
     assignedUserIds,
@@ -122,6 +128,9 @@ export function AssignRaisedBedFieldModal({
             } else {
                 await assignRaisedBedFieldUserAction(
                     raisedBedFieldId,
+                    expectedPlantCycleEventId,
+                    expectedPlantSortId,
+                    expectedPlantCycleVersionEventId,
                     selectedUserIds,
                 );
             }

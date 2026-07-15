@@ -1,6 +1,7 @@
 import type { OperationStatus } from '@gredice/storage';
 import { expect, test } from '@playwright/test';
 import {
+    filterUnavailableRaisedBedOperations,
     getCarryoverOperationsForToday,
     getScheduledFieldsForDay,
     getSelectedDateOperationsForDay,
@@ -11,6 +12,7 @@ const todayKey = '2026-05-14';
 const yesterdayNoon = new Date('2026-05-13T10:00:00.000Z');
 
 type TestField = {
+    blockedAt?: Date;
     id: number;
     plantScheduledDate?: Date;
     plantSortId: number;
@@ -19,6 +21,7 @@ type TestField = {
 };
 
 type TestOperation = {
+    blockedAt?: Date;
     completedAt?: Date;
     farmId: number | null;
     id: number;
@@ -37,10 +40,11 @@ function buildField(overrides: Partial<TestField> = {}): TestField {
     };
 }
 
-function buildRaisedBed(field: TestField) {
+function buildRaisedBed(field: TestField, status: string = 'active') {
     return {
         fields: [field],
         physicalId: 'A1',
+        status,
     };
 }
 
@@ -151,6 +155,78 @@ test('verified operation appears only on its actual completion date', () => {
     expect(getCarryoverOperationsForToday(true, todayKey, [operation])).toEqual(
         [],
     );
+});
+
+test('blocked planting appears on its block date and never carries into Today', () => {
+    const blockedField = buildField({
+        blockedAt: yesterdayNoon,
+        plantScheduledDate: new Date('2026-05-10T10:00:00.000Z'),
+        plantStatus: 'blocked',
+    });
+    const raisedBeds = [buildRaisedBed(blockedField)];
+
+    expect(
+        getScheduledFieldsForDay(false, yesterdayKey, raisedBeds).map(
+            (item) => item.id,
+        ),
+    ).toEqual([blockedField.id]);
+    expect(getScheduledFieldsForDay(false, '2026-05-10', raisedBeds)).toEqual(
+        [],
+    );
+    expect(getScheduledFieldsForDay(true, todayKey, raisedBeds)).toEqual([]);
+});
+
+test('blocked operation appears on its block date and never carries into Today', () => {
+    const blockedOperation = buildOperation({
+        blockedAt: yesterdayNoon,
+        scheduledDate: new Date('2026-05-10T10:00:00.000Z'),
+        status: 'blocked',
+    });
+
+    expect(
+        getSelectedDateOperationsForDay(yesterdayKey, [blockedOperation]).map(
+            (item) => item.id,
+        ),
+    ).toEqual([blockedOperation.id]);
+    expect(
+        getSelectedDateOperationsForDay('2026-05-10', [blockedOperation]),
+    ).toEqual([]);
+    expect(
+        getCarryoverOperationsForToday(true, todayKey, [blockedOperation]),
+    ).toEqual([]);
+});
+
+test('abandoned beds hide actionable work while preserving submitted history', () => {
+    const actionableField = buildField({ id: 1, plantStatus: 'planned' });
+    const blockedField = buildField({
+        blockedAt: yesterdayNoon,
+        id: 2,
+        plantStatus: 'blocked',
+    });
+    const raisedBeds = [
+        buildRaisedBed(actionableField, 'abandoned'),
+        buildRaisedBed(blockedField, 'abandoned'),
+    ];
+
+    expect(
+        getScheduledFieldsForDay(true, todayKey, raisedBeds).map(
+            (field) => field.id,
+        ),
+    ).toEqual([]);
+    expect(
+        getScheduledFieldsForDay(false, yesterdayKey, raisedBeds).map(
+            (field) => field.id,
+        ),
+    ).toEqual([blockedField.id]);
+
+    const actionableOperation = buildOperation({ id: 1, status: 'planned' });
+    const blockedOperation = buildOperation({ id: 2, status: 'blocked' });
+    expect(
+        filterUnavailableRaisedBedOperations(
+            [actionableOperation, blockedOperation],
+            [{ id: 10, status: 'abandoned' }],
+        ).map((operation) => operation.id),
+    ).toEqual([blockedOperation.id]);
 });
 
 test('only actionable overdue or unscheduled operations carry into Today', () => {

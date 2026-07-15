@@ -399,3 +399,45 @@ test('converting an outlet reservation is idempotent and keeps held snapshots', 
     assert.equal(offer?.remainingQuantity, 0);
     assert.equal(offer?.soldQuantity, 1);
 });
+
+test('outlet conversion rolls back with a failed planting transaction and remains retryable', async () => {
+    const db = createTestDb();
+    const now = new Date('2026-05-01T10:00:00.000Z');
+    const plantSortId = await createTestPlantSort();
+    const offerId = await createPublishedOffer({ plantSortId, now });
+    const accountId = await createTestAccount();
+    const { cart, cartItemId } = await createCartItem(accountId, plantSortId);
+    const reservation = await reserveOutletOffer({
+        offerId,
+        accountId,
+        cartId: cart.id,
+        cartItemId,
+        now,
+    });
+
+    await assert.rejects(
+        db.transaction(async (transaction) => {
+            await convertOutletReservationForCartItem(
+                cartItemId,
+                addMinutes(now, 1),
+                transaction,
+            );
+            throw new Error('simulated plant event insert failure');
+        }),
+        /simulated plant event insert failure/,
+    );
+
+    const rolledBackReservation = await getOutletOfferReservation(
+        reservation.id,
+    );
+    assert.equal(rolledBackReservation?.status, 'held');
+
+    const retriedReservation = await db.transaction((transaction) =>
+        convertOutletReservationForCartItem(
+            cartItemId,
+            addMinutes(now, 2),
+            transaction,
+        ),
+    );
+    assert.equal(retriedReservation.status, 'converted');
+});

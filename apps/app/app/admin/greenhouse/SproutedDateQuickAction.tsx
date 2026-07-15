@@ -43,10 +43,16 @@ export function SproutedDateQuickAction({
     raisedBedId,
     positionIndex,
     sproutedDate,
+    expectedPlantCycleEventId,
+    expectedPlantCycleVersionEventId,
+    expectedPlantSortId,
 }: {
     raisedBedId: number;
     positionIndex: number;
     sproutedDate: Date | null;
+    expectedPlantCycleEventId: number;
+    expectedPlantCycleVersionEventId: number;
+    expectedPlantSortId: number;
 }) {
     const router = useRouter();
     const [open, setOpen] = useState(false);
@@ -79,6 +85,9 @@ export function SproutedDateQuickAction({
                     raisedBedId,
                     positionIndex,
                     status: 'sprouted',
+                    expectedPlantCycleEventId,
+                    expectedPlantCycleVersionEventId,
+                    expectedPlantSortId,
                     timestamp,
                 });
                 setOpen(false);

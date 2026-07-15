@@ -20,9 +20,15 @@ export function useRaisedBedFieldRemove() {
     return useMutation({
         mutationKey,
         mutationFn: async ({
+            expectedPlantCycleEventId,
+            expectedPlantCycleVersionEventId,
+            expectedPlantSortId,
             raisedBedId,
             positionIndex,
         }: {
+            expectedPlantCycleEventId: number;
+            expectedPlantCycleVersionEventId: number;
+            expectedPlantSortId: number;
             raisedBedId: number;
             positionIndex: number;
         }) => {
@@ -63,6 +69,9 @@ export function useRaisedBedFieldRemove() {
                     positionIndex: positionIndex.toString(),
                 },
                 json: {
+                    expectedPlantCycleEventId,
+                    expectedPlantCycleVersionEventId,
+                    expectedPlantSortId,
                     status: 'removed',
                 },
             });

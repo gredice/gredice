@@ -4,17 +4,19 @@ export type ScheduleTaskState =
     | 'actionable'
     | 'pendingVerification'
     | 'completed'
+    | 'blocked'
     | 'failed'
     | 'canceled';
 
 export type SchedulePlantingStatus =
     | 'planned'
     | 'pendingVerification'
-    | 'sowed';
+    | 'sowed'
+    | 'blocked';
 
 type SchedulePlantingTaskState = Extract<
     ScheduleTaskState,
-    'actionable' | 'pendingVerification' | 'completed'
+    'actionable' | 'pendingVerification' | 'completed' | 'blocked'
 >;
 
 export type ScheduleTaskSummaryItem = {
@@ -32,6 +34,7 @@ export type ScheduleTaskSummary = {
     actionable: ScheduleTaskMetrics;
     pendingVerification: ScheduleTaskMetrics;
     completed: ScheduleTaskMetrics;
+    blocked: ScheduleTaskMetrics;
     failed: ScheduleTaskMetrics;
     canceled: ScheduleTaskMetrics;
 };
@@ -51,6 +54,7 @@ const operationTaskStateByStatus = {
     planned: 'actionable',
     pendingVerification: 'pendingVerification',
     completed: 'completed',
+    blocked: 'blocked',
     failed: 'failed',
     canceled: 'canceled',
 } satisfies Record<OperationStatus, ScheduleTaskState>;
@@ -73,6 +77,8 @@ export function getPlantingTaskState(status: string | null | undefined) {
             return 'pendingVerification';
         case 'sowed':
             return 'completed';
+        case 'blocked':
+            return 'blocked';
         default:
             return null;
     }
@@ -96,6 +102,12 @@ export function isCompletedTaskState(
     return state === 'completed';
 }
 
+export function isBlockedTaskState(
+    state: ScheduleTaskState | null | undefined,
+): state is 'blocked' {
+    return state === 'blocked';
+}
+
 export function getScheduleTaskPresentation(
     state: ScheduleTaskState,
 ): ScheduleTaskPresentation {
@@ -108,7 +120,8 @@ export function getScheduleTaskPresentation(
         isCompleted,
         isPendingVerification,
         showAgeIndicator: isActionable,
-        showCompletionAttachments: isPendingVerification || isCompleted,
+        showCompletionAttachments:
+            isPendingVerification || isCompleted || state === 'blocked',
         showCompletionControl: isActionable,
         showRequirementIndicators: isActionable,
     };
@@ -133,6 +146,7 @@ export function getScheduleTaskSummary(
         actionable: createEmptyMetrics(),
         pendingVerification: createEmptyMetrics(),
         completed: createEmptyMetrics(),
+        blocked: createEmptyMetrics(),
         failed: createEmptyMetrics(),
         canceled: createEmptyMetrics(),
     };

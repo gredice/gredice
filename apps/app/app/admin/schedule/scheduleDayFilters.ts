@@ -1,6 +1,8 @@
 import {
     FIELD_STATUSES_TO_INCLUDE,
+    isFieldBlocked,
     isFieldPendingVerification,
+    isOperationBlocked,
     isOperationCancelled,
     isOperationCompleted,
     isOperationPendingVerification,
@@ -27,6 +29,21 @@ export function getScheduledFieldsForDay(
 
             if (!FIELD_STATUSES_TO_INCLUDE.has(field.plantStatus ?? 'new')) {
                 return false;
+            }
+
+            if (isFieldBlocked(field.plantStatus)) {
+                if (!field.blockedAt) {
+                    return isToday;
+                }
+
+                const blockedDateKey = getScheduleDateKey(
+                    new Date(field.blockedAt),
+                    timeZone,
+                );
+                return (
+                    blockedDateKey === dateKey ||
+                    (isToday && blockedDateKey < dateKey)
+                );
             }
 
             if (isFieldPendingVerification(field.plantStatus)) {
@@ -84,6 +101,21 @@ export function getScheduledOperationsForDay(
             typeof operation.farmId !== 'number'
         ) {
             return false;
+        }
+
+        if (isOperationBlocked(operation.status)) {
+            if (!operation.blockedAt) {
+                return isToday;
+            }
+
+            const blockedDateKey = getScheduleDateKey(
+                new Date(operation.blockedAt),
+                timeZone,
+            );
+            return (
+                blockedDateKey === dateKey ||
+                (isToday && blockedDateKey < dateKey)
+            );
         }
 
         if (isOperationPendingVerification(operation.status)) {

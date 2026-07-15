@@ -4,6 +4,7 @@ import {
     getOperationTaskState,
     getPlantingTaskState,
     isActionableTaskState,
+    isBlockedTaskState,
     isCompletedTaskState,
     isPendingTaskState,
 } from './scheduleTaskState';
@@ -11,6 +12,7 @@ import {
 type ScheduleDate = Date | string | null | undefined;
 
 type ScheduleField = {
+    blockedAt?: ScheduleDate;
     plantScheduledDate?: ScheduleDate;
     plantSortId?: number | null;
     plantSowDate?: ScheduleDate;
@@ -20,9 +22,11 @@ type ScheduleField = {
 type ScheduleRaisedBed<TField extends ScheduleField> = {
     fields: TField[];
     physicalId?: string | null;
+    status?: string | null;
 };
 
 type ScheduleOperation = {
+    blockedAt?: ScheduleDate;
     completedAt?: ScheduleDate;
     farmId?: number | null;
     raisedBedId?: number | null;
@@ -60,7 +64,15 @@ export function getScheduledFieldsForDay<TField extends ScheduleField>(
 ) {
     return raisedBeds
         .filter((raisedBed) => Boolean(raisedBed.physicalId))
-        .flatMap((raisedBed) => raisedBed.fields)
+        .flatMap((raisedBed) =>
+            raisedBed.fields.filter((field) => {
+                const taskState = getPlantingTaskState(field.plantStatus);
+                return (
+                    raisedBed.status !== 'abandoned' ||
+                    !isActionableTaskState(taskState)
+                );
+            }),
+        )
         .filter((field) => {
             if (!field.plantSortId) {
                 return false;
@@ -73,6 +85,14 @@ export function getScheduledFieldsForDay<TField extends ScheduleField>(
             }
 
             const sowDateKey = getDateKey(field.plantSowDate);
+
+            if (isBlockedTaskState(taskState)) {
+                const blockedDateKey = getDateKey(field.blockedAt);
+                return (
+                    (blockedDateKey ?? getDateKey(field.plantScheduledDate)) ===
+                    dateKey
+                );
+            }
 
             if (
                 (isPendingTaskState(taskState) ||
@@ -95,6 +115,31 @@ export function getScheduledFieldsForDay<TField extends ScheduleField>(
         });
 }
 
+export function filterUnavailableRaisedBedOperations<
+    TOperation extends ScheduleOperation,
+>(
+    operations: TOperation[],
+    raisedBeds: { id: number; status?: string | null }[],
+) {
+    const abandonedRaisedBedIds = new Set(
+        raisedBeds
+            .filter((raisedBed) => raisedBed.status === 'abandoned')
+            .map((raisedBed) => raisedBed.id),
+    );
+
+    return operations.filter((operation) => {
+        if (
+            typeof operation.raisedBedId !== 'number' ||
+            !abandonedRaisedBedIds.has(operation.raisedBedId) ||
+            !operation.status
+        ) {
+            return true;
+        }
+
+        return !isActionableTaskState(getOperationTaskState(operation.status));
+    });
+}
+
 /**
  * Selects operations for the requested calendar date. Submitted and verified
  * work follows the actual completion date; actionable work follows its planned
@@ -114,6 +159,13 @@ export function getSelectedDateOperationsForDay<
         }
 
         const taskState = getOperationTaskState(operation.status);
+
+        if (isBlockedTaskState(taskState)) {
+            return (
+                (getDateKey(operation.blockedAt) ??
+                    getDateKey(operation.scheduledDate)) === dateKey
+            );
+        }
 
         if (
             !isActionableTaskState(taskState) &&

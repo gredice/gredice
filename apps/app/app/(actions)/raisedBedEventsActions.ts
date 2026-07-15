@@ -1,9 +1,22 @@
 'use server';
 
-import { deleteEventById, updateEventCreatedAt } from '@gredice/storage';
+import {
+    deleteEventById,
+    getEventById,
+    updateEventCreatedAt,
+} from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
 import { auth } from '../../lib/auth/auth';
 import { KnownPages } from '../../src/KnownPages';
+import { runRaisedBedEventMutation } from '../../src/raisedBedEventMutationPolicy';
+
+function mutationActionResult(
+    result: Awaited<ReturnType<typeof runRaisedBedEventMutation>>,
+) {
+    return result.allowed
+        ? ({ success: true } as const)
+        : ({ success: false, error: result.reason } as const);
+}
 
 export async function deleteRaisedBedEventAction(
     eventId: number,
@@ -11,11 +24,19 @@ export async function deleteRaisedBedEventAction(
 ) {
     await auth(['admin']);
 
-    await deleteEventById(eventId);
+    const result = await runRaisedBedEventMutation({
+        eventId,
+        raisedBedId,
+        getEvent: getEventById,
+        mutate: () => deleteEventById(eventId),
+    });
+    if (!result.allowed) {
+        return mutationActionResult(result);
+    }
 
     revalidatePath(KnownPages.RaisedBed(raisedBedId));
 
-    return { success: true } as const;
+    return mutationActionResult(result);
 }
 
 export async function updateRaisedBedEventDateAction(
@@ -30,9 +51,17 @@ export async function updateRaisedBedEventDateAction(
         return { success: false, error: 'invalid_date' } as const;
     }
 
-    await updateEventCreatedAt(eventId, parsed);
+    const result = await runRaisedBedEventMutation({
+        eventId,
+        raisedBedId,
+        getEvent: getEventById,
+        mutate: () => updateEventCreatedAt(eventId, parsed),
+    });
+    if (!result.allowed) {
+        return mutationActionResult(result);
+    }
 
     revalidatePath(KnownPages.RaisedBed(raisedBedId));
 
-    return { success: true } as const;
+    return mutationActionResult(result);
 }

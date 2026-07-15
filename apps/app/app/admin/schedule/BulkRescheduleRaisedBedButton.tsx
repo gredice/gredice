@@ -16,10 +16,15 @@ type FieldRescheduleTarget = {
     id?: number;
     raisedBedId: number;
     positionIndex: number;
+    expectedPlantCycleEventId: number;
+    expectedPlantCycleVersionEventId: number;
+    expectedPlantSortId: number;
 };
 
 type OperationRescheduleTarget = {
     id: number;
+    entityId: number;
+    taskVersionEventId: number;
 };
 
 interface BulkRescheduleRaisedBedButtonProps {
@@ -93,12 +98,32 @@ export function BulkRescheduleRaisedBedButton({
                     'positionIndex',
                     field.positionIndex.toString(),
                 );
+                targetFormData.set(
+                    'expectedPlantCycleEventId',
+                    field.expectedPlantCycleEventId.toString(),
+                );
+                targetFormData.set(
+                    'expectedPlantCycleVersionEventId',
+                    field.expectedPlantCycleVersionEventId.toString(),
+                );
+                targetFormData.set(
+                    'expectedPlantSortId',
+                    field.expectedPlantSortId.toString(),
+                );
                 targetFormData.set('scheduledDate', scheduledDate);
                 return rescheduleRaisedBedFieldAction(targetFormData);
             }),
             ...operations.map((operation) => {
                 const targetFormData = new FormData();
                 targetFormData.set('operationId', operation.id.toString());
+                targetFormData.set(
+                    'expectedEntityId',
+                    operation.entityId.toString(),
+                );
+                targetFormData.set(
+                    'expectedTaskVersionEventId',
+                    operation.taskVersionEventId.toString(),
+                );
                 targetFormData.set('scheduledDate', scheduledDate);
                 return rescheduleOperationAction(targetFormData);
             }),

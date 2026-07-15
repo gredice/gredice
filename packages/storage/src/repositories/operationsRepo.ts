@@ -31,8 +31,9 @@ import {
     users,
 } from '../schema';
 import { storage } from '../storage';
-import { getEvents, knownEventTypes } from './events';
+import { createEvent, getEvents, knownEvents, knownEventTypes } from './events';
 import { normalizeAssignedUserIds } from './events/normalizeAssignedUserIds';
+import { scheduleTaskBlockDetailsFromEvent } from './events/scheduleTaskBlock';
 import type { OperationEventsAnyPayload } from './events/types';
 
 export type OperationStatus =
@@ -40,8 +41,15 @@ export type OperationStatus =
     | 'planned'
     | 'pendingVerification'
     | 'completed'
+    | 'blocked'
     | 'failed'
     | 'canceled';
+
+type StorageClient = ReturnType<typeof storage>;
+type TransactionClient = Parameters<
+    Parameters<StorageClient['transaction']>[0]
+>[0];
+type DatabaseClient = StorageClient | TransactionClient;
 
 type OperationsFilter = {
     from?: Date;
@@ -169,16 +177,22 @@ function parseOperationEventData(value: unknown): OperationEventsAnyPayload {
     return data;
 }
 
-async function fillOperationAggregates(operations: SelectOperation[]) {
+async function fillOperationAggregates(
+    operations: SelectOperation[],
+    db: DatabaseClient = storage(),
+) {
     if (operations.length === 0) {
         return [];
     }
 
     const aggregateIds = operations.map((op) => op.id.toString());
     const aggregateEventTypes = [
+        knownEventTypes.operations.acceptance,
         knownEventTypes.operations.assign,
+        knownEventTypes.operations.entityChange,
         knownEventTypes.operations.schedule,
         knownEventTypes.operations.complete,
+        knownEventTypes.operations.block,
         knownEventTypes.operations.completionEvidenceUpdate,
         knownEventTypes.operations.verify,
         knownEventTypes.operations.fail,
@@ -192,6 +206,7 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
             aggregateIds,
             offset,
             eventPageSize,
+            db,
         );
         aggregatesEvents.push(...eventPage);
         if (eventPage.length < eventPageSize) {
@@ -219,8 +234,10 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
         let scheduledAt: Date | undefined;
         let completedAt: Date | undefined;
         let completedBy: string | undefined;
+        let completionEventId: number | undefined;
         let verifiedAt: Date | undefined;
         let verifiedBy: string | undefined;
+        let verificationEventId: number | undefined;
         let error: string | undefined;
         let errorCode: string | undefined;
         let canceledBy: string | undefined;
@@ -228,12 +245,21 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
         let cancelReason: string | undefined;
         let imageUrls: string[] | undefined;
         let completionNotes: string | undefined;
+        let blockedAt: Date | undefined;
+        let blockedBy: string | undefined;
+        let blockedEventId: number | undefined;
+        let blockReasonCode: string | undefined;
+        let blockReasonLabel: string | undefined;
+        let blockNote: string | undefined;
+        let blockImageUrls: string[] | undefined;
+        let taskVersionEventId = 0;
 
         // helpers to safely extract typed values from unknown event.data
         const asString = (v: unknown): string | undefined =>
             typeof v === 'string' ? v : undefined;
 
         for (const event of operationEvents) {
+            taskVersionEventId = event.id;
             const data = parseOperationEventData(event.data);
             if (event.type === knownEventTypes.operations.assign) {
                 if ('assignedUserId' in data) {
@@ -252,12 +278,23 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
                 status = 'pendingVerification';
                 completedBy = asString(data?.completedBy) ?? completedBy;
                 completedAt = completedAt ?? event.createdAt;
+                completionEventId = completionEventId ?? event.id;
                 if (Array.isArray(data?.images)) {
                     imageUrls = data.images.filter(
                         (url): url is string => typeof url === 'string',
                     );
                 }
                 completionNotes = asString(data?.notes) ?? completionNotes;
+            } else if (event.type === knownEventTypes.operations.block) {
+                const details = scheduleTaskBlockDetailsFromEvent(event);
+                status = 'blocked';
+                blockedAt = details?.blockedAt ?? event.createdAt;
+                blockedBy = details?.blockedBy;
+                blockedEventId = event.id;
+                blockReasonCode = details?.reasonCode;
+                blockReasonLabel = details?.reasonLabel;
+                blockNote = details?.note;
+                blockImageUrls = details?.images;
             } else if (
                 event.type ===
                 knownEventTypes.operations.completionEvidenceUpdate
@@ -272,6 +309,7 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
                 status = 'completed';
                 verifiedBy = asString(data?.verifiedBy) ?? verifiedBy;
                 verifiedAt = event.createdAt;
+                verificationEventId = event.id;
             } else if (event.type === knownEventTypes.operations.fail) {
                 status = 'failed';
                 error = asString(data?.error);
@@ -289,8 +327,10 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
                 scheduledAt = event.createdAt;
                 completedAt = undefined;
                 completedBy = undefined;
+                completionEventId = undefined;
                 verifiedAt = undefined;
                 verifiedBy = undefined;
+                verificationEventId = undefined;
                 error = undefined;
                 errorCode = undefined;
                 canceledBy = undefined;
@@ -298,6 +338,13 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
                 cancelReason = undefined;
                 imageUrls = undefined;
                 completionNotes = undefined;
+                blockedAt = undefined;
+                blockedBy = undefined;
+                blockedEventId = undefined;
+                blockReasonCode = undefined;
+                blockReasonLabel = undefined;
+                blockNote = undefined;
+                blockImageUrls = undefined;
             }
         }
 
@@ -313,8 +360,10 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
             assignedAt,
             completedAt,
             completedBy,
+            completionEventId,
             verifiedAt,
             verifiedBy,
+            verificationEventId,
             error,
             errorCode,
             scheduledDate,
@@ -324,6 +373,14 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
             cancelReason,
             imageUrls,
             completionNotes,
+            blockedAt,
+            blockedBy,
+            blockedEventId,
+            blockReasonCode,
+            blockReasonLabel,
+            blockNote,
+            blockImageUrls,
+            taskVersionEventId,
         };
     });
 
@@ -337,7 +394,7 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
 
     const assignedUsers =
         assignedUserIds.length > 0
-            ? await storage().query.users.findMany({
+            ? await db.query.users.findMany({
                   columns: {
                       id: true,
                       userName: true,
@@ -391,6 +448,7 @@ async function getOperationRows(input: GetOperationsInput) {
 const operationTimelineStatusTypes = [
     knownEventTypes.operations.schedule,
     knownEventTypes.operations.complete,
+    knownEventTypes.operations.block,
     knownEventTypes.operations.verify,
     knownEventTypes.operations.fail,
     knownEventTypes.operations.cancel,
@@ -460,6 +518,7 @@ function getOperationStatusExpression() {
         case ${latestStatusTypeExpression}
             when ${knownEventTypes.operations.schedule} then 'planned'
             when ${knownEventTypes.operations.complete} then 'pendingVerification'
+            when ${knownEventTypes.operations.block} then 'blocked'
             when ${knownEventTypes.operations.verify} then 'completed'
             when ${knownEventTypes.operations.fail} then 'failed'
             when ${knownEventTypes.operations.cancel} then 'canceled'
@@ -493,6 +552,7 @@ const appliedRaisedBedOperationStatuses: OperationStatus[] = [
 ];
 const terminalOperationStatuses: OperationStatus[] = [
     'completed',
+    'blocked',
     'failed',
     'canceled',
 ];
@@ -519,6 +579,8 @@ function getOperationTaskSortExpression() {
         getOperationLatestStatusChangeDateExpression();
 
     return sql<Date>`case
+        when ${statusExpression} = 'blocked'
+            then coalesce(${latestStatusChangeDateExpression}, ${scheduledDateExpression}, ${operations.createdAt})
         when ${statusExpression} in (${sql.join(
             appliedRaisedBedOperationStatuses.map((value) => sql`${value}`),
             sql`, `,
@@ -800,13 +862,14 @@ async function getAllOperationsUncached(filter?: {
 async function getFarmUserAcceptedOperationsByIds(
     userId: string,
     ids: number[],
+    db: DatabaseClient = storage(),
 ) {
     const uniqueIds = Array.from(new Set(ids));
     if (uniqueIds.length === 0) {
         return [];
     }
 
-    const rows = await storage()
+    const rows = await db
         .select({ operation: operations })
         .from(operations)
         .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
@@ -897,6 +960,92 @@ export async function getFarmUserPendingVerificationOperations(userId: string) {
         },
         scheduleCacheTtls.operations,
     );
+}
+
+export async function getFarmUserBlockedOperations(
+    userId: string,
+    filter: {
+        from?: Date;
+        to?: Date;
+    } = {},
+) {
+    const blockEvents = await storage().query.events.findMany({
+        columns: { aggregateId: true },
+        where: and(
+            eq(events.type, knownEventTypes.operations.block),
+            filter.from ? gte(events.createdAt, filter.from) : undefined,
+            filter.to ? lte(events.createdAt, filter.to) : undefined,
+        ),
+        orderBy: [desc(events.createdAt), desc(events.id)],
+    });
+    const operationIds = Array.from(
+        new Set(
+            blockEvents
+                .map((event) => Number(event.aggregateId))
+                .filter((id) => Number.isSafeInteger(id) && id > 0),
+        ),
+    );
+    if (operationIds.length === 0) {
+        return [];
+    }
+
+    const operationsList = await getFarmUserAcceptedOperationsByIds(
+        userId,
+        operationIds,
+    );
+    const hydrated = await fillOperationAggregates(operationsList);
+
+    return hydrated
+        .filter(
+            (operation) =>
+                operation.status === 'blocked' &&
+                operation.blockedAt &&
+                (!filter.from || operation.blockedAt >= filter.from) &&
+                (!filter.to || operation.blockedAt <= filter.to),
+        )
+        .sort(
+            (left, right) =>
+                (right.blockedAt?.getTime() ?? 0) -
+                (left.blockedAt?.getTime() ?? 0),
+        );
+}
+
+export async function getBlockedOperations(
+    filter: { from?: Date; to?: Date } = {},
+) {
+    const blockEvents = await storage().query.events.findMany({
+        columns: { aggregateId: true },
+        where: and(
+            eq(events.type, knownEventTypes.operations.block),
+            filter.from ? gte(events.createdAt, filter.from) : undefined,
+            filter.to ? lte(events.createdAt, filter.to) : undefined,
+        ),
+        orderBy: [desc(events.createdAt), desc(events.id)],
+    });
+    const operationIds = Array.from(
+        new Set(
+            blockEvents
+                .map((event) => Number(event.aggregateId))
+                .filter((id) => Number.isSafeInteger(id) && id > 0),
+        ),
+    );
+    if (operationIds.length === 0) {
+        return [];
+    }
+
+    return (await getOperationsByIds(operationIds))
+        .filter(
+            (operation) =>
+                operation.status === 'blocked' &&
+                operation.blockedAt &&
+                (!filter.from || operation.blockedAt >= filter.from) &&
+                (!filter.to || operation.blockedAt <= filter.to),
+        )
+        .sort(
+            (left, right) =>
+                (right.blockedAt?.getTime() ?? 0) -
+                (left.blockedAt?.getTime() ?? 0),
+        );
 }
 
 async function getFarmUserAcceptedOperationsUncached(
@@ -1151,9 +1300,17 @@ export async function getRaisedBedOperationsByScheduleRange({
 export async function getFarmUserAcceptedOperationById(
     userId: string,
     id: number,
+    db: DatabaseClient = storage(),
 ) {
-    const operations = await getFarmUserAcceptedOperationsByIds(userId, [id]);
-    const [operationWithAggregates] = await fillOperationAggregates(operations);
+    const operations = await getFarmUserAcceptedOperationsByIds(
+        userId,
+        [id],
+        db,
+    );
+    const [operationWithAggregates] = await fillOperationAggregates(
+        operations,
+        db,
+    );
     return operationWithAggregates ?? null;
 }
 
@@ -1213,6 +1370,7 @@ export async function getFarmUserAcceptedOperationsByScheduleRange({
 
 export async function getAssignableFarmUsersByOperationIds(
     operationIds: number[],
+    db: DatabaseClient = storage(),
 ) {
     const uniqueOperationIds = Array.from(new Set(operationIds));
     if (uniqueOperationIds.length === 0) {
@@ -1224,7 +1382,7 @@ export async function getAssignableFarmUsersByOperationIds(
         return emptyAssignableFarmUsersByOperationId;
     }
 
-    const rows = await storage()
+    const rows = await db
         .select({
             operationId: operations.id,
             farmId: farmUsers.farmId,
@@ -1272,13 +1430,46 @@ export async function getAssignableFarmUsersByOperationIds(
     return assignableFarmUsersByOperationId;
 }
 
-export async function getOperationsByIds(ids: number[]) {
+export async function lockOperationFarmUserMemberships(
+    operationId: number,
+    userIds: readonly string[],
+    db: DatabaseClient,
+) {
+    const uniqueUserIds = Array.from(new Set(userIds));
+    if (uniqueUserIds.length === 0) {
+        return [];
+    }
+
+    const rows = await db
+        .select({ userId: farmUsers.userId })
+        .from(operations)
+        .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
+        .leftJoin(gardens, eq(gardens.id, operationGardenIdExpression()))
+        .innerJoin(farmUsers, eq(farmUsers.farmId, operationFarmIdExpression()))
+        .innerJoin(users, eq(farmUsers.userId, users.id))
+        .where(
+            and(
+                eq(operations.id, operationId),
+                inArray(farmUsers.userId, uniqueUserIds),
+                eq(operations.isDeleted, false),
+                operationLocationIntegrityWhere(),
+            ),
+        )
+        .for('key share', { of: farmUsers });
+
+    return Array.from(new Set(rows.map((row) => row.userId)));
+}
+
+export async function getOperationsByIds(
+    ids: number[],
+    db: DatabaseClient = storage(),
+) {
     const uniqueIds = Array.from(new Set(ids));
     if (uniqueIds.length === 0) {
         return [];
     }
 
-    const operationsList = await storage().query.operations.findMany({
+    const operationsList = await db.query.operations.findMany({
         where: and(
             inArray(operations.id, uniqueIds),
             eq(operations.isDeleted, false),
@@ -1286,30 +1477,37 @@ export async function getOperationsByIds(ids: number[]) {
         orderBy: desc(operations.timestamp),
     });
 
-    return fillOperationAggregates(operationsList);
+    return fillOperationAggregates(operationsList, db);
 }
 
-export async function getOperationById(id: number) {
-    const operation = await storage().query.operations.findFirst({
+export async function getOperationById(
+    id: number,
+    db: DatabaseClient = storage(),
+) {
+    const operation = await db.query.operations.findFirst({
         where: and(eq(operations.id, id), eq(operations.isDeleted, false)),
     });
     if (!operation) {
         throw new Error(`Operation with id ${id} not found`);
     }
-    return (await fillOperationAggregates([operation]))[0];
+    return (await fillOperationAggregates([operation], db))[0];
 }
 
-export async function createOperation({
-    entityId,
-    entityTypeName,
-    accountId,
-    farmId,
-    gardenId,
-    raisedBedId,
-    raisedBedFieldId,
-    timestamp,
-}: InsertOperation) {
-    const [result] = await storage()
+export async function createOperation(
+    {
+        entityId,
+        entityTypeName,
+        accountId,
+        farmId,
+        gardenId,
+        raisedBedId,
+        raisedBedFieldId,
+        timestamp,
+    }: InsertOperation,
+    db?: DatabaseClient,
+) {
+    const client = db ?? storage();
+    const [result] = await client
         .insert(operations)
         .values({
             entityId,
@@ -1322,44 +1520,120 @@ export async function createOperation({
             timestamp: timestamp ?? new Date(),
         })
         .returning({ id: operations.id });
-    await bustScheduleCache();
+    if (!db) {
+        await bustScheduleCache();
+    }
     return result.id;
+}
+
+export async function createScheduledOperation(
+    operation: InsertOperation,
+    {
+        accept = false,
+        scheduledDate,
+    }: {
+        accept?: boolean;
+        scheduledDate: Date;
+    },
+) {
+    const operationId = await storage().transaction(async (transaction) => {
+        const id = await createOperation(operation, transaction);
+        await createEvent(
+            knownEvents.operations.scheduledV1(id.toString(), {
+                scheduledDate: scheduledDate.toISOString(),
+            }),
+            transaction,
+        );
+        if (accept) {
+            await acceptOperation(id, transaction);
+        }
+        return id;
+    });
+    await bustScheduleCache();
+    return operationId;
 }
 
 export async function switchOperationEntity(
     id: number,
     entity: Pick<InsertOperation, 'entityId' | 'entityTypeName'>,
+    db?: DatabaseClient,
 ) {
-    const [result] = await storage()
-        .update(operations)
-        .set({
-            entityId: entity.entityId,
-            entityTypeName: entity.entityTypeName,
-        })
-        .where(and(eq(operations.id, id), eq(operations.isDeleted, false)))
-        .returning({ id: operations.id });
+    const updateEntity = async (client: DatabaseClient) => {
+        const [result] = await client
+            .update(operations)
+            .set({
+                entityId: entity.entityId,
+                entityTypeName: entity.entityTypeName,
+            })
+            .where(and(eq(operations.id, id), eq(operations.isDeleted, false)))
+            .returning({ id: operations.id });
 
-    if (!result) {
-        throw new Error(`Operation with id ${id} not found`);
+        if (!result) {
+            throw new Error(`Operation with id ${id} not found`);
+        }
+
+        await createEvent(
+            knownEvents.operations.entityChangedV1(id.toString(), {
+                entityId: entity.entityId,
+                entityTypeName: entity.entityTypeName,
+            }),
+            client,
+        );
+    };
+
+    if (db) {
+        await updateEntity(db);
+    } else {
+        await storage().transaction(updateEntity);
+        await bustScheduleCache();
     }
-
-    await bustScheduleCache();
 }
 
-export async function acceptOperation(id: number) {
-    await storage()
-        .update(operations)
-        .set({ isAccepted: true })
-        .where(eq(operations.id, id));
-    await bustScheduleCache();
+async function setOperationAcceptance(
+    id: number,
+    accepted: boolean,
+    db?: DatabaseClient,
+) {
+    const updateAcceptance = async (client: DatabaseClient) => {
+        const [updatedOperation] = await client
+            .update(operations)
+            .set({ isAccepted: accepted })
+            .where(
+                and(
+                    eq(operations.id, id),
+                    eq(operations.isDeleted, false),
+                    eq(operations.isAccepted, !accepted),
+                ),
+            )
+            .returning({ id: operations.id });
+
+        if (!updatedOperation) {
+            return false;
+        }
+
+        await createEvent(
+            knownEvents.operations.acceptanceChangedV1(id.toString(), {
+                accepted,
+            }),
+            client,
+        );
+        return true;
+    };
+
+    const changed = db
+        ? await updateAcceptance(db)
+        : await storage().transaction(updateAcceptance);
+    if (!db && changed) {
+        await bustScheduleCache();
+    }
 }
 
-export async function unacceptOperation(id: number) {
-    await storage()
-        .update(operations)
-        .set({ isAccepted: false })
-        .where(eq(operations.id, id));
-    await bustScheduleCache();
+export async function acceptOperation(id: number, db?: DatabaseClient) {
+    await setOperationAcceptance(id, true, db);
+}
+
+export async function unacceptOperation(id: number, db?: DatabaseClient) {
+    await setOperationAcceptance(id, false, db);
 }
 
 export async function deleteOperation(id: number) {
