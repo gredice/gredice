@@ -701,6 +701,7 @@ test('delivery exception events project safe retry outcomes and invalidate dispa
         const expectedException = {
             outcome: exception.outcome,
             retryable: exception.retryable,
+            recordedAt: exceptionEvent.createdAt,
         };
 
         assert.equal(request?.state, exception.outcome);
@@ -709,6 +710,7 @@ test('delivery exception events project safe retry outcomes and invalidate dispa
         assert.deepEqual(listedRequest?.deliveryException, expectedException);
         assert.deepEqual(Object.keys(request?.deliveryException ?? {}).sort(), [
             'outcome',
+            'recordedAt',
             'retryable',
         ]);
         const publicProjection = JSON.stringify([request, listedRequest]);

@@ -431,6 +431,12 @@ importers:
       '@gredice/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@playwright/experimental-ct-react':
+        specifier: 1.61.1
+        version: 1.61.1(@types/node@24.12.4)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.101.0)(supports-color@8.1.1)(tsx@4.23.0)(vite@8.1.4(@types/node@24.12.4)(esbuild@0.28.1)(jiti@2.7.0)(sass@1.101.0)(tsx@4.23.0)(yaml@2.9.0))(yaml@2.9.0)
+      '@playwright/test':
+        specifier: 1.61.1
+        version: 1.61.1
       '@tailwindcss/postcss':
         specifier: 4.3.2
         version: 4.3.2

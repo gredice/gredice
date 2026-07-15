@@ -23,6 +23,10 @@ import type {
     DeliveryRouteOrderSummary,
     DriverDeliveryDashboard,
 } from '../lib/deliveryDashboardTypes';
+import type {
+    DeliveryExceptionMutation,
+    DeliveryExceptionSubmitResult,
+} from '../lib/deliveryExceptionPresentation';
 import {
     formatDeliveryDateTime,
     formatDistance,
@@ -257,6 +261,7 @@ export function DriverDashboard({
     onRetry,
     onArrive,
     onDeliver,
+    onException,
     pickupQueue,
     onPickupScan,
     onPickupItemState,
@@ -285,6 +290,11 @@ export function DriverDashboard({
         expectedRouteRevision: number,
         notes?: string,
     ) => void;
+    onException: (
+        runId: string,
+        stopId: number,
+        mutation: DeliveryExceptionMutation,
+    ) => Promise<DeliveryExceptionSubmitResult>;
     pickupQueue: PickupManifestQueueSnapshot | null;
     onPickupScan: (pickupNodeId: string, scanValue: string) => void;
     onPickupItemState: (
@@ -858,6 +868,9 @@ export function DriverDashboard({
                                             <DeliveryStopCard
                                                 stop={stop}
                                                 mode="driver"
+                                                routeRevision={
+                                                    run.routeRevision
+                                                }
                                                 pendingAction={
                                                     pendingAction?.startsWith(
                                                         `${stop.id}:`,
@@ -870,7 +883,11 @@ export function DriverDashboard({
                                                                     ':arrive',
                                                                 )
                                                               ? 'arrive'
-                                                              : 'deliver'
+                                                              : pendingAction.endsWith(
+                                                                      ':exception',
+                                                                  )
+                                                                ? 'exception'
+                                                                : 'deliver'
                                                         : null
                                                 }
                                                 onRetry={() =>
@@ -897,6 +914,19 @@ export function DriverDashboard({
                                                         run.routeRevision,
                                                         notes,
                                                     )
+                                                }
+                                                onException={(mutation) =>
+                                                    stop.id
+                                                        ? onException(
+                                                              run.id,
+                                                              stop.id,
+                                                              mutation,
+                                                          )
+                                                        : Promise.resolve({
+                                                              status: 'review-required',
+                                                              message:
+                                                                  'Stanica više nije dostupna. Osvježi rutu i provjeri odabir.',
+                                                          })
                                                 }
                                             />
                                         </div>

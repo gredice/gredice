@@ -76,7 +76,7 @@ export const appRegistry: AppRegistryEntry[] = [
         devPort: 3008,
         startPort: 3008,
         testPort: 3008,
-        componentTestPort: null,
+        componentTestPort: 3104,
         vercelProjectName: 'delivery',
         startsInDefaultDev: true,
     },

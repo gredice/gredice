@@ -14,6 +14,11 @@ import type {
     DriverDeliveryDashboard,
 } from '../lib/deliveryDashboardTypes';
 import {
+    type DeliveryExceptionMutation,
+    type DeliveryExceptionSubmitResult,
+    deliveryExceptionConfirmation,
+} from '../lib/deliveryExceptionPresentation';
+import {
     clearPickupManifestQueueScope,
     createWebStoragePickupManifestQueuePersistence,
 } from '../lib/pickupManifestQueue';
@@ -189,6 +194,21 @@ const refreshPreparationCodes = new Set([
     'preparation-not-found',
 ]);
 
+type DeliveryExceptionAction = (
+    runId: string,
+    stopId: number,
+    mutation: DeliveryExceptionMutation,
+) => Promise<DeliveryExceptionSubmitResult>;
+
+type DeliveryActionResult =
+    | { status: 'saved' }
+    | {
+          status: 'failed';
+          code: string | null;
+          statusCode: number | null;
+          message: string;
+      };
+
 function DriverDashboardWithPickupSync({
     dashboard,
     trackingState,
@@ -198,6 +218,7 @@ function DriverDashboardWithPickupSync({
     onRetry,
     onArrive,
     onDeliver,
+    onException,
     onPickupError,
     onPickupAcknowledged,
 }: {
@@ -222,6 +243,7 @@ function DriverDashboardWithPickupSync({
         expectedRouteRevision: number,
         notes?: string,
     ) => void;
+    onException: DeliveryExceptionAction;
     onPickupError: (error: unknown) => void;
     onPickupAcknowledged: () => void | Promise<void>;
 }) {
@@ -237,6 +259,7 @@ function DriverDashboardWithPickupSync({
                 onRetry={onRetry}
                 onArrive={onArrive}
                 onDeliver={onDeliver}
+                onException={onException}
                 pickupQueue={null}
                 onPickupScan={() => undefined}
                 onPickupItemState={() => undefined}
@@ -258,6 +281,7 @@ function DriverDashboardWithPickupSync({
             onRetry={onRetry}
             onArrive={onArrive}
             onDeliver={onDeliver}
+            onException={onException}
             onPickupError={onPickupError}
             onPickupAcknowledged={onPickupAcknowledged}
         />
@@ -274,6 +298,7 @@ function ActiveDriverDashboardWithPickupSync({
     onRetry,
     onArrive,
     onDeliver,
+    onException,
     onPickupError,
     onPickupAcknowledged,
 }: {
@@ -299,6 +324,7 @@ function ActiveDriverDashboardWithPickupSync({
         expectedRouteRevision: number,
         notes?: string,
     ) => void;
+    onException: DeliveryExceptionAction;
     onPickupError: (error: unknown) => void;
     onPickupAcknowledged: () => void | Promise<void>;
 }) {
@@ -325,6 +351,7 @@ function ActiveDriverDashboardWithPickupSync({
             onRetry={onRetry}
             onArrive={onArrive}
             onDeliver={onDeliver}
+            onException={onException}
             pickupQueue={pickupSync.snapshot}
             onPickupScan={(pickupNodeId, scanValue) =>
                 report(pickupSync.enqueueScan(pickupNodeId, scanValue))
@@ -355,6 +382,9 @@ function ActiveDriverDashboardWithPickupSync({
 export function DeliveryDashboard() {
     const [pendingAction, setPendingAction] = useState<string | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
+    const [actionConfirmation, setActionConfirmation] = useState<string | null>(
+        null,
+    );
     const query = useQuery({
         queryKey: ['delivery-dashboard'],
         queryFn: readDashboard,
@@ -386,24 +416,34 @@ export function DeliveryDashboard() {
         previousDriverUserIdRef.current = currentDriverUserId;
     }, [currentDriverUserId]);
 
-    const perform = async (key: string, path: string, body?: object) => {
+    const perform = async (
+        key: string,
+        path: string,
+        body?: object,
+        confirmation?: string,
+    ): Promise<DeliveryActionResult> => {
         setPendingAction(key);
         setActionError(null);
+        setActionConfirmation(null);
         try {
             await postAction(path, body);
             await query.refetch();
+            setActionConfirmation(confirmation ?? null);
+            return { status: 'saved' };
         } catch (error) {
-            if (
-                error instanceof DeliveryActionError &&
-                error.code === 'route-revision-conflict'
-            ) {
+            const code =
+                error instanceof DeliveryActionError ? error.code : null;
+            const statusCode =
+                error instanceof DeliveryActionError ? error.status : null;
+            if (statusCode === 409 || code === 'route-revision-conflict') {
                 await query.refetch();
             }
-            setActionError(
+            const message =
                 error instanceof Error
                     ? error.message
-                    : 'Radnju nije moguće dovršiti.',
-            );
+                    : 'Radnju nije moguće dovršiti.';
+            setActionError(message);
+            return { status: 'failed', code, statusCode, message };
         } finally {
             setPendingAction(null);
         }
@@ -412,6 +452,7 @@ export function DeliveryDashboard() {
     const startRun = async (deliveryRequestIds: string[]) => {
         setPendingAction('start-route');
         setActionError(null);
+        setActionConfirmation(null);
         try {
             const createPreparation = async () => {
                 const data = await postAction('/api/driver/runs/preflight', {
@@ -519,12 +560,35 @@ export function DeliveryDashboard() {
                     </Alert>
                 </div>
             ) : null}
+            {actionConfirmation ? (
+                <div className="fixed inset-x-4 top-4 z-50 mx-auto max-w-xl">
+                    <Alert
+                        color="success"
+                        endDecorator={
+                            <Button
+                                aria-label="Zatvori potvrdu"
+                                color="success"
+                                size="sm"
+                                variant="plain"
+                                onClick={() => setActionConfirmation(null)}
+                            >
+                                U redu
+                            </Button>
+                        }
+                    >
+                        {actionConfirmation}
+                    </Alert>
+                </div>
+            ) : null}
             {dashboard.kind === 'driver' ? (
                 <DriverDashboardWithPickupSync
                     dashboard={dashboard}
                     trackingState={trackingState}
                     pendingAction={pendingAction}
-                    onSelectionChange={() => setActionError(null)}
+                    onSelectionChange={() => {
+                        setActionError(null);
+                        setActionConfirmation(null);
+                    }}
                     onStartRun={(deliveryRequestIds) =>
                         void startRun(deliveryRequestIds)
                     }
@@ -554,13 +618,37 @@ export function DeliveryDashboard() {
                             },
                         )
                     }
-                    onPickupError={(error) =>
+                    onException={async (runId, stopId, mutation) => {
+                        const result = await perform(
+                            `${stopId}:exception`,
+                            `/api/driver/runs/${runId}/exceptions`,
+                            mutation,
+                            deliveryExceptionConfirmation(mutation),
+                        );
+                        if (result.status === 'saved') {
+                            return result;
+                        }
+                        if (result.statusCode === 409) {
+                            return {
+                                status: 'review-required',
+                                message:
+                                    'Ruta ili odabrani urodi promijenili su se. Provjeri osvježeni odabir i ponovno potvrdi spremanje.',
+                            };
+                        }
+                        return {
+                            status: 'retryable',
+                            message:
+                                'Promjena možda nije potvrđena. Provjeri vezu i pokušaj ponovno bez izmjene odabira.',
+                        };
+                    }}
+                    onPickupError={(error) => {
+                        setActionConfirmation(null);
                         setActionError(
                             error instanceof Error
                                 ? error.message
                                 : 'Promjenu preuzimanja nije moguće spremiti.',
-                        )
-                    }
+                        );
+                    }}
                     onPickupAcknowledged={async () => {
                         await query.refetch();
                     }}
