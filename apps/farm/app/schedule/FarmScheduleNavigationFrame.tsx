@@ -12,6 +12,7 @@ import type { MouseEvent, ReactNode } from 'react';
 import { useEffect, useState, useTransition } from 'react';
 import { FarmScheduleSectionSkeleton } from './FarmScheduleSectionSkeleton';
 import { ScheduleDaySummarySkeleton } from './ScheduleDaySummarySkeleton';
+import { ScheduleTaskReturnFocus } from './ScheduleTaskReturnFocus';
 import { getFarmScheduleDateKey } from './scheduleShared';
 
 interface FarmScheduleNavigationFrameProps {
@@ -126,6 +127,7 @@ export function FarmScheduleNavigationFrame({
             className="max-w-5xl mx-auto w-full space-y-4 px-2 py-4 sm:p-4"
             aria-busy={showPendingContent}
         >
+            <ScheduleTaskReturnFocus />
             <div className="space-y-2">
                 <Typography component="h1" level="h5" semiBold>
                     Raspored

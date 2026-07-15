@@ -33,6 +33,7 @@ interface FarmScheduleOperationsSectionProps {
         Map<number, FarmScheduleRaisedBedPhotoPreview>
     >;
     mode: FarmScheduleOperationsMode;
+    selectedDateKey: string;
     userId: string;
 }
 
@@ -70,6 +71,7 @@ export function FarmScheduleOperationsSection({
     operationsData,
     raisedBedPhotoPreviewByIdPromise,
     mode,
+    selectedDateKey,
     userId,
 }: FarmScheduleOperationsSectionProps) {
     if (scheduledOperations.length === 0) {
@@ -224,6 +226,7 @@ export function FarmScheduleOperationsSection({
                             operationData={operationDataById.get(
                                 operation.entityId,
                             )}
+                            selectedDateKey={selectedDateKey}
                             userId={userId}
                         />
                     ))}
@@ -335,6 +338,7 @@ export function FarmScheduleOperationsSection({
                                         operationData={operationDataById.get(
                                             operation.entityId,
                                         )}
+                                        selectedDateKey={selectedDateKey}
                                         userId={userId}
                                     />
                                 ))}
@@ -372,6 +376,7 @@ export function FarmScheduleOperationsSection({
                                 operationData={operationDataById.get(
                                     operation.entityId,
                                 )}
+                                selectedDateKey={selectedDateKey}
                                 userId={userId}
                             />
                         ))}

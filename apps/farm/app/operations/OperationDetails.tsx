@@ -17,6 +17,12 @@ import { Markdown } from '@gredice/ui/Markdown';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { ReactNode } from 'react';
+import { handbookMarkdownClassName } from '../handbookMarkdown';
+import { OperationProofRequirements } from '../schedule/OperationProofRequirements';
+import {
+    getScheduleOperationCompletionRequirements,
+    hasVisibleScheduleOperationCompletionRequirements,
+} from '../schedule/scheduleOperationRequirements';
 import {
     formatMinutes,
     getOperationDurationMinutes,
@@ -31,9 +37,6 @@ interface FormattedAttribute {
     attributeName: string;
     formattedValue: string | null;
 }
-
-const manualMarkdownClassName =
-    'text-base leading-8 text-foreground prose-base prose-p:text-base prose-p:leading-8 prose-p:text-foreground prose-li:text-base prose-li:leading-8 prose-li:text-foreground prose-strong:text-foreground prose-a:text-primary prose-ul:my-3 prose-ol:my-3 prose-li:my-1';
 
 const attributeIconByName: Record<string, typeof Info> = {
     application: Layers,
@@ -90,6 +93,10 @@ function DetailCard({
 
 export function OperationDetails({ operation }: OperationDetailsProps) {
     const durationMinutes = getOperationDurationMinutes(operation);
+    const proofRequirements =
+        getScheduleOperationCompletionRequirements(operation);
+    const hasProofRequirements =
+        hasVisibleScheduleOperationCompletionRequirements(proofRequirements);
     const attributes = Object.entries(operation.attributes ?? {})
         .filter(
             ([attributeName, attributeValue]) =>
@@ -105,24 +112,6 @@ export function OperationDetails({ operation }: OperationDetailsProps) {
 
     return (
         <Stack spacing={3}>
-            {operation.information?.description && (
-                <DetailCard title="Opis" icon={FileText}>
-                    <Markdown
-                        className={`${manualMarkdownClassName} prose-p:first:mt-0 prose-p:last:mb-0`}
-                    >
-                        {operation.information.description}
-                    </Markdown>
-                </DetailCard>
-            )}
-            {operation.information?.instructions && (
-                <DetailCard title="Upute" icon={ListTodo}>
-                    <Markdown
-                        className={`${manualMarkdownClassName} prose-p:first:mt-0 prose-p:last:mb-0`}
-                    >
-                        {operation.information.instructions}
-                    </Markdown>
-                </DetailCard>
-            )}
             <div className="grid gap-3 sm:grid-cols-2">
                 <DetailCard title="Trajanje" icon={Timer}>
                     <Typography level="body1" className="text-foreground">
@@ -131,17 +120,38 @@ export function OperationDetails({ operation }: OperationDetailsProps) {
                             : 'Nije definirano'}
                     </Typography>
                 </DetailCard>
-                <DetailCard title="Dokaz fotografijom" icon={Paperclip}>
-                    <Typography level="body1" className="text-foreground">
-                        {!operation.conditions?.completionAttachImages
-                            ? 'Nije potrebno'
-                            : operation.conditions
-                                    ?.completionAttachImagesRequired
-                              ? 'Obavezno priložiti fotografije'
-                              : 'Preporučeno priložiti fotografije'}
-                    </Typography>
+                <DetailCard title="Dokaz završetka" icon={Paperclip}>
+                    {hasProofRequirements ? (
+                        <OperationProofRequirements
+                            className="border-0 bg-transparent p-0 text-inherit dark:bg-transparent"
+                            requirements={proofRequirements}
+                            showTitle={false}
+                        />
+                    ) : (
+                        <Typography level="body1" className="text-foreground">
+                            Fotografija ni napomena nisu potrebne.
+                        </Typography>
+                    )}
                 </DetailCard>
             </div>
+            {operation.information?.instructions && (
+                <DetailCard title="Upute" icon={ListTodo}>
+                    <Markdown
+                        className={`${handbookMarkdownClassName} prose-p:first:mt-0 prose-p:last:mb-0`}
+                    >
+                        {operation.information.instructions}
+                    </Markdown>
+                </DetailCard>
+            )}
+            {operation.information?.description && (
+                <DetailCard title="Opis" icon={FileText}>
+                    <Markdown
+                        className={`${handbookMarkdownClassName} prose-p:first:mt-0 prose-p:last:mb-0`}
+                    >
+                        {operation.information.description}
+                    </Markdown>
+                </DetailCard>
+            )}
             {attributes.length > 0 && (
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {attributes.map(({ attributeName, formattedValue }) => (

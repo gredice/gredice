@@ -15,7 +15,7 @@ export function HomeButton({
     return (
         <Button
             aria-label={title}
-            className={`aspect-square px-0 ${className ?? ''}`}
+            className={`aspect-square min-h-11 min-w-11 px-0 ${className ?? ''}`}
             href={href}
             title={title}
             variant="plain"
