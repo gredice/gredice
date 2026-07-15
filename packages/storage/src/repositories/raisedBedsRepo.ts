@@ -20,6 +20,7 @@ import { generateRaisedBedName } from '../helpers/generateRaisedBedName';
 import { RAISED_BED_PHOTO_OPERATION_ID } from '../helpers/raisedBedPhotoOperations';
 import {
     events,
+    farms,
     farmUsers,
     gardens,
     type InsertRaisedBed,
@@ -817,15 +818,17 @@ export async function getFarmUserRaisedBeds(userId: string) {
 
 async function getFarmUserRaisedBedsUncached(userId: string) {
     const farmRaisedBeds = await storage()
-        .select({ raisedBed: raisedBeds })
+        .select({ farmId: gardens.farmId, raisedBed: raisedBeds })
         .from(raisedBeds)
         .innerJoin(gardens, eq(raisedBeds.gardenId, gardens.id))
+        .innerJoin(farms, eq(gardens.farmId, farms.id))
         .innerJoin(farmUsers, eq(gardens.farmId, farmUsers.farmId))
         .where(
             and(
                 eq(farmUsers.userId, userId),
                 eq(raisedBeds.isDeleted, false),
                 eq(gardens.isDeleted, false),
+                eq(farms.isDeleted, false),
                 // Sandbox ("play") gardens never appear in farm scheduling.
                 eq(gardens.isSandbox, false),
             ),
@@ -836,8 +839,9 @@ async function getFarmUserRaisedBedsUncached(userId: string) {
         farmRaisedBeds.map((row) => row.raisedBed.id),
     );
 
-    return farmRaisedBeds.map(({ raisedBed }) => ({
+    return farmRaisedBeds.map(({ farmId, raisedBed }) => ({
         ...raisedBed,
+        farmId,
         fields: fieldsByRaisedBedId.get(raisedBed.id) ?? [],
     }));
 }

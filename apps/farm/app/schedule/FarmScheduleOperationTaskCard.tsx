@@ -14,6 +14,11 @@ import { ScheduleTaskStateControl } from './ScheduleTaskStateControl';
 import { ScheduleTaskStatusChip } from './ScheduleTaskStatusChip';
 import type { FarmScheduleDayData } from './scheduleData';
 import {
+    getScheduleOperationCompletionRequirements,
+    isScheduleOperationRequirementVisible,
+} from './scheduleOperationRequirements';
+import { getScheduleOperationTaskAssignment } from './scheduleTaskAssignment';
+import {
     getOperationTaskState,
     getScheduleTaskPresentation,
 } from './scheduleTaskState';
@@ -24,6 +29,7 @@ export type FarmOperationCardData = Pick<
     FarmOperation,
     | 'assignedUser'
     | 'assignedUserId'
+    | 'assignedUserIds'
     | 'completionNotes'
     | 'id'
     | 'imageUrls'
@@ -49,23 +55,19 @@ export function FarmScheduleOperationTaskCard({
 }: FarmScheduleOperationTaskCardProps) {
     const taskState = getOperationTaskState(operation.status);
     const taskPresentation = getScheduleTaskPresentation(taskState);
+    const assignment = getScheduleOperationTaskAssignment(operation, userId);
     const canComplete =
-        taskPresentation.showCompletionControl &&
-        (!operation.assignedUserId || operation.assignedUserId === userId);
-    const attachImages = Boolean(
-        operationData?.conditions?.completionAttachImages ||
-            operationData?.conditions?.completionAttachImagesRequired,
+        taskPresentation.showCompletionControl && assignment !== 'other';
+    const requirements =
+        getScheduleOperationCompletionRequirements(operationData);
+    const attachImages = isScheduleOperationRequirementVisible(
+        requirements.images,
     );
-    const attachImagesRequired = Boolean(
-        operationData?.conditions?.completionAttachImagesRequired,
+    const attachImagesRequired = requirements.images === 'required';
+    const attachNotes = isScheduleOperationRequirementVisible(
+        requirements.notes,
     );
-    const attachNotes = Boolean(
-        operationData?.conditions?.completionAttachNotes ||
-            operationData?.conditions?.completionAttachNotesRequired,
-    );
-    const attachNotesRequired = Boolean(
-        operationData?.conditions?.completionAttachNotesRequired,
-    );
+    const attachNotesRequired = requirements.notes === 'required';
     const showRequirementIcons =
         taskPresentation.showRequirementIndicators &&
         (attachImages || attachNotes);

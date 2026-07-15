@@ -25,6 +25,7 @@ function buildOperation(
     return {
         assignedUser: null,
         assignedUserId: null,
+        assignedUserIds: [],
         completionNotes: undefined,
         durationMinutes: 15,
         id,
@@ -56,6 +57,50 @@ async function assertCardsStayWithinViewport(component: Locator) {
         ),
     ).toBe(true);
 }
+
+test('locks array-only work assigned to another farmer on a phone', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize({ width: 320, height: 720 });
+    const component = await mount(
+        <div className="space-y-2">
+            <FarmScheduleOperationTaskCard
+                completionAction={<button type="button">Dovrši radnju</button>}
+                operation={{
+                    ...buildOperation(10, 'planned', 'Zalij salatu'),
+                    assignedUserIds: ['farmer-2'],
+                }}
+                operationData={undefined}
+                userId="farmer-1"
+            />
+            <FarmSchedulePlantingTaskCard
+                completionAction={<button type="button">Dovrši sijanje</button>}
+                field={{
+                    assignedUserId: null,
+                    assignedUserIds: ['farmer-2'],
+                    id: 10,
+                    plantScheduledDate: scheduledDate,
+                    plantStatus: 'planned',
+                    positionIndex: 0,
+                    raisedBedId: 10,
+                    sowingLocation: 'direct',
+                }}
+                label="Posij salatu"
+                plantSort={undefined}
+                userId="farmer-1"
+                assignedUserByFieldIdPromise={assignedUserByFieldIdPromise}
+            />
+        </div>,
+    );
+
+    await expect(component.getByRole('button')).toHaveCount(0);
+    await expect(component.getByRole('checkbox')).toHaveCount(2);
+    for (const checkbox of await component.getByRole('checkbox').all()) {
+        await expect(checkbox).toBeDisabled();
+    }
+    await assertCardsStayWithinViewport(component);
+});
 
 for (const width of [320, 390, 1280]) {
     test(`renders operation pending and verified states within ${width}px`, async ({
@@ -147,6 +192,7 @@ for (const width of [320, 390, 1280]) {
                     }
                     field={{
                         assignedUserId: null,
+                        assignedUserIds: [],
                         id: 1,
                         plantScheduledDate: scheduledDate,
                         plantStatus: 'pendingVerification',
@@ -165,6 +211,7 @@ for (const width of [320, 390, 1280]) {
                     }
                     field={{
                         assignedUserId: null,
+                        assignedUserIds: [],
                         id: 2,
                         plantScheduledDate: scheduledDate,
                         plantStatus: 'sowed',
@@ -183,6 +230,7 @@ for (const width of [320, 390, 1280]) {
                     }
                     field={{
                         assignedUserId: null,
+                        assignedUserIds: [],
                         id: 3,
                         plantScheduledDate: scheduledDate,
                         plantStatus: 'planned',
