@@ -254,6 +254,7 @@ export function DriverDashboard({
     pendingAction,
     onSelectionChange,
     onStartRun,
+    onRetry,
     onArrive,
     onDeliver,
     pickupQueue,
@@ -268,8 +269,22 @@ export function DriverDashboard({
     pendingAction: string | null;
     onSelectionChange: () => void;
     onStartRun: (deliveryRequestIds: string[]) => void;
-    onArrive: (runId: string, stopId: number) => void;
-    onDeliver: (runId: string, stopId: number, notes?: string) => void;
+    onRetry: (
+        runId: string,
+        stopId: number,
+        expectedRouteRevision: number,
+    ) => void;
+    onArrive: (
+        runId: string,
+        stopId: number,
+        expectedRouteRevision: number,
+    ) => void;
+    onDeliver: (
+        runId: string,
+        stopId: number,
+        expectedRouteRevision: number,
+        notes?: string,
+    ) => void;
     pickupQueue: PickupManifestQueueSnapshot | null;
     onPickupScan: (pickupNodeId: string, scanValue: string) => void;
     onPickupItemState: (
@@ -535,6 +550,14 @@ export function DriverDashboard({
                                 }
                             >
                                 {locationMessage}
+                            </Alert>
+                        ) : null}
+                        {run.reroutePending ? (
+                            <Alert
+                                color="warning"
+                                startDecorator={<Timer className="size-5" />}
+                            >
+                                Preostala ruta i vremena dolaska se ažuriraju.
                             </Alert>
                         ) : null}
 
@@ -819,34 +842,64 @@ export function DriverDashboard({
                                             step.actionState === 'current',
                                     };
                                     return (
-                                        <DeliveryStopCard
+                                        <div
                                             key={`delivery:${stop.id ?? stop.requestId}`}
-                                            stop={stop}
-                                            mode="driver"
-                                            pendingAction={
-                                                pendingAction?.startsWith(
-                                                    `${stop.id}:`,
-                                                )
-                                                    ? pendingAction.endsWith(
-                                                          ':arrive',
-                                                      )
-                                                        ? 'arrive'
-                                                        : 'deliver'
-                                                    : null
-                                            }
-                                            onArrive={() =>
-                                                stop.id &&
-                                                onArrive(run.id, stop.id)
-                                            }
-                                            onDeliver={(notes) =>
-                                                stop.id &&
-                                                onDeliver(
-                                                    run.id,
-                                                    stop.id,
-                                                    notes,
-                                                )
-                                            }
-                                        />
+                                            className="space-y-2"
+                                        >
+                                            {step.retryLaneRank !== null ? (
+                                                <Chip color="warning" size="sm">
+                                                    Ponovni pokušaj #
+                                                    {step.retryLaneRank}
+                                                    {step.retryAttempt > 1
+                                                        ? ` · pokušaj ${step.retryAttempt}`
+                                                        : null}
+                                                </Chip>
+                                            ) : null}
+                                            <DeliveryStopCard
+                                                stop={stop}
+                                                mode="driver"
+                                                pendingAction={
+                                                    pendingAction?.startsWith(
+                                                        `${stop.id}:`,
+                                                    )
+                                                        ? pendingAction.endsWith(
+                                                              ':retry',
+                                                          )
+                                                            ? 'retry'
+                                                            : pendingAction.endsWith(
+                                                                    ':arrive',
+                                                                )
+                                                              ? 'arrive'
+                                                              : 'deliver'
+                                                        : null
+                                                }
+                                                onRetry={() =>
+                                                    stop.id &&
+                                                    onRetry(
+                                                        run.id,
+                                                        stop.id,
+                                                        run.routeRevision,
+                                                    )
+                                                }
+                                                onArrive={() =>
+                                                    stop.id &&
+                                                    onArrive(
+                                                        run.id,
+                                                        stop.id,
+                                                        run.routeRevision,
+                                                    )
+                                                }
+                                                onDeliver={(notes) =>
+                                                    stop.id &&
+                                                    onDeliver(
+                                                        run.id,
+                                                        stop.id,
+                                                        run.routeRevision,
+                                                        notes,
+                                                    )
+                                                }
+                                            />
+                                        </div>
                                     );
                                 })}
                             </div>

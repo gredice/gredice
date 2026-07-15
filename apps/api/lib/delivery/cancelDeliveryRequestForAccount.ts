@@ -42,6 +42,7 @@ export async function cancelDeliveryRequestForCurrentAccount(
     input: {
         requestId: string;
         accountId: string;
+        actorUserId?: string;
         cancelReason: string;
         note?: string;
     },

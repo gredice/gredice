@@ -262,6 +262,7 @@ export const deliveryRuns = pgTable(
         routePlanVersion: integer('route_plan_version').notNull().default(1),
         routeRevision: integer('route_revision').notNull().default(0),
         rerouteRequiredAt: timestamp('reroute_required_at'),
+        rerouteAttemptedAt: timestamp('reroute_attempted_at'),
         estimateSource: text('estimate_source')
             .$type<DeliveryRunEstimateSource>()
             .notNull()
@@ -272,6 +273,7 @@ export const deliveryRuns = pgTable(
         currentLocationHeading: doublePrecision('current_location_heading'),
         currentLocationSpeed: doublePrecision('current_location_speed'),
         currentLocationRecordedAt: timestamp('current_location_recorded_at'),
+        currentLocationReceivedAt: timestamp('current_location_received_at'),
         estimatesUpdatedAt: timestamp('estimates_updated_at'),
         startedAt: timestamp('started_at').notNull().defaultNow(),
         completedAt: timestamp('completed_at'),
@@ -650,6 +652,8 @@ export const deliveryRunStops = pgTable(
         sequence: integer('sequence').notNull(),
         itinerarySequence: integer('itinerary_sequence'),
         serviceDurationSeconds: integer('service_duration_seconds'),
+        retryLaneRank: integer('retry_lane_rank'),
+        retryAttempt: integer('retry_attempt').notNull().default(0),
         stopKey: text('stop_key'),
         requestDispatchEventId: integer('request_dispatch_event_id'),
         deliveryAddressId: integer('delivery_address_id'),
@@ -689,9 +693,13 @@ export const deliveryRunStops = pgTable(
             text('exception_reason').$type<DeliveryRunExceptionReason>(),
         exceptionNote: text('exception_note'),
         exceptionOccurredAt: timestamp('exception_occurred_at'),
+        // Driver-recorded exceptions always carry this FK. Request cancellation
+        // may originate from an account/system actor, whose provenance remains
+        // on the audited delivery.request.cancelled event instead of this FK.
         exceptionRecordedByUserId: text(
             'exception_recorded_by_user_id',
         ).references(() => users.id),
+        releasedAt: timestamp('released_at'),
         createdAt: timestamp('created_at').notNull().defaultNow(),
         updatedAt: timestamp('updated_at')
             .notNull()
@@ -747,6 +755,17 @@ export const deliveryRunStops = pgTable(
             )`,
         ),
         check(
+            'delivery_run_stops_retry_shape_check',
+            sql`(
+                ${table.retryLaneRank} is null
+                and ${table.retryAttempt} = 0
+            ) or (
+                ${table.retryLaneRank} is not null
+                and ${table.retryLaneRank} > 0
+                and ${table.retryAttempt} > 0
+            )`,
+        ),
+        check(
             'delivery_run_stops_pickup_item_state_check',
             sql`${table.pickupItemState} is null or ${table.pickupItemState} in ('ready', 'scanned', 'missing-label', 'not-ready')`,
         ),
@@ -796,16 +815,25 @@ export const deliveryRunStops = pgTable(
                 and ${table.exceptionOccurredAt} is null
                 and ${table.exceptionRecordedByUserId} is null
             ) or (
-                ${table.state} in ('deferred', 'failed', 'cancelled')
+                ${table.state} in ('deferred', 'failed')
                 and ${table.deliveredAt} is null
                 and ${table.exceptionReason} is not null
                 and ${table.exceptionOccurredAt} is not null
                 and ${table.exceptionRecordedByUserId} is not null
+            ) or (
+                ${table.state} = 'cancelled'
+                and ${table.deliveredAt} is null
+                and ${table.exceptionReason} = 'cancellation'
+                and ${table.exceptionOccurredAt} is not null
             )`,
         ),
-        uniqueIndex('delivery_run_stops_delivery_request_id_unique').on(
-            table.deliveryRequestId,
+        check(
+            'delivery_run_stops_release_shape_check',
+            sql`${table.releasedAt} is null or ${table.state} in ('delivered', 'failed', 'cancelled')`,
         ),
+        uniqueIndex('delivery_run_stops_delivery_request_active_unique')
+            .on(table.deliveryRequestId)
+            .where(sql`${table.releasedAt} is null`),
         uniqueIndex('delivery_run_stops_run_sequence_unique').on(
             table.runId,
             table.sequence,
@@ -817,6 +845,11 @@ export const deliveryRunStops = pgTable(
         ),
         index('delivery_run_stops_run_slot_id_idx').on(table.runSlotId),
         index('delivery_run_stops_state_idx').on(table.state),
+        index('delivery_run_stops_run_retry_lane_rank_idx').on(
+            table.runId,
+            table.retryLaneRank,
+        ),
+        index('delivery_run_stops_released_at_idx').on(table.releasedAt),
         index('delivery_run_stops_pickup_trace_token_idx').on(
             table.pickupTraceToken,
         ),

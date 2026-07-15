@@ -440,6 +440,15 @@ export type DeliveryRequestExceptionRecordedPayload = {
     routeRevision: number;
 };
 
+export type DeliveryRequestExceptionRecoveredPayload = {
+    runId: string;
+    stopId: number;
+    recovery: 'retry' | 'admin-recovery' | 'route-abandonment';
+    recoveredAt: string;
+    recoveredByUserId: string;
+    routeRevision: number;
+};
+
 export type DeliveryRequestSurveySentPayload = {
     sentTo: string[];
 };
@@ -452,6 +461,22 @@ export type DeliveryRequestReadyEmailProcessedPayload = {
     skipped?: boolean;
 };
 
+export type DeliveryRunReassignedPayload = {
+    previousDriverUserId: string;
+    newDriverUserId: string;
+    reassignedAt: string;
+    reassignedByUserId: string;
+    routeRevision: number;
+};
+
+export type DeliveryRunAbandonedPayload = {
+    abandonedAt: string;
+    abandonedByUserId: string;
+    reason?: string;
+    releasedRequestIds: string[];
+    routeRevision: number;
+};
+
 export type DeliveryRequestEventsPayload =
     | DeliveryRequestCreatePayload
     | DeliveryRequestSlotChangedPayload
@@ -460,6 +485,7 @@ export type DeliveryRequestEventsPayload =
     | DeliveryRequestStatusPayload
     | DeliveryRequestFulfilledPayload
     | DeliveryRequestExceptionRecordedPayload
+    | DeliveryRequestExceptionRecoveredPayload
     | DeliveryRequestSurveySentPayload
     | DeliveryRequestReadyEmailProcessedPayload;
 
@@ -471,6 +497,7 @@ export type DeliveryRequestEventsAnyPayload = Partial<
         DeliveryRequestStatusPayload &
         DeliveryRequestFulfilledPayload &
         DeliveryRequestExceptionRecordedPayload &
+        DeliveryRequestExceptionRecoveredPayload &
         DeliveryRequestSurveySentPayload &
         DeliveryRequestReadyEmailProcessedPayload
 >;

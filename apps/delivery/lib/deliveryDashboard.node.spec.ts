@@ -2,10 +2,14 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
     accountCanTrackCurrentDeliveryGroup,
+    deliveryMutationRouteState,
     deliveryStatusLabel,
     deliveryTrackingStopIds,
     expandLegacyCurrentDeliveryStopIds,
     pickupManifestTracePath,
+    recordedExceptionNeedsReroute,
+    visibleDeliveryRunTotals,
+    visibleDeliveryStopEstimates,
 } from './deliveryDashboard';
 
 const pending = 'pending';
@@ -335,5 +339,69 @@ test('partial bulk tracking authorizes only exact current actionable stop ids', 
             currentDeliveryStopIds,
         }),
         false,
+    );
+});
+
+test('pending reroutes suppress stale customer arrival and travel estimates', () => {
+    const previousEstimate = {
+        estimatedArrivalAt: new Date('2026-07-15T10:00:00.000Z'),
+        estimatedTravelSeconds: 600,
+        estimatedDistanceMeters: 4_000,
+    };
+    assert.deepEqual(
+        visibleDeliveryStopEstimates({
+            reroutePending: true,
+            ...previousEstimate,
+        }),
+        {
+            estimatedArrivalAt: null,
+            estimatedTravelSeconds: null,
+            estimatedDistanceMeters: null,
+        },
+    );
+    assert.deepEqual(
+        visibleDeliveryRunTotals({
+            reroutePending: true,
+            totalDistanceMeters: 4_000,
+            totalDurationSeconds: 600,
+        }),
+        { totalDistanceMeters: null, totalDurationSeconds: null },
+    );
+    assert.deepEqual(
+        visibleDeliveryStopEstimates({
+            reroutePending: false,
+            ...previousEstimate,
+        }),
+        {
+            estimatedArrivalAt: '2026-07-15T10:00:00.000Z',
+            estimatedTravelSeconds: 600,
+            estimatedDistanceMeters: 4_000,
+        },
+    );
+});
+
+test('exception receipt replay returns current revision without rerouting a stale receipt', () => {
+    assert.equal(
+        recordedExceptionNeedsReroute({
+            currentRouteRevision: 8,
+            recordedRouteRevision: 7,
+            reroutePending: false,
+        }),
+        false,
+    );
+    assert.deepEqual(
+        deliveryMutationRouteState(
+            { routeRevision: 8, rerouteRequiredAt: null },
+            7,
+        ),
+        { routeRevision: 8, reroutePending: false },
+    );
+    assert.equal(
+        recordedExceptionNeedsReroute({
+            currentRouteRevision: 7,
+            recordedRouteRevision: 7,
+            reroutePending: true,
+        }),
+        true,
     );
 });

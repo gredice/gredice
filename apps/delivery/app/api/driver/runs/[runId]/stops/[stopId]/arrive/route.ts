@@ -1,9 +1,15 @@
 import { withAuth } from '../../../../../../../../lib/auth/auth';
 import { arriveAtDeliveryStop } from '../../../../../../../../lib/deliveryDashboard';
+import {
+    DeliveryMutationRequestError,
+    expectedRouteRevision,
+} from '../../../../../../../../lib/deliveryMutationRequest';
 import { deliveryRunExecutionErrorDetails } from '../../../../../../../../lib/deliveryRunExecutionError';
 
+const privateNoStore = { 'Cache-Control': 'private, no-store' };
+
 export async function POST(
-    _request: Request,
+    request: Request,
     { params }: { params: Promise<{ runId: string; stopId: string }> },
 ) {
     return await withAuth(['driver', 'admin'], async ({ userId }) => {
@@ -12,16 +18,36 @@ export async function POST(
         if (!Number.isInteger(stopId)) {
             return Response.json(
                 { error: 'Neispravna stanica.' },
-                { status: 400 },
+                { status: 400, headers: privateNoStore },
+            );
+        }
+        const body: unknown = await request.json().catch(() => null);
+        let routeRevision: number;
+        try {
+            routeRevision = expectedRouteRevision(body);
+        } catch (error) {
+            return Response.json(
+                {
+                    error:
+                        error instanceof DeliveryMutationRequestError
+                            ? error.message
+                            : 'Neispravna promjena dostave.',
+                    code: 'invalid-delivery-mutation',
+                },
+                { status: 400, headers: privateNoStore },
             );
         }
         try {
-            await arriveAtDeliveryStop({
+            const result = await arriveAtDeliveryStop({
                 driverUserId: userId,
                 runId,
                 stopId,
+                expectedRouteRevision: routeRevision,
             });
-            return Response.json({ success: true });
+            return Response.json(
+                { success: true, ...result },
+                { headers: privateNoStore },
+            );
         } catch (error) {
             const executionError = deliveryRunExecutionErrorDetails(error);
             const logContext = { runId, stopId, userId };
@@ -33,7 +59,8 @@ export async function POST(
             } else {
                 console.error('Failed to mark delivery stop arrived', {
                     ...logContext,
-                    error,
+                    errorType:
+                        error instanceof Error ? error.name : typeof error,
                 });
             }
             return Response.json(
@@ -43,7 +70,7 @@ export async function POST(
                         'Dolazak trenutačno nije moguće potvrditi.',
                     code: executionError?.code,
                 },
-                { status: 409 },
+                { status: 409, headers: privateNoStore },
             );
         }
     });

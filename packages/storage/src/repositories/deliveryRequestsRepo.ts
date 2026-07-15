@@ -41,6 +41,10 @@ import {
     acquireDeliveryDispatchLock,
     withDeliveryDispatchTransaction,
 } from './deliveryDispatchRepo';
+import {
+    assertDeliveryRequestHasNoActiveAssignment,
+    cancelActiveDeliveryRunAssignment,
+} from './deliveryRunAssignmentsRepo';
 import { getEntitiesFormatted, getEntityFormatted } from './entitiesRepo';
 import {
     createEvent,
@@ -143,6 +147,7 @@ const deliveryRequestEventTypes = [
     knownEventTypes.delivery.requestReady,
     knownEventTypes.delivery.requestFulfilled,
     knownEventTypes.delivery.requestExceptionRecorded,
+    knownEventTypes.delivery.requestExceptionRecovered,
     knownEventTypes.delivery.requestSurveySent,
     knownEventTypes.delivery.requestSlotChanged,
     knownEventTypes.delivery.userCancelled,
@@ -157,6 +162,7 @@ export const deliveryDispatchEventTypes = [
     knownEventTypes.delivery.requestReady,
     knownEventTypes.delivery.requestFulfilled,
     knownEventTypes.delivery.requestExceptionRecorded,
+    knownEventTypes.delivery.requestExceptionRecovered,
     knownEventTypes.delivery.requestSlotChanged,
     knownEventTypes.delivery.userCancelled,
 ] as const;
@@ -355,6 +361,14 @@ function reconstructDeliveryRequestState(
                     data.exceptionOutcome === 'deferred' &&
                     data.exceptionRetryable === true,
             };
+        } else if (
+            event.type === knownEventTypes.delivery.requestExceptionRecovered &&
+            (state === DeliveryRequestStates.DEFERRED ||
+                state === DeliveryRequestStates.FAILED)
+        ) {
+            state = DeliveryRequestStates.READY;
+            cancelReason = undefined;
+            deliveryException = undefined;
         } else if (event.type === knownEventTypes.delivery.requestSlotChanged) {
             slotId = asNumber(data.newSlotId);
         } else if (event.type === knownEventTypes.delivery.userCancelled) {
@@ -1418,6 +1432,7 @@ export async function changeDeliveryRequestSlot(
             throw new Error('Delivery request has no slot to change');
         }
         if (request.slot.id === newSlotId) return;
+        await assertDeliveryRequestHasNoActiveAssignment(requestId, tx);
 
         await createEvent(
             knownEvents.delivery.requestSlotChangedV1(requestId, {
@@ -1438,12 +1453,27 @@ export async function cancelDeliveryRequest(
     actorId?: string,
 ): Promise<void> {
     await withDeliveryDispatchTransaction(async (tx) => {
+        const cancelledAt = new Date();
         const request = await getDeliveryRequest(requestId, tx);
 
         if (!request) {
             throw new Error('Delivery request not found');
         }
-        if (request.state === DeliveryRequestStates.CANCELLED) return;
+        const recordedByUser = actorId
+            ? await tx.query.users.findFirst({
+                  columns: { id: true },
+                  where: eq(users.id, actorId),
+              })
+            : undefined;
+        if (request.state === DeliveryRequestStates.CANCELLED) {
+            await cancelActiveDeliveryRunAssignment({
+                requestId,
+                occurredAt: cancelledAt,
+                recordedByUserId: recordedByUser?.id,
+                db: tx,
+            });
+            return;
+        }
         if (request.state === DeliveryRequestStates.FULFILLED) {
             throw new Error('Cannot cancel a fulfilled delivery request');
         }
@@ -1466,6 +1496,12 @@ export async function cancelDeliveryRequest(
             }),
             tx,
         );
+        await cancelActiveDeliveryRunAssignment({
+            requestId,
+            occurredAt: cancelledAt,
+            recordedByUserId: recordedByUser?.id,
+            db: tx,
+        });
     });
 }
 
@@ -1474,11 +1510,13 @@ export async function cancelDeliveryRequestForAccount({
     accountId,
     cancelReason,
     note,
+    actorUserId,
 }: {
     requestId: string;
     accountId: string;
     cancelReason: string;
     note?: string;
+    actorUserId?: string;
 }): Promise<void> {
     const request = await getDeliveryRequest(requestId);
 
@@ -1491,7 +1529,7 @@ export async function cancelDeliveryRequestForAccount({
         'user',
         cancelReason,
         note,
-        accountId,
+        actorUserId,
     );
 }
 

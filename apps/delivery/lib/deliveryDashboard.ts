@@ -1,5 +1,6 @@
 import { notifyDeliveryRequestEvent } from '@gredice/notifications';
 import {
+    abandonDeliveryRun,
     consumeDeliveryRunPreparation,
     DeliveryRequestStates,
     DeliveryRunManifestItemStates,
@@ -8,6 +9,7 @@ import {
     DeliveryRunStopStates,
     fulfillDeliveryRunStops,
     getActiveDeliveryRunForDriver,
+    getActiveDeliveryRunStopsForRequestIds,
     getDeliveryAccountContacts,
     getDeliveryRequest,
     getDeliveryRequestsWithEvents,
@@ -18,6 +20,11 @@ import {
     isDeliveryRunStopActionable,
     isDeliveryRunStopTerminal,
     markDeliveryRunStopsArrived,
+    type RecordDeliveryRunStopExceptionsInput,
+    reassignDeliveryRun,
+    recordDeliveryRunStopExceptions,
+    recoverDeliveryRunStop,
+    retryDeliveryRunStop,
     updateDeliveryRunEstimates,
     updateDeliveryRunLocation,
 } from '@gredice/storage';
@@ -49,6 +56,11 @@ import {
     prepareDeliveryRun,
     savePreparedDeliveryRun,
 } from './deliveryRunPlanning';
+import {
+    deliveryRerouteLocationIsFresh,
+    deliveryRerouteRetryIsDue,
+    reconcileDeliveryRunReroute,
+} from './deliveryRunRerouting';
 import { resolveDeliveryRunStart } from './deliveryRunStart';
 import { buildDeliveryStopKey } from './deliveryStopGrouping';
 
@@ -74,6 +86,11 @@ const batchStates: ReadonlySet<string> = new Set([
     DeliveryRequestStates.CONFIRMED,
     DeliveryRequestStates.PREPARING,
     DeliveryRequestStates.READY,
+]);
+const terminalDeliveryRequestStates: ReadonlySet<string> = new Set([
+    DeliveryRequestStates.FULFILLED,
+    DeliveryRequestStates.FAILED,
+    DeliveryRequestStates.CANCELLED,
 ]);
 const etaRefreshIntervalMs = 2 * 60 * 1000;
 
@@ -193,14 +210,16 @@ export async function resolveDeliveryRunStopGroups(
             request,
             stopKey:
                 stop.stopKey ??
-                (request
-                    ? deliveryRequestStopKey(request)
-                    : `request:${stop.deliveryRequestId}`),
+                buildDeliveryStopKey(run.timeSlotId, stop.formattedAddress),
         };
     });
     const groups = new Map<string, ResolvedDeliveryRunStop[]>();
     for (const item of items) {
-        const executionKey = `${item.stop.itinerarySequence ?? 'legacy'}:${item.stopKey}`;
+        const executionLane =
+            item.stop.retryLaneRank === null
+                ? `route:${item.stop.itinerarySequence ?? 'legacy'}`
+                : `retry:${item.stop.retryLaneRank}`;
+        const executionKey = `${executionLane}:${item.stopKey}`;
         const group = groups.get(executionKey);
         if (group) group.push(item);
         else groups.set(executionKey, [item]);
@@ -209,7 +228,26 @@ export async function resolveDeliveryRunStopGroups(
         executionKey,
         stopKey: groupedItems[0]?.stopKey ?? executionKey,
         items: groupedItems,
-    }));
+    })).sort((first, second) => {
+        const firstRetryRank = first.items[0]?.stop.retryLaneRank;
+        const secondRetryRank = second.items[0]?.stop.retryLaneRank;
+        const firstLane = firstRetryRank === null ? 0 : 1;
+        const secondLane = secondRetryRank === null ? 0 : 1;
+        const sequence = (group: ResolvedDeliveryRunStopGroup) =>
+            Math.min(
+                ...group.items.map(
+                    ({ stop }) =>
+                        stop.retryLaneRank ??
+                        stop.itinerarySequence ??
+                        stop.sequence,
+                ),
+            );
+        return (
+            firstLane - secondLane ||
+            sequence(first) - sequence(second) ||
+            first.executionKey.localeCompare(second.executionKey)
+        );
+    });
 }
 
 export function deliveryStatusLabel({
@@ -285,7 +323,49 @@ type DeliveryRunSnapshot = Pick<
     | 'currentLocationHeading'
     | 'currentLocationSpeed'
     | 'currentLocationRecordedAt'
+    | 'rerouteRequiredAt'
 >;
+
+export function visibleDeliveryStopEstimates({
+    reroutePending,
+    estimatedArrivalAt,
+    estimatedTravelSeconds,
+    estimatedDistanceMeters,
+}: {
+    reroutePending: boolean;
+    estimatedArrivalAt?: Date | null;
+    estimatedTravelSeconds?: number | null;
+    estimatedDistanceMeters?: number | null;
+}) {
+    return {
+        estimatedArrivalAt: reroutePending ? null : iso(estimatedArrivalAt),
+        estimatedTravelSeconds: reroutePending
+            ? null
+            : (estimatedTravelSeconds ?? null),
+        estimatedDistanceMeters: reroutePending
+            ? null
+            : (estimatedDistanceMeters ?? null),
+    };
+}
+
+export function visibleDeliveryRunTotals({
+    reroutePending,
+    totalDistanceMeters,
+    totalDurationSeconds,
+}: {
+    reroutePending: boolean;
+    totalDistanceMeters?: number | null;
+    totalDurationSeconds?: number | null;
+}) {
+    return {
+        totalDistanceMeters: reroutePending
+            ? null
+            : (totalDistanceMeters ?? null),
+        totalDurationSeconds: reroutePending
+            ? null
+            : (totalDurationSeconds ?? null),
+    };
+}
 
 function deliverySummaryItem(
     request: DeliveryRequest,
@@ -370,6 +450,15 @@ function deliveryStopSummary({
             : 'Adresa nije dostupna');
     const runSlot = representativeStop?.runSlot;
     const runLocation = run ? trackingLocation(run) : null;
+    const reroutePending = Boolean(
+        run?.state === DeliveryRunStates.ACTIVE && run.rerouteRequiredAt,
+    );
+    const estimates = visibleDeliveryStopEstimates({
+        reroutePending,
+        estimatedArrivalAt: representativeStop?.estimatedArrivalAt,
+        estimatedTravelSeconds: representativeStop?.estimatedTravelSeconds,
+        estimatedDistanceMeters: representativeStop?.estimatedDistanceMeters,
+    });
 
     return {
         id: representativeStop?.id ?? null,
@@ -396,11 +485,8 @@ function deliveryStopSummary({
         deliveryNotes: request.deliveryNotes ?? null,
         slotStartAt: iso(runSlot?.windowStartAt ?? request.slot?.startAt),
         slotEndAt: iso(runSlot?.windowEndAt ?? request.slot?.endAt),
-        estimatedArrivalAt: iso(representativeStop?.estimatedArrivalAt),
-        estimatedTravelSeconds:
-            representativeStop?.estimatedTravelSeconds ?? null,
-        estimatedDistanceMeters:
-            representativeStop?.estimatedDistanceMeters ?? null,
+        ...estimates,
+        reroutePending,
         arrivedAt: iso(stops.find((stop) => stop.arrivedAt)?.arrivedAt),
         deliveredAt: iso(stops.find((stop) => stop.deliveredAt)?.deliveredAt),
         harvest: harvestSummary(request),
@@ -546,6 +632,12 @@ function pickupStepSummary({
         manifests.every((manifest) => manifest.state === 'confirmed');
     const hasProgress =
         scannedCount > 0 || missingLabelCount > 0 || notReadyCount > 0;
+    const estimates = visibleDeliveryStopEstimates({
+        reroutePending: run.rerouteRequiredAt !== null,
+        estimatedArrivalAt: pickupNode.estimatedArrivalAt,
+        estimatedTravelSeconds: pickupNode.incomingTravelSeconds,
+        estimatedDistanceMeters: pickupNode.incomingDistanceMeters,
+    });
 
     return {
         id: pickupNode.id,
@@ -554,9 +646,7 @@ function pickupStepSummary({
         itinerarySequence: step.itinerarySequence,
         name: pickupNode.name,
         address: pickupNode.formattedAddress,
-        estimatedArrivalAt: iso(pickupNode.estimatedArrivalAt),
-        estimatedTravelSeconds: pickupNode.incomingTravelSeconds,
-        estimatedDistanceMeters: pickupNode.incomingDistanceMeters,
+        ...estimates,
         serviceDurationSeconds: pickupNode.serviceDurationSeconds,
         state: allConfirmed ? 'confirmed' : hasProgress ? 'partial' : 'pending',
         isCurrent: step.state === 'current',
@@ -689,20 +779,28 @@ async function activeRunSummary(
             itinerarySequence: Number.isFinite(itinerarySequence)
                 ? itinerarySequence
                 : executionStep.itinerarySequence,
+            retryLaneRank: executionStep.retryLaneRank ?? null,
+            retryAttempt: executionStep.retryAttempt ?? 0,
             actionState,
             lockedReason: stop.lockedReason ?? null,
             stop,
         });
     }
 
+    const reroutePending = run.rerouteRequiredAt !== null;
     return {
         id: run.id,
         state: run.state,
         startedAt: run.startedAt.toISOString(),
         completedAt: iso(run.completedAt),
-        totalDistanceMeters: run.totalDistanceMeters,
-        totalDurationSeconds: run.totalDurationSeconds,
+        ...visibleDeliveryRunTotals({
+            reroutePending,
+            totalDistanceMeters: run.totalDistanceMeters,
+            totalDurationSeconds: run.totalDurationSeconds,
+        }),
         routePlanVersion: run.routePlanVersion,
+        routeRevision: run.routeRevision,
+        reroutePending,
         estimateSource: run.estimateSource,
         location: trackingLocation(run),
         estimatesUpdatedAt: iso(run.estimatesUpdatedAt),
@@ -723,13 +821,29 @@ async function driverDashboard({
     userId: string;
     role: string;
 }): Promise<DeliveryDashboard> {
-    const [user, activeRun, requests] = await Promise.all([
+    const [user, initialActiveRun, requests] = await Promise.all([
         getUser(userId),
         getActiveDeliveryRunForDriver(userId),
         getDeliveryRequestsWithEvents(),
     ]);
     if (!user) {
         throw new Error('Korisnik nije pronađen.');
+    }
+    let activeRun = initialActiveRun;
+    if (
+        activeRun?.rerouteRequiredAt &&
+        deliveryRerouteLocationIsFresh(activeRun) &&
+        deliveryRerouteRetryIsDue(
+            activeRun.rerouteRequiredAt,
+            activeRun.rerouteAttemptedAt,
+        )
+    ) {
+        await reconcileDeliveryRunReroute({
+            actorUserId: userId,
+            runId: activeRun.id,
+            expectedRouteRevision: activeRun.routeRevision,
+        });
+        activeRun = await getActiveDeliveryRunForDriver(userId);
     }
 
     const now = Date.now();
@@ -742,7 +856,7 @@ async function driverDashboard({
             request.slot.endAt.getTime() >= now &&
             request.slot.startAt.getTime() <= now + 14 * 24 * 60 * 60 * 1000,
     );
-    const assigned = await getDeliveryRunStopsForRequestIds(
+    const assigned = await getActiveDeliveryRunStopsForRequestIds(
         candidateRequests.map((request) => request.id),
     );
     const assignedRequestIds = new Set(
@@ -878,7 +992,12 @@ async function customerDashboard({
 
     const deliveries = requests
         .map((request) => {
-            const row = rowsByRequestId.get(request.id);
+            const historicalRow = rowsByRequestId.get(request.id);
+            const row =
+                historicalRow?.stop.releasedAt !== null &&
+                !terminalDeliveryRequestStates.has(request.state)
+                    ? undefined
+                    : historicalRow;
             const isCurrent = row
                 ? (currentStopIdsByRunId.get(row.run.id)?.has(row.stop.id) ??
                   false)
@@ -1011,20 +1130,27 @@ export async function arriveAtDeliveryStop({
     driverUserId,
     runId,
     stopId,
+    expectedRouteRevision,
 }: {
     driverUserId: string;
     runId: string;
     stopId: number;
+    expectedRouteRevision: number;
 }) {
     const group = await getOwnedDeliveryRunStopGroup({
         driverUserId,
         runId,
         stopId,
     });
-    return await markDeliveryRunStopsArrived({
+    await markDeliveryRunStopsArrived({
         driverUserId,
         runId,
         stopIds: group.items.map(({ stop }) => stop.id),
+        expectedRouteRevision,
+    });
+    return await currentDeliveryRunMutationResult({
+        runId,
+        fallbackRouteRevision: expectedRouteRevision + 1,
     });
 }
 
@@ -1086,11 +1212,13 @@ export async function deliverDeliveryStop({
     runId,
     stopId,
     notes,
+    expectedRouteRevision,
 }: {
     driverUserId: string;
     runId: string;
     stopId: number;
     notes?: string;
+    expectedRouteRevision: number;
 }) {
     const group = await getOwnedDeliveryRunStopGroup({
         driverUserId,
@@ -1102,6 +1230,7 @@ export async function deliverDeliveryStop({
         runId,
         stopIds: group.items.map(({ stop }) => stop.id),
         deliveryNotes: notes,
+        expectedRouteRevision,
     });
     await Promise.all(
         requestIds.map((requestId) =>
@@ -1111,6 +1240,160 @@ export async function deliverDeliveryStop({
             }),
         ),
     );
+    return await currentDeliveryRunMutationResult({
+        runId,
+        fallbackRouteRevision: expectedRouteRevision + 1,
+    });
+}
+
+async function currentDeliveryRunMutationResult({
+    runId,
+    fallbackRouteRevision,
+}: {
+    runId: string;
+    fallbackRouteRevision: number;
+}) {
+    const run = await getDeliveryRun(runId);
+    return deliveryMutationRouteState(run, fallbackRouteRevision);
+}
+
+export function deliveryMutationRouteState(
+    run:
+        | { routeRevision: number; rerouteRequiredAt: Date | null }
+        | null
+        | undefined,
+    fallbackRouteRevision: number,
+) {
+    return {
+        routeRevision: run?.routeRevision ?? fallbackRouteRevision,
+        reroutePending: Boolean(run?.rerouteRequiredAt),
+    };
+}
+
+export function recordedExceptionNeedsReroute({
+    currentRouteRevision,
+    recordedRouteRevision,
+    reroutePending,
+}: {
+    currentRouteRevision?: number;
+    recordedRouteRevision: number;
+    reroutePending: boolean;
+}) {
+    return reroutePending && currentRouteRevision === recordedRouteRevision;
+}
+
+export async function recordDriverDeliveryExceptions({
+    driverUserId,
+    runId,
+    clientOperationId,
+    expectedRouteRevision,
+    occurredAt,
+    exceptions,
+}: Omit<RecordDeliveryRunStopExceptionsInput, 'driverUserId'> & {
+    driverUserId: string;
+}) {
+    const recorded = await recordDeliveryRunStopExceptions({
+        driverUserId,
+        runId,
+        clientOperationId,
+        expectedRouteRevision,
+        occurredAt,
+        exceptions,
+    });
+    const runAfterMutation = await getDeliveryRun(runId);
+    if (
+        recordedExceptionNeedsReroute({
+            currentRouteRevision: runAfterMutation?.routeRevision,
+            recordedRouteRevision: recorded.result.routeRevision,
+            reroutePending: Boolean(runAfterMutation?.rerouteRequiredAt),
+        })
+    ) {
+        await reconcileDeliveryRunReroute({
+            actorUserId: driverUserId,
+            runId,
+            expectedRouteRevision: recorded.result.routeRevision,
+            originStopId: exceptions[0]?.stopId,
+        });
+    }
+    return {
+        clientOperationId: recorded.clientOperationId,
+        replayed: recorded.replayed,
+        outcomes: recorded.result.outcomes,
+        ...(await currentDeliveryRunMutationResult({
+            runId,
+            fallbackRouteRevision: recorded.result.routeRevision,
+        })),
+    };
+}
+
+export async function retryDriverDeliveryStop({
+    driverUserId,
+    runId,
+    stopId,
+    expectedRouteRevision,
+}: {
+    driverUserId: string;
+    runId: string;
+    stopId: number;
+    expectedRouteRevision: number;
+}) {
+    const retried = await retryDeliveryRunStop({
+        driverUserId,
+        runId,
+        stopId,
+        expectedRouteRevision,
+    });
+    await reconcileDeliveryRunReroute({
+        actorUserId: driverUserId,
+        runId,
+        expectedRouteRevision: retried.routeRevision,
+    });
+    return await currentDeliveryRunMutationResult({
+        runId,
+        fallbackRouteRevision: retried.routeRevision,
+    });
+}
+
+export async function reassignAdminDeliveryRun(input: {
+    adminUserId: string;
+    runId: string;
+    newDriverUserId: string;
+    expectedRouteRevision: number;
+}) {
+    return await reassignDeliveryRun(input);
+}
+
+export async function recoverAdminDeliveryStop(input: {
+    adminUserId: string;
+    runId: string;
+    stopId: number;
+    expectedRouteRevision: number;
+}) {
+    const recovered = await recoverDeliveryRunStop(input);
+    if (recovered.resumedInRun) {
+        await reconcileDeliveryRunReroute({
+            actorUserId: input.adminUserId,
+            runId: input.runId,
+            expectedRouteRevision: recovered.routeRevision,
+            allowAdmin: true,
+        });
+    }
+    return {
+        ...recovered,
+        ...(await currentDeliveryRunMutationResult({
+            runId: input.runId,
+            fallbackRouteRevision: recovered.routeRevision,
+        })),
+    };
+}
+
+export async function abandonAdminDeliveryRun(input: {
+    adminUserId: string;
+    runId: string;
+    expectedRouteRevision: number;
+    reason?: string;
+}) {
+    return await abandonDeliveryRun(input);
 }
 
 export async function accountCanTrackDeliveryRun({
@@ -1214,6 +1497,7 @@ export async function recordDriverLocation({
     speed?: number;
     recordedAt: Date;
 }) {
+    const previousRun = await getDeliveryRun(runId);
     await updateDeliveryRunLocation({
         runId,
         driverUserId,
@@ -1227,6 +1511,23 @@ export async function recordDriverLocation({
 
     const run = await getDeliveryRun(runId);
     if (!run || run.driverUserId !== driverUserId) {
+        return;
+    }
+    if (
+        run.rerouteRequiredAt &&
+        deliveryRerouteLocationIsFresh(run) &&
+        (!previousRun ||
+            !deliveryRerouteLocationIsFresh(previousRun) ||
+            deliveryRerouteRetryIsDue(
+                run.rerouteRequiredAt,
+                run.rerouteAttemptedAt,
+            ))
+    ) {
+        await reconcileDeliveryRunReroute({
+            actorUserId: driverUserId,
+            runId,
+            expectedRouteRevision: run.routeRevision,
+        });
         return;
     }
     const estimatesAreFresh =

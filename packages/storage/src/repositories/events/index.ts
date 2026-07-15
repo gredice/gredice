@@ -48,10 +48,13 @@ export type {
     DeliveryRequestEventsAnyPayload,
     DeliveryRequestEventsPayload,
     DeliveryRequestExceptionRecordedPayload,
+    DeliveryRequestExceptionRecoveredPayload,
     DeliveryRequestFulfilledPayload,
     DeliveryRequestSlotChangedPayload,
     DeliveryRequestStatusPayload,
     DeliveryRequestSurveySentPayload,
+    DeliveryRunAbandonedPayload,
+    DeliveryRunReassignedPayload,
     // Generic
     Event,
     GardenBlockPlacePayload,

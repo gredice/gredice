@@ -2,15 +2,22 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
+    abandonDeliveryRun,
     accountCanTrackDeliveryRun,
     applyDeliveryRunPickupMutations,
+    applyDeliveryRunReroute,
     type CreatePreparedDeliveryRunInput,
     cancelDeliveryRequest,
     changeDeliveryRequestSlot,
+    claimDeliveryRunReroute,
     consumeDeliveryRunPreparation,
     createDeliveryAddress,
     createDeliveryRun,
     createEvent,
+    DeliveryAddressMutationError,
+    DeliveryRunAssignmentError,
+    DeliveryRunAssignmentErrorCodes,
+    DeliveryRunEstimateSources,
     DeliveryRunExceptionOutcomes,
     DeliveryRunExceptionReasons,
     DeliveryRunExecutionError,
@@ -26,11 +33,13 @@ import {
     type DeliveryRunRequestSnapshotInput,
     DeliveryRunStates,
     DeliveryRunStopStates,
+    deleteDeliveryAddress,
     deliveryRequests,
     deliveryRunExceptionOperations,
     deliveryRunPickupNodes,
     deliveryRunPickupOperations,
     deliveryRunPreparations,
+    deliveryRunRerouteLeaseMs,
     deliveryRunStops,
     deliveryRunStopsAllowCompletion,
     deliveryRuns,
@@ -39,6 +48,7 @@ import {
     fulfillDeliveryRunStop,
     fulfillDeliveryRunStops,
     gardens,
+    getActiveDeliveryRunStopsForRequestIds,
     getDeliveryDispatchRevision,
     getDeliveryRequest,
     getDeliveryRequestDispatchSnapshots,
@@ -55,10 +65,15 @@ import {
     type RecordDeliveryRunStopExceptionsInput,
     raisedBedFields,
     raisedBeds,
+    readyDeliveryRequest,
+    reassignDeliveryRun,
     recordDeliveryRunStopExceptions,
+    recoverDeliveryRunStop,
+    retryDeliveryRunStop,
     saveDeliveryRunPreparation,
     storage,
     timeSlots,
+    uncancelDeliveryRequest,
     updateDeliveryAddress,
     updateDeliveryRunLocation,
     updatePickupLocation,
@@ -70,7 +85,20 @@ import { createTestAccount } from './helpers/testHelpers';
 import { createTestDb } from './testDb';
 
 type DeliveryRunFixture = Awaited<ReturnType<typeof createDeliveryRunFixture>>;
+type DeliveryRunExecutionStep = Awaited<
+    ReturnType<typeof getDeliveryRunExecutionProgress>
+>[number];
+type DeliveryRunExecutionDeliveryStep = Extract<
+    DeliveryRunExecutionStep,
+    { kind: 'delivery' }
+>;
 let nextSupplementalOperationEntityId = 10_000;
+
+function isRetryDeliveryStep(
+    step: DeliveryRunExecutionStep,
+): step is DeliveryRunExecutionDeliveryStep {
+    return step.kind === 'delivery' && step.retryLaneRank !== undefined;
+}
 
 async function createDeliveryRunFixture({
     accountIndexes = [0],
@@ -559,8 +587,15 @@ async function createPreparedRunFixture({
     };
 }
 
-async function startPreparedBulkRunWithConfirmedPickup() {
-    const prepared = await createPreparedRunFixture({ bulk: true });
+async function startPreparedBulkRunWithConfirmedPickup({
+    driverCount = 1,
+}: {
+    driverCount?: number;
+} = {}) {
+    const prepared = await createPreparedRunFixture({
+        bulk: true,
+        driverCount,
+    });
     const driverUserId = prepared.fixture.driverUserIds[0];
     assert.ok(driverUserId);
     const saved = await saveDeliveryRunPreparation(prepared);
@@ -640,6 +675,61 @@ async function addReadyDeliveryRequest({
         knownEvents.delivery.requestReadyV1(requestId, { status: 'ready' }),
     );
     return requestId;
+}
+
+async function singleRequestPreparation({
+    prepared,
+    requestId,
+    driverUserId,
+}: {
+    prepared: Awaited<ReturnType<typeof createPreparedRunFixture>>;
+    requestId: string;
+    driverUserId: string;
+}) {
+    const [dispatchSnapshot] = await getDeliveryRequestDispatchSnapshots([
+        requestId,
+    ]);
+    const requestSnapshot = prepared.requestSnapshots.find(
+        (snapshot) => snapshot.deliveryRequestId === requestId,
+    );
+    const stop = prepared.createRunInput.stops.find(
+        (candidate) => candidate.deliveryRequestId === requestId,
+    );
+    const manifestItem = prepared.createRunInput.manifestItems.find(
+        (candidate) => candidate.deliveryRequestId === requestId,
+    );
+    assert.ok(dispatchSnapshot);
+    assert.ok(requestSnapshot);
+    assert.ok(stop);
+    assert.ok(manifestItem);
+    return {
+        dispatchRevision: await getDeliveryDispatchRevision(),
+        selectionRequestIds: [requestId],
+        requestSnapshots: [
+            {
+                ...requestSnapshot,
+                state: dispatchSnapshot.state,
+                requestDispatchEventId: dispatchSnapshot.requestDispatchEventId,
+            },
+        ],
+        createRunInput: {
+            ...prepared.createRunInput,
+            driverUserId,
+            runSlots: prepared.createRunInput.runSlots.map((slot) => ({
+                ...slot,
+                manifestId: `manifest-${randomUUID()}`,
+            })),
+            stops: [
+                {
+                    ...stop,
+                    sequence: 1,
+                    requestDispatchEventId:
+                        dispatchSnapshot.requestDispatchEventId,
+                },
+            ],
+            manifestItems: [manifestItem],
+        },
+    };
 }
 
 async function assertPersistenceError(promise: Promise<unknown>, code: string) {
@@ -1100,7 +1190,7 @@ test('cancelled bulk member rolls back fulfillment of the current route group', 
     );
 });
 
-test('[legacy] active run keeps snapshots while the source address and slot mutate', async () => {
+test('[legacy] active run rejects source address and slot mutations while keeping snapshots', async () => {
     const fixture = await createDeliveryRunFixture();
     const [accountId] = fixture.accountIds;
     const [driverUserId] = fixture.driverUserIds;
@@ -1155,21 +1245,28 @@ test('[legacy] active run keeps snapshots while the source address and slot muta
     });
     assert.equal(run.stops[0]?.formattedAddress, snapshotAddress);
 
-    await updateDeliveryAddress(
-        { id: addressId, street1: 'Nova 2' },
-        accountId,
-    );
-    await changeDeliveryRequestSlot(requestId, newSlot.id);
+    for (const mutation of [
+        updateDeliveryAddress({ id: addressId, street1: 'Nova 2' }, accountId),
+        changeDeliveryRequestSlot(requestId, newSlot.id),
+    ]) {
+        await assert.rejects(
+            mutation,
+            (error) =>
+                error instanceof DeliveryRunAssignmentError &&
+                error.code ===
+                    DeliveryRunAssignmentErrorCodes.ACTIVE_ASSIGNMENT_EXISTS,
+        );
+    }
 
     const changedRequest = await getDeliveryRequest(requestId);
     const unchangedRun = await getDeliveryRun(run.id);
-    assert.equal(changedRequest?.address?.street1, 'Nova 2');
-    assert.equal(changedRequest?.slot?.id, newSlot.id);
+    assert.equal(changedRequest?.address?.street1, 'Stara 1');
+    assert.equal(changedRequest?.slot?.id, fixture.timeSlotId);
     assert.equal(unchangedRun?.timeSlotId, fixture.timeSlotId);
     assert.equal(unchangedRun?.stops[0]?.formattedAddress, snapshotAddress);
 });
 
-test('[legacy] bulk fulfillment accepts a non-contiguous set containing the current stop', async () => {
+test('[legacy] bulk fulfillment completes the current physical group atomically', async () => {
     const fixture = await createDeliveryRunFixture({
         accountIndexes: [0, 0, 0],
     });
@@ -1189,24 +1286,24 @@ test('[legacy] bulk fulfillment accepts a non-contiguous set containing the curr
     await fulfillDeliveryRunStops({
         driverUserId,
         runId: run.id,
-        stopIds: [firstStop.id, thirdStop.id],
+        stopIds: [firstStop.id, secondStop.id],
     });
 
     const skippedRun = await getDeliveryRun(run.id);
     assert.equal(skippedRun?.state, 'active');
     assert.deepEqual(
         skippedRun?.stops.map((stop) => stop.state),
-        ['delivered', 'pending', 'delivered'],
+        ['delivered', 'delivered', 'pending'],
     );
     assert.notEqual(
-        (await getDeliveryRequest(secondStop.deliveryRequestId))?.state,
+        (await getDeliveryRequest(thirdStop.deliveryRequestId))?.state,
         'fulfilled',
     );
 
     await fulfillDeliveryRunStop({
         driverUserId,
         runId: run.id,
-        stopId: secondStop.id,
+        stopId: thirdStop.id,
     });
     assert.equal((await getDeliveryRun(run.id))?.state, 'completed');
 });
@@ -1311,18 +1408,30 @@ test('prepared run persists multiple pickup locations, slots, manifests, and sta
     assert.ok(firstStop);
     assert.ok(firstNode.pickupLocationId);
     assert.ok(firstRunSlot.timeSlotId);
-    await updateDeliveryAddress(
-        { id: firstAddressId, street1: 'Promijenjena 99' },
-        prepared.fixture.accountIds[0] ?? '',
+    await assert.rejects(
+        updateDeliveryAddress(
+            { id: firstAddressId, street1: 'Promijenjena 99' },
+            prepared.fixture.accountIds[0] ?? '',
+        ),
+        (error) =>
+            error instanceof DeliveryRunAssignmentError &&
+            error.code ===
+                DeliveryRunAssignmentErrorCodes.ACTIVE_ASSIGNMENT_EXISTS,
     );
     await updatePickupLocation({
         id: firstNode.pickupLocationId,
         name: 'Promijenjeno skladište',
     });
-    await updateTimeSlot({
-        id: firstRunSlot.timeSlotId,
-        endAt: new Date('2026-07-13T10:30:00.000Z'),
-    });
+    await assert.rejects(
+        updateTimeSlot({
+            id: firstRunSlot.timeSlotId,
+            endAt: new Date('2026-07-13T10:30:00.000Z'),
+        }),
+        (error) =>
+            error instanceof DeliveryRunAssignmentError &&
+            error.code ===
+                DeliveryRunAssignmentErrorCodes.ACTIVE_ASSIGNMENT_EXISTS,
+    );
 
     const unchanged = await getDeliveryRun(run.id);
     assert.equal(unchanged?.pickupNodes[0]?.name, firstNode.name);
@@ -2768,10 +2877,27 @@ test('delivery exceptions persist item outcomes, replay safely, and keep custome
             kind: 'delivery',
             itinerarySequence: firstStop.itinerarySequence,
             stopKey: firstStop.stopKey,
-            stopIds: [firstStop.id, secondStop.id],
+            stopIds: [secondStop.id],
             actionableStopIds: [secondStop.id],
             pickupConfirmed: true,
             state: 'current',
+        },
+    );
+    assert.deepEqual(
+        (await getDeliveryRunExecutionProgress(run.id)).find(
+            (step) =>
+                step.kind === 'delivery' && step.retryLaneRank !== undefined,
+        ),
+        {
+            kind: 'delivery',
+            itinerarySequence: firstStop.itinerarySequence,
+            stopKey: firstStop.stopKey,
+            stopIds: [firstStop.id],
+            actionableStopIds: [],
+            pickupConfirmed: true,
+            retryLaneRank: 1,
+            retryAttempt: 1,
+            state: 'upcoming',
         },
     );
 
@@ -2870,9 +2996,14 @@ test('delivery exceptions persist item outcomes, replay safely, and keep custome
                 },
             ],
         }),
-        DeliveryRunExecutionErrorCodes.EXCEPTION_TRANSITION_INVALID,
+        DeliveryRunExecutionErrorCodes.ROUTE_ORDER,
     );
 
+    await fulfillDeliveryRunStops({
+        driverUserId,
+        runId: run.id,
+        stopIds: [secondStop.id],
+    });
     const failed = await recordDeliveryRunStopExceptions({
         driverUserId,
         runId: run.id,
@@ -2886,8 +3017,11 @@ test('delivery exceptions persist item outcomes, replay safely, and keep custome
             },
         ],
     });
-    assert.equal(failed.result.runCompleted, false);
-    assert.equal(failed.result.routeRevision, 2);
+    assert.equal(failed.result.runCompleted, true);
+    assert.equal(
+        failed.result.routeRevision,
+        deferred.result.routeRevision + 2,
+    );
     assert.equal(
         (await getDeliveryRequest(firstStop.deliveryRequestId))?.state,
         DeliveryRunStopStates.FAILED,
@@ -2906,13 +3040,8 @@ test('delivery exceptions persist item outcomes, replay safely, and keep custome
                 },
             ],
         }),
-        DeliveryRunExecutionErrorCodes.EXCEPTION_TRANSITION_INVALID,
+        DeliveryRunExecutionErrorCodes.ACTIVE_RUN_NOT_FOUND,
     );
-    await fulfillDeliveryRunStops({
-        driverUserId,
-        runId: run.id,
-        stopIds: [firstStop.id, secondStop.id],
-    });
     const completed = await getDeliveryRun(run.id);
     assert.equal(completed?.state, DeliveryRunStates.COMPLETED);
     assert.equal(completed?.rerouteRequiredAt, null);
@@ -2989,11 +3118,11 @@ test('cancelled and fulfilled request projections are absorbing for late excepti
                 },
             ],
         }),
-        DeliveryRunExecutionErrorCodes.EXCEPTION_TRANSITION_INVALID,
+        DeliveryRunExecutionErrorCodes.ACTIVE_RUN_NOT_FOUND,
     );
     assert.equal(
         (await getDeliveryRun(run.id))?.stops[0]?.state,
-        DeliveryRunStopStates.PENDING,
+        DeliveryRunStopStates.CANCELLED,
     );
     assert.equal(
         (
@@ -3022,6 +3151,17 @@ test('cancelled and fulfilled request projections are absorbing for late excepti
     const cancelled = await getDeliveryRequest(requestId);
     assert.equal(cancelled?.state, 'cancelled');
     assert.equal(cancelled?.deliveryException, undefined);
+    await createEvent(
+        knownEvents.delivery.requestExceptionRecoveredV1(requestId, {
+            runId: run.id,
+            stopId: stop.id,
+            recovery: 'admin-recovery',
+            recoveredAt: new Date('2026-07-13T09:01:30.000Z').toISOString(),
+            recoveredByUserId: driverUserId,
+            routeRevision: 2,
+        }),
+    );
+    assert.equal((await getDeliveryRequest(requestId))?.state, 'cancelled');
 
     const fulfilledFixture = await createDeliveryRunFixture();
     const fulfilledDriverUserId = fulfilledFixture.driverUserIds[0];
@@ -3056,6 +3196,20 @@ test('cancelled and fulfilled request projections are absorbing for late excepti
     const fulfilled = await getDeliveryRequest(fulfilledRequestId);
     assert.equal(fulfilled?.state, 'fulfilled');
     assert.equal(fulfilled?.deliveryException, undefined);
+    await createEvent(
+        knownEvents.delivery.requestExceptionRecoveredV1(fulfilledRequestId, {
+            runId: fulfilledRun.id,
+            stopId: fulfilledStop.id,
+            recovery: 'admin-recovery',
+            recoveredAt: new Date('2026-07-13T09:02:30.000Z').toISOString(),
+            recoveredByUserId: fulfilledDriverUserId,
+            routeRevision: 2,
+        }),
+    );
+    assert.equal(
+        (await getDeliveryRequest(fulfilledRequestId))?.state,
+        'fulfilled',
+    );
 });
 
 test('delivery exception reasons and completion semantics are explicit', () => {
@@ -3149,12 +3303,6 @@ test('all delivery exception reasons follow legal pending, arrived, and deferred
         outcome: DeliveryRunExceptionOutcomes.DEFERRED,
         reason: DeliveryRunExceptionReasons.CUSTOMER_UNAVAILABLE,
     });
-    await command({
-        index: 0,
-        operation: 'deferred-to-failed',
-        outcome: DeliveryRunExceptionOutcomes.FAILED,
-        reason: DeliveryRunExceptionReasons.CUSTOMER_UNAVAILABLE,
-    });
     const secondStop = stops[1];
     assert.ok(secondStop);
     await markDeliveryRunStopArrived({
@@ -3168,13 +3316,6 @@ test('all delivery exception reasons follow legal pending, arrived, and deferred
         outcome: DeliveryRunExceptionOutcomes.DEFERRED,
         reason: DeliveryRunExceptionReasons.ADDRESS_INACCESSIBLE,
     });
-    await command({
-        index: 1,
-        operation: 'deferred-to-cancelled',
-        outcome: DeliveryRunExceptionOutcomes.CANCELLED,
-        reason: DeliveryRunExceptionReasons.CANCELLATION,
-    });
-
     const terminalCases = [
         {
             index: 2,
@@ -3208,16 +3349,27 @@ test('all delivery exception reasons follow legal pending, arrived, and deferred
             operation: `pending-terminal-${terminalCase.index}`,
         });
     }
+    await command({
+        index: 0,
+        operation: 'deferred-to-failed',
+        outcome: DeliveryRunExceptionOutcomes.FAILED,
+        reason: DeliveryRunExceptionReasons.CUSTOMER_UNAVAILABLE,
+    });
+    await command({
+        index: 1,
+        operation: 'deferred-to-cancelled',
+        outcome: DeliveryRunExceptionOutcomes.CANCELLED,
+        reason: DeliveryRunExceptionReasons.CANCELLATION,
+    });
 
     const completed = await getDeliveryRun(run.id);
     assert.equal(completed?.state, DeliveryRunStates.COMPLETED);
     assert.equal(completed?.rerouteRequiredAt, null);
     assert.ok(
-        completed?.stops.every((stop) =>
-            [
-                DeliveryRunStopStates.FAILED,
-                DeliveryRunStopStates.CANCELLED,
-            ].includes(stop.state),
+        completed?.stops.every(
+            (stop) =>
+                stop.state === DeliveryRunStopStates.FAILED ||
+                stop.state === DeliveryRunStopStates.CANCELLED,
         ),
     );
     const auditEvents = await storage()
@@ -3444,10 +3596,20 @@ test('delivery exception commands reject invalid shapes and future checkpoints',
     const fixture = await createDeliveryRunFixture({ accountIndexes: [0, 0] });
     const driverUserId = fixture.driverUserIds[0];
     assert.ok(driverUserId);
+    const [currentPlan, futurePlan] = createRunStops(fixture.requestIds);
+    assert.ok(currentPlan);
+    assert.ok(futurePlan);
     const run = await createRun({
         fixture,
         driverUserId,
         requestIds: fixture.requestIds,
+        stops: [
+            currentPlan,
+            {
+                ...futurePlan,
+                formattedAddress: 'Druga buduća 2, Zagreb, HR',
+            },
+        ],
     });
     const [currentStop, futureStop] = run.stops;
     assert.ok(currentStop);
@@ -3586,4 +3748,906 @@ test('database constraints reject mismatched cancellation outcomes and reasons',
                 error.cause.message.includes('cancellation_pair_check'),
         );
     }
+});
+
+test('completed failed recovery can be reassigned once without reopening newer fulfillment', async () => {
+    const { prepared, run, driverUserId } =
+        await startPreparedBulkRunWithConfirmedPickup({ driverCount: 2 });
+    const [firstStop, secondStop] = run.stops;
+    const secondDriverUserId = prepared.fixture.driverUserIds[1];
+    assert.ok(firstStop);
+    assert.ok(secondStop);
+    assert.ok(secondDriverUserId);
+
+    const failed = await recordDeliveryRunStopExceptions({
+        driverUserId,
+        runId: run.id,
+        clientOperationId: 'complete-failed-run-for-recovery',
+        occurredAt: new Date('2026-07-13T12:00:00.000Z'),
+        exceptions: [firstStop, secondStop].map((stop) => ({
+            stopId: stop.id,
+            outcome: DeliveryRunExceptionOutcomes.FAILED,
+            reason: DeliveryRunExceptionReasons.OPERATIONAL_OTHER,
+        })),
+    });
+    assert.equal(failed.result.runCompleted, true);
+    assert.ok(
+        (await getDeliveryRun(run.id))?.stops.every(
+            (stop) => stop.releasedAt instanceof Date,
+        ),
+    );
+
+    const recovered = await recoverDeliveryRunStop({
+        adminUserId: driverUserId,
+        runId: run.id,
+        stopId: firstStop.id,
+        expectedRouteRevision: failed.result.routeRevision,
+    });
+    assert.equal(recovered.resumedInRun, false);
+    assert.equal(
+        (await getDeliveryRequest(firstStop.deliveryRequestId))?.state,
+        'ready',
+    );
+
+    const nextPreparation = await singleRequestPreparation({
+        prepared,
+        requestId: firstStop.deliveryRequestId,
+        driverUserId: secondDriverUserId,
+    });
+    const saved = await saveDeliveryRunPreparation(nextPreparation);
+    const nextRun = await consumeDeliveryRunPreparation({
+        preparationToken: saved.preparationToken,
+        driverUserId: secondDriverUserId,
+        deliveryRequestIds: [firstStop.deliveryRequestId],
+    });
+    assert.notEqual(nextRun.id, run.id);
+    assert.equal(
+        (
+            await getActiveDeliveryRunStopsForRequestIds([
+                firstStop.deliveryRequestId,
+            ])
+        )[0]?.run.id,
+        nextRun.id,
+    );
+    await assertPersistenceError(
+        saveDeliveryRunPreparation({
+            ...nextPreparation,
+            createRunInput: {
+                ...nextPreparation.createRunInput,
+                driverUserId,
+            },
+        }),
+        DeliveryRunPersistenceErrorCodes.ALREADY_ASSIGNED,
+    );
+
+    const [pickup] = nextRun.pickupNodes;
+    const [manifest] = nextRun.runSlots;
+    const [nextStop] = nextRun.stops;
+    const [manifestItem] = nextPreparation.createRunInput.manifestItems;
+    assert.ok(pickup);
+    assert.ok(manifest);
+    assert.ok(nextStop);
+    assert.ok(manifestItem);
+    const traceToken = manifestItem.traceToken;
+    assert.ok(traceToken);
+    await applyDeliveryRunPickupMutations({
+        driverUserId: secondDriverUserId,
+        runId: nextRun.id,
+        pickupNodeId: pickup.id,
+        mutations: [
+            {
+                clientOperationId: 'recovered-run-scan',
+                occurredAt: new Date('2026-07-13T12:01:00.000Z'),
+                kind: DeliveryRunPickupOperationKinds.SCAN,
+                traceToken,
+            },
+            {
+                clientOperationId: 'recovered-run-confirm',
+                occurredAt: new Date('2026-07-13T12:02:00.000Z'),
+                kind: DeliveryRunPickupOperationKinds.CONFIRM_MANIFEST,
+                manifestId: manifest.manifestId,
+            },
+        ],
+    });
+    await fulfillDeliveryRunStop({
+        driverUserId: secondDriverUserId,
+        runId: nextRun.id,
+        stopId: nextStop.id,
+    });
+    await assertExecutionError(
+        recoverDeliveryRunStop({
+            adminUserId: driverUserId,
+            runId: run.id,
+            stopId: firstStop.id,
+            expectedRouteRevision: recovered.routeRevision,
+        }),
+        DeliveryRunExecutionErrorCodes.EXCEPTION_TRANSITION_INVALID,
+    );
+    assert.equal(
+        (await getDeliveryRequest(firstStop.deliveryRequestId))?.state,
+        'fulfilled',
+    );
+});
+
+test('reroute apply is exact, single-use, and keeps partial bulk retries in one lane', async () => {
+    const { run, driverUserId } =
+        await startPreparedBulkRunWithConfirmedPickup();
+    const [firstStop, secondStop] = run.stops;
+    assert.ok(firstStop);
+    assert.ok(secondStop);
+    const deferred = await recordDeliveryRunStopExceptions({
+        driverUserId,
+        runId: run.id,
+        clientOperationId: 'partial-bulk-before-reroute',
+        occurredAt: new Date('2026-07-13T08:10:00.000Z'),
+        exceptions: [
+            {
+                stopId: firstStop.id,
+                outcome: DeliveryRunExceptionOutcomes.DEFERRED,
+                reason: DeliveryRunExceptionReasons.CUSTOMER_UNAVAILABLE,
+            },
+        ],
+    });
+    const estimate = (stopIds: number[], itinerarySequence: number) => ({
+        stopIds,
+        itinerarySequence,
+        estimatedArrivalAt: new Date(
+            Date.parse('2026-07-13T08:20:00.000Z') + itinerarySequence * 60_000,
+        ),
+        estimatedTravelSeconds: 60,
+        estimatedDistanceMeters: 500,
+    });
+    const baseReroute = {
+        runId: run.id,
+        expectedRouteRevision: deferred.result.routeRevision,
+        rerouteClaimedAt: new Date(),
+        estimateSource: 'local' as const,
+        totalDistanceMeters: 1_000,
+        totalDurationSeconds: 420,
+        pickupEstimates: [],
+    };
+    const claim = await claimDeliveryRunReroute({
+        runId: run.id,
+        expectedRouteRevision: deferred.result.routeRevision,
+        claimedAt: baseReroute.rerouteClaimedAt,
+    });
+    assert.equal(
+        claim?.rerouteClaimedAt.getTime(),
+        baseReroute.rerouteClaimedAt.getTime(),
+    );
+    assert.equal(
+        await claimDeliveryRunReroute({
+            runId: run.id,
+            expectedRouteRevision: deferred.result.routeRevision,
+        }),
+        null,
+    );
+    await assertExecutionError(
+        applyDeliveryRunReroute({
+            ...baseReroute,
+            stopEstimates: [estimate([secondStop.id], 2)],
+        }),
+        DeliveryRunExecutionErrorCodes.RUN_MUTATION_INVALID,
+    );
+    assert.equal(
+        (await getDeliveryRun(run.id))?.routeRevision,
+        deferred.result.routeRevision,
+    );
+
+    const exactReroute = {
+        ...baseReroute,
+        stopEstimates: [
+            estimate([secondStop.id], 2),
+            estimate([firstStop.id], 3),
+        ],
+    };
+    const attempts = await Promise.allSettled([
+        applyDeliveryRunReroute(exactReroute),
+        applyDeliveryRunReroute(exactReroute),
+    ]);
+    assert.equal(
+        attempts.filter((attempt) => attempt.status === 'fulfilled').length,
+        1,
+    );
+    const rejected = attempts.find(
+        (attempt): attempt is PromiseRejectedResult =>
+            attempt.status === 'rejected',
+    );
+    assert.ok(rejected?.reason instanceof DeliveryRunExecutionError);
+    assert.equal(
+        rejected.reason.code,
+        DeliveryRunExecutionErrorCodes.ROUTE_REVISION_CONFLICT,
+    );
+    const appliedRun = await getDeliveryRun(run.id);
+    assert.equal(appliedRun?.routeRevision, deferred.result.routeRevision + 1);
+    assert.equal(appliedRun?.rerouteRequiredAt, null);
+
+    const replay = await recordDeliveryRunStopExceptions({
+        driverUserId,
+        runId: run.id,
+        clientOperationId: 'partial-bulk-before-reroute',
+        occurredAt: new Date('2026-07-13T08:10:00.000Z'),
+        exceptions: [
+            {
+                stopId: firstStop.id,
+                outcome: DeliveryRunExceptionOutcomes.DEFERRED,
+                reason: DeliveryRunExceptionReasons.CUSTOMER_UNAVAILABLE,
+            },
+        ],
+    });
+    assert.equal(replay.replayed, true);
+    assert.equal(replay.result.routeRevision, deferred.result.routeRevision);
+    assert.equal(
+        (await getDeliveryRun(run.id))?.routeRevision,
+        deferred.result.routeRevision + 1,
+    );
+
+    await recordDeliveryRunStopExceptions({
+        driverUserId,
+        runId: run.id,
+        clientOperationId: 'defer-bulk-sibling-after-reroute',
+        occurredAt: new Date('2026-07-13T08:30:00.000Z'),
+        exceptions: [
+            {
+                stopId: secondStop.id,
+                outcome: DeliveryRunExceptionOutcomes.DEFERRED,
+                reason: DeliveryRunExceptionReasons.ADDRESS_INACCESSIBLE,
+            },
+        ],
+    });
+    const retrySteps = (await getDeliveryRunExecutionProgress(run.id)).filter(
+        isRetryDeliveryStep,
+    );
+    assert.equal(retrySteps.length, 1);
+    assert.deepEqual(
+        retrySteps[0]?.stopIds.sort((a, b) => a - b),
+        [firstStop.id, secondStop.id],
+    );
+});
+
+test('arrival and a newer lease invalidate stale reroute calculations', async () => {
+    const arrivalFixture = await startPreparedBulkRunWithConfirmedPickup();
+    const [deferredStop, currentStop] = arrivalFixture.run.stops;
+    assert.ok(deferredStop);
+    assert.ok(currentStop);
+    const deferred = await recordDeliveryRunStopExceptions({
+        driverUserId: arrivalFixture.driverUserId,
+        runId: arrivalFixture.run.id,
+        clientOperationId: 'defer-before-arrival-reroute-race',
+        occurredAt: new Date('2026-07-13T08:40:00.000Z'),
+        exceptions: [
+            {
+                stopId: deferredStop.id,
+                outcome: DeliveryRunExceptionOutcomes.DEFERRED,
+                reason: DeliveryRunExceptionReasons.CUSTOMER_UNAVAILABLE,
+            },
+        ],
+    });
+    const claimedAt = new Date();
+    const claim = await claimDeliveryRunReroute({
+        runId: arrivalFixture.run.id,
+        expectedRouteRevision: deferred.result.routeRevision,
+        claimedAt,
+    });
+    assert.ok(claim);
+    const originalSequences = arrivalFixture.run.stops.map(
+        (stop) => stop.itinerarySequence,
+    );
+    await markDeliveryRunStopArrived({
+        driverUserId: arrivalFixture.driverUserId,
+        runId: arrivalFixture.run.id,
+        stopId: currentStop.id,
+        expectedRouteRevision: deferred.result.routeRevision,
+    });
+    const arrived = await getDeliveryRun(arrivalFixture.run.id);
+    assert.equal(arrived?.routeRevision, deferred.result.routeRevision + 1);
+    assert.equal(arrived?.rerouteAttemptedAt, null);
+    assert.equal(arrived?.stops[1]?.state, DeliveryRunStopStates.ARRIVED);
+    await assertExecutionError(
+        applyDeliveryRunReroute({
+            runId: arrivalFixture.run.id,
+            expectedRouteRevision: deferred.result.routeRevision,
+            rerouteClaimedAt: claimedAt,
+            estimateSource: 'local',
+            totalDistanceMeters: 1_000,
+            totalDurationSeconds: 600,
+            pickupEstimates: [],
+            stopEstimates: [
+                {
+                    stopIds: [currentStop.id],
+                    itinerarySequence: 2,
+                    estimatedArrivalAt: new Date('2026-07-13T08:50:00.000Z'),
+                    estimatedTravelSeconds: 60,
+                    estimatedDistanceMeters: 500,
+                },
+                {
+                    stopIds: [deferredStop.id],
+                    itinerarySequence: 3,
+                    estimatedArrivalAt: new Date('2026-07-13T09:00:00.000Z'),
+                    estimatedTravelSeconds: 60,
+                    estimatedDistanceMeters: 500,
+                },
+            ],
+        }),
+        DeliveryRunExecutionErrorCodes.ROUTE_REVISION_CONFLICT,
+    );
+    assert.deepEqual(
+        (await getDeliveryRun(arrivalFixture.run.id))?.stops.map(
+            (stop) => stop.itinerarySequence,
+        ),
+        originalSequences,
+    );
+
+    const leaseFixture = await startPreparedBulkRunWithConfirmedPickup();
+    const [leaseDeferredStop] = leaseFixture.run.stops;
+    assert.ok(leaseDeferredStop);
+    const leaseDeferred = await recordDeliveryRunStopExceptions({
+        driverUserId: leaseFixture.driverUserId,
+        runId: leaseFixture.run.id,
+        clientOperationId: 'defer-before-expired-lease',
+        occurredAt: new Date('2026-07-13T09:10:00.000Z'),
+        exceptions: [
+            {
+                stopId: leaseDeferredStop.id,
+                outcome: DeliveryRunExceptionOutcomes.DEFERRED,
+                reason: DeliveryRunExceptionReasons.ADDRESS_INACCESSIBLE,
+            },
+        ],
+    });
+    const oldClaimedAt = new Date();
+    assert.ok(
+        await claimDeliveryRunReroute({
+            runId: leaseFixture.run.id,
+            expectedRouteRevision: leaseDeferred.result.routeRevision,
+            claimedAt: oldClaimedAt,
+        }),
+    );
+    const newerClaim = await claimDeliveryRunReroute({
+        runId: leaseFixture.run.id,
+        expectedRouteRevision: leaseDeferred.result.routeRevision,
+        claimedAt: new Date(
+            oldClaimedAt.getTime() + deliveryRunRerouteLeaseMs + 1,
+        ),
+    });
+    assert.ok(newerClaim);
+    await assertExecutionError(
+        applyDeliveryRunReroute({
+            runId: leaseFixture.run.id,
+            expectedRouteRevision: leaseDeferred.result.routeRevision,
+            rerouteClaimedAt: oldClaimedAt,
+            estimateSource: 'local',
+            totalDistanceMeters: 1_000,
+            totalDurationSeconds: 600,
+            pickupEstimates: [],
+            stopEstimates: [],
+        }),
+        DeliveryRunExecutionErrorCodes.ROUTE_REVISION_CONFLICT,
+    );
+});
+
+test('retry anchor must itself be deferred in a mixed terminal checkpoint', async () => {
+    const { run, driverUserId } =
+        await startPreparedBulkRunWithConfirmedPickup();
+    const [firstStop, secondStop] = run.stops;
+    assert.ok(firstStop);
+    assert.ok(secondStop);
+    const deferred = await recordDeliveryRunStopExceptions({
+        driverUserId,
+        runId: run.id,
+        clientOperationId: 'defer-entire-bulk-checkpoint',
+        occurredAt: new Date('2026-07-13T09:00:00.000Z'),
+        exceptions: [firstStop, secondStop].map((stop) => ({
+            stopId: stop.id,
+            outcome: DeliveryRunExceptionOutcomes.DEFERRED,
+            reason: DeliveryRunExceptionReasons.CUSTOMER_UNAVAILABLE,
+        })),
+    });
+    await cancelDeliveryRequest(
+        firstStop.deliveryRequestId,
+        'admin',
+        'Kupac je otkazao jedan dio skupne dostave',
+    );
+    const cancelledRun = await getDeliveryRun(run.id);
+    assert.ok(cancelledRun);
+    assert.equal(cancelledRun.stops[0]?.state, DeliveryRunStopStates.CANCELLED);
+    await assertExecutionError(
+        retryDeliveryRunStop({
+            driverUserId,
+            runId: run.id,
+            stopId: firstStop.id,
+            expectedRouteRevision: cancelledRun.routeRevision,
+        }),
+        DeliveryRunExecutionErrorCodes.EXCEPTION_TRANSITION_INVALID,
+    );
+    const retried = await retryDeliveryRunStop({
+        driverUserId,
+        runId: run.id,
+        stopId: secondStop.id,
+        expectedRouteRevision: cancelledRun.routeRevision,
+    });
+    assert.deepEqual(retried.stopIds, [secondStop.id]);
+    assert.equal(
+        (await getDeliveryRun(run.id))?.stops[1]?.state,
+        DeliveryRunStopStates.PENDING,
+    );
+    assert.ok(retried.routeRevision > deferred.result.routeRevision);
+});
+
+test('foreign-account address mutations preserve not-found semantics for assigned addresses', async () => {
+    const prepared = await createPreparedRunFixture();
+    const driverUserId = prepared.fixture.driverUserIds[0];
+    const addressId = prepared.addressIds[0];
+    assert.ok(driverUserId);
+    assert.ok(addressId);
+    const saved = await saveDeliveryRunPreparation(prepared);
+    await consumeDeliveryRunPreparation({
+        preparationToken: saved.preparationToken,
+        driverUserId,
+        deliveryRequestIds: prepared.fixture.requestIds,
+    });
+    const foreignAccountId = await createTestAccount();
+    await assert.rejects(
+        updateDeliveryAddress(
+            { id: addressId, street1: 'Neovlaštena promjena' },
+            foreignAccountId,
+        ),
+        (error) =>
+            error instanceof DeliveryAddressMutationError &&
+            !(error instanceof DeliveryRunAssignmentError) &&
+            error.message ===
+                'Failed to update delivery address - address not found or access denied',
+    );
+    await assert.rejects(
+        deleteDeliveryAddress(addressId, foreignAccountId),
+        (error) =>
+            error instanceof DeliveryAddressMutationError &&
+            !(error instanceof DeliveryRunAssignmentError) &&
+            error.message ===
+                'Failed to delete delivery address - address not found or access denied',
+    );
+});
+
+test('whole-run reassignment clears stale GPS and requires the current route revision', async () => {
+    const { prepared, run, driverUserId } =
+        await startPreparedBulkRunWithConfirmedPickup({ driverCount: 2 });
+    const nextDriverUserId = prepared.fixture.driverUserIds[1];
+    assert.ok(nextDriverUserId);
+    await updateDeliveryRunLocation({
+        runId: run.id,
+        driverUserId,
+        latitude: 45.8,
+        longitude: 15.97,
+        recordedAt: new Date('2026-07-13T12:00:00.000Z'),
+    });
+    await markDeliveryRunStopsArrived({
+        driverUserId,
+        runId: run.id,
+        stopIds: run.stops.map((stop) => stop.id),
+        expectedRouteRevision: run.routeRevision,
+    });
+    const arrivedRun = await getDeliveryRun(run.id);
+    assert.equal(arrivedRun?.routeRevision, run.routeRevision + 1);
+    assert.equal(arrivedRun?.stops[0]?.state, DeliveryRunStopStates.ARRIVED);
+
+    const reassigned = await reassignDeliveryRun({
+        adminUserId: driverUserId,
+        runId: run.id,
+        newDriverUserId: nextDriverUserId,
+        expectedRouteRevision: arrivedRun?.routeRevision ?? -1,
+        occurredAt: new Date('2026-07-13T12:01:00.000Z'),
+    });
+    assert.equal(reassigned.driverUserId, nextDriverUserId);
+    assert.equal(
+        reassigned.routeRevision,
+        (arrivedRun?.routeRevision ?? 0) + 1,
+    );
+    assert.equal(reassigned.reroutePending, true);
+
+    const persisted = await getDeliveryRun(run.id);
+    assert.equal(persisted?.driverUserId, nextDriverUserId);
+    assert.equal(persisted?.currentLatitude, null);
+    assert.equal(persisted?.currentLongitude, null);
+    assert.equal(persisted?.currentLocationRecordedAt, null);
+    assert.equal(persisted?.currentLocationReceivedAt, null);
+    assert.ok(
+        persisted?.stops.every(
+            (stop) =>
+                stop.state === DeliveryRunStopStates.PENDING &&
+                stop.arrivedAt === null,
+        ),
+    );
+    assert.ok(persisted?.rerouteRequiredAt instanceof Date);
+    await assertExecutionError(
+        reassignDeliveryRun({
+            adminUserId: driverUserId,
+            runId: run.id,
+            newDriverUserId: driverUserId,
+            expectedRouteRevision: run.routeRevision,
+        }),
+        DeliveryRunExecutionErrorCodes.ROUTE_REVISION_CONFLICT,
+    );
+});
+
+test('route abandonment releases requests but preserves a failed stop audit outcome', async () => {
+    const { run, driverUserId } =
+        await startPreparedBulkRunWithConfirmedPickup();
+    const [failedStop, pendingStop] = run.stops;
+    assert.ok(failedStop);
+    assert.ok(pendingStop);
+    const failure = await recordDeliveryRunStopExceptions({
+        driverUserId,
+        runId: run.id,
+        clientOperationId: 'failure-before-abandonment',
+        occurredAt: new Date('2026-07-13T12:10:00.000Z'),
+        exceptions: [
+            {
+                stopId: failedStop.id,
+                outcome: DeliveryRunExceptionOutcomes.FAILED,
+                reason: DeliveryRunExceptionReasons.HARVEST_DAMAGED,
+                note: 'Oštećenje potvrđeno pri dostavi',
+            },
+        ],
+    });
+
+    const abandoned = await abandonDeliveryRun({
+        adminUserId: driverUserId,
+        runId: run.id,
+        expectedRouteRevision: failure.result.routeRevision,
+        reason: 'Vozilo više nije dostupno',
+        occurredAt: new Date('2026-07-13T12:11:00.000Z'),
+    });
+    assert.deepEqual(
+        new Set(abandoned.releasedRequestIds),
+        new Set([failedStop.deliveryRequestId, pendingStop.deliveryRequestId]),
+    );
+
+    const persisted = await getDeliveryRun(run.id);
+    assert.equal(persisted?.state, DeliveryRunStates.CANCELLED);
+    const persistedFailed = persisted?.stops.find(
+        (stop) => stop.id === failedStop.id,
+    );
+    const persistedPending = persisted?.stops.find(
+        (stop) => stop.id === pendingStop.id,
+    );
+    assert.equal(persistedFailed?.state, DeliveryRunStopStates.FAILED);
+    assert.equal(
+        persistedFailed?.exceptionReason,
+        DeliveryRunExceptionReasons.HARVEST_DAMAGED,
+    );
+    assert.equal(
+        persistedFailed?.exceptionNote,
+        'Oštećenje potvrđeno pri dostavi',
+    );
+    assert.ok(persistedFailed?.releasedAt instanceof Date);
+    assert.equal(persistedPending?.state, DeliveryRunStopStates.CANCELLED);
+    assert.ok(persistedPending?.releasedAt instanceof Date);
+    assert.equal(
+        (await getDeliveryRequest(failedStop.deliveryRequestId))?.state,
+        'ready',
+    );
+    assert.equal(
+        (await getDeliveryRequest(pendingStop.deliveryRequestId))?.state,
+        'ready',
+    );
+    assert.equal(
+        (
+            await getActiveDeliveryRunStopsForRequestIds([
+                failedStop.deliveryRequestId,
+                pendingStop.deliveryRequestId,
+            ])
+        ).length,
+        0,
+    );
+});
+
+test('bulk siblings reuse one deterministic lane on a later retry attempt', async () => {
+    const { run, driverUserId } =
+        await startPreparedBulkRunWithConfirmedPickup();
+    const [firstStop, secondStop] = run.stops;
+    assert.ok(firstStop);
+    assert.ok(secondStop);
+    const firstDeferral = await recordDeliveryRunStopExceptions({
+        driverUserId,
+        runId: run.id,
+        clientOperationId: 'bulk-first-attempt-deferred',
+        occurredAt: new Date('2026-07-13T12:20:00.000Z'),
+        exceptions: [firstStop, secondStop].map((stop) => ({
+            stopId: stop.id,
+            outcome: DeliveryRunExceptionOutcomes.DEFERRED,
+            reason: DeliveryRunExceptionReasons.CUSTOMER_UNAVAILABLE,
+        })),
+    });
+    const retried = await retryDeliveryRunStop({
+        driverUserId,
+        runId: run.id,
+        stopId: firstStop.id,
+        expectedRouteRevision: firstDeferral.result.routeRevision,
+    });
+    const secondAttemptFirst = await recordDeliveryRunStopExceptions({
+        driverUserId,
+        runId: run.id,
+        clientOperationId: 'bulk-second-attempt-first-item',
+        occurredAt: new Date('2026-07-13T12:21:00.000Z'),
+        exceptions: [
+            {
+                stopId: firstStop.id,
+                outcome: DeliveryRunExceptionOutcomes.DEFERRED,
+                reason: DeliveryRunExceptionReasons.ADDRESS_INACCESSIBLE,
+            },
+        ],
+    });
+    await recordDeliveryRunStopExceptions({
+        driverUserId,
+        runId: run.id,
+        clientOperationId: 'bulk-second-attempt-second-item',
+        occurredAt: new Date('2026-07-13T12:22:00.000Z'),
+        exceptions: [
+            {
+                stopId: secondStop.id,
+                outcome: DeliveryRunExceptionOutcomes.DEFERRED,
+                reason: DeliveryRunExceptionReasons.ADDRESS_INACCESSIBLE,
+            },
+        ],
+    });
+    assert.ok(secondAttemptFirst.result.routeRevision > retried.routeRevision);
+
+    const retrySteps = (await getDeliveryRunExecutionProgress(run.id)).filter(
+        isRetryDeliveryStep,
+    );
+    assert.equal(retrySteps.length, 1);
+    assert.equal(retrySteps[0]?.retryAttempt, 2);
+    assert.deepEqual(
+        retrySteps[0]?.stopIds.sort((a, b) => a - b),
+        [firstStop.id, secondStop.id],
+    );
+    const persisted = await getDeliveryRun(run.id);
+    assert.equal(persisted?.stops[0]?.retryLaneRank, 2);
+    assert.equal(persisted?.stops[1]?.retryLaneRank, 2);
+    assert.equal(persisted?.stops[0]?.retryAttempt, 2);
+    assert.equal(persisted?.stops[1]?.retryAttempt, 2);
+});
+
+test('active assignment lookup ignores an unreleased stale stop in a terminal run', async () => {
+    const fixture = await createDeliveryRunFixture();
+    const driverUserId = fixture.driverUserIds[0];
+    const requestId = fixture.requestIds[0];
+    assert.ok(driverUserId);
+    assert.ok(requestId);
+    const run = await createRun({
+        fixture,
+        driverUserId,
+        requestIds: [requestId],
+    });
+    await storage()
+        .update(deliveryRuns)
+        .set({
+            state: DeliveryRunStates.COMPLETED,
+            completedAt: new Date('2026-07-13T12:30:00.000Z'),
+        })
+        .where(eq(deliveryRuns.id, run.id));
+
+    assert.equal(
+        (await getActiveDeliveryRunStopsForRequestIds([requestId])).length,
+        0,
+    );
+    assert.equal(
+        (await getDeliveryRunStopsForRequestIds([requestId]))[0]?.run.id,
+        run.id,
+    );
+});
+
+test('legacy reroute keeps completed bulk sequences and legacy estimate provenance', async () => {
+    const fixture = await createDeliveryRunFixture({
+        accountIndexes: [0, 0, 0, 0],
+    });
+    const driverUserId = fixture.driverUserIds[0];
+    assert.ok(driverUserId);
+    const run = await createRun({
+        fixture,
+        driverUserId,
+        requestIds: fixture.requestIds,
+    });
+    const [firstStop, secondStop, deferredStop, currentStop] = run.stops;
+    assert.ok(firstStop);
+    assert.ok(secondStop);
+    assert.ok(deferredStop);
+    assert.ok(currentStop);
+    await fulfillDeliveryRunStops({
+        driverUserId,
+        runId: run.id,
+        stopIds: [firstStop.id, secondStop.id],
+        expectedRouteRevision: run.routeRevision,
+    });
+    const progressed = await getDeliveryRun(run.id);
+    assert.ok(progressed);
+    const deferred = await recordDeliveryRunStopExceptions({
+        driverUserId,
+        runId: run.id,
+        expectedRouteRevision: progressed.routeRevision,
+        clientOperationId: 'legacy-deferred-before-reroute',
+        occurredAt: new Date('2026-07-13T13:00:00.000Z'),
+        exceptions: [
+            {
+                stopId: deferredStop.id,
+                outcome: DeliveryRunExceptionOutcomes.DEFERRED,
+                reason: DeliveryRunExceptionReasons.CUSTOMER_UNAVAILABLE,
+            },
+        ],
+    });
+    const claimedAt = new Date();
+    assert.ok(
+        await claimDeliveryRunReroute({
+            runId: run.id,
+            expectedRouteRevision: deferred.result.routeRevision,
+            claimedAt,
+        }),
+    );
+    await applyDeliveryRunReroute({
+        runId: run.id,
+        expectedRouteRevision: deferred.result.routeRevision,
+        rerouteClaimedAt: claimedAt,
+        estimateSource: DeliveryRunEstimateSources.GOOGLE,
+        totalDistanceMeters: 2_000,
+        totalDurationSeconds: 900,
+        pickupEstimates: [],
+        stopEstimates: [
+            {
+                stopIds: [currentStop.id],
+                itinerarySequence: 3,
+                estimatedArrivalAt: new Date('2026-07-13T13:10:00.000Z'),
+                estimatedTravelSeconds: 120,
+                estimatedDistanceMeters: 1_000,
+            },
+            {
+                stopIds: [deferredStop.id],
+                itinerarySequence: 4,
+                estimatedArrivalAt: new Date('2026-07-13T13:20:00.000Z'),
+                estimatedTravelSeconds: 120,
+                estimatedDistanceMeters: 1_000,
+            },
+        ],
+    });
+
+    const rerouted = await getDeliveryRun(run.id);
+    assert.equal(rerouted?.routePlanVersion, 1);
+    assert.equal(rerouted?.estimateSource, DeliveryRunEstimateSources.LEGACY);
+    assert.equal(
+        rerouted?.stops.find((stop) => stop.id === currentStop.id)?.sequence,
+        3,
+    );
+    assert.equal(
+        rerouted?.stops.find((stop) => stop.id === deferredStop.id)?.sequence,
+        4,
+    );
+    assert.deepEqual(
+        rerouted?.stops.slice(0, 2).map((stop) => stop.state),
+        [DeliveryRunStopStates.DELIVERED, DeliveryRunStopStates.DELIVERED],
+    );
+});
+
+test('reroute swaps pending pickup itinerary positions without uniqueness collisions', async () => {
+    const prepared = await createPreparedRunFixture();
+    const driverUserId = prepared.fixture.driverUserIds[0];
+    assert.ok(driverUserId);
+    const saved = await saveDeliveryRunPreparation(prepared);
+    const run = await consumeDeliveryRunPreparation({
+        preparationToken: saved.preparationToken,
+        driverUserId,
+        deliveryRequestIds: prepared.fixture.requestIds,
+    });
+    const [firstPickup, secondPickup] = run.pickupNodes;
+    assert.ok(firstPickup);
+    assert.ok(secondPickup);
+    const rerouteRequiredAt = new Date('2026-07-13T13:30:00.000Z');
+    await storage()
+        .update(deliveryRuns)
+        .set({ rerouteRequiredAt })
+        .where(eq(deliveryRuns.id, run.id));
+    const claimedAt = new Date();
+    assert.ok(
+        await claimDeliveryRunReroute({
+            runId: run.id,
+            expectedRouteRevision: run.routeRevision,
+            claimedAt,
+        }),
+    );
+    await applyDeliveryRunReroute({
+        runId: run.id,
+        expectedRouteRevision: run.routeRevision,
+        rerouteClaimedAt: claimedAt,
+        estimateSource: DeliveryRunEstimateSources.LOCAL,
+        totalDistanceMeters: 3_000,
+        totalDurationSeconds: 1_200,
+        pickupEstimates: [
+            {
+                pickupNodeId: firstPickup.id,
+                itinerarySequence: secondPickup.itinerarySequence ?? 2,
+                estimatedArrivalAt: new Date('2026-07-13T13:35:00.000Z'),
+                incomingTravelSeconds: 60,
+                incomingDistanceMeters: 500,
+            },
+            {
+                pickupNodeId: secondPickup.id,
+                itinerarySequence: firstPickup.itinerarySequence ?? 1,
+                estimatedArrivalAt: new Date('2026-07-13T13:40:00.000Z'),
+                incomingTravelSeconds: 60,
+                incomingDistanceMeters: 500,
+            },
+        ],
+        stopEstimates: run.stops.map((stop, index) => ({
+            stopIds: [stop.id],
+            itinerarySequence: stop.itinerarySequence ?? index + 3,
+            estimatedArrivalAt: new Date(
+                Date.parse('2026-07-13T13:45:00.000Z') + index * 60_000,
+            ),
+            estimatedTravelSeconds: 60,
+            estimatedDistanceMeters: 500,
+        })),
+    });
+
+    const rerouted = await getDeliveryRun(run.id);
+    assert.deepEqual(
+        rerouted?.pickupNodes.map((pickup) => pickup.itinerarySequence),
+        [secondPickup.itinerarySequence, firstPickup.itinerarySequence],
+    );
+});
+
+test('a partially cancelled stop is released for explicit admin reactivation', async () => {
+    const { prepared, run, driverUserId } =
+        await startPreparedBulkRunWithConfirmedPickup({ driverCount: 2 });
+    const [cancelledStop, remainingStop] = run.stops;
+    const nextDriverUserId = prepared.fixture.driverUserIds[1];
+    assert.ok(cancelledStop);
+    assert.ok(remainingStop);
+    assert.ok(nextDriverUserId);
+    await recordDeliveryRunStopExceptions({
+        driverUserId,
+        runId: run.id,
+        clientOperationId: 'partial-cancel-before-reactivation',
+        occurredAt: new Date('2026-07-13T14:00:00.000Z'),
+        exceptions: [
+            {
+                stopId: cancelledStop.id,
+                outcome: DeliveryRunExceptionOutcomes.CANCELLED,
+                reason: DeliveryRunExceptionReasons.CANCELLATION,
+            },
+        ],
+    });
+    const activeRun = await getDeliveryRun(run.id);
+    assert.equal(activeRun?.state, DeliveryRunStates.ACTIVE);
+    assert.equal(
+        activeRun?.stops.find((stop) => stop.id === cancelledStop.id)?.state,
+        DeliveryRunStopStates.CANCELLED,
+    );
+    assert.ok(
+        activeRun?.stops.find((stop) => stop.id === cancelledStop.id)
+            ?.releasedAt,
+    );
+    assert.equal(
+        activeRun?.stops.find((stop) => stop.id === remainingStop.id)?.state,
+        DeliveryRunStopStates.PENDING,
+    );
+
+    await uncancelDeliveryRequest(cancelledStop.deliveryRequestId);
+    await readyDeliveryRequest(cancelledStop.deliveryRequestId);
+    const nextPreparation = await singleRequestPreparation({
+        prepared,
+        requestId: cancelledStop.deliveryRequestId,
+        driverUserId: nextDriverUserId,
+    });
+    const saved = await saveDeliveryRunPreparation(nextPreparation);
+    const nextRun = await consumeDeliveryRunPreparation({
+        preparationToken: saved.preparationToken,
+        driverUserId: nextDriverUserId,
+        deliveryRequestIds: [cancelledStop.deliveryRequestId],
+    });
+    assert.notEqual(nextRun.id, run.id);
+    assert.equal(
+        (
+            await getActiveDeliveryRunStopsForRequestIds([
+                cancelledStop.deliveryRequestId,
+            ])
+        )[0]?.run.id,
+        nextRun.id,
+    );
 });

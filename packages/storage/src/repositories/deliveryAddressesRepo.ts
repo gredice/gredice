@@ -8,6 +8,32 @@ import {
 } from '../schema';
 import { storage } from '../storage';
 import { withDeliveryDispatchTransaction } from './deliveryDispatchRepo';
+import { assertDeliveryAddressHasNoActiveAssignment } from './deliveryRunAssignmentsRepo';
+
+export const DeliveryAddressMutationErrorCodes = {
+    NOT_FOUND_OR_FORBIDDEN: 'delivery-address-not-found',
+} as const;
+
+export type DeliveryAddressMutationErrorCode =
+    (typeof DeliveryAddressMutationErrorCodes)[keyof typeof DeliveryAddressMutationErrorCodes];
+
+export class DeliveryAddressMutationError extends Error {
+    override name = 'DeliveryAddressMutationError';
+
+    constructor(
+        readonly code: DeliveryAddressMutationErrorCode,
+        message: string,
+    ) {
+        super(message);
+    }
+}
+
+function deliveryAddressNotFound(operation: 'update' | 'delete') {
+    return new DeliveryAddressMutationError(
+        DeliveryAddressMutationErrorCodes.NOT_FOUND_OR_FORBIDDEN,
+        `Failed to ${operation} delivery address - address not found or access denied`,
+    );
+}
 
 // Get all addresses for an account (excluding soft deleted)
 export function getDeliveryAddresses(
@@ -90,6 +116,19 @@ export async function updateDeliveryAddress(
     accountId: string,
 ): Promise<void> {
     await withDeliveryDispatchTransaction(async (tx) => {
+        const ownedAddress = await tx.query.deliveryAddresses.findFirst({
+            columns: { id: true },
+            where: and(
+                eq(deliveryAddresses.id, update.id),
+                eq(deliveryAddresses.accountId, accountId),
+                isNull(deliveryAddresses.deletedAt),
+            ),
+        });
+        if (!ownedAddress) {
+            throw deliveryAddressNotFound('update');
+        }
+        await assertDeliveryAddressHasNoActiveAssignment(update.id, tx);
+
         // If setting as default, unset other defaults first
         if (update.isDefault) {
             await tx
@@ -117,9 +156,7 @@ export async function updateDeliveryAddress(
             .returning({ id: deliveryAddresses.id });
 
         if (!result[0]?.id) {
-            throw new Error(
-                'Failed to update delivery address - address not found or access denied',
-            );
+            throw deliveryAddressNotFound('update');
         }
     });
 }
@@ -130,6 +167,19 @@ export async function deleteDeliveryAddress(
     accountId: string,
 ): Promise<void> {
     await withDeliveryDispatchTransaction(async (tx) => {
+        const ownedAddress = await tx.query.deliveryAddresses.findFirst({
+            columns: { id: true },
+            where: and(
+                eq(deliveryAddresses.id, addressId),
+                eq(deliveryAddresses.accountId, accountId),
+                isNull(deliveryAddresses.deletedAt),
+            ),
+        });
+        if (!ownedAddress) {
+            throw deliveryAddressNotFound('delete');
+        }
+        await assertDeliveryAddressHasNoActiveAssignment(addressId, tx);
+
         const result = await tx
             .update(deliveryAddresses)
             .set({
@@ -146,9 +196,7 @@ export async function deleteDeliveryAddress(
             .returning({ id: deliveryAddresses.id });
 
         if (!result[0]?.id) {
-            throw new Error(
-                'Failed to delete delivery address - address not found or access denied',
-            );
+            throw deliveryAddressNotFound('delete');
         }
     });
 }

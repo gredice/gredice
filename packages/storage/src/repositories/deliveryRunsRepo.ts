@@ -7,8 +7,10 @@ import {
 import {
     and,
     asc,
+    desc,
     eq,
     inArray,
+    isNotNull,
     isNull,
     lte,
     notInArray,
@@ -65,6 +67,7 @@ import {
 import {
     deliveryDispatchEventTypes,
     fulfillDeliveryRequest,
+    getDeliveryRequest,
     getDeliveryRequestDispatchSnapshots,
 } from './deliveryRequestsRepo';
 import { createEvent, knownEvents } from './eventsRepo';
@@ -274,9 +277,12 @@ export const DeliveryRunExecutionErrorCodes = {
     PICKUP_OPERATION_CONFLICT: 'pickup-operation-conflict',
     PICKUP_DEPENDENCY_PENDING: 'pickup-dependency-pending',
     ROUTE_ORDER: 'route-order',
+    ROUTE_REVISION_CONFLICT: 'route-revision-conflict',
     EXCEPTION_OPERATION_CONFLICT: 'exception-operation-conflict',
     EXCEPTION_INVALID: 'exception-invalid',
     EXCEPTION_TRANSITION_INVALID: 'exception-transition-invalid',
+    RUN_DRIVER_CONFLICT: 'run-driver-conflict',
+    RUN_MUTATION_INVALID: 'run-mutation-invalid',
 } as const;
 
 export type DeliveryRunExecutionErrorCode =
@@ -308,6 +314,8 @@ export type DeliveryRunExecutionStep =
           stopIds: number[];
           actionableStopIds: number[];
           pickupConfirmed: boolean;
+          retryLaneRank?: number;
+          retryAttempt?: number;
           state: 'completed' | 'current' | 'upcoming';
       };
 
@@ -347,6 +355,7 @@ export type DeliveryRunStopExceptionInput = {
 export type RecordDeliveryRunStopExceptionsInput = {
     driverUserId: string;
     runId: string;
+    expectedRouteRevision?: number;
     clientOperationId: string;
     occurredAt: Date;
     exceptions: DeliveryRunStopExceptionInput[];
@@ -1420,6 +1429,23 @@ async function validatePreparedBulkMembership(
                 ),
             ),
         );
+    const activeAssignments = await db
+        .select({ deliveryRequestId: deliveryRunStops.deliveryRequestId })
+        .from(deliveryRunStops)
+        .innerJoin(deliveryRuns, eq(deliveryRunStops.runId, deliveryRuns.id))
+        .where(
+            and(
+                inArray(
+                    deliveryRunStops.deliveryRequestId,
+                    requestRows.map((request) => request.id),
+                ),
+                isNull(deliveryRunStops.releasedAt),
+                eq(deliveryRuns.state, DeliveryRunStates.ACTIVE),
+            ),
+        );
+    const activelyAssignedRequestIds = new Set(
+        activeAssignments.map((assignment) => assignment.deliveryRequestId),
+    );
     const currentSnapshots = await getDeliveryRequestDispatchSnapshots(
         requestRows.map((request) => request.id),
         db,
@@ -1434,6 +1460,7 @@ async function validatePreparedBulkMembership(
             !snapshot.address ||
             snapshot.address.deletedAt !== null ||
             !snapshot.slot ||
+            activelyAssignedRequestIds.has(snapshot.deliveryRequestId) ||
             !preparedStopKeys.has(stopKey(snapshot.slot.id, snapshot.address))
         ) {
             return [];
@@ -1485,7 +1512,10 @@ async function ensurePreparationCanCreateRun(
     );
     const assigned = await db.query.deliveryRunStops.findFirst({
         columns: { deliveryRequestId: true },
-        where: inArray(deliveryRunStops.deliveryRequestId, requestIds),
+        where: and(
+            inArray(deliveryRunStops.deliveryRequestId, requestIds),
+            isNull(deliveryRunStops.releasedAt),
+        ),
     });
     if (assigned) {
         throw new DeliveryRunPersistenceError(
@@ -1932,29 +1962,67 @@ async function getDeliveryRunExecutionProgressFromDb(
 ): Promise<DeliveryRunExecutionStep[]> {
     const run = await getDeliveryRunExecutionSource(runId, db);
     if (!run) return [];
+    const legacyPhysicalStopKey = (formattedAddress: string) =>
+        `${run.timeSlotId}:${formattedAddress
+            .normalize('NFKC')
+            .toLocaleLowerCase('hr-HR')
+            .replace(/\s*,\s*/g, ',')
+            .replace(/\s+/g, ' ')
+            .trim()}`;
 
     type PendingExecutionStep =
         | (Omit<
               Extract<DeliveryRunExecutionStep, { kind: 'pickup' }>,
               'state'
-          > & { completed: boolean })
+          > & { completed: boolean; sortLane: number; sortSequence: number })
         | (Omit<
               Extract<DeliveryRunExecutionStep, { kind: 'delivery' }>,
               'state'
-          > & { completed: boolean });
+          > & { completed: boolean; sortLane: number; sortSequence: number });
     const pendingSteps: PendingExecutionStep[] = [];
+    const baseItineraryMaximum = Math.max(
+        0,
+        ...run.pickupNodes.map((node) => node.itinerarySequence ?? 0),
+        ...run.stops
+            .filter((stop) => stop.retryLaneRank === null)
+            .map(
+                (stop) =>
+                    stop.itinerarySequence ??
+                    (run.routePlanVersion < 2 ? stop.sequence : 0),
+            ),
+    );
     if (run.routePlanVersion < 2) {
-        for (const stop of run.stops) {
+        const stopsByPhysicalKey = new Map<string, typeof run.stops>();
+        for (const stop of run.stops.filter(
+            (candidate) => candidate.retryLaneRank === null,
+        )) {
+            const key =
+                stop.stopKey ?? legacyPhysicalStopKey(stop.formattedAddress);
+            const stops = stopsByPhysicalKey.get(key) ?? [];
+            stops.push(stop);
+            stopsByPhysicalKey.set(key, stops);
+        }
+        for (const stops of stopsByPhysicalKey.values()) {
+            const firstStop = stops[0];
+            if (!firstStop) continue;
             pendingSteps.push({
                 kind: 'delivery',
-                itinerarySequence: stop.sequence,
-                stopKey: stop.stopKey,
-                stopIds: [stop.id],
-                actionableStopIds: isDeliveryRunStopActionable(stop.state)
-                    ? [stop.id]
-                    : [],
+                itinerarySequence: Math.min(
+                    ...stops.map((stop) => stop.sequence),
+                ),
+                stopKey:
+                    firstStop.stopKey ??
+                    legacyPhysicalStopKey(firstStop.formattedAddress),
+                stopIds: stops.map((stop) => stop.id),
+                actionableStopIds: stops.flatMap((stop) =>
+                    isDeliveryRunStopActionable(stop.state) ? [stop.id] : [],
+                ),
                 pickupConfirmed: true,
-                completed: isDeliveryRunStopTerminal(stop.state),
+                completed: stops.every((stop) =>
+                    isDeliveryRunStopTerminal(stop.state),
+                ),
+                sortLane: 0,
+                sortSequence: Math.min(...stops.map((stop) => stop.sequence)),
             });
         }
     } else {
@@ -1980,6 +2048,8 @@ async function getDeliveryRunExecutionProgressFromDb(
                             slot.manifestState ===
                             DeliveryRunManifestStates.CONFIRMED,
                     ),
+                sortLane: 0,
+                sortSequence: pickupNode.itinerarySequence,
             });
         }
 
@@ -1988,7 +2058,12 @@ async function getDeliveryRunExecutionProgressFromDb(
             { itinerarySequence: number; stops: typeof run.stops }
         >();
         for (const stop of run.stops) {
-            if (stop.itinerarySequence === null) continue;
+            if (
+                stop.itinerarySequence === null ||
+                stop.retryLaneRank !== null
+            ) {
+                continue;
+            }
             const executionKey = `${stop.itinerarySequence}\u0000${stop.stopKey ?? `stop:${stop.id}`}`;
             const checkpoint = stopsByExecutionKey.get(executionKey) ?? {
                 itinerarySequence: stop.itinerarySequence,
@@ -2021,22 +2096,84 @@ async function getDeliveryRunExecutionProgressFromDb(
                 completed: stops.every((stop) =>
                     isDeliveryRunStopTerminal(stop.state),
                 ),
+                sortLane: 0,
+                sortSequence: itinerarySequence,
             });
         }
     }
 
+    const retryCheckpoints = new Map<
+        string,
+        {
+            retryLaneRank: number;
+            itinerarySequence: number;
+            stopKey: string | null;
+            stops: typeof run.stops;
+        }
+    >();
+    for (const stop of run.stops) {
+        if (stop.retryLaneRank === null) continue;
+        const physicalStopKey =
+            stop.stopKey ?? legacyPhysicalStopKey(stop.formattedAddress);
+        const key = `${stop.retryLaneRank}\u0000${physicalStopKey}`;
+        const checkpoint = retryCheckpoints.get(key) ?? {
+            retryLaneRank: stop.retryLaneRank,
+            itinerarySequence:
+                stop.itinerarySequence ??
+                baseItineraryMaximum + stop.retryLaneRank,
+            stopKey: physicalStopKey,
+            stops: [],
+        };
+        checkpoint.stops.push(stop);
+        retryCheckpoints.set(key, checkpoint);
+    }
+    for (const checkpoint of retryCheckpoints.values()) {
+        pendingSteps.push({
+            kind: 'delivery',
+            itinerarySequence: checkpoint.itinerarySequence,
+            stopKey: checkpoint.stopKey,
+            stopIds: checkpoint.stops.map((stop) => stop.id),
+            actionableStopIds: checkpoint.stops.flatMap((stop) =>
+                isDeliveryRunStopActionable(stop.state) ? [stop.id] : [],
+            ),
+            pickupConfirmed: true,
+            retryLaneRank: checkpoint.retryLaneRank,
+            retryAttempt: Math.max(
+                ...checkpoint.stops.map((stop) => stop.retryAttempt),
+            ),
+            completed: checkpoint.stops.every((stop) =>
+                isDeliveryRunStopTerminal(stop.state),
+            ),
+            sortLane: 1,
+            sortSequence: checkpoint.retryLaneRank,
+        });
+    }
+
     pendingSteps.sort(
-        (first, second) => first.itinerarySequence - second.itinerarySequence,
+        (first, second) =>
+            first.sortLane - second.sortLane ||
+            first.sortSequence - second.sortSequence ||
+            first.itinerarySequence - second.itinerarySequence,
     );
     const currentIndex = pendingSteps.findIndex((step) => !step.completed);
-    return pendingSteps.map(({ completed, ...step }, index) => ({
-        ...step,
-        state: completed
-            ? 'completed'
-            : index === currentIndex
-              ? 'current'
-              : 'upcoming',
-    }));
+    return pendingSteps.map(
+        (
+            {
+                completed,
+                sortLane: _sortLane,
+                sortSequence: _sortSequence,
+                ...step
+            },
+            index,
+        ) => ({
+            ...step,
+            state: completed
+                ? 'completed'
+                : index === currentIndex
+                  ? 'current'
+                  : 'upcoming',
+        }),
+    );
 }
 
 export function getDeliveryRunExecutionProgress(runId: string) {
@@ -2595,18 +2732,31 @@ async function completeDeliveryRunIfEligible({
     });
     if (remaining) return false;
 
+    await db
+        .update(deliveryRunStops)
+        .set({ releasedAt: completedAt })
+        .where(
+            and(
+                eq(deliveryRunStops.runId, runId),
+                isNull(deliveryRunStops.releasedAt),
+                inArray(deliveryRunStops.state, deliveryRunTerminalStopStates),
+            ),
+        );
+
     const [completedRun] = await db
         .update(deliveryRuns)
         .set({
             state: DeliveryRunStates.COMPLETED,
             completedAt,
             rerouteRequiredAt: null,
+            rerouteAttemptedAt: null,
             currentLatitude: null,
             currentLongitude: null,
             currentLocationAccuracy: null,
             currentLocationHeading: null,
             currentLocationSpeed: null,
             currentLocationRecordedAt: null,
+            currentLocationReceivedAt: null,
         })
         .where(
             and(
@@ -2656,6 +2806,13 @@ function normalizeDeliveryRunStopExceptionInput(
         invalidDeliveryRunException(
             'Delivery exception occurrence time is invalid',
         );
+    }
+    if (
+        input.expectedRouteRevision !== undefined &&
+        (!Number.isInteger(input.expectedRouteRevision) ||
+            input.expectedRouteRevision < 0)
+    ) {
+        invalidDeliveryRunException('Delivery route revision is invalid');
     }
     if (!Array.isArray(input.exceptions) || input.exceptions.length === 0) {
         invalidDeliveryRunException(
@@ -2720,6 +2877,7 @@ function deliveryRunStopExceptionPayloadHash(
     return hashValue(
         JSON.stringify({
             clientOperationId: input.clientOperationId,
+            expectedRouteRevision: input.expectedRouteRevision,
             occurredAt: input.occurredAt.toISOString(),
             exceptions: input.exceptions,
         }),
@@ -2825,6 +2983,15 @@ async function recordDeliveryRunStopExceptionsInDatabase(
             'Active delivery run was not found',
         );
     }
+    if (
+        input.expectedRouteRevision !== undefined &&
+        run.routeRevision !== input.expectedRouteRevision
+    ) {
+        throw new DeliveryRunExecutionError(
+            DeliveryRunExecutionErrorCodes.ROUTE_REVISION_CONFLICT,
+            'Delivery route changed. Refresh the active run and retry.',
+        );
+    }
 
     const progress = await getDeliveryRunExecutionProgressFromDb(
         input.runId,
@@ -2907,6 +3074,16 @@ async function recordDeliveryRunStopExceptionsInDatabase(
         }
     }
 
+    const defersCheckpoint = input.exceptions.some(
+        (exception) =>
+            exception.outcome === DeliveryRunExceptionOutcomes.DEFERRED,
+    );
+    const sourceStop = stops[0];
+    const retryLaneRank =
+        defersCheckpoint && sourceStop
+            ? await retryLaneRankForStop(sourceStop, db)
+            : 0;
+
     for (const stop of stops) {
         const exception = exceptionsByStopId.get(stop.id);
         if (!exception) continue;
@@ -2918,6 +3095,15 @@ async function recordDeliveryRunStopExceptionsInDatabase(
                 exceptionNote: exception.note ?? null,
                 exceptionOccurredAt: input.occurredAt,
                 exceptionRecordedByUserId: input.driverUserId,
+                ...(exception.outcome === DeliveryRunExceptionOutcomes.DEFERRED
+                    ? {
+                          retryLaneRank,
+                          retryAttempt: stop.retryAttempt + 1,
+                      }
+                    : exception.outcome ===
+                        DeliveryRunExceptionOutcomes.CANCELLED
+                      ? { releasedAt: input.occurredAt }
+                      : {}),
             })
             .where(
                 and(
@@ -2940,6 +3126,7 @@ async function recordDeliveryRunStopExceptionsInDatabase(
         .set({
             routeRevision: sql`${deliveryRuns.routeRevision} + 1`,
             rerouteRequiredAt: appliedAt,
+            rerouteAttemptedAt: null,
         })
         .where(
             and(
@@ -3033,6 +3220,1039 @@ export async function recordDeliveryRunStopExceptions(
     );
 }
 
+function ensureRouteRevisionInput(value: number) {
+    if (!Number.isInteger(value) || value < 0) {
+        throw new DeliveryRunExecutionError(
+            DeliveryRunExecutionErrorCodes.RUN_MUTATION_INVALID,
+            'Delivery route revision is invalid',
+        );
+    }
+}
+
+function assertRouteRevision(current: number, expected: number) {
+    if (current !== expected) {
+        throw new DeliveryRunExecutionError(
+            DeliveryRunExecutionErrorCodes.ROUTE_REVISION_CONFLICT,
+            'Delivery route changed. Refresh the active run and retry.',
+        );
+    }
+}
+
+async function nextDeliveryRunRetryLaneRank(
+    runId: string,
+    db: TransactionClient,
+) {
+    const [row] = await db
+        .select({
+            value: sql<number>`coalesce(max(${deliveryRunStops.retryLaneRank}), 0) + 1`,
+        })
+        .from(deliveryRunStops)
+        .where(eq(deliveryRunStops.runId, runId));
+    return Number(row?.value ?? 1);
+}
+
+async function retryLaneRankForStop(
+    stop: typeof deliveryRunStops.$inferSelect,
+    db: TransactionClient,
+) {
+    const samePhysicalStop = stop.stopKey
+        ? eq(deliveryRunStops.stopKey, stop.stopKey)
+        : and(
+              isNull(deliveryRunStops.stopKey),
+              eq(deliveryRunStops.formattedAddress, stop.formattedAddress),
+          );
+    if (stop.retryLaneRank !== null) {
+        const reusableNextAttempt = await db.query.deliveryRunStops.findFirst({
+            columns: { retryLaneRank: true },
+            where: and(
+                eq(deliveryRunStops.runId, stop.runId),
+                samePhysicalStop,
+                isNotNull(deliveryRunStops.retryLaneRank),
+                isNull(deliveryRunStops.releasedAt),
+                eq(deliveryRunStops.retryAttempt, stop.retryAttempt + 1),
+                inArray(deliveryRunStops.state, [
+                    DeliveryRunStopStates.PENDING,
+                    DeliveryRunStopStates.ARRIVED,
+                    DeliveryRunStopStates.DEFERRED,
+                ]),
+            ),
+            orderBy: [asc(deliveryRunStops.retryLaneRank)],
+        });
+        return (
+            reusableNextAttempt?.retryLaneRank ??
+            (await nextDeliveryRunRetryLaneRank(stop.runId, db))
+        );
+    }
+    const reusable = await db.query.deliveryRunStops.findFirst({
+        columns: { retryLaneRank: true },
+        where: and(
+            eq(deliveryRunStops.runId, stop.runId),
+            samePhysicalStop,
+            isNotNull(deliveryRunStops.retryLaneRank),
+            isNull(deliveryRunStops.releasedAt),
+            inArray(deliveryRunStops.state, [
+                DeliveryRunStopStates.PENDING,
+                DeliveryRunStopStates.ARRIVED,
+                DeliveryRunStopStates.DEFERRED,
+            ]),
+        ),
+        orderBy: [asc(deliveryRunStops.retryLaneRank)],
+    });
+    return (
+        reusable?.retryLaneRank ??
+        (await nextDeliveryRunRetryLaneRank(stop.runId, db))
+    );
+}
+
+export type RetryDeliveryRunStopResult = {
+    stopIds: number[];
+    routeRevision: number;
+    reroutePending: true;
+};
+
+export async function retryDeliveryRunStop({
+    driverUserId,
+    runId,
+    stopId,
+    expectedRouteRevision,
+    occurredAt = new Date(),
+}: {
+    driverUserId: string;
+    runId: string;
+    stopId: number;
+    expectedRouteRevision: number;
+    occurredAt?: Date;
+}): Promise<RetryDeliveryRunStopResult> {
+    ensureRouteRevisionInput(expectedRouteRevision);
+    return await withDeliveryDispatchTransaction(async (tx) => {
+        await tx.execute(
+            sql`select ${deliveryRuns.id} from ${deliveryRuns} where ${deliveryRuns.id} = ${runId} for update`,
+        );
+        const run = await tx.query.deliveryRuns.findFirst({
+            where: eq(deliveryRuns.id, runId),
+        });
+        if (
+            !run ||
+            run.state !== DeliveryRunStates.ACTIVE ||
+            run.driverUserId !== driverUserId
+        ) {
+            throw new DeliveryRunExecutionError(
+                DeliveryRunExecutionErrorCodes.ACTIVE_RUN_NOT_FOUND,
+                'Active delivery run was not found',
+            );
+        }
+        assertRouteRevision(run.routeRevision, expectedRouteRevision);
+
+        const progress = await getDeliveryRunExecutionProgressFromDb(runId, tx);
+        const current = progress.find((step) => step.state === 'current');
+        if (
+            current?.kind !== 'delivery' ||
+            current.retryLaneRank === undefined ||
+            !current.stopIds.includes(stopId)
+        ) {
+            throw new DeliveryRunExecutionError(
+                DeliveryRunExecutionErrorCodes.ROUTE_ORDER,
+                'Deferred delivery retry is not the current checkpoint',
+            );
+        }
+        const stops = await tx.query.deliveryRunStops.findMany({
+            where: and(
+                eq(deliveryRunStops.runId, runId),
+                inArray(deliveryRunStops.id, current.stopIds),
+                eq(deliveryRunStops.state, DeliveryRunStopStates.DEFERRED),
+                isNull(deliveryRunStops.releasedAt),
+            ),
+            orderBy: [asc(deliveryRunStops.sequence)],
+        });
+        if (stops.length === 0) {
+            throw new DeliveryRunExecutionError(
+                DeliveryRunExecutionErrorCodes.EXCEPTION_TRANSITION_INVALID,
+                'Deferred delivery checkpoint is no longer retryable',
+            );
+        }
+        if (!stops.some((stop) => stop.id === stopId)) {
+            throw new DeliveryRunExecutionError(
+                DeliveryRunExecutionErrorCodes.EXCEPTION_TRANSITION_INVALID,
+                'Only a deferred delivery stop can start its retry checkpoint',
+            );
+        }
+
+        await tx
+            .update(deliveryRunStops)
+            .set({
+                state: DeliveryRunStopStates.PENDING,
+                arrivedAt: null,
+                deliveredAt: null,
+                exceptionReason: null,
+                exceptionNote: null,
+                exceptionOccurredAt: null,
+                exceptionRecordedByUserId: null,
+            })
+            .where(
+                inArray(
+                    deliveryRunStops.id,
+                    stops.map((stop) => stop.id),
+                ),
+            );
+        const [updatedRun] = await tx
+            .update(deliveryRuns)
+            .set({
+                routeRevision: sql`${deliveryRuns.routeRevision} + 1`,
+                rerouteRequiredAt: occurredAt,
+                rerouteAttemptedAt: null,
+            })
+            .where(
+                and(
+                    eq(deliveryRuns.id, runId),
+                    eq(deliveryRuns.routeRevision, expectedRouteRevision),
+                    eq(deliveryRuns.state, DeliveryRunStates.ACTIVE),
+                ),
+            )
+            .returning({ routeRevision: deliveryRuns.routeRevision });
+        if (!updatedRun) {
+            throw new DeliveryRunExecutionError(
+                DeliveryRunExecutionErrorCodes.ROUTE_REVISION_CONFLICT,
+                'Delivery route changed. Refresh the active run and retry.',
+            );
+        }
+        for (const stop of stops) {
+            await createEvent(
+                knownEvents.delivery.requestExceptionRecoveredV1(
+                    stop.deliveryRequestId,
+                    {
+                        runId,
+                        stopId: stop.id,
+                        recovery: 'retry',
+                        recoveredAt: occurredAt.toISOString(),
+                        recoveredByUserId: driverUserId,
+                        routeRevision: updatedRun.routeRevision,
+                    },
+                ),
+                tx,
+            );
+        }
+        return {
+            stopIds: stops.map((stop) => stop.id),
+            routeRevision: updatedRun.routeRevision,
+            reroutePending: true,
+        };
+    });
+}
+
+export type RecoverDeliveryRunStopResult = {
+    requestId: string;
+    routeRevision: number;
+    resumedInRun: boolean;
+    reroutePending: boolean;
+};
+
+export async function recoverDeliveryRunStop({
+    adminUserId,
+    runId,
+    stopId,
+    expectedRouteRevision,
+    occurredAt = new Date(),
+}: {
+    adminUserId: string;
+    runId: string;
+    stopId: number;
+    expectedRouteRevision: number;
+    occurredAt?: Date;
+}): Promise<RecoverDeliveryRunStopResult> {
+    ensureRouteRevisionInput(expectedRouteRevision);
+    return await withDeliveryDispatchTransaction(async (tx) => {
+        await tx.execute(
+            sql`select ${deliveryRuns.id} from ${deliveryRuns} where ${deliveryRuns.id} = ${runId} for update`,
+        );
+        const run = await tx.query.deliveryRuns.findFirst({
+            where: eq(deliveryRuns.id, runId),
+        });
+        if (!run) {
+            throw new DeliveryRunExecutionError(
+                DeliveryRunExecutionErrorCodes.ACTIVE_RUN_NOT_FOUND,
+                'Delivery run was not found',
+            );
+        }
+        assertRouteRevision(run.routeRevision, expectedRouteRevision);
+        const stop = await tx.query.deliveryRunStops.findFirst({
+            where: and(
+                eq(deliveryRunStops.id, stopId),
+                eq(deliveryRunStops.runId, runId),
+            ),
+        });
+        if (!stop || stop.state !== DeliveryRunStopStates.FAILED) {
+            throw new DeliveryRunExecutionError(
+                DeliveryRunExecutionErrorCodes.EXCEPTION_TRANSITION_INVALID,
+                'Only a failed delivery stop can be recovered',
+            );
+        }
+        const [request, latestStop] = await Promise.all([
+            getDeliveryRequest(stop.deliveryRequestId, tx),
+            tx.query.deliveryRunStops.findFirst({
+                columns: { id: true },
+                where: eq(
+                    deliveryRunStops.deliveryRequestId,
+                    stop.deliveryRequestId,
+                ),
+                orderBy: [desc(deliveryRunStops.id)],
+            }),
+        ]);
+        if (
+            request?.state !== DeliveryRequestStates.FAILED ||
+            latestStop?.id !== stop.id
+        ) {
+            throw new DeliveryRunExecutionError(
+                DeliveryRunExecutionErrorCodes.EXCEPTION_TRANSITION_INVALID,
+                'Failed delivery recovery is stale or already applied',
+            );
+        }
+
+        const resumedInRun = run.state === DeliveryRunStates.ACTIVE;
+        if (resumedInRun) {
+            const retryLaneRank = await retryLaneRankForStop(stop, tx);
+            await tx
+                .update(deliveryRunStops)
+                .set({
+                    state: DeliveryRunStopStates.PENDING,
+                    retryLaneRank,
+                    retryAttempt: stop.retryAttempt + 1,
+                    arrivedAt: null,
+                    deliveredAt: null,
+                    exceptionReason: null,
+                    exceptionNote: null,
+                    exceptionOccurredAt: null,
+                    exceptionRecordedByUserId: null,
+                    releasedAt: null,
+                })
+                .where(
+                    and(
+                        eq(deliveryRunStops.id, stop.id),
+                        eq(
+                            deliveryRunStops.state,
+                            DeliveryRunStopStates.FAILED,
+                        ),
+                    ),
+                );
+        }
+        const [updatedRun] = await tx
+            .update(deliveryRuns)
+            .set({
+                routeRevision: sql`${deliveryRuns.routeRevision} + 1`,
+                ...(resumedInRun
+                    ? {
+                          rerouteRequiredAt: occurredAt,
+                          rerouteAttemptedAt: null,
+                      }
+                    : {}),
+            })
+            .where(
+                and(
+                    eq(deliveryRuns.id, runId),
+                    eq(deliveryRuns.routeRevision, expectedRouteRevision),
+                ),
+            )
+            .returning({ routeRevision: deliveryRuns.routeRevision });
+        if (!updatedRun) {
+            throw new DeliveryRunExecutionError(
+                DeliveryRunExecutionErrorCodes.ROUTE_REVISION_CONFLICT,
+                'Delivery route changed. Refresh the delivery run and retry.',
+            );
+        }
+        await createEvent(
+            knownEvents.delivery.requestExceptionRecoveredV1(
+                stop.deliveryRequestId,
+                {
+                    runId,
+                    stopId: stop.id,
+                    recovery: 'admin-recovery',
+                    recoveredAt: occurredAt.toISOString(),
+                    recoveredByUserId: adminUserId,
+                    routeRevision: updatedRun.routeRevision,
+                },
+            ),
+            tx,
+        );
+        return {
+            requestId: stop.deliveryRequestId,
+            routeRevision: updatedRun.routeRevision,
+            resumedInRun,
+            reroutePending: resumedInRun,
+        };
+    });
+}
+
+export async function reassignDeliveryRun({
+    adminUserId,
+    runId,
+    newDriverUserId,
+    expectedRouteRevision,
+    occurredAt = new Date(),
+}: {
+    adminUserId: string;
+    runId: string;
+    newDriverUserId: string;
+    expectedRouteRevision: number;
+    occurredAt?: Date;
+}) {
+    ensureRouteRevisionInput(expectedRouteRevision);
+    return await withDeliveryDispatchTransaction(async (tx) => {
+        await tx.execute(
+            sql`select ${deliveryRuns.id} from ${deliveryRuns} where ${deliveryRuns.id} = ${runId} for update`,
+        );
+        const run = await tx.query.deliveryRuns.findFirst({
+            where: eq(deliveryRuns.id, runId),
+        });
+        if (!run || run.state !== DeliveryRunStates.ACTIVE) {
+            throw new DeliveryRunExecutionError(
+                DeliveryRunExecutionErrorCodes.ACTIVE_RUN_NOT_FOUND,
+                'Active delivery run was not found',
+            );
+        }
+        assertRouteRevision(run.routeRevision, expectedRouteRevision);
+        if (run.driverUserId === newDriverUserId) {
+            return {
+                driverUserId: newDriverUserId,
+                routeRevision: run.routeRevision,
+                reroutePending: run.rerouteRequiredAt !== null,
+            };
+        }
+        const driver = await tx.query.users.findFirst({
+            columns: { id: true, role: true },
+            where: eq(users.id, newDriverUserId),
+        });
+        if (!driver || !['driver', 'admin'].includes(driver.role)) {
+            throw new DeliveryRunExecutionError(
+                DeliveryRunExecutionErrorCodes.RUN_MUTATION_INVALID,
+                'New delivery driver is invalid',
+            );
+        }
+        const targetRun = await tx.query.deliveryRuns.findFirst({
+            columns: { id: true },
+            where: and(
+                eq(deliveryRuns.driverUserId, newDriverUserId),
+                eq(deliveryRuns.state, DeliveryRunStates.ACTIVE),
+            ),
+        });
+        if (targetRun) {
+            throw new DeliveryRunExecutionError(
+                DeliveryRunExecutionErrorCodes.RUN_DRIVER_CONFLICT,
+                'The selected driver already has an active delivery run',
+            );
+        }
+        await tx
+            .update(deliveryRunStops)
+            .set({
+                state: DeliveryRunStopStates.PENDING,
+                arrivedAt: null,
+            })
+            .where(
+                and(
+                    eq(deliveryRunStops.runId, runId),
+                    eq(deliveryRunStops.state, DeliveryRunStopStates.ARRIVED),
+                    isNull(deliveryRunStops.releasedAt),
+                ),
+            );
+        const [updatedRun] = await tx
+            .update(deliveryRuns)
+            .set({
+                driverUserId: newDriverUserId,
+                routeRevision: sql`${deliveryRuns.routeRevision} + 1`,
+                rerouteRequiredAt: occurredAt,
+                rerouteAttemptedAt: null,
+                currentLatitude: null,
+                currentLongitude: null,
+                currentLocationAccuracy: null,
+                currentLocationHeading: null,
+                currentLocationSpeed: null,
+                currentLocationRecordedAt: null,
+                currentLocationReceivedAt: null,
+            })
+            .where(
+                and(
+                    eq(deliveryRuns.id, runId),
+                    eq(deliveryRuns.routeRevision, expectedRouteRevision),
+                    eq(deliveryRuns.state, DeliveryRunStates.ACTIVE),
+                ),
+            )
+            .returning({ routeRevision: deliveryRuns.routeRevision });
+        if (!updatedRun) {
+            throw new DeliveryRunExecutionError(
+                DeliveryRunExecutionErrorCodes.ROUTE_REVISION_CONFLICT,
+                'Delivery route changed. Refresh the active run and retry.',
+            );
+        }
+        await createEvent(
+            knownEvents.delivery.runReassignedV1(runId, {
+                previousDriverUserId: run.driverUserId,
+                newDriverUserId,
+                reassignedAt: occurredAt.toISOString(),
+                reassignedByUserId: adminUserId,
+                routeRevision: updatedRun.routeRevision,
+            }),
+            tx,
+        );
+        return {
+            driverUserId: newDriverUserId,
+            routeRevision: updatedRun.routeRevision,
+            reroutePending: true,
+        };
+    });
+}
+
+export async function abandonDeliveryRun({
+    adminUserId,
+    runId,
+    expectedRouteRevision,
+    reason,
+    occurredAt = new Date(),
+}: {
+    adminUserId: string;
+    runId: string;
+    expectedRouteRevision: number;
+    reason?: string;
+    occurredAt?: Date;
+}) {
+    ensureRouteRevisionInput(expectedRouteRevision);
+    const normalizedReason = reason?.trim().slice(0, 1_000);
+    return await withDeliveryDispatchTransaction(async (tx) => {
+        await tx.execute(
+            sql`select ${deliveryRuns.id} from ${deliveryRuns} where ${deliveryRuns.id} = ${runId} for update`,
+        );
+        const run = await tx.query.deliveryRuns.findFirst({
+            where: eq(deliveryRuns.id, runId),
+        });
+        if (!run || run.state !== DeliveryRunStates.ACTIVE) {
+            throw new DeliveryRunExecutionError(
+                DeliveryRunExecutionErrorCodes.ACTIVE_RUN_NOT_FOUND,
+                'Active delivery run was not found',
+            );
+        }
+        assertRouteRevision(run.routeRevision, expectedRouteRevision);
+        const stops = await tx.query.deliveryRunStops.findMany({
+            where: eq(deliveryRunStops.runId, runId),
+            orderBy: [asc(deliveryRunStops.sequence)],
+        });
+        const recoverableStops = stops.filter(
+            (stop) =>
+                stop.state !== DeliveryRunStopStates.DELIVERED &&
+                stop.state !== DeliveryRunStopStates.CANCELLED,
+        );
+        for (const stop of recoverableStops) {
+            if (stop.state === DeliveryRunStopStates.FAILED) {
+                await tx
+                    .update(deliveryRunStops)
+                    .set({ releasedAt: occurredAt })
+                    .where(eq(deliveryRunStops.id, stop.id));
+                continue;
+            }
+            await tx
+                .update(deliveryRunStops)
+                .set({
+                    state: DeliveryRunStopStates.CANCELLED,
+                    deliveredAt: null,
+                    exceptionReason: DeliveryRunExceptionReasons.CANCELLATION,
+                    exceptionNote: normalizedReason ?? null,
+                    exceptionOccurredAt: occurredAt,
+                    exceptionRecordedByUserId: adminUserId,
+                    releasedAt: occurredAt,
+                })
+                .where(eq(deliveryRunStops.id, stop.id));
+        }
+        await tx
+            .update(deliveryRunStops)
+            .set({ releasedAt: occurredAt })
+            .where(
+                and(
+                    eq(deliveryRunStops.runId, runId),
+                    isNull(deliveryRunStops.releasedAt),
+                    inArray(deliveryRunStops.state, [
+                        DeliveryRunStopStates.DELIVERED,
+                        DeliveryRunStopStates.CANCELLED,
+                    ]),
+                ),
+            );
+        const [updatedRun] = await tx
+            .update(deliveryRuns)
+            .set({
+                state: DeliveryRunStates.CANCELLED,
+                completedAt: occurredAt,
+                routeRevision: sql`${deliveryRuns.routeRevision} + 1`,
+                rerouteRequiredAt: null,
+                rerouteAttemptedAt: null,
+                currentLatitude: null,
+                currentLongitude: null,
+                currentLocationAccuracy: null,
+                currentLocationHeading: null,
+                currentLocationSpeed: null,
+                currentLocationRecordedAt: null,
+                currentLocationReceivedAt: null,
+            })
+            .where(
+                and(
+                    eq(deliveryRuns.id, runId),
+                    eq(deliveryRuns.routeRevision, expectedRouteRevision),
+                    eq(deliveryRuns.state, DeliveryRunStates.ACTIVE),
+                ),
+            )
+            .returning({ routeRevision: deliveryRuns.routeRevision });
+        if (!updatedRun) {
+            throw new DeliveryRunExecutionError(
+                DeliveryRunExecutionErrorCodes.ROUTE_REVISION_CONFLICT,
+                'Delivery route changed. Refresh the active run and retry.',
+            );
+        }
+        for (const stop of recoverableStops) {
+            await createEvent(
+                knownEvents.delivery.requestExceptionRecoveredV1(
+                    stop.deliveryRequestId,
+                    {
+                        runId,
+                        stopId: stop.id,
+                        recovery: 'route-abandonment',
+                        recoveredAt: occurredAt.toISOString(),
+                        recoveredByUserId: adminUserId,
+                        routeRevision: updatedRun.routeRevision,
+                    },
+                ),
+                tx,
+            );
+        }
+        await createEvent(
+            knownEvents.delivery.runAbandonedV1(runId, {
+                abandonedAt: occurredAt.toISOString(),
+                abandonedByUserId: adminUserId,
+                ...(normalizedReason ? { reason: normalizedReason } : {}),
+                releasedRequestIds: recoverableStops.map(
+                    (stop) => stop.deliveryRequestId,
+                ),
+                routeRevision: updatedRun.routeRevision,
+            }),
+            tx,
+        );
+        return {
+            releasedRequestIds: recoverableStops.map(
+                (stop) => stop.deliveryRequestId,
+            ),
+            routeRevision: updatedRun.routeRevision,
+        };
+    });
+}
+
+export type ApplyDeliveryRunRerouteInput = {
+    runId: string;
+    expectedRouteRevision: number;
+    rerouteClaimedAt: Date;
+    encodedPolyline?: string;
+    estimateSource: PreparedDeliveryRunEstimateSource;
+    totalDistanceMeters: number;
+    totalDurationSeconds: number;
+    pickupEstimates: Array<{
+        pickupNodeId: string;
+        itinerarySequence: number;
+        estimatedArrivalAt: Date;
+        incomingTravelSeconds: number;
+        incomingDistanceMeters: number;
+    }>;
+    stopEstimates: Array<{
+        stopIds: number[];
+        itinerarySequence: number;
+        estimatedArrivalAt: Date;
+        estimatedTravelSeconds: number;
+        estimatedDistanceMeters: number;
+    }>;
+};
+
+export async function applyDeliveryRunReroute(
+    input: ApplyDeliveryRunRerouteInput,
+) {
+    ensureRouteRevisionInput(input.expectedRouteRevision);
+    const invalidPickupEstimate = input.pickupEstimates.some(
+        (estimate) =>
+            !Number.isInteger(estimate.itinerarySequence) ||
+            estimate.itinerarySequence <= 0 ||
+            !(estimate.estimatedArrivalAt instanceof Date) ||
+            !Number.isFinite(estimate.estimatedArrivalAt.getTime()) ||
+            !isNonnegativeInteger(estimate.incomingTravelSeconds) ||
+            !isNonnegativeInteger(estimate.incomingDistanceMeters),
+    );
+    const invalidStopEstimate = input.stopEstimates.some(
+        (estimate) =>
+            !Number.isInteger(estimate.itinerarySequence) ||
+            estimate.itinerarySequence <= 0 ||
+            !(estimate.estimatedArrivalAt instanceof Date) ||
+            !Number.isFinite(estimate.estimatedArrivalAt.getTime()) ||
+            !isNonnegativeInteger(estimate.estimatedTravelSeconds) ||
+            !isNonnegativeInteger(estimate.estimatedDistanceMeters),
+    );
+    if (
+        !isPreparedEstimateSource(input.estimateSource) ||
+        !(input.rerouteClaimedAt instanceof Date) ||
+        !Number.isFinite(input.rerouteClaimedAt.getTime()) ||
+        !isNonnegativeInteger(input.totalDistanceMeters) ||
+        !isNonnegativeInteger(input.totalDurationSeconds) ||
+        invalidPickupEstimate ||
+        invalidStopEstimate
+    ) {
+        throw new DeliveryRunExecutionError(
+            DeliveryRunExecutionErrorCodes.RUN_MUTATION_INVALID,
+            'Delivery reroute estimates are invalid',
+        );
+    }
+    return await withDeliveryDispatchTransaction(async (tx) => {
+        await tx.execute(
+            sql`select ${deliveryRuns.id} from ${deliveryRuns} where ${deliveryRuns.id} = ${input.runId} for update`,
+        );
+        const run = await tx.query.deliveryRuns.findFirst({
+            where: eq(deliveryRuns.id, input.runId),
+        });
+        if (!run || run.state !== DeliveryRunStates.ACTIVE) {
+            throw new DeliveryRunExecutionError(
+                DeliveryRunExecutionErrorCodes.ACTIVE_RUN_NOT_FOUND,
+                'Active delivery run was not found',
+            );
+        }
+        assertRouteRevision(run.routeRevision, input.expectedRouteRevision);
+        if (
+            run.rerouteRequiredAt === null ||
+            run.rerouteAttemptedAt?.getTime() !==
+                input.rerouteClaimedAt.getTime()
+        ) {
+            throw new DeliveryRunExecutionError(
+                DeliveryRunExecutionErrorCodes.ROUTE_REVISION_CONFLICT,
+                'Delivery reroute was already applied',
+            );
+        }
+
+        const progress = await getDeliveryRunExecutionProgressFromDb(
+            input.runId,
+            tx,
+        );
+        const allRunStops = await tx.query.deliveryRunStops.findMany({
+            columns: { id: true, sequence: true, state: true },
+            where: eq(deliveryRunStops.runId, input.runId),
+        });
+        const nonterminalStops = allRunStops.filter(
+            (stop) => !deliveryRunTerminalStopStates.includes(stop.state),
+        );
+        const originalSequenceByStopId = new Map(
+            allRunStops.map((stop) => [stop.id, stop.sequence]),
+        );
+        const nonterminalStopIds = new Set(
+            nonterminalStops.map((stop) => stop.id),
+        );
+        const canonicalStopGroup = (stopIds: readonly number[]) =>
+            [...stopIds].sort((first, second) => first - second).join(',');
+        const expectedPickupIds = new Set(
+            progress.flatMap((step) =>
+                step.kind === 'pickup' && step.state !== 'completed'
+                    ? [step.pickupNodeId]
+                    : [],
+            ),
+        );
+        const providedPickupIds = new Set(
+            input.pickupEstimates.map((estimate) => estimate.pickupNodeId),
+        );
+        if (
+            providedPickupIds.size !== input.pickupEstimates.length ||
+            providedPickupIds.size !== expectedPickupIds.size ||
+            [...providedPickupIds].some(
+                (pickupNodeId) => !expectedPickupIds.has(pickupNodeId),
+            )
+        ) {
+            throw new DeliveryRunExecutionError(
+                DeliveryRunExecutionErrorCodes.RUN_MUTATION_INVALID,
+                'Delivery reroute pickup checkpoints changed',
+            );
+        }
+
+        const expectedStopGroups = new Set(
+            progress.flatMap((step) => {
+                if (step.kind !== 'delivery' || step.state === 'completed') {
+                    return [];
+                }
+                const stopIds = step.stopIds.filter((stopId) =>
+                    nonterminalStopIds.has(stopId),
+                );
+                return stopIds.length > 0 ? [canonicalStopGroup(stopIds)] : [];
+            }),
+        );
+        const providedStopIds = input.stopEstimates.flatMap(
+            (estimate) => estimate.stopIds,
+        );
+        const providedStopGroups = new Set(
+            input.stopEstimates.map((estimate) =>
+                canonicalStopGroup(estimate.stopIds),
+            ),
+        );
+        if (
+            input.stopEstimates.some(
+                (estimate) =>
+                    estimate.stopIds.length === 0 ||
+                    new Set(estimate.stopIds).size !== estimate.stopIds.length,
+            ) ||
+            new Set(providedStopIds).size !== providedStopIds.length ||
+            providedStopGroups.size !== input.stopEstimates.length ||
+            providedStopGroups.size !== expectedStopGroups.size ||
+            [...providedStopGroups].some(
+                (stopGroup) => !expectedStopGroups.has(stopGroup),
+            )
+        ) {
+            throw new DeliveryRunExecutionError(
+                DeliveryRunExecutionErrorCodes.RUN_MUTATION_INVALID,
+                'Delivery reroute stop checkpoints changed',
+            );
+        }
+
+        const proposedCheckpointSequences = [
+            ...input.pickupEstimates.map(
+                (estimate) => estimate.itinerarySequence,
+            ),
+            ...input.stopEstimates.flatMap((estimate) =>
+                run.routePlanVersion < 2
+                    ? estimate.stopIds.map(
+                          (_stopId, index) =>
+                              estimate.itinerarySequence + index,
+                      )
+                    : [estimate.itinerarySequence],
+            ),
+        ];
+        const completedCheckpointSequences = new Set(
+            progress.flatMap((step) =>
+                step.state === 'completed' ? [step.itinerarySequence] : [],
+            ),
+        );
+        const providedStopIdSet = new Set(providedStopIds);
+        const legacyOccupiedSequences = new Set(
+            run.routePlanVersion < 2
+                ? allRunStops.flatMap((stop) =>
+                      providedStopIdSet.has(stop.id) ? [] : [stop.sequence],
+                  )
+                : [],
+        );
+        if (
+            new Set(proposedCheckpointSequences).size !==
+                proposedCheckpointSequences.length ||
+            proposedCheckpointSequences.some(
+                (sequence) =>
+                    completedCheckpointSequences.has(sequence) ||
+                    legacyOccupiedSequences.has(sequence),
+            )
+        ) {
+            throw new DeliveryRunExecutionError(
+                DeliveryRunExecutionErrorCodes.RUN_MUTATION_INVALID,
+                'Delivery reroute itinerary sequences conflict',
+            );
+        }
+
+        if (input.pickupEstimates.length > 0) {
+            const [maximum] = await tx
+                .select({
+                    value: sql<number>`coalesce(max(${deliveryRunPickupNodes.itinerarySequence}), 0)`,
+                })
+                .from(deliveryRunPickupNodes)
+                .where(eq(deliveryRunPickupNodes.runId, input.runId));
+            const temporaryBase = Number(maximum?.value ?? 0) + 1;
+            for (const [index, estimate] of input.pickupEstimates.entries()) {
+                const [updated] = await tx
+                    .update(deliveryRunPickupNodes)
+                    .set({ itinerarySequence: temporaryBase + index })
+                    .where(
+                        and(
+                            eq(
+                                deliveryRunPickupNodes.id,
+                                estimate.pickupNodeId,
+                            ),
+                            eq(deliveryRunPickupNodes.runId, input.runId),
+                        ),
+                    )
+                    .returning({ id: deliveryRunPickupNodes.id });
+                if (!updated) {
+                    throw new DeliveryRunExecutionError(
+                        DeliveryRunExecutionErrorCodes.RUN_MUTATION_INVALID,
+                        'Delivery reroute pickup checkpoint is invalid',
+                    );
+                }
+            }
+        }
+        if (run.routePlanVersion < 2 && providedStopIds.length > 0) {
+            const temporaryBase =
+                Math.max(0, ...allRunStops.map((stop) => stop.sequence)) + 1;
+            for (const [index, stopId] of providedStopIds.entries()) {
+                const [updated] = await tx
+                    .update(deliveryRunStops)
+                    .set({ sequence: temporaryBase + index })
+                    .where(
+                        and(
+                            eq(deliveryRunStops.runId, input.runId),
+                            eq(deliveryRunStops.id, stopId),
+                            notInArray(
+                                deliveryRunStops.state,
+                                deliveryRunTerminalStopStates,
+                            ),
+                        ),
+                    )
+                    .returning({ id: deliveryRunStops.id });
+                if (!updated) {
+                    throw new DeliveryRunExecutionError(
+                        DeliveryRunExecutionErrorCodes.ROUTE_REVISION_CONFLICT,
+                        'Delivery stops changed while the reroute was calculated',
+                    );
+                }
+            }
+        }
+
+        for (const estimate of input.pickupEstimates) {
+            const rows = await tx
+                .update(deliveryRunPickupNodes)
+                .set({
+                    itinerarySequence: estimate.itinerarySequence,
+                    estimatedArrivalAt: estimate.estimatedArrivalAt,
+                    incomingTravelSeconds: estimate.incomingTravelSeconds,
+                    incomingDistanceMeters: estimate.incomingDistanceMeters,
+                })
+                .where(
+                    and(
+                        eq(deliveryRunPickupNodes.id, estimate.pickupNodeId),
+                        eq(deliveryRunPickupNodes.runId, input.runId),
+                    ),
+                )
+                .returning({ id: deliveryRunPickupNodes.id });
+            if (!rows[0]) {
+                throw new DeliveryRunExecutionError(
+                    DeliveryRunExecutionErrorCodes.RUN_MUTATION_INVALID,
+                    'Delivery reroute pickup checkpoint is invalid',
+                );
+            }
+        }
+        for (const estimate of input.stopEstimates) {
+            if (estimate.stopIds.length === 0) {
+                throw new DeliveryRunExecutionError(
+                    DeliveryRunExecutionErrorCodes.RUN_MUTATION_INVALID,
+                    'Delivery reroute stop checkpoint is empty',
+                );
+            }
+            const orderedStopIds = [...estimate.stopIds].sort(
+                (first, second) =>
+                    (originalSequenceByStopId.get(first) ?? first) -
+                    (originalSequenceByStopId.get(second) ?? second),
+            );
+            let updatedCount = 0;
+            for (const [index, stopId] of orderedStopIds.entries()) {
+                const updated = await tx
+                    .update(deliveryRunStops)
+                    .set({
+                        ...(run.routePlanVersion < 2
+                            ? {
+                                  sequence: estimate.itinerarySequence + index,
+                              }
+                            : {
+                                  itinerarySequence: estimate.itinerarySequence,
+                              }),
+                        estimatedArrivalAt: estimate.estimatedArrivalAt,
+                        estimatedTravelSeconds: estimate.estimatedTravelSeconds,
+                        estimatedDistanceMeters:
+                            estimate.estimatedDistanceMeters,
+                    })
+                    .where(
+                        and(
+                            eq(deliveryRunStops.runId, input.runId),
+                            eq(deliveryRunStops.id, stopId),
+                            notInArray(
+                                deliveryRunStops.state,
+                                deliveryRunTerminalStopStates,
+                            ),
+                        ),
+                    )
+                    .returning({ id: deliveryRunStops.id });
+                updatedCount += updated.length;
+            }
+            if (updatedCount !== orderedStopIds.length) {
+                throw new DeliveryRunExecutionError(
+                    DeliveryRunExecutionErrorCodes.ROUTE_REVISION_CONFLICT,
+                    'Delivery stops changed while the reroute was calculated',
+                );
+            }
+        }
+        const appliedAt = new Date();
+        const [updatedRun] = await tx
+            .update(deliveryRuns)
+            .set({
+                encodedPolyline: input.encodedPolyline ?? null,
+                totalDistanceMeters: input.totalDistanceMeters,
+                totalDurationSeconds: input.totalDurationSeconds,
+                estimateSource:
+                    run.routePlanVersion < 2
+                        ? DeliveryRunEstimateSources.LEGACY
+                        : input.estimateSource,
+                estimatesUpdatedAt: appliedAt,
+                rerouteRequiredAt: null,
+                rerouteAttemptedAt: null,
+                routeRevision: sql`${deliveryRuns.routeRevision} + 1`,
+            })
+            .where(
+                and(
+                    eq(deliveryRuns.id, input.runId),
+                    eq(deliveryRuns.routeRevision, input.expectedRouteRevision),
+                    isNotNull(deliveryRuns.rerouteRequiredAt),
+                    eq(deliveryRuns.rerouteAttemptedAt, input.rerouteClaimedAt),
+                    eq(deliveryRuns.state, DeliveryRunStates.ACTIVE),
+                ),
+            )
+            .returning({ routeRevision: deliveryRuns.routeRevision });
+        if (!updatedRun) {
+            throw new DeliveryRunExecutionError(
+                DeliveryRunExecutionErrorCodes.ROUTE_REVISION_CONFLICT,
+                'Delivery route changed while the reroute was calculated',
+            );
+        }
+        return {
+            routeRevision: updatedRun.routeRevision,
+            reroutePending: false,
+            estimatesUpdatedAt: appliedAt,
+        };
+    });
+}
+
+export const deliveryRunRerouteLeaseMs = 30_000;
+
+export async function claimDeliveryRunReroute({
+    runId,
+    expectedRouteRevision,
+    claimedAt = new Date(),
+}: {
+    runId: string;
+    expectedRouteRevision: number;
+    claimedAt?: Date;
+}) {
+    ensureRouteRevisionInput(expectedRouteRevision);
+    if (!(claimedAt instanceof Date) || !Number.isFinite(claimedAt.getTime())) {
+        throw new DeliveryRunExecutionError(
+            DeliveryRunExecutionErrorCodes.RUN_MUTATION_INVALID,
+            'Delivery reroute claim time is invalid',
+        );
+    }
+    const availableBefore = new Date(
+        claimedAt.getTime() - deliveryRunRerouteLeaseMs,
+    );
+    const [claimed] = await storage()
+        .update(deliveryRuns)
+        .set({ rerouteAttemptedAt: claimedAt })
+        .where(
+            and(
+                eq(deliveryRuns.id, runId),
+                eq(deliveryRuns.routeRevision, expectedRouteRevision),
+                eq(deliveryRuns.state, DeliveryRunStates.ACTIVE),
+                isNotNull(deliveryRuns.rerouteRequiredAt),
+                or(
+                    isNull(deliveryRuns.rerouteAttemptedAt),
+                    lte(deliveryRuns.rerouteAttemptedAt, availableBefore),
+                ),
+            ),
+        )
+        .returning({ claimedAt: deliveryRuns.rerouteAttemptedAt });
+    return claimed?.claimedAt ? { rerouteClaimedAt: claimed.claimedAt } : null;
+}
+
 export function getDeliveryRunStop(stopId: number) {
     return storage().query.deliveryRunStops.findFirst({
         where: eq(deliveryRunStops.id, stopId),
@@ -3065,10 +4285,64 @@ export async function getDeliveryRunStopsForRequestIds(requestIds: string[]) {
         )
         .where(inArray(deliveryRunStops.deliveryRequestId, requestIds));
 
-    return rows.map(({ run, stop, runSlot }) => ({
-        run,
-        stop: { ...stop, runSlot },
-    }));
+    const preferredByRequestId = new Map<string, (typeof rows)[number]>();
+    for (const row of rows) {
+        const current = preferredByRequestId.get(row.stop.deliveryRequestId);
+        if (
+            !current ||
+            (current.stop.releasedAt !== null &&
+                row.stop.releasedAt === null) ||
+            ((current.stop.releasedAt === null) ===
+                (row.stop.releasedAt === null) &&
+                row.stop.id > current.stop.id)
+        ) {
+            preferredByRequestId.set(row.stop.deliveryRequestId, row);
+        }
+    }
+
+    return requestIds.flatMap((requestId) => {
+        const row = preferredByRequestId.get(requestId);
+        return row
+            ? [{ run: row.run, stop: { ...row.stop, runSlot: row.runSlot } }]
+            : [];
+    });
+}
+
+export async function getActiveDeliveryRunStopsForRequestIds(
+    requestIds: string[],
+) {
+    if (requestIds.length === 0) {
+        return [];
+    }
+
+    return await storage()
+        .select({
+            run: deliveryRuns,
+            stop: deliveryRunStops,
+            runSlot: deliveryRunSlots,
+        })
+        .from(deliveryRunStops)
+        .innerJoin(deliveryRuns, eq(deliveryRunStops.runId, deliveryRuns.id))
+        .leftJoin(
+            deliveryRunSlots,
+            and(
+                eq(deliveryRunStops.runId, deliveryRunSlots.runId),
+                eq(deliveryRunStops.runSlotId, deliveryRunSlots.id),
+            ),
+        )
+        .where(
+            and(
+                inArray(deliveryRunStops.deliveryRequestId, requestIds),
+                isNull(deliveryRunStops.releasedAt),
+                eq(deliveryRuns.state, DeliveryRunStates.ACTIVE),
+            ),
+        )
+        .then((rows) =>
+            rows.map((row) => ({
+                run: row.run,
+                stop: { ...row.stop, runSlot: row.runSlot },
+            })),
+        );
 }
 
 export async function getDeliveryAccountContacts(accountIds: string[]) {
@@ -3160,6 +4434,7 @@ export async function updateDeliveryRunLocation({
             currentLocationHeading: heading,
             currentLocationSpeed: speed,
             currentLocationRecordedAt: recordedAt,
+            currentLocationReceivedAt: new Date(),
         })
         .where(
             and(
@@ -3237,11 +4512,13 @@ async function ensureOwnedDeliveryRunStops({
     driverUserId,
     runId,
     stopIds,
+    expectedRouteRevision,
     db,
 }: {
     driverUserId: string;
     runId: string;
     stopIds: number[];
+    expectedRouteRevision?: number;
     db: TransactionClient;
 }) {
     const uniqueStopIds = Array.from(new Set(stopIds));
@@ -3273,6 +4550,15 @@ async function ensureOwnedDeliveryRunStops({
         run.state !== DeliveryRunStates.ACTIVE
     ) {
         throw new Error('Active delivery stop not found');
+    }
+    if (
+        expectedRouteRevision !== undefined &&
+        run.routeRevision !== expectedRouteRevision
+    ) {
+        throw new DeliveryRunExecutionError(
+            DeliveryRunExecutionErrorCodes.ROUTE_REVISION_CONFLICT,
+            'Delivery route changed. Refresh the active run and retry.',
+        );
     }
 
     const actionableStops = stops.filter((stop) =>
@@ -3323,18 +4609,17 @@ async function ensureOwnedDeliveryRunStops({
                 );
             }
         } else {
-            const currentStop = await db.query.deliveryRunStops.findFirst({
-                columns: { id: true },
-                where: and(
-                    eq(deliveryRunStops.runId, runId),
-                    inArray(deliveryRunStops.state, [
-                        DeliveryRunStopStates.PENDING,
-                        DeliveryRunStopStates.ARRIVED,
-                    ]),
-                ),
-                orderBy: [asc(deliveryRunStops.sequence)],
-            });
-            if (currentStop && !uniqueStopIds.includes(currentStop.id)) {
+            const progress = await getDeliveryRunExecutionProgressFromDb(
+                runId,
+                db,
+            );
+            const current = progress.find((step) => step.state === 'current');
+            if (
+                current?.kind !== 'delivery' ||
+                current.actionableStopIds.some(
+                    (stopId) => !uniqueStopIds.includes(stopId),
+                )
+            ) {
                 throw new DeliveryRunExecutionError(
                     DeliveryRunExecutionErrorCodes.ROUTE_ORDER,
                     'Delivery stops must be completed in route order',
@@ -3361,19 +4646,25 @@ export async function markDeliveryRunStopsArrived({
     driverUserId,
     runId,
     stopIds,
+    expectedRouteRevision,
 }: {
     driverUserId: string;
     runId: string;
     stopIds: number[];
+    expectedRouteRevision?: number;
 }) {
     return await storage().transaction(async (tx) => {
         const stops = await ensureOwnedDeliveryRunStops({
             driverUserId,
             runId,
             stopIds,
+            expectedRouteRevision,
             db: tx,
         });
         const now = new Date();
+        const advancesExecution = stops.some(
+            (stop) => stop.state === DeliveryRunStopStates.PENDING,
+        );
 
         for (const stop of stops) {
             if (!isDeliveryRunStopActionable(stop.state)) {
@@ -3403,6 +4694,21 @@ export async function markDeliveryRunStopsArrived({
             }
         }
 
+        if (advancesExecution) {
+            await tx
+                .update(deliveryRuns)
+                .set({
+                    routeRevision: sql`${deliveryRuns.routeRevision} + 1`,
+                    rerouteAttemptedAt: null,
+                })
+                .where(
+                    and(
+                        eq(deliveryRuns.id, runId),
+                        eq(deliveryRuns.state, DeliveryRunStates.ACTIVE),
+                    ),
+                );
+        }
+
         return stops;
     });
 }
@@ -3411,15 +4717,18 @@ export async function markDeliveryRunStopArrived({
     driverUserId,
     runId,
     stopId,
+    expectedRouteRevision,
 }: {
     driverUserId: string;
     runId: string;
     stopId: number;
+    expectedRouteRevision?: number;
 }) {
     const stops = await markDeliveryRunStopsArrived({
         driverUserId,
         runId,
         stopIds: [stopId],
+        expectedRouteRevision,
     });
     return stops[0];
 }
@@ -3428,16 +4737,19 @@ export async function markDeliveryRunStopDelivered({
     driverUserId,
     runId,
     stopId,
+    expectedRouteRevision,
 }: {
     driverUserId: string;
     runId: string;
     stopId: number;
+    expectedRouteRevision?: number;
 }) {
     const requestIds = await storage().transaction(async (tx) =>
         markDeliveryRunStopsDeliveredInDatabase({
             driverUserId,
             runId,
             stopIds: [stopId],
+            expectedRouteRevision,
             db: tx,
         }),
     );
@@ -3448,20 +4760,26 @@ async function markDeliveryRunStopsDeliveredInDatabase({
     driverUserId,
     runId,
     stopIds,
+    expectedRouteRevision,
     db,
 }: {
     driverUserId: string;
     runId: string;
     stopIds: number[];
+    expectedRouteRevision?: number;
     db: TransactionClient;
 }) {
     const stops = await ensureOwnedDeliveryRunStops({
         driverUserId,
         runId,
         stopIds,
+        expectedRouteRevision,
         db,
     });
     const now = new Date();
+    const advancesExecution = stops.some((stop) =>
+        isDeliveryRunStopActionable(stop.state),
+    );
 
     for (const stop of stops) {
         if (!isDeliveryRunStopActionable(stop.state)) {
@@ -3493,6 +4811,21 @@ async function markDeliveryRunStopsDeliveredInDatabase({
         }
     }
 
+    if (advancesExecution) {
+        await db
+            .update(deliveryRuns)
+            .set({
+                routeRevision: sql`${deliveryRuns.routeRevision} + 1`,
+                rerouteAttemptedAt: null,
+            })
+            .where(
+                and(
+                    eq(deliveryRuns.id, runId),
+                    eq(deliveryRuns.state, DeliveryRunStates.ACTIVE),
+                ),
+            );
+    }
+
     await completeDeliveryRunIfEligible({ runId, completedAt: now, db });
 
     return stops.flatMap((stop) =>
@@ -3508,17 +4841,20 @@ export async function fulfillDeliveryRunStops({
     runId,
     stopIds,
     deliveryNotes,
+    expectedRouteRevision,
 }: {
     driverUserId: string;
     runId: string;
     stopIds: number[];
     deliveryNotes?: string;
+    expectedRouteRevision?: number;
 }) {
     return await withDeliveryDispatchTransaction(async (tx) => {
         const stops = await ensureOwnedDeliveryRunStops({
             driverUserId,
             runId,
             stopIds,
+            expectedRouteRevision,
             db: tx,
         });
         for (const stop of stops) {
@@ -3533,6 +4869,7 @@ export async function fulfillDeliveryRunStops({
             driverUserId,
             runId,
             stopIds,
+            expectedRouteRevision,
             db: tx,
         });
     });
@@ -3543,17 +4880,20 @@ export async function fulfillDeliveryRunStop({
     runId,
     stopId,
     deliveryNotes,
+    expectedRouteRevision,
 }: {
     driverUserId: string;
     runId: string;
     stopId: number;
     deliveryNotes?: string;
+    expectedRouteRevision?: number;
 }) {
     const requestIds = await fulfillDeliveryRunStops({
         driverUserId,
         runId,
         stopIds: [stopId],
         deliveryNotes,
+        expectedRouteRevision,
     });
     return requestIds[0];
 }

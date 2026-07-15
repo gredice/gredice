@@ -7,6 +7,7 @@ import {
     confirmDeliveryRequest,
     createNotification,
     DeliveryRequestStates,
+    DeliveryRunAssignmentError,
     fulfillDeliveryRequest,
     getDeliveryRequest,
     prepareDeliveryRequest,
@@ -23,11 +24,13 @@ async function applyDeliveryRequestStatus({
     status,
     cancelReason,
     notes,
+    actorUserId,
 }: {
     requestId: string;
     status: string;
     cancelReason?: string;
     notes?: string;
+    actorUserId: string;
 }) {
     const request = await getDeliveryRequest(requestId);
 
@@ -54,6 +57,7 @@ async function applyDeliveryRequestStatus({
             'admin',
             cancelReason ?? '',
             notes,
+            actorUserId,
         );
         await notifyDeliveryRequestEvent(requestId, 'cancelled', {
             reason: cancelReason,
@@ -89,7 +93,7 @@ export async function updateDeliveryRequestStatusAction(
     formData: FormData,
 ) {
     try {
-        await auth(['admin']);
+        const { userId } = await auth(['admin']);
 
         const requestIdValue = formData.get('requestId');
         const statusValue = formData.get('status');
@@ -119,6 +123,7 @@ export async function updateDeliveryRequestStatusAction(
             status,
             cancelReason,
             notes,
+            actorUserId: userId,
         });
 
         revalidatePath('/admin/delivery/requests');
@@ -141,7 +146,7 @@ export async function progressDeliveryRequestGroupStatusAction(
     formData: FormData,
 ) {
     try {
-        await auth(['admin']);
+        const { userId } = await auth(['admin']);
 
         const requestIds = formData
             .getAll('requestIds')
@@ -173,6 +178,7 @@ export async function progressDeliveryRequestGroupStatusAction(
             await applyDeliveryRequestStatus({
                 requestId,
                 status: nextStatus,
+                actorUserId: userId,
             });
             updatedCount += 1;
         }
@@ -245,6 +251,14 @@ export async function changeDeliveryRequestSlotAction(
         };
     } catch (error) {
         console.error('Error changing delivery request slot:', error);
+        if (error instanceof DeliveryRunAssignmentError) {
+            return {
+                success: false,
+                code: error.code,
+                message:
+                    'Termin je dio aktivne dostavne rute. Najprije napusti rutu ili oporavi dostavu.',
+            };
+        }
         return {
             success: false,
             message: 'Greška pri promjeni termina dostave',

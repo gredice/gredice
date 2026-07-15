@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import test, { type TestContext } from 'node:test';
-import { planPickupAwareDeliveryRoute } from './deliveryPickupRouting';
+import {
+    deliveryRerouteOriginNodeKey,
+    planPickupAwareDeliveryRoute,
+    type RemainingDeliveryRouteNode,
+    recalculatePickupAwareDeliveryRoute,
+} from './deliveryPickupRouting';
 import { DeliveryRoutePlanningError } from './deliveryRouting';
 
 type Coordinates = {
@@ -13,6 +18,7 @@ type GoogleMockOptions = {
     failMatrix?: boolean;
     failFinalRoute?: boolean;
     matrixElementFailure?: 'internal' | 'malformed';
+    finalRouteDurationSeconds?: number;
 };
 
 const departureTime = new Date('2026-07-15T06:00:00.000Z');
@@ -187,7 +193,7 @@ function installGoogleMock(
                         duration: `${legCount * 60}s`,
                         legs: Array.from({ length: legCount }, () => ({
                             distanceMeters: 1_000,
-                            duration: '60s',
+                            duration: `${options.finalRouteDurationSeconds ?? 60}s`,
                         })),
                         polyline: { encodedPolyline: 'pickup-aware-route' },
                     },
@@ -561,4 +567,170 @@ test('keeps one upstream bulk group as one customer node', async (t) => {
     assert.equal(plan.pickupNodes[0]?.serviceDurationSeconds, 10 * 60);
     assert.equal(plan.stops[0]?.serviceDurationSeconds, 5 * 60);
     assert.ok(plan.totalDurationSeconds >= 10 * 60 + 60 + 5 * 60);
+});
+
+function remainingCustomer(
+    index: number,
+    overrides: Partial<
+        Extract<RemainingDeliveryRouteNode, { kind: 'customer' }>
+    > = {},
+): Extract<RemainingDeliveryRouteNode, { kind: 'customer' }> {
+    const nodeKey = `remaining-${String(index).padStart(2, '0')}`;
+    return {
+        kind: 'customer',
+        nodeKey,
+        formattedAddress: `${nodeKey} address`,
+        deliveryRequestId: `request-${index}`,
+        requiredPickupKey: deliveryRerouteOriginNodeKey,
+        latitude: 45.75 + index / 10_000,
+        longitude: 15.9 + index / 10_000,
+        serviceDurationSeconds: 0,
+        ...overrides,
+    };
+}
+
+test('reuses one Google matrix while selectively relaxing many overdue reroute windows', async (t) => {
+    const google = installGoogleMock(t);
+    const nodes = Array.from({ length: 25 }, (_value, index) =>
+        remainingCustomer(index, {
+            windowEndAt: new Date(departureTime.getTime() - 60_000),
+        }),
+    );
+
+    const plan = await recalculatePickupAwareDeliveryRoute({
+        origin: { latitude: 45.75, longitude: 15.9 },
+        nodes,
+        departureTime,
+    });
+
+    assert.equal(plan.estimateSource, 'google');
+    assert.equal(plan.visits.length, nodes.length);
+    assert.equal(google.matrixBodies.length, 2);
+    assert.equal(google.routeBodies.length, 1);
+    assert.equal(google.fetchCount(), 3);
+});
+
+test('keeps feasible reroute deadlines while relaxing only an overdue stop', async (t) => {
+    installGoogleMock(t);
+    const plan = await recalculatePickupAwareDeliveryRoute({
+        origin: { latitude: 45.75, longitude: 15.9 },
+        nodes: [
+            remainingCustomer(1, {
+                nodeKey: 'customer-a-overdue',
+                windowEndAt: new Date(departureTime.getTime() - 60_000),
+            }),
+            remainingCustomer(2, {
+                nodeKey: 'customer-z-deadline',
+                windowEndAt: new Date(departureTime.getTime() + 90_000),
+            }),
+        ],
+        departureTime,
+    });
+
+    assert.deepEqual(
+        plan.visits.map((visit) => visit.nodeKey),
+        ['customer-z-deadline', 'customer-a-overdue'],
+    );
+});
+
+test('uses linear Google connectors and preserves a large fixed retry route', async (t) => {
+    const google = installGoogleMock(t);
+    const nodes = Array.from({ length: 55 }, (_value, index) =>
+        remainingCustomer(index, { retryLaneRank: index + 1 }),
+    );
+
+    const plan = await recalculatePickupAwareDeliveryRoute({
+        origin: { latitude: 45.75, longitude: 15.9 },
+        nodes,
+        departureTime,
+    });
+
+    assert.equal(plan.estimateSource, 'google');
+    assert.equal(plan.encodedPolyline, undefined);
+    assert.deepEqual(
+        plan.visits.map((visit) => visit.nodeKey),
+        nodes.map((node) => node.nodeKey),
+    );
+    assert.equal(google.matrixBodies.length, 0);
+    assert.equal(google.routeBodies.length, 3);
+    assert.equal(google.fetchCount(), 3);
+    assert.equal(
+        google.routeBodies.reduce<number>(
+            (total, body) =>
+                total + arrayField(body, 'intermediates').length + 1,
+            0,
+        ),
+        54,
+    );
+    assert.equal(plan.visits[0]?.incomingTravelSeconds, 0);
+    for (const body of google.routeBodies) {
+        assert.ok(arrayField(body, 'intermediates').length <= 25);
+    }
+    const segmentDepartures = google.routeBodies.map((body) => {
+        assert.ok(isRecord(body));
+        assert.equal(typeof body.departureTime, 'string');
+        return Date.parse(String(body.departureTime));
+    });
+    assert.ok(
+        segmentDepartures.every(
+            (value, index) =>
+                index === 0 || value > (segmentDepartures[index - 1] ?? value),
+        ),
+    );
+});
+
+test('softens every deadline missed by final Google legs without request fan-out', async (t) => {
+    const google = installGoogleMock(t, {
+        finalRouteDurationSeconds: 300,
+    });
+    const deadline = new Date(departureTime.getTime() + 4 * 60_000);
+    const plan = await recalculatePickupAwareDeliveryRoute({
+        origin: { latitude: 45.75, longitude: 15.9 },
+        nodes: Array.from({ length: 3 }, (_value, index) =>
+            remainingCustomer(index + 1, { windowEndAt: deadline }),
+        ),
+        departureTime,
+    });
+
+    assert.equal(plan.estimateSource, 'google');
+    assert.equal(plan.visits.length, 3);
+    assert.ok(
+        plan.visits.every(
+            (visit) => visit.estimatedArrivalAt.getTime() > deadline.getTime(),
+        ),
+    );
+    assert.equal(google.matrixBodies.length, 1);
+    assert.equal(google.routeBodies.length, 1);
+    assert.equal(google.fetchCount(), 2);
+});
+
+test('keeps final Google deadlines strict when planning a new route', async (t) => {
+    const google = installGoogleMock(t, {
+        finalRouteDurationSeconds: 300,
+    });
+    await assert.rejects(
+        planPickupAwareDeliveryRoute({
+            pickupCandidates: [pickup('strict-window-pickup')],
+            candidates: [
+                {
+                    ...customer(
+                        'strict-window-customer',
+                        'strict-window-pickup',
+                    ),
+                    windowEndAt: new Date(
+                        departureTime.getTime() + 12 * 60_000,
+                    ),
+                },
+            ],
+            departureTime,
+        }),
+        (error: unknown) => {
+            assert.ok(error instanceof DeliveryRoutePlanningError);
+            assert.equal(error.code, 'route-time-window-infeasible');
+            assert.equal(error.nodeKey, 'strict-window-customer');
+            return true;
+        },
+    );
+    assert.equal(google.matrixBodies.length, 1);
+    assert.equal(google.routeBodies.length, 1);
 });
