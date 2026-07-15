@@ -229,11 +229,34 @@ test('navbar floats on scroll and landing game frame is rounded', async ({
         .toBeGreaterThanOrEqual(7);
 });
 
-test('desktop floating navbar keeps container width', async ({ page }) => {
+test('desktop floating navbar keeps its width and balanced CTA spacing', async ({
+    page,
+}) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/');
 
     const header = page.locator('header');
+    const gardenCta = page.getByRole('link', { name: 'Moj novi vrt' });
+    const gardenCtaIcon = gardenCta.locator('svg:visible').last();
+
+    await expect
+        .poll(async () => {
+            const [buttonBox, iconBox] = await Promise.all([
+                gardenCta.boundingBox(),
+                gardenCtaIcon.boundingBox(),
+            ]);
+            if (!buttonBox || !iconBox) {
+                return Number.POSITIVE_INFINITY;
+            }
+
+            const trailingSpace =
+                buttonBox.x + buttonBox.width - (iconBox.x + iconBox.width);
+            const verticalSpace = (buttonBox.height - iconBox.height) / 2;
+
+            return Math.abs(trailingSpace - verticalSpace);
+        })
+        .toBeLessThanOrEqual(0.5);
+
     await page.evaluate(() => window.scrollTo(0, 160));
     await expectPillBorderRadius(header);
 
