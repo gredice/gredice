@@ -10,6 +10,7 @@ import {
     cancelDeliveryRequest,
     changeDeliveryRequestSlot,
     claimDeliveryRunReroute,
+    clearExpiredDeliveryRunLocations,
     consumeDeliveryRunPreparation,
     createDeliveryAddress,
     createDeliveryRun,
@@ -35,6 +36,7 @@ import {
     DeliveryRunStopStates,
     deleteDeliveryAddress,
     deliveryRequests,
+    deliveryRunExactLocationTtlMs,
     deliveryRunExceptionOperations,
     deliveryRunPickupNodes,
     deliveryRunPickupOperations,
@@ -75,6 +77,7 @@ import {
     timeSlots,
     uncancelDeliveryRequest,
     updateDeliveryAddress,
+    updateDeliveryRunEstimates,
     updateDeliveryRunLocation,
     updatePickupLocation,
     updateTimeSlot,
@@ -932,6 +935,7 @@ test('delivery run fulfills a current bulk stop atomically and preserves route o
     assert.equal(completedRun.currentLocationHeading, null);
     assert.equal(completedRun.currentLocationSpeed, null);
     assert.equal(completedRun.currentLocationRecordedAt, null);
+    assert.equal(completedRun.currentLocationReceivedAt, null);
     assert.equal(
         await accountCanTrackDeliveryRun({ accountId, runId: run.id }),
         false,
@@ -1086,7 +1090,7 @@ test('concurrent cross-driver assignment permits one run and rolls back the lose
     );
 });
 
-test('an older GPS sample is rejected without overwriting the latest telemetry', async () => {
+test('GPS acknowledgement replays identically without extending freshness and rejects conflicts', async () => {
     const fixture = await createDeliveryRunFixture();
     const [driverUserId] = fixture.driverUserIds;
     const [requestId] = fixture.requestIds;
@@ -1099,7 +1103,7 @@ test('an older GPS sample is rejected without overwriting the latest telemetry',
         requestIds: [requestId],
     });
     const latestRecordedAt = new Date('2026-07-13T08:10:00.000Z');
-    await updateDeliveryRunLocation({
+    const accepted = await updateDeliveryRunLocation({
         runId: run.id,
         driverUserId,
         latitude: 45.812,
@@ -1109,8 +1113,39 @@ test('an older GPS sample is rejected without overwriting the latest telemetry',
         speed: 9.25,
         recordedAt: latestRecordedAt,
     });
+    assert.equal(accepted.replayed, false);
+    assert.ok(accepted.acceptedAt instanceof Date);
+    assert.equal(accepted.previousAcceptedAt, null);
 
-    await assert.rejects(
+    const replayed = await updateDeliveryRunLocation({
+        runId: run.id,
+        driverUserId,
+        latitude: 45.812,
+        longitude: 15.982,
+        accuracy: 5,
+        heading: 135,
+        speed: 9.25,
+        recordedAt: latestRecordedAt,
+    });
+    assert.equal(replayed.replayed, true);
+    assert.deepEqual(replayed.acceptedAt, accepted.acceptedAt);
+    assert.deepEqual(replayed.previousAcceptedAt, accepted.acceptedAt);
+
+    await assertExecutionError(
+        updateDeliveryRunLocation({
+            runId: run.id,
+            driverUserId,
+            latitude: 45.7,
+            longitude: 15.8,
+            accuracy: 99,
+            heading: 5,
+            speed: 1,
+            recordedAt: latestRecordedAt,
+        }),
+        DeliveryRunExecutionErrorCodes.LOCATION_CONFLICT,
+    );
+
+    await assertExecutionError(
         updateDeliveryRunLocation({
             runId: run.id,
             driverUserId,
@@ -1121,7 +1156,7 @@ test('an older GPS sample is rejected without overwriting the latest telemetry',
             speed: 1,
             recordedAt: new Date('2026-07-13T08:09:59.000Z'),
         }),
-        /Active delivery run not found/,
+        DeliveryRunExecutionErrorCodes.LOCATION_STALE,
     );
 
     const persistedRun = await getDeliveryRun(run.id);
@@ -1133,6 +1168,271 @@ test('an older GPS sample is rejected without overwriting the latest telemetry',
     assert.equal(
         persistedRun?.currentLocationRecordedAt?.toISOString(),
         latestRecordedAt.toISOString(),
+    );
+    assert.deepEqual(
+        persistedRun?.currentLocationReceivedAt,
+        accepted.acceptedAt,
+    );
+});
+
+test('tracking retention clears exact active telemetry after TTL and is idempotent', async () => {
+    const fixture = await createDeliveryRunFixture({
+        accountIndexes: [0, 1],
+        driverCount: 2,
+    });
+    const [firstDriverUserId, secondDriverUserId] = fixture.driverUserIds;
+    const [firstRequestId, secondRequestId] = fixture.requestIds;
+    assert.ok(firstDriverUserId);
+    assert.ok(secondDriverUserId);
+    assert.ok(firstRequestId);
+    assert.ok(secondRequestId);
+
+    const firstRun = await createRun({
+        fixture,
+        driverUserId: firstDriverUserId,
+        requestIds: [firstRequestId],
+    });
+    const secondRun = await createRun({
+        fixture,
+        driverUserId: secondDriverUserId,
+        requestIds: [secondRequestId],
+    });
+    const now = new Date('2026-07-15T10:05:00.000Z');
+    const exactBoundary = new Date(
+        now.getTime() - deliveryRunExactLocationTtlMs,
+    );
+    await storage()
+        .update(deliveryRuns)
+        .set({
+            currentLatitude: 45.812,
+            currentLongitude: 15.982,
+            currentLocationAccuracy: 5,
+            currentLocationHeading: 135,
+            currentLocationSpeed: 9.25,
+            currentLocationRecordedAt: new Date(
+                exactBoundary.getTime() - 1_000,
+            ),
+            currentLocationReceivedAt: exactBoundary,
+        })
+        .where(eq(deliveryRuns.id, firstRun.id));
+    await storage()
+        .update(deliveryRuns)
+        .set({
+            currentLatitude: 45.7,
+            currentLongitude: 15.8,
+            currentLocationAccuracy: 9,
+            currentLocationHeading: 90,
+            currentLocationSpeed: 4,
+            currentLocationRecordedAt: new Date('2026-07-15T10:00:00.000Z'),
+            currentLocationReceivedAt: null,
+        })
+        .where(eq(deliveryRuns.id, secondRun.id));
+
+    const boundaryCleanup = await clearExpiredDeliveryRunLocations(now);
+    assert.deepEqual(
+        boundaryCleanup.map((row) => row.runId),
+        [secondRun.id],
+    );
+    assert.equal((await getDeliveryRun(firstRun.id))?.currentLatitude, 45.812);
+
+    const expired = await clearExpiredDeliveryRunLocations(
+        new Date(now.getTime() + 1),
+    );
+    assert.deepEqual(
+        expired.map((row) => row.runId),
+        [firstRun.id],
+    );
+    const persisted = await getDeliveryRun(firstRun.id);
+    assert.equal(persisted?.currentLatitude, null);
+    assert.equal(persisted?.currentLongitude, null);
+    assert.equal(persisted?.currentLocationAccuracy, null);
+    assert.equal(persisted?.currentLocationHeading, null);
+    assert.equal(persisted?.currentLocationSpeed, null);
+    assert.equal(persisted?.currentLocationRecordedAt, null);
+    assert.deepEqual(persisted?.currentLocationReceivedAt, exactBoundary);
+    assert.deepEqual(
+        await clearExpiredDeliveryRunLocations(new Date(now.getTime() + 2)),
+        [],
+    );
+});
+
+test('concurrent identical GPS submissions share one authoritative receipt', async () => {
+    const fixture = await createDeliveryRunFixture();
+    const [driverUserId] = fixture.driverUserIds;
+    const [requestId] = fixture.requestIds;
+    assert.ok(driverUserId);
+    assert.ok(requestId);
+    const run = await createRun({
+        fixture,
+        driverUserId,
+        requestIds: [requestId],
+    });
+    const payload = {
+        runId: run.id,
+        driverUserId,
+        latitude: 45.812,
+        longitude: 15.982,
+        accuracy: 5,
+        heading: 135,
+        speed: 9.25,
+        recordedAt: new Date('2026-07-13T08:10:00.000Z'),
+    };
+
+    const results = await Promise.all([
+        updateDeliveryRunLocation(payload),
+        updateDeliveryRunLocation(payload),
+    ]);
+    assert.deepEqual(results.map((result) => result.replayed).sort(), [
+        false,
+        true,
+    ]);
+    assert.deepEqual(results[0]?.acceptedAt, results[1]?.acceptedAt);
+});
+
+test('a slower estimate calculation cannot overwrite the route for a newer accepted GPS sample', async () => {
+    const fixture = await createDeliveryRunFixture();
+    const [driverUserId] = fixture.driverUserIds;
+    const [requestId] = fixture.requestIds;
+    assert.ok(driverUserId);
+    assert.ok(requestId);
+    const run = await createRun({
+        fixture,
+        driverUserId,
+        requestIds: [requestId],
+    });
+    const olderRecordedAt = new Date('2026-07-13T08:10:00.000Z');
+    const olderAcknowledgement = await updateDeliveryRunLocation({
+        runId: run.id,
+        driverUserId,
+        latitude: 45.81,
+        longitude: 15.97,
+        recordedAt: olderRecordedAt,
+    });
+    const slowerOlderEstimate = {
+        runId: run.id,
+        driverUserId,
+        expectedRouteRevision: run.routeRevision,
+        expectedLocationRecordedAt: olderRecordedAt,
+        expectedLocationReceivedAt: olderAcknowledgement.acceptedAt,
+        encodedPolyline: 'older-route',
+        totalDistanceMeters: 9_000,
+        totalDurationSeconds: 1_800,
+        estimates: [
+            {
+                deliveryRequestId: requestId,
+                estimatedArrivalAt: new Date('2026-07-13T08:40:00.000Z'),
+                estimatedTravelSeconds: 1_800,
+                estimatedDistanceMeters: 9_000,
+            },
+        ],
+    };
+
+    const newerRecordedAt = new Date('2026-07-13T08:10:10.000Z');
+    const newerAcknowledgement = await updateDeliveryRunLocation({
+        runId: run.id,
+        driverUserId,
+        latitude: 45.82,
+        longitude: 15.98,
+        recordedAt: newerRecordedAt,
+    });
+    const newerArrivalAt = new Date('2026-07-13T08:20:00.000Z');
+    assert.equal(
+        await updateDeliveryRunEstimates({
+            runId: run.id,
+            driverUserId,
+            expectedRouteRevision: run.routeRevision,
+            expectedLocationRecordedAt: newerRecordedAt,
+            expectedLocationReceivedAt: newerAcknowledgement.acceptedAt,
+            encodedPolyline: 'newer-route',
+            totalDistanceMeters: 3_000,
+            totalDurationSeconds: 600,
+            estimates: [
+                {
+                    deliveryRequestId: requestId,
+                    estimatedArrivalAt: newerArrivalAt,
+                    estimatedTravelSeconds: 600,
+                    estimatedDistanceMeters: 3_000,
+                },
+            ],
+        }),
+        true,
+    );
+
+    assert.equal(await updateDeliveryRunEstimates(slowerOlderEstimate), false);
+    const persisted = await getDeliveryRun(run.id);
+    assert.equal(persisted?.encodedPolyline, 'newer-route');
+    assert.equal(persisted?.totalDistanceMeters, 3_000);
+    assert.equal(persisted?.totalDurationSeconds, 600);
+    assert.equal(persisted?.stops[0]?.estimatedTravelSeconds, 600);
+    assert.equal(persisted?.stops[0]?.estimatedDistanceMeters, 3_000);
+    assert.deepEqual(persisted?.stops[0]?.estimatedArrivalAt, newerArrivalAt);
+});
+
+test('an estimate calculation cannot overwrite a route whose revision advanced at arrival', async () => {
+    const fixture = await createDeliveryRunFixture();
+    const [driverUserId] = fixture.driverUserIds;
+    const [requestId] = fixture.requestIds;
+    assert.ok(driverUserId);
+    assert.ok(requestId);
+    const run = await createRun({
+        fixture,
+        driverUserId,
+        requestIds: [requestId],
+    });
+    const [stop] = run.stops;
+    assert.ok(stop);
+    const recordedAt = new Date('2026-07-13T08:10:00.000Z');
+    const acknowledgement = await updateDeliveryRunLocation({
+        runId: run.id,
+        driverUserId,
+        latitude: 45.81,
+        longitude: 15.97,
+        recordedAt,
+    });
+
+    await markDeliveryRunStopArrived({
+        driverUserId,
+        runId: run.id,
+        stopId: stop.id,
+        expectedRouteRevision: run.routeRevision,
+    });
+    assert.equal(
+        await updateDeliveryRunEstimates({
+            runId: run.id,
+            driverUserId,
+            expectedRouteRevision: run.routeRevision,
+            expectedLocationRecordedAt: recordedAt,
+            expectedLocationReceivedAt: acknowledgement.acceptedAt,
+            encodedPolyline: 'stale-route',
+            totalDistanceMeters: 9_000,
+            totalDurationSeconds: 1_800,
+            estimates: [
+                {
+                    deliveryRequestId: requestId,
+                    estimatedArrivalAt: new Date('2026-07-13T08:40:00.000Z'),
+                    estimatedTravelSeconds: 1_800,
+                    estimatedDistanceMeters: 9_000,
+                },
+            ],
+        }),
+        false,
+    );
+
+    const persisted = await getDeliveryRun(run.id);
+    assert.equal(persisted?.routeRevision, run.routeRevision + 1);
+    assert.equal(persisted?.totalDistanceMeters, run.totalDistanceMeters);
+    assert.equal(persisted?.totalDurationSeconds, run.totalDurationSeconds);
+    assert.equal(
+        persisted?.stops[0]?.estimatedTravelSeconds,
+        stop.estimatedTravelSeconds,
+    );
+    assert.equal(
+        persisted?.stops[0]?.estimatedDistanceMeters,
+        stop.estimatedDistanceMeters,
+    );
+    assert.deepEqual(
+        persisted?.stops[0]?.estimatedArrivalAt,
+        stop.estimatedArrivalAt,
     );
 });
 
@@ -3104,6 +3404,16 @@ test('cancelled and fulfilled request projections are absorbing for late excepti
     });
     const [stop] = run.stops;
     assert.ok(stop);
+    await updateDeliveryRunLocation({
+        runId: run.id,
+        driverUserId,
+        latitude: 45.8,
+        longitude: 15.97,
+        accuracy: 6,
+        heading: 120,
+        speed: 7,
+        recordedAt: new Date('2026-07-13T08:59:00.000Z'),
+    });
     await cancelDeliveryRequest(requestId, 'admin', 'Otkazano tijekom dostave');
 
     await assertExecutionError(
@@ -3122,10 +3432,19 @@ test('cancelled and fulfilled request projections are absorbing for late excepti
         }),
         DeliveryRunExecutionErrorCodes.ACTIVE_RUN_NOT_FOUND,
     );
+    const cancelledRun = await getDeliveryRun(run.id);
+    assert.equal(cancelledRun?.state, DeliveryRunStates.COMPLETED);
     assert.equal(
-        (await getDeliveryRun(run.id))?.stops[0]?.state,
+        cancelledRun?.stops[0]?.state,
         DeliveryRunStopStates.CANCELLED,
     );
+    assert.equal(cancelledRun?.currentLatitude, null);
+    assert.equal(cancelledRun?.currentLongitude, null);
+    assert.equal(cancelledRun?.currentLocationAccuracy, null);
+    assert.equal(cancelledRun?.currentLocationHeading, null);
+    assert.equal(cancelledRun?.currentLocationSpeed, null);
+    assert.equal(cancelledRun?.currentLocationRecordedAt, null);
+    assert.equal(cancelledRun?.currentLocationReceivedAt, null);
     assert.equal(
         (
             await storage()
@@ -4219,6 +4538,9 @@ test('whole-run reassignment clears stale GPS and requires the current route rev
         driverUserId,
         latitude: 45.8,
         longitude: 15.97,
+        accuracy: 4,
+        heading: 180,
+        speed: 8,
         recordedAt: new Date('2026-07-13T12:00:00.000Z'),
     });
     await markDeliveryRunStopsArrived({
@@ -4249,6 +4571,9 @@ test('whole-run reassignment clears stale GPS and requires the current route rev
     assert.equal(persisted?.driverUserId, nextDriverUserId);
     assert.equal(persisted?.currentLatitude, null);
     assert.equal(persisted?.currentLongitude, null);
+    assert.equal(persisted?.currentLocationAccuracy, null);
+    assert.equal(persisted?.currentLocationHeading, null);
+    assert.equal(persisted?.currentLocationSpeed, null);
     assert.equal(persisted?.currentLocationRecordedAt, null);
     assert.equal(persisted?.currentLocationReceivedAt, null);
     assert.ok(
@@ -4276,6 +4601,16 @@ test('route abandonment releases requests but preserves a failed stop audit outc
     const [failedStop, pendingStop] = run.stops;
     assert.ok(failedStop);
     assert.ok(pendingStop);
+    await updateDeliveryRunLocation({
+        runId: run.id,
+        driverUserId,
+        latitude: 45.8,
+        longitude: 15.97,
+        accuracy: 4,
+        heading: 180,
+        speed: 8,
+        recordedAt: new Date('2026-07-13T12:09:00.000Z'),
+    });
     const failure = await recordDeliveryRunStopExceptions({
         driverUserId,
         runId: run.id,
@@ -4305,6 +4640,13 @@ test('route abandonment releases requests but preserves a failed stop audit outc
 
     const persisted = await getDeliveryRun(run.id);
     assert.equal(persisted?.state, DeliveryRunStates.CANCELLED);
+    assert.equal(persisted?.currentLatitude, null);
+    assert.equal(persisted?.currentLongitude, null);
+    assert.equal(persisted?.currentLocationAccuracy, null);
+    assert.equal(persisted?.currentLocationHeading, null);
+    assert.equal(persisted?.currentLocationSpeed, null);
+    assert.equal(persisted?.currentLocationRecordedAt, null);
+    assert.equal(persisted?.currentLocationReceivedAt, null);
     const persistedFailed = persisted?.stops.find(
         (stop) => stop.id === failedStop.id,
     );

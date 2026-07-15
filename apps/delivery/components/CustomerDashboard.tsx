@@ -1,11 +1,9 @@
-import { Alert } from '@gredice/ui/Alert';
 import { Card, CardContent } from '@gredice/ui/Card';
-import { MyLocation, ShoppingCart, Truck } from '@gredice/ui/icons';
+import { ShoppingCart, Truck } from '@gredice/ui/icons';
 import { Typography } from '@gredice/ui/Typography';
 import type { CustomerDeliveryDashboard } from '../lib/deliveryDashboardTypes';
-import { formatDeliveryDateTime } from '../lib/deliveryFormatting';
+import { CustomerDeliveryTracking } from './CustomerDeliveryTracking';
 import { DeliveryAppHeader } from './DeliveryAppHeader';
-import { DeliveryMap } from './DeliveryMap';
 import { DeliveryStopCard } from './DeliveryStopCard';
 
 export function CustomerDashboard({
@@ -13,7 +11,7 @@ export function CustomerDashboard({
 }: {
     dashboard: CustomerDeliveryDashboard;
 }) {
-    const liveDelivery = dashboard.deliveries.find(
+    const trackedDelivery = dashboard.deliveries.find(
         (delivery) =>
             delivery.runId &&
             delivery.tracking &&
@@ -37,23 +35,11 @@ export function CustomerDashboard({
                     </Typography>
                 </div>
 
-                {liveDelivery?.runId && liveDelivery.tracking ? (
-                    <section className="space-y-3">
-                        <Alert
-                            color="info"
-                            startDecorator={<MyLocation className="size-5" />}
-                        >
-                            Vozač je na putu. Zadnja lokacija:{' '}
-                            {formatDeliveryDateTime(
-                                liveDelivery.tracking.recordedAt,
-                            )}
-                        </Alert>
-                        <DeliveryMap
-                            mapUrl={`/api/map/${liveDelivery.runId}`}
-                            version={liveDelivery.tracking.recordedAt}
-                            title="Trenutna lokacija vozača i moja dostava"
-                        />
-                    </section>
+                {trackedDelivery?.runId && trackedDelivery.tracking ? (
+                    <CustomerDeliveryTracking
+                        runId={trackedDelivery.runId}
+                        tracking={trackedDelivery.tracking}
+                    />
                 ) : null}
 
                 {dashboard.deliveries.length > 0 ? (

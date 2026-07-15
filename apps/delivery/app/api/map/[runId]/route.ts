@@ -4,17 +4,20 @@ import {
     accountCanTrackDeliveryRun,
     resolveDeliveryRunStopGroups,
 } from '../../../../lib/deliveryDashboard';
+import { driverDeliveryTrackingLocation } from '../../../../lib/deliveryTracking';
 import {
     buildGoogleStaticMapUrl,
     unavailableMapSvg,
 } from '../../../../lib/googleStaticMap';
+
+const noStoreHeaders = { 'Cache-Control': 'private, no-store' };
 
 function unavailableMapResponse() {
     return new Response(unavailableMapSvg(), {
         status: 200,
         headers: {
             'Content-Type': 'image/svg+xml; charset=utf-8',
-            'Cache-Control': 'no-store',
+            ...noStoreHeaders,
         },
     });
 }
@@ -28,7 +31,12 @@ export async function GET(
         async ({ accountId, userId, user }) => {
             const { runId } = await params;
             const run = await getDeliveryRun(runId);
-            if (!run) return new Response(null, { status: 404 });
+            if (!run) {
+                return new Response(null, {
+                    status: 404,
+                    headers: noStoreHeaders,
+                });
+            }
 
             const driverView =
                 (user.role === 'driver' || user.role === 'admin') &&
@@ -38,9 +46,14 @@ export async function GET(
                 customerView &&
                 !(await accountCanTrackDeliveryRun({ accountId, runId }))
             ) {
-                return new Response(null, { status: 403 });
+                return new Response(null, {
+                    status: 403,
+                    headers: noStoreHeaders,
+                });
             }
 
+            const projectedAt = new Date();
+            const location = driverDeliveryTrackingLocation(run, projectedAt);
             const groups = await resolveDeliveryRunStopGroups(run);
             const stops = groups.flatMap((group, index) => {
                 const customerOwnsStop = group.items.some(
@@ -66,14 +79,12 @@ export async function GET(
                 ];
             });
             const url = buildGoogleStaticMapUrl({
-                driverLocation:
-                    run.currentLatitude !== null &&
-                    run.currentLongitude !== null
-                        ? {
-                              latitude: run.currentLatitude,
-                              longitude: run.currentLongitude,
-                          }
-                        : null,
+                driverLocation: location
+                    ? {
+                          latitude: location.latitude,
+                          longitude: location.longitude,
+                      }
+                    : null,
                 pickupNodes: driverView
                     ? run.pickupNodes.flatMap((pickupNode) =>
                           pickupNode.latitude !== null &&
@@ -101,11 +112,14 @@ export async function GET(
                     headers: {
                         'Content-Type':
                             response.headers.get('content-type') ?? 'image/png',
-                        'Cache-Control': 'no-store',
+                        ...noStoreHeaders,
                     },
                 });
             } catch (error) {
-                console.error('Failed to load delivery map', { error, runId });
+                console.error('Failed to load delivery map', {
+                    runId,
+                    errorName: error instanceof Error ? error.name : 'Unknown',
+                });
                 return unavailableMapResponse();
             }
         },

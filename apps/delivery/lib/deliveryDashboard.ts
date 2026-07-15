@@ -39,7 +39,6 @@ import type {
     DeliveryRouteStepSummary,
     DeliveryStopDeliverySummary,
     DeliveryStopSummary,
-    DeliveryTrackingLocation,
 } from './deliveryDashboardTypes';
 import {
     customerDeliveryRecoverySummary,
@@ -66,6 +65,12 @@ import {
 } from './deliveryRunRerouting';
 import { resolveDeliveryRunStart } from './deliveryRunStart';
 import { buildDeliveryStopKey } from './deliveryStopGrouping';
+import {
+    customerDeliveryTrackingSummary,
+    deliveryTrackingRecoveryTransition,
+    deliveryTrackingStatus,
+    driverDeliveryTrackingLocation,
+} from './deliveryTracking';
 
 type ListedDeliveryRequest = Awaited<
     ReturnType<typeof getDeliveryRequestsWithEvents>
@@ -96,32 +101,6 @@ const etaRefreshIntervalMs = 2 * 60 * 1000;
 
 function iso(value?: Date | null) {
     return value?.toISOString() ?? null;
-}
-
-function trackingLocation(run: {
-    currentLatitude: number | null;
-    currentLongitude: number | null;
-    currentLocationAccuracy: number | null;
-    currentLocationHeading: number | null;
-    currentLocationSpeed: number | null;
-    currentLocationRecordedAt: Date | null;
-}): DeliveryTrackingLocation | null {
-    if (
-        run.currentLatitude === null ||
-        run.currentLongitude === null ||
-        !run.currentLocationRecordedAt
-    ) {
-        return null;
-    }
-
-    return {
-        latitude: run.currentLatitude,
-        longitude: run.currentLongitude,
-        accuracy: run.currentLocationAccuracy,
-        heading: run.currentLocationHeading,
-        speed: run.currentLocationSpeed,
-        recordedAt: run.currentLocationRecordedAt.toISOString(),
-    };
 }
 
 function plantName(request: DeliveryRequest) {
@@ -312,6 +291,7 @@ type DeliveryRunSnapshot = Pick<
     | 'currentLocationHeading'
     | 'currentLocationSpeed'
     | 'currentLocationRecordedAt'
+    | 'currentLocationReceivedAt'
     | 'rerouteRequiredAt'
 >;
 
@@ -450,7 +430,6 @@ function deliveryStopSummary({
             ? formatDeliveryDestinationAddress(address)
             : 'Adresa nije dostupna');
     const runSlot = representativeStop?.runSlot;
-    const runLocation = run ? trackingLocation(run) : null;
     const reroutePending = Boolean(
         run?.state === DeliveryRunStates.ACTIVE && run.rerouteRequiredAt,
     );
@@ -503,7 +482,10 @@ function deliveryStopSummary({
                       now,
                   })
                 : null,
-        tracking: includeTracking ? runLocation : null,
+        tracking:
+            includeTracking && run
+                ? customerDeliveryTrackingSummary(run, now)
+                : null,
         runId: run?.id ?? null,
         deliveryCount: items.length,
         deliveries: items.map((item) =>
@@ -676,6 +658,7 @@ function pickupStepSummary({
 
 async function activeRunSummary(
     run: DeliveryRun,
+    now: Date,
 ): Promise<ActiveDeliveryRunSummary> {
     const groups = await resolveDeliveryRunStopGroups(run);
     const requests = groups.flatMap((group) =>
@@ -765,8 +748,8 @@ async function activeRunSummary(
             run,
             isCurrent: actionState === 'current',
             audience: 'driver',
-            now: new Date(),
-            includeTracking: true,
+            now,
+            includeTracking: false,
             sequence: Number.isFinite(itinerarySequence)
                 ? itinerarySequence
                 : stops.length + 1,
@@ -805,7 +788,8 @@ async function activeRunSummary(
         routeRevision: run.routeRevision,
         reroutePending,
         estimateSource: run.estimateSource,
-        location: trackingLocation(run),
+        tracking: customerDeliveryTrackingSummary(run, now),
+        location: driverDeliveryTrackingLocation(run, now),
         estimatesUpdatedAt: iso(run.estimatesUpdatedAt),
         mapUrl: `/api/map/${run.id}`,
         deliveryCount: stops.reduce(
@@ -832,13 +816,15 @@ async function driverDashboard({
     if (!user) {
         throw new Error('Korisnik nije pronađen.');
     }
+    const projectedAt = new Date();
     let activeRun = initialActiveRun;
     if (
         activeRun?.rerouteRequiredAt &&
-        deliveryRerouteLocationIsFresh(activeRun) &&
+        deliveryRerouteLocationIsFresh(activeRun, projectedAt) &&
         deliveryRerouteRetryIsDue(
             activeRun.rerouteRequiredAt,
             activeRun.rerouteAttemptedAt,
+            projectedAt,
         )
     ) {
         await reconcileDeliveryRunReroute({
@@ -849,7 +835,7 @@ async function driverDashboard({
         activeRun = await getActiveDeliveryRunForDriver(userId);
     }
 
-    const now = Date.now();
+    const now = projectedAt.getTime();
     const candidateRequests = requests.filter(
         (request) =>
             request.mode === 'delivery' &&
@@ -920,7 +906,9 @@ async function driverDashboard({
             displayName: user.displayName ?? user.userName,
             role,
         },
-        activeRun: activeRun ? await activeRunSummary(activeRun) : null,
+        activeRun: activeRun
+            ? await activeRunSummary(activeRun, projectedAt)
+            : null,
         batches: Array.from(batchesBySlot, ([slotId, batch]) => ({
             slotId,
             startAt: batch.startAt.toISOString(),
@@ -938,7 +926,7 @@ async function driverDashboard({
         ),
         maximumRouteStops: maximumDeliveryRouteStops,
         maximumRouteWindowHours: maximumDeliveryRouteWindowHours,
-        refreshedAt: new Date().toISOString(),
+        refreshedAt: projectedAt.toISOString(),
     };
 }
 
@@ -1031,7 +1019,7 @@ async function customerDashboard({
             role,
         },
         deliveries,
-        refreshedAt: new Date().toISOString(),
+        refreshedAt: projectedAt.toISOString(),
     };
 }
 
@@ -1482,49 +1470,44 @@ export function accountCanTrackCurrentDeliveryGroup({
     );
 }
 
-export async function recordDriverLocation({
+async function refreshDeliveryRunAfterLocation({
+    run,
+    previousRun,
     driverUserId,
     runId,
-    latitude,
-    longitude,
-    accuracy,
-    heading,
-    speed,
-    recordedAt,
+    expectedLocationRecordedAt,
+    expectedLocationReceivedAt,
+    now,
 }: {
+    run: DeliveryRun | null;
+    previousRun: DeliveryRun | null;
     driverUserId: string;
     runId: string;
-    latitude: number;
-    longitude: number;
-    accuracy?: number;
-    heading?: number;
-    speed?: number;
-    recordedAt: Date;
+    expectedLocationRecordedAt: Date;
+    expectedLocationReceivedAt: Date;
+    now: Date;
 }) {
-    const previousRun = await getDeliveryRun(runId);
-    await updateDeliveryRunLocation({
-        runId,
-        driverUserId,
-        latitude,
-        longitude,
-        accuracy,
-        heading,
-        speed,
-        recordedAt,
-    });
-
-    const run = await getDeliveryRun(runId);
-    if (!run || run.driverUserId !== driverUserId) {
+    if (
+        !run ||
+        run.driverUserId !== driverUserId ||
+        run.currentLocationRecordedAt?.getTime() !==
+            expectedLocationRecordedAt.getTime() ||
+        run.currentLocationReceivedAt?.getTime() !==
+            expectedLocationReceivedAt.getTime()
+    ) {
         return;
     }
+    const location = driverDeliveryTrackingLocation(run, now);
+    if (!location) return;
     if (
         run.rerouteRequiredAt &&
-        deliveryRerouteLocationIsFresh(run) &&
+        deliveryRerouteLocationIsFresh(run, now) &&
         (!previousRun ||
-            !deliveryRerouteLocationIsFresh(previousRun) ||
+            !deliveryRerouteLocationIsFresh(previousRun, now) ||
             deliveryRerouteRetryIsDue(
                 run.rerouteRequiredAt,
                 run.rerouteAttemptedAt,
+                now,
             ))
     ) {
         await reconcileDeliveryRunReroute({
@@ -1536,7 +1519,7 @@ export async function recordDriverLocation({
     }
     const estimatesAreFresh =
         run.estimatesUpdatedAt &&
-        Date.now() - run.estimatesUpdatedAt.getTime() < etaRefreshIntervalMs;
+        now.getTime() - run.estimatesUpdatedAt.getTime() < etaRefreshIntervalMs;
     if (estimatesAreFresh) {
         return;
     }
@@ -1580,7 +1563,10 @@ export async function recordDriverLocation({
         ];
     });
     const plan = await recalculateDeliveryRoute({
-        origin: { latitude, longitude },
+        origin: {
+            latitude: location.latitude,
+            longitude: location.longitude,
+        },
         stops: routeStops,
     });
     const estimates = plan.stops.flatMap((estimate) => {
@@ -1596,11 +1582,95 @@ export async function recordDriverLocation({
     });
     await updateDeliveryRunEstimates({
         runId,
+        driverUserId,
+        expectedRouteRevision: run.routeRevision,
+        expectedLocationRecordedAt,
+        expectedLocationReceivedAt,
         encodedPolyline: plan.encodedPolyline,
         totalDistanceMeters: plan.totalDistanceMeters,
         totalDurationSeconds: plan.totalDurationSeconds,
         estimates,
     });
+}
+
+export async function recordDriverLocation({
+    driverUserId,
+    runId,
+    latitude,
+    longitude,
+    accuracy,
+    heading,
+    speed,
+    recordedAt,
+}: {
+    driverUserId: string;
+    runId: string;
+    latitude: number;
+    longitude: number;
+    accuracy?: number | null;
+    heading?: number | null;
+    speed?: number | null;
+    recordedAt: Date;
+}) {
+    const previousRun = (await getDeliveryRun(runId)) ?? null;
+    const acknowledgement = await updateDeliveryRunLocation({
+        runId,
+        driverUserId,
+        latitude,
+        longitude,
+        accuracy,
+        heading,
+        speed,
+        recordedAt,
+    });
+    const processedAt = new Date();
+    const acknowledgedRun = (await getDeliveryRun(runId)) ?? null;
+    const status = acknowledgedRun
+        ? customerDeliveryTrackingSummary(acknowledgedRun, processedAt).status
+        : 'unavailable';
+    const previousStatus = previousRun
+        ? deliveryTrackingStatus(
+              {
+                  ...previousRun,
+                  currentLocationReceivedAt: acknowledgement.previousAcceptedAt,
+              },
+              processedAt,
+          )
+        : 'unavailable';
+
+    if (
+        !acknowledgement.replayed &&
+        deliveryTrackingRecoveryTransition(previousStatus, status)
+    ) {
+        console.info('Delivery tracking freshness recovered', {
+            runId,
+            previousStatus,
+            newStatus: status,
+        });
+    }
+
+    try {
+        await refreshDeliveryRunAfterLocation({
+            run: acknowledgedRun,
+            previousRun,
+            driverUserId,
+            runId,
+            expectedLocationRecordedAt: recordedAt,
+            expectedLocationReceivedAt: acknowledgement.acceptedAt,
+            now: processedAt,
+        });
+    } catch (error) {
+        console.warn('Driver location saved but route refresh failed', {
+            runId,
+            errorName: error instanceof Error ? error.name : 'Unknown',
+        });
+    }
+
+    return {
+        status,
+        acceptedAt: acknowledgement.acceptedAt,
+        replayed: acknowledgement.replayed,
+    };
 }
 
 export function deliveryRunStartErrorMessage(error: unknown) {
