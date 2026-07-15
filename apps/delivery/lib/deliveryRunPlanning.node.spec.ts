@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { DeliveryRunPersistenceError } from '@gredice/storage';
 import {
     DeliveryRoutePlanningError,
     maximumDeliveryRouteStops,
@@ -8,6 +9,7 @@ import {
     type DeliveryRunPlanningDependencies,
     type DeliveryRunPlanningRequest,
     DeliveryRunPreparationError,
+    deliveryRunPersistencePreparationError,
     prepareDeliveryRun,
     revalidatePreparedDeliveryRun,
 } from './deliveryRunPlanning';
@@ -24,6 +26,7 @@ type CallCounters = {
 
 function request({
     id,
+    routeRevision = 1,
     state = 'ready',
     slotId = 1,
     locationId = 10,
@@ -36,6 +39,7 @@ function request({
     withSlot = true,
 }: {
     id: string;
+    routeRevision?: number;
     state?: string;
     slotId?: number;
     locationId?: number;
@@ -49,11 +53,16 @@ function request({
 }): DeliveryRunPlanningRequest {
     return {
         id,
+        routeRevision,
         mode: 'delivery',
         state,
         address: withAddress
             ? {
                   id: addressId,
+                  updatedAt: new Date('2026-07-14T08:00:00.000Z'),
+                  contactName: 'Primatelj',
+                  phone: '+385 91 111 1111',
+                  label: 'Dom',
                   street1,
                   postalCode: '10000',
                   city: 'Zagreb',
@@ -64,10 +73,12 @@ function request({
             ? {
                   id: slotId,
                   locationId,
+                  updatedAt: new Date('2026-07-14T07:00:00.000Z'),
                   startAt: new Date(slotStartAt),
                   endAt: new Date(slotEndAt),
                   location: {
                       id: locationId,
+                      updatedAt: new Date('2026-07-14T06:00:00.000Z'),
                       name: locationName,
                       street1: `Lokacija ${locationId}`,
                       postalCode: '10000',
@@ -106,6 +117,8 @@ function planningDependencies({
             counters.requestReads += 1;
             return requests;
         },
+        getDispatchRevision: async () =>
+            Math.max(0, ...requests.map(({ routeRevision }) => routeRevision)),
         getAssignedStops: async () => {
             counters.assignmentReads += 1;
             return assignedRequestId
@@ -175,6 +188,8 @@ test('prepares a valid single-location run and expands every ready delivery at a
     );
 
     assert.equal(prepared.summary.deliveryCount, 3);
+    assert.equal(prepared.dispatchRevision, 1);
+    assert.deepEqual(prepared.selectionRequestIds, ['bulk-one', 'later-stop']);
     assert.equal(prepared.summary.stopCount, 2);
     assert.equal(prepared.summary.slotCount, 2);
     assert.deepEqual(
@@ -184,6 +199,49 @@ test('prepares a valid single-location run and expands every ready delivery at a
     assert.equal(prepared.createRunInput.timeSlotId, 1);
     assert.equal(prepared.createRunInput.totalDistanceMeters, 2_000);
     assert.deepEqual(
+        prepared.createRunInput.pickupNodes?.map((node) => ({
+            pickupLocationId: node.pickupLocationId,
+            sequence: node.sequence,
+            name: node.name,
+            street1: node.street1,
+            sourceUpdatedAt: node.sourceUpdatedAt.toISOString(),
+        })),
+        [
+            {
+                pickupLocationId: 10,
+                sequence: 1,
+                name: 'HQ Zagreb',
+                street1: 'Lokacija 10',
+                sourceUpdatedAt: '2026-07-14T06:00:00.000Z',
+            },
+        ],
+    );
+    assert.deepEqual(
+        prepared.createRunInput.runSlots?.map((slot) => ({
+            timeSlotId: slot.timeSlotId,
+            pickupLocationId: slot.pickupLocationId,
+            sequence: slot.sequence,
+            windowStartAt: slot.windowStartAt.toISOString(),
+            windowEndAt: slot.windowEndAt.toISOString(),
+        })),
+        [
+            {
+                timeSlotId: 1,
+                pickupLocationId: 10,
+                sequence: 1,
+                windowStartAt: '2026-07-15T08:00:00.000Z',
+                windowEndAt: '2026-07-15T10:00:00.000Z',
+            },
+            {
+                timeSlotId: 2,
+                pickupLocationId: 10,
+                sequence: 2,
+                windowStartAt: '2026-07-15T10:00:00.000Z',
+                windowEndAt: '2026-07-15T12:00:00.000Z',
+            },
+        ],
+    );
+    assert.deepEqual(
         prepared.createRunInput.stops.map((stop) => stop.deliveryRequestId),
         ['bulk-one', 'bulk-two', 'later-stop'],
     );
@@ -192,8 +250,52 @@ test('prepares a valid single-location run and expands every ready delivery at a
         [1, 2, 3],
     );
     assert.deepEqual(
-        prepared.requestSnapshots.map((snapshot) => snapshot.requestId),
+        prepared.createRunInput.stops.map((stop) => stop.timeSlotId),
+        [1, 1, 2],
+    );
+    assert.equal(
+        prepared.createRunInput.stops[0]?.stopKey,
+        prepared.createRunInput.stops[1]?.stopKey,
+    );
+    assert.notEqual(
+        prepared.createRunInput.stops[1]?.stopKey,
+        prepared.createRunInput.stops[2]?.stopKey,
+    );
+    assert.deepEqual(
+        prepared.requestSnapshots.map((snapshot) => snapshot.deliveryRequestId),
         ['bulk-one', 'bulk-two', 'later-stop'],
+    );
+    assert.deepEqual(
+        prepared.requestSnapshots.map((snapshot) => ({
+            requestDispatchEventId: snapshot.requestDispatchEventId,
+            addressId: snapshot.address.id,
+            addressUpdatedAt: snapshot.address.updatedAt.toISOString(),
+            slotId: snapshot.slot.id,
+            pickupLocationId: snapshot.pickupLocation.id,
+        })),
+        [
+            {
+                requestDispatchEventId: 1,
+                addressId: 100,
+                addressUpdatedAt: '2026-07-14T08:00:00.000Z',
+                slotId: 1,
+                pickupLocationId: 10,
+            },
+            {
+                requestDispatchEventId: 1,
+                addressId: 100,
+                addressUpdatedAt: '2026-07-14T08:00:00.000Z',
+                slotId: 1,
+                pickupLocationId: 10,
+            },
+            {
+                requestDispatchEventId: 1,
+                addressId: 200,
+                addressUpdatedAt: '2026-07-14T08:00:00.000Z',
+                slotId: 2,
+                pickupLocationId: 10,
+            },
+        ],
     );
     assert.deepEqual(counters, {
         activeRunReads: 1,
@@ -202,6 +304,28 @@ test('prepares a valid single-location run and expands every ready delivery at a
         plannerCalls: 1,
         mutationCalls: 0,
     });
+});
+
+test('maps persistence conflicts without exposing token ownership', () => {
+    const privateError = deliveryRunPersistencePreparationError(
+        new DeliveryRunPersistenceError(
+            'preparation-owner-mismatch',
+            'private storage detail',
+        ),
+    );
+    assert.ok(privateError);
+    assert.equal(privateError.code, 'preparation-not-found');
+    assert.doesNotMatch(privateError.message, /owner|driver|private/i);
+
+    const changedError = deliveryRunPersistencePreparationError(
+        new DeliveryRunPersistenceError(
+            'delivery-source-changed',
+            'private storage detail',
+            { deliveryRequestId: 'request-one' },
+        ),
+    );
+    assert.equal(changedError?.code, 'delivery-source-changed');
+    assert.equal(changedError?.conflict.deliveryRequestId, 'request-one');
 });
 
 test('revalidates an unchanged preparation immediately before persistence', async () => {

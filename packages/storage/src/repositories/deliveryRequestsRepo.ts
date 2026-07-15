@@ -37,6 +37,10 @@ import {
 } from '../schema';
 import { storage } from '../storage';
 import { getDeliveryAddress } from './deliveryAddressesRepo';
+import {
+    acquireDeliveryDispatchLock,
+    withDeliveryDispatchTransaction,
+} from './deliveryDispatchRepo';
 import { getEntitiesFormatted, getEntityFormatted } from './entitiesRepo';
 import {
     createEvent,
@@ -130,6 +134,47 @@ const deliveryRequestEventTypes = [
     knownEventTypes.delivery.requestSlotChanged,
     knownEventTypes.delivery.userCancelled,
 ];
+
+export const deliveryDispatchEventTypes = [
+    knownEventTypes.delivery.requestCreated,
+    knownEventTypes.delivery.requestCancelled,
+    knownEventTypes.delivery.requestAddressChanged,
+    knownEventTypes.delivery.requestConfirmed,
+    knownEventTypes.delivery.requestPreparing,
+    knownEventTypes.delivery.requestReady,
+    knownEventTypes.delivery.requestFulfilled,
+    knownEventTypes.delivery.requestSlotChanged,
+    knownEventTypes.delivery.userCancelled,
+] as const;
+
+const deliveryDispatchEventTypeSet = new Set<string>(
+    deliveryDispatchEventTypes,
+);
+export async function getDeliveryDispatchRevision(
+    db: DatabaseClient = storage(),
+) {
+    const [row] = await db
+        .select({
+            revision: sql<number>`coalesce(max(${events.id}), 0)`,
+        })
+        .from(events)
+        .where(inArray(events.type, deliveryDispatchEventTypes));
+
+    return Number(row?.revision ?? 0);
+}
+
+function getDeliveryRequestDispatchEventId(requestEvents: DbEvent[]) {
+    let revision = 0;
+    for (const event of requestEvents) {
+        if (
+            deliveryDispatchEventTypeSet.has(event.type) &&
+            event.id > revision
+        ) {
+            revision = event.id;
+        }
+    }
+    return revision;
+}
 
 interface DeliveryRequestStateProjection {
     state: string;
@@ -367,14 +412,16 @@ async function reconstructDeliveryRequestRows<
     );
     const eventsByAggregateId = groupEventsByAggregateId(requestEvents);
     const reconstructedRows = requests.map((request) => {
+        const aggregateEvents = eventsByAggregateId.get(request.id) ?? [];
         const projection = reconstructDeliveryRequestState(
             request.createdAt,
-            eventsByAggregateId.get(request.id) ?? [],
+            aggregateEvents,
         );
 
         return {
             request,
             projection,
+            routeRevision: getDeliveryRequestDispatchEventId(aggregateEvents),
         };
     });
 
@@ -453,6 +500,139 @@ async function reconstructDeliveryRequestRows<
                 : undefined,
         };
     });
+}
+
+export type DeliveryRequestDispatchSnapshot = {
+    deliveryRequestId: string;
+    state: string;
+    mode?: 'delivery' | 'pickup';
+    requestDispatchEventId: number;
+    address?: {
+        id: number;
+        updatedAt: Date;
+        deletedAt: Date | null;
+        label: string;
+        contactName: string;
+        phone: string;
+        street1: string;
+        street2: string | null;
+        city: string;
+        postalCode: string;
+        countryCode: string;
+    };
+    slot?: {
+        id: number;
+        updatedAt: Date;
+        locationId: number;
+        startAt: Date;
+        endAt: Date;
+    };
+    pickupLocation?: {
+        id: number;
+        updatedAt: Date;
+        name: string;
+        street1: string;
+        street2: string | null;
+        city: string;
+        postalCode: string;
+        countryCode: string;
+    };
+};
+
+export async function getDeliveryRequestDispatchSnapshots(
+    requestIds: string[],
+    db: DatabaseClient = storage(),
+): Promise<DeliveryRequestDispatchSnapshot[]> {
+    const uniqueRequestIds = Array.from(new Set(requestIds)).sort();
+    if (uniqueRequestIds.length === 0) return [];
+
+    const requestRows = await db.query.deliveryRequests.findMany({
+        where: inArray(deliveryRequests.id, uniqueRequestIds),
+        orderBy: [asc(deliveryRequests.id)],
+    });
+    const requestEvents = await getAllEvents(
+        [...deliveryDispatchEventTypes],
+        uniqueRequestIds,
+        { db },
+    );
+    const eventsByRequestId = groupEventsByAggregateId(requestEvents);
+    const projections = requestRows.map((request) => {
+        const aggregateEvents = eventsByRequestId.get(request.id) ?? [];
+        return {
+            request,
+            projection: reconstructDeliveryRequestState(
+                request.createdAt,
+                aggregateEvents,
+            ),
+            requestDispatchEventId:
+                getDeliveryRequestDispatchEventId(aggregateEvents),
+        };
+    });
+    const addressIds = Array.from(
+        new Set(
+            projections.flatMap(({ projection }) =>
+                projection.addressId ? [projection.addressId] : [],
+            ),
+        ),
+    );
+    const slotIds = Array.from(
+        new Set(
+            projections.flatMap(({ projection }) =>
+                projection.slotId ? [projection.slotId] : [],
+            ),
+        ),
+    );
+    const [addressRows, slotRows] = await Promise.all([
+        addressIds.length > 0
+            ? db.query.deliveryAddresses.findMany({
+                  where: inArray(deliveryAddresses.id, addressIds),
+              })
+            : Promise.resolve([]),
+        slotIds.length > 0
+            ? db.query.timeSlots.findMany({
+                  where: inArray(timeSlots.id, slotIds),
+              })
+            : Promise.resolve([]),
+    ]);
+    const pickupLocationIds = Array.from(
+        new Set(slotRows.map((slot) => slot.locationId)),
+    );
+    const pickupLocationRows =
+        pickupLocationIds.length > 0
+            ? await db.query.pickupLocations.findMany({
+                  where: inArray(pickupLocations.id, pickupLocationIds),
+              })
+            : [];
+    const addressesById = new Map(
+        addressRows.map((address) => [address.id, address]),
+    );
+    const slotsById = new Map(slotRows.map((slot) => [slot.id, slot]));
+    const pickupLocationsById = new Map(
+        pickupLocationRows.map((location) => [location.id, location]),
+    );
+
+    return projections.map(
+        ({ request, projection, requestDispatchEventId }) => {
+            const address = projection.addressId
+                ? addressesById.get(projection.addressId)
+                : undefined;
+            const slot = projection.slotId
+                ? slotsById.get(projection.slotId)
+                : undefined;
+            const pickupLocation = slot
+                ? pickupLocationsById.get(slot.locationId)
+                : undefined;
+            return {
+                deliveryRequestId: request.id,
+                state: projection.state,
+                mode: projection.mode,
+                requestDispatchEventId,
+                address,
+                slot,
+                pickupLocation,
+            };
+        },
+    );
 }
 
 function getOperationAccountIds(
@@ -646,6 +826,7 @@ async function reconstructDeliveryRequestFromEvents(
         requestNotes,
         deliveryNotes,
         surveySent,
+        routeRevision: getDeliveryRequestDispatchEventId(events),
         trace: traceLink
             ? {
                   id: traceLink.id,
@@ -907,7 +1088,15 @@ export async function getDeliveryRequestsWithEvents(
     );
 
     return filteredRows.map(
-        ({ request, projection, accountId, slot, address, location }) => {
+        ({
+            request,
+            projection,
+            accountId,
+            slot,
+            address,
+            location,
+            routeRevision,
+        }) => {
             const rawOperation = request.operation;
             const operation =
                 operationsById.get(request.operationId) ??
@@ -957,6 +1146,7 @@ export async function getDeliveryRequestsWithEvents(
                 requestNotes: projection.requestNotes,
                 deliveryNotes: projection.deliveryNotes,
                 surveySent: projection.surveySent,
+                routeRevision,
                 trace: traceLink
                     ? {
                           id: traceLink.id,
@@ -1111,35 +1301,34 @@ export async function createDeliveryRequest(data: {
         }
     }
 
-    // Check if operation already has a delivery request
-    const existingRequest = await getDeliveryRequestByOperation(
-        data.operationId,
-    );
-    if (existingRequest) {
-        throw new Error('Operation already has a delivery request');
-    }
+    return await withDeliveryDispatchTransaction(async (tx) => {
+        const existingRequest = await tx.query.deliveryRequests.findFirst({
+            columns: { id: true },
+            where: eq(deliveryRequests.operationId, data.operationId),
+        });
+        if (existingRequest) {
+            throw new Error('Operation already has a delivery request');
+        }
 
-    // Create the projection record first (minimal schema)
-    await storage().insert(deliveryRequests).values({
-        id: requestId,
-        operationId: data.operationId,
-    });
-
-    // Create the event with all business data
-
-    await createEvent(
-        knownEvents.delivery.requestCreatedV1(requestId, {
+        await tx.insert(deliveryRequests).values({
+            id: requestId,
             operationId: data.operationId,
-            slotId: data.slotId,
-            mode: data.mode,
-            addressId: data.addressId,
-            locationId: data.locationId,
-            notes: data.notes,
-            accountId: data.accountId,
-        }),
-    );
+        });
+        await createEvent(
+            knownEvents.delivery.requestCreatedV1(requestId, {
+                operationId: data.operationId,
+                slotId: data.slotId,
+                mode: data.mode,
+                addressId: data.addressId,
+                locationId: data.locationId,
+                notes: data.notes,
+                accountId: data.accountId,
+            }),
+            tx,
+        );
 
-    return requestId;
+        return requestId;
+    });
 }
 
 // Change the time slot for an existing delivery request
@@ -1147,21 +1336,6 @@ export async function changeDeliveryRequestSlot(
     requestId: string,
     newSlotId: number,
 ): Promise<void> {
-    const request = await getDeliveryRequest(requestId);
-
-    if (!request) {
-        throw new Error('Delivery request not found');
-    }
-
-    if (!request.slot?.id) {
-        throw new Error('Delivery request has no slot to change');
-    }
-
-    // If slot is the same, no-op
-    if (request.slot.id === newSlotId) {
-        return;
-    }
-
     // Validate new slot
     const slot = await storage().query.timeSlots.findFirst({
         where: eq(timeSlots.id, newSlotId),
@@ -1186,12 +1360,25 @@ export async function changeDeliveryRequestSlot(
         throw new Error('Time slot is not available for booking');
     }
 
-    await createEvent(
-        knownEvents.delivery.requestSlotChangedV1(requestId, {
-            previousSlotId: request.slot.id,
-            newSlotId,
-        }),
-    );
+    await withDeliveryDispatchTransaction(async (tx) => {
+        const request = await getDeliveryRequest(requestId, tx);
+
+        if (!request) {
+            throw new Error('Delivery request not found');
+        }
+        if (!request.slot?.id) {
+            throw new Error('Delivery request has no slot to change');
+        }
+        if (request.slot.id === newSlotId) return;
+
+        await createEvent(
+            knownEvents.delivery.requestSlotChangedV1(requestId, {
+                previousSlotId: request.slot.id,
+                newSlotId,
+            }),
+            tx,
+        );
+    });
 }
 
 // Cancel a delivery request
@@ -1202,42 +1389,36 @@ export async function cancelDeliveryRequest(
     note?: string,
     actorId?: string,
 ): Promise<void> {
-    const request = await getDeliveryRequest(requestId);
+    await withDeliveryDispatchTransaction(async (tx) => {
+        const request = await getDeliveryRequest(requestId, tx);
 
-    if (!request) {
-        throw new Error('Delivery request not found');
-    }
-
-    if (request.state === DeliveryRequestStates.CANCELLED) {
-        // Idempotent - already cancelled
-        return;
-    }
-
-    if (request.state === DeliveryRequestStates.FULFILLED) {
-        throw new Error('Cannot cancel a fulfilled delivery request');
-    }
-
-    // Check cutoff time for user cancellations
-    if (actorType === 'user' && request.slot?.id) {
-        const cutoffHours = 12; // Default cutoff
-        const cutoffTime = new Date(
-            request.slot.startAt.getTime() - cutoffHours * 60 * 60 * 1000,
-        );
-
-        if (new Date() >= cutoffTime) {
-            throw new Error('Cannot cancel - cutoff time has passed');
+        if (!request) {
+            throw new Error('Delivery request not found');
         }
-    }
+        if (request.state === DeliveryRequestStates.CANCELLED) return;
+        if (request.state === DeliveryRequestStates.FULFILLED) {
+            throw new Error('Cannot cancel a fulfilled delivery request');
+        }
+        if (actorType === 'user' && request.slot?.id) {
+            const cutoffHours = 12;
+            const cutoffTime = new Date(
+                request.slot.startAt.getTime() - cutoffHours * 60 * 60 * 1000,
+            );
+            if (new Date() >= cutoffTime) {
+                throw new Error('Cannot cancel - cutoff time has passed');
+            }
+        }
 
-    // Create the cancellation event
-    await createEvent(
-        knownEvents.delivery.requestCancelledV1(requestId, {
-            actorType,
-            cancelReason,
-            note,
-            cancelledBy: actorId,
-        }),
-    );
+        await createEvent(
+            knownEvents.delivery.requestCancelledV1(requestId, {
+                actorType,
+                cancelReason,
+                note,
+                cancelledBy: actorId,
+            }),
+            tx,
+        );
+    });
 }
 
 export async function cancelDeliveryRequestForAccount({
@@ -1269,84 +1450,66 @@ export async function cancelDeliveryRequestForAccount({
 export async function uncancelDeliveryRequest(
     requestId: string,
 ): Promise<void> {
-    const request = await getDeliveryRequest(requestId);
+    await withDeliveryDispatchTransaction(async (tx) => {
+        const request = await getDeliveryRequest(requestId, tx);
+        if (!request) throw new Error('Delivery request not found');
+        if (request.state !== DeliveryRequestStates.CANCELLED) return;
 
-    if (!request) {
-        throw new Error('Delivery request not found');
-    }
-
-    if (request.state !== DeliveryRequestStates.CANCELLED) {
-        return;
-    }
-
-    await createEvent(
-        knownEvents.delivery.requestConfirmedV1(requestId, {
-            status: DeliveryRequestStates.CONFIRMED,
-        }),
-    );
+        await createEvent(
+            knownEvents.delivery.requestConfirmedV1(requestId, {
+                status: DeliveryRequestStates.CONFIRMED,
+            }),
+            tx,
+        );
+    });
 }
 
 // Confirm a delivery request
 export async function confirmDeliveryRequest(requestId: string): Promise<void> {
-    const request = await getDeliveryRequest(requestId);
+    await withDeliveryDispatchTransaction(async (tx) => {
+        const request = await getDeliveryRequest(requestId, tx);
+        if (!request) throw new Error('Delivery request not found');
+        if (request.state === DeliveryRequestStates.CONFIRMED) return;
 
-    if (!request) {
-        throw new Error('Delivery request not found');
-    }
-
-    if (request.state === DeliveryRequestStates.CONFIRMED) {
-        // Idempotent - already confirmed
-        return;
-    }
-
-    // Create the confirmation event
-    await createEvent(
-        knownEvents.delivery.requestConfirmedV1(requestId, {
-            status: DeliveryRequestStates.CONFIRMED,
-        }),
-    );
+        await createEvent(
+            knownEvents.delivery.requestConfirmedV1(requestId, {
+                status: DeliveryRequestStates.CONFIRMED,
+            }),
+            tx,
+        );
+    });
 }
 
 // Prepare a delivery request
 export async function prepareDeliveryRequest(requestId: string): Promise<void> {
-    const request = await getDeliveryRequest(requestId);
+    await withDeliveryDispatchTransaction(async (tx) => {
+        const request = await getDeliveryRequest(requestId, tx);
+        if (!request) throw new Error('Delivery request not found');
+        if (request.state === DeliveryRequestStates.PREPARING) return;
 
-    if (!request) {
-        throw new Error('Delivery request not found');
-    }
-
-    if (request.state === DeliveryRequestStates.PREPARING) {
-        // Idempotent - already preparing
-        return;
-    }
-
-    // Create the preparation event
-    await createEvent(
-        knownEvents.delivery.requestPreparingV1(requestId, {
-            status: DeliveryRequestStates.PREPARING,
-        }),
-    );
+        await createEvent(
+            knownEvents.delivery.requestPreparingV1(requestId, {
+                status: DeliveryRequestStates.PREPARING,
+            }),
+            tx,
+        );
+    });
 }
 
 // Ready a delivery request
 export async function readyDeliveryRequest(requestId: string): Promise<void> {
-    const request = await getDeliveryRequest(requestId);
+    await withDeliveryDispatchTransaction(async (tx) => {
+        const request = await getDeliveryRequest(requestId, tx);
+        if (!request) throw new Error('Delivery request not found');
+        if (request.state === DeliveryRequestStates.READY) return;
 
-    if (!request) {
-        throw new Error('Delivery request not found');
-    }
-
-    if (request.state === DeliveryRequestStates.READY) {
-        // Idempotent - already ready
-        return;
-    }
-
-    // Create the ready event
-    await createEvent(
-        knownEvents.delivery.requestReadyV1(requestId, {
-            status: DeliveryRequestStates.READY,
-        }),
-    );
+        await createEvent(
+            knownEvents.delivery.requestReadyV1(requestId, {
+                status: DeliveryRequestStates.READY,
+            }),
+            tx,
+        );
+    });
 }
 
 export async function getPendingDeliveryReadyEmailRequestIds({
@@ -1508,8 +1671,16 @@ export async function markDeliveryReadyEmailsProcessed({
 export async function fulfillDeliveryRequest(
     requestId: string,
     deliveryNotes?: string,
-    db: DatabaseClient = storage(),
+    db?: DatabaseClient,
 ): Promise<void> {
+    if (!db) {
+        await withDeliveryDispatchTransaction(async (tx) => {
+            await fulfillDeliveryRequest(requestId, deliveryNotes, tx);
+        });
+        return;
+    }
+
+    await acquireDeliveryDispatchLock(db);
     const request = await getDeliveryRequest(requestId, db);
 
     if (!request) {

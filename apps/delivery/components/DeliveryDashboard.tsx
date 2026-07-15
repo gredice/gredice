@@ -71,10 +71,49 @@ async function postAction(path: string, body?: object) {
             typeof data.error === 'string'
                 ? data.error
                 : 'Radnju nije moguće dovršiti.';
-        throw new Error(message);
+        const code =
+            typeof data === 'object' &&
+            data !== null &&
+            'code' in data &&
+            typeof data.code === 'string'
+                ? data.code
+                : null;
+        throw new DeliveryActionError(message, response.status, code);
     }
     return data;
 }
+
+class DeliveryActionError extends Error {
+    override name = 'DeliveryActionError';
+
+    constructor(
+        message: string,
+        readonly status: number,
+        readonly code: string | null,
+    ) {
+        super(message);
+    }
+}
+
+function isDeliveryRunPreflightResponse(
+    value: unknown,
+): value is { preparationToken: string; expiresAt: string } {
+    return (
+        typeof value === 'object' &&
+        value !== null &&
+        'preparationToken' in value &&
+        typeof value.preparationToken === 'string' &&
+        'expiresAt' in value &&
+        typeof value.expiresAt === 'string'
+    );
+}
+
+const refreshPreparationCodes = new Set([
+    'delivery-request-changed',
+    'delivery-source-changed',
+    'preparation-expired',
+    'preparation-not-found',
+]);
 
 export function DeliveryDashboard() {
     const [pendingAction, setPendingAction] = useState<string | null>(null);
@@ -111,9 +150,50 @@ export function DeliveryDashboard() {
         setPendingAction('start-route');
         setActionError(null);
         try {
-            const body = { deliveryRequestIds };
-            await postAction('/api/driver/runs/preflight', body);
-            await postAction('/api/driver/runs', body);
+            const createPreparation = async () => {
+                const data = await postAction('/api/driver/runs/preflight', {
+                    deliveryRequestIds,
+                });
+                if (!isDeliveryRunPreflightResponse(data)) {
+                    throw new Error(
+                        'Poslužitelj nije vratio valjanu pripremu rute.',
+                    );
+                }
+                return data;
+            };
+            const startPreparation = async (preparationToken: string) => {
+                const body = { deliveryRequestIds, preparationToken };
+                try {
+                    await postAction('/api/driver/runs', body);
+                } catch (error) {
+                    if (
+                        !(error instanceof DeliveryActionError) ||
+                        error.status >= 500
+                    ) {
+                        await postAction('/api/driver/runs', body);
+                        return;
+                    }
+                    throw error;
+                }
+            };
+
+            const preparation = await createPreparation();
+            try {
+                await startPreparation(preparation.preparationToken);
+            } catch (error) {
+                if (
+                    error instanceof DeliveryActionError &&
+                    error.code &&
+                    refreshPreparationCodes.has(error.code)
+                ) {
+                    const refreshedPreparation = await createPreparation();
+                    await startPreparation(
+                        refreshedPreparation.preparationToken,
+                    );
+                } else {
+                    throw error;
+                }
+            }
             await query.refetch();
         } catch (error) {
             setActionError(

@@ -1,8 +1,13 @@
 import {
+    type CreateDeliveryRunInput,
     DeliveryRequestStates,
+    DeliveryRunPersistenceError,
+    type DeliveryRunRequestSnapshotInput,
     getActiveDeliveryRunForDriver,
+    getDeliveryDispatchRevision,
     getDeliveryRequestsWithEvents,
     getDeliveryRunStopsForRequestIds,
+    saveDeliveryRunPreparation,
 } from '@gredice/storage';
 import 'server-only';
 import type {
@@ -26,6 +31,10 @@ import {
 
 type DeliveryRunPlanningAddress = {
     id: number;
+    updatedAt: Date;
+    contactName: string;
+    phone: string;
+    label: string;
     street1: string;
     street2?: string | null;
     postalCode: string;
@@ -35,6 +44,7 @@ type DeliveryRunPlanningAddress = {
 
 type DeliveryRunPlanningPickupLocation = {
     id: number;
+    updatedAt: Date;
     name: string;
     street1: string;
     street2?: string | null;
@@ -45,12 +55,14 @@ type DeliveryRunPlanningPickupLocation = {
 
 export type DeliveryRunPlanningRequest = {
     id: string;
+    routeRevision: number;
     mode?: string;
     state: string;
     address?: DeliveryRunPlanningAddress;
     slot?: {
         id: number;
         locationId: number;
+        updatedAt: Date;
         startAt: Date;
         endAt: Date;
         location?: DeliveryRunPlanningPickupLocation | null;
@@ -68,6 +80,7 @@ export type DeliveryRunPlanningDependencies = {
         driverUserId: string,
     ) => Promise<{ id: string } | undefined>;
     getRequests: () => Promise<readonly DeliveryRunPlanningRequest[]>;
+    getDispatchRevision: () => Promise<number>;
     getAssignedStops: (
         requestIds: string[],
     ) => Promise<readonly AssignedDeliveryRunStop[]>;
@@ -78,6 +91,7 @@ export type DeliveryRunPlanningDependencies = {
 const defaultDependencies: DeliveryRunPlanningDependencies = {
     getActiveRunForDriver: getActiveDeliveryRunForDriver,
     getRequests: getDeliveryRequestsWithEvents,
+    getDispatchRevision: getDeliveryDispatchRevision,
     getAssignedStops: getDeliveryRunStopsForRequestIds,
     planRoute: planDeliveryRoute,
     now: () => new Date(),
@@ -117,27 +131,43 @@ export class DeliveryRunPreparationError extends Error {
     }
 }
 
-export type DeliveryRunRequestSnapshot = {
-    requestId: string;
-    state: string;
-    stopKey: string;
-    addressId: number;
-    slotId: number;
-    pickupLocationId: number;
-    slotStartAt: string;
-    slotEndAt: string;
-};
+export function deliveryRunPersistencePreparationError(error: unknown) {
+    if (!(error instanceof DeliveryRunPersistenceError)) return null;
 
-export type PreparedDeliveryRunStop = {
-    deliveryRequestId: string;
-    sequence: number;
-    latitude: number;
-    longitude: number;
-    formattedAddress: string;
-    estimatedArrivalAt: Date;
-    estimatedTravelSeconds: number;
-    estimatedDistanceMeters: number;
-};
+    const messages: Record<typeof error.code, string> = {
+        'active-run-exists':
+            'Već imaš aktivnu rutu. Osvježi prikaz i nastavi postojeću rutu.',
+        'delivery-already-assigned':
+            'Jedna ili više odabranih dostava već je dodijeljena drugoj ruti. Osvježi popis i odaberi ponovno.',
+        'delivery-request-changed':
+            'Odabrane dostave promijenile su se tijekom provjere rute. Osvježi popis i pokušaj ponovno.',
+        'delivery-source-changed':
+            'Adresa ili termin dostave promijenili su se tijekom provjere rute. Osvježi popis i pokušaj ponovno.',
+        'invalid-plan':
+            'Pripremljena ruta više nije valjana. Osvježi popis i pokušaj ponovno.',
+        'preparation-expired':
+            'Priprema rute je istekla. Ruta će se ponovno provjeriti.',
+        'preparation-not-found':
+            'Priprema rute više nije dostupna. Ruta će se ponovno provjeriti.',
+        'preparation-owner-mismatch':
+            'Priprema rute više nije dostupna. Osvježi popis i pokušaj ponovno.',
+        'preparation-selection-mismatch':
+            'Odabir dostava ne odgovara pripremljenoj ruti. Osvježi popis i pokušaj ponovno.',
+        'preparation-token-invalid':
+            'Priprema rute više nije dostupna. Osvježi popis i pokušaj ponovno.',
+    };
+    const publicCode =
+        error.code === 'preparation-owner-mismatch' ||
+        error.code === 'preparation-token-invalid'
+            ? 'preparation-not-found'
+            : error.code;
+
+    return new DeliveryRunPreparationError(messages[error.code], {
+        code: publicCode,
+        deliveryRequestId: error.deliveryRequestId,
+        activeRunId: error.activeRunId,
+    });
+}
 
 export type DeliveryRunPreflightSummary = DeliveryRouteSelectionSummary & {
     slotCount: number;
@@ -146,16 +176,11 @@ export type DeliveryRunPreflightSummary = DeliveryRouteSelectionSummary & {
 };
 
 export type PreparedDeliveryRun = {
-    createRunInput: {
-        driverUserId: string;
-        timeSlotId: number;
-        encodedPolyline?: string;
-        totalDistanceMeters: number;
-        totalDurationSeconds: number;
-        stops: PreparedDeliveryRunStop[];
-    };
+    createRunInput: CreateDeliveryRunInput;
     summary: DeliveryRunPreflightSummary;
-    requestSnapshots: DeliveryRunRequestSnapshot[];
+    dispatchRevision: number;
+    selectionRequestIds: string[];
+    requestSnapshots: DeliveryRunRequestSnapshotInput[];
 };
 
 function sameRequestIds(first: readonly string[], second: readonly string[]) {
@@ -197,6 +222,92 @@ function selectionCandidate(
         slotEndAt: request.slot.endAt.toISOString(),
         deliveryAddress: formatDeliveryDestinationAddress(request.address),
     };
+}
+
+function createPickupNodeInputs(
+    requests: readonly DeliveryRunPlanningRequest[],
+): NonNullable<CreateDeliveryRunInput['pickupNodes']> {
+    const firstRequestByLocationId = new Map<
+        number,
+        DeliveryRunPlanningRequest
+    >();
+    for (const request of requests) {
+        const location = request.slot?.location;
+        if (location && !firstRequestByLocationId.has(location.id)) {
+            firstRequestByLocationId.set(location.id, request);
+        }
+    }
+
+    return Array.from(firstRequestByLocationId.values())
+        .sort((first, second) => {
+            const windowDifference =
+                (first.slot?.startAt.getTime() ?? 0) -
+                (second.slot?.startAt.getTime() ?? 0);
+            return (
+                windowDifference ||
+                (first.slot?.locationId ?? 0) - (second.slot?.locationId ?? 0)
+            );
+        })
+        .map((request, index) => {
+            const location = request.slot?.location;
+            if (!location) {
+                throw new DeliveryRunPreparationError(
+                    'Lokacija preuzimanja odabrane dostave nije dostupna.',
+                    requestConflict('pickup-location-missing', request),
+                );
+            }
+            return {
+                pickupLocationId: location.id,
+                sequence: index + 1,
+                name: location.name,
+                street1: location.street1,
+                street2: location.street2,
+                city: location.city,
+                postalCode: location.postalCode,
+                countryCode: location.countryCode,
+                sourceUpdatedAt: location.updatedAt,
+            };
+        });
+}
+
+function createRunSlotInputs(
+    requests: readonly DeliveryRunPlanningRequest[],
+): NonNullable<CreateDeliveryRunInput['runSlots']> {
+    const firstRequestBySlotId = new Map<number, DeliveryRunPlanningRequest>();
+    for (const request of requests) {
+        const slot = request.slot;
+        if (slot && !firstRequestBySlotId.has(slot.id)) {
+            firstRequestBySlotId.set(slot.id, request);
+        }
+    }
+
+    return Array.from(firstRequestBySlotId.values())
+        .sort((first, second) => {
+            const windowDifference =
+                (first.slot?.startAt.getTime() ?? 0) -
+                (second.slot?.startAt.getTime() ?? 0);
+            return (
+                windowDifference ||
+                (first.slot?.id ?? 0) - (second.slot?.id ?? 0)
+            );
+        })
+        .map((request, index) => {
+            const slot = request.slot;
+            if (!slot?.location) {
+                throw new DeliveryRunPreparationError(
+                    'Termin nema valjanu lokaciju preuzimanja.',
+                    requestConflict('pickup-location-missing', request),
+                );
+            }
+            return {
+                timeSlotId: slot.id,
+                pickupLocationId: slot.locationId,
+                sequence: index + 1,
+                windowStartAt: slot.startAt,
+                windowEndAt: slot.endAt,
+                sourceUpdatedAt: slot.updatedAt,
+            };
+        });
 }
 
 function requestConflict(
@@ -262,6 +373,9 @@ function assertSelectedRequest(
         request?.mode !== 'delivery' ||
         !request.address ||
         !request.slot ||
+        !request.slot.location ||
+        !Number.isInteger(request.routeRevision) ||
+        request.routeRevision <= 0 ||
         request.state !== DeliveryRequestStates.READY ||
         request.slot.endAt < now
     ) {
@@ -269,7 +383,7 @@ function assertSelectedRequest(
             'Jedna ili više odabranih dostava još nije spremna za preuzimanje. Osvježi popis i pokušaj ponovno.',
             requestConflict(
                 'delivery-not-ready',
-                request ?? { id: requestId, state: '' },
+                request ?? { id: requestId, routeRevision: 0, state: '' },
             ),
         );
     }
@@ -432,9 +546,23 @@ export async function prepareDeliveryRun(
         }
 
         return group.items.map(({ request }) => {
+            if (!request.address || !request.slot) {
+                throw new DeliveryRunPreparationError(
+                    'Planirana dostava nema valjanu adresu ili termin.',
+                    requestConflict(
+                        'delivery-address-or-slot-invalid',
+                        request,
+                    ),
+                );
+            }
             storedSequence += 1;
             return {
                 deliveryRequestId: request.id,
+                timeSlotId: request.slot.id,
+                stopKey: stopKey(request),
+                requestDispatchEventId: request.routeRevision,
+                deliveryAddressId: request.address.id,
+                deliveryAddressUpdatedAt: request.address.updatedAt,
                 sequence: storedSequence,
                 latitude: plannedStop.latitude,
                 longitude: plannedStop.longitude,
@@ -445,23 +573,52 @@ export async function prepareDeliveryRun(
             };
         });
     });
-    const snapshots = candidates.flatMap((request) => {
-        const candidate = selectionCandidate(request);
-        return request.slot && request.address && candidate
-            ? [
-                  {
-                      requestId: request.id,
-                      state: request.state,
-                      stopKey: candidate.stopKey,
-                      addressId: request.address.id,
-                      slotId: request.slot.id,
-                      pickupLocationId: request.slot.locationId,
-                      slotStartAt: request.slot.startAt.toISOString(),
-                      slotEndAt: request.slot.endAt.toISOString(),
-                  },
-              ]
-            : [];
-    });
+    const snapshots: DeliveryRunRequestSnapshotInput[] = candidates.flatMap(
+        (request) => {
+            const candidate = selectionCandidate(request);
+            const location = request.slot?.location;
+            return request.slot && request.address && location && candidate
+                ? [
+                      {
+                          deliveryRequestId: request.id,
+                          requestDispatchEventId: request.routeRevision,
+                          state: request.state,
+                          stopKey: candidate.stopKey,
+                          address: {
+                              id: request.address.id,
+                              updatedAt: request.address.updatedAt,
+                              label: request.address.label,
+                              contactName: request.address.contactName,
+                              phone: request.address.phone,
+                              street1: request.address.street1,
+                              street2: request.address.street2,
+                              city: request.address.city,
+                              postalCode: request.address.postalCode,
+                              countryCode: request.address.countryCode,
+                          },
+                          slot: {
+                              id: request.slot.id,
+                              updatedAt: request.slot.updatedAt,
+                              locationId: request.slot.locationId,
+                              startAt: request.slot.startAt,
+                              endAt: request.slot.endAt,
+                          },
+                          pickupLocation: {
+                              id: location.id,
+                              updatedAt: location.updatedAt,
+                              name: location.name,
+                              street1: location.street1,
+                              street2: location.street2,
+                              city: location.city,
+                              postalCode: location.postalCode,
+                              countryCode: location.countryCode,
+                          },
+                      },
+                  ]
+                : [];
+        },
+    );
+    const dispatchRevision = await dependencies.getDispatchRevision();
 
     return {
         createRunInput: {
@@ -470,6 +627,8 @@ export async function prepareDeliveryRun(
             encodedPolyline: plan.encodedPolyline,
             totalDistanceMeters: plan.totalDistanceMeters,
             totalDurationSeconds: plan.totalDurationSeconds,
+            pickupNodes: createPickupNodeInputs(candidates),
+            runSlots: createRunSlotInputs(candidates),
             stops: storedStops,
         },
         summary: {
@@ -478,8 +637,27 @@ export async function prepareDeliveryRun(
             totalDistanceMeters: plan.totalDistanceMeters,
             totalDurationSeconds: plan.totalDurationSeconds,
         },
+        dispatchRevision,
+        selectionRequestIds: uniqueRequestIds,
         requestSnapshots: snapshots,
     };
+}
+
+export async function savePreparedDeliveryRun(
+    preparation: PreparedDeliveryRun,
+) {
+    try {
+        return await saveDeliveryRunPreparation({
+            dispatchRevision: preparation.dispatchRevision,
+            createRunInput: preparation.createRunInput,
+            selectionRequestIds: preparation.selectionRequestIds,
+            requestSnapshots: preparation.requestSnapshots,
+        });
+    } catch (error) {
+        const preparationError = deliveryRunPersistencePreparationError(error);
+        if (preparationError) throw preparationError;
+        throw error;
+    }
 }
 
 export async function revalidatePreparedDeliveryRun(
@@ -509,27 +687,41 @@ export async function revalidatePreparedDeliveryRun(
     );
 
     for (const snapshot of preparation.requestSnapshots) {
-        const request = requestsById.get(snapshot.requestId);
+        const request = requestsById.get(snapshot.deliveryRequestId);
         const candidate = request ? selectionCandidate(request) : null;
+        const location = request?.slot?.location;
         if (
             request?.mode !== 'delivery' ||
             request.state !== snapshot.state ||
             request.state !== DeliveryRequestStates.READY ||
+            request.routeRevision !== snapshot.requestDispatchEventId ||
             !request.address ||
-            request.address.id !== snapshot.addressId ||
+            request.address.id !== snapshot.address.id ||
+            request.address.updatedAt.getTime() !==
+                snapshot.address.updatedAt.getTime() ||
             !request.slot ||
             request.slot.endAt < now ||
-            request.slot.id !== snapshot.slotId ||
-            request.slot.locationId !== snapshot.pickupLocationId ||
-            request.slot.startAt.toISOString() !== snapshot.slotStartAt ||
-            request.slot.endAt.toISOString() !== snapshot.slotEndAt ||
+            request.slot.id !== snapshot.slot.id ||
+            request.slot.updatedAt.getTime() !==
+                snapshot.slot.updatedAt.getTime() ||
+            request.slot.locationId !== snapshot.pickupLocation.id ||
+            request.slot.startAt.getTime() !==
+                snapshot.slot.startAt.getTime() ||
+            request.slot.endAt.getTime() !== snapshot.slot.endAt.getTime() ||
+            !location ||
+            location.updatedAt.getTime() !==
+                snapshot.pickupLocation.updatedAt.getTime() ||
             candidate?.stopKey !== snapshot.stopKey
         ) {
             throw new DeliveryRunPreparationError(
                 'Odabrane dostave promijenile su se tijekom provjere rute. Osvježi popis i pokušaj ponovno.',
                 requestConflict(
                     'delivery-selection-changed',
-                    request ?? { id: snapshot.requestId, state: '' },
+                    request ?? {
+                        id: snapshot.deliveryRequestId,
+                        routeRevision: 0,
+                        state: '',
+                    },
                 ),
             );
         }
@@ -549,7 +741,7 @@ export async function revalidatePreparedDeliveryRun(
         return [request.id];
     });
     const snapshotRequestIds = preparation.requestSnapshots.map(
-        (snapshot) => snapshot.requestId,
+        (snapshot) => snapshot.deliveryRequestId,
     );
     if (!sameRequestIds(currentBulkRequestIds, snapshotRequestIds)) {
         const changedRequestId =

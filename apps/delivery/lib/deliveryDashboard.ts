@@ -1,6 +1,6 @@
 import { notifyDeliveryRequestEvent } from '@gredice/notifications';
 import {
-    createDeliveryRun,
+    consumeDeliveryRunPreparation,
     DeliveryRequestStates,
     DeliveryRunStates,
     DeliveryRunStopStates,
@@ -13,7 +13,6 @@ import {
     getDeliveryRunStopsForRequestIds,
     getUser,
     markDeliveryRunStopsArrived,
-    readyDeliveryRequest,
     updateDeliveryRunEstimates,
     updateDeliveryRunLocation,
 } from '@gredice/storage';
@@ -37,9 +36,11 @@ import {
 } from './deliveryRouting';
 import {
     DeliveryRunPreparationError,
+    deliveryRunPersistencePreparationError,
     prepareDeliveryRun,
-    revalidatePreparedDeliveryRun,
+    savePreparedDeliveryRun,
 } from './deliveryRunPlanning';
+import { resolveDeliveryRunStart } from './deliveryRunStart';
 import {
     buildDeliveryStopKey,
     groupByDeliveryStop,
@@ -181,9 +182,11 @@ export async function resolveDeliveryRunStopGroups(
             return {
                 stop,
                 request,
-                stopKey: request
-                    ? deliveryRequestStopKey(request)
-                    : `request:${stop.deliveryRequestId}`,
+                stopKey:
+                    stop.stopKey ??
+                    (request
+                        ? deliveryRequestStopKey(request)
+                        : `request:${stop.deliveryRequestId}`),
             };
         }),
     );
@@ -254,14 +257,18 @@ type DeliveryRunSnapshot = Pick<
 function deliverySummaryItem(
     request: DeliveryRequest,
     contacts: DeliveryAccountContact[],
+    stop?: DeliveryRunStop | null,
 ): DeliveryStopDeliverySummary {
     const address = request.address;
     return {
         requestId: request.id,
         requestState: request.state,
-        contactName: address?.contactName ?? 'Nepoznat kontakt',
-        phone: address?.phone ?? null,
-        addressLabel: address?.label ?? null,
+        contactName:
+            stop?.deliveryContactName ??
+            address?.contactName ??
+            'Nepoznat kontakt',
+        phone: stop?.deliveryPhone ?? address?.phone ?? null,
+        addressLabel: stop?.deliveryAddressLabel ?? address?.label ?? null,
         requestNotes: request.requestNotes ?? null,
         deliveryNotes: request.deliveryNotes ?? null,
         harvest: harvestSummary(request),
@@ -301,9 +308,12 @@ function deliveryStopSummary({
               ? DeliveryRunStopStates.ARRIVED
               : (representativeStop?.state ?? null);
     const address = request.address;
-    const formattedAddress = address
-        ? formatDeliveryDestinationAddress(address)
-        : 'Adresa nije dostupna';
+    const formattedAddress =
+        representativeStop?.formattedAddress ??
+        (address
+            ? formatDeliveryDestinationAddress(address)
+            : 'Adresa nije dostupna');
+    const runSlot = representativeStop?.runSlot;
     const runLocation = run ? trackingLocation(run) : null;
 
     return {
@@ -319,14 +329,18 @@ function deliveryStopSummary({
             runState: run?.state,
         }),
         isCurrent,
-        contactName: address?.contactName ?? 'Nepoznat kontakt',
-        phone: address?.phone ?? null,
+        contactName:
+            representativeStop?.deliveryContactName ??
+            address?.contactName ??
+            'Nepoznat kontakt',
+        phone: representativeStop?.deliveryPhone ?? address?.phone ?? null,
         address: formattedAddress,
-        addressLabel: address?.label ?? null,
+        addressLabel:
+            representativeStop?.deliveryAddressLabel ?? address?.label ?? null,
         requestNotes: request.requestNotes ?? null,
         deliveryNotes: request.deliveryNotes ?? null,
-        slotStartAt: iso(request.slot?.startAt),
-        slotEndAt: iso(request.slot?.endAt),
+        slotStartAt: iso(runSlot?.windowStartAt ?? request.slot?.startAt),
+        slotEndAt: iso(runSlot?.windowEndAt ?? request.slot?.endAt),
         estimatedArrivalAt: iso(representativeStop?.estimatedArrivalAt),
         estimatedTravelSeconds:
             representativeStop?.estimatedTravelSeconds ?? null,
@@ -340,7 +354,7 @@ function deliveryStopSummary({
         runId: run?.id ?? null,
         deliveryCount: items.length,
         deliveries: items.map((item) =>
-            deliverySummaryItem(item.request, contacts),
+            deliverySummaryItem(item.request, contacts, item.stop),
         ),
     };
 }
@@ -609,51 +623,44 @@ export async function getDeliveryDashboard({
         : await customerDashboard({ accountId, userId, role });
 }
 
-async function ensureRunRequestsReady(run: DeliveryRun) {
-    await Promise.all(
-        run.stops.map(async (stop) => {
-            const request = await getDeliveryRequest(stop.deliveryRequestId);
-            if (!request) {
-                throw new Error('Dostava u ruti nije pronađena.');
-            }
-            if (request.state === DeliveryRequestStates.READY) {
-                return;
-            }
-            if (!batchStates.has(request.state)) {
-                throw new Error('Dostava više nije dostupna za preuzimanje.');
-            }
-
-            await readyDeliveryRequest(stop.deliveryRequestId);
-            await notifyDeliveryRequestEvent(
-                stop.deliveryRequestId,
-                'updated',
-                {
-                    status: DeliveryRequestStates.READY,
-                    note: 'Vozač je preuzeo urod i započeo dostavu.',
-                },
-            );
-        }),
-    );
-}
-
 export async function startDeliveryRun({
     driverUserId,
     deliveryRequestIds,
+    preparationToken,
 }: {
     driverUserId: string;
     deliveryRequestIds: string[];
+    preparationToken?: string;
 }) {
-    const existingRun = await getActiveDeliveryRunForDriver(driverUserId);
-    if (existingRun) {
-        await ensureRunRequestsReady(existingRun);
-        return existingRun;
-    }
-    const preparation = await prepareDeliveryRun({
-        driverUserId,
-        deliveryRequestIds,
+    const consumePreparation = async (token: string) => {
+        try {
+            return await consumeDeliveryRunPreparation({
+                preparationToken: token,
+                driverUserId,
+                deliveryRequestIds,
+            });
+        } catch (error) {
+            const preparationError =
+                deliveryRunPersistencePreparationError(error);
+            if (preparationError) throw preparationError;
+            throw error;
+        }
+    };
+
+    return await resolveDeliveryRunStart({
+        preparationToken,
+        getExistingRun: async () =>
+            await getActiveDeliveryRunForDriver(driverUserId),
+        createPreparationToken: async () => {
+            const preparation = await prepareDeliveryRun({
+                driverUserId,
+                deliveryRequestIds,
+            });
+            const savedPreparation = await savePreparedDeliveryRun(preparation);
+            return savedPreparation.preparationToken;
+        },
+        consumePreparation,
     });
-    await revalidatePreparedDeliveryRun(preparation);
-    return await createDeliveryRun(preparation.createRunInput);
 }
 
 export async function arriveAtDeliveryStop({
@@ -867,8 +874,12 @@ export async function recordDriverLocation({
                 formattedAddress: representative.stop.formattedAddress,
                 latitude: representative.stop.latitude,
                 longitude: representative.stop.longitude,
-                windowStartAt: representative.request?.slot?.startAt,
-                windowEndAt: representative.request?.slot?.endAt,
+                windowStartAt:
+                    representative.stop.runSlot?.windowStartAt ??
+                    representative.request?.slot?.startAt,
+                windowEndAt:
+                    representative.stop.runSlot?.windowEndAt ??
+                    representative.request?.slot?.endAt,
             },
         ];
     });

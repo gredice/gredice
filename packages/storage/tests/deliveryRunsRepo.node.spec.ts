@@ -3,31 +3,47 @@ import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
     accountCanTrackDeliveryRun,
+    type CreateDeliveryRunInput,
     cancelDeliveryRequest,
     changeDeliveryRequestSlot,
+    consumeDeliveryRunPreparation,
     createDeliveryAddress,
     createDeliveryRun,
     createEvent,
+    DeliveryRunPersistenceError,
+    DeliveryRunPersistenceErrorCodes,
+    type DeliveryRunRequestSnapshotInput,
     deliveryRequests,
+    deliveryRunPreparations,
+    deliveryRunStops,
+    deliveryRuns,
     fulfillDeliveryRunStop,
     fulfillDeliveryRunStops,
+    getDeliveryDispatchRevision,
     getDeliveryRequest,
+    getDeliveryRequestDispatchSnapshots,
     getDeliveryRun,
+    getDeliveryRunStopsForRequestIds,
     knownEvents,
     markDeliveryRunStopArrived,
     markDeliveryRunStopsArrived,
     operations,
     pickupLocations,
+    saveDeliveryRunPreparation,
     storage,
     timeSlots,
     updateDeliveryAddress,
     updateDeliveryRunLocation,
+    updatePickupLocation,
+    updateTimeSlot,
     users,
 } from '@gredice/storage';
+import { eq } from 'drizzle-orm';
 import { createTestAccount } from './helpers/testHelpers';
 import { createTestDb } from './testDb';
 
 type DeliveryRunFixture = Awaited<ReturnType<typeof createDeliveryRunFixture>>;
+let nextSupplementalOperationEntityId = 10_000;
 
 async function createDeliveryRunFixture({
     accountIndexes = [0],
@@ -178,6 +194,282 @@ function createRun({
         totalDurationSeconds,
         stops: stops ?? createRunStops(requestIds),
     });
+}
+
+function snapshotAddress(address: {
+    street1: string;
+    street2?: string | null;
+    postalCode: string;
+    city: string;
+    countryCode: string;
+}) {
+    return [
+        address.street1,
+        address.street2,
+        `${address.postalCode} ${address.city}`,
+        address.countryCode,
+    ]
+        .map((value) => value?.trim())
+        .filter((value): value is string => Boolean(value))
+        .join(', ');
+}
+
+function snapshotStopKey(
+    slotId: number,
+    address: Parameters<typeof snapshotAddress>[0],
+) {
+    return `${slotId}:${snapshotAddress(address)
+        .normalize('NFKC')
+        .toLocaleLowerCase('hr-HR')
+        .replace(/\s*,\s*/g, ',')
+        .replace(/\s+/g, ' ')
+        .trim()}`;
+}
+
+async function createPreparedRunFixture({
+    driverCount = 1,
+    bulk = false,
+}: {
+    driverCount?: number;
+    bulk?: boolean;
+} = {}) {
+    const fixture = await createDeliveryRunFixture({
+        accountIndexes: [0, 0],
+        driverCount,
+    });
+    const [accountId] = fixture.accountIds;
+    const [firstRequestId, secondRequestId] = fixture.requestIds;
+    const [firstOperationId, secondOperationId] = fixture.operationIds;
+    assert.ok(accountId);
+    assert.ok(firstRequestId);
+    assert.ok(secondRequestId);
+    assert.ok(firstOperationId);
+    assert.ok(secondOperationId);
+
+    const firstLocation = await storage().query.pickupLocations.findFirst({
+        where: eq(pickupLocations.id, fixture.locationId),
+    });
+    const firstSlot = await storage().query.timeSlots.findFirst({
+        where: eq(timeSlots.id, fixture.timeSlotId),
+    });
+    assert.ok(firstLocation);
+    assert.ok(firstSlot);
+    const [secondLocation] = await storage()
+        .insert(pickupLocations)
+        .values({
+            name: 'Drugo skladište',
+            street1: 'Ilica 10',
+            city: 'Zagreb',
+            postalCode: '10000',
+            countryCode: 'HR',
+        })
+        .returning();
+    assert.ok(secondLocation);
+    const [secondSlot] = await storage()
+        .insert(timeSlots)
+        .values({
+            locationId: secondLocation.id,
+            type: 'delivery',
+            startAt: new Date('2026-07-13T10:00:00.000Z'),
+            endAt: new Date('2026-07-13T12:00:00.000Z'),
+        })
+        .returning();
+    assert.ok(secondSlot);
+
+    const addressIds = await Promise.all(
+        ['Prva 1', 'Druga 2'].map((street1, index) =>
+            createDeliveryAddress({
+                accountId,
+                label: `Adresa ${index + 1}`,
+                contactName: `Primatelj ${index + 1}`,
+                phone: `+385 91 000 000${index}`,
+                street1,
+                city: 'Zagreb',
+                postalCode: '10000',
+                countryCode: 'HR',
+            }),
+        ),
+    );
+    const slotIds = [firstSlot.id, secondSlot.id];
+    for (const [index, requestId] of fixture.requestIds.entries()) {
+        const operationId = fixture.operationIds[index];
+        const addressId = addressIds[bulk ? 0 : index];
+        const slotId = slotIds[bulk ? 0 : index];
+        assert.ok(operationId);
+        assert.ok(addressId);
+        assert.ok(slotId);
+        await createEvent(
+            knownEvents.delivery.requestCreatedV1(requestId, {
+                operationId,
+                slotId,
+                mode: 'delivery',
+                addressId,
+                accountId,
+            }),
+        );
+        await createEvent(
+            knownEvents.delivery.requestReadyV1(requestId, {
+                status: 'ready',
+            }),
+        );
+    }
+
+    const currentSnapshots = await getDeliveryRequestDispatchSnapshots(
+        fixture.requestIds,
+    );
+    const requestSnapshots: DeliveryRunRequestSnapshotInput[] =
+        currentSnapshots.map((snapshot) => {
+            assert.ok(snapshot.address);
+            assert.ok(snapshot.slot);
+            assert.ok(snapshot.pickupLocation);
+            return {
+                deliveryRequestId: snapshot.deliveryRequestId,
+                requestDispatchEventId: snapshot.requestDispatchEventId,
+                state: snapshot.state,
+                stopKey: snapshotStopKey(snapshot.slot.id, snapshot.address),
+                address: {
+                    id: snapshot.address.id,
+                    updatedAt: snapshot.address.updatedAt,
+                    label: snapshot.address.label,
+                    contactName: snapshot.address.contactName,
+                    phone: snapshot.address.phone,
+                    street1: snapshot.address.street1,
+                    street2: snapshot.address.street2,
+                    city: snapshot.address.city,
+                    postalCode: snapshot.address.postalCode,
+                    countryCode: snapshot.address.countryCode,
+                },
+                slot: {
+                    id: snapshot.slot.id,
+                    updatedAt: snapshot.slot.updatedAt,
+                    locationId: snapshot.slot.locationId,
+                    startAt: snapshot.slot.startAt,
+                    endAt: snapshot.slot.endAt,
+                },
+                pickupLocation: {
+                    id: snapshot.pickupLocation.id,
+                    updatedAt: snapshot.pickupLocation.updatedAt,
+                    name: snapshot.pickupLocation.name,
+                    street1: snapshot.pickupLocation.street1,
+                    street2: snapshot.pickupLocation.street2,
+                    city: snapshot.pickupLocation.city,
+                    postalCode: snapshot.pickupLocation.postalCode,
+                    countryCode: snapshot.pickupLocation.countryCode,
+                },
+            };
+        });
+    const snapshotsByRequestId = new Map(
+        requestSnapshots.map((snapshot) => [
+            snapshot.deliveryRequestId,
+            snapshot,
+        ]),
+    );
+    const locations = bulk ? [firstLocation] : [firstLocation, secondLocation];
+    const slots = bulk ? [firstSlot] : [firstSlot, secondSlot];
+    const createRunInput: CreateDeliveryRunInput = {
+        driverUserId: fixture.driverUserIds[0] ?? '',
+        timeSlotId: firstSlot.id,
+        totalDistanceMeters: 8_000,
+        totalDurationSeconds: 2_400,
+        pickupNodes: locations.map((location, index) => ({
+            pickupLocationId: location.id,
+            sequence: index + 1,
+            name: location.name,
+            street1: location.street1,
+            street2: location.street2,
+            city: location.city,
+            postalCode: location.postalCode,
+            countryCode: location.countryCode,
+            sourceUpdatedAt: location.updatedAt,
+        })),
+        runSlots: slots.map((slot, index) => ({
+            timeSlotId: slot.id,
+            pickupLocationId: slot.locationId,
+            sequence: index + 1,
+            manifestId: `manifest-${randomUUID()}`,
+            windowStartAt: slot.startAt,
+            windowEndAt: slot.endAt,
+            sourceUpdatedAt: slot.updatedAt,
+        })),
+        stops: fixture.requestIds.map((deliveryRequestId, index) => {
+            const snapshot = snapshotsByRequestId.get(deliveryRequestId);
+            assert.ok(snapshot);
+            return {
+                deliveryRequestId,
+                sequence: index + 1,
+                latitude: 45.8 + index / 100,
+                longitude: 15.97 + index / 100,
+                formattedAddress: snapshotAddress(snapshot.address),
+                estimatedArrivalAt: new Date(
+                    Date.parse('2026-07-13T08:15:00.000Z') + index * 900_000,
+                ),
+                estimatedTravelSeconds: 600,
+                estimatedDistanceMeters: 2_250,
+                timeSlotId: snapshot.slot.id,
+                stopKey: snapshot.stopKey,
+                requestDispatchEventId: snapshot.requestDispatchEventId,
+                deliveryAddressId: snapshot.address.id,
+                deliveryAddressUpdatedAt: snapshot.address.updatedAt,
+            };
+        }),
+    };
+
+    return {
+        fixture,
+        addressIds,
+        createRunInput,
+        requestSnapshots,
+        selectionRequestIds: [...fixture.requestIds],
+        dispatchRevision: await getDeliveryDispatchRevision(),
+    };
+}
+
+async function addReadyDeliveryRequest({
+    prepared,
+    addressId,
+    slotId,
+}: {
+    prepared: Awaited<ReturnType<typeof createPreparedRunFixture>>;
+    addressId: number;
+    slotId: number;
+}) {
+    const accountId = prepared.fixture.accountIds[0];
+    assert.ok(accountId);
+    const [operation] = await storage()
+        .insert(operations)
+        .values({
+            entityId: nextSupplementalOperationEntityId++,
+            entityTypeName: 'operation',
+            accountId,
+        })
+        .returning({ id: operations.id });
+    assert.ok(operation);
+    const requestId = randomUUID();
+    await storage().insert(deliveryRequests).values({
+        id: requestId,
+        operationId: operation.id,
+    });
+    await createEvent(
+        knownEvents.delivery.requestCreatedV1(requestId, {
+            operationId: operation.id,
+            slotId,
+            mode: 'delivery',
+            addressId,
+            accountId,
+        }),
+    );
+    await createEvent(
+        knownEvents.delivery.requestReadyV1(requestId, { status: 'ready' }),
+    );
+    return requestId;
+}
+
+async function assertPersistenceError(promise: Promise<unknown>, code: string) {
+    await assert.rejects(
+        promise,
+        (error) =>
+            error instanceof DeliveryRunPersistenceError && error.code === code,
+    );
 }
 
 test('delivery run fulfills a current bulk stop atomically and preserves route order', async () => {
@@ -622,4 +914,504 @@ test('[legacy] bulk fulfillment accepts a non-contiguous set containing the curr
         stopId: secondStop.id,
     });
     assert.equal((await getDeliveryRun(run.id))?.state, 'completed');
+});
+
+test('prepared run persists multiple pickup locations, slots, manifests, and stable snapshots', async () => {
+    const prepared = await createPreparedRunFixture();
+    const [driverUserId] = prepared.fixture.driverUserIds;
+    assert.ok(driverUserId);
+    const saved = await saveDeliveryRunPreparation(prepared);
+    const run = await consumeDeliveryRunPreparation({
+        preparationToken: saved.preparationToken,
+        driverUserId,
+        deliveryRequestIds: prepared.fixture.requestIds,
+    });
+
+    assert.equal(run.pickupNodes.length, 2);
+    assert.equal(run.runSlots.length, 2);
+    assert.equal(new Set(run.runSlots.map((slot) => slot.manifestId)).size, 2);
+    assert.deepEqual(
+        run.stops.map((stop) => stop.runSlot?.id),
+        run.runSlots.map((slot) => slot.id),
+    );
+    assert.deepEqual(
+        run.pickupNodes.map((node) => node.sequence),
+        [1, 2],
+    );
+
+    const [firstAddressId] = prepared.addressIds;
+    const [firstNode] = run.pickupNodes;
+    const [firstRunSlot] = run.runSlots;
+    const [firstStop] = run.stops;
+    assert.ok(firstAddressId);
+    assert.ok(firstNode);
+    assert.ok(firstRunSlot);
+    assert.ok(firstStop);
+    assert.ok(firstNode.pickupLocationId);
+    assert.ok(firstRunSlot.timeSlotId);
+    await updateDeliveryAddress(
+        { id: firstAddressId, street1: 'Promijenjena 99' },
+        prepared.fixture.accountIds[0] ?? '',
+    );
+    await updatePickupLocation({
+        id: firstNode.pickupLocationId,
+        name: 'Promijenjeno skladište',
+    });
+    await updateTimeSlot({
+        id: firstRunSlot.timeSlotId,
+        endAt: new Date('2026-07-13T10:30:00.000Z'),
+    });
+
+    const unchanged = await getDeliveryRun(run.id);
+    assert.equal(unchanged?.pickupNodes[0]?.name, firstNode.name);
+    assert.equal(
+        unchanged?.runSlots[0]?.windowEndAt.toISOString(),
+        firstRunSlot.windowEndAt.toISOString(),
+    );
+    assert.equal(
+        unchanged?.stops[0]?.formattedAddress,
+        firstStop.formattedAddress,
+    );
+    assert.equal(
+        unchanged?.stops[0]?.deliveryContactName,
+        firstStop.deliveryContactName,
+    );
+    const requestRows = await getDeliveryRunStopsForRequestIds([
+        firstStop.deliveryRequestId,
+    ]);
+    assert.equal(requestRows[0]?.stop.runSlot?.id, firstRunSlot.id);
+});
+
+test('original selection can consume a preparation expanded with bulk siblings', async () => {
+    const prepared = await createPreparedRunFixture({ bulk: true });
+    const [driverUserId, selectedRequestId] = [
+        prepared.fixture.driverUserIds[0],
+        prepared.fixture.requestIds[0],
+    ];
+    assert.ok(driverUserId);
+    assert.ok(selectedRequestId);
+    const bulkPrepared = {
+        ...prepared,
+        selectionRequestIds: [selectedRequestId],
+    };
+    const saved = await saveDeliveryRunPreparation(bulkPrepared);
+    const run = await consumeDeliveryRunPreparation({
+        preparationToken: saved.preparationToken,
+        driverUserId,
+        deliveryRequestIds: [selectedRequestId],
+    });
+    assert.equal(run.stops.length, prepared.requestSnapshots.length);
+});
+
+test('tampered pickup-node and run-slot snapshots are rejected', async () => {
+    const prepared = await createPreparedRunFixture();
+    const firstNode = prepared.createRunInput.pickupNodes?.[0];
+    const firstSlot = prepared.createRunInput.runSlots?.[0];
+    assert.ok(firstNode);
+    assert.ok(firstSlot);
+    await assertPersistenceError(
+        saveDeliveryRunPreparation({
+            ...prepared,
+            createRunInput: {
+                ...prepared.createRunInput,
+                pickupNodes: [
+                    { ...firstNode, street1: 'Tampered pickup address' },
+                    ...(prepared.createRunInput.pickupNodes?.slice(1) ?? []),
+                ],
+            },
+        }),
+        DeliveryRunPersistenceErrorCodes.INVALID_PLAN,
+    );
+    await assertPersistenceError(
+        saveDeliveryRunPreparation({
+            ...prepared,
+            createRunInput: {
+                ...prepared.createRunInput,
+                runSlots: [
+                    {
+                        ...firstSlot,
+                        windowEndAt: new Date(
+                            firstSlot.windowEndAt.getTime() + 60_000,
+                        ),
+                    },
+                    ...(prepared.createRunInput.runSlots?.slice(1) ?? []),
+                ],
+            },
+        }),
+        DeliveryRunPersistenceErrorCodes.INVALID_PLAN,
+    );
+});
+
+test('preparation rejects wrong owner or selection and expires without creating a run', async () => {
+    const prepared = await createPreparedRunFixture({ driverCount: 2 });
+    const [driverUserId, otherDriverUserId] = prepared.fixture.driverUserIds;
+    assert.ok(driverUserId);
+    assert.ok(otherDriverUserId);
+    const saved = await saveDeliveryRunPreparation(prepared);
+
+    await assertPersistenceError(
+        consumeDeliveryRunPreparation({
+            preparationToken: saved.preparationToken,
+            driverUserId,
+            deliveryRequestIds: [prepared.fixture.requestIds[0] ?? ''],
+        }),
+        DeliveryRunPersistenceErrorCodes.PREPARATION_SELECTION_MISMATCH,
+    );
+    await assertPersistenceError(
+        consumeDeliveryRunPreparation({
+            preparationToken: saved.preparationToken,
+            driverUserId: otherDriverUserId,
+            deliveryRequestIds: prepared.fixture.requestIds,
+        }),
+        DeliveryRunPersistenceErrorCodes.PREPARATION_OWNER_MISMATCH,
+    );
+    await storage()
+        .update(deliveryRunPreparations)
+        .set({ expiresAt: new Date(0) })
+        .where(eq(deliveryRunPreparations.id, saved.preparationId));
+    await assertPersistenceError(
+        consumeDeliveryRunPreparation({
+            preparationToken: saved.preparationToken,
+            driverUserId,
+            deliveryRequestIds: prepared.fixture.requestIds,
+        }),
+        DeliveryRunPersistenceErrorCodes.PREPARATION_EXPIRED,
+    );
+    assert.equal(
+        await storage().query.deliveryRuns.findFirst({
+            where: eq(deliveryRuns.driverUserId, driverUserId),
+        }),
+        undefined,
+    );
+});
+
+test('preparation cleanup removes stale rows while preserving recent replay', async () => {
+    const expiredPrepared = await createPreparedRunFixture();
+    const expiredSaved = await saveDeliveryRunPreparation(expiredPrepared);
+    await assert.rejects(
+        storage()
+            .update(deliveryRunPreparations)
+            .set({ consumedAt: new Date() })
+            .where(eq(deliveryRunPreparations.id, expiredSaved.preparationId)),
+        (error) =>
+            error instanceof Error &&
+            error.cause instanceof Error &&
+            error.cause.message.includes(
+                'delivery_run_preparations_consumption_shape_check',
+            ),
+    );
+    await storage()
+        .update(deliveryRunPreparations)
+        .set({ expiresAt: new Date(0) })
+        .where(eq(deliveryRunPreparations.id, expiredSaved.preparationId));
+
+    const oldConsumedPrepared = await createPreparedRunFixture();
+    const oldConsumedSaved =
+        await saveDeliveryRunPreparation(oldConsumedPrepared);
+    const oldConsumedRun = await consumeDeliveryRunPreparation({
+        preparationToken: oldConsumedSaved.preparationToken,
+        driverUserId: oldConsumedPrepared.fixture.driverUserIds[0] ?? '',
+        deliveryRequestIds: oldConsumedPrepared.fixture.requestIds,
+    });
+    await storage()
+        .update(deliveryRunPreparations)
+        .set({ consumedAt: new Date(Date.now() - 25 * 60 * 60 * 1000) })
+        .where(eq(deliveryRunPreparations.id, oldConsumedSaved.preparationId));
+
+    const recentConsumedPrepared = await createPreparedRunFixture();
+    const recentConsumedSaved = await saveDeliveryRunPreparation(
+        recentConsumedPrepared,
+    );
+    const recentConsumedRun = await consumeDeliveryRunPreparation({
+        preparationToken: recentConsumedSaved.preparationToken,
+        driverUserId: recentConsumedPrepared.fixture.driverUserIds[0] ?? '',
+        deliveryRequestIds: recentConsumedPrepared.fixture.requestIds,
+    });
+
+    const cleanupTrigger = await createPreparedRunFixture();
+    await saveDeliveryRunPreparation(cleanupTrigger);
+
+    for (const preparationId of [
+        expiredSaved.preparationId,
+        oldConsumedSaved.preparationId,
+    ]) {
+        assert.equal(
+            await storage().query.deliveryRunPreparations.findFirst({
+                where: eq(deliveryRunPreparations.id, preparationId),
+            }),
+            undefined,
+        );
+    }
+    assert.equal(
+        (await getDeliveryRun(oldConsumedRun.id))?.id,
+        oldConsumedRun.id,
+    );
+    assert.ok(
+        await storage().query.deliveryRunPreparations.findFirst({
+            where: eq(
+                deliveryRunPreparations.id,
+                recentConsumedSaved.preparationId,
+            ),
+        }),
+    );
+    const replayed = await consumeDeliveryRunPreparation({
+        preparationToken: recentConsumedSaved.preparationToken,
+        driverUserId: recentConsumedPrepared.fixture.driverUserIds[0] ?? '',
+        deliveryRequestIds: recentConsumedPrepared.fixture.requestIds,
+    });
+    assert.equal(replayed.id, recentConsumedRun.id);
+});
+
+test('stale request revision and edited source roll back preparation consumption', async () => {
+    const staleRequest = await createPreparedRunFixture();
+    const [staleDriverUserId, staleRequestId] = [
+        staleRequest.fixture.driverUserIds[0],
+        staleRequest.fixture.requestIds[0],
+    ];
+    assert.ok(staleDriverUserId);
+    assert.ok(staleRequestId);
+    const staleSaved = await saveDeliveryRunPreparation(staleRequest);
+    await createEvent(
+        knownEvents.delivery.requestPreparingV1(staleRequestId, {
+            status: 'preparing',
+        }),
+    );
+    await assertPersistenceError(
+        consumeDeliveryRunPreparation({
+            preparationToken: staleSaved.preparationToken,
+            driverUserId: staleDriverUserId,
+            deliveryRequestIds: staleRequest.fixture.requestIds,
+        }),
+        DeliveryRunPersistenceErrorCodes.REQUEST_CHANGED,
+    );
+
+    const changedSource = await createPreparedRunFixture();
+    const [sourceDriverUserId] = changedSource.fixture.driverUserIds;
+    const [sourceAddressId] = changedSource.addressIds;
+    assert.ok(sourceDriverUserId);
+    assert.ok(sourceAddressId);
+    const sourceSaved = await saveDeliveryRunPreparation(changedSource);
+    await updateDeliveryAddress(
+        { id: sourceAddressId, street1: 'Nova ruta 5' },
+        changedSource.fixture.accountIds[0] ?? '',
+    );
+    await assertPersistenceError(
+        consumeDeliveryRunPreparation({
+            preparationToken: sourceSaved.preparationToken,
+            driverUserId: sourceDriverUserId,
+            deliveryRequestIds: changedSource.fixture.requestIds,
+        }),
+        DeliveryRunPersistenceErrorCodes.SOURCE_CHANGED,
+    );
+
+    for (const saved of [staleSaved, sourceSaved]) {
+        const row = await storage().query.deliveryRunPreparations.findFirst({
+            where: eq(deliveryRunPreparations.id, saved.preparationId),
+        });
+        assert.equal(row?.consumedAt, null);
+        assert.equal(row?.deliveryRunId, null);
+    }
+    for (const driverUserId of [staleDriverUserId, sourceDriverUserId]) {
+        assert.equal(
+            await storage().query.deliveryRuns.findFirst({
+                where: eq(deliveryRuns.driverUserId, driverUserId),
+            }),
+            undefined,
+        );
+    }
+});
+
+test('unrelated delivery events do not invalidate a saved preparation', async () => {
+    const prepared = await createPreparedRunFixture();
+    const [driverUserId] = prepared.fixture.driverUserIds;
+    const firstSnapshot = prepared.requestSnapshots[0];
+    assert.ok(driverUserId);
+    assert.ok(firstSnapshot);
+    const saved = await saveDeliveryRunPreparation(prepared);
+    const unrelatedAddressId = await createDeliveryAddress({
+        accountId: prepared.fixture.accountIds[0] ?? '',
+        label: 'Nepovezana adresa',
+        contactName: 'Drugi primatelj',
+        phone: '+385 91 999 9999',
+        street1: 'Nepovezana 100',
+        city: 'Zagreb',
+        postalCode: '10000',
+        countryCode: 'HR',
+    });
+    await addReadyDeliveryRequest({
+        prepared,
+        addressId: unrelatedAddressId,
+        slotId: firstSnapshot.slot.id,
+    });
+
+    const run = await consumeDeliveryRunPreparation({
+        preparationToken: saved.preparationToken,
+        driverUserId,
+        deliveryRequestIds: prepared.fixture.requestIds,
+    });
+    assert.equal(run.stops.length, prepared.fixture.requestIds.length);
+});
+
+test('newly ready bulk siblings invalidate preparation save and consumption', async () => {
+    const staleBeforeSave = await createPreparedRunFixture();
+    const beforeSaveSnapshot = staleBeforeSave.requestSnapshots[0];
+    assert.ok(beforeSaveSnapshot);
+    await addReadyDeliveryRequest({
+        prepared: staleBeforeSave,
+        addressId: beforeSaveSnapshot.address.id,
+        slotId: beforeSaveSnapshot.slot.id,
+    });
+    await assertPersistenceError(
+        saveDeliveryRunPreparation(staleBeforeSave),
+        DeliveryRunPersistenceErrorCodes.REQUEST_CHANGED,
+    );
+
+    const staleAfterSave = await createPreparedRunFixture();
+    const [driverUserId] = staleAfterSave.fixture.driverUserIds;
+    const afterSaveSnapshot = staleAfterSave.requestSnapshots[0];
+    assert.ok(driverUserId);
+    assert.ok(afterSaveSnapshot);
+    const saved = await saveDeliveryRunPreparation(staleAfterSave);
+    await addReadyDeliveryRequest({
+        prepared: staleAfterSave,
+        addressId: afterSaveSnapshot.address.id,
+        slotId: afterSaveSnapshot.slot.id,
+    });
+    await assertPersistenceError(
+        consumeDeliveryRunPreparation({
+            preparationToken: saved.preparationToken,
+            driverUserId,
+            deliveryRequestIds: staleAfterSave.fixture.requestIds,
+        }),
+        DeliveryRunPersistenceErrorCodes.REQUEST_CHANGED,
+    );
+});
+
+test('concurrent preparation replay returns one persisted run', async () => {
+    const prepared = await createPreparedRunFixture();
+    const [driverUserId] = prepared.fixture.driverUserIds;
+    assert.ok(driverUserId);
+    const saved = await saveDeliveryRunPreparation(prepared);
+    const consume = () =>
+        consumeDeliveryRunPreparation({
+            preparationToken: saved.preparationToken,
+            driverUserId,
+            deliveryRequestIds: prepared.fixture.requestIds,
+        });
+    const [first, second] = await Promise.all([consume(), consume()]);
+    assert.equal(first.id, second.id);
+    assert.equal(
+        (
+            await storage()
+                .select()
+                .from(deliveryRuns)
+                .where(eq(deliveryRuns.driverUserId, driverUserId))
+        ).length,
+        1,
+    );
+    const preparation = await storage().query.deliveryRunPreparations.findFirst(
+        {
+            where: eq(deliveryRunPreparations.id, saved.preparationId),
+        },
+    );
+    assert.equal(preparation?.deliveryRunId, first.id);
+    assert.ok(preparation?.consumedAt);
+});
+
+test('cross-driver prepared run contention assigns each request only once', async () => {
+    const prepared = await createPreparedRunFixture({ driverCount: 2 });
+    const [firstDriverUserId, secondDriverUserId] =
+        prepared.fixture.driverUserIds;
+    assert.ok(firstDriverUserId);
+    assert.ok(secondDriverUserId);
+    const firstSaved = await saveDeliveryRunPreparation(prepared);
+    const secondPrepared = {
+        ...prepared,
+        createRunInput: {
+            ...prepared.createRunInput,
+            driverUserId: secondDriverUserId,
+        },
+    };
+    const secondSaved = await saveDeliveryRunPreparation(secondPrepared);
+    const attempts = await Promise.allSettled([
+        consumeDeliveryRunPreparation({
+            preparationToken: firstSaved.preparationToken,
+            driverUserId: firstDriverUserId,
+            deliveryRequestIds: prepared.fixture.requestIds,
+        }),
+        consumeDeliveryRunPreparation({
+            preparationToken: secondSaved.preparationToken,
+            driverUserId: secondDriverUserId,
+            deliveryRequestIds: prepared.fixture.requestIds,
+        }),
+    ]);
+    assert.equal(
+        attempts.filter((attempt) => attempt.status === 'fulfilled').length,
+        1,
+    );
+    const rejection = attempts.find(
+        (attempt): attempt is PromiseRejectedResult =>
+            attempt.status === 'rejected',
+    );
+    assert.ok(rejection);
+    assert.ok(rejection.reason instanceof DeliveryRunPersistenceError);
+    assert.equal(
+        rejection.reason.code,
+        DeliveryRunPersistenceErrorCodes.ALREADY_ASSIGNED,
+    );
+    assert.equal(
+        (await getDeliveryRunStopsForRequestIds(prepared.fixture.requestIds))
+            .length,
+        prepared.fixture.requestIds.length,
+    );
+});
+
+test('route snapshot constraints reject incomplete and cross-run stop references', async () => {
+    const legacyFixture = await createDeliveryRunFixture();
+    const legacyRun = await createRun({
+        fixture: legacyFixture,
+        driverUserId: legacyFixture.driverUserIds[0] ?? '',
+        requestIds: legacyFixture.requestIds,
+    });
+    const [legacyStop] = legacyRun.stops;
+    assert.ok(legacyStop);
+    await assert.rejects(
+        storage()
+            .update(deliveryRunStops)
+            .set({ stopKey: 'partial-snapshot' })
+            .where(eq(deliveryRunStops.id, legacyStop.id)),
+        (error) =>
+            error instanceof Error &&
+            error.cause instanceof Error &&
+            error.cause.message.includes('snapshot_shape_check'),
+    );
+
+    const firstPrepared = await createPreparedRunFixture();
+    const firstSaved = await saveDeliveryRunPreparation(firstPrepared);
+    const firstRun = await consumeDeliveryRunPreparation({
+        preparationToken: firstSaved.preparationToken,
+        driverUserId: firstPrepared.fixture.driverUserIds[0] ?? '',
+        deliveryRequestIds: firstPrepared.fixture.requestIds,
+    });
+    const secondPrepared = await createPreparedRunFixture();
+    const secondSaved = await saveDeliveryRunPreparation(secondPrepared);
+    const secondRun = await consumeDeliveryRunPreparation({
+        preparationToken: secondSaved.preparationToken,
+        driverUserId: secondPrepared.fixture.driverUserIds[0] ?? '',
+        deliveryRequestIds: secondPrepared.fixture.requestIds,
+    });
+    const [firstStop] = firstRun.stops;
+    const [secondRunSlot] = secondRun.runSlots;
+    assert.ok(firstStop);
+    assert.ok(secondRunSlot);
+    await assert.rejects(
+        storage()
+            .update(deliveryRunStops)
+            .set({ runSlotId: secondRunSlot.id })
+            .where(eq(deliveryRunStops.id, firstStop.id)),
+        (error) =>
+            error instanceof Error &&
+            error.cause instanceof Error &&
+            error.cause.message.includes('delivery_run_stops_run_slot_fk'),
+    );
 });

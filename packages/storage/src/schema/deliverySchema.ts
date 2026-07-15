@@ -1,9 +1,12 @@
 import { relations, sql } from 'drizzle-orm';
 import {
     boolean,
+    check,
     doublePrecision,
+    foreignKey,
     index,
     integer,
+    jsonb,
     pgTable,
     serial,
     text,
@@ -198,6 +201,226 @@ export const deliveryRuns = pgTable(
     ],
 );
 
+export type DeliveryRunPreparationPlanPayload = {
+    formatVersion: 1;
+    dispatchRevision: number;
+    selectionRequestIds: string[];
+    createRunInput: {
+        driverUserId: string;
+        timeSlotId: number;
+        encodedPolyline?: string;
+        totalDistanceMeters?: number;
+        totalDurationSeconds?: number;
+        pickupNodes: Array<{
+            pickupLocationId: number;
+            sequence: number;
+            name: string;
+            street1: string;
+            street2?: string | null;
+            city: string;
+            postalCode: string;
+            countryCode: string;
+            sourceUpdatedAt: string;
+            latitude?: number;
+            longitude?: number;
+        }>;
+        runSlots: Array<{
+            timeSlotId: number;
+            pickupLocationId: number;
+            sequence: number;
+            manifestId: string;
+            windowStartAt: string;
+            windowEndAt: string;
+            sourceUpdatedAt: string;
+        }>;
+        stops: Array<{
+            deliveryRequestId: string;
+            sequence: number;
+            latitude: number;
+            longitude: number;
+            formattedAddress: string;
+            estimatedArrivalAt?: string;
+            estimatedTravelSeconds?: number;
+            estimatedDistanceMeters?: number;
+            timeSlotId: number;
+            stopKey: string;
+            requestDispatchEventId: number;
+            deliveryAddressId: number;
+            deliveryAddressUpdatedAt: string;
+        }>;
+    };
+    requestSnapshots: Array<{
+        deliveryRequestId: string;
+        requestDispatchEventId: number;
+        state: string;
+        stopKey: string;
+        address: {
+            id: number;
+            updatedAt: string;
+            label: string;
+            contactName: string;
+            phone: string;
+            street1: string;
+            street2?: string | null;
+            city: string;
+            postalCode: string;
+            countryCode: string;
+        };
+        slot: {
+            id: number;
+            updatedAt: string;
+            locationId: number;
+            startAt: string;
+            endAt: string;
+        };
+        pickupLocation: {
+            id: number;
+            updatedAt: string;
+            name: string;
+            street1: string;
+            street2?: string | null;
+            city: string;
+            postalCode: string;
+            countryCode: string;
+        };
+    }>;
+};
+
+// Private, short-lived route plans. Only a hash of the bearer secret is stored.
+export const deliveryRunPreparations = pgTable(
+    'delivery_run_preparations',
+    {
+        id: text('id').primaryKey(),
+        secretHash: text('secret_hash').notNull(),
+        driverUserId: text('driver_user_id')
+            .notNull()
+            .references(() => users.id),
+        selectionHash: text('selection_hash').notNull(),
+        plan: jsonb('plan')
+            .$type<DeliveryRunPreparationPlanPayload>()
+            .notNull(),
+        expiresAt: timestamp('expires_at').notNull(),
+        consumedAt: timestamp('consumed_at'),
+        deliveryRunId: text('delivery_run_id').references(
+            () => deliveryRuns.id,
+        ),
+        createdAt: timestamp('created_at').notNull().defaultNow(),
+        updatedAt: timestamp('updated_at')
+            .notNull()
+            .$onUpdate(() => new Date()),
+    },
+    (table) => [
+        check(
+            'delivery_run_preparations_consumption_shape_check',
+            sql`(${table.consumedAt} is null and ${table.deliveryRunId} is null) or (${table.consumedAt} is not null and ${table.deliveryRunId} is not null)`,
+        ),
+        index('delivery_run_preparations_driver_user_id_idx').on(
+            table.driverUserId,
+        ),
+        index('delivery_run_preparations_expires_at_idx').on(table.expiresAt),
+        index('delivery_run_preparations_consumed_at_idx').on(table.consumedAt),
+        uniqueIndex('delivery_run_preparations_delivery_run_id_unique').on(
+            table.deliveryRunId,
+        ),
+    ],
+);
+
+// Immutable pickup-location snapshots participating in a route.
+export const deliveryRunPickupNodes = pgTable(
+    'delivery_run_pickup_nodes',
+    {
+        id: text('id').primaryKey(),
+        runId: text('run_id')
+            .notNull()
+            .references(() => deliveryRuns.id, { onDelete: 'cascade' }),
+        pickupLocationId: integer('pickup_location_id').references(
+            () => pickupLocations.id,
+            { onDelete: 'set null' },
+        ),
+        sequence: integer('sequence').notNull(),
+        name: text('name').notNull(),
+        street1: text('street1').notNull(),
+        street2: text('street2'),
+        city: text('city').notNull(),
+        postalCode: text('postal_code').notNull(),
+        countryCode: text('country_code').notNull(),
+        formattedAddress: text('formatted_address').notNull(),
+        sourceUpdatedAt: timestamp('source_updated_at').notNull(),
+        latitude: doublePrecision('latitude'),
+        longitude: doublePrecision('longitude'),
+        createdAt: timestamp('created_at').notNull().defaultNow(),
+        updatedAt: timestamp('updated_at')
+            .notNull()
+            .$onUpdate(() => new Date()),
+    },
+    (table) => [
+        uniqueIndex('delivery_run_pickup_nodes_run_sequence_unique').on(
+            table.runId,
+            table.sequence,
+        ),
+        uniqueIndex('delivery_run_pickup_nodes_run_location_unique').on(
+            table.runId,
+            table.pickupLocationId,
+        ),
+        uniqueIndex('delivery_run_pickup_nodes_run_id_id_unique').on(
+            table.runId,
+            table.id,
+        ),
+        index('delivery_run_pickup_nodes_run_id_idx').on(table.runId),
+    ],
+);
+
+// Immutable participating time-slot snapshots and future pickup manifests.
+export const deliveryRunSlots = pgTable(
+    'delivery_run_slots',
+    {
+        id: text('id').primaryKey(),
+        runId: text('run_id')
+            .notNull()
+            .references(() => deliveryRuns.id, { onDelete: 'cascade' }),
+        pickupNodeId: text('pickup_node_id').notNull(),
+        timeSlotId: integer('time_slot_id').references(() => timeSlots.id, {
+            onDelete: 'set null',
+        }),
+        sequence: integer('sequence').notNull(),
+        manifestId: text('manifest_id').notNull(),
+        windowStartAt: timestamp('window_start_at').notNull(),
+        windowEndAt: timestamp('window_end_at').notNull(),
+        sourceUpdatedAt: timestamp('source_updated_at').notNull(),
+        createdAt: timestamp('created_at').notNull().defaultNow(),
+        updatedAt: timestamp('updated_at')
+            .notNull()
+            .$onUpdate(() => new Date()),
+    },
+    (table) => [
+        foreignKey({
+            columns: [table.runId, table.pickupNodeId],
+            foreignColumns: [
+                deliveryRunPickupNodes.runId,
+                deliveryRunPickupNodes.id,
+            ],
+            name: 'delivery_run_slots_run_pickup_node_fk',
+        }).onDelete('cascade'),
+        uniqueIndex('delivery_run_slots_manifest_id_unique').on(
+            table.manifestId,
+        ),
+        uniqueIndex('delivery_run_slots_run_sequence_unique').on(
+            table.runId,
+            table.sequence,
+        ),
+        uniqueIndex('delivery_run_slots_run_time_slot_unique').on(
+            table.runId,
+            table.timeSlotId,
+        ),
+        uniqueIndex('delivery_run_slots_run_id_id_unique').on(
+            table.runId,
+            table.id,
+        ),
+        index('delivery_run_slots_run_id_idx').on(table.runId),
+        index('delivery_run_slots_pickup_node_id_idx').on(table.pickupNodeId),
+    ],
+);
+
 // Delivery Run Stops - immutable destination coordinates plus mutable progress/ETAs.
 export const deliveryRunStops = pgTable(
     'delivery_run_stops',
@@ -209,7 +432,20 @@ export const deliveryRunStops = pgTable(
         deliveryRequestId: text('delivery_request_id')
             .notNull()
             .references(() => deliveryRequests.id),
+        runSlotId: text('run_slot_id'),
         sequence: integer('sequence').notNull(),
+        stopKey: text('stop_key'),
+        requestDispatchEventId: integer('request_dispatch_event_id'),
+        deliveryAddressId: integer('delivery_address_id'),
+        deliveryAddressUpdatedAt: timestamp('delivery_address_updated_at'),
+        deliveryAddressLabel: text('delivery_address_label'),
+        deliveryContactName: text('delivery_contact_name'),
+        deliveryPhone: text('delivery_phone'),
+        deliveryStreet1: text('delivery_street1'),
+        deliveryStreet2: text('delivery_street2'),
+        deliveryCity: text('delivery_city'),
+        deliveryPostalCode: text('delivery_postal_code'),
+        deliveryCountryCode: text('delivery_country_code'),
         state: text('state').notNull().default('pending'),
         latitude: doublePrecision('latitude').notNull(),
         longitude: doublePrecision('longitude').notNull(),
@@ -225,6 +461,42 @@ export const deliveryRunStops = pgTable(
             .$onUpdate(() => new Date()),
     },
     (table) => [
+        foreignKey({
+            columns: [table.runId, table.runSlotId],
+            foreignColumns: [deliveryRunSlots.runId, deliveryRunSlots.id],
+            name: 'delivery_run_stops_run_slot_fk',
+        }).onDelete('cascade'),
+        check(
+            'delivery_run_stops_snapshot_shape_check',
+            sql`(
+                ${table.runSlotId} is null
+                and ${table.stopKey} is null
+                and ${table.requestDispatchEventId} is null
+                and ${table.deliveryAddressId} is null
+                and ${table.deliveryAddressUpdatedAt} is null
+                and ${table.deliveryAddressLabel} is null
+                and ${table.deliveryContactName} is null
+                and ${table.deliveryPhone} is null
+                and ${table.deliveryStreet1} is null
+                and ${table.deliveryStreet2} is null
+                and ${table.deliveryCity} is null
+                and ${table.deliveryPostalCode} is null
+                and ${table.deliveryCountryCode} is null
+            ) or (
+                ${table.runSlotId} is not null
+                and ${table.stopKey} is not null
+                and ${table.requestDispatchEventId} is not null
+                and ${table.deliveryAddressId} is not null
+                and ${table.deliveryAddressUpdatedAt} is not null
+                and ${table.deliveryAddressLabel} is not null
+                and ${table.deliveryContactName} is not null
+                and ${table.deliveryPhone} is not null
+                and ${table.deliveryStreet1} is not null
+                and ${table.deliveryCity} is not null
+                and ${table.deliveryPostalCode} is not null
+                and ${table.deliveryCountryCode} is not null
+            )`,
+        ),
         uniqueIndex('delivery_run_stops_delivery_request_id_unique').on(
             table.deliveryRequestId,
         ),
@@ -233,6 +505,7 @@ export const deliveryRunStops = pgTable(
             table.sequence,
         ),
         index('delivery_run_stops_run_id_idx').on(table.runId),
+        index('delivery_run_stops_run_slot_id_idx').on(table.runSlotId),
         index('delivery_run_stops_state_idx').on(table.state),
     ],
 );
@@ -253,6 +526,77 @@ export const deliveryRunsRelations = relations(
         stops: many(deliveryRunStops, {
             relationName: 'deliveryRunStops',
         }),
+        pickupNodes: many(deliveryRunPickupNodes, {
+            relationName: 'deliveryRunPickupNodes',
+        }),
+        runSlots: many(deliveryRunSlots, {
+            relationName: 'deliveryRunSlots',
+        }),
+        preparations: many(deliveryRunPreparations, {
+            relationName: 'deliveryRunPreparations',
+        }),
+    }),
+);
+
+export const deliveryRunPreparationsRelations = relations(
+    deliveryRunPreparations,
+    ({ one }) => ({
+        driver: one(users, {
+            fields: [deliveryRunPreparations.driverUserId],
+            references: [users.id],
+            relationName: 'driverDeliveryRunPreparations',
+        }),
+        deliveryRun: one(deliveryRuns, {
+            fields: [deliveryRunPreparations.deliveryRunId],
+            references: [deliveryRuns.id],
+            relationName: 'deliveryRunPreparations',
+        }),
+    }),
+);
+
+export const deliveryRunPickupNodesRelations = relations(
+    deliveryRunPickupNodes,
+    ({ many, one }) => ({
+        run: one(deliveryRuns, {
+            fields: [deliveryRunPickupNodes.runId],
+            references: [deliveryRuns.id],
+            relationName: 'deliveryRunPickupNodes',
+        }),
+        pickupLocation: one(pickupLocations, {
+            fields: [deliveryRunPickupNodes.pickupLocationId],
+            references: [pickupLocations.id],
+            relationName: 'pickupLocationDeliveryRunNodes',
+        }),
+        runSlots: many(deliveryRunSlots, {
+            relationName: 'deliveryRunPickupNodeSlots',
+        }),
+    }),
+);
+
+export const deliveryRunSlotsRelations = relations(
+    deliveryRunSlots,
+    ({ many, one }) => ({
+        run: one(deliveryRuns, {
+            fields: [deliveryRunSlots.runId],
+            references: [deliveryRuns.id],
+            relationName: 'deliveryRunSlots',
+        }),
+        pickupNode: one(deliveryRunPickupNodes, {
+            fields: [deliveryRunSlots.runId, deliveryRunSlots.pickupNodeId],
+            references: [
+                deliveryRunPickupNodes.runId,
+                deliveryRunPickupNodes.id,
+            ],
+            relationName: 'deliveryRunPickupNodeSlots',
+        }),
+        timeSlot: one(timeSlots, {
+            fields: [deliveryRunSlots.timeSlotId],
+            references: [timeSlots.id],
+            relationName: 'timeSlotDeliveryRunSlots',
+        }),
+        stops: many(deliveryRunStops, {
+            relationName: 'deliveryRunSlotStops',
+        }),
     }),
 );
 
@@ -268,6 +612,11 @@ export const deliveryRunStopsRelations = relations(
             fields: [deliveryRunStops.deliveryRequestId],
             references: [deliveryRequests.id],
             relationName: 'deliveryRequestRunStop',
+        }),
+        runSlot: one(deliveryRunSlots, {
+            fields: [deliveryRunStops.runId, deliveryRunStops.runSlotId],
+            references: [deliveryRunSlots.runId, deliveryRunSlots.id],
+            relationName: 'deliveryRunSlotStops',
         }),
     }),
 );
@@ -316,6 +665,11 @@ export type UpdateDeliveryRequest = Partial<
     Pick<typeof deliveryRequests.$inferSelect, 'id'>;
 export type SelectDeliveryRequest = typeof deliveryRequests.$inferSelect;
 export type SelectDeliveryRun = typeof deliveryRuns.$inferSelect;
+export type SelectDeliveryRunPreparation =
+    typeof deliveryRunPreparations.$inferSelect;
+export type SelectDeliveryRunPickupNode =
+    typeof deliveryRunPickupNodes.$inferSelect;
+export type SelectDeliveryRunSlot = typeof deliveryRunSlots.$inferSelect;
 export type SelectDeliveryRunStop = typeof deliveryRunStops.$inferSelect;
 
 // Enums for type safety

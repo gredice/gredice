@@ -6,17 +6,22 @@ import {
 import {
     DeliveryRunPreparationError,
     prepareDeliveryRun,
+    savePreparedDeliveryRun,
 } from '../../../../../lib/deliveryRunPlanning';
-import { parseDeliveryRunRequestBody } from '../../../../../lib/deliveryRunRequest';
+import { parseDeliveryRunPreflightRequestBody } from '../../../../../lib/deliveryRunRequest';
+
+const privateNoStoreHeaders = {
+    'Cache-Control': 'private, no-store',
+};
 
 export async function POST(request: Request) {
     return await withAuth(['driver', 'admin'], async ({ userId }) => {
         const body: unknown = await request.json().catch(() => null);
-        const deliveryRequestIds = parseDeliveryRunRequestBody(body);
+        const deliveryRequestIds = parseDeliveryRunPreflightRequestBody(body);
         if (!deliveryRequestIds) {
             return Response.json(
                 { error: 'Odaberi barem jednu valjanu dostavu.' },
-                { status: 400 },
+                { status: 400, headers: privateNoStoreHeaders },
             );
         }
 
@@ -25,10 +30,16 @@ export async function POST(request: Request) {
                 driverUserId: userId,
                 deliveryRequestIds,
             });
-            return Response.json({
-                valid: true,
-                summary: preparation.summary,
-            });
+            const savedPreparation = await savePreparedDeliveryRun(preparation);
+            return Response.json(
+                {
+                    valid: true,
+                    preparationToken: savedPreparation.preparationToken,
+                    expiresAt: savedPreparation.expiresAt.toISOString(),
+                    summary: preparation.summary,
+                },
+                { headers: privateNoStoreHeaders },
+            );
         } catch (error) {
             const message = deliveryRunStartErrorMessage(error);
             const context = deliveryRunStartErrorLogContext(error);
@@ -51,7 +62,7 @@ export async function POST(request: Request) {
                                 ? error.conflict
                                 : undefined,
                     },
-                    { status: 409 },
+                    { status: 409, headers: privateNoStoreHeaders },
                 );
             }
 
@@ -64,7 +75,7 @@ export async function POST(request: Request) {
                 {
                     error: 'Rutu trenutačno nije moguće provjeriti. Pokušaj ponovno.',
                 },
-                { status: 503 },
+                { status: 503, headers: privateNoStoreHeaders },
             );
         }
     });

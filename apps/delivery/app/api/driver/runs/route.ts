@@ -5,27 +5,36 @@ import {
     startDeliveryRun,
 } from '../../../../lib/deliveryDashboard';
 import { DeliveryRunPreparationError } from '../../../../lib/deliveryRunPlanning';
-import { parseDeliveryRunRequestBody } from '../../../../lib/deliveryRunRequest';
+import { parseDeliveryRunStartRequestBody } from '../../../../lib/deliveryRunRequest';
+
+const privateNoStoreHeaders = {
+    'Cache-Control': 'private, no-store',
+};
 
 export async function POST(request: Request) {
     return await withAuth(['driver', 'admin'], async ({ userId }) => {
         const body: unknown = await request.json().catch(() => null);
-        const deliveryRequestIds = parseDeliveryRunRequestBody(body);
-        if (!deliveryRequestIds) {
+        const startRequest = parseDeliveryRunStartRequestBody(body);
+        if (!startRequest) {
             return Response.json(
                 {
                     error: 'Odaberi barem jednu valjanu dostavu.',
                 },
-                { status: 400 },
+                { status: 400, headers: privateNoStoreHeaders },
             );
         }
+        const { deliveryRequestIds, preparationToken } = startRequest;
 
         try {
             const run = await startDeliveryRun({
                 driverUserId: userId,
                 deliveryRequestIds,
+                preparationToken,
             });
-            return Response.json({ id: run.id }, { status: 201 });
+            return Response.json(
+                { id: run.id },
+                { status: 201, headers: privateNoStoreHeaders },
+            );
         } catch (error) {
             const startErrorMessage = deliveryRunStartErrorMessage(error);
             console.error('Failed to start delivery run', {
@@ -47,7 +56,10 @@ export async function POST(request: Request) {
                             ? error.conflict
                             : undefined,
                 },
-                { status: 409 },
+                {
+                    status: startErrorMessage ? 409 : 503,
+                    headers: privateNoStoreHeaders,
+                },
             );
         }
     });
