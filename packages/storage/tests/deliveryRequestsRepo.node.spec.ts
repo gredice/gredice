@@ -19,6 +19,7 @@ import {
     DeliveryRequestStates,
     deliveryRequests,
     events,
+    getDeliveryDispatchRevision,
     getDeliveryRequest,
     getDeliveryRequestsWithEvents,
     getPendingDeliveryReadyEmailRequestIds,
@@ -640,4 +641,148 @@ test('account cancellation cannot mutate another account request', async () => {
     const cancelledRequest = await getDeliveryRequest(fixture.requestId);
     assert.equal(cancelledRequest?.state, DeliveryRequestStates.CANCELLED);
     assert.equal(cancelledRequest?.cancelReason, 'Promjena plana');
+});
+
+test('delivery exception events project safe retry outcomes and invalidate dispatch', async () => {
+    const fixture = await createDeliveryRequestWithTraceFixture();
+    const recordedByUserId = `private-driver-${randomUUID()}`;
+    const privateNote = `private-note-${randomUUID()}`;
+    const dispatchRevisionBefore = await getDeliveryDispatchRevision();
+    let latestExceptionEventId = dispatchRevisionBefore;
+
+    for (const [index, exception] of [
+        {
+            outcome: 'deferred' as const,
+            reason: 'address-inaccessible' as const,
+            retryable: true,
+        },
+        {
+            outcome: 'failed' as const,
+            reason: 'harvest-missing' as const,
+            retryable: false,
+        },
+        {
+            outcome: 'cancelled' as const,
+            reason: 'cancellation' as const,
+            retryable: false,
+        },
+    ].entries()) {
+        if (index > 0) {
+            await createEvent(
+                knownEvents.delivery.requestConfirmedV1(fixture.requestId, {
+                    status: DeliveryRequestStates.CONFIRMED,
+                }),
+            );
+            const resetRequest = await getDeliveryRequest(fixture.requestId);
+            assert.equal(resetRequest?.state, DeliveryRequestStates.CONFIRMED);
+            assert.equal(resetRequest?.deliveryException, undefined);
+        }
+
+        const exceptionEvent = await createEvent(
+            knownEvents.delivery.requestExceptionRecordedV1(fixture.requestId, {
+                runId: `private-run-${randomUUID()}`,
+                stopId: index + 1,
+                clientOperationId: `exception-projection-${randomUUID()}`,
+                ...exception,
+                note: privateNote,
+                occurredAt: new Date(
+                    Date.UTC(2026, 6, 15, 8, index),
+                ).toISOString(),
+                recordedByUserId,
+                routeRevision: index + 1,
+            }),
+        );
+        latestExceptionEventId = exceptionEvent.id;
+
+        const request = await getDeliveryRequest(fixture.requestId);
+        const listedRequest = (
+            await getDeliveryRequestsWithEvents(fixture.accountId)
+        ).find((candidate) => candidate.id === fixture.requestId);
+        const expectedException = {
+            outcome: exception.outcome,
+            retryable: exception.retryable,
+        };
+
+        assert.equal(request?.state, exception.outcome);
+        assert.equal(request?.routeRevision, exceptionEvent.id);
+        assert.deepEqual(request?.deliveryException, expectedException);
+        assert.deepEqual(listedRequest?.deliveryException, expectedException);
+        assert.deepEqual(Object.keys(request?.deliveryException ?? {}).sort(), [
+            'outcome',
+            'retryable',
+        ]);
+        const publicProjection = JSON.stringify([request, listedRequest]);
+        assert.ok(!publicProjection.includes(exception.reason));
+        assert.ok(!publicProjection.includes(privateNote));
+        assert.ok(!publicProjection.includes(recordedByUserId));
+    }
+
+    const dispatchRevisionAfter = await getDeliveryDispatchRevision();
+    assert.equal(dispatchRevisionAfter, latestExceptionEventId);
+    assert.ok(latestExceptionEventId > dispatchRevisionBefore);
+});
+
+test('fulfilled and cancelled requests absorb late exceptions until an explicit reset event', async () => {
+    const fulfilledFixture = await createDeliveryRequestWithTraceFixture();
+    await createEvent(
+        knownEvents.delivery.requestFulfilledV1(fulfilledFixture.requestId, {
+            status: DeliveryRequestStates.FULFILLED,
+        }),
+    );
+    await createEvent(
+        knownEvents.delivery.requestExceptionRecordedV1(
+            fulfilledFixture.requestId,
+            {
+                runId: `late-run-${randomUUID()}`,
+                stopId: 1,
+                clientOperationId: `late-fulfilled-${randomUUID()}`,
+                outcome: 'failed',
+                reason: 'harvest-damaged',
+                retryable: false,
+                occurredAt: new Date('2026-07-15T09:00:00.000Z').toISOString(),
+                recordedByUserId: `driver-${randomUUID()}`,
+                routeRevision: 1,
+            },
+        ),
+    );
+
+    const fulfilled = await getDeliveryRequest(fulfilledFixture.requestId);
+    assert.equal(fulfilled?.state, DeliveryRequestStates.FULFILLED);
+    assert.equal(fulfilled?.deliveryException, undefined);
+
+    const cancelledFixture = await createDeliveryRequestWithTraceFixture();
+    await cancelDeliveryRequest(
+        cancelledFixture.requestId,
+        'admin',
+        'Otkazano prije kasnog događaja',
+    );
+    await createEvent(
+        knownEvents.delivery.requestExceptionRecordedV1(
+            cancelledFixture.requestId,
+            {
+                runId: `late-run-${randomUUID()}`,
+                stopId: 2,
+                clientOperationId: `late-cancelled-${randomUUID()}`,
+                outcome: 'deferred',
+                reason: 'customer-unavailable',
+                retryable: true,
+                occurredAt: new Date('2026-07-15T09:01:00.000Z').toISOString(),
+                recordedByUserId: `driver-${randomUUID()}`,
+                routeRevision: 1,
+            },
+        ),
+    );
+
+    const cancelled = await getDeliveryRequest(cancelledFixture.requestId);
+    assert.equal(cancelled?.state, DeliveryRequestStates.CANCELLED);
+    assert.equal(cancelled?.deliveryException, undefined);
+
+    await createEvent(
+        knownEvents.delivery.requestConfirmedV1(cancelledFixture.requestId, {
+            status: DeliveryRequestStates.CONFIRMED,
+        }),
+    );
+    const reset = await getDeliveryRequest(cancelledFixture.requestId);
+    assert.equal(reset?.state, DeliveryRequestStates.CONFIRMED);
+    assert.equal(reset?.deliveryException, undefined);
 });

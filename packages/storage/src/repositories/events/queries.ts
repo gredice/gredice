@@ -114,6 +114,7 @@ const deliveryInvalidatingEventTypes = new Set<string>([
     knownEventTypes.delivery.requestPreparing,
     knownEventTypes.delivery.requestReady,
     knownEventTypes.delivery.requestFulfilled,
+    knownEventTypes.delivery.requestExceptionRecorded,
     knownEventTypes.delivery.requestSurveySent,
     knownEventTypes.delivery.requestSlotChanged,
     knownEventTypes.delivery.userCancelled,

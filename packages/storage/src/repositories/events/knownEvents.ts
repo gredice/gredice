@@ -11,6 +11,7 @@ import type {
     DeliveryRequestAddressChangedPayload,
     DeliveryRequestCancelledPayload,
     DeliveryRequestCreatePayload,
+    DeliveryRequestExceptionRecordedPayload,
     DeliveryRequestFulfilledPayload,
     DeliveryRequestReadyEmailProcessedPayload,
     DeliveryRequestSlotChangedPayload,
@@ -498,6 +499,15 @@ export const knownEvents = {
             data: DeliveryRequestFulfilledPayload,
         ) => ({
             type: knownEventTypes.delivery.requestFulfilled,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        requestExceptionRecordedV1: (
+            aggregateId: string,
+            data: DeliveryRequestExceptionRecordedPayload,
+        ) => ({
+            type: knownEventTypes.delivery.requestExceptionRecorded,
             version: 1,
             aggregateId,
             data,

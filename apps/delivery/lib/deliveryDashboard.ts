@@ -15,6 +15,8 @@ import {
     getDeliveryRunExecutionProgress,
     getDeliveryRunStopsForRequestIds,
     getUser,
+    isDeliveryRunStopActionable,
+    isDeliveryRunStopTerminal,
     markDeliveryRunStopsArrived,
     updateDeliveryRunEstimates,
     updateDeliveryRunLocation,
@@ -48,10 +50,7 @@ import {
     savePreparedDeliveryRun,
 } from './deliveryRunPlanning';
 import { resolveDeliveryRunStart } from './deliveryRunStart';
-import {
-    buildDeliveryStopKey,
-    groupByDeliveryStop,
-} from './deliveryStopGrouping';
+import { buildDeliveryStopKey } from './deliveryStopGrouping';
 
 type ListedDeliveryRequest = Awaited<
     ReturnType<typeof getDeliveryRequestsWithEvents>
@@ -175,6 +174,7 @@ export type ResolvedDeliveryRunStop = {
 };
 
 export type ResolvedDeliveryRunStopGroup = {
+    executionKey: string;
     stopKey: string;
     items: ResolvedDeliveryRunStop[];
 };
@@ -186,23 +186,33 @@ export async function resolveDeliveryRunStopGroups(
         run.stops.map((stop) => getDeliveryRequest(stop.deliveryRequestId)),
     );
 
-    return groupByDeliveryStop(
-        run.stops.map((stop, index) => {
-            const request = requests[index];
-            return {
-                stop,
-                request,
-                stopKey:
-                    stop.stopKey ??
-                    (request
-                        ? deliveryRequestStopKey(request)
-                        : `request:${stop.deliveryRequestId}`),
-            };
-        }),
-    );
+    const items = run.stops.map((stop, index) => {
+        const request = requests[index];
+        return {
+            stop,
+            request,
+            stopKey:
+                stop.stopKey ??
+                (request
+                    ? deliveryRequestStopKey(request)
+                    : `request:${stop.deliveryRequestId}`),
+        };
+    });
+    const groups = new Map<string, ResolvedDeliveryRunStop[]>();
+    for (const item of items) {
+        const executionKey = `${item.stop.itinerarySequence ?? 'legacy'}:${item.stopKey}`;
+        const group = groups.get(executionKey);
+        if (group) group.push(item);
+        else groups.set(executionKey, [item]);
+    }
+    return Array.from(groups, ([executionKey, groupedItems]) => ({
+        executionKey,
+        stopKey: groupedItems[0]?.stopKey ?? executionKey,
+        items: groupedItems,
+    }));
 }
 
-function statusLabel({
+export function deliveryStatusLabel({
     requestState,
     stopState,
     isCurrent,
@@ -215,12 +225,21 @@ function statusLabel({
 }) {
     if (
         stopState === DeliveryRunStopStates.DELIVERED ||
-        requestState === DeliveryRequestStates.FULFILLED
+        (!stopState && requestState === DeliveryRequestStates.FULFILLED)
     ) {
         return 'Dostavljeno';
     }
     if (stopState === DeliveryRunStopStates.ARRIVED) {
         return 'Vozač je stigao';
+    }
+    if (stopState === DeliveryRunStopStates.DEFERRED) {
+        return 'Dostava je odgođena';
+    }
+    if (stopState === DeliveryRunStopStates.FAILED) {
+        return 'Dostava nije uspjela';
+    }
+    if (stopState === DeliveryRunStopStates.CANCELLED) {
+        return 'Dostava je otkazana';
     }
     if (runState === DeliveryRunStates.ACTIVE) {
         return isCurrent ? 'Vozač stiže' : 'U dostavi';
@@ -235,6 +254,10 @@ function statusLabel({
             return 'Urod se priprema';
         case DeliveryRequestStates.READY:
             return 'Spremno za dostavu';
+        case DeliveryRequestStates.DEFERRED:
+            return 'Dostava je odgođena';
+        case DeliveryRequestStates.FAILED:
+            return 'Dostava nije uspjela';
         case DeliveryRequestStates.CANCELLED:
             return 'Otkazano';
         default:
@@ -312,7 +335,8 @@ function deliveryStopSummary({
     const request = primary.request;
     const stops = items.flatMap((item) => (item.stop ? [item.stop] : []));
     const representativeStop =
-        stops.find((stop) => stop.state !== DeliveryRunStopStates.DELIVERED) ??
+        stops.find((stop) => isDeliveryRunStopActionable(stop.state)) ??
+        stops.find((stop) => !isDeliveryRunStopTerminal(stop.state)) ??
         stops[0];
     const stopState =
         stops.length > 0 &&
@@ -320,7 +344,24 @@ function deliveryStopSummary({
             ? DeliveryRunStopStates.DELIVERED
             : stops.some((stop) => stop.state === DeliveryRunStopStates.ARRIVED)
               ? DeliveryRunStopStates.ARRIVED
-              : (representativeStop?.state ?? null);
+              : stops.some(
+                      (stop) => stop.state === DeliveryRunStopStates.PENDING,
+                  )
+                ? DeliveryRunStopStates.PENDING
+                : stops.some(
+                        (stop) => stop.state === DeliveryRunStopStates.DEFERRED,
+                    )
+                  ? DeliveryRunStopStates.DEFERRED
+                  : stops.some(
+                          (stop) => stop.state === DeliveryRunStopStates.FAILED,
+                      )
+                    ? DeliveryRunStopStates.FAILED
+                    : stops.some(
+                            (stop) =>
+                                stop.state === DeliveryRunStopStates.CANCELLED,
+                        )
+                      ? DeliveryRunStopStates.CANCELLED
+                      : (representativeStop?.state ?? null);
     const address = request.address;
     const formattedAddress =
         representativeStop?.formattedAddress ??
@@ -336,7 +377,7 @@ function deliveryStopSummary({
         sequence: sequence ?? representativeStop?.sequence ?? null,
         stopState,
         requestState: request.state,
-        statusLabel: statusLabel({
+        statusLabel: deliveryStatusLabel({
             requestState: request.state,
             stopState,
             isCurrent,
@@ -587,8 +628,8 @@ async function activeRunSummary(
             const candidate = groupsByStopId.get(stopId);
             return candidate ? [candidate] : [];
         })[0];
-        if (!group || includedDeliveryGroups.has(group.stopKey)) continue;
-        includedDeliveryGroups.add(group.stopKey);
+        if (!group || includedDeliveryGroups.has(group.executionKey)) continue;
+        includedDeliveryGroups.add(group.executionKey);
 
         const groupStopIds = new Set(group.items.map(({ stop }) => stop.id));
         const groupExecutionSteps = executionSteps.filter(
@@ -605,8 +646,8 @@ async function activeRunSummary(
             request ? [{ request, stop }] : [],
         );
         if (items.length === 0) continue;
-        const complete = group.items.every(
-            ({ stop }) => stop.state === DeliveryRunStopStates.DELIVERED,
+        const complete = group.items.every(({ stop }) =>
+            isDeliveryRunStopTerminal(stop.state),
         );
         const dependencySatisfied = groupExecutionSteps.every(
             (candidate) => candidate.pickupConfirmed,
@@ -829,7 +870,7 @@ async function customerDashboard({
             run.id,
             deliveryTrackingStopIds({
                 routePlanVersion: run.routePlanVersion,
-                currentStopIds: new Set(current.stopIds),
+                currentStopIds: new Set(current.actionableStopIds),
                 groups: await resolveDeliveryRunStopGroups(run),
             }),
         );
@@ -849,7 +890,7 @@ async function customerDashboard({
                 contacts,
                 includeTracking:
                     row?.run.state === DeliveryRunStates.ACTIVE &&
-                    row.stop.state !== DeliveryRunStopStates.DELIVERED &&
+                    isDeliveryRunStopActionable(row.stop.state) &&
                     isCurrent,
             });
         })
@@ -1013,16 +1054,23 @@ async function getOwnedDeliveryRunStopGroup({
     if (targetIsDelivered) {
         return targetGroup;
     }
+    if (
+        targetGroup.items.every(({ stop }) =>
+            isDeliveryRunStopTerminal(stop.state),
+        )
+    ) {
+        throw new Error('Dostava ima zabilježen završni ishod.');
+    }
     if (run.state !== DeliveryRunStates.ACTIVE) {
         throw new Error('Aktivna dostava nije pronađena.');
     }
     if (run.routePlanVersion < 2) {
         const currentGroup = groups.find((group) =>
             group.items.some(
-                ({ stop }) => stop.state !== DeliveryRunStopStates.DELIVERED,
+                ({ stop }) => !isDeliveryRunStopTerminal(stop.state),
             ),
         );
-        if (currentGroup?.stopKey !== targetGroup.stopKey) {
+        if (currentGroup?.executionKey !== targetGroup.executionKey) {
             throw new Error('Dostave se moraju završiti redoslijedom rute.');
         }
     }
@@ -1085,7 +1133,7 @@ export async function accountCanTrackDeliveryRun({
         current?.kind === 'delivery' && current.pickupConfirmed
             ? deliveryTrackingStopIds({
                   routePlanVersion: run.routePlanVersion,
-                  currentStopIds: new Set(current.stopIds),
+                  currentStopIds: new Set(current.actionableStopIds),
                   groups,
               })
             : null;
@@ -1119,9 +1167,8 @@ export function accountCanTrackCurrentDeliveryGroup({
     const currentGroup =
         currentDeliveryStopIds === undefined
             ? groups.find((group) =>
-                  group.items.some(
-                      ({ stop }) =>
-                          stop.state !== DeliveryRunStopStates.DELIVERED,
+                  group.items.some(({ stop }) =>
+                      isDeliveryRunStopActionable(stop.state),
                   ),
               )
             : currentDeliveryStopIds === null
@@ -1135,9 +1182,16 @@ export function accountCanTrackCurrentDeliveryGroup({
                 );
 
     return Boolean(
-        currentGroup?.items.some(
-            ({ request }) => request?.accountId === accountId,
-        ),
+        currentGroup?.items.some(({ stop, request }) => {
+            if (!isDeliveryRunStopActionable(stop.state)) return false;
+            if (
+                currentDeliveryStopIds !== undefined &&
+                (stop.id === undefined || !currentDeliveryStopIds?.has(stop.id))
+            ) {
+                return false;
+            }
+            return request?.accountId === accountId;
+        }),
     );
 }
 
@@ -1189,8 +1243,8 @@ export async function recordDriverLocation({
 
     const groups = await resolveDeliveryRunStopGroups(run);
     const remainingGroups = groups.flatMap((group) => {
-        const items = group.items.filter(
-            ({ stop }) => stop.state !== DeliveryRunStopStates.DELIVERED,
+        const items = group.items.filter(({ stop }) =>
+            isDeliveryRunStopActionable(stop.state),
         );
         return items.length > 0 ? [{ ...group, items }] : [];
     });

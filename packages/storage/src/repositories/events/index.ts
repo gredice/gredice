@@ -47,6 +47,7 @@ export type {
     DeliveryRequestCreatePayload,
     DeliveryRequestEventsAnyPayload,
     DeliveryRequestEventsPayload,
+    DeliveryRequestExceptionRecordedPayload,
     DeliveryRequestFulfilledPayload,
     DeliveryRequestSlotChangedPayload,
     DeliveryRequestStatusPayload,

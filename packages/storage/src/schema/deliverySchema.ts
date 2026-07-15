@@ -210,6 +210,40 @@ export type DeliveryRunPickupOperationStoredResult = {
     manifestState?: DeliveryRunManifestState;
 };
 
+export const DeliveryRunExceptionOutcomes = {
+    DEFERRED: 'deferred',
+    FAILED: 'failed',
+    CANCELLED: 'cancelled',
+} as const;
+
+export type DeliveryRunExceptionOutcome =
+    (typeof DeliveryRunExceptionOutcomes)[keyof typeof DeliveryRunExceptionOutcomes];
+
+export const DeliveryRunExceptionReasons = {
+    CUSTOMER_UNAVAILABLE: 'customer-unavailable',
+    ADDRESS_INACCESSIBLE: 'address-inaccessible',
+    ADDRESS_WRONG: 'address-wrong',
+    HARVEST_DAMAGED: 'harvest-damaged',
+    HARVEST_MISSING: 'harvest-missing',
+    CANCELLATION: 'cancellation',
+    OPERATIONAL_OTHER: 'operational-other',
+} as const;
+
+export type DeliveryRunExceptionReason =
+    (typeof DeliveryRunExceptionReasons)[keyof typeof DeliveryRunExceptionReasons];
+
+export type DeliveryRunExceptionOperationStoredResult = {
+    outcomes: Array<{
+        stopId: number;
+        deliveryRequestId: string;
+        outcome: DeliveryRunExceptionOutcome;
+        reason: DeliveryRunExceptionReason;
+    }>;
+    runCompleted: boolean;
+    routeRevision: number;
+    reroutePending: boolean;
+};
+
 // Delivery Runs - one optimized route picked up and driven by a driver/admin.
 export const deliveryRuns = pgTable(
     'delivery_runs',
@@ -226,6 +260,8 @@ export const deliveryRuns = pgTable(
         totalDistanceMeters: integer('total_distance_meters'),
         totalDurationSeconds: integer('total_duration_seconds'),
         routePlanVersion: integer('route_plan_version').notNull().default(1),
+        routeRevision: integer('route_revision').notNull().default(0),
+        rerouteRequiredAt: timestamp('reroute_required_at'),
         estimateSource: text('estimate_source')
             .$type<DeliveryRunEstimateSource>()
             .notNull()
@@ -637,7 +673,10 @@ export const deliveryRunStops = pgTable(
             () => users.id,
             { onDelete: 'set null' },
         ),
-        state: text('state').notNull().default('pending'),
+        state: text('state')
+            .$type<DeliveryRunStopState>()
+            .notNull()
+            .default('pending'),
         latitude: doublePrecision('latitude').notNull(),
         longitude: doublePrecision('longitude').notNull(),
         formattedAddress: text('formatted_address').notNull(),
@@ -646,6 +685,13 @@ export const deliveryRunStops = pgTable(
         estimatedDistanceMeters: integer('estimated_distance_meters'),
         arrivedAt: timestamp('arrived_at'),
         deliveredAt: timestamp('delivered_at'),
+        exceptionReason:
+            text('exception_reason').$type<DeliveryRunExceptionReason>(),
+        exceptionNote: text('exception_note'),
+        exceptionOccurredAt: timestamp('exception_occurred_at'),
+        exceptionRecordedByUserId: text(
+            'exception_recorded_by_user_id',
+        ).references(() => users.id),
         createdAt: timestamp('created_at').notNull().defaultNow(),
         updatedAt: timestamp('updated_at')
             .notNull()
@@ -721,6 +767,42 @@ export const deliveryRunStops = pgTable(
                 and ${table.pickupResolvedAt} is not null
             )`,
         ),
+        check(
+            'delivery_run_stops_state_check',
+            sql`${table.state} in ('pending', 'arrived', 'delivered', 'deferred', 'failed', 'cancelled')`,
+        ),
+        check(
+            'delivery_run_stops_exception_reason_check',
+            sql`${table.exceptionReason} is null or ${table.exceptionReason} in ('customer-unavailable', 'address-inaccessible', 'address-wrong', 'harvest-damaged', 'harvest-missing', 'cancellation', 'operational-other')`,
+        ),
+        check(
+            'delivery_run_stops_cancellation_pair_check',
+            sql`(${table.state} = 'cancelled') = coalesce(${table.exceptionReason} = 'cancellation', false)`,
+        ),
+        check(
+            'delivery_run_stops_outcome_shape_check',
+            sql`(
+                ${table.state} in ('pending', 'arrived')
+                and ${table.deliveredAt} is null
+                and ${table.exceptionReason} is null
+                and ${table.exceptionNote} is null
+                and ${table.exceptionOccurredAt} is null
+                and ${table.exceptionRecordedByUserId} is null
+            ) or (
+                ${table.state} = 'delivered'
+                and ${table.deliveredAt} is not null
+                and ${table.exceptionReason} is null
+                and ${table.exceptionNote} is null
+                and ${table.exceptionOccurredAt} is null
+                and ${table.exceptionRecordedByUserId} is null
+            ) or (
+                ${table.state} in ('deferred', 'failed', 'cancelled')
+                and ${table.deliveredAt} is null
+                and ${table.exceptionReason} is not null
+                and ${table.exceptionOccurredAt} is not null
+                and ${table.exceptionRecordedByUserId} is not null
+            )`,
+        ),
         uniqueIndex('delivery_run_stops_delivery_request_id_unique').on(
             table.deliveryRequestId,
         ),
@@ -790,6 +872,38 @@ export const deliveryRunPickupOperations = pgTable(
     ],
 );
 
+// Durable idempotency receipts for item-level delivery exception commands.
+// Detailed notes live on the stop and audit event, never in this replay result.
+export const deliveryRunExceptionOperations = pgTable(
+    'delivery_run_exception_operations',
+    {
+        id: serial('id').primaryKey(),
+        runId: text('run_id')
+            .notNull()
+            .references(() => deliveryRuns.id, { onDelete: 'cascade' }),
+        driverUserId: text('driver_user_id')
+            .notNull()
+            .references(() => users.id),
+        clientOperationId: text('client_operation_id').notNull(),
+        payloadHash: text('payload_hash').notNull(),
+        result: jsonb('result')
+            .$type<DeliveryRunExceptionOperationStoredResult>()
+            .notNull(),
+        occurredAt: timestamp('occurred_at').notNull(),
+        appliedAt: timestamp('applied_at').notNull().defaultNow(),
+    },
+    (table) => [
+        uniqueIndex('delivery_run_exception_operations_run_client_unique').on(
+            table.runId,
+            table.clientOperationId,
+        ),
+        index('delivery_run_exception_operations_run_id_idx').on(table.runId),
+        index('delivery_run_exception_operations_driver_user_id_idx').on(
+            table.driverUserId,
+        ),
+    ],
+);
+
 export const deliveryRunsRelations = relations(
     deliveryRuns,
     ({ many, one }) => ({
@@ -817,6 +931,9 @@ export const deliveryRunsRelations = relations(
         }),
         pickupOperations: many(deliveryRunPickupOperations, {
             relationName: 'deliveryRunPickupOperations',
+        }),
+        exceptionOperations: many(deliveryRunExceptionOperations, {
+            relationName: 'deliveryRunExceptionOperations',
         }),
     }),
 );
@@ -934,6 +1051,22 @@ export const deliveryRunPickupOperationsRelations = relations(
     }),
 );
 
+export const deliveryRunExceptionOperationsRelations = relations(
+    deliveryRunExceptionOperations,
+    ({ one }) => ({
+        run: one(deliveryRuns, {
+            fields: [deliveryRunExceptionOperations.runId],
+            references: [deliveryRuns.id],
+            relationName: 'deliveryRunExceptionOperations',
+        }),
+        driver: one(users, {
+            fields: [deliveryRunExceptionOperations.driverUserId],
+            references: [users.id],
+            relationName: 'driverDeliveryRunExceptionOperations',
+        }),
+    }),
+);
+
 // Type exports
 export type InsertDeliveryAddress = Omit<
     typeof deliveryAddresses.$inferInsert,
@@ -986,6 +1119,8 @@ export type SelectDeliveryRunSlot = typeof deliveryRunSlots.$inferSelect;
 export type SelectDeliveryRunStop = typeof deliveryRunStops.$inferSelect;
 export type SelectDeliveryRunPickupOperation =
     typeof deliveryRunPickupOperations.$inferSelect;
+export type SelectDeliveryRunExceptionOperation =
+    typeof deliveryRunExceptionOperations.$inferSelect;
 
 // Enums for type safety
 export const DeliveryModes = {
@@ -999,6 +1134,8 @@ export const DeliveryRequestStates = {
     PREPARING: 'preparing',
     READY: 'ready',
     FULFILLED: 'fulfilled',
+    DEFERRED: 'deferred',
+    FAILED: 'failed',
     CANCELLED: 'cancelled',
 } as const;
 
@@ -1018,6 +1155,18 @@ export const DeliveryRunStopStates = {
     PENDING: 'pending',
     ARRIVED: 'arrived',
     DELIVERED: 'delivered',
+    DEFERRED: 'deferred',
+    FAILED: 'failed',
+    CANCELLED: 'cancelled',
+} as const;
+
+export const DeliveryRunCustomerStopStatuses = {
+    SCHEDULED: 'scheduled',
+    ARRIVED: 'arrived',
+    DELIVERED: 'delivered',
+    DELAYED: 'delayed',
+    UNSUCCESSFUL: 'unsuccessful',
+    CANCELLED: 'cancelled',
 } as const;
 
 export type DeliveryMode = (typeof DeliveryModes)[keyof typeof DeliveryModes];
@@ -1029,3 +1178,39 @@ export type DeliveryRunState =
     (typeof DeliveryRunStates)[keyof typeof DeliveryRunStates];
 export type DeliveryRunStopState =
     (typeof DeliveryRunStopStates)[keyof typeof DeliveryRunStopStates];
+export type DeliveryRunCustomerStopStatus =
+    (typeof DeliveryRunCustomerStopStatuses)[keyof typeof DeliveryRunCustomerStopStatuses];
+
+export function isDeliveryRunStopTerminal(state: string) {
+    return (
+        state === DeliveryRunStopStates.DELIVERED ||
+        state === DeliveryRunStopStates.FAILED ||
+        state === DeliveryRunStopStates.CANCELLED
+    );
+}
+
+export function isDeliveryRunStopActionable(state: string) {
+    return (
+        state === DeliveryRunStopStates.PENDING ||
+        state === DeliveryRunStopStates.ARRIVED
+    );
+}
+
+export function deliveryRunStopCustomerStatus(
+    state: DeliveryRunStopState,
+): DeliveryRunCustomerStopStatus {
+    switch (state) {
+        case DeliveryRunStopStates.ARRIVED:
+            return DeliveryRunCustomerStopStatuses.ARRIVED;
+        case DeliveryRunStopStates.DELIVERED:
+            return DeliveryRunCustomerStopStatuses.DELIVERED;
+        case DeliveryRunStopStates.DEFERRED:
+            return DeliveryRunCustomerStopStatuses.DELAYED;
+        case DeliveryRunStopStates.FAILED:
+            return DeliveryRunCustomerStopStatuses.UNSUCCESSFUL;
+        case DeliveryRunStopStates.CANCELLED:
+            return DeliveryRunCustomerStopStatuses.CANCELLED;
+        default:
+            return DeliveryRunCustomerStopStatuses.SCHEDULED;
+    }
+}
