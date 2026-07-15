@@ -4,8 +4,10 @@ import test from 'node:test';
 import {
     acceptOperation,
     cancelDeliveryRequest,
+    cancelDeliveryRequestForAccount,
     changeDeliveryRequestSlot,
     createAttributeDefinition,
+    createDeliveryAddress,
     createDeliveryRequest,
     createEntity,
     createEvent,
@@ -15,12 +17,15 @@ import {
     createPickupLocation,
     createTimeSlot,
     DeliveryRequestStates,
+    deliveryRequests,
     events,
+    getDeliveryRequest,
     getDeliveryRequestsWithEvents,
     getPendingDeliveryReadyEmailRequestIds,
     getTimeSlot,
     knownEvents,
     knownEventTypes,
+    operations,
     raisedBedFields,
     raisedBeds,
     storage,
@@ -304,6 +309,155 @@ test('createDeliveryRequest rejects pickup slots after their close deadline', as
     assert.equal(slot?.status, TimeSlotStatuses.CLOSED);
 });
 
+test('createDeliveryRequest enforces operation and address ownership', async () => {
+    createTestDb();
+
+    const ownerAccountId = await createTestAccount();
+    const foreignAccountId = await createTestAccount();
+    const locationId = await createPickupLocation({
+        name: `Ownership location ${randomUUID()}`,
+        street1: 'Testna 1',
+        city: 'Zagreb',
+        postalCode: '10000',
+        countryCode: 'HR',
+    });
+    const slotStartAt = new Date('2099-02-01T08:00:00.000Z');
+    const pickupSlotId = await createTimeSlot({
+        locationId,
+        type: 'pickup',
+        startAt: slotStartAt,
+        endAt: new Date(slotStartAt.getTime() + 2 * 60 * 60 * 1000),
+        status: TimeSlotStatuses.SCHEDULED,
+    });
+    const deliverySlotId = await createTimeSlot({
+        locationId,
+        type: 'delivery',
+        startAt: slotStartAt,
+        endAt: new Date(slotStartAt.getTime() + 2 * 60 * 60 * 1000),
+        status: TimeSlotStatuses.SCHEDULED,
+    });
+    const [operation] = await storage()
+        .insert(operations)
+        .values({
+            entityId: 1,
+            entityTypeName: 'operation',
+            accountId: ownerAccountId,
+        })
+        .returning({ id: operations.id });
+    assert.ok(operation);
+    const foreignAddressId = await createDeliveryAddress({
+        accountId: foreignAccountId,
+        label: 'Tuđa adresa',
+        contactName: 'Drugi korisnik',
+        phone: '+385 91 000 0000',
+        street1: 'Tuđa 12',
+        city: 'Zagreb',
+        postalCode: '10000',
+        countryCode: 'HR',
+    });
+
+    await assert.rejects(
+        createDeliveryRequest({
+            operationId: operation.id,
+            slotId: pickupSlotId,
+            mode: 'pickup',
+            locationId,
+            accountId: foreignAccountId,
+        }),
+        /Operation not found or access denied/,
+    );
+    await assert.rejects(
+        createDeliveryRequest({
+            operationId: operation.id,
+            slotId: deliverySlotId,
+            mode: 'delivery',
+            addressId: foreignAddressId,
+            accountId: ownerAccountId,
+        }),
+        /Delivery address not found or access denied/,
+    );
+
+    const insertedRequests = await storage().query.deliveryRequests.findMany({
+        where: eq(deliveryRequests.operationId, operation.id),
+    });
+    assert.deepEqual(insertedRequests, []);
+});
+
+test('legacy request reconstruction uses the operation owner and hides foreign addresses', async () => {
+    createTestDb();
+
+    const ownerAccountId = await createTestAccount();
+    const foreignAccountId = await createTestAccount();
+    const locationId = await createPickupLocation({
+        name: `Legacy ownership location ${randomUUID()}`,
+        street1: 'Testna 1',
+        city: 'Zagreb',
+        postalCode: '10000',
+        countryCode: 'HR',
+    });
+    const slotStartAt = new Date('2099-02-02T08:00:00.000Z');
+    const slotId = await createTimeSlot({
+        locationId,
+        type: 'delivery',
+        startAt: slotStartAt,
+        endAt: new Date(slotStartAt.getTime() + 2 * 60 * 60 * 1000),
+        status: TimeSlotStatuses.SCHEDULED,
+    });
+    const [operation] = await storage()
+        .insert(operations)
+        .values({
+            entityId: 1,
+            entityTypeName: 'operation',
+            accountId: ownerAccountId,
+        })
+        .returning({ id: operations.id });
+    assert.ok(operation);
+    const foreignAddressId = await createDeliveryAddress({
+        accountId: foreignAccountId,
+        label: 'Privatna adresa',
+        contactName: 'Drugi korisnik',
+        phone: '+385 91 111 1111',
+        street1: 'Privatna 9',
+        city: 'Zagreb',
+        postalCode: '10000',
+        countryCode: 'HR',
+    });
+    const requestId = randomUUID();
+    await storage().insert(deliveryRequests).values({
+        id: requestId,
+        operationId: operation.id,
+    });
+    await createEvent(
+        knownEvents.delivery.requestCreatedV1(requestId, {
+            operationId: operation.id,
+            slotId,
+            mode: 'delivery',
+            addressId: foreignAddressId,
+            accountId: foreignAccountId,
+        }),
+    );
+
+    const request = await getDeliveryRequest(requestId);
+    const ownerRequests = await getDeliveryRequestsWithEvents(ownerAccountId);
+    const foreignRequests =
+        await getDeliveryRequestsWithEvents(foreignAccountId);
+
+    assert.equal(request?.accountId, ownerAccountId);
+    assert.equal(request?.address, undefined);
+    assert.equal(
+        ownerRequests.find((item) => item.id === requestId)?.accountId,
+        ownerAccountId,
+    );
+    assert.equal(
+        ownerRequests.find((item) => item.id === requestId)?.address,
+        undefined,
+    );
+    assert.equal(
+        foreignRequests.some((item) => item.id === requestId),
+        false,
+    );
+});
+
 test('changeDeliveryRequestSlot rejects pickup slots after their close deadline', async () => {
     const fixture = await createDeliveryRequestWithTraceFixture();
     const slotStartAt = new Date('2099-01-03T08:00:00.000Z');
@@ -457,4 +611,33 @@ test('uncancelDeliveryRequest restores cancelled requests to confirmed', async (
 
     assert.equal(restoredRequest?.state, DeliveryRequestStates.CONFIRMED);
     assert.equal(restoredRequest?.cancelReason, undefined);
+});
+
+test('account cancellation cannot mutate another account request', async () => {
+    const fixture = await createDeliveryRequestWithTraceFixture();
+    const foreignAccountId = await createTestAccount();
+    const originalRequest = await getDeliveryRequest(fixture.requestId);
+    assert.ok(originalRequest);
+
+    await assert.rejects(
+        cancelDeliveryRequestForAccount({
+            requestId: fixture.requestId,
+            accountId: foreignAccountId,
+            cancelReason: 'Nije moj zahtjev',
+        }),
+        /Delivery request not found/,
+    );
+
+    const unchangedRequest = await getDeliveryRequest(fixture.requestId);
+    assert.equal(unchangedRequest?.state, originalRequest.state);
+
+    await cancelDeliveryRequestForAccount({
+        requestId: fixture.requestId,
+        accountId: fixture.accountId,
+        cancelReason: 'Promjena plana',
+    });
+
+    const cancelledRequest = await getDeliveryRequest(fixture.requestId);
+    assert.equal(cancelledRequest?.state, DeliveryRequestStates.CANCELLED);
+    assert.equal(cancelledRequest?.cancelReason, 'Promjena plana');
 });

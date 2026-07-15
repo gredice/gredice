@@ -886,6 +886,30 @@ export async function accountCanTrackDeliveryRun({
         return false;
     }
     const groups = await resolveDeliveryRunStopGroups(run);
+    return accountCanTrackCurrentDeliveryGroup({
+        accountId,
+        runState: run.state,
+        groups,
+    });
+}
+
+export function accountCanTrackCurrentDeliveryGroup({
+    accountId,
+    runState,
+    groups,
+}: {
+    accountId: string;
+    runState: string;
+    groups: ReadonlyArray<{
+        items: ReadonlyArray<{
+            stop: { state: string };
+            request?: { accountId?: string | null };
+        }>;
+    }>;
+}) {
+    if (runState !== DeliveryRunStates.ACTIVE) {
+        return false;
+    }
     const currentGroup = groups.find((group) =>
         group.items.some(
             ({ stop }) => stop.state !== DeliveryRunStopStates.DELIVERED,
