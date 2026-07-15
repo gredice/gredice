@@ -12,6 +12,10 @@ import {
     type DeliveryServerStateExpectation,
     useDeliveryActionSync,
 } from '../hooks/useDeliveryActionSync';
+import {
+    type DriverRouteWakeLockState,
+    useDriverRouteWakeLock,
+} from '../hooks/useDriverRouteWakeLock';
 import { useDriverTracking } from '../hooks/useDriverTracking';
 import { useOfflineRouteCache } from '../hooks/useOfflineRouteCache';
 import { usePickupManifestSync } from '../hooks/usePickupManifestSync';
@@ -259,6 +263,7 @@ type DeliveryActionResult =
 
 function DriverDashboardWithPickupSync({
     dashboard,
+    routeWakeLock,
     trackingState,
     pendingAction,
     onSelectionChange,
@@ -269,6 +274,7 @@ function DriverDashboardWithPickupSync({
     onServerStateChanged,
 }: {
     dashboard: DriverDeliveryDashboard;
+    routeWakeLock: DriverRouteWakeLockState;
     trackingState: ReturnType<typeof useDriverTracking>;
     pendingAction: string | null;
     onSelectionChange: () => void;
@@ -289,6 +295,7 @@ function DriverDashboardWithPickupSync({
         return (
             <DriverDashboard
                 dashboard={dashboard}
+                routeWakeLock={routeWakeLock}
                 trackingState={trackingState}
                 pendingAction={pendingAction}
                 onSelectionChange={onSelectionChange}
@@ -319,6 +326,7 @@ function DriverDashboardWithPickupSync({
         <ActiveDriverDashboardWithPickupSync
             dashboard={dashboard}
             activeRunId={activeRun.id}
+            routeWakeLock={routeWakeLock}
             trackingState={trackingState}
             pendingAction={pendingAction}
             onSelectionChange={onSelectionChange}
@@ -334,6 +342,7 @@ function DriverDashboardWithPickupSync({
 function ActiveDriverDashboardWithPickupSync({
     dashboard,
     activeRunId,
+    routeWakeLock,
     trackingState,
     pendingAction,
     onSelectionChange,
@@ -345,6 +354,7 @@ function ActiveDriverDashboardWithPickupSync({
 }: {
     dashboard: DriverDeliveryDashboard;
     activeRunId: string;
+    routeWakeLock: DriverRouteWakeLockState;
     trackingState: ReturnType<typeof useDriverTracking>;
     pendingAction: string | null;
     onSelectionChange: () => void;
@@ -430,6 +440,7 @@ function ActiveDriverDashboardWithPickupSync({
     return (
         <DriverDashboard
             dashboard={dashboard}
+            routeWakeLock={routeWakeLock}
             trackingState={trackingState}
             pendingAction={pendingAction}
             onSelectionChange={onSelectionChange}
@@ -626,6 +637,13 @@ export function DeliveryDashboard({
             ? dashboardData.activeRun
             : null;
     const activeRunId = activeRun?.id ?? null;
+    const routeWakeLock = useDriverRouteWakeLock({
+        runId: sessionOperational
+            ? dashboardData
+                ? activeRunId
+                : (offlineRoute?.scope.runId ?? null)
+            : null,
+    });
     const trackingState = useDriverTracking({
         runId: sessionOperational ? activeRunId : null,
         serverTracking: sessionOperational
@@ -1073,6 +1091,7 @@ export function DeliveryDashboard({
                     snapshot={offlineRoute}
                     authenticatedUserId={authenticatedDriverUserId}
                     authenticatedRole={authenticatedRole}
+                    routeWakeLock={routeWakeLock}
                     refreshServerState={refreshDriverServerState}
                 />
             );
@@ -1149,6 +1168,7 @@ export function DeliveryDashboard({
             {dashboard.kind === 'driver' ? (
                 <DriverDashboardWithPickupSync
                     dashboard={dashboard}
+                    routeWakeLock={routeWakeLock}
                     trackingState={trackingState}
                     pendingAction={pendingAction}
                     onSelectionChange={() => {
