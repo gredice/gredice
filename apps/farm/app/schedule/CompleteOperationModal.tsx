@@ -2,7 +2,6 @@
 
 import type { EntityStandardized } from '@gredice/storage';
 import { Button } from '@gredice/ui/Button';
-import { Checkbox } from '@gredice/ui/Checkbox';
 import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -13,6 +12,7 @@ import {
     completeFarmOperation,
     completeFarmOperationWithImageUrls,
 } from './actions';
+import { ScheduleTaskCompletionButton } from './ScheduleTaskCompletionButton';
 
 type UploadItemStatus = 'pending' | 'uploading' | 'uploaded' | 'failed';
 
@@ -89,20 +89,23 @@ interface CompleteOperationModalProps {
     operationId: number;
     label: string;
     conditions?: EntityStandardized['conditions'];
+    defaultOpen?: boolean;
 }
 
 export function CompleteOperationModal({
     operationId,
     label,
     conditions,
+    defaultOpen = false,
 }: CompleteOperationModalProps) {
-    const [isOpen, setIsOpen] = useState(false);
+    const [isOpen, setIsOpen] = useState(defaultOpen);
     const [uploadItems, setUploadItems] = useState<UploadItem[]>([]);
     const [notes, setNotes] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const cameraInputRef = useRef<HTMLInputElement>(null);
+    const submissionInFlightRef = useRef(false);
 
     const attachImages = Boolean(
         conditions?.completionAttachImages ||
@@ -126,6 +129,10 @@ export function CompleteOperationModal({
     );
 
     const handleOpenChange = (open: boolean) => {
+        if (!open && submissionInFlightRef.current) {
+            return;
+        }
+
         setIsOpen(open);
         setErrorMessage(null);
         if (!open) {
@@ -249,6 +256,10 @@ export function CompleteOperationModal({
     };
 
     const handleConfirm = async () => {
+        if (submissionInFlightRef.current) {
+            return;
+        }
+
         try {
             setErrorMessage(null);
             if (notesRequiredMissing) {
@@ -256,6 +267,7 @@ export function CompleteOperationModal({
                 return;
             }
 
+            submissionInFlightRef.current = true;
             setIsSubmitting(true);
             const completionNotes = attachNotes ? trimmedNotes : undefined;
             if (attachImages && uploadItems.length > 0) {
@@ -291,11 +303,13 @@ export function CompleteOperationModal({
                     completionNotes,
                 );
             }
+            submissionInFlightRef.current = false;
             handleOpenChange(false);
         } catch (error) {
             console.error('Error completing operation:', error);
             setErrorMessage('Spremanje nije uspjelo. Pokušajte ponovno.');
         } finally {
+            submissionInFlightRef.current = false;
             setIsSubmitting(false);
         }
     };
@@ -314,16 +328,13 @@ export function CompleteOperationModal({
     return (
         <Modal
             title="Potvrda završetka radnje"
+            dismissible={!isSubmitting}
             open={isOpen}
             onOpenChange={handleOpenChange}
             trigger={
-                <Checkbox
-                    aria-label={`Dovrši: ${label}`}
-                    className="size-5"
-                    checked={isOpen}
-                    onCheckedChange={(checked: boolean) =>
-                        handleOpenChange(checked)
-                    }
+                <ScheduleTaskCompletionButton
+                    actionLabel="Dovrši radnju"
+                    label={label}
                 />
             }
         >
@@ -360,6 +371,7 @@ export function CompleteOperationModal({
                             type="button"
                             onClick={() => cameraInputRef.current?.click()}
                             disabled={isSubmitting}
+                            size="lg"
                         >
                             Uslikaj fotografiju
                         </Button>
@@ -368,6 +380,7 @@ export function CompleteOperationModal({
                             type="button"
                             onClick={() => fileInputRef.current?.click()}
                             disabled={isSubmitting}
+                            size="lg"
                         >
                             {uploadItems.length > 0
                                 ? 'Dodaj još slika'
@@ -432,6 +445,7 @@ export function CompleteOperationModal({
                                                         <Button
                                                             variant="outlined"
                                                             type="button"
+                                                            size="lg"
                                                             onClick={() =>
                                                                 resetUploadItem(
                                                                     uploadItem.id,
@@ -496,11 +510,13 @@ export function CompleteOperationModal({
                         variant="outlined"
                         onClick={() => handleOpenChange(false)}
                         disabled={isSubmitting}
+                        size="lg"
                     >
                         Odustani
                     </Button>
                     <Button
                         variant="solid"
+                        aria-busy={isSubmitting}
                         onClick={handleConfirm}
                         disabled={
                             isSubmitting ||
@@ -509,6 +525,7 @@ export function CompleteOperationModal({
                             notesRequiredMissing
                         }
                         loading={isSubmitting}
+                        size="lg"
                     >
                         {hasFailedUploads ? 'Pokušaj ponovno' : 'Potvrdi'}
                     </Button>

@@ -1,36 +1,54 @@
 'use client';
 
 import { Button } from '@gredice/ui/Button';
-import { Checkbox } from '@gredice/ui/Checkbox';
 import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { completeFarmPlanting } from './actions';
+import { ScheduleTaskCompletionButton } from './ScheduleTaskCompletionButton';
 
 interface CompletePlantingModalProps {
     label: string;
     raisedBedId: number;
     positionIndex: number;
+    defaultOpen?: boolean;
 }
 
 export function CompletePlantingModal({
     label,
     raisedBedId,
     positionIndex,
+    defaultOpen = false,
 }: CompletePlantingModalProps) {
-    const [open, setOpen] = useState(false);
+    const [open, setOpen] = useState(defaultOpen);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const submissionInFlightRef = useRef(false);
+
+    const handleOpenChange = (nextOpen: boolean) => {
+        if (!nextOpen && submissionInFlightRef.current) {
+            return;
+        }
+
+        setOpen(nextOpen);
+    };
 
     const handleConfirm = async () => {
+        if (submissionInFlightRef.current) {
+            return;
+        }
+
+        submissionInFlightRef.current = true;
         try {
             setIsSubmitting(true);
             await completeFarmPlanting(raisedBedId, positionIndex);
+            submissionInFlightRef.current = false;
             setOpen(false);
         } catch (error) {
             console.error('Error completing planting:', error);
         } finally {
+            submissionInFlightRef.current = false;
             setIsSubmitting(false);
         }
     };
@@ -38,14 +56,13 @@ export function CompletePlantingModal({
     return (
         <Modal
             title="Potvrda sijanja"
+            dismissible={!isSubmitting}
             open={open}
-            onOpenChange={setOpen}
+            onOpenChange={handleOpenChange}
             trigger={
-                <Checkbox
-                    aria-label={`Dovrši: ${label}`}
-                    className="size-5"
-                    checked={open}
-                    onCheckedChange={(checked: boolean) => setOpen(checked)}
+                <ScheduleTaskCompletionButton
+                    actionLabel="Dovrši sijanje"
+                    label={label}
                 />
             }
         >
@@ -61,16 +78,19 @@ export function CompletePlantingModal({
                 >
                     <Button
                         variant="outlined"
-                        onClick={() => setOpen(false)}
+                        onClick={() => handleOpenChange(false)}
                         disabled={isSubmitting}
+                        size="lg"
                     >
                         Odustani
                     </Button>
                     <Button
                         variant="solid"
+                        aria-busy={isSubmitting}
                         onClick={handleConfirm}
                         loading={isSubmitting}
                         disabled={isSubmitting}
+                        size="lg"
                     >
                         Potvrdi
                     </Button>

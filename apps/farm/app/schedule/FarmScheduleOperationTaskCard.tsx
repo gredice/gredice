@@ -9,6 +9,7 @@ import { OperationCompletionAttachments } from './OperationCompletionAttachments
 import { OperationRequirementIcons } from './OperationRequirementIcons';
 import { ScheduleTaskAgeIndicatorChip } from './ScheduleTaskAgeIndicatorChip';
 import { ScheduleTaskDateChip } from './ScheduleTaskDateChip';
+import { ScheduleTaskDetailsLink } from './ScheduleTaskDetailsLink';
 import { ScheduleTaskDurationChip } from './ScheduleTaskDurationChip';
 import { ScheduleTaskStateControl } from './ScheduleTaskStateControl';
 import { ScheduleTaskStatusChip } from './ScheduleTaskStatusChip';
@@ -31,6 +32,7 @@ export type FarmOperationCardData = Pick<
     | 'assignedUserId'
     | 'assignedUserIds'
     | 'completionNotes'
+    | 'entityId'
     | 'id'
     | 'imageUrls'
     | 'scheduledDate'
@@ -71,94 +73,108 @@ export function FarmScheduleOperationTaskCard({
     const showRequirementIcons =
         taskPresentation.showRequirementIndicators &&
         (attachImages || attachNotes);
+    const hasCompletionAttachments =
+        taskPresentation.showCompletionAttachments &&
+        (Boolean(operation.completionNotes?.trim()) ||
+            Boolean(operation.imageUrls?.some((url) => url.trim().length > 0)));
+    const detailsContent = (
+        <Row spacing={2} className="min-w-0 items-start justify-between gap-3">
+            <Stack spacing={1} className="min-w-0 grow">
+                <Typography
+                    className={
+                        taskPresentation.isCompleted
+                            ? 'line-through text-muted-foreground [overflow-wrap:anywhere]'
+                            : '[overflow-wrap:anywhere]'
+                    }
+                >
+                    {operation.label}
+                </Typography>
+                <Row spacing={2} className="items-center flex-wrap gap-y-1">
+                    <ScheduleTaskStatusChip state={taskState} />
+                    <ScheduleTaskDurationChip
+                        minutes={operation.durationMinutes}
+                    />
+                    <ScheduleTaskDateChip
+                        scheduledDate={operation.scheduledDate}
+                    />
+                    {taskPresentation.showAgeIndicator && (
+                        <ScheduleTaskAgeIndicatorChip
+                            scheduledDate={operation.scheduledDate}
+                        />
+                    )}
+                </Row>
+            </Stack>
+            {(showRequirementIcons || operation.assignedUser) && (
+                <Row spacing={1} className="shrink-0 items-center">
+                    {showRequirementIcons && (
+                        <OperationRequirementIcons
+                            attachImages={attachImages}
+                            attachImagesRequired={attachImagesRequired}
+                            attachNotes={attachNotes}
+                            attachNotesRequired={attachNotesRequired}
+                        />
+                    )}
+                    {operation.assignedUser && (
+                        <div
+                            className="shrink-0"
+                            title={`Dodijeljeno: ${operation.assignedUser.displayName ?? operation.assignedUser.userName}`}
+                        >
+                            <UserAvatar
+                                avatarUrl={operation.assignedUser.avatarUrl}
+                                displayName={
+                                    operation.assignedUser.displayName ??
+                                    operation.assignedUser.userName
+                                }
+                                className="size-7 rounded-full"
+                            />
+                        </div>
+                    )}
+                </Row>
+            )}
+        </Row>
+    );
 
     return (
         <div
             data-task-state={taskState}
             className={cx(
-                'rounded-lg border px-3 py-2 transition-opacity',
-                taskPresentation.isCompleted
-                    ? 'bg-white/70 opacity-70'
-                    : 'bg-white',
+                'rounded-lg border px-3 py-2',
+                taskPresentation.isCompleted ? 'bg-muted/30' : 'bg-white',
             )}
         >
-            <Row
-                spacing={2}
-                className="min-w-0 items-start justify-between gap-3"
-            >
-                <Row spacing={2} className="min-w-0 grow items-start">
-                    <ScheduleTaskStateControl
-                        action={canComplete ? completionAction : undefined}
-                        label={operation.label}
-                        state={taskState}
-                        unavailableTitle="Radnja je dodijeljena drugom korisniku."
-                    />
-                    <Stack spacing={1} className="min-w-0 grow">
-                        <Typography
-                            className={
-                                taskPresentation.isCompleted
-                                    ? 'line-through text-muted-foreground [overflow-wrap:anywhere]'
-                                    : '[overflow-wrap:anywhere]'
-                            }
-                        >
-                            {operation.label}
-                        </Typography>
-                        <Row
-                            spacing={2}
-                            className="items-center flex-wrap gap-y-1"
-                        >
-                            <ScheduleTaskStatusChip state={taskState} />
-                            <ScheduleTaskDurationChip
-                                minutes={operation.durationMinutes}
-                            />
-                            <ScheduleTaskDateChip
-                                scheduledDate={operation.scheduledDate}
-                            />
-                            {taskPresentation.showAgeIndicator && (
-                                <ScheduleTaskAgeIndicatorChip
-                                    scheduledDate={operation.scheduledDate}
-                                />
-                            )}
-                        </Row>
-                    </Stack>
-                </Row>
-                {(showRequirementIcons ||
-                    taskPresentation.showCompletionAttachments ||
-                    operation.assignedUser) && (
-                    <Row spacing={1} className="shrink-0 items-center">
-                        {showRequirementIcons && (
-                            <OperationRequirementIcons
-                                attachImages={attachImages}
-                                attachImagesRequired={attachImagesRequired}
-                                attachNotes={attachNotes}
-                                attachNotesRequired={attachNotesRequired}
-                            />
-                        )}
-                        {taskPresentation.showCompletionAttachments && (
-                            <OperationCompletionAttachments
-                                operationId={operation.id}
-                                notes={operation.completionNotes}
-                                imageUrls={operation.imageUrls}
-                            />
-                        )}
-                        {operation.assignedUser && (
-                            <div
-                                className="shrink-0"
-                                title={`Dodijeljeno: ${operation.assignedUser.displayName ?? operation.assignedUser.userName}`}
-                            >
-                                <UserAvatar
-                                    avatarUrl={operation.assignedUser.avatarUrl}
-                                    displayName={
-                                        operation.assignedUser.displayName ??
-                                        operation.assignedUser.userName
-                                    }
-                                    className="size-7 rounded-full"
-                                />
-                            </div>
-                        )}
-                    </Row>
-                )}
-            </Row>
+            {operationData ? (
+                <ScheduleTaskDetailsLink
+                    actionLabel="Otvori upute"
+                    href={`/operations/${operation.entityId}`}
+                >
+                    {detailsContent}
+                </ScheduleTaskDetailsLink>
+            ) : (
+                <div className="min-w-0 px-1 py-1">
+                    {detailsContent}
+                    <Typography
+                        className="mt-1.5 text-muted-foreground"
+                        level="body2"
+                    >
+                        Upute trenutno nisu dostupne.
+                    </Typography>
+                </div>
+            )}
+            {hasCompletionAttachments && (
+                <OperationCompletionAttachments
+                    className="mt-2 border-t pt-2"
+                    operationId={operation.id}
+                    notes={operation.completionNotes}
+                    imageUrls={operation.imageUrls}
+                />
+            )}
+            <ScheduleTaskStateControl
+                action={canComplete ? completionAction : undefined}
+                actionLabel="Dovrši radnju"
+                label={operation.label}
+                state={taskState}
+                unavailableTitle="Radnja je dodijeljena drugom korisniku."
+            />
         </div>
     );
 }
