@@ -1,5 +1,5 @@
 import { withAuth } from '../../../../../../../../lib/auth/auth';
-import { deliverDeliveryStop } from '../../../../../../../../lib/deliveryDashboard';
+import { recoverAdminDeliveryStop } from '../../../../../../../../lib/deliveryDashboard';
 import {
     DeliveryMutationRequestError,
     expectedRouteRevision,
@@ -12,18 +12,17 @@ export async function POST(
     request: Request,
     { params }: { params: Promise<{ runId: string; stopId: string }> },
 ) {
-    return await withAuth(['driver', 'admin'], async ({ userId }) => {
+    return await withAuth(['admin'], async ({ userId }) => {
         const { runId, stopId: stopIdValue } = await params;
         const stopId = Number(stopIdValue);
-        if (!Number.isInteger(stopId)) {
-            return Response.json(
-                { error: 'Neispravna stanica.' },
-                { status: 400, headers: privateNoStore },
-            );
-        }
         const body: unknown = await request.json().catch(() => null);
         let routeRevision: number;
         try {
+            if (!Number.isInteger(stopId) || stopId <= 0) {
+                throw new DeliveryMutationRequestError(
+                    'Stanica dostave nije valjana.',
+                );
+            }
             routeRevision = expectedRouteRevision(body);
         } catch (error) {
             return Response.json(
@@ -37,49 +36,27 @@ export async function POST(
                 { status: 400, headers: privateNoStore },
             );
         }
-        const notes =
-            typeof body === 'object' &&
-            body !== null &&
-            'notes' in body &&
-            typeof body.notes === 'string' &&
-            body.notes.trim()
-                ? body.notes.trim().slice(0, 1_000)
-                : undefined;
         try {
-            const result = await deliverDeliveryStop({
-                driverUserId: userId,
+            const result = await recoverAdminDeliveryStop({
+                adminUserId: userId,
                 runId,
                 stopId,
-                notes,
                 expectedRouteRevision: routeRevision,
             });
-            return Response.json(
-                { success: true, ...result },
-                { headers: privateNoStore },
-            );
+            return Response.json(result, { headers: privateNoStore });
         } catch (error) {
             const executionError = deliveryRunExecutionErrorDetails(error);
-            const logContext = { runId, stopId, userId };
-            if (executionError) {
-                console.warn('Delivery stop completion rejected', {
-                    ...logContext,
-                    code: executionError.code,
-                });
-            } else {
-                console.error('Failed to deliver stop', {
-                    ...logContext,
-                    errorType:
-                        error instanceof Error ? error.name : typeof error,
-                });
-            }
             return Response.json(
                 {
                     error:
                         executionError?.message ??
-                        'Dostavu trenutačno nije moguće potvrditi.',
-                    code: executionError?.code,
+                        'Dostavu trenutačno nije moguće oporaviti.',
+                    code: executionError?.code ?? 'delivery-mutation-failed',
                 },
-                { status: 409, headers: privateNoStore },
+                {
+                    status: executionError ? 409 : 500,
+                    headers: privateNoStore,
+                },
             );
         }
     });

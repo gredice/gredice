@@ -115,9 +115,12 @@ const deliveryInvalidatingEventTypes = new Set<string>([
     knownEventTypes.delivery.requestReady,
     knownEventTypes.delivery.requestFulfilled,
     knownEventTypes.delivery.requestExceptionRecorded,
+    knownEventTypes.delivery.requestExceptionRecovered,
     knownEventTypes.delivery.requestSurveySent,
     knownEventTypes.delivery.requestSlotChanged,
     knownEventTypes.delivery.userCancelled,
+    knownEventTypes.delivery.runReassigned,
+    knownEventTypes.delivery.runAbandoned,
 ]);
 
 function eventTypeFilter(type: string | string[]) {

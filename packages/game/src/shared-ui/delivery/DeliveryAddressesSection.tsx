@@ -212,10 +212,12 @@ export function AddressCard({
     readonly?: boolean;
 }) {
     const [isEditing, setIsEditing] = useState(false);
+    const [mutationError, setMutationError] = useState<string | null>(null);
     const updateAddress = useUpdateDeliveryAddress();
     const deleteAddress = useDeleteDeliveryAddress();
 
     const handleUpdate = async (data: AddressFormData) => {
+        setMutationError(null);
         try {
             await updateAddress.mutateAsync({
                 id: address.id,
@@ -223,15 +225,24 @@ export function AddressCard({
             });
             setIsEditing(false);
         } catch (error) {
-            console.error('Failed to update address:', error);
+            setMutationError(
+                error instanceof Error
+                    ? error.message
+                    : 'Adresu nije moguće ažurirati.',
+            );
         }
     };
 
     const handleDelete = async () => {
+        setMutationError(null);
         try {
             await deleteAddress.mutateAsync(address.id);
         } catch (error) {
-            console.error('Failed to delete address:', error);
+            setMutationError(
+                error instanceof Error
+                    ? error.message
+                    : 'Adresu nije moguće obrisati.',
+            );
         }
     };
 
@@ -239,10 +250,21 @@ export function AddressCard({
         return (
             <Card>
                 <CardContent>
+                    {mutationError ? (
+                        <Typography
+                            className="mb-3 text-destructive"
+                            level="body2"
+                        >
+                            {mutationError}
+                        </Typography>
+                    ) : null}
                     <AddressForm
                         address={address}
                         onSubmit={handleUpdate}
-                        onCancel={() => setIsEditing(false)}
+                        onCancel={() => {
+                            setMutationError(null);
+                            setIsEditing(false);
+                        }}
                         isLoading={updateAddress.isPending}
                     />
                 </CardContent>
@@ -254,6 +276,11 @@ export function AddressCard({
         <Card>
             <CardContent>
                 <Stack spacing={4}>
+                    {mutationError ? (
+                        <Typography className="text-destructive" level="body2">
+                            {mutationError}
+                        </Typography>
+                    ) : null}
                     <Row justifyContent="space-between" alignItems="start">
                         <Stack spacing={2}>
                             <Row spacing={4}>

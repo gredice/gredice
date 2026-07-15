@@ -1,6 +1,8 @@
 import {
     createDeliveryAddress,
     createDeliveryRequest,
+    DeliveryAddressMutationError,
+    DeliveryRunAssignmentError,
     deleteDeliveryAddress,
     getDeliveryAddress,
     getDeliveryAddresses,
@@ -169,7 +171,29 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 ...data,
             };
 
-            await updateDeliveryAddress(updateData, accountId);
+            try {
+                await updateDeliveryAddress(updateData, accountId);
+            } catch (error) {
+                if (error instanceof DeliveryAddressMutationError) {
+                    return context.json(
+                        {
+                            error: 'Adresa nije pronađena.',
+                            code: error.code,
+                        },
+                        404,
+                    );
+                }
+                if (error instanceof DeliveryRunAssignmentError) {
+                    return context.json(
+                        {
+                            error: 'Adresa je dio aktivne dostavne rute. Najprije dovrši ili napusti rutu.',
+                            code: error.code,
+                        },
+                        409,
+                    );
+                }
+                throw error;
+            }
             const updatedAddress = await getDeliveryAddress(id, accountId);
             return context.json(updatedAddress);
         },
@@ -188,7 +212,29 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const { accountId } = context.get('authContext');
             const { id } = context.req.valid('param');
 
-            await deleteDeliveryAddress(id, accountId);
+            try {
+                await deleteDeliveryAddress(id, accountId);
+            } catch (error) {
+                if (error instanceof DeliveryAddressMutationError) {
+                    return context.json(
+                        {
+                            error: 'Adresa nije pronađena.',
+                            code: error.code,
+                        },
+                        404,
+                    );
+                }
+                if (error instanceof DeliveryRunAssignmentError) {
+                    return context.json(
+                        {
+                            error: 'Adresa je dio aktivne dostavne rute. Najprije dovrši ili napusti rutu.',
+                            code: error.code,
+                        },
+                        409,
+                    );
+                }
+                throw error;
+            }
             return context.json({ success: true });
         },
     )
@@ -327,7 +373,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         zValidator('param', z.object({ id: z.string().uuid() })),
         zValidator('json', cancelRequestSchema),
         async (context) => {
-            const { accountId } = context.get('authContext');
+            const { accountId, userId } = context.get('authContext');
             const { id } = context.req.valid('param');
             const { cancelReason, note } = context.req.valid('json');
 
@@ -337,6 +383,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 await cancelDeliveryRequestForCurrentAccount({
                     requestId: id,
                     accountId,
+                    actorUserId: userId,
                     cancelReason,
                     note,
                 });

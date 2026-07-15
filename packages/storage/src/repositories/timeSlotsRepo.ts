@@ -11,6 +11,8 @@ import {
     type UpdateTimeSlot,
 } from '../schema';
 import { storage } from '../storage';
+import { withDeliveryDispatchTransaction } from './deliveryDispatchRepo';
+import { assertDeliveryTimeSlotHasNoActiveAssignment } from './deliveryRunAssignmentsRepo';
 
 export async function getTimeSlot(
     slotId: number,
@@ -100,33 +102,44 @@ export async function createTimeSlot(data: InsertTimeSlot): Promise<number> {
 
 // Update a time slot
 export async function updateTimeSlot(update: UpdateTimeSlot): Promise<void> {
-    if (update.startAt !== undefined || update.closesAt !== undefined) {
-        const existingSlot = await storage().query.timeSlots.findFirst({
-            where: eq(timeSlots.id, update.id),
-        });
-
-        if (!existingSlot) {
-            throw new Error('Failed to update time slot - slot not found');
+    await withDeliveryDispatchTransaction(async (tx) => {
+        if (
+            update.locationId !== undefined ||
+            update.type !== undefined ||
+            update.startAt !== undefined ||
+            update.endAt !== undefined
+        ) {
+            await assertDeliveryTimeSlotHasNoActiveAssignment(update.id, tx);
         }
 
-        assertTimeSlotClosesBeforeStart({
-            startAt: update.startAt ?? existingSlot.startAt,
-            closesAt:
-                update.closesAt === undefined
-                    ? existingSlot.closesAt
-                    : update.closesAt,
-        });
-    }
+        if (update.startAt !== undefined || update.closesAt !== undefined) {
+            const existingSlot = await tx.query.timeSlots.findFirst({
+                where: eq(timeSlots.id, update.id),
+            });
 
-    const result = await storage()
-        .update(timeSlots)
-        .set(update)
-        .where(eq(timeSlots.id, update.id))
-        .returning({ id: timeSlots.id });
+            if (!existingSlot) {
+                throw new Error('Failed to update time slot - slot not found');
+            }
 
-    if (!result[0]?.id) {
-        throw new Error('Failed to update time slot - slot not found');
-    }
+            assertTimeSlotClosesBeforeStart({
+                startAt: update.startAt ?? existingSlot.startAt,
+                closesAt:
+                    update.closesAt === undefined
+                        ? existingSlot.closesAt
+                        : update.closesAt,
+            });
+        }
+
+        const result = await tx
+            .update(timeSlots)
+            .set(update)
+            .where(eq(timeSlots.id, update.id))
+            .returning({ id: timeSlots.id });
+
+        if (!result[0]?.id) {
+            throw new Error('Failed to update time slot - slot not found');
+        }
+    });
     await bustDeliveryRequestsCache();
 }
 

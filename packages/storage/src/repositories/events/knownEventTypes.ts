@@ -78,8 +78,11 @@ export const knownEventTypes = {
         requestCancelled: 'delivery.request.cancelled',
         requestFulfilled: 'delivery.request.fulfilled',
         requestExceptionRecorded: 'delivery.request.exception.recorded',
+        requestExceptionRecovered: 'delivery.request.exception.recovered',
         requestSurveySent: 'delivery.request.survey_sent',
         userCancelled: 'delivery.request.user_cancelled',
+        runReassigned: 'delivery.run.reassigned',
+        runAbandoned: 'delivery.run.abandoned',
     },
     occasions: {
         adventCalendarOpen: 'occasion.advent.calendar.open',

@@ -27,6 +27,12 @@ export function deliveryRunExecutionErrorDetails(
                 code: error.code,
                 message: 'Aktivna ruta više nije dostupna.',
             };
+        case 'route-revision-conflict':
+            return {
+                code: error.code,
+                message:
+                    'Ruta je u međuvremenu promijenjena. Osvježi podatke i pokušaj ponovno.',
+            };
         default:
             return {
                 code: error.code,

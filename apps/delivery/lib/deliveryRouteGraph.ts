@@ -83,7 +83,13 @@ export type SolveDeliveryRouteGraphInput = {
     originKey: string;
     departureAt: Date;
     legs: readonly DeliveryRouteGraphLeg[];
+    maximumNodes?: number;
 };
+
+export type EvaluateFixedDeliveryRouteGraphInput = Omit<
+    SolveDeliveryRouteGraphInput,
+    'maximumNodes'
+>;
 
 type SearchStateCore = {
     visitedMask: number;
@@ -195,10 +201,9 @@ function validateGraph(input: SolveDeliveryRouteGraphInput): ValidatedGraph {
     if (input.nodes.length === 0) {
         invalidGraph('Ruta mora sadržavati barem jednu stanicu.');
     }
-    if (input.nodes.length > maximumDeliveryRouteGraphNodes) {
-        invalidGraph(
-            `Ruta može sadržavati najviše ${maximumDeliveryRouteGraphNodes} stanica.`,
-        );
+    const maximumNodes = input.maximumNodes ?? maximumDeliveryRouteGraphNodes;
+    if (input.nodes.length > maximumNodes) {
+        invalidGraph(`Ruta može sadržavati najviše ${maximumNodes} stanica.`);
     }
 
     const nodes = [...input.nodes].sort((first, second) =>
@@ -692,6 +697,131 @@ function buildPlan(
         totalServiceSeconds,
         totalDurationSeconds:
             (availableAtMs - input.departureAt.getTime()) / 1_000,
+        visits,
+    };
+}
+
+/** Evaluates an already ordered route without bitmask-based search. */
+export function evaluateFixedDeliveryRouteGraph(
+    input: EvaluateFixedDeliveryRouteGraphInput,
+): DeliveryRouteGraphPlan {
+    if (!validDate(input.departureAt) || input.nodes.length === 0) {
+        invalidGraph('Fiksna ruta nema valjano vrijeme ili stanice.');
+    }
+    const departureAt = new Date(
+        Math.ceil(input.departureAt.getTime() / 1_000) * 1_000,
+    );
+    const nodes = [...input.nodes];
+    const nodeKeys = new Set<string>();
+    for (const node of nodes) {
+        validateNode(node);
+        if (nodeKeys.has(node.key)) {
+            invalidGraph(
+                'Ključevi stanica rute moraju biti jedinstveni.',
+                node.key,
+                deliveryRequestId(node),
+            );
+        }
+        nodeKeys.add(node.key);
+    }
+    const origin = nodes[0];
+    if (!origin || origin.key !== input.originKey || origin.kind !== 'pickup') {
+        invalidGraph(
+            'Početna stanica fiksne rute nije valjana.',
+            input.originKey,
+        );
+    }
+
+    const legsByKey = new Map<string, DeliveryRouteGraphLeg>();
+    for (const leg of input.legs) {
+        if (
+            !nodeKeys.has(leg.fromKey) ||
+            !nodeKeys.has(leg.toKey) ||
+            leg.fromKey === leg.toKey ||
+            !validNonNegativeInteger(leg.travelSeconds) ||
+            !validNonNegativeInteger(leg.distanceMeters)
+        ) {
+            invalidGraph('Fiksna ruta sadrži nevaljanu dionicu.', leg.toKey);
+        }
+        const key = `${leg.fromKey}\u0000${leg.toKey}`;
+        if (legsByKey.has(key)) {
+            invalidGraph('Fiksna ruta sadrži dupliciranu dionicu.', leg.toKey);
+        }
+        legsByKey.set(key, leg);
+    }
+
+    const visits: DeliveryRouteGraphVisit[] = [];
+    const visitedPickups = new Set<string>();
+    let availableAtMs = departureAt.getTime();
+    let totalDistanceMeters = 0;
+    let totalTravelSeconds = 0;
+    let totalWaitingSeconds = 0;
+    let totalServiceSeconds = 0;
+    for (const [index, node] of nodes.entries()) {
+        if (
+            node.kind === 'customer' &&
+            !visitedPickups.has(node.requiredPickupKey)
+        ) {
+            throw new DeliveryRouteGraphPlanningError(
+                'Fiksna ruta ne poštuje redoslijed preuzimanja.',
+                'route-infeasible',
+                node.key,
+                node.deliveryRequestId,
+            );
+        }
+        const previous = nodes[index - 1];
+        const leg = previous
+            ? legsByKey.get(`${previous.key}\u0000${node.key}`)
+            : undefined;
+        if (previous && !leg) {
+            throw new DeliveryRouteGraphPlanningError(
+                'Fiksna ruta nema potrebnu dionicu.',
+                'route-infeasible',
+                node.key,
+                deliveryRequestId(node),
+            );
+        }
+        const incomingTravelSeconds = leg?.travelSeconds ?? 0;
+        const incomingDistanceMeters = leg?.distanceMeters ?? 0;
+        const arrivalAtMs = availableAtMs + incomingTravelSeconds * 1_000;
+        const serviceStartedAtMs = serviceStartAtMs(arrivalAtMs, node);
+        if (missesWindow(serviceStartedAtMs, node)) {
+            throw new DeliveryRouteGraphPlanningError(
+                'Fiksnu rutu nije moguće završiti unutar vremenskog prozora.',
+                'route-time-window-infeasible',
+                node.key,
+                deliveryRequestId(node),
+            );
+        }
+        const waitingSeconds = (serviceStartedAtMs - arrivalAtMs) / 1_000;
+        const serviceCompletedAtMs =
+            serviceStartedAtMs + node.serviceSeconds * 1_000;
+        visits.push({
+            sequence: index + 1,
+            node,
+            incomingTravelSeconds,
+            incomingDistanceMeters,
+            arrivalAt: new Date(arrivalAtMs),
+            waitingSeconds,
+            serviceStartedAt: new Date(serviceStartedAtMs),
+            serviceSeconds: node.serviceSeconds,
+            serviceCompletedAt: new Date(serviceCompletedAtMs),
+        });
+        if (node.kind === 'pickup') visitedPickups.add(node.key);
+        availableAtMs = serviceCompletedAtMs;
+        totalDistanceMeters += incomingDistanceMeters;
+        totalTravelSeconds += incomingTravelSeconds;
+        totalWaitingSeconds += waitingSeconds;
+        totalServiceSeconds += node.serviceSeconds;
+    }
+    return {
+        startedAt: departureAt,
+        completedAt: new Date(availableAtMs),
+        totalDistanceMeters,
+        totalTravelSeconds,
+        totalWaitingSeconds,
+        totalServiceSeconds,
+        totalDurationSeconds: (availableAtMs - departureAt.getTime()) / 1_000,
         visits,
     };
 }

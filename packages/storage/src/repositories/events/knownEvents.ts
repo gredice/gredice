@@ -12,11 +12,14 @@ import type {
     DeliveryRequestCancelledPayload,
     DeliveryRequestCreatePayload,
     DeliveryRequestExceptionRecordedPayload,
+    DeliveryRequestExceptionRecoveredPayload,
     DeliveryRequestFulfilledPayload,
     DeliveryRequestReadyEmailProcessedPayload,
     DeliveryRequestSlotChangedPayload,
     DeliveryRequestStatusPayload,
     DeliveryRequestSurveySentPayload,
+    DeliveryRunAbandonedPayload,
+    DeliveryRunReassignedPayload,
     GardenBlockPlacePayload,
     GardenBlockRemovePayload,
     GardenCreatePayload,
@@ -512,6 +515,15 @@ export const knownEvents = {
             aggregateId,
             data,
         }),
+        requestExceptionRecoveredV1: (
+            aggregateId: string,
+            data: DeliveryRequestExceptionRecoveredPayload,
+        ) => ({
+            type: knownEventTypes.delivery.requestExceptionRecovered,
+            version: 1,
+            aggregateId,
+            data,
+        }),
         requestSurveySentV1: (
             aggregateId: string,
             data: DeliveryRequestSurveySentPayload,
@@ -525,6 +537,24 @@ export const knownEvents = {
             type: knownEventTypes.delivery.userCancelled,
             version: 1,
             aggregateId,
+        }),
+        runReassignedV1: (
+            aggregateId: string,
+            data: DeliveryRunReassignedPayload,
+        ) => ({
+            type: knownEventTypes.delivery.runReassigned,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        runAbandonedV1: (
+            aggregateId: string,
+            data: DeliveryRunAbandonedPayload,
+        ) => ({
+            type: knownEventTypes.delivery.runAbandoned,
+            version: 1,
+            aggregateId,
+            data,
         }),
     },
     occasions: {

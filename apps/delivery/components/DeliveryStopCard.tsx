@@ -13,6 +13,7 @@ import {
     Mobile,
     MyLocation,
     Navigate,
+    Reset,
     Timer,
     User,
     Warning,
@@ -44,12 +45,14 @@ export function DeliveryStopCard({
     stop,
     mode,
     pendingAction,
+    onRetry,
     onArrive,
     onDeliver,
 }: {
     stop: DeliveryStopSummary;
     mode: 'driver' | 'customer';
-    pendingAction?: 'arrive' | 'deliver' | null;
+    pendingAction?: 'retry' | 'arrive' | 'deliver' | null;
+    onRetry?: () => void;
     onArrive?: () => void;
     onDeliver?: (notes?: string) => void;
 }) {
@@ -185,7 +188,37 @@ export function DeliveryStopCard({
                     </div>
                 ) : null}
 
-                {driverMode && customerActionAvailable && !delivered ? (
+                {driverMode &&
+                customerActionAvailable &&
+                !delivered &&
+                stop.stopState === 'deferred' ? (
+                    <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950">
+                        <Typography level="body2" semiBold>
+                            Ponovni pokušaj je na redu
+                        </Typography>
+                        <Typography
+                            level="body3"
+                            className="text-muted-foreground"
+                        >
+                            Potvrdi početak pokušaja prije navigacije i
+                            evidentiranja dolaska.
+                        </Typography>
+                        <Button
+                            color="warning"
+                            loading={pendingAction === 'retry'}
+                            disabled={Boolean(pendingAction)}
+                            onClick={onRetry}
+                            startDecorator={<Reset className="size-4" />}
+                        >
+                            Pokreni ponovni pokušaj
+                        </Button>
+                    </div>
+                ) : null}
+
+                {driverMode &&
+                customerActionAvailable &&
+                !delivered &&
+                stop.stopState !== 'deferred' ? (
                     <div className="space-y-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
                         <Button
                             href={navigationUrl}

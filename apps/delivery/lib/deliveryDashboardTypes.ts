@@ -55,6 +55,7 @@ export type DeliveryStopSummary = {
     estimatedArrivalAt: string | null;
     estimatedTravelSeconds: number | null;
     estimatedDistanceMeters: number | null;
+    reroutePending: boolean;
     arrivedAt: string | null;
     deliveredAt: string | null;
     harvest: DeliveryHarvestSummary;
@@ -130,6 +131,8 @@ export type DeliveryRouteStepSummary =
     | {
           kind: 'delivery';
           itinerarySequence: number;
+          retryLaneRank: number | null;
+          retryAttempt: number;
           actionState: 'locked' | 'upcoming' | 'current' | 'completed';
           lockedReason: string | null;
           stop: DeliveryStopSummary;
@@ -167,6 +170,8 @@ export type ActiveDeliveryRunSummary = {
     totalDistanceMeters: number | null;
     totalDurationSeconds: number | null;
     routePlanVersion: number;
+    routeRevision: number;
+    reroutePending: boolean;
     estimateSource: DeliveryRunEstimateSource;
     location: DeliveryTrackingLocation | null;
     estimatesUpdatedAt: string | null;

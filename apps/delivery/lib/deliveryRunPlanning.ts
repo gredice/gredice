@@ -4,9 +4,9 @@ import {
     DeliveryRunPersistenceError,
     type DeliveryRunRequestSnapshotInput,
     getActiveDeliveryRunForDriver,
+    getActiveDeliveryRunStopsForRequestIds,
     getDeliveryDispatchRevision,
     getDeliveryRequestsWithEvents,
-    getDeliveryRunStopsForRequestIds,
     saveDeliveryRunPreparation,
 } from '@gredice/storage';
 import 'server-only';
@@ -100,7 +100,7 @@ const defaultDependencies: DeliveryRunPlanningDependencies = {
     getActiveRunForDriver: getActiveDeliveryRunForDriver,
     getRequests: getDeliveryRequestsWithEvents,
     getDispatchRevision: getDeliveryDispatchRevision,
-    getAssignedStops: getDeliveryRunStopsForRequestIds,
+    getAssignedStops: getActiveDeliveryRunStopsForRequestIds,
     planRoute: planPickupAwareDeliveryRoute,
     now: () => new Date(),
 };
@@ -527,8 +527,25 @@ export async function prepareDeliveryRun(
         assertSelectedRequest(requestId, request, now);
         if (request) selectedStopKeys.add(stopKey(request));
     }
+    const selectedCandidates = uniqueRequestIds.flatMap((requestId) => {
+        const request = requestsById.get(requestId);
+        const candidate = request ? selectionCandidate(request) : null;
+        return candidate ? [candidate] : [];
+    });
+    const selectedInspection = inspectDeliveryRouteSelection({
+        candidates: selectedCandidates,
+        requestIds: selectedCandidates.map((candidate) => candidate.requestId),
+        maximumRouteStops: maximumDeliveryRouteStops,
+        maximumRouteWindowHours: maximumDeliveryRouteWindowHours,
+    });
+    if (selectedInspection.conflict) {
+        throw selectionPreparationError(
+            selectedInspection.conflict,
+            requestsById,
+        );
+    }
 
-    const candidates = requests.filter(
+    const bulkCandidates = requests.filter(
         (request) =>
             request.mode === 'delivery' &&
             request.address &&
@@ -536,6 +553,29 @@ export async function prepareDeliveryRun(
             request.state === DeliveryRequestStates.READY &&
             request.slot.endAt >= now &&
             selectedStopKeys.has(stopKey(request)),
+    );
+    const existingStops = await dependencies.getAssignedStops(
+        bulkCandidates.map((candidate) => candidate.id),
+    );
+    const assignedRequestIds = new Set(
+        existingStops.map((existing) => existing.stop.deliveryRequestId),
+    );
+    const assignedSelectionId = uniqueRequestIds.find((requestId) =>
+        assignedRequestIds.has(requestId),
+    );
+    if (assignedSelectionId) {
+        throw new DeliveryRunPreparationError(
+            'Jedna ili više odabranih dostava već je dodijeljena drugoj ruti. Osvježi popis i odaberi ponovno.',
+            requestConflict(
+                'delivery-already-assigned',
+                requestsById.get(assignedSelectionId),
+            ),
+        );
+    }
+    // Bulk expansion applies only to orders that are still dispatchable. A
+    // ready sibling already committed to an active run remains on that run.
+    const candidates = bulkCandidates.filter(
+        (candidate) => !assignedRequestIds.has(candidate.id),
     );
     const normalizedCandidates = candidates.flatMap((request) => {
         const candidate = selectionCandidate(request);
@@ -551,22 +591,6 @@ export async function prepareDeliveryRun(
     });
     if (inspection.conflict) {
         throw selectionPreparationError(inspection.conflict, requestsById);
-    }
-
-    const existingStops = await dependencies.getAssignedStops(
-        normalizedCandidates.map((candidate) => candidate.requestId),
-    );
-    if (existingStops.length > 0) {
-        const assignedRequestId = existingStops[0]?.stop.deliveryRequestId;
-        throw new DeliveryRunPreparationError(
-            'Jedna ili više odabranih dostava već je dodijeljena drugoj ruti. Osvježi popis i odaberi ponovno.',
-            requestConflict(
-                'delivery-already-assigned',
-                assignedRequestId
-                    ? requestsById.get(assignedRequestId)
-                    : undefined,
-            ),
-        );
     }
 
     const candidateGroups = groupByDeliveryStop(
@@ -832,7 +856,7 @@ export async function revalidatePreparedDeliveryRun(
         }
     }
 
-    const currentBulkRequestIds = requests.flatMap((request) => {
+    const currentBulkCandidates = requests.filter((request) => {
         if (
             request.mode !== 'delivery' ||
             request.state !== DeliveryRequestStates.READY ||
@@ -841,12 +865,33 @@ export async function revalidatePreparedDeliveryRun(
             request.slot.endAt < now ||
             !selectedStopKeys.has(stopKey(request))
         ) {
-            return [];
+            return false;
         }
-        return [request.id];
+        return true;
     });
     const snapshotRequestIds = preparation.requestSnapshots.map(
         (snapshot) => snapshot.deliveryRequestId,
+    );
+    const assignedStops = await dependencies.getAssignedStops(
+        currentBulkCandidates.map((request) => request.id),
+    );
+    const assignedRequestIds = new Set(
+        assignedStops.map((assigned) => assigned.stop.deliveryRequestId),
+    );
+    const assignedSnapshotId = snapshotRequestIds.find((requestId) =>
+        assignedRequestIds.has(requestId),
+    );
+    if (assignedSnapshotId) {
+        throw new DeliveryRunPreparationError(
+            'Jedna ili više odabranih dostava već je dodijeljena drugoj ruti. Osvježi popis i odaberi ponovno.',
+            requestConflict(
+                'delivery-already-assigned',
+                requestsById.get(assignedSnapshotId),
+            ),
+        );
+    }
+    const currentBulkRequestIds = currentBulkCandidates.flatMap((request) =>
+        assignedRequestIds.has(request.id) ? [] : [request.id],
     );
     if (!sameRequestIds(currentBulkRequestIds, snapshotRequestIds)) {
         const changedRequestId =
@@ -862,21 +907,6 @@ export async function revalidatePreparedDeliveryRun(
                 'delivery-bulk-selection-changed',
                 changedRequestId
                     ? requestsById.get(changedRequestId)
-                    : undefined,
-            ),
-        );
-    }
-
-    const assignedStops =
-        await dependencies.getAssignedStops(snapshotRequestIds);
-    if (assignedStops.length > 0) {
-        const assignedRequestId = assignedStops[0]?.stop.deliveryRequestId;
-        throw new DeliveryRunPreparationError(
-            'Jedna ili više odabranih dostava već je dodijeljena drugoj ruti. Osvježi popis i odaberi ponovno.',
-            requestConflict(
-                'delivery-already-assigned',
-                assignedRequestId
-                    ? requestsById.get(assignedRequestId)
                     : undefined,
             ),
         );

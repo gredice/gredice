@@ -84,6 +84,12 @@ function isSafeActiveRun(value: unknown) {
     return (
         'stops' in value &&
         Array.isArray(value.stops) &&
+        'routeRevision' in value &&
+        typeof value.routeRevision === 'number' &&
+        Number.isInteger(value.routeRevision) &&
+        value.routeRevision >= 0 &&
+        'reroutePending' in value &&
+        typeof value.reroutePending === 'boolean' &&
         'routeSteps' in value &&
         Array.isArray(value.routeSteps) &&
         value.routeSteps.every((step) => {
@@ -105,6 +111,15 @@ function isSafeActiveRun(value: unknown) {
             }
             return (
                 step.kind === 'delivery' &&
+                'retryLaneRank' in step &&
+                (step.retryLaneRank === null ||
+                    (typeof step.retryLaneRank === 'number' &&
+                        Number.isInteger(step.retryLaneRank) &&
+                        step.retryLaneRank > 0)) &&
+                'retryAttempt' in step &&
+                typeof step.retryAttempt === 'number' &&
+                Number.isInteger(step.retryAttempt) &&
+                step.retryAttempt >= 0 &&
                 'stop' in step &&
                 typeof step.stop === 'object' &&
                 step.stop !== null &&
@@ -180,6 +195,7 @@ function DriverDashboardWithPickupSync({
     pendingAction,
     onSelectionChange,
     onStartRun,
+    onRetry,
     onArrive,
     onDeliver,
     onPickupError,
@@ -190,8 +206,22 @@ function DriverDashboardWithPickupSync({
     pendingAction: string | null;
     onSelectionChange: () => void;
     onStartRun: (deliveryRequestIds: string[]) => void;
-    onArrive: (runId: string, stopId: number) => void;
-    onDeliver: (runId: string, stopId: number, notes?: string) => void;
+    onRetry: (
+        runId: string,
+        stopId: number,
+        expectedRouteRevision: number,
+    ) => void;
+    onArrive: (
+        runId: string,
+        stopId: number,
+        expectedRouteRevision: number,
+    ) => void;
+    onDeliver: (
+        runId: string,
+        stopId: number,
+        expectedRouteRevision: number,
+        notes?: string,
+    ) => void;
     onPickupError: (error: unknown) => void;
     onPickupAcknowledged: () => void | Promise<void>;
 }) {
@@ -204,6 +234,7 @@ function DriverDashboardWithPickupSync({
                 pendingAction={pendingAction}
                 onSelectionChange={onSelectionChange}
                 onStartRun={onStartRun}
+                onRetry={onRetry}
                 onArrive={onArrive}
                 onDeliver={onDeliver}
                 pickupQueue={null}
@@ -224,6 +255,7 @@ function DriverDashboardWithPickupSync({
             pendingAction={pendingAction}
             onSelectionChange={onSelectionChange}
             onStartRun={onStartRun}
+            onRetry={onRetry}
             onArrive={onArrive}
             onDeliver={onDeliver}
             onPickupError={onPickupError}
@@ -239,6 +271,7 @@ function ActiveDriverDashboardWithPickupSync({
     pendingAction,
     onSelectionChange,
     onStartRun,
+    onRetry,
     onArrive,
     onDeliver,
     onPickupError,
@@ -250,8 +283,22 @@ function ActiveDriverDashboardWithPickupSync({
     pendingAction: string | null;
     onSelectionChange: () => void;
     onStartRun: (deliveryRequestIds: string[]) => void;
-    onArrive: (runId: string, stopId: number) => void;
-    onDeliver: (runId: string, stopId: number, notes?: string) => void;
+    onRetry: (
+        runId: string,
+        stopId: number,
+        expectedRouteRevision: number,
+    ) => void;
+    onArrive: (
+        runId: string,
+        stopId: number,
+        expectedRouteRevision: number,
+    ) => void;
+    onDeliver: (
+        runId: string,
+        stopId: number,
+        expectedRouteRevision: number,
+        notes?: string,
+    ) => void;
     onPickupError: (error: unknown) => void;
     onPickupAcknowledged: () => void | Promise<void>;
 }) {
@@ -275,6 +322,7 @@ function ActiveDriverDashboardWithPickupSync({
             pendingAction={pendingAction}
             onSelectionChange={onSelectionChange}
             onStartRun={onStartRun}
+            onRetry={onRetry}
             onArrive={onArrive}
             onDeliver={onDeliver}
             pickupQueue={pickupSync.snapshot}
@@ -345,6 +393,12 @@ export function DeliveryDashboard() {
             await postAction(path, body);
             await query.refetch();
         } catch (error) {
+            if (
+                error instanceof DeliveryActionError &&
+                error.code === 'route-revision-conflict'
+            ) {
+                await query.refetch();
+            }
             setActionError(
                 error instanceof Error
                     ? error.message
@@ -474,17 +528,30 @@ export function DeliveryDashboard() {
                     onStartRun={(deliveryRequestIds) =>
                         void startRun(deliveryRequestIds)
                     }
-                    onArrive={(runId, stopId) =>
+                    onRetry={(runId, stopId, expectedRouteRevision) =>
+                        void perform(
+                            `${stopId}:retry`,
+                            `/api/driver/runs/${runId}/stops/${stopId}/retry`,
+                            { expectedRouteRevision },
+                        )
+                    }
+                    onArrive={(runId, stopId, expectedRouteRevision) =>
                         void perform(
                             `${stopId}:arrive`,
                             `/api/driver/runs/${runId}/stops/${stopId}/arrive`,
+                            {
+                                expectedRouteRevision,
+                            },
                         )
                     }
-                    onDeliver={(runId, stopId, notes) =>
+                    onDeliver={(runId, stopId, expectedRouteRevision, notes) =>
                         void perform(
                             `${stopId}:deliver`,
                             `/api/driver/runs/${runId}/stops/${stopId}/deliver`,
-                            { notes },
+                            {
+                                notes,
+                                expectedRouteRevision,
+                            },
                         )
                     }
                     onPickupError={(error) =>

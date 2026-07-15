@@ -128,9 +128,9 @@ function planningDependencies({
         },
         getDispatchRevision: async () =>
             Math.max(0, ...requests.map(({ routeRevision }) => routeRevision)),
-        getAssignedStops: async () => {
+        getAssignedStops: async (requestIds) => {
             counters.assignmentReads += 1;
-            return assignedRequestId
+            return assignedRequestId && requestIds.includes(assignedRequestId)
                 ? [{ stop: { deliveryRequestId: assignedRequestId } }]
                 : [];
         },
@@ -664,7 +664,33 @@ test('rejects a selection beyond the shared physical-stop limit before the plann
     assert.equal(counters.mutationCalls, 0);
 });
 
-test('rejects an assigned bulk member before route planning', async () => {
+test('excludes an assigned auto-expanded sibling from public preflight and revalidation', async () => {
+    const requests = [request({ id: 'bulk-one' }), request({ id: 'bulk-two' })];
+    const { dependencies, counters } = planningDependencies({
+        requests,
+        assignedRequestId: 'bulk-two',
+    });
+
+    const prepared = await prepareDeliveryRun(
+        {
+            driverUserId: 'driver-one',
+            deliveryRequestIds: ['bulk-one'],
+        },
+        dependencies,
+    );
+    await revalidatePreparedDeliveryRun(prepared, dependencies);
+
+    assert.deepEqual(
+        prepared.requestSnapshots.map((snapshot) => snapshot.deliveryRequestId),
+        ['bulk-one'],
+    );
+    assert.equal(prepared.summary.deliveryCount, 1);
+    assert.equal(counters.assignmentReads, 2);
+    assert.equal(counters.plannerCalls, 1);
+    assert.equal(counters.mutationCalls, 0);
+});
+
+test('rejects an explicitly selected assigned request before route planning', async () => {
     const requests = [request({ id: 'bulk-one' }), request({ id: 'bulk-two' })];
     const { dependencies, counters } = planningDependencies({
         requests,
@@ -675,7 +701,7 @@ test('rejects an assigned bulk member before route planning', async () => {
         prepareDeliveryRun(
             {
                 driverUserId: 'driver-one',
-                deliveryRequestIds: ['bulk-one'],
+                deliveryRequestIds: ['bulk-two'],
             },
             dependencies,
         ),
