@@ -205,7 +205,7 @@ function DeliveryCurrentStopCommandCenter({
     const headingId = useId();
     const syncStatusId = useId();
     const headingRef = useRef<HTMLElement>(null);
-    const actionRef = useRef<HTMLDivElement>(null);
+    const actionRef = useRef<HTMLFieldSetElement>(null);
     const [notes, setNotes] = useState('');
     const [localPendingAction, setLocalPendingAction] = useState<
         'retry' | 'arrive' | 'deliver' | null
@@ -533,7 +533,142 @@ function DeliveryCurrentStopCommandCenter({
                     : ''}
             </span>
 
-            <div className="grid grid-cols-3 gap-1 rounded-lg bg-muted/70 p-2 text-center sm:gap-2 sm:p-3">
+            {deferred ? (
+                <fieldset
+                    aria-label="Radnje trenutačne stanice"
+                    className="m-0 min-w-0 space-y-2 border-0 p-0"
+                >
+                    <Button
+                        className="w-full"
+                        color="warning"
+                        loading={effectivePendingAction === 'retry'}
+                        disabled={
+                            Boolean(effectivePendingAction) ||
+                            routeSyncBlocked ||
+                            !onRetry
+                        }
+                        onClick={() => void runCommand('retry', onRetry)}
+                        startDecorator={<Reset className="size-4" />}
+                    >
+                        {onRetry
+                            ? checkpointPending
+                                ? 'Ponovni pokušaj čeka potvrdu rute'
+                                : 'Pokreni ponovni pokušaj'
+                            : checkpointPending
+                              ? 'Ponovni pokušaj čeka potvrdu rute'
+                              : 'Ponovni pokušaj nakon povratka veze'}
+                    </Button>
+                    {commandStatus}
+                </fieldset>
+            ) : (
+                <fieldset
+                    ref={actionRef}
+                    aria-label="Radnje trenutačne stanice"
+                    className="z-10 -mx-2 min-w-0 space-y-2 border-x-0 border-y bg-background/95 px-2 py-1.5 backdrop-blur sm:mx-0 sm:p-2"
+                    style={stickyActionStyle}
+                >
+                    <div className="grid min-w-0 grid-cols-2 gap-2">
+                        {stop.runId && onException ? (
+                            <DeliveryExceptionSheet
+                                runId={stop.runId}
+                                routeRevision={routeRevision}
+                                stop={stop}
+                                disabled={
+                                    Boolean(effectivePendingAction) ||
+                                    routeCommandBlocked
+                                }
+                                onSubmit={onException}
+                            />
+                        ) : null}
+                        {arrived && (pendingArrival || acknowledgedArrival) ? (
+                            <Button
+                                variant="outlined"
+                                disabled
+                                aria-describedby={
+                                    syncEntry?.command.kind === 'arrive'
+                                        ? syncStatusId
+                                        : undefined
+                                }
+                                startDecorator={
+                                    <MyLocation className="size-4" />
+                                }
+                            >
+                                {pendingArrival
+                                    ? 'Dolazak čeka potvrdu'
+                                    : 'Dolazak potvrđen'}
+                            </Button>
+                        ) : null}
+                        {arrived ? (
+                            <Button
+                                className={
+                                    pendingArrival || acknowledgedArrival
+                                        ? 'col-span-2'
+                                        : undefined
+                                }
+                                color="success"
+                                loading={effectivePendingAction === 'deliver'}
+                                disabled={
+                                    Boolean(effectivePendingAction) ||
+                                    routeCommandBlocked ||
+                                    deliveryQueued ||
+                                    actionableDeliveries.length === 0 ||
+                                    !onDeliver
+                                }
+                                aria-describedby={
+                                    syncEntry?.command.kind === 'deliver'
+                                        ? syncStatusId
+                                        : undefined
+                                }
+                                onClick={() =>
+                                    void runCommand('deliver', () =>
+                                        onDeliver?.(notes || undefined),
+                                    )
+                                }
+                                startDecorator={<Approved className="size-4" />}
+                            >
+                                {syncEntry?.command.kind === 'deliver'
+                                    ? syncEntry.state === 'synced'
+                                        ? 'Dostava potvrđena'
+                                        : 'Dostava čeka potvrdu'
+                                    : groupedDelivery
+                                      ? `Dostavi ${actionableDeliveries.length} · dalje`
+                                      : 'Dostavljeno · dalje'}
+                            </Button>
+                        ) : (
+                            <Button
+                                variant="outlined"
+                                loading={effectivePendingAction === 'arrive'}
+                                disabled={
+                                    Boolean(effectivePendingAction) ||
+                                    routeCommandBlocked ||
+                                    !onArrive
+                                }
+                                aria-describedby={
+                                    syncEntry?.command.kind === 'arrive'
+                                        ? syncStatusId
+                                        : undefined
+                                }
+                                onClick={() =>
+                                    void runCommand('arrive', onArrive)
+                                }
+                                startDecorator={
+                                    <MyLocation className="size-4" />
+                                }
+                            >
+                                {pendingArrival
+                                    ? 'Dolazak čeka potvrdu'
+                                    : 'Stigao sam'}
+                            </Button>
+                        )}
+                    </div>
+                    {commandStatus}
+                </fieldset>
+            )}
+
+            <section
+                aria-label="Procjene trenutačne stanice"
+                className="grid grid-cols-3 gap-1 rounded-lg bg-muted/70 p-2 text-center sm:gap-2 sm:p-3"
+            >
                 <div className="min-w-0">
                     <Typography level="body3" className="text-muted-foreground">
                         Dolazak
@@ -558,7 +693,7 @@ function DeliveryCurrentStopCommandCenter({
                         {formatDistance(stop.estimatedDistanceMeters)}
                     </Typography>
                 </div>
-            </div>
+            </section>
 
             {estimatedOutsideWindow && !stop.deliveredAt ? (
                 <Alert
@@ -589,141 +724,11 @@ function DeliveryCurrentStopCommandCenter({
 
             {deferred ? (
                 <>
-                    <Button
-                        className="w-full"
-                        color="warning"
-                        loading={effectivePendingAction === 'retry'}
-                        disabled={
-                            Boolean(effectivePendingAction) ||
-                            routeSyncBlocked ||
-                            !onRetry
-                        }
-                        onClick={() => void runCommand('retry', onRetry)}
-                        startDecorator={<Reset className="size-4" />}
-                    >
-                        {onRetry
-                            ? checkpointPending
-                                ? 'Ponovni pokušaj čeka potvrdu rute'
-                                : 'Pokreni ponovni pokušaj'
-                            : checkpointPending
-                              ? 'Ponovni pokušaj čeka potvrdu rute'
-                              : 'Ponovni pokušaj nakon povratka veze'}
-                    </Button>
-                    {commandStatus}
                     {secondaryStopDetails}
                     {navigationActions}
                 </>
             ) : (
                 <>
-                    <div
-                        ref={actionRef}
-                        className="z-10 -mx-2 min-w-0 space-y-2 border-y bg-background/95 px-2 py-1.5 backdrop-blur sm:mx-0 sm:p-2"
-                        style={stickyActionStyle}
-                    >
-                        <div className="grid min-w-0 grid-cols-2 gap-2">
-                            {stop.runId && onException ? (
-                                <DeliveryExceptionSheet
-                                    runId={stop.runId}
-                                    routeRevision={routeRevision}
-                                    stop={stop}
-                                    disabled={
-                                        Boolean(effectivePendingAction) ||
-                                        routeCommandBlocked
-                                    }
-                                    onSubmit={onException}
-                                />
-                            ) : null}
-                            {arrived &&
-                            (pendingArrival || acknowledgedArrival) ? (
-                                <Button
-                                    variant="outlined"
-                                    disabled
-                                    aria-describedby={
-                                        syncEntry?.command.kind === 'arrive'
-                                            ? syncStatusId
-                                            : undefined
-                                    }
-                                    startDecorator={
-                                        <MyLocation className="size-4" />
-                                    }
-                                >
-                                    {pendingArrival
-                                        ? 'Dolazak čeka potvrdu'
-                                        : 'Dolazak potvrđen'}
-                                </Button>
-                            ) : null}
-                            {arrived ? (
-                                <Button
-                                    className={
-                                        pendingArrival || acknowledgedArrival
-                                            ? 'col-span-2'
-                                            : undefined
-                                    }
-                                    color="success"
-                                    loading={
-                                        effectivePendingAction === 'deliver'
-                                    }
-                                    disabled={
-                                        Boolean(effectivePendingAction) ||
-                                        routeCommandBlocked ||
-                                        deliveryQueued ||
-                                        actionableDeliveries.length === 0 ||
-                                        !onDeliver
-                                    }
-                                    aria-describedby={
-                                        syncEntry?.command.kind === 'deliver'
-                                            ? syncStatusId
-                                            : undefined
-                                    }
-                                    onClick={() =>
-                                        void runCommand('deliver', () =>
-                                            onDeliver?.(notes || undefined),
-                                        )
-                                    }
-                                    startDecorator={
-                                        <Approved className="size-4" />
-                                    }
-                                >
-                                    {syncEntry?.command.kind === 'deliver'
-                                        ? syncEntry.state === 'synced'
-                                            ? 'Dostava potvrđena'
-                                            : 'Dostava čeka potvrdu'
-                                        : groupedDelivery
-                                          ? `Dostavi ${actionableDeliveries.length} · dalje`
-                                          : 'Dostavljeno · dalje'}
-                                </Button>
-                            ) : (
-                                <Button
-                                    variant="outlined"
-                                    loading={
-                                        effectivePendingAction === 'arrive'
-                                    }
-                                    disabled={
-                                        Boolean(effectivePendingAction) ||
-                                        routeCommandBlocked ||
-                                        !onArrive
-                                    }
-                                    aria-describedby={
-                                        syncEntry?.command.kind === 'arrive'
-                                            ? syncStatusId
-                                            : undefined
-                                    }
-                                    onClick={() =>
-                                        void runCommand('arrive', onArrive)
-                                    }
-                                    startDecorator={
-                                        <MyLocation className="size-4" />
-                                    }
-                                >
-                                    {pendingArrival
-                                        ? 'Dolazak čeka potvrdu'
-                                        : 'Stigao sam'}
-                                </Button>
-                            )}
-                        </div>
-                        {commandStatus}
-                    </div>
-
                     {arrived ? (
                         <DeliveryHarvestVerification
                             compact

@@ -32,6 +32,15 @@ test.describe('320px current-stop command center', () => {
         const command = page.getByRole('region', {
             name: /skupna dostava/,
         });
+        const actionGroup = command.getByRole('group', {
+            name: 'Radnje trenutačne stanice',
+        });
+        const estimateGroup = command.getByRole('region', {
+            name: 'Procjene trenutačne stanice',
+        });
+        const criticalNotes = command.getByRole('region', {
+            name: 'Važne napomene za trenutačnu stanicu',
+        });
 
         await expect(command).toContainText('Ilica 42, Zagreb');
         await expect(command).toContainText('Ulaz iz dvorišta');
@@ -70,6 +79,20 @@ test.describe('320px current-stop command center', () => {
         ).toHaveCount(0);
         await expect(command).toContainText(
             'Napomena korisnika · Ana Anić · Rajčica Roma',
+        );
+        await expect(actionGroup).toBeVisible();
+        await expect(estimateGroup).toBeVisible();
+        await expect(criticalNotes).toBeVisible();
+        const orderedLabels = await command
+            .locator(':scope > [aria-label]')
+            .evaluateAll((elements) =>
+                elements.map((element) => element.getAttribute('aria-label')),
+            );
+        expect(orderedLabels.indexOf('Radnje trenutačne stanice')).toBeLessThan(
+            orderedLabels.indexOf('Procjene trenutačne stanice'),
+        );
+        expect(orderedLabels.indexOf('Radnje trenutačne stanice')).toBeLessThan(
+            orderedLabels.indexOf('Važne napomene za trenutačnu stanicu'),
         );
         await expect(
             command.getByText(
