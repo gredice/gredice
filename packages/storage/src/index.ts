@@ -34,6 +34,7 @@ export * from './repositories/billingReconciliationRepo';
 export * from './repositories/cmsPagesRepo';
 export * from './repositories/communityEditRequestsRepo';
 export * from './repositories/deliveryAddressesRepo';
+export * from './repositories/deliveryDispatchRepo';
 export * from './repositories/deliveryRequestsRepo';
 export * from './repositories/deliveryRunsRepo';
 export * from './repositories/deliveryUtilsRepo';
