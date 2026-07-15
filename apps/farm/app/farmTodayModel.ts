@@ -77,6 +77,7 @@ export type FarmTodayOperationsSourceData = {
     pendingOperations: FarmTodayOperationInput[];
     pendingOperationsComplete: boolean;
     raisedBeds: FarmTodayRaisedBedInput[];
+    raisedBedsComplete: boolean;
     scheduledOperations: FarmTodayOperationInput[];
     scheduledOperationsComplete: boolean;
 };
@@ -381,6 +382,7 @@ function isOperationAuthorized(
     operation: FarmTodayOperationInput,
     activeFarmIds: Set<number>,
     authorizedRaisedBedFarmIds: Map<number, number>,
+    raisedBedsComplete: boolean,
 ) {
     if (
         typeof operation.farmId === 'number' &&
@@ -393,9 +395,20 @@ function isOperationAuthorized(
         const raisedBedFarmId = authorizedRaisedBedFarmIds.get(
             operation.raisedBedId,
         );
+        if (typeof raisedBedFarmId === 'number') {
+            return (
+                operation.farmId === null ||
+                operation.farmId === raisedBedFarmId
+            );
+        }
+
+        if (raisedBedsComplete) {
+            return false;
+        }
+
         return (
-            typeof raisedBedFarmId === 'number' &&
-            (operation.farmId === null || operation.farmId === raisedBedFarmId)
+            typeof operation.farmId === 'number' &&
+            activeFarmIds.has(operation.farmId)
         );
     }
 
@@ -467,6 +480,7 @@ function buildOperationCandidates({
                 operation,
                 activeFarmIds,
                 authorizedRaisedBedFarmIds,
+                source.raisedBedsComplete,
             )
         ) {
             continue;
@@ -502,6 +516,13 @@ function buildOperationCandidates({
                 positionIndex: raisedBedField?.positionIndex ?? null,
                 raisedBed,
             });
+        } else if (typeof operation.raisedBedId === 'number') {
+            location = {
+                kind: 'raisedBed',
+                label: `Gredica ${operation.raisedBedId}`,
+                positionIndex: null,
+                raisedBedId: operation.raisedBedId,
+            };
         } else {
             if (typeof operation.farmId !== 'number') {
                 continue;

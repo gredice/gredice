@@ -96,6 +96,8 @@ export const getFarmTodayData = cache(
                               plantingsResult.status === 'fulfilled'
                                   ? plantingsResult.value.raisedBeds
                                   : [],
+                          raisedBedsComplete:
+                              plantingsResult.status === 'fulfilled',
                           scheduledOperations:
                               scheduledOperationsResult.status === 'fulfilled'
                                   ? scheduledOperationsResult.value

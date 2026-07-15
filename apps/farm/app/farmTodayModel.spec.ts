@@ -103,6 +103,7 @@ function emptyOperations(): FarmTodayOperationsSourceData {
         pendingOperations: [],
         pendingOperationsComplete: true,
         raisedBeds: [],
+        raisedBedsComplete: true,
         scheduledOperations: [],
         scheduledOperationsComplete: true,
     };
@@ -209,6 +210,7 @@ test('composes mixed operation and planting work without merging pending into co
                 pendingOperations: [operationPending],
                 pendingOperationsComplete: true,
                 raisedBeds: [raisedBed],
+                raisedBedsComplete: true,
                 scheduledOperations: [
                     operationMine,
                     operationShared,
@@ -319,6 +321,7 @@ test('keeps shared work actionable but omits other-farmer and unrelated-farm det
                 pendingOperations: [],
                 pendingOperationsComplete: true,
                 raisedBeds: [buildRaisedBed()],
+                raisedBedsComplete: true,
                 scheduledOperations: [
                     sharedOperation,
                     otherOperation,
@@ -371,6 +374,7 @@ test('uses the primary operation assignee until completion authorization support
                 pendingOperations: [],
                 pendingOperationsComplete: true,
                 raisedBeds: [buildRaisedBed()],
+                raisedBedsComplete: true,
                 scheduledOperations: [
                     buildOperation({
                         assignedUserId: otherUserId,
@@ -409,6 +413,7 @@ test('uses array-only operation assignments when the primary assignee is missing
                 pendingOperations: [],
                 pendingOperationsComplete: true,
                 raisedBeds: [buildRaisedBed()],
+                raisedBedsComplete: true,
                 scheduledOperations: [mine, other],
                 scheduledOperationsComplete: true,
             }),
@@ -549,7 +554,8 @@ test('keeps available work in partial results and never turns total source failu
             operations: ready({
                 pendingOperations: [],
                 pendingOperationsComplete: true,
-                raisedBeds: [buildRaisedBed()],
+                raisedBeds: [],
+                raisedBedsComplete: false,
                 scheduledOperations: [operation],
                 scheduledOperationsComplete: true,
             }),
@@ -562,6 +568,12 @@ test('keeps available work in partial results and never turns total source failu
         expect(partial.workState).toBe('hasWork');
         expect(partial.summary.countsComplete).toBe(false);
         expect(partial.focusQueue).toHaveLength(1);
+        expect(partial.focusQueue[0]?.location).toEqual({
+            kind: 'raisedBed',
+            label: 'Gredica 10',
+            positionIndex: null,
+            raisedBedId: 10,
+        });
         expect(partial.focusQueue[0]?.durationMinutes).toBeNull();
         expect(partial.focusQueue[0]?.proofRequirements).toEqual({
             images: 'unknown',
@@ -605,6 +617,7 @@ test('keeps available work in partial results and never turns total source failu
                 pendingOperations: [],
                 pendingOperationsComplete: false,
                 raisedBeds: [buildRaisedBed()],
+                raisedBedsComplete: true,
                 scheduledOperations: [operation],
                 scheduledOperationsComplete: true,
             }),
@@ -630,6 +643,7 @@ test('keeps available work in partial results and never turns total source failu
                 pendingOperations: [knownPending],
                 pendingOperationsComplete: true,
                 raisedBeds: [buildRaisedBed()],
+                raisedBedsComplete: true,
                 scheduledOperations: [],
                 scheduledOperationsComplete: false,
             }),
@@ -687,6 +701,7 @@ test('retains tasks with safe fallbacks when individual directory entries are mi
                 pendingOperations: [],
                 pendingOperationsComplete: true,
                 raisedBeds: [buildRaisedBed()],
+                raisedBedsComplete: true,
                 scheduledOperations: [operation],
                 scheduledOperationsComplete: true,
             }),
