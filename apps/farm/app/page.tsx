@@ -22,9 +22,11 @@ async function getFarmAuth() {
 
 async function FarmTodayDashboard({
     fallbackDisplayName,
+    sessionIncarnation,
     userId,
 }: {
     fallbackDisplayName: string;
+    sessionIncarnation: string;
     userId: string;
 }) {
     const [data, dbUser] = await Promise.all([
@@ -59,7 +61,11 @@ async function FarmTodayDashboard({
                     >
                         <Settings aria-hidden className="size-4 shrink-0" />
                     </IconButton>
-                    <LogoutButton size="lg" />
+                    <LogoutButton
+                        sessionIncarnation={sessionIncarnation}
+                        size="lg"
+                        userId={userId}
+                    />
                 </>
             }
         />
@@ -75,6 +81,7 @@ export default async function Home() {
                 <Suspense fallback={<FarmTodayLoadingState />}>
                     <FarmTodayDashboard
                         fallbackDisplayName={authContext.user.userName}
+                        sessionIncarnation={authContext.sessionIncarnation}
                         userId={authContext.userId}
                     />
                 </Suspense>

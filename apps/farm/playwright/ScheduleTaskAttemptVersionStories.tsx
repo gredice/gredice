@@ -11,12 +11,18 @@ export const expectedPlantCycleVersionEventId = 802;
 export function CompleteOperationModalAttemptStory(
     props: Omit<
         ComponentProps<typeof CompleteOperationModalComponent>,
-        'expectedTaskVersionEventId'
+        | 'accountId'
+        | 'expectedTaskVersionEventId'
+        | 'sessionIncarnation'
+        | 'userId'
     >,
 ) {
     return (
         <CompleteOperationModalComponent
+            accountId="account-test"
             expectedTaskVersionEventId={expectedTaskVersionEventId}
+            sessionIncarnation="session-test"
+            userId="user-test"
             {...props}
         />
     );

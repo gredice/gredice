@@ -263,6 +263,7 @@ for (const width of [320, 375, 390, 430]) {
             <FarmScheduleOperationTaskCard
                 completionAction={
                     <CompleteOperationModal
+                        accountId="account-test"
                         conditions={conditions}
                         expectedEntityId={operation.entityId}
                         expectedTaskVersionEventId={
@@ -270,6 +271,8 @@ for (const width of [320, 375, 390, 430]) {
                         }
                         label={operation.label}
                         operationId={operation.id}
+                        sessionIncarnation="session-test"
+                        userId="farmer-1"
                     />
                 }
                 operation={operation}
