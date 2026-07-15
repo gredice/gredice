@@ -208,7 +208,7 @@ test.describe('Garden operations HUD', () => {
             canceledSowingCard.locator('[data-operation-status-progress]'),
         ).toHaveCount(0);
         await expect(
-            canceledSowingCard.locator('[data-operation-cancellation-reason]'),
+            canceledSowingCard.locator('[data-operation-terminal-reason]'),
         ).toHaveCount(1);
         await canceledSowingCard
             .getByRole('button', { name: /Razlog otkazivanja/ })
