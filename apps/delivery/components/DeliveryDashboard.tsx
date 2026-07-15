@@ -7,7 +7,7 @@ import { LoaderSpinner, Reset, Warning } from '@gredice/ui/icons';
 import { Typography } from '@gredice/ui/Typography';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     type DeliveryServerStateExpectation,
     useDeliveryActionSync,
@@ -25,9 +25,11 @@ import type {
 } from '../lib/deliveryDashboardTypes';
 import { performDeliveryLogout } from '../lib/deliveryLogout';
 import {
+    assertDeliveryOfflineWritesAllowed,
     deliveryLogoutCompletedEvent,
     deliveryLogoutEvent,
     deliveryLogoutFailedEvent,
+    deliveryOfflineWriteBlockReason,
     deliveryRunCompletedEvent,
     subscribeToRemoteDeliveryLogout,
 } from '../lib/deliveryOfflineEvents';
@@ -81,12 +83,17 @@ async function clearOtherStoredDriverRuns(userId: string, activeRunId: string) {
     }
 }
 
-async function readDashboard() {
-    const response = await fetch('/api/dashboard', { cache: 'no-store' });
+async function readDashboard({ signal }: { signal: AbortSignal }) {
+    assertDeliveryOfflineWritesAllowed();
+    const response = await fetch('/api/dashboard', {
+        cache: 'no-store',
+        signal,
+    });
+    const data: unknown = await response.json().catch(() => null);
+    assertDeliveryOfflineWritesAllowed();
     if (!response.ok) {
         throw new Error('Podatke o dostavama trenutačno nije moguće učitati.');
     }
-    const data: unknown = await response.json();
     if (!isDeliveryDashboard(data)) {
         throw new Error(
             'Poslužitelj je vratio neispravne podatke o dostavama.',
@@ -181,12 +188,14 @@ function isSafeActiveRun(value: unknown) {
 }
 
 async function postAction(path: string, body?: object) {
+    assertDeliveryOfflineWritesAllowed();
     const response = await fetch(path, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body ?? {}),
     });
     const data: unknown = await response.json().catch(() => null);
+    assertDeliveryOfflineWritesAllowed();
     if (!response.ok) {
         const message =
             typeof data === 'object' &&
@@ -551,9 +560,15 @@ export function DeliveryDashboard({
         'idle' | 'pending' | 'failed'
     >('idle');
     const [completedRunId, setCompletedRunId] = useState<string | null>(null);
+    const [offlineSessionUserId, setOfflineSessionUserId] = useState<
+        string | null
+    >(null);
+    const offlineSessionReady = offlineSessionUserId === authenticatedUserId;
+    const sessionOperational = offlineSessionReady && logoutState === 'idle';
     const query = useQuery({
         queryKey: ['delivery-dashboard'],
         queryFn: readDashboard,
+        enabled: sessionOperational,
         refetchInterval: 10_000,
     });
     const refetchDashboard = query.refetch;
@@ -564,9 +579,47 @@ export function DeliveryDashboard({
         authenticatedRole === 'driver' || authenticatedRole === 'admin'
             ? authenticatedUserId
             : null;
+    const verifyOfflineSession = useCallback(() => {
+        const blockReason = deliveryOfflineWriteBlockReason();
+        if (blockReason === 'stale-session') {
+            window.location.reload();
+            return false;
+        }
+        if (blockReason === 'logout') {
+            setOfflineSessionUserId(null);
+            setLogoutState((current) =>
+                current === 'pending' ? current : 'failed',
+            );
+            queryClient.removeQueries({ queryKey: ['delivery-dashboard'] });
+            return false;
+        }
+        setOfflineSessionUserId(authenticatedUserId);
+        return true;
+    }, [authenticatedUserId, queryClient]);
+    useEffect(() => {
+        const verify = () => void verifyOfflineSession();
+        const verifyVisibleSession = () => {
+            if (document.visibilityState === 'visible') verify();
+        };
+        verify();
+        window.addEventListener('focus', verify);
+        window.addEventListener('pageshow', verify);
+        document.addEventListener('visibilitychange', verifyVisibleSession);
+        return () => {
+            window.removeEventListener('focus', verify);
+            window.removeEventListener('pageshow', verify);
+            document.removeEventListener(
+                'visibilitychange',
+                verifyVisibleSession,
+            );
+        };
+    }, [verifyOfflineSession]);
+    useEffect(() => {
+        if (query.isError) verifyOfflineSession();
+    }, [query.isError, verifyOfflineSession]);
     const offlineRoute = useOfflineRouteCache(
-        authenticatedDriverUserId,
-        driverDashboard,
+        sessionOperational ? authenticatedDriverUserId : null,
+        sessionOperational ? driverDashboard : null,
     );
     const activeRun =
         dashboardData && 'activeRun' in dashboardData
@@ -574,10 +627,14 @@ export function DeliveryDashboard({
             : null;
     const activeRunId = activeRun?.id ?? null;
     const trackingState = useDriverTracking({
-        runId: activeRunId,
-        serverTracking: activeRun?.tracking ?? null,
+        runId: sessionOperational ? activeRunId : null,
+        serverTracking: sessionOperational
+            ? (activeRun?.tracking ?? null)
+            : null,
         dashboardRefreshedAt:
-            dashboardData?.kind === 'driver' ? dashboardData.refreshedAt : null,
+            sessionOperational && dashboardData?.kind === 'driver'
+                ? dashboardData.refreshedAt
+                : null,
         onDashboardRefresh: async () => {
             await query.refetch();
         },
@@ -636,6 +693,7 @@ export function DeliveryDashboard({
                 window.dispatchEvent(new Event(deliveryLogoutCompletedEvent)),
             onFailed: () =>
                 window.dispatchEvent(new Event(deliveryLogoutFailedEvent)),
+            onResumed: () => window.location.reload(),
         });
         return () => {
             window.removeEventListener(deliveryLogoutEvent, handleLocalLogout);
@@ -976,6 +1034,20 @@ export function DeliveryDashboard({
                         </Button>
                     </CardContent>
                 </Card>
+            </main>
+        );
+    }
+
+    if (!offlineSessionReady) {
+        return (
+            <main className="flex min-h-[100dvh] items-center justify-center bg-background p-4">
+                <div
+                    className="flex items-center gap-3 text-muted-foreground"
+                    role="status"
+                >
+                    <LoaderSpinner className="size-5 animate-spin" />
+                    <Typography>Učitavanje dostava…</Typography>
+                </div>
             </main>
         );
     }

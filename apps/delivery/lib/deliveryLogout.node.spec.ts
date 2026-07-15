@@ -42,6 +42,7 @@ test('publishes logout completion only after durable local cleanup and server lo
         'started',
         'cleared',
         'requested',
+        'cleared',
         'completed',
     ]);
 });
@@ -49,7 +50,12 @@ test('publishes logout completion only after durable local cleanup and server lo
 test('cleanup failure prevents server logout and publishes a retryable failure', async () => {
     const fixture = lifecycle({ clearFails: true });
     assert.equal(await executeDeliveryLogout(fixture.lifecycle), false);
-    assert.deepEqual(fixture.events, ['started', 'cleared', 'failed']);
+    assert.deepEqual(fixture.events, [
+        'started',
+        'cleared',
+        'cleared',
+        'failed',
+    ]);
 });
 
 test('server failure is published only after local data was cleared', async () => {
@@ -59,6 +65,7 @@ test('server failure is published only after local data was cleared', async () =
         'started',
         'cleared',
         'requested',
+        'cleared',
         'failed',
     ]);
 });

@@ -7,7 +7,10 @@ import {
     useRef,
     useSyncExternalStore,
 } from 'react';
-import { deliveryRunCompletedEvent } from '../lib/deliveryOfflineEvents';
+import {
+    assertDeliveryOfflineWritesAllowed,
+    deliveryRunCompletedEvent,
+} from '../lib/deliveryOfflineEvents';
 import {
     createMemoryPickupManifestQueuePersistence,
     createPickupManifestConfirmCommand,
@@ -66,6 +69,7 @@ function mutationForCommand(command: PickupManifestCommand) {
 async function sendPickupManifestCommand(
     command: PickupManifestCommand,
 ): Promise<PickupManifestTransportResult> {
+    assertDeliveryOfflineWritesAllowed();
     let response: Response;
     try {
         response = await fetch(
@@ -82,6 +86,7 @@ async function sendPickupManifestCommand(
         return { status: 'retryable-failure', code: 'offline' };
     }
     const data: unknown = await response.json().catch(() => null);
+    assertDeliveryOfflineWritesAllowed();
     if (!response.ok) {
         return pickupManifestHttpFailure(response.status, data);
     }

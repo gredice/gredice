@@ -2,6 +2,7 @@ import type {
     DeliveryExceptionOutcome,
     DeliveryExceptionReason,
 } from './deliveryDashboardTypes';
+import { assertDeliveryOfflineWritesAllowed } from './deliveryOfflineEvents';
 import { normalizeHarvestTraceScanValue } from './harvestTraceScan';
 
 export type DeliveryActionQueueScope = {
@@ -587,6 +588,7 @@ export function createMemoryDeliveryActionQueuePersistence(): DeliveryActionQueu
             return cloneValue(values.get(persistenceKey(scope)));
         },
         async save(scope, entries) {
+            assertDeliveryOfflineWritesAllowed();
             values.set(
                 persistenceKey(scope),
                 cloneValue(persistedPayload(entries)),
@@ -724,6 +726,7 @@ export function createIndexedDbDeliveryActionQueuePersistence(
             await fallback(
                 async () => {
                     const db = await database();
+                    assertDeliveryOfflineWritesAllowed();
                     const transaction = db.transaction(storeName, 'readwrite');
                     const completed = transactionResult(transaction);
                     transaction

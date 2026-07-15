@@ -3,6 +3,7 @@ import type {
     DeliveryActionTransportResult,
     DeliveryVerificationScanCommand,
 } from './deliveryActionQueue';
+import { assertDeliveryOfflineWritesAllowed } from './deliveryOfflineEvents';
 
 type ServerDeliveryActionCommand = Exclude<
     DeliveryActionCommand,
@@ -141,6 +142,7 @@ function requestBody(command: ServerDeliveryActionCommand) {
 export async function sendDeliveryAction(
     command: ServerDeliveryActionCommand,
 ): Promise<DeliveryActionTransportResult> {
+    assertDeliveryOfflineWritesAllowed();
     let response: Response;
     try {
         response = await fetch(endpoint(command), {
@@ -152,6 +154,7 @@ export async function sendDeliveryAction(
         return { status: 'retryable-failure', code: 'offline' };
     }
     const value: unknown = await response.json().catch(() => null);
+    assertDeliveryOfflineWritesAllowed();
     return response.ok
         ? deliveryActionAcknowledgement(value, command)
         : deliveryActionHttpFailure(response.status, value);

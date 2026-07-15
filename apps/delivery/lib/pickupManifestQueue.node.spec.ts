@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    blockDeliveryOfflineWritesForLogout,
+    resetDeliveryOfflineWritesForFreshDocument,
+} from './deliveryOfflineEvents';
+import {
     clearPickupManifestQueueScope,
     createMemoryPickupManifestQueuePersistence,
     createPickupManifestConfirmCommand,
@@ -607,4 +611,37 @@ test('web storage failures fall back to surfaced non-durable memory persistence'
         /Durable pickup cleanup could not be confirmed/,
     );
     assert.equal(manifestQueue.getSnapshot().entries.length, 1);
+});
+
+test('a logout guard rejects a late write that resumed after the final clear', async (context) => {
+    context.after(resetDeliveryOfflineWritesForFreshDocument);
+    const base = createMemoryPickupManifestQueuePersistence();
+    let releaseLoad: () => void = () => undefined;
+    let markLoadStarted: () => void = () => undefined;
+    const loadStarted = new Promise<void>((resolve) => {
+        markLoadStarted = resolve;
+    });
+    const loadGate = new Promise<void>((resolve) => {
+        releaseLoad = resolve;
+    });
+    const persistence: PickupManifestQueuePersistence = {
+        ...base,
+        async load(scope) {
+            markLoadStarted();
+            await loadGate;
+            return await base.load(scope);
+        },
+    };
+    const manifestQueue = queue({ persistence });
+    const pendingEnqueue = manifestQueue.enqueue(
+        scanCommand('late-after-logout'),
+    );
+    await loadStarted;
+
+    blockDeliveryOfflineWritesForLogout('logout-race-test');
+    await base.clear({ userId: defaultScope.userId });
+    releaseLoad();
+
+    await assert.rejects(pendingEnqueue, /Delivery logout is in progress/);
+    assert.equal(await base.load(defaultScope), undefined);
 });

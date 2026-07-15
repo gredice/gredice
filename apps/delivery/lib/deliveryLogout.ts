@@ -24,9 +24,15 @@ export async function executeDeliveryLogout(
         await lifecycle.clearLocalState();
         const response = await lifecycle.requestServerLogout();
         if (!response.ok) throw new Error('Logout failed');
+        await lifecycle.clearLocalState();
         lifecycle.publishCompleted(logoutId);
         return true;
     } catch {
+        try {
+            await lifecycle.clearLocalState();
+        } catch {
+            // The logout guard remains active so a later retry can finish.
+        }
         lifecycle.publishFailed(logoutId);
         return false;
     }

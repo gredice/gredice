@@ -1,3 +1,4 @@
+import { assertDeliveryOfflineWritesAllowed } from './deliveryOfflineEvents';
 import { normalizeHarvestTraceScanValue } from './harvestTraceScan';
 
 export type PickupManifestQueueScope = {
@@ -491,6 +492,7 @@ export function createMemoryPickupManifestQueuePersistence(): PickupManifestQueu
             );
         },
         async save(scope, entries) {
+            assertDeliveryOfflineWritesAllowed();
             values.set(
                 pickupManifestQueueStorageKey(scope),
                 clonePersistedValue(persistencePayload(entries)),
@@ -561,6 +563,7 @@ export function createWebStoragePickupManifestQueuePersistence(
             return parsedValue(fallbackValues.get(key) ?? null);
         },
         async save(scope, entries) {
+            assertDeliveryOfflineWritesAllowed();
             const key = pickupManifestQueueStorageKey(scope);
             const value = JSON.stringify(persistencePayload(entries));
             fallbackValues.set(key, value);

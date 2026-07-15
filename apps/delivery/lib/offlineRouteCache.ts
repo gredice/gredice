@@ -4,6 +4,7 @@ import type {
     DeliveryStopSummary,
     DriverDeliveryDashboard,
 } from './deliveryDashboardTypes';
+import { assertDeliveryOfflineWritesAllowed } from './deliveryOfflineEvents';
 
 export const offlineRouteCacheVersion = 1;
 export const offlineRouteCacheTtlMs = 24 * 60 * 60 * 1_000;
@@ -718,6 +719,7 @@ export function createMemoryOfflineRouteCachePersistence(
             return parsed ? cloneSnapshot(parsed) : null;
         },
         async save(snapshot) {
+            assertDeliveryOfflineWritesAllowed();
             const parsed = parseOfflineRouteSnapshot(snapshot, {
                 userId: snapshot.scope.userId,
                 runId: snapshot.scope.runId,
@@ -900,6 +902,7 @@ export function createIndexedDbOfflineRouteCachePersistence(
                     }
                     await memory.save(parsed);
                     const db = await database();
+                    assertDeliveryOfflineWritesAllowed();
                     const transaction = db.transaction(
                         offlineRouteStoreName,
                         'readwrite',

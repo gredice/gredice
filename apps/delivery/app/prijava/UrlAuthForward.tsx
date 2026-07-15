@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect } from 'react';
+import { publishDeliverySessionResumed } from '../../lib/deliveryOfflineEvents';
 
 export function UrlAuthForward() {
     const router = useRouter();
@@ -34,6 +35,9 @@ export function UrlAuthForward() {
                     router.replace('/');
                     return;
                 }
+                publishDeliverySessionResumed();
+                window.location.replace('/');
+                return;
             }
             router.replace('/');
             router.refresh();
