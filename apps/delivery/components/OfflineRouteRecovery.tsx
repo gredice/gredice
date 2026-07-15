@@ -1,0 +1,118 @@
+'use client';
+
+import { Alert } from '@gredice/ui/Alert';
+import { Warning } from '@gredice/ui/icons';
+import { useState } from 'react';
+import {
+    type DeliveryServerStateExpectation,
+    useDeliveryActionSync,
+} from '../hooks/useDeliveryActionSync';
+import type { OfflineRouteSnapshot } from '../lib/offlineRouteCache';
+import { DeliveryAppHeader } from './DeliveryAppHeader';
+import { OfflineRoutePanel } from './OfflineRoutePanel';
+
+export function OfflineRouteRecovery({
+    snapshot,
+    authenticatedUserId,
+    authenticatedRole,
+    refreshServerState,
+}: {
+    snapshot: OfflineRouteSnapshot;
+    authenticatedUserId: string;
+    authenticatedRole: string;
+    refreshServerState: (
+        expectation?: DeliveryServerStateExpectation,
+    ) => Promise<boolean>;
+}) {
+    const [error, setError] = useState<string | null>(null);
+    const sync = useDeliveryActionSync({
+        userId: authenticatedUserId,
+        runId: snapshot.scope.runId,
+        refreshServerState,
+    });
+
+    const report = async (action: Promise<unknown>) => {
+        setError(null);
+        try {
+            await action;
+        } catch (cause) {
+            setError(
+                cause instanceof Error
+                    ? cause.message
+                    : 'Lokalnu radnju nije moguće sigurno spremiti.',
+            );
+        }
+    };
+    const requireRecovery = async (
+        action: Promise<boolean>,
+        message: string,
+    ) => {
+        const recovered = await action;
+        if (!recovered) throw new Error(message);
+    };
+
+    return (
+        <>
+            {error ? (
+                <div className="fixed inset-x-4 top-[max(1rem,env(safe-area-inset-top))] z-50 mx-auto max-w-xl">
+                    <Alert
+                        color="danger"
+                        startDecorator={<Warning className="size-5" />}
+                    >
+                        {error}
+                    </Alert>
+                </div>
+            ) : null}
+            <DeliveryAppHeader
+                userId={authenticatedUserId}
+                displayName="Izvanmrežna ruta"
+                role={authenticatedRole}
+            />
+            <OfflineRoutePanel
+                snapshot={snapshot}
+                actionQueue={sync.snapshot}
+                onArrive={(stopId, routeRevision) =>
+                    report(sync.enqueueArrive(stopId, routeRevision))
+                }
+                onDeliver={(stopId, routeRevision, notes) =>
+                    report(sync.enqueueDelivery(stopId, routeRevision, notes))
+                }
+                onException={async (stopId, mutation) => {
+                    try {
+                        await sync.enqueueException(stopId, mutation);
+                        setError(null);
+                        return { status: 'saved' };
+                    } catch (cause) {
+                        const message = sync.isBarrierError(cause)
+                            ? 'Prethodna promjena još čeka usklađivanje. Učitaj trenutačno stanje prije novog problema.'
+                            : 'Problem nije moguće sigurno spremiti na uređaj. Provjeri prostor i pokušaj ponovno.';
+                        setError(message);
+                        return sync.isBarrierError(cause)
+                            ? { status: 'review-required', message }
+                            : { status: 'retryable', message };
+                    }
+                }}
+                onVerificationScan={(stopId, tracePath) =>
+                    void report(sync.enqueueVerificationScan(stopId, tracePath))
+                }
+                onRetry={(operationId) => report(sync.retry(operationId))}
+                onRecoverConflict={(operationId) =>
+                    report(
+                        requireRecovery(
+                            sync.recoverConflict(operationId),
+                            'Novo stanje rute nije moguće potvrditi. Lokalna radnja ostaje spremljena.',
+                        ),
+                    )
+                }
+                onReconcile={() =>
+                    report(
+                        requireRecovery(
+                            sync.reconcilePendingServerState(),
+                            'Novi plan rute još nije moguće potvrditi. Iznimka ostaje blokirajuća.',
+                        ),
+                    )
+                }
+            />
+        </>
+    );
+}

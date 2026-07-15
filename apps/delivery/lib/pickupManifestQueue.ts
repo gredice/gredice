@@ -94,12 +94,17 @@ export type PickupManifestTransport = (
 
 export type PickupManifestQueuePersistence = {
     readonly durability: PickupManifestQueueDurability;
+    readonly durableCleanupRequired?: boolean;
     load: (scope: PickupManifestQueueScope) => Promise<unknown>;
     save: (
         scope: PickupManifestQueueScope,
         entries: readonly PickupManifestQueueEntry[],
     ) => Promise<void>;
     clear: (scope: { userId: string; runId?: string }) => Promise<void>;
+    clearOtherRuns?: (scope: {
+        userId: string;
+        activeRunId: string;
+    }) => Promise<void>;
 };
 
 export type PickupManifestQueueCoordinator = {
@@ -479,6 +484,7 @@ export function createMemoryPickupManifestQueuePersistence(): PickupManifestQueu
     const values = new Map<string, unknown>();
     return {
         durability: 'memory',
+        durableCleanupRequired: false,
         async load(scope) {
             return clonePersistedValue(
                 values.get(pickupManifestQueueStorageKey(scope)),
@@ -505,6 +511,18 @@ export function createMemoryPickupManifestQueuePersistence(): PickupManifestQueu
                 if (key.startsWith(prefix)) values.delete(key);
             }
         },
+        async clearOtherRuns({ userId, activeRunId }) {
+            const prefix = storageUserPrefix(userId);
+            const activeKey = pickupManifestQueueStorageKey({
+                userId,
+                runId: activeRunId,
+            });
+            for (const key of values.keys()) {
+                if (key.startsWith(prefix) && key !== activeKey) {
+                    values.delete(key);
+                }
+            }
+        },
     };
 }
 
@@ -527,6 +545,7 @@ export function createWebStoragePickupManifestQueuePersistence(
         get durability() {
             return durable ? 'durable' : 'memory';
         },
+        durableCleanupRequired: true,
         async load(scope) {
             const key = pickupManifestQueueStorageKey(scope);
             if (durable) {
@@ -558,20 +577,19 @@ export function createWebStoragePickupManifestQueuePersistence(
                     userId: scope.userId,
                     runId: scope.runId,
                 });
-                fallbackValues.delete(key);
-                if (!durable) return;
                 try {
                     storage.removeItem(key);
+                    fallbackValues.delete(key);
+                    durable = true;
                 } catch {
                     durable = false;
+                    throw new Error(
+                        'Durable pickup cleanup could not be confirmed',
+                    );
                 }
                 return;
             }
             const prefix = storageUserPrefix(scope.userId);
-            for (const key of fallbackValues.keys()) {
-                if (key.startsWith(prefix)) fallbackValues.delete(key);
-            }
-            if (!durable) return;
             try {
                 const keys = Array.from(
                     { length: storage.length },
@@ -580,8 +598,44 @@ export function createWebStoragePickupManifestQueuePersistence(
                 for (const key of keys) {
                     if (key?.startsWith(prefix)) storage.removeItem(key);
                 }
+                for (const key of fallbackValues.keys()) {
+                    if (key.startsWith(prefix)) fallbackValues.delete(key);
+                }
+                durable = true;
             } catch {
                 durable = false;
+                throw new Error(
+                    'Durable pickup cleanup could not be confirmed',
+                );
+            }
+        },
+        async clearOtherRuns({ userId, activeRunId }) {
+            const prefix = storageUserPrefix(userId);
+            const activeKey = pickupManifestQueueStorageKey({
+                userId,
+                runId: activeRunId,
+            });
+            try {
+                const keys = Array.from(
+                    { length: storage.length },
+                    (_, index) => storage.key(index),
+                );
+                for (const key of keys) {
+                    if (key?.startsWith(prefix) && key !== activeKey) {
+                        storage.removeItem(key);
+                    }
+                }
+                for (const key of fallbackValues.keys()) {
+                    if (key.startsWith(prefix) && key !== activeKey) {
+                        fallbackValues.delete(key);
+                    }
+                }
+                durable = true;
+            } catch {
+                durable = false;
+                throw new Error(
+                    'Durable pickup cleanup could not be confirmed',
+                );
             }
         },
     };
@@ -592,6 +646,13 @@ export async function clearPickupManifestQueueScope(
     scope: { userId: string; runId?: string },
 ) {
     await persistence.clear(scope);
+}
+
+export async function clearOtherPickupManifestQueueScopes(
+    persistence: PickupManifestQueuePersistence,
+    scope: { userId: string; activeRunId: string },
+) {
+    await persistence.clearOtherRuns?.(scope);
 }
 
 export class PickupManifestQueue {
@@ -783,11 +844,27 @@ export class PickupManifestQueue {
     async clear() {
         await this.runExclusive(async () => {
             await this.synchronizeFromPersistence(false);
+            const requiredDurability =
+                this.options.persistence.durableCleanupRequired ??
+                this.options.persistence.durability === 'durable';
+            try {
+                await this.options.persistence.clear(this.options.scope);
+            } catch (error) {
+                this.publish();
+                throw error;
+            }
+            if (
+                requiredDurability &&
+                this.options.persistence.durability !== 'durable'
+            ) {
+                this.publish();
+                throw new Error(
+                    'Durable pickup cleanup could not be confirmed',
+                );
+            }
             this.generation += 1;
             this.entries = [];
             this.nextSequence = 0;
-            this.publish();
-            await this.options.persistence.clear(this.options.scope);
             this.publish();
         });
     }
@@ -905,7 +982,9 @@ export class PickupManifestQueue {
             this.options.scope,
             this.entries,
             this.options.persistence.durability,
-            this.options.coordinator && this.options.replayCoordinator
+            this.options.persistence.durability === 'durable' &&
+                this.options.coordinator &&
+                this.options.replayCoordinator
                 ? 'coordinated'
                 : 'best-effort',
         );

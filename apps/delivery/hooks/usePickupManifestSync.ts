@@ -7,6 +7,7 @@ import {
     useRef,
     useSyncExternalStore,
 } from 'react';
+import { deliveryRunCompletedEvent } from '../lib/deliveryOfflineEvents';
 import {
     createMemoryPickupManifestQueuePersistence,
     createPickupManifestConfirmCommand,
@@ -192,6 +193,19 @@ export function usePickupManifestSync({
             })
             .catch(() => undefined);
         const handleOnline = () => void replay().catch(() => undefined);
+        const handleRunCompleted = (event: Event) => {
+            const detail = (event as CustomEvent<unknown>).detail;
+            if (
+                typeof detail === 'object' &&
+                detail !== null &&
+                'userId' in detail &&
+                detail.userId === userId &&
+                'runId' in detail &&
+                detail.runId === runId
+            ) {
+                void queue.clear().catch(() => undefined);
+            }
+        };
         const handleStorage = (event: StorageEvent) => {
             let storage: Storage;
             try {
@@ -222,10 +236,15 @@ export function usePickupManifestSync({
         };
         window.addEventListener('online', handleOnline);
         window.addEventListener('storage', handleStorage);
+        window.addEventListener(deliveryRunCompletedEvent, handleRunCompleted);
         return () => {
             active = false;
             window.removeEventListener('online', handleOnline);
             window.removeEventListener('storage', handleStorage);
+            window.removeEventListener(
+                deliveryRunCompletedEvent,
+                handleRunCompleted,
+            );
         };
     }, [queue, replay, runId, userId]);
 

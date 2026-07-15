@@ -21,6 +21,7 @@ export function CustomerDashboard({
     return (
         <div className="min-h-[100dvh] bg-background">
             <DeliveryAppHeader
+                userId={dashboard.user.id}
                 displayName={dashboard.user.displayName}
                 role={dashboard.user.role}
             />

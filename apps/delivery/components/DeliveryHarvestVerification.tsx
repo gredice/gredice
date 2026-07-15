@@ -15,13 +15,23 @@ import { HarvestTraceScanner } from './HarvestTraceScanner';
 export function DeliveryHarvestVerification({
     deliveries,
     disabled,
+    verifiedTracePaths: persistedVerifiedTracePaths = [],
+    onVerifiedTrace,
 }: {
     deliveries: DeliveryStopDeliverySummary[];
     disabled: boolean;
+    verifiedTracePaths?: string[];
+    onVerifiedTrace?: (tracePath: string) => void;
 }) {
     const headingId = useId();
-    const [verifiedTracePaths, setVerifiedTracePaths] = useState<string[]>([]);
+    const [localVerifiedTracePaths, setLocalVerifiedTracePaths] = useState<
+        string[]
+    >([]);
     const verifiedTracePathsRef = useRef<string[]>([]);
+    const verifiedTracePaths = Array.from(
+        new Set([...persistedVerifiedTracePaths, ...localVerifiedTracePaths]),
+    );
+    verifiedTracePathsRef.current = verifiedTracePaths;
     const tracePathByRequestId = new Map(
         deliveries.flatMap((delivery) => {
             const tracePath = delivery.harvest.tracePath
@@ -50,7 +60,8 @@ export function DeliveryHarvestVerification({
 
         if (result.status === 'verified') {
             verifiedTracePathsRef.current = result.nextVerifiedTracePaths;
-            setVerifiedTracePaths(result.nextVerifiedTracePaths);
+            setLocalVerifiedTracePaths(result.nextVerifiedTracePaths);
+            onVerifiedTrace?.(result.tracePath);
         }
 
         return result;

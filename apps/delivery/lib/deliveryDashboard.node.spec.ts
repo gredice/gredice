@@ -413,7 +413,7 @@ test('exception receipt replay returns current revision without rerouting a stal
             { routeRevision: 8, rerouteRequiredAt: null },
             7,
         ),
-        { routeRevision: 8, reroutePending: false },
+        { routeRevision: 8, reroutePending: false, runCompleted: false },
     );
     assert.equal(
         recordedExceptionNeedsReroute({

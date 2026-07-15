@@ -6,6 +6,7 @@ import type {
     DriverDeliveryDashboard,
 } from './deliveryDashboardTypes';
 import {
+    clearOtherOfflineRouteCacheScopes,
     createBrowserOfflineRouteCachePersistence,
     createIndexedDbOfflineRouteCachePersistence,
     createMemoryOfflineRouteCachePersistence,
@@ -558,6 +559,51 @@ test('user and run scopes cannot read or clear each other', async () => {
     assert.equal(backing.has('driver-one'), false);
 });
 
+test('old-run pruning clears a stale route before preserving the active run', async () => {
+    const backing = new Map<string, unknown>();
+    const persistence = createMemoryOfflineRouteCachePersistence(backing);
+    await persistence.save(snapshot());
+
+    await clearOtherOfflineRouteCacheScopes(persistence, {
+        userId: 'driver-one',
+        activeRunId: 'run-two',
+    });
+    assert.equal(await persistence.load({ userId: 'driver-one', now }), null);
+
+    const active = snapshot(dashboard({ runId: 'run-two' }));
+    await persistence.save(active);
+    await clearOtherOfflineRouteCacheScopes(persistence, {
+        userId: 'driver-one',
+        activeRunId: 'run-two',
+    });
+    assert.deepEqual(
+        await persistence.load({ userId: 'driver-one', now }),
+        active,
+    );
+});
+
+test('old-run pruning keeps action cleanup blocked after route storage degradation', async () => {
+    const persistence = createIndexedDbOfflineRouteCachePersistence({
+        open() {
+            throw new Error('IndexedDB denied');
+        },
+    });
+    const stale = snapshot();
+    await persistence.save(stale);
+
+    await assert.rejects(
+        clearOtherOfflineRouteCacheScopes(persistence, {
+            userId: 'driver-one',
+            activeRunId: 'run-two',
+        }),
+        /Durable offline route cleanup could not be confirmed/,
+    );
+    assert.deepEqual(
+        await persistence.load({ userId: 'driver-one', now }),
+        stale,
+    );
+});
+
 test('clear uses raw scope even when TTL or version data is corrupt', async () => {
     const backing = new Map<string, unknown>();
     const persistence = createMemoryOfflineRouteCachePersistence(backing);
@@ -606,6 +652,18 @@ test('IndexedDB open failure falls back to the mirrored memory cache', async () 
     assert.equal(persistence.durability, 'durable');
     await persistence.save(result);
     assert.equal(persistence.durability, 'memory');
+    assert.deepEqual(
+        await persistence.load({
+            userId: 'driver-one',
+            runId: 'run-one',
+            now,
+        }),
+        result,
+    );
+    await assert.rejects(
+        persistence.clear({ userId: 'driver-one', runId: 'run-one' }),
+        /Durable offline route cleanup could not be confirmed/,
+    );
     assert.deepEqual(
         await persistence.load({
             userId: 'driver-one',

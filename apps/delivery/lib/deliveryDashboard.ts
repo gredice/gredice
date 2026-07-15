@@ -1208,7 +1208,11 @@ async function currentDeliveryRunMutationResult({
 
 export function deliveryMutationRouteState(
     run:
-        | { routeRevision: number; rerouteRequiredAt: Date | null }
+        | {
+              routeRevision: number;
+              rerouteRequiredAt: Date | null;
+              state?: string;
+          }
         | null
         | undefined,
     fallbackRouteRevision: number,
@@ -1216,6 +1220,7 @@ export function deliveryMutationRouteState(
     return {
         routeRevision: run?.routeRevision ?? fallbackRouteRevision,
         reroutePending: Boolean(run?.rerouteRequiredAt),
+        runCompleted: run?.state === DeliveryRunStates.COMPLETED,
     };
 }
 

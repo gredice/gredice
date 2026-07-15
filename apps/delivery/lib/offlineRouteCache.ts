@@ -111,6 +111,7 @@ export type OfflineRouteCacheDurability = 'durable' | 'memory';
 
 export type OfflineRouteCachePersistence = {
     readonly durability: OfflineRouteCacheDurability;
+    readonly durableCleanupRequired?: boolean;
     load: (scope: {
         userId: string;
         runId?: string;
@@ -699,6 +700,7 @@ export function createMemoryOfflineRouteCachePersistence(
 ): OfflineRouteCachePersistence {
     return {
         durability: 'memory',
+        durableCleanupRequired: false,
         async load({ userId, runId, now }) {
             const stored = snapshots.get(userId);
             if (stored === undefined) return null;
@@ -823,6 +825,15 @@ export function createIndexedDbOfflineRouteCachePersistence(
         databasePromise ??= openOfflineRouteDatabase(factory);
         return databasePromise;
     };
+    const markDurableStoreUnavailable = () => {
+        durable = false;
+        if (databasePromise) {
+            void databasePromise
+                .then((openDatabase) => openDatabase.close())
+                .catch(() => undefined);
+        }
+        databasePromise = null;
+    };
     const withFallback = async <Result>(
         durableTask: () => Promise<Result>,
         fallbackTask: () => Promise<Result>,
@@ -831,13 +842,7 @@ export function createIndexedDbOfflineRouteCachePersistence(
         try {
             return await durableTask();
         } catch {
-            durable = false;
-            if (databasePromise) {
-                void databasePromise
-                    .then((openDatabase) => openDatabase.close())
-                    .catch(() => undefined);
-            }
-            databasePromise = null;
+            markDurableStoreUnavailable();
             return await fallbackTask();
         }
     };
@@ -845,6 +850,7 @@ export function createIndexedDbOfflineRouteCachePersistence(
         get durability() {
             return durable ? 'durable' : 'memory';
         },
+        durableCleanupRequired: true,
         async load({ userId, runId, now }) {
             return await withFallback(
                 async () => {
@@ -910,52 +916,54 @@ export function createIndexedDbOfflineRouteCachePersistence(
             );
         },
         async clear({ userId, runId }) {
-            await withFallback(
-                async () => {
-                    const db = await database();
-                    const transaction = db.transaction(
-                        offlineRouteStoreName,
-                        'readwrite',
-                    );
-                    const completed = transactionCompleted(transaction);
-                    const store = transaction.objectStore(
-                        offlineRouteStoreName,
-                    );
-                    if (!runId) {
+            try {
+                const db = await database();
+                const transaction = db.transaction(
+                    offlineRouteStoreName,
+                    'readwrite',
+                );
+                const completed = transactionCompleted(transaction);
+                const store = transaction.objectStore(offlineRouteStoreName);
+                if (!runId) {
+                    await requestResult(store.delete(userId));
+                } else {
+                    const raw: unknown = await requestResult(store.get(userId));
+                    if (rawScopeMatches(raw, { userId, runId })) {
                         await requestResult(store.delete(userId));
-                    } else {
-                        const raw: unknown = await requestResult(
-                            store.get(userId),
-                        );
-                        if (rawScopeMatches(raw, { userId, runId })) {
-                            await requestResult(store.delete(userId));
-                        }
                     }
-                    await completed;
-                    await memory.clear({ userId, runId });
-                },
-                async () => await memory.clear({ userId, runId }),
-            );
+                }
+                await completed;
+                await memory.clear({ userId, runId });
+                durable = true;
+            } catch {
+                markDurableStoreUnavailable();
+                throw new Error(
+                    'Durable offline route cleanup could not be confirmed',
+                );
+            }
         },
         async clearUser(userId) {
-            await withFallback(
-                async () => {
-                    const db = await database();
-                    const transaction = db.transaction(
-                        offlineRouteStoreName,
-                        'readwrite',
-                    );
-                    const completed = transactionCompleted(transaction);
-                    await requestResult(
-                        transaction
-                            .objectStore(offlineRouteStoreName)
-                            .delete(userId),
-                    );
-                    await completed;
-                    await memory.clearUser(userId);
-                },
-                async () => await memory.clearUser(userId),
-            );
+            try {
+                const db = await database();
+                const transaction = db.transaction(
+                    offlineRouteStoreName,
+                    'readwrite',
+                );
+                const completed = transactionCompleted(transaction);
+                await requestResult(
+                    transaction
+                        .objectStore(offlineRouteStoreName)
+                        .delete(userId),
+                );
+                await completed;
+                await memory.clearUser(userId);
+                durable = true;
+            } catch {
+                markDurableStoreUnavailable();
+                throw new Error(
+                    'Durable offline route cleanup could not be confirmed',
+                );
+            }
         },
     };
 }
@@ -966,6 +974,44 @@ export function createBrowserOfflineRouteCachePersistence(): OfflineRouteCachePe
             ? createMemoryOfflineRouteCachePersistence()
             : createIndexedDbOfflineRouteCachePersistence(indexedDB);
     } catch {
-        return createMemoryOfflineRouteCachePersistence();
+        const memory = createMemoryOfflineRouteCachePersistence();
+        return {
+            ...memory,
+            durableCleanupRequired: true,
+            async clear() {
+                throw new Error(
+                    'Durable offline route cleanup could not be confirmed',
+                );
+            },
+            async clearUser() {
+                throw new Error(
+                    'Durable offline route cleanup could not be confirmed',
+                );
+            },
+        };
+    }
+}
+
+export async function clearOtherOfflineRouteCacheScopes(
+    persistence: OfflineRouteCachePersistence,
+    scope: { userId: string; activeRunId: string },
+) {
+    const stored = await persistence.load({ userId: scope.userId });
+    if (
+        persistence.durableCleanupRequired &&
+        persistence.durability !== 'durable'
+    ) {
+        throw new Error('Durable offline route cleanup could not be confirmed');
+    }
+    if (!stored || stored.scope.runId === scope.activeRunId) return;
+    await persistence.clear({
+        userId: scope.userId,
+        runId: stored.scope.runId,
+    });
+    if (
+        persistence.durableCleanupRequired &&
+        persistence.durability !== 'durable'
+    ) {
+        throw new Error('Durable offline route cleanup could not be confirmed');
     }
 }

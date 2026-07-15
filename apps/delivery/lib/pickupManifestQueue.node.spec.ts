@@ -257,7 +257,11 @@ test('durably enqueues rapid scans while an earlier transport request is in flig
 
 test('exact duplicate enqueue is harmless and a reused operation ID with another payload is rejected', async () => {
     const persistence = createMemoryPickupManifestQueuePersistence();
-    const manifestQueue = queue({ persistence });
+    const manifestQueue = queue({
+        persistence,
+        coordinator: serialCoordinator(),
+        replayCoordinator: serialCoordinator(),
+    });
     const command = scanCommand('same-operation');
 
     await manifestQueue.enqueue(command);
@@ -592,9 +596,15 @@ test('web storage failures fall back to surfaced non-durable memory persistence'
     await manifestQueue.enqueue(scanCommand('memory-fallback'));
     assert.equal((await manifestQueue.replay()).status, 'synced');
     assert.equal(manifestQueue.getSnapshot().durability, 'memory');
+    assert.equal(manifestQueue.getSnapshot().coordination, 'best-effort');
     assert.equal(
         (await queue({ persistence }).restore()).entries[0]?.command
             .operationId,
         'memory-fallback',
     );
+    await assert.rejects(
+        manifestQueue.clear(),
+        /Durable pickup cleanup could not be confirmed/,
+    );
+    assert.equal(manifestQueue.getSnapshot().entries.length, 1);
 });
