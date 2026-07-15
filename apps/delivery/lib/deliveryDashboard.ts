@@ -40,6 +40,7 @@ import {
     prepareDeliveryRun,
     savePreparedDeliveryRun,
 } from './deliveryRunPlanning';
+import { resolveDeliveryRunStart } from './deliveryRunStart';
 import {
     buildDeliveryStopKey,
     groupByDeliveryStop,
@@ -646,16 +647,20 @@ export async function startDeliveryRun({
         }
     };
 
-    if (preparationToken) {
-        return await consumePreparation(preparationToken);
-    }
-
-    const preparation = await prepareDeliveryRun({
-        driverUserId,
-        deliveryRequestIds,
+    return await resolveDeliveryRunStart({
+        preparationToken,
+        getExistingRun: async () =>
+            await getActiveDeliveryRunForDriver(driverUserId),
+        createPreparationToken: async () => {
+            const preparation = await prepareDeliveryRun({
+                driverUserId,
+                deliveryRequestIds,
+            });
+            const savedPreparation = await savePreparedDeliveryRun(preparation);
+            return savedPreparation.preparationToken;
+        },
+        consumePreparation,
     });
-    const savedPreparation = await savePreparedDeliveryRun(preparation);
-    return await consumePreparation(savedPreparation.preparationToken);
 }
 
 export async function arriveAtDeliveryStop({
