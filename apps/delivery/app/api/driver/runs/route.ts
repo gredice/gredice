@@ -4,6 +4,7 @@ import {
     deliveryRunStartErrorMessage,
     startDeliveryRun,
 } from '../../../../lib/deliveryDashboard';
+import { DeliveryRunPreparationError } from '../../../../lib/deliveryRunPlanning';
 import { parseDeliveryRunRequestBody } from '../../../../lib/deliveryRunRequest';
 
 export async function POST(request: Request) {
@@ -37,6 +38,14 @@ export async function POST(request: Request) {
                     error:
                         startErrorMessage ??
                         'Rutu nije moguće pokrenuti. Provjeri adrese i pokušaj ponovno.',
+                    code:
+                        error instanceof DeliveryRunPreparationError
+                            ? error.code
+                            : undefined,
+                    conflict:
+                        error instanceof DeliveryRunPreparationError
+                            ? error.conflict
+                            : undefined,
                 },
                 { status: 409 },
             );

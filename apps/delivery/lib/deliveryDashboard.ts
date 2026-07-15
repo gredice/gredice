@@ -31,12 +31,15 @@ import type {
 import {
     DeliveryRoutePlanningError,
     formatDeliveryDestinationAddress,
-    formatDeliveryGeocodingAddress,
     maximumDeliveryRouteStops,
     maximumDeliveryRouteWindowHours,
-    planDeliveryRoute,
     recalculateDeliveryRoute,
 } from './deliveryRouting';
+import {
+    DeliveryRunPreparationError,
+    prepareDeliveryRun,
+    revalidatePreparedDeliveryRun,
+} from './deliveryRunPlanning';
 import {
     buildDeliveryStopKey,
     groupByDeliveryStop,
@@ -63,10 +66,6 @@ const batchStates: ReadonlySet<string> = new Set([
     DeliveryRequestStates.READY,
 ]);
 const etaRefreshIntervalMs = 2 * 60 * 1000;
-
-export class DeliveryRunStartError extends Error {
-    override name = 'DeliveryRunStartError';
-}
 
 function iso(value?: Date | null) {
     return value?.toISOString() ?? null;
@@ -439,6 +438,7 @@ async function driverDashboard({
         {
             startAt: Date;
             endAt: Date;
+            pickupLocationId: number;
             pickupLocationName: string | null;
             pickupAddress: string | null;
             orders: DeliveryRouteOrderSummary[];
@@ -471,6 +471,7 @@ async function driverDashboard({
             batchesBySlot.set(request.slot.id, {
                 startAt: request.slot.startAt,
                 endAt: request.slot.endAt,
+                pickupLocationId: request.slot.locationId,
                 pickupLocationName: pickupLocation?.name ?? null,
                 pickupAddress: pickupLocation
                     ? formatDeliveryDestinationAddress(pickupLocation)
@@ -492,6 +493,7 @@ async function driverDashboard({
             slotId,
             startAt: batch.startAt.toISOString(),
             endAt: batch.endAt.toISOString(),
+            pickupLocationId: batch.pickupLocationId,
             pickupLocationName: batch.pickupLocationName,
             pickupAddress: batch.pickupAddress,
             deliveryCount: batch.orders.length,
@@ -646,135 +648,12 @@ export async function startDeliveryRun({
         await ensureRunRequestsReady(existingRun);
         return existingRun;
     }
-    if (deliveryRequestIds.length === 0) {
-        throw new DeliveryRunStartError('Odaberi barem jednu dostavu.');
-    }
-
-    const requests = await getDeliveryRequestsWithEvents();
-    const requestsById = new Map(
-        requests.map((request) => [request.id, request]),
-    );
-    const selectedStopKeys = new Set<string>();
-    const now = new Date();
-    for (const requestId of deliveryRequestIds) {
-        const request = requestsById.get(requestId);
-        if (
-            request?.mode !== 'delivery' ||
-            !request.address ||
-            !request.slot ||
-            request.state !== DeliveryRequestStates.READY ||
-            request.slot.endAt < now
-        ) {
-            throw new DeliveryRunStartError(
-                'Jedna ili više odabranih dostava još nije spremna za preuzimanje. Osvježi popis i pokušaj ponovno.',
-            );
-        }
-        selectedStopKeys.add(deliveryRequestStopKey(request));
-    }
-    if (selectedStopKeys.size > maximumDeliveryRouteStops) {
-        throw new DeliveryRunStartError(
-            `Jedna ruta može sadržavati najviše ${maximumDeliveryRouteStops} fizičkih stanica. Dostave na istoj adresi u istom terminu računaju se kao jedna stanica.`,
-        );
-    }
-
-    const candidates = requests.filter(
-        (request) =>
-            request.mode === 'delivery' &&
-            request.address &&
-            request.slot &&
-            request.state === DeliveryRequestStates.READY &&
-            request.slot.endAt >= now &&
-            selectedStopKeys.has(deliveryRequestStopKey(request)),
-    );
-
-    const existingStops = await getDeliveryRunStopsForRequestIds(
-        candidates.map((request) => request.id),
-    );
-    if (existingStops.length > 0) {
-        throw new DeliveryRunStartError(
-            'Jedna ili više odabranih dostava već je dodijeljena drugoj ruti. Osvježi popis i odaberi ponovno.',
-        );
-    }
-
-    const candidateGroups = groupByDeliveryStop(
-        candidates.map((request) => ({
-            request,
-            stopKey: deliveryRequestStopKey(request),
-        })),
-    );
-    const candidateGroupsByRepresentativeId = new Map<
-        string,
-        (typeof candidateGroups)[number]
-    >();
-    const plan = await planDeliveryRoute({
-        candidates: candidateGroups.map((group) => {
-            const representative = group.items[0]?.request;
-            if (!representative?.address || !representative.slot) {
-                throw new DeliveryRunStartError(
-                    'Odabrana dostava nema valjanu adresu ili termin.',
-                );
-            }
-            candidateGroupsByRepresentativeId.set(representative.id, group);
-            return {
-                deliveryRequestId: representative.id,
-                formattedAddress: formatDeliveryDestinationAddress(
-                    representative.address,
-                ),
-                geocodingAddress: formatDeliveryGeocodingAddress(
-                    representative.address,
-                ),
-                windowStartAt: representative.slot.startAt,
-                windowEndAt: representative.slot.endAt,
-            };
-        }),
-    });
-    const primarySlot = candidates
-        .map((request) => request.slot)
-        .filter((slot): slot is NonNullable<typeof slot> => Boolean(slot))
-        .sort(
-            (first, second) =>
-                first.startAt.getTime() - second.startAt.getTime(),
-        )[0];
-    if (!primarySlot) {
-        throw new DeliveryRunStartError(
-            'Odabrane dostave nemaju valjani termin.',
-        );
-    }
-    let storedSequence = 0;
-    const storedStops = plan.stops.flatMap((plannedStop) => {
-        const group = candidateGroupsByRepresentativeId.get(
-            plannedStop.deliveryRequestId,
-        );
-        if (!group) {
-            throw new DeliveryRunStartError(
-                'Planirana dostavna stanica nije pronađena.',
-            );
-        }
-
-        return group.items.map(({ request }) => {
-            storedSequence += 1;
-            return {
-                deliveryRequestId: request.id,
-                sequence: storedSequence,
-                latitude: plannedStop.latitude,
-                longitude: plannedStop.longitude,
-                formattedAddress: plannedStop.formattedAddress,
-                estimatedArrivalAt: plannedStop.estimatedArrivalAt,
-                estimatedTravelSeconds: plannedStop.estimatedTravelSeconds,
-                estimatedDistanceMeters: plannedStop.estimatedDistanceMeters,
-            };
-        });
-    });
-    const run = await createDeliveryRun({
+    const preparation = await prepareDeliveryRun({
         driverUserId,
-        timeSlotId: primarySlot.id,
-        encodedPolyline: plan.encodedPolyline,
-        totalDistanceMeters: plan.totalDistanceMeters,
-        totalDurationSeconds: plan.totalDurationSeconds,
-        stops: storedStops,
+        deliveryRequestIds,
     });
-
-    return run;
+    await revalidatePreparedDeliveryRun(preparation);
+    return await createDeliveryRun(preparation.createRunInput);
 }
 
 export async function arriveAtDeliveryStop({
@@ -1018,7 +897,7 @@ export async function recordDriverLocation({
 }
 
 export function deliveryRunStartErrorMessage(error: unknown) {
-    return error instanceof DeliveryRunStartError ||
+    return error instanceof DeliveryRunPreparationError ||
         error instanceof DeliveryRoutePlanningError
         ? error.message
         : null;
@@ -1032,10 +911,11 @@ export function deliveryRunStartErrorLogContext(error: unknown) {
             deliveryRequestId: error.deliveryRequestId,
         };
     }
-    if (error instanceof DeliveryRunStartError) {
+    if (error instanceof DeliveryRunPreparationError) {
         return {
             errorName: error.name,
-            errorCode: 'invalid-selection',
+            errorCode: error.code,
+            deliveryRequestId: error.conflict.deliveryRequestId,
         };
     }
     return { error };

@@ -1,4 +1,5 @@
 import 'server-only';
+import { formatDeliveryDateTime } from './deliveryFormatting';
 
 export type DeliveryCoordinates = {
     latitude: number;
@@ -58,6 +59,46 @@ export class DeliveryRoutePlanningError extends Error {
     ) {
         super(message);
     }
+}
+
+function routeStopLimitError(candidates: DeliveryRouteCandidate[]) {
+    const offendingCandidate = candidates[maximumDeliveryRouteStops];
+    const offendingAddress = offendingCandidate
+        ? ` Prva dostava izvan ograničenja je "${offendingCandidate.formattedAddress}".`
+        : '';
+
+    return new DeliveryRoutePlanningError(
+        `Jedna ruta može sadržavati najviše ${maximumDeliveryRouteStops} fizičkih stanica.${offendingAddress} Izdvoji je u zasebnu rutu.`,
+        'route-stop-limit-exceeded',
+        offendingCandidate?.deliveryRequestId,
+    );
+}
+
+function compareWindowSpanCandidates(
+    first: DeliveryRouteCandidate,
+    second: DeliveryRouteCandidate,
+) {
+    const endDifference =
+        (second.windowEndAt?.getTime() ?? Number.NEGATIVE_INFINITY) -
+        (first.windowEndAt?.getTime() ?? Number.NEGATIVE_INFINITY);
+    if (endDifference !== 0) return endDifference;
+
+    const startDifference =
+        (second.windowStartAt?.getTime() ?? Number.NEGATIVE_INFINITY) -
+        (first.windowStartAt?.getTime() ?? Number.NEGATIVE_INFINITY);
+    if (startDifference !== 0) return startDifference;
+
+    return first.deliveryRequestId.localeCompare(second.deliveryRequestId);
+}
+
+function windowSpanOffendingCandidate(candidates: DeliveryRouteCandidate[]) {
+    return [...candidates].sort(compareWindowSpanCandidates)[0];
+}
+
+function deliveryWindowDescription(candidate: DeliveryRouteCandidate) {
+    if (!candidate.windowStartAt || !candidate.windowEndAt) return null;
+
+    return `${formatDeliveryDateTime(candidate.windowStartAt.toISOString())} – ${formatDeliveryDateTime(candidate.windowEndAt.toISOString())}`;
 }
 
 function googleMapsServerApiKey() {
@@ -366,7 +407,9 @@ function scheduledArrival({
         arrivalTime > windowEndTime
     ) {
         throw new DeliveryRoutePlanningError(
-            'Odabrane dostave nije moguće obaviti unutar svih termina. Ukloni dio dostava ili izradi zasebnu rutu.',
+            `Dostavu za adresu "${stop.formattedAddress}" nije moguće stići unutar termina koji završava ${formatDeliveryDateTime(stop.windowEndAt?.toISOString() ?? null)}. Izdvoji je u zasebnu rutu ili promijeni redoslijed.`,
+            'arrival-window-infeasible',
+            stop.deliveryRequestId,
         );
     }
 
@@ -485,9 +528,7 @@ async function computeGoogleRoute({
     enforceTimeWindows: boolean;
 }): Promise<DeliveryRoutePlan> {
     if (stops.length > maximumDeliveryRouteStops) {
-        throw new Error(
-            `Jedna ruta može sadržavati najviše ${maximumDeliveryRouteStops} fizičkih stanica.`,
-        );
+        throw routeStopLimitError(stops);
     }
 
     const destinationIndex = optimize
@@ -650,9 +691,7 @@ export async function planDeliveryRoute({
         throw new Error('Nema dostava za planiranje rute.');
     }
     if (candidates.length > maximumDeliveryRouteStops) {
-        throw new Error(
-            `Jedna ruta može sadržavati najviše ${maximumDeliveryRouteStops} fizičkih stanica.`,
-        );
+        throw routeStopLimitError(candidates);
     }
     for (const candidate of candidates) {
         if (
@@ -663,7 +702,9 @@ export async function planDeliveryRoute({
             candidate.windowStartAt >= candidate.windowEndAt
         ) {
             throw new DeliveryRoutePlanningError(
-                'Jedna ili više odabranih dostava nema valjani termin.',
+                `Dostava za adresu "${candidate.formattedAddress}" nema valjani termin. Provjeri termin ili je izdvoji u zasebnu rutu.`,
+                'delivery-window-invalid',
+                candidate.deliveryRequestId,
             );
         }
     }
@@ -679,8 +720,19 @@ export async function planDeliveryRoute({
         latestWindowEnd - earliestWindowStart >
         maximumDeliveryRouteWindowHours * 60 * 60 * 1_000
     ) {
+        const offendingCandidate = windowSpanOffendingCandidate(candidates);
+        const offendingWindow = offendingCandidate
+            ? deliveryWindowDescription(offendingCandidate)
+            : null;
+        const offendingDelivery = offendingCandidate
+            ? ` Termin za adresu "${offendingCandidate.formattedAddress}"${
+                  offendingWindow ? ` (${offendingWindow})` : ''
+              } izlazi iz dopuštenog raspona.`
+            : '';
         throw new DeliveryRoutePlanningError(
-            `Jedna ruta može povezati termine unutar najviše ${maximumDeliveryRouteWindowHours} sata. Za udaljenije termine izradi zasebne rute.`,
+            `Jedna ruta može povezati termine unutar najviše ${maximumDeliveryRouteWindowHours} sata.${offendingDelivery} Izdvoji taj termin u zasebnu rutu.`,
+            'route-window-span-exceeded',
+            offendingCandidate?.deliveryRequestId,
         );
     }
 

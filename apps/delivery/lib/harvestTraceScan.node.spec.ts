@@ -5,6 +5,10 @@ import type {
     DeliveryStopDeliverySummary,
 } from './deliveryDashboardTypes';
 import {
+    applyDeliveryRouteSelection,
+    type DeliveryRouteSelectionCandidate,
+} from './deliveryRouteSelection';
+import {
     normalizeHarvestTraceScanValue,
     selectDeliveryStopFromHarvestTrace,
     verifyDeliveryStopHarvestTrace,
@@ -211,6 +215,77 @@ test('accumulates delivery stops across consecutive live scans', () => {
         'two',
         'three',
     ]);
+});
+
+test('keeps the current QR selection when a live scan belongs to another pickup location', () => {
+    const orders = [
+        order({ requestId: 'one', stopKey: 'slot:1', token: firstToken }),
+        order({ requestId: 'two', stopKey: 'slot:2', token: secondToken }),
+    ];
+    const candidates: DeliveryRouteSelectionCandidate[] = [
+        {
+            requestId: 'one',
+            stopKey: 'slot:1',
+            readyForPickup: true,
+            pickupLocationId: 1,
+            pickupLocationName: 'Sjedište',
+            pickupAddress: 'Prva 1, Zagreb',
+            slotId: 1,
+            slotStartAt: '2026-07-15T08:00:00.000Z',
+            slotEndAt: '2026-07-15T10:00:00.000Z',
+            deliveryAddress: 'Kupac 1, Zagreb',
+        },
+        {
+            requestId: 'two',
+            stopKey: 'slot:2',
+            readyForPickup: true,
+            pickupLocationId: 2,
+            pickupLocationName: 'Drugo skladište',
+            pickupAddress: 'Druga 2, Zagreb',
+            slotId: 2,
+            slotStartAt: '2026-07-15T08:00:00.000Z',
+            slotEndAt: '2026-07-15T10:00:00.000Z',
+            deliveryAddress: 'Kupac 2, Zagreb',
+        },
+    ];
+    const firstScan = selectDeliveryStopFromHarvestTrace({
+        orders,
+        selectedRequestIds: [],
+        maximumRouteStops: 26,
+        scanValue: firstToken,
+    });
+    assert.equal(firstScan.status, 'selected');
+    if (firstScan.status !== 'selected') return;
+    const firstSelection = applyDeliveryRouteSelection({
+        candidates,
+        currentRequestIds: [],
+        nextRequestIds: firstScan.nextSelectedRequestIds,
+        maximumRouteStops: 26,
+        maximumRouteWindowHours: 24,
+    });
+    assert.equal(firstSelection.status, 'accepted');
+    if (firstSelection.status !== 'accepted') return;
+
+    const secondScan = selectDeliveryStopFromHarvestTrace({
+        orders,
+        selectedRequestIds: firstSelection.requestIds,
+        maximumRouteStops: 26,
+        scanValue: secondToken,
+    });
+    assert.equal(secondScan.status, 'selected');
+    if (secondScan.status !== 'selected') return;
+    const secondSelection = applyDeliveryRouteSelection({
+        candidates,
+        currentRequestIds: firstSelection.requestIds,
+        nextRequestIds: secondScan.nextSelectedRequestIds,
+        maximumRouteStops: 26,
+        maximumRouteWindowHours: 24,
+    });
+
+    assert.equal(secondSelection.status, 'rejected');
+    if (secondSelection.status !== 'rejected') return;
+    assert.equal(secondSelection.conflict.code, 'mixed-pickup-locations');
+    assert.deepEqual(secondSelection.requestIds, ['one']);
 });
 
 test('reports duplicate, unavailable, ambiguous, and route-limit scans', () => {
