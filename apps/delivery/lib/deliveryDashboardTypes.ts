@@ -4,14 +4,29 @@ import type {
     DeliveryRunExceptionReason,
 } from '@gredice/storage';
 
-export type DeliveryTrackingLocation = {
+export type DeliveryTrackingStatus =
+    | 'live'
+    | 'delayed'
+    | 'offline'
+    | 'unavailable';
+
+export type DeliveryTrackingFreshnessSummary = {
+    status: DeliveryTrackingStatus;
+    lastAcceptedAt: string | null;
+    mapAvailable: boolean;
+};
+
+export type DriverDeliveryTrackingLocation = {
     latitude: number;
     longitude: number;
     accuracy: number | null;
     heading: number | null;
     speed: number | null;
-    recordedAt: string;
+    capturedAt: string;
+    acceptedAt: string;
 };
+
+export type CustomerDeliveryTrackingSummary = DeliveryTrackingFreshnessSummary;
 
 export type DeliveryHarvestSummary = {
     plantName: string;
@@ -82,7 +97,7 @@ export type DeliveryStopSummary = {
     deliveredAt: string | null;
     harvest: DeliveryHarvestSummary;
     recovery: CustomerDeliveryRecoverySummary | null;
-    tracking: DeliveryTrackingLocation | null;
+    tracking: CustomerDeliveryTrackingSummary | null;
     runId: string | null;
     deliveryCount: number;
     deliveries: DeliveryStopDeliverySummary[];
@@ -195,7 +210,8 @@ export type ActiveDeliveryRunSummary = {
     routeRevision: number;
     reroutePending: boolean;
     estimateSource: DeliveryRunEstimateSource;
-    location: DeliveryTrackingLocation | null;
+    tracking: DeliveryTrackingFreshnessSummary;
+    location: DriverDeliveryTrackingLocation | null;
     estimatesUpdatedAt: string | null;
     mapUrl: string;
     deliveryCount: number;

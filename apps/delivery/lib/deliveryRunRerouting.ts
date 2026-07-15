@@ -7,6 +7,7 @@ import {
     DeliveryRunManifestStates,
     DeliveryRunStates,
     DeliveryRunStopStates,
+    deliveryRunExactLocationTtlMs,
     deliveryRunRerouteLeaseMs,
     getDeliveryRun,
     getDeliveryRunExecutionProgress,
@@ -49,6 +50,7 @@ type DeliveryRerouteLocation = {
 
 export function deliveryRerouteLocationIsFresh(
     location: DeliveryRerouteLocation,
+    now = new Date(),
 ): location is DeliveryRerouteLocation & {
     currentLatitude: number;
     currentLongitude: number;
@@ -61,7 +63,9 @@ export function deliveryRerouteLocationIsFresh(
             location.currentLocationReceivedAt &&
             location.rerouteRequiredAt &&
             location.currentLocationReceivedAt.getTime() >=
-                location.rerouteRequiredAt.getTime(),
+                location.rerouteRequiredAt.getTime() &&
+            now.getTime() - location.currentLocationReceivedAt.getTime() <=
+                deliveryRunExactLocationTtlMs,
     );
 }
 

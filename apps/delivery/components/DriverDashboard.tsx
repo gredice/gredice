@@ -38,6 +38,7 @@ import {
     inspectDeliveryRouteSelection,
 } from '../lib/deliveryRouteSelection';
 import { groupByDeliveryStop } from '../lib/deliveryStopGrouping';
+import { deliveryTrackingMapVersion } from '../lib/deliveryTrackingPresentation';
 import {
     normalizeHarvestTraceScanValue,
     selectDeliveryStopFromHarvestTrace,
@@ -574,10 +575,10 @@ export function DriverDashboard({
                         <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(19rem,0.8fr)]">
                             <DeliveryMap
                                 mapUrl={run.mapUrl}
-                                version={
-                                    run.location?.recordedAt ??
-                                    run.estimatesUpdatedAt
-                                }
+                                version={deliveryTrackingMapVersion(
+                                    run.tracking,
+                                    run.estimatesUpdatedAt,
+                                )}
                                 title="Karta aktivne dostavne rute"
                             />
                             <Card>

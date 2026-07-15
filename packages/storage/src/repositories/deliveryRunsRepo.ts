@@ -12,6 +12,7 @@ import {
     inArray,
     isNotNull,
     isNull,
+    lt,
     lte,
     notInArray,
     or,
@@ -283,6 +284,8 @@ export const DeliveryRunExecutionErrorCodes = {
     EXCEPTION_TRANSITION_INVALID: 'exception-transition-invalid',
     RUN_DRIVER_CONFLICT: 'run-driver-conflict',
     RUN_MUTATION_INVALID: 'run-mutation-invalid',
+    LOCATION_CONFLICT: 'location-conflict',
+    LOCATION_STALE: 'location-stale',
 } as const;
 
 export type DeliveryRunExecutionErrorCode =
@@ -298,6 +301,9 @@ export class DeliveryRunExecutionError extends Error {
         super(message);
     }
 }
+
+export const deliveryRunTrackingLiveThresholdMs = 30 * 1000;
+export const deliveryRunExactLocationTtlMs = 2 * 60 * 1000;
 
 export type DeliveryRunExecutionStep =
     | {
@@ -4418,57 +4424,158 @@ export async function updateDeliveryRunLocation({
     driverUserId: string;
     latitude: number;
     longitude: number;
-    accuracy?: number;
-    heading?: number;
-    speed?: number;
+    accuracy?: number | null;
+    heading?: number | null;
+    speed?: number | null;
     recordedAt: Date;
 }) {
     ensureCoordinates(latitude, longitude);
 
-    const rows = await storage()
-        .update(deliveryRuns)
-        .set({
-            currentLatitude: latitude,
-            currentLongitude: longitude,
-            currentLocationAccuracy: accuracy,
-            currentLocationHeading: heading,
-            currentLocationSpeed: speed,
-            currentLocationRecordedAt: recordedAt,
-            currentLocationReceivedAt: new Date(),
-        })
-        .where(
-            and(
+    const normalizedAccuracy = accuracy ?? null;
+    const normalizedHeading = heading ?? null;
+    const normalizedSpeed = speed ?? null;
+
+    return await storage().transaction(async (tx) => {
+        await tx.execute(
+            sql`select ${deliveryRuns.id} from ${deliveryRuns} where ${deliveryRuns.id} = ${runId} for update`,
+        );
+        const current = await tx.query.deliveryRuns.findFirst({
+            where: and(
                 eq(deliveryRuns.id, runId),
                 eq(deliveryRuns.driverUserId, driverUserId),
                 eq(deliveryRuns.state, DeliveryRunStates.ACTIVE),
+            ),
+        });
+        if (!current) {
+            throw new DeliveryRunExecutionError(
+                DeliveryRunExecutionErrorCodes.ACTIVE_RUN_NOT_FOUND,
+                'Active delivery run not found',
+            );
+        }
+
+        const currentRecordedTime =
+            current.currentLocationRecordedAt?.getTime() ?? null;
+        if (
+            currentRecordedTime !== null &&
+            currentRecordedTime > recordedAt.getTime()
+        ) {
+            throw new DeliveryRunExecutionError(
+                DeliveryRunExecutionErrorCodes.LOCATION_STALE,
+                'A newer delivery location is already stored',
+            );
+        }
+        if (currentRecordedTime === recordedAt.getTime()) {
+            const identicalReplay =
+                current.currentLatitude === latitude &&
+                current.currentLongitude === longitude &&
+                current.currentLocationAccuracy === normalizedAccuracy &&
+                current.currentLocationHeading === normalizedHeading &&
+                current.currentLocationSpeed === normalizedSpeed;
+            if (identicalReplay && current.currentLocationReceivedAt) {
+                return {
+                    acceptedAt: current.currentLocationReceivedAt,
+                    previousAcceptedAt: current.currentLocationReceivedAt,
+                    replayed: true,
+                };
+            }
+            throw new DeliveryRunExecutionError(
+                DeliveryRunExecutionErrorCodes.LOCATION_CONFLICT,
+                'Delivery location timestamp conflicts with stored telemetry',
+            );
+        }
+
+        const acceptedAt = new Date();
+        const [updated] = await tx
+            .update(deliveryRuns)
+            .set({
+                currentLatitude: latitude,
+                currentLongitude: longitude,
+                currentLocationAccuracy: normalizedAccuracy,
+                currentLocationHeading: normalizedHeading,
+                currentLocationSpeed: normalizedSpeed,
+                currentLocationRecordedAt: recordedAt,
+                currentLocationReceivedAt: acceptedAt,
+            })
+            .where(
+                and(
+                    eq(deliveryRuns.id, runId),
+                    eq(deliveryRuns.driverUserId, driverUserId),
+                    eq(deliveryRuns.state, DeliveryRunStates.ACTIVE),
+                ),
+            )
+            .returning({ acceptedAt: deliveryRuns.currentLocationReceivedAt });
+        if (!updated?.acceptedAt) {
+            throw new DeliveryRunExecutionError(
+                DeliveryRunExecutionErrorCodes.ACTIVE_RUN_NOT_FOUND,
+                'Active delivery run not found',
+            );
+        }
+        return {
+            acceptedAt: updated.acceptedAt,
+            previousAcceptedAt: current.currentLocationReceivedAt,
+            replayed: false,
+        };
+    });
+}
+
+export async function clearExpiredDeliveryRunLocations(now = new Date()) {
+    const cutoff = new Date(now.getTime() - deliveryRunExactLocationTtlMs);
+    return await storage()
+        .update(deliveryRuns)
+        .set({
+            currentLatitude: null,
+            currentLongitude: null,
+            currentLocationAccuracy: null,
+            currentLocationHeading: null,
+            currentLocationSpeed: null,
+            currentLocationRecordedAt: null,
+        })
+        .where(
+            and(
+                eq(deliveryRuns.state, DeliveryRunStates.ACTIVE),
                 or(
-                    isNull(deliveryRuns.currentLocationRecordedAt),
-                    lte(deliveryRuns.currentLocationRecordedAt, recordedAt),
+                    isNull(deliveryRuns.currentLocationReceivedAt),
+                    lt(deliveryRuns.currentLocationReceivedAt, cutoff),
+                ),
+                or(
+                    isNotNull(deliveryRuns.currentLatitude),
+                    isNotNull(deliveryRuns.currentLongitude),
+                    isNotNull(deliveryRuns.currentLocationAccuracy),
+                    isNotNull(deliveryRuns.currentLocationHeading),
+                    isNotNull(deliveryRuns.currentLocationSpeed),
+                    isNotNull(deliveryRuns.currentLocationRecordedAt),
                 ),
             ),
         )
-        .returning({ id: deliveryRuns.id });
-
-    if (!rows[0]) {
-        throw new Error('Active delivery run not found');
-    }
+        .returning({
+            runId: deliveryRuns.id,
+            lastAcceptedAt: deliveryRuns.currentLocationReceivedAt,
+        });
 }
 
 export async function updateDeliveryRunEstimates({
     runId,
+    driverUserId,
+    expectedRouteRevision,
+    expectedLocationRecordedAt,
+    expectedLocationReceivedAt,
     encodedPolyline,
     totalDistanceMeters,
     totalDurationSeconds,
     estimates,
 }: {
     runId: string;
+    driverUserId: string;
+    expectedRouteRevision: number;
+    expectedLocationRecordedAt: Date;
+    expectedLocationReceivedAt: Date;
     encodedPolyline?: string;
     totalDistanceMeters: number;
     totalDurationSeconds: number;
     estimates: DeliveryRunStopEstimate[];
 }) {
-    await storage().transaction(async (tx) => {
-        await tx
+    return await storage().transaction(async (tx) => {
+        const [updatedRun] = await tx
             .update(deliveryRuns)
             .set({
                 encodedPolyline,
@@ -4479,9 +4586,21 @@ export async function updateDeliveryRunEstimates({
             .where(
                 and(
                     eq(deliveryRuns.id, runId),
+                    eq(deliveryRuns.driverUserId, driverUserId),
                     eq(deliveryRuns.state, DeliveryRunStates.ACTIVE),
+                    eq(deliveryRuns.routeRevision, expectedRouteRevision),
+                    eq(
+                        deliveryRuns.currentLocationRecordedAt,
+                        expectedLocationRecordedAt,
+                    ),
+                    eq(
+                        deliveryRuns.currentLocationReceivedAt,
+                        expectedLocationReceivedAt,
+                    ),
                 ),
-            );
+            )
+            .returning({ id: deliveryRuns.id });
+        if (!updatedRun) return false;
 
         for (const estimate of estimates) {
             await tx
@@ -4505,6 +4624,7 @@ export async function updateDeliveryRunEstimates({
                     ),
                 );
         }
+        return true;
     });
 }
 

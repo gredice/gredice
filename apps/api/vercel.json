@@ -27,6 +27,10 @@
             "schedule": "*/5 * * * *"
         },
         {
+            "path": "/api/internal/cron/delivery-tracking-retention",
+            "schedule": "* * * * *"
+        },
+        {
             "path": "/api/internal/cron/update-farm-weather",
             "schedule": "0 * * * *"
         },

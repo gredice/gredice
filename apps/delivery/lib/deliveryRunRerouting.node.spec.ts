@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { deliveryRunRerouteLeaseMs } from '@gredice/storage';
+import {
+    deliveryRunExactLocationTtlMs,
+    deliveryRunRerouteLeaseMs,
+} from '@gredice/storage';
 import {
     deliveryRerouteLocationIsFresh,
     deliveryRerouteRetryIntervalMs,
@@ -10,6 +13,7 @@ import {
 
 test('reroute freshness uses the server-received GPS timestamp', () => {
     const rerouteRequiredAt = new Date('2026-07-15T10:00:00.000Z');
+    const now = new Date(rerouteRequiredAt);
     const location = {
         currentLatitude: 45.81,
         currentLongitude: 15.97,
@@ -17,27 +21,61 @@ test('reroute freshness uses the server-received GPS timestamp', () => {
     };
 
     assert.equal(
-        deliveryRerouteLocationIsFresh({
-            ...location,
-            currentLocationReceivedAt: new Date(
-                rerouteRequiredAt.getTime() - 1,
-            ),
-        }),
+        deliveryRerouteLocationIsFresh(
+            {
+                ...location,
+                currentLocationReceivedAt: new Date(
+                    rerouteRequiredAt.getTime() - 1,
+                ),
+            },
+            now,
+        ),
         false,
     );
     assert.equal(
-        deliveryRerouteLocationIsFresh({
-            ...location,
-            currentLocationReceivedAt: new Date(rerouteRequiredAt),
-        }),
+        deliveryRerouteLocationIsFresh(
+            {
+                ...location,
+                currentLocationReceivedAt: new Date(rerouteRequiredAt),
+            },
+            now,
+        ),
         true,
     );
     assert.equal(
-        deliveryRerouteLocationIsFresh({
-            ...location,
-            currentLatitude: null,
-            currentLocationReceivedAt: new Date(rerouteRequiredAt),
-        }),
+        deliveryRerouteLocationIsFresh(
+            {
+                ...location,
+                currentLatitude: null,
+                currentLocationReceivedAt: new Date(rerouteRequiredAt),
+            },
+            now,
+        ),
+        false,
+    );
+});
+
+test('reroute origin expires at the absolute exact-location TTL', () => {
+    const receivedAt = new Date('2026-07-15T10:00:00.000Z');
+    const location = {
+        currentLatitude: 45.81,
+        currentLongitude: 15.97,
+        currentLocationReceivedAt: receivedAt,
+        rerouteRequiredAt: new Date(receivedAt.getTime() - 1_000),
+    };
+
+    assert.equal(
+        deliveryRerouteLocationIsFresh(
+            location,
+            new Date(receivedAt.getTime() + deliveryRunExactLocationTtlMs),
+        ),
+        true,
+    );
+    assert.equal(
+        deliveryRerouteLocationIsFresh(
+            location,
+            new Date(receivedAt.getTime() + deliveryRunExactLocationTtlMs + 1),
+        ),
         false,
     );
 });
