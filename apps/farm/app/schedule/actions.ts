@@ -31,6 +31,7 @@ import {
     parseScheduleOperationCompletionRequirementsFingerprint,
     type ScheduleOperationCompletionRequirementsFingerprint,
 } from './scheduleOperationRequirements';
+import { getExpectedScheduleTaskAccountId } from './scheduleTaskAccountScope';
 import {
     getScheduleTaskBlockerReason,
     parseScheduleTaskBlockerTarget,
@@ -269,7 +270,7 @@ export async function validateFarmOperationUploadTarget(
 
     return await validateScheduleOperationUploadTarget({
         actor: { role, userId },
-        expectedAccountId: accountId,
+        expectedAccountId: getExpectedScheduleTaskAccountId(accountId, role),
         ...target,
         purpose: 'completion',
     });
@@ -338,7 +339,7 @@ export async function recoverFarmOperationCompletionImage(
 
     const uploadTargetValidation = await validateScheduleOperationUploadTarget({
         actor: { role, userId },
-        expectedAccountId: accountId,
+        expectedAccountId: getExpectedScheduleTaskAccountId(accountId, role),
         expectedEntityId: target.expectedEntityId,
         expectedRequirementsFingerprint: target.expectedRequirementsFingerprint,
         expectedTaskVersionEventId: target.expectedTaskVersionEventId,
@@ -501,12 +502,13 @@ export async function completeFarmOperation(
         );
     }
     const actor = getTaskActor(userId, role);
+    const expectedAccountId = getExpectedScheduleTaskAccountId(accountId, role);
 
     if (validSubmissionId) {
         try {
             const replay = await resolveOperationTaskCompletionSubmission({
                 actor,
-                expectedAccountId: accountId,
+                expectedAccountId,
                 expectedEntityId: validExpectedEntityId,
                 expectedTaskVersionEventId: validExpectedTaskVersionEventId,
                 imageUrls: completionImageUrls,
@@ -543,7 +545,7 @@ export async function completeFarmOperation(
 
     const uploadTargetValidation = await validateScheduleOperationUploadTarget({
         actor,
-        expectedAccountId: accountId,
+        expectedAccountId,
         expectedEntityId: validExpectedEntityId,
         expectedRequirementsFingerprint: validExpectedRequirementsFingerprint,
         expectedTaskVersionEventId: validExpectedTaskVersionEventId,
@@ -620,7 +622,7 @@ export async function completeFarmOperation(
     try {
         result = await submitOperationTaskCompletion({
             actor,
-            expectedAccountId: accountId,
+            expectedAccountId,
             expectedEntityId: validExpectedEntityId,
             expectedTaskVersionEventId: validExpectedTaskVersionEventId,
             imageUrls: completionImageUrls,
