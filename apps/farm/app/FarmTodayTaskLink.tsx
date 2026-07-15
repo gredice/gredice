@@ -7,8 +7,9 @@ import {
     Navigate,
     Warning,
 } from '@gredice/ui/icons';
-import { ListItem } from '@gredice/ui/List';
+import NextLink from 'next/link';
 import type { ReactNode } from 'react';
+import type { FarmTodayTaskSource } from '../components/analytics/farmAnalytics';
 import type { FarmTodayTask, FarmTodayTaskAssignment } from './farmTodayModel';
 import { ScheduleTaskDateChip } from './schedule/ScheduleTaskDateChip';
 import { ScheduleTaskDurationChip } from './schedule/ScheduleTaskDurationChip';
@@ -17,6 +18,7 @@ import type { ScheduleOperationRequirementLevel } from './schedule/scheduleOpera
 
 type FarmTodayTaskLinkProps = {
     emphasis?: 'next' | 'standard';
+    source: FarmTodayTaskSource;
     task: FarmTodayTask;
 };
 
@@ -147,16 +149,24 @@ function ProofRequirements({ task }: { task: FarmTodayTask }) {
 
 export function FarmTodayTaskLink({
     emphasis = 'standard',
+    source,
     task,
 }: FarmTodayTaskLinkProps) {
     const destinationLabel =
         task.kind === 'operation' ? 'Otvori upute' : 'Otvori gredicu';
 
     return (
-        <ListItem
-            className="min-h-11 min-w-0 items-start px-3 py-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            href={task.href}
-            label={
+        <NextLink
+            className="flex h-auto min-h-11 w-full min-w-0 items-start justify-start gap-2 rounded-none bg-transparent px-3 py-2 text-left text-sm text-foreground transition-colors first:rounded-t-[calc(var(--radius)-1px)] last:rounded-b-[calc(var(--radius)-1px)] hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            data-farm-analytics="today_task"
+            data-farm-task-assignment={task.assignment}
+            data-farm-task-kind={task.kind}
+            data-farm-task-overdue={task.overdue ? 'true' : 'false'}
+            data-farm-task-source={source}
+            data-farm-task-state={task.state}
+            href={{ pathname: task.href }}
+        >
+            <div className="min-w-0 grow">
                 <div
                     className="min-w-0 space-y-1.5"
                     data-farm-today-task={task.key}
@@ -197,8 +207,7 @@ export function FarmTodayTaskLink({
                         <Navigate aria-hidden className="size-3.5" />
                     </span>
                 </div>
-            }
-            variant="outlined"
-        />
+            </div>
+        </NextLink>
     );
 }

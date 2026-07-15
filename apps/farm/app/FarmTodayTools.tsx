@@ -8,16 +8,57 @@ import {
     MapPinHouse,
     Sprout,
 } from '@gredice/ui/icons';
+import type { FarmNavigationDestination } from '../components/analytics/farmAnalytics';
 
 const tools = [
-    { href: '/schedule', icon: Calendar, label: 'Cijeli raspored' },
-    { href: '/notifications', icon: Inbox, label: 'Obavijesti' },
-    { href: '/raised-beds', icon: Fence, label: 'Gredice' },
-    { href: '/greenhouse', icon: MapPinHouse, label: 'Staklenik' },
-    { href: '/operations', icon: BookA, label: 'Radnje' },
-    { href: '/plants', icon: Sprout, label: 'Biljke' },
-    { href: '/payouts', icon: Euro, label: 'Isplate' },
-];
+    {
+        destination: 'schedule',
+        href: '/schedule',
+        icon: Calendar,
+        label: 'Cijeli raspored',
+    },
+    {
+        destination: 'notifications',
+        href: '/notifications',
+        icon: Inbox,
+        label: 'Obavijesti',
+    },
+    {
+        destination: 'raised_beds',
+        href: '/raised-beds',
+        icon: Fence,
+        label: 'Gredice',
+    },
+    {
+        destination: 'greenhouse',
+        href: '/greenhouse',
+        icon: MapPinHouse,
+        label: 'Staklenik',
+    },
+    {
+        destination: 'operations',
+        href: '/operations',
+        icon: BookA,
+        label: 'Radnje',
+    },
+    {
+        destination: 'plants',
+        href: '/plants',
+        icon: Sprout,
+        label: 'Biljke',
+    },
+    {
+        destination: 'payouts',
+        href: '/payouts',
+        icon: Euro,
+        label: 'Isplate',
+    },
+] satisfies {
+    destination: FarmNavigationDestination;
+    href: string;
+    icon: typeof Calendar;
+    label: string;
+}[];
 
 export function FarmTodayTools() {
     return (
@@ -26,9 +67,12 @@ export function FarmTodayTools() {
                 Ostali alati
             </h2>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {tools.map(({ href, icon: Icon, label }) => (
+                {tools.map(({ destination, href, icon: Icon, label }) => (
                     <Button
                         className="justify-start px-3 text-sm"
+                        data-farm-analytics="navigation"
+                        data-farm-navigation-destination={destination}
+                        data-farm-navigation-source="today_tools"
                         fullWidth
                         href={href}
                         key={href}

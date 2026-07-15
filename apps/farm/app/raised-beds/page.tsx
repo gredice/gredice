@@ -16,7 +16,6 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import LoginDialog from '../../components/auth/LoginDialog';
-import { HomeButton } from '../../components/HomeButton';
 import { auth } from '../../lib/auth/auth';
 
 export const dynamic = 'force-dynamic';
@@ -135,9 +134,9 @@ async function RaisedBedsPageContent() {
 
     return (
         <div className="max-w-5xl mx-auto w-full p-4 space-y-4">
-            <div className="flex min-w-0 items-center">
-                <HomeButton />
-            </div>
+            <Typography component="h1" level="h5" semiBold>
+                Gredice
+            </Typography>
 
             {activeRaisedBeds.length === 0 ? (
                 <Card>
