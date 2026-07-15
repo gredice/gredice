@@ -2,20 +2,20 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { buildGoogleStaticMapUrl } from './googleStaticMap';
 
-function withGoogleMapsApiKey<T>(run: () => T) {
-    const originalApiKey = process.env.GREDICE_GOOGLE_MAPS_API_KEY;
+function withGoogleMapsServerApiKey<T>(run: () => T) {
+    const originalApiKey = process.env.GREDICE_GOOGLE_MAPS_SERVER_API_KEY;
     const originalSigningSecret =
         process.env.GREDICE_GOOGLE_MAPS_URL_SIGNING_SECRET;
-    process.env.GREDICE_GOOGLE_MAPS_API_KEY = 'test-key';
+    process.env.GREDICE_GOOGLE_MAPS_SERVER_API_KEY = 'test-key';
     delete process.env.GREDICE_GOOGLE_MAPS_URL_SIGNING_SECRET;
 
     try {
         return run();
     } finally {
         if (originalApiKey === undefined) {
-            delete process.env.GREDICE_GOOGLE_MAPS_API_KEY;
+            delete process.env.GREDICE_GOOGLE_MAPS_SERVER_API_KEY;
         } else {
-            process.env.GREDICE_GOOGLE_MAPS_API_KEY = originalApiKey;
+            process.env.GREDICE_GOOGLE_MAPS_SERVER_API_KEY = originalApiKey;
         }
         if (originalSigningSecret === undefined) {
             delete process.env.GREDICE_GOOGLE_MAPS_URL_SIGNING_SECRET;
@@ -31,7 +31,7 @@ function markerValues(url: URL) {
 }
 
 test('includes distinct pickup markers and the complete route in driver maps', () => {
-    withGoogleMapsApiKey(() => {
+    withGoogleMapsServerApiKey(() => {
         const encodedPolyline = 'driver-only-route';
         const url = buildGoogleStaticMapUrl({
             driverLocation: { latitude: 45.8, longitude: 15.9 },
@@ -59,7 +59,7 @@ test('includes distinct pickup markers and the complete route in driver maps', (
 });
 
 test('omits pickup markers and the full route from customer maps', () => {
-    withGoogleMapsApiKey(() => {
+    withGoogleMapsServerApiKey(() => {
         const pickupCoordinates = '45.81,15.91';
         const encodedPolyline = 'private-full-route';
         const url = buildGoogleStaticMapUrl({
@@ -85,7 +85,7 @@ test('omits pickup markers and the full route from customer maps', () => {
 });
 
 test('keeps oversized encoded routes out of static map URLs', () => {
-    withGoogleMapsApiKey(() => {
+    withGoogleMapsServerApiKey(() => {
         const url = buildGoogleStaticMapUrl({
             pickupNodes: [{ latitude: 45.81, longitude: 15.91 }],
             stops: [{ latitude: 45.83, longitude: 15.93 }],
@@ -99,7 +99,7 @@ test('keeps oversized encoded routes out of static map URLs', () => {
 });
 
 test('drops a route path when URL escaping would exceed the API limit', () => {
-    withGoogleMapsApiKey(() => {
+    withGoogleMapsServerApiKey(() => {
         const url = buildGoogleStaticMapUrl({
             pickupNodes: [{ latitude: 45.81, longitude: 15.91 }],
             stops: [{ latitude: 45.83, longitude: 15.93 }],
@@ -111,4 +111,32 @@ test('drops a route path when URL escaping would exceed the API limit', () => {
         assert.equal(url.searchParams.has('path'), false);
         assert.ok(url.toString().length <= 16_384);
     });
+});
+
+test('does not reuse a browser key for server-side static maps', () => {
+    const originalBrowserApiKey = process.env.GREDICE_GOOGLE_MAPS_API_KEY;
+    const originalServerApiKey = process.env.GREDICE_GOOGLE_MAPS_SERVER_API_KEY;
+    process.env.GREDICE_GOOGLE_MAPS_API_KEY = 'browser-key';
+    delete process.env.GREDICE_GOOGLE_MAPS_SERVER_API_KEY;
+
+    try {
+        const url = buildGoogleStaticMapUrl({
+            stops: [{ latitude: 45.83, longitude: 15.93 }],
+            customerView: true,
+        });
+
+        assert.equal(url, null);
+    } finally {
+        if (originalBrowserApiKey === undefined) {
+            delete process.env.GREDICE_GOOGLE_MAPS_API_KEY;
+        } else {
+            process.env.GREDICE_GOOGLE_MAPS_API_KEY = originalBrowserApiKey;
+        }
+        if (originalServerApiKey === undefined) {
+            delete process.env.GREDICE_GOOGLE_MAPS_SERVER_API_KEY;
+        } else {
+            process.env.GREDICE_GOOGLE_MAPS_SERVER_API_KEY =
+                originalServerApiKey;
+        }
+    }
 });

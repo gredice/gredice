@@ -51,7 +51,7 @@ export function buildGoogleStaticMapUrl({
     encodedPolyline?: string | null;
     customerView: boolean;
 }) {
-    const apiKey = process.env.GREDICE_GOOGLE_MAPS_API_KEY?.trim();
+    const apiKey = process.env.GREDICE_GOOGLE_MAPS_SERVER_API_KEY?.trim();
     if (!apiKey || (stops.length === 0 && !driverLocation)) {
         return null;
     }
