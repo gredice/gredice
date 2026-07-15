@@ -400,6 +400,9 @@ importers:
 
   apps/delivery:
     dependencies:
+      '@googlemaps/js-api-loader':
+        specifier: 2.1.1
+        version: 2.1.1
       next:
         specifier: 16.2.10
         version: 16.2.10(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sass@1.101.0)
@@ -446,6 +449,9 @@ importers:
       '@tanstack/react-query':
         specifier: 5.101.2
         version: 5.101.2(react@19.2.7)
+      '@types/google.maps':
+        specifier: 3.65.2
+        version: 3.65.2
       '@types/node':
         specifier: 24.12.4
         version: 24.12.4
@@ -2934,6 +2940,9 @@ packages:
 
   '@fontsource/spicy-rice@5.2.8':
     resolution: {integrity: sha512-nVBsLFNhm3rRN/d4HjavzJP/cGoKA3pyZ+EVTnrEqZHWtvxKUdBxaD8imYWTTVEm4FJklVz8tvADPH8Fii2TYw==}
+
+  '@googlemaps/js-api-loader@2.1.1':
+    resolution: {integrity: sha512-yUpAwksbHrlZIWD49JmveNSfBG4oAK0AwMknfSaPMnP5N7UT8oFRVCqwjGb1XQovi//7KLbPQKZpbofiLGzpDw==}
 
   '@headlessui/tailwindcss@0.2.2':
     resolution: {integrity: sha512-xNe42KjdyA4kfUKLLPGzME9zkH7Q3rOZ5huFihWNWOQFxnItxPB3/67yBI8/qBfY8nwBRx5GHn4VprsoluVMGw==}
@@ -5845,6 +5854,9 @@ packages:
 
   '@types/geojson@7946.0.16':
     resolution: {integrity: sha512-6C8nqWur3j98U6+lXDfTUWIfgvZU+EumvpHKcYjujKH7woYyLj2sUmff0tRhrqM7BohUw7Pz3ZB1jj2gW9Fvmg==}
+
+  '@types/google.maps@3.65.2':
+    resolution: {integrity: sha512-e52bmOhGCQSNabFpL48iQlwJybq6rfns8NUVJ20MR7CdPlHQ2RmSCnPbJfrUYJfogrE4OiHQTZ4LXpop+eer1w==}
 
   '@types/har-format@1.2.16':
     resolution: {integrity: sha512-fluxdy7ryD3MV6h8pTfTYpy/xQzCFC7m89nOH9y94cNqJ1mDIDPut7MnRHI3F6qRmh/cT2fUjG1MLdCNb4hE9A==}
@@ -12020,6 +12032,10 @@ snapshots:
 
   '@fontsource/spicy-rice@5.2.8': {}
 
+  '@googlemaps/js-api-loader@2.1.1':
+    dependencies:
+      '@types/google.maps': 3.65.2
+
   '@headlessui/tailwindcss@0.2.2(tailwindcss@4.3.2)':
     dependencies:
       tailwindcss: 4.3.2
@@ -15156,6 +15172,8 @@ snapshots:
       '@types/node': 24.12.4
 
   '@types/geojson@7946.0.16': {}
+
+  '@types/google.maps@3.65.2': {}
 
   '@types/har-format@1.2.16': {}
 
