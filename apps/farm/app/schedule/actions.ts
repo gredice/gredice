@@ -75,6 +75,7 @@ async function assertFarmerCanCompletePlanting(
 }
 
 function revalidateSchedule() {
+    revalidatePath('/');
     revalidatePath('/schedule');
 }
 

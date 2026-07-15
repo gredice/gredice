@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import {
     defineConfig,
     devices,
@@ -11,6 +12,9 @@ import {
 } from '../../scripts/app-registry.ts';
 
 const app = getAppByName('farm');
+const scheduleActionsMockPath = fileURLToPath(
+    new URL('./playwright/scheduleActionsMock.ts', import.meta.url),
+);
 const reporter: PlaywrightTestConfig['reporter'] = [
     ['list'],
     ['html', { open: 'never' }],
@@ -29,6 +33,22 @@ export const config: PlaywrightTestConfig = {
         baseURL: getPlaywrightBaseUrl(app),
         trace: 'on-first-retry',
         ctPort: getComponentTestPort(app),
+        ctViteConfig: {
+            plugins: [
+                {
+                    name: 'farm-component-test-schedule-actions',
+                    enforce: 'pre',
+                    resolveId(source, importer) {
+                        if (
+                            source === './actions' &&
+                            importer?.includes('/app/schedule/')
+                        ) {
+                            return scheduleActionsMockPath;
+                        }
+                    },
+                },
+            ],
+        },
     },
     projects: [
         {
