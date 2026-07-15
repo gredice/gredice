@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
     accountCanTrackCurrentDeliveryGroup,
+    deliveryStatusLabel,
     deliveryTrackingStopIds,
     expandLegacyCurrentDeliveryStopIds,
     pickupManifestTracePath,
@@ -218,4 +219,121 @@ test('pickup manifest advertises only persisted trace provenance', () => {
         '/trag/persisted-token',
     );
     assert.equal(pickupManifestTracePath(null), null);
+});
+
+test('customer delivery labels describe exceptions without operational details', () => {
+    const privateOperationalContext = {
+        reason: 'address-inaccessible',
+        note: 'Privatna napomena za dispečera',
+        recordedByUserId: 'private-driver-id',
+    };
+    const labels = [
+        deliveryStatusLabel({
+            requestState: 'ready',
+            stopState: 'deferred',
+            isCurrent: false,
+            runState: 'active',
+        }),
+        deliveryStatusLabel({
+            requestState: 'ready',
+            stopState: 'failed',
+            isCurrent: false,
+            runState: 'active',
+        }),
+        deliveryStatusLabel({
+            requestState: 'ready',
+            stopState: 'cancelled',
+            isCurrent: false,
+            runState: 'active',
+        }),
+        deliveryStatusLabel({
+            requestState: 'deferred',
+            isCurrent: false,
+        }),
+        deliveryStatusLabel({
+            requestState: 'failed',
+            isCurrent: false,
+        }),
+        deliveryStatusLabel({
+            requestState: 'cancelled',
+            isCurrent: false,
+        }),
+    ];
+
+    assert.deepEqual(labels, [
+        'Dostava je odgođena',
+        'Dostava nije uspjela',
+        'Dostava je otkazana',
+        'Dostava je odgođena',
+        'Dostava nije uspjela',
+        'Otkazano',
+    ]);
+    for (const detail of Object.values(privateOperationalContext)) {
+        assert.ok(!labels.join(' ').includes(detail));
+    }
+});
+
+test('customer exception stop state overrides fulfilled request state in a mixed bulk group', () => {
+    assert.equal(
+        deliveryStatusLabel({
+            requestState: 'fulfilled',
+            stopState: 'failed',
+            isCurrent: false,
+            runState: 'completed',
+        }),
+        'Dostava nije uspjela',
+    );
+    assert.equal(
+        deliveryStatusLabel({
+            requestState: 'fulfilled',
+            stopState: 'cancelled',
+            isCurrent: false,
+            runState: 'completed',
+        }),
+        'Dostava je otkazana',
+    );
+});
+
+test('partial bulk tracking authorizes only exact current actionable stop ids', () => {
+    const groups = [
+        group([
+            { id: 21, state: 'deferred', accountId: 'account-deferred' },
+            { id: 22, state: pending, accountId: 'account-current' },
+            { id: 23, state: 'failed', accountId: 'account-failed' },
+        ]),
+    ];
+    const currentDeliveryStopIds = deliveryTrackingStopIds({
+        routePlanVersion: 2,
+        currentStopIds: new Set([22]),
+        groups,
+    });
+
+    assert.deepEqual([...currentDeliveryStopIds], [22]);
+    assert.equal(
+        accountCanTrackCurrentDeliveryGroup({
+            accountId: 'account-current',
+            runState: 'active',
+            groups,
+            currentDeliveryStopIds,
+        }),
+        true,
+    );
+    assert.equal(
+        accountCanTrackCurrentDeliveryGroup({
+            accountId: 'account-deferred',
+            runState: 'active',
+            groups,
+            currentDeliveryStopIds,
+        }),
+        false,
+    );
+    assert.equal(
+        accountCanTrackCurrentDeliveryGroup({
+            accountId: 'account-failed',
+            runState: 'active',
+            groups,
+            currentDeliveryStopIds,
+        }),
+        false,
+    );
 });

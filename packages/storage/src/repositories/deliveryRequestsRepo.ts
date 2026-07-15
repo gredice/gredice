@@ -81,6 +81,8 @@ interface DeliveryEventData {
     deliveryNotes?: string;
     cancelReason?: string;
     accountId?: string;
+    exceptionOutcome?: 'deferred' | 'failed' | 'cancelled';
+    exceptionRetryable?: boolean;
 }
 
 function parseDeliveryEventData(value: unknown): DeliveryEventData {
@@ -118,6 +120,16 @@ function parseDeliveryEventData(value: unknown): DeliveryEventData {
     if (typeof record.accountId === 'string') {
         data.accountId = record.accountId;
     }
+    if (
+        record.outcome === 'deferred' ||
+        record.outcome === 'failed' ||
+        record.outcome === 'cancelled'
+    ) {
+        data.exceptionOutcome = record.outcome;
+    }
+    if (typeof record.retryable === 'boolean') {
+        data.exceptionRetryable = record.retryable;
+    }
 
     return data;
 }
@@ -130,6 +142,7 @@ const deliveryRequestEventTypes = [
     knownEventTypes.delivery.requestPreparing,
     knownEventTypes.delivery.requestReady,
     knownEventTypes.delivery.requestFulfilled,
+    knownEventTypes.delivery.requestExceptionRecorded,
     knownEventTypes.delivery.requestSurveySent,
     knownEventTypes.delivery.requestSlotChanged,
     knownEventTypes.delivery.userCancelled,
@@ -143,6 +156,7 @@ export const deliveryDispatchEventTypes = [
     knownEventTypes.delivery.requestPreparing,
     knownEventTypes.delivery.requestReady,
     knownEventTypes.delivery.requestFulfilled,
+    knownEventTypes.delivery.requestExceptionRecorded,
     knownEventTypes.delivery.requestSlotChanged,
     knownEventTypes.delivery.userCancelled,
 ] as const;
@@ -187,6 +201,10 @@ interface DeliveryRequestStateProjection {
     deliveryNotes?: string;
     accountId?: string;
     surveySent: boolean;
+    deliveryException?: {
+        outcome: 'deferred' | 'failed' | 'cancelled';
+        retryable: boolean;
+    };
 }
 
 export interface PendingDeliveryReadyEmailRequest {
@@ -263,6 +281,12 @@ function reconstructDeliveryRequestState(
     let deliveryNotes: string | undefined;
     let accountId: string | undefined;
     let surveySent = false;
+    let deliveryException:
+        | {
+              outcome: 'deferred' | 'failed' | 'cancelled';
+              retryable: boolean;
+          }
+        | undefined;
 
     const asNumber = (value: unknown): number | undefined => {
         if (typeof value === 'number') return value;
@@ -304,23 +328,42 @@ function reconstructDeliveryRequestState(
         } else if (event.type === knownEventTypes.delivery.requestConfirmed) {
             state = DeliveryRequestStates.CONFIRMED;
             cancelReason = undefined;
+            deliveryException = undefined;
         } else if (event.type === knownEventTypes.delivery.requestPreparing) {
             state = DeliveryRequestStates.PREPARING;
             cancelReason = undefined;
+            deliveryException = undefined;
         } else if (event.type === knownEventTypes.delivery.requestReady) {
             state = DeliveryRequestStates.READY;
             cancelReason = undefined;
+            deliveryException = undefined;
         } else if (event.type === knownEventTypes.delivery.requestFulfilled) {
             state = DeliveryRequestStates.FULFILLED;
             cancelReason = undefined;
+            deliveryException = undefined;
             deliveryNotes = data.deliveryNotes ?? deliveryNotes;
+        } else if (
+            event.type === knownEventTypes.delivery.requestExceptionRecorded &&
+            data.exceptionOutcome &&
+            state !== DeliveryRequestStates.FULFILLED &&
+            state !== DeliveryRequestStates.CANCELLED
+        ) {
+            state = data.exceptionOutcome;
+            deliveryException = {
+                outcome: data.exceptionOutcome,
+                retryable:
+                    data.exceptionOutcome === 'deferred' &&
+                    data.exceptionRetryable === true,
+            };
         } else if (event.type === knownEventTypes.delivery.requestSlotChanged) {
             slotId = asNumber(data.newSlotId);
         } else if (event.type === knownEventTypes.delivery.userCancelled) {
             state = DeliveryRequestStates.CANCELLED;
+            deliveryException = undefined;
         } else if (event.type === knownEventTypes.delivery.requestCancelled) {
             state = DeliveryRequestStates.CANCELLED;
             cancelReason = asString(data.cancelReason);
+            deliveryException = undefined;
         } else if (event.type === knownEventTypes.delivery.requestSurveySent) {
             surveySent = true;
         }
@@ -337,6 +380,7 @@ function reconstructDeliveryRequestState(
         deliveryNotes,
         accountId,
         surveySent,
+        deliveryException,
     };
 }
 
@@ -713,6 +757,7 @@ async function reconstructDeliveryRequestFromEvents(
         cancelReason,
         requestNotes,
         deliveryNotes,
+        deliveryException,
         surveySent,
     } = reconstructDeliveryRequestState(request.createdAt, events);
 
@@ -825,6 +870,7 @@ async function reconstructDeliveryRequestFromEvents(
         cancelReason,
         requestNotes,
         deliveryNotes,
+        deliveryException,
         surveySent,
         routeRevision: getDeliveryRequestDispatchEventId(events),
         trace: traceLink
@@ -915,6 +961,7 @@ async function getDeliveryRequestsSummaryUncached(
             location,
             mode: projection.mode,
             cancelReason: projection.cancelReason,
+            deliveryException: projection.deliveryException,
             requestNotes: projection.requestNotes,
             deliveryNotes: projection.deliveryNotes,
             surveySent: projection.surveySent,
@@ -1143,6 +1190,7 @@ export async function getDeliveryRequestsWithEvents(
                 location,
                 mode: projection.mode,
                 cancelReason: projection.cancelReason,
+                deliveryException: projection.deliveryException,
                 requestNotes: projection.requestNotes,
                 deliveryNotes: projection.deliveryNotes,
                 surveySent: projection.surveySent,
@@ -1694,6 +1742,14 @@ export async function fulfillDeliveryRequest(
 
     if (request.state === DeliveryRequestStates.CANCELLED) {
         throw new Error('Cannot fulfill a cancelled delivery request');
+    }
+    if (
+        request.state === DeliveryRequestStates.DEFERRED ||
+        request.state === DeliveryRequestStates.FAILED
+    ) {
+        throw new Error(
+            'Cannot fulfill a delivery request with an exception outcome',
+        );
     }
 
     // Create the fulfillment event

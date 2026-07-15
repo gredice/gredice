@@ -77,6 +77,7 @@ export const knownEventTypes = {
         requestReadyEmailProcessed: 'delivery.request.ready.email_processed',
         requestCancelled: 'delivery.request.cancelled',
         requestFulfilled: 'delivery.request.fulfilled',
+        requestExceptionRecorded: 'delivery.request.exception.recorded',
         requestSurveySent: 'delivery.request.survey_sent',
         userCancelled: 'delivery.request.user_cancelled',
     },

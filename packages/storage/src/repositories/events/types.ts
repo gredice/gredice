@@ -420,6 +420,26 @@ export type DeliveryRequestFulfilledPayload = {
     deliveryNotes?: string;
 };
 
+export type DeliveryRequestExceptionRecordedPayload = {
+    runId: string;
+    stopId: number;
+    clientOperationId: string;
+    outcome: 'deferred' | 'failed' | 'cancelled';
+    reason:
+        | 'customer-unavailable'
+        | 'address-inaccessible'
+        | 'address-wrong'
+        | 'harvest-damaged'
+        | 'harvest-missing'
+        | 'cancellation'
+        | 'operational-other';
+    retryable: boolean;
+    note?: string;
+    occurredAt: string;
+    recordedByUserId: string;
+    routeRevision: number;
+};
+
 export type DeliveryRequestSurveySentPayload = {
     sentTo: string[];
 };
@@ -439,6 +459,7 @@ export type DeliveryRequestEventsPayload =
     | DeliveryRequestCancelledPayload
     | DeliveryRequestStatusPayload
     | DeliveryRequestFulfilledPayload
+    | DeliveryRequestExceptionRecordedPayload
     | DeliveryRequestSurveySentPayload
     | DeliveryRequestReadyEmailProcessedPayload;
 
@@ -449,6 +470,7 @@ export type DeliveryRequestEventsAnyPayload = Partial<
         DeliveryRequestCancelledPayload &
         DeliveryRequestStatusPayload &
         DeliveryRequestFulfilledPayload &
+        DeliveryRequestExceptionRecordedPayload &
         DeliveryRequestSurveySentPayload &
         DeliveryRequestReadyEmailProcessedPayload
 >;

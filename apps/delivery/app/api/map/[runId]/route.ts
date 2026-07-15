@@ -1,4 +1,4 @@
-import { DeliveryRunStopStates, getDeliveryRun } from '@gredice/storage';
+import { getDeliveryRun, isDeliveryRunStopTerminal } from '@gredice/storage';
 import { withAuth } from '../../../../lib/auth/auth';
 import {
     accountCanTrackDeliveryRun,
@@ -46,9 +46,8 @@ export async function GET(
                 const customerOwnsStop = group.items.some(
                     ({ request }) => request?.accountId === accountId,
                 );
-                const delivered = group.items.every(
-                    ({ stop }) =>
-                        stop.state === DeliveryRunStopStates.DELIVERED,
+                const delivered = group.items.every(({ stop }) =>
+                    isDeliveryRunStopTerminal(stop.state),
                 );
                 const representative = group.items[0]?.stop;
                 if (

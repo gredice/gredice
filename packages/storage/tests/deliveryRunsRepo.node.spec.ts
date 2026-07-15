@@ -11,12 +11,15 @@ import {
     createDeliveryAddress,
     createDeliveryRun,
     createEvent,
+    DeliveryRunExceptionOutcomes,
+    DeliveryRunExceptionReasons,
     DeliveryRunExecutionError,
     DeliveryRunExecutionErrorCodes,
     DeliveryRunManifestItemStates,
     DeliveryRunManifestStates,
     DeliveryRunPersistenceError,
     DeliveryRunPersistenceErrorCodes,
+    DeliveryRunPickupOperationKinds,
     type DeliveryRunPreparationPlanPayloadV1,
     type DeliveryRunPreparationPlanPayloadV2,
     type DeliveryRunPreparationPlanPayloadV3,
@@ -24,10 +27,12 @@ import {
     DeliveryRunStates,
     DeliveryRunStopStates,
     deliveryRequests,
+    deliveryRunExceptionOperations,
     deliveryRunPickupNodes,
     deliveryRunPickupOperations,
     deliveryRunPreparations,
     deliveryRunStops,
+    deliveryRunStopsAllowCompletion,
     deliveryRuns,
     events,
     farms,
@@ -42,12 +47,15 @@ import {
     getDeliveryRunStopsForRequestIds,
     harvestTraceLinks,
     knownEvents,
+    knownEventTypes,
     markDeliveryRunStopArrived,
     markDeliveryRunStopsArrived,
     operations,
     pickupLocations,
+    type RecordDeliveryRunStopExceptionsInput,
     raisedBedFields,
     raisedBeds,
+    recordDeliveryRunStopExceptions,
     saveDeliveryRunPreparation,
     storage,
     timeSlots,
@@ -57,7 +65,7 @@ import {
     updateTimeSlot,
     users,
 } from '@gredice/storage';
-import { eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { createTestAccount } from './helpers/testHelpers';
 import { createTestDb } from './testDb';
 
@@ -549,6 +557,49 @@ async function createPreparedRunFixture({
         selectionRequestIds: [...fixture.requestIds],
         dispatchRevision: await getDeliveryDispatchRevision(),
     };
+}
+
+async function startPreparedBulkRunWithConfirmedPickup() {
+    const prepared = await createPreparedRunFixture({ bulk: true });
+    const driverUserId = prepared.fixture.driverUserIds[0];
+    assert.ok(driverUserId);
+    const saved = await saveDeliveryRunPreparation(prepared);
+    const run = await consumeDeliveryRunPreparation({
+        preparationToken: saved.preparationToken,
+        driverUserId,
+        deliveryRequestIds: prepared.fixture.requestIds,
+    });
+    const [pickup] = run.pickupNodes;
+    const [manifest] = run.runSlots;
+    assert.ok(pickup);
+    assert.ok(manifest);
+    await applyDeliveryRunPickupMutations({
+        driverUserId,
+        runId: run.id,
+        pickupNodeId: pickup.id,
+        mutations: prepared.traceLinks.map((trace, index) => ({
+            clientOperationId: `exception-fixture-scan-${index}`,
+            occurredAt: new Date(
+                Date.parse('2026-07-13T08:01:00.000Z') + index * 1000,
+            ),
+            kind: DeliveryRunPickupOperationKinds.SCAN,
+            traceToken: trace.publicToken,
+        })),
+    });
+    await applyDeliveryRunPickupMutations({
+        driverUserId,
+        runId: run.id,
+        pickupNodeId: pickup.id,
+        mutations: [
+            {
+                clientOperationId: 'exception-fixture-confirm-manifest',
+                occurredAt: new Date('2026-07-13T08:02:00.000Z'),
+                kind: DeliveryRunPickupOperationKinds.CONFIRM_MANIFEST,
+                manifestId: manifest.manifestId,
+            },
+        ],
+    });
+    return { prepared, run, driverUserId };
 }
 
 async function addReadyDeliveryRequest({
@@ -2656,4 +2707,883 @@ test('route snapshot constraints reject incomplete and cross-run stop references
             error.cause instanceof Error &&
             error.cause.message.includes('delivery_run_stops_run_slot_fk'),
     );
+});
+
+test('delivery exceptions persist item outcomes, replay safely, and keep customer projections private', async () => {
+    const { run, driverUserId } =
+        await startPreparedBulkRunWithConfirmedPickup();
+    const [firstStop, secondStop] = run.stops;
+    assert.ok(firstStop);
+    assert.ok(secondStop);
+    const occurredAt = new Date('2026-07-13T08:10:00.000Z');
+    const privateNote = 'Ulaz B je zaključan; nazvati dispečera.';
+
+    const deferred = await storage().transaction(async (tx) =>
+        recordDeliveryRunStopExceptions(
+            {
+                driverUserId,
+                runId: run.id,
+                clientOperationId: 'defer-first-bulk-item',
+                occurredAt,
+                exceptions: [
+                    {
+                        stopId: firstStop.id,
+                        outcome: DeliveryRunExceptionOutcomes.DEFERRED,
+                        reason: DeliveryRunExceptionReasons.ADDRESS_INACCESSIBLE,
+                        note: `  ${privateNote}  `,
+                    },
+                ],
+            },
+            tx,
+        ),
+    );
+    assert.equal(deferred.replayed, false);
+    assert.equal(deferred.result.runCompleted, false);
+    assert.equal(deferred.result.reroutePending, true);
+    assert.equal(deferred.result.routeRevision, 1);
+    assert.deepEqual(deferred.result.outcomes, [
+        {
+            stopId: firstStop.id,
+            deliveryRequestId: firstStop.deliveryRequestId,
+            outcome: DeliveryRunExceptionOutcomes.DEFERRED,
+            reason: DeliveryRunExceptionReasons.ADDRESS_INACCESSIBLE,
+        },
+    ]);
+
+    const afterDeferred = await getDeliveryRun(run.id);
+    assert.equal(
+        afterDeferred?.stops[0]?.state,
+        DeliveryRunStopStates.DEFERRED,
+    );
+    assert.equal(
+        afterDeferred?.stops[0]?.exceptionReason,
+        DeliveryRunExceptionReasons.ADDRESS_INACCESSIBLE,
+    );
+    assert.equal(afterDeferred?.stops[0]?.exceptionNote, privateNote);
+    assert.deepEqual(
+        (await getDeliveryRunExecutionProgress(run.id)).find(
+            (step) => step.state === 'current',
+        ),
+        {
+            kind: 'delivery',
+            itinerarySequence: firstStop.itinerarySequence,
+            stopKey: firstStop.stopKey,
+            stopIds: [firstStop.id, secondStop.id],
+            actionableStopIds: [secondStop.id],
+            pickupConfirmed: true,
+            state: 'current',
+        },
+    );
+
+    const customerRequest = await getDeliveryRequest(
+        firstStop.deliveryRequestId,
+    );
+    assert.equal(customerRequest?.state, DeliveryRunStopStates.DEFERRED);
+    assert.deepEqual(customerRequest?.deliveryException, {
+        outcome: DeliveryRunExceptionOutcomes.DEFERRED,
+        retryable: true,
+    });
+    assert.ok(!JSON.stringify(customerRequest).includes(privateNote));
+    assert.ok(
+        !JSON.stringify(customerRequest).includes(
+            DeliveryRunExceptionReasons.ADDRESS_INACCESSIBLE,
+        ),
+    );
+
+    const replay = await recordDeliveryRunStopExceptions({
+        driverUserId,
+        runId: run.id,
+        clientOperationId: 'defer-first-bulk-item',
+        occurredAt,
+        exceptions: [
+            {
+                stopId: firstStop.id,
+                outcome: DeliveryRunExceptionOutcomes.DEFERRED,
+                reason: DeliveryRunExceptionReasons.ADDRESS_INACCESSIBLE,
+                note: privateNote,
+            },
+        ],
+    });
+    assert.equal(replay.replayed, true);
+    assert.deepEqual(replay.result, deferred.result);
+    await assertExecutionError(
+        recordDeliveryRunStopExceptions({
+            driverUserId: randomUUID(),
+            runId: run.id,
+            clientOperationId: 'defer-first-bulk-item',
+            occurredAt,
+            exceptions: [
+                {
+                    stopId: firstStop.id,
+                    outcome: DeliveryRunExceptionOutcomes.DEFERRED,
+                    reason: DeliveryRunExceptionReasons.ADDRESS_INACCESSIBLE,
+                    note: privateNote,
+                },
+            ],
+        }),
+        DeliveryRunExecutionErrorCodes.EXCEPTION_OPERATION_CONFLICT,
+    );
+    await assertExecutionError(
+        recordDeliveryRunStopExceptions({
+            driverUserId: randomUUID(),
+            runId: run.id,
+            clientOperationId: 'foreign-driver-new-operation',
+            occurredAt,
+            exceptions: [
+                {
+                    stopId: firstStop.id,
+                    outcome: DeliveryRunExceptionOutcomes.FAILED,
+                    reason: DeliveryRunExceptionReasons.OPERATIONAL_OTHER,
+                },
+            ],
+        }),
+        DeliveryRunExecutionErrorCodes.ACTIVE_RUN_NOT_FOUND,
+    );
+    await assertExecutionError(
+        recordDeliveryRunStopExceptions({
+            driverUserId,
+            runId: run.id,
+            clientOperationId: 'defer-first-bulk-item',
+            occurredAt,
+            exceptions: [
+                {
+                    stopId: firstStop.id,
+                    outcome: DeliveryRunExceptionOutcomes.DEFERRED,
+                    reason: DeliveryRunExceptionReasons.ADDRESS_WRONG,
+                    note: privateNote,
+                },
+            ],
+        }),
+        DeliveryRunExecutionErrorCodes.EXCEPTION_OPERATION_CONFLICT,
+    );
+    await assertExecutionError(
+        recordDeliveryRunStopExceptions({
+            driverUserId,
+            runId: run.id,
+            clientOperationId: 'repeat-deferred-transition',
+            occurredAt: new Date('2026-07-13T08:11:00.000Z'),
+            exceptions: [
+                {
+                    stopId: firstStop.id,
+                    outcome: DeliveryRunExceptionOutcomes.DEFERRED,
+                    reason: DeliveryRunExceptionReasons.CUSTOMER_UNAVAILABLE,
+                },
+            ],
+        }),
+        DeliveryRunExecutionErrorCodes.EXCEPTION_TRANSITION_INVALID,
+    );
+
+    const failed = await recordDeliveryRunStopExceptions({
+        driverUserId,
+        runId: run.id,
+        clientOperationId: 'terminal-first-bulk-item',
+        occurredAt: new Date('2026-07-13T08:12:00.000Z'),
+        exceptions: [
+            {
+                stopId: firstStop.id,
+                outcome: DeliveryRunExceptionOutcomes.FAILED,
+                reason: DeliveryRunExceptionReasons.HARVEST_DAMAGED,
+            },
+        ],
+    });
+    assert.equal(failed.result.runCompleted, false);
+    assert.equal(failed.result.routeRevision, 2);
+    assert.equal(
+        (await getDeliveryRequest(firstStop.deliveryRequestId))?.state,
+        DeliveryRunStopStates.FAILED,
+    );
+    await assertExecutionError(
+        recordDeliveryRunStopExceptions({
+            driverUserId,
+            runId: run.id,
+            clientOperationId: 'mutate-terminal-first-item',
+            occurredAt: new Date('2026-07-13T08:13:00.000Z'),
+            exceptions: [
+                {
+                    stopId: firstStop.id,
+                    outcome: DeliveryRunExceptionOutcomes.CANCELLED,
+                    reason: DeliveryRunExceptionReasons.CANCELLATION,
+                },
+            ],
+        }),
+        DeliveryRunExecutionErrorCodes.EXCEPTION_TRANSITION_INVALID,
+    );
+    await fulfillDeliveryRunStops({
+        driverUserId,
+        runId: run.id,
+        stopIds: [firstStop.id, secondStop.id],
+    });
+    const completed = await getDeliveryRun(run.id);
+    assert.equal(completed?.state, DeliveryRunStates.COMPLETED);
+    assert.equal(completed?.rerouteRequiredAt, null);
+    assert.deepEqual(
+        completed?.stops.map((stop) => stop.state),
+        [DeliveryRunStopStates.FAILED, DeliveryRunStopStates.DELIVERED],
+    );
+
+    const replayAfterCompletion = await recordDeliveryRunStopExceptions({
+        driverUserId,
+        runId: run.id,
+        clientOperationId: 'defer-first-bulk-item',
+        occurredAt,
+        exceptions: [
+            {
+                stopId: firstStop.id,
+                outcome: DeliveryRunExceptionOutcomes.DEFERRED,
+                reason: DeliveryRunExceptionReasons.ADDRESS_INACCESSIBLE,
+                note: privateNote,
+            },
+        ],
+    });
+    assert.equal(replayAfterCompletion.replayed, true);
+
+    const receipts = await storage()
+        .select()
+        .from(deliveryRunExceptionOperations)
+        .where(eq(deliveryRunExceptionOperations.runId, run.id));
+    assert.equal(receipts.length, 2);
+    assert.ok(!JSON.stringify(receipts).includes(privateNote));
+    const auditEvents = await storage()
+        .select()
+        .from(events)
+        .where(
+            and(
+                eq(events.aggregateId, firstStop.deliveryRequestId),
+                eq(
+                    events.type,
+                    knownEventTypes.delivery.requestExceptionRecorded,
+                ),
+            ),
+        );
+    assert.equal(auditEvents.length, 2);
+    assert.ok(JSON.stringify(auditEvents).includes(privateNote));
+});
+
+test('cancelled and fulfilled request projections are absorbing for late exception events', async () => {
+    const fixture = await createDeliveryRunFixture();
+    const [requestId] = fixture.requestIds;
+    const [driverUserId] = fixture.driverUserIds;
+    assert.ok(requestId);
+    assert.ok(driverUserId);
+    await createRequestEvents(fixture);
+    const run = await createRun({
+        fixture,
+        driverUserId,
+        requestIds: [requestId],
+    });
+    const [stop] = run.stops;
+    assert.ok(stop);
+    await cancelDeliveryRequest(requestId, 'admin', 'Otkazano tijekom dostave');
+
+    await assertExecutionError(
+        recordDeliveryRunStopExceptions({
+            driverUserId,
+            runId: run.id,
+            clientOperationId: 'exception-after-cancellation',
+            occurredAt: new Date('2026-07-13T09:00:00.000Z'),
+            exceptions: [
+                {
+                    stopId: stop.id,
+                    outcome: DeliveryRunExceptionOutcomes.DEFERRED,
+                    reason: DeliveryRunExceptionReasons.OPERATIONAL_OTHER,
+                },
+            ],
+        }),
+        DeliveryRunExecutionErrorCodes.EXCEPTION_TRANSITION_INVALID,
+    );
+    assert.equal(
+        (await getDeliveryRun(run.id))?.stops[0]?.state,
+        DeliveryRunStopStates.PENDING,
+    );
+    assert.equal(
+        (
+            await storage()
+                .select()
+                .from(deliveryRunExceptionOperations)
+                .where(eq(deliveryRunExceptionOperations.runId, run.id))
+        ).length,
+        0,
+    );
+
+    await createEvent(
+        knownEvents.delivery.requestExceptionRecordedV1(requestId, {
+            runId: run.id,
+            stopId: stop.id,
+            clientOperationId: 'forged-late-exception',
+            outcome: DeliveryRunExceptionOutcomes.FAILED,
+            reason: DeliveryRunExceptionReasons.HARVEST_MISSING,
+            retryable: false,
+            note: 'Ova bilješka ne smije postati javna.',
+            occurredAt: new Date('2026-07-13T09:01:00.000Z').toISOString(),
+            recordedByUserId: driverUserId,
+            routeRevision: 1,
+        }),
+    );
+    const cancelled = await getDeliveryRequest(requestId);
+    assert.equal(cancelled?.state, 'cancelled');
+    assert.equal(cancelled?.deliveryException, undefined);
+
+    const fulfilledFixture = await createDeliveryRunFixture();
+    const fulfilledDriverUserId = fulfilledFixture.driverUserIds[0];
+    const fulfilledRequestId = fulfilledFixture.requestIds[0];
+    assert.ok(fulfilledDriverUserId);
+    assert.ok(fulfilledRequestId);
+    const fulfilledRun = await createRun({
+        fixture: fulfilledFixture,
+        driverUserId: fulfilledDriverUserId,
+        requestIds: [fulfilledRequestId],
+    });
+    const [fulfilledStop] = fulfilledRun.stops;
+    assert.ok(fulfilledStop);
+    await fulfillDeliveryRunStop({
+        driverUserId: fulfilledDriverUserId,
+        runId: fulfilledRun.id,
+        stopId: fulfilledStop.id,
+    });
+    await createEvent(
+        knownEvents.delivery.requestExceptionRecordedV1(fulfilledRequestId, {
+            runId: fulfilledRun.id,
+            stopId: fulfilledStop.id,
+            clientOperationId: 'forged-after-fulfillment',
+            outcome: DeliveryRunExceptionOutcomes.FAILED,
+            reason: DeliveryRunExceptionReasons.HARVEST_MISSING,
+            retryable: false,
+            occurredAt: new Date('2026-07-13T09:02:00.000Z').toISOString(),
+            recordedByUserId: fulfilledDriverUserId,
+            routeRevision: 1,
+        }),
+    );
+    const fulfilled = await getDeliveryRequest(fulfilledRequestId);
+    assert.equal(fulfilled?.state, 'fulfilled');
+    assert.equal(fulfilled?.deliveryException, undefined);
+});
+
+test('delivery exception reasons and completion semantics are explicit', () => {
+    assert.deepEqual(Object.values(DeliveryRunExceptionReasons), [
+        'customer-unavailable',
+        'address-inaccessible',
+        'address-wrong',
+        'harvest-damaged',
+        'harvest-missing',
+        'cancellation',
+        'operational-other',
+    ]);
+    assert.equal(
+        deliveryRunStopsAllowCompletion([
+            DeliveryRunStopStates.DELIVERED,
+            DeliveryRunStopStates.FAILED,
+            DeliveryRunStopStates.CANCELLED,
+        ]),
+        true,
+    );
+    assert.equal(
+        deliveryRunStopsAllowCompletion([
+            DeliveryRunStopStates.DELIVERED,
+            DeliveryRunStopStates.DEFERRED,
+        ]),
+        false,
+    );
+    assert.equal(
+        deliveryRunStopsAllowCompletion([
+            DeliveryRunStopStates.DELIVERED,
+            DeliveryRunStopStates.PENDING,
+        ]),
+        false,
+    );
+    assert.equal(
+        deliveryRunStopsAllowCompletion([
+            DeliveryRunStopStates.DELIVERED,
+            DeliveryRunStopStates.ARRIVED,
+        ]),
+        false,
+    );
+});
+
+test('all delivery exception reasons follow legal pending, arrived, and deferred transitions', async () => {
+    const fixture = await createDeliveryRunFixture({
+        accountIndexes: Array.from({ length: 7 }, () => 0),
+    });
+    const driverUserId = fixture.driverUserIds[0];
+    assert.ok(driverUserId);
+    const run = await createRun({
+        fixture,
+        driverUserId,
+        requestIds: fixture.requestIds,
+    });
+    const stops = run.stops;
+    assert.equal(stops.length, 7);
+    const command = async ({
+        index,
+        operation,
+        outcome,
+        reason,
+    }: {
+        index: number;
+        operation: string;
+        outcome: 'deferred' | 'failed' | 'cancelled';
+        reason:
+            | 'customer-unavailable'
+            | 'address-inaccessible'
+            | 'address-wrong'
+            | 'harvest-damaged'
+            | 'harvest-missing'
+            | 'cancellation'
+            | 'operational-other';
+    }) => {
+        const stop = stops[index];
+        assert.ok(stop);
+        return await recordDeliveryRunStopExceptions({
+            driverUserId,
+            runId: run.id,
+            clientOperationId: operation,
+            occurredAt: new Date(
+                Date.parse('2026-07-13T10:00:00.000Z') + index * 60_000,
+            ),
+            exceptions: [{ stopId: stop.id, outcome, reason }],
+        });
+    };
+
+    await command({
+        index: 0,
+        operation: 'pending-to-deferred',
+        outcome: DeliveryRunExceptionOutcomes.DEFERRED,
+        reason: DeliveryRunExceptionReasons.CUSTOMER_UNAVAILABLE,
+    });
+    await command({
+        index: 0,
+        operation: 'deferred-to-failed',
+        outcome: DeliveryRunExceptionOutcomes.FAILED,
+        reason: DeliveryRunExceptionReasons.CUSTOMER_UNAVAILABLE,
+    });
+    const secondStop = stops[1];
+    assert.ok(secondStop);
+    await markDeliveryRunStopArrived({
+        driverUserId,
+        runId: run.id,
+        stopId: secondStop.id,
+    });
+    await command({
+        index: 1,
+        operation: 'arrived-to-deferred',
+        outcome: DeliveryRunExceptionOutcomes.DEFERRED,
+        reason: DeliveryRunExceptionReasons.ADDRESS_INACCESSIBLE,
+    });
+    await command({
+        index: 1,
+        operation: 'deferred-to-cancelled',
+        outcome: DeliveryRunExceptionOutcomes.CANCELLED,
+        reason: DeliveryRunExceptionReasons.CANCELLATION,
+    });
+
+    const terminalCases = [
+        {
+            index: 2,
+            outcome: DeliveryRunExceptionOutcomes.FAILED,
+            reason: DeliveryRunExceptionReasons.ADDRESS_WRONG,
+        },
+        {
+            index: 3,
+            outcome: DeliveryRunExceptionOutcomes.FAILED,
+            reason: DeliveryRunExceptionReasons.HARVEST_DAMAGED,
+        },
+        {
+            index: 4,
+            outcome: DeliveryRunExceptionOutcomes.FAILED,
+            reason: DeliveryRunExceptionReasons.HARVEST_MISSING,
+        },
+        {
+            index: 5,
+            outcome: DeliveryRunExceptionOutcomes.CANCELLED,
+            reason: DeliveryRunExceptionReasons.CANCELLATION,
+        },
+        {
+            index: 6,
+            outcome: DeliveryRunExceptionOutcomes.FAILED,
+            reason: DeliveryRunExceptionReasons.OPERATIONAL_OTHER,
+        },
+    ];
+    for (const terminalCase of terminalCases) {
+        await command({
+            ...terminalCase,
+            operation: `pending-terminal-${terminalCase.index}`,
+        });
+    }
+
+    const completed = await getDeliveryRun(run.id);
+    assert.equal(completed?.state, DeliveryRunStates.COMPLETED);
+    assert.equal(completed?.rerouteRequiredAt, null);
+    assert.ok(
+        completed?.stops.every((stop) =>
+            [
+                DeliveryRunStopStates.FAILED,
+                DeliveryRunStopStates.CANCELLED,
+            ].includes(stop.state),
+        ),
+    );
+    const auditEvents = await storage()
+        .select({ data: events.data })
+        .from(events)
+        .where(
+            and(
+                eq(
+                    events.type,
+                    knownEventTypes.delivery.requestExceptionRecorded,
+                ),
+                inArray(events.aggregateId, fixture.requestIds),
+            ),
+        );
+    const recordedReasons = new Set(
+        auditEvents.flatMap(({ data }) => {
+            if (!data || typeof data !== 'object' || Array.isArray(data)) {
+                return [];
+            }
+            const reason = (data as Record<string, unknown>).reason;
+            return typeof reason === 'string' ? [reason] : [];
+        }),
+    );
+    for (const reason of Object.values(DeliveryRunExceptionReasons)) {
+        assert.ok(recordedReasons.has(reason));
+    }
+});
+
+test('execution checkpoints separate same-sequence stops with different physical keys', async () => {
+    const { run } = await startPreparedBulkRunWithConfirmedPickup();
+    const [firstStop, secondStop] = run.stops;
+    assert.ok(firstStop);
+    assert.ok(secondStop);
+    await storage()
+        .update(deliveryRunStops)
+        .set({ stopKey: `${secondStop.stopKey}:separate-retry` })
+        .where(eq(deliveryRunStops.id, secondStop.id));
+
+    const deliverySteps = (
+        await getDeliveryRunExecutionProgress(run.id)
+    ).filter((step) => step.kind === 'delivery');
+    assert.equal(deliverySteps.length, 2);
+    assert.deepEqual(
+        deliverySteps.map((step) => ({
+            stopIds: step.stopIds,
+            actionableStopIds: step.actionableStopIds,
+            state: step.state,
+        })),
+        [
+            {
+                stopIds: [firstStop.id],
+                actionableStopIds: [firstStop.id],
+                state: 'current',
+            },
+            {
+                stopIds: [secondStop.id],
+                actionableStopIds: [secondStop.id],
+                state: 'upcoming',
+            },
+        ],
+    );
+});
+
+test('concurrent multi-item exception replay writes one receipt and one event per item', async () => {
+    const { run, driverUserId } =
+        await startPreparedBulkRunWithConfirmedPickup();
+    const [firstStop, secondStop] = run.stops;
+    assert.ok(firstStop);
+    assert.ok(secondStop);
+    const input = {
+        driverUserId,
+        runId: run.id,
+        clientOperationId: 'concurrent-terminal-bulk-operation',
+        occurredAt: new Date('2026-07-13T10:30:00.000Z'),
+        exceptions: [
+            {
+                stopId: firstStop.id,
+                outcome: DeliveryRunExceptionOutcomes.FAILED,
+                reason: DeliveryRunExceptionReasons.OPERATIONAL_OTHER,
+            },
+            {
+                stopId: secondStop.id,
+                outcome: DeliveryRunExceptionOutcomes.CANCELLED,
+                reason: DeliveryRunExceptionReasons.CANCELLATION,
+            },
+        ],
+    } satisfies RecordDeliveryRunStopExceptionsInput;
+    const results = await Promise.all([
+        recordDeliveryRunStopExceptions(input),
+        recordDeliveryRunStopExceptions(input),
+    ]);
+    assert.deepEqual(results.map((result) => result.replayed).sort(), [
+        false,
+        true,
+    ]);
+    assert.ok(results.every((result) => result.result.runCompleted));
+    assert.deepEqual(
+        (await getDeliveryRun(run.id))?.stops.map((stop) => stop.state),
+        [DeliveryRunStopStates.FAILED, DeliveryRunStopStates.CANCELLED],
+    );
+    assert.equal(
+        (
+            await storage()
+                .select()
+                .from(deliveryRunExceptionOperations)
+                .where(eq(deliveryRunExceptionOperations.runId, run.id))
+        ).length,
+        1,
+    );
+    assert.equal(
+        (
+            await storage()
+                .select()
+                .from(events)
+                .where(
+                    and(
+                        eq(
+                            events.type,
+                            knownEventTypes.delivery.requestExceptionRecorded,
+                        ),
+                        inArray(events.aggregateId, [
+                            firstStop.deliveryRequestId,
+                            secondStop.deliveryRequestId,
+                        ]),
+                    ),
+                )
+        ).length,
+        2,
+    );
+});
+
+test('arrival and delivery races cannot overwrite exception outcomes', async () => {
+    const arrivalFixture = await createDeliveryRunFixture();
+    const arrivalDriverUserId = arrivalFixture.driverUserIds[0];
+    assert.ok(arrivalDriverUserId);
+    const arrivalRun = await createRun({
+        fixture: arrivalFixture,
+        driverUserId: arrivalDriverUserId,
+        requestIds: arrivalFixture.requestIds,
+    });
+    const [arrivalStop] = arrivalRun.stops;
+    assert.ok(arrivalStop);
+    const [arrivalResult, exceptionResult] = await Promise.allSettled([
+        markDeliveryRunStopArrived({
+            driverUserId: arrivalDriverUserId,
+            runId: arrivalRun.id,
+            stopId: arrivalStop.id,
+        }),
+        recordDeliveryRunStopExceptions({
+            driverUserId: arrivalDriverUserId,
+            runId: arrivalRun.id,
+            clientOperationId: 'arrival-race-exception',
+            occurredAt: new Date('2026-07-13T10:45:00.000Z'),
+            exceptions: [
+                {
+                    stopId: arrivalStop.id,
+                    outcome: DeliveryRunExceptionOutcomes.FAILED,
+                    reason: DeliveryRunExceptionReasons.OPERATIONAL_OTHER,
+                },
+            ],
+        }),
+    ]);
+    assert.equal(exceptionResult.status, 'fulfilled');
+    assert.ok(
+        arrivalResult.status === 'fulfilled' ||
+            arrivalResult.reason instanceof DeliveryRunExecutionError,
+    );
+    assert.equal(
+        (await getDeliveryRun(arrivalRun.id))?.stops[0]?.state,
+        DeliveryRunStopStates.FAILED,
+    );
+
+    const deliveryFixture = await createDeliveryRunFixture();
+    const deliveryDriverUserId = deliveryFixture.driverUserIds[0];
+    const deliveryRequestId = deliveryFixture.requestIds[0];
+    assert.ok(deliveryDriverUserId);
+    assert.ok(deliveryRequestId);
+    const deliveryRun = await createRun({
+        fixture: deliveryFixture,
+        driverUserId: deliveryDriverUserId,
+        requestIds: [deliveryRequestId],
+    });
+    const [deliveryStop] = deliveryRun.stops;
+    assert.ok(deliveryStop);
+    const results = await Promise.allSettled([
+        fulfillDeliveryRunStop({
+            driverUserId: deliveryDriverUserId,
+            runId: deliveryRun.id,
+            stopId: deliveryStop.id,
+        }),
+        recordDeliveryRunStopExceptions({
+            driverUserId: deliveryDriverUserId,
+            runId: deliveryRun.id,
+            clientOperationId: 'delivery-race-exception',
+            occurredAt: new Date('2026-07-13T10:46:00.000Z'),
+            exceptions: [
+                {
+                    stopId: deliveryStop.id,
+                    outcome: DeliveryRunExceptionOutcomes.FAILED,
+                    reason: DeliveryRunExceptionReasons.OPERATIONAL_OTHER,
+                },
+            ],
+        }),
+    ]);
+    assert.equal(
+        results.filter((result) => result.status === 'fulfilled').length,
+        1,
+    );
+    const persistedStop = (await getDeliveryRun(deliveryRun.id))?.stops[0];
+    const projectedRequest = await getDeliveryRequest(deliveryRequestId);
+    assert.ok(
+        persistedStop?.state === DeliveryRunStopStates.DELIVERED ||
+            persistedStop?.state === DeliveryRunStopStates.FAILED,
+    );
+    assert.equal(
+        projectedRequest?.state,
+        persistedStop?.state === DeliveryRunStopStates.DELIVERED
+            ? 'fulfilled'
+            : 'failed',
+    );
+});
+
+test('delivery exception commands reject invalid shapes and future checkpoints', async () => {
+    const fixture = await createDeliveryRunFixture({ accountIndexes: [0, 0] });
+    const driverUserId = fixture.driverUserIds[0];
+    assert.ok(driverUserId);
+    const run = await createRun({
+        fixture,
+        driverUserId,
+        requestIds: fixture.requestIds,
+    });
+    const [currentStop, futureStop] = run.stops;
+    assert.ok(currentStop);
+    assert.ok(futureStop);
+    const base = {
+        driverUserId,
+        runId: run.id,
+        occurredAt: new Date('2026-07-13T11:00:00.000Z'),
+    };
+
+    await assertExecutionError(
+        recordDeliveryRunStopExceptions({
+            ...base,
+            clientOperationId: 'duplicate-stop-shape',
+            exceptions: [
+                {
+                    stopId: currentStop.id,
+                    outcome: DeliveryRunExceptionOutcomes.FAILED,
+                    reason: DeliveryRunExceptionReasons.OPERATIONAL_OTHER,
+                },
+                {
+                    stopId: currentStop.id,
+                    outcome: DeliveryRunExceptionOutcomes.FAILED,
+                    reason: DeliveryRunExceptionReasons.HARVEST_MISSING,
+                },
+            ],
+        }),
+        DeliveryRunExecutionErrorCodes.EXCEPTION_INVALID,
+    );
+    await assertExecutionError(
+        recordDeliveryRunStopExceptions({
+            ...base,
+            clientOperationId: 'oversized-note-shape',
+            exceptions: [
+                {
+                    stopId: currentStop.id,
+                    outcome: DeliveryRunExceptionOutcomes.FAILED,
+                    reason: DeliveryRunExceptionReasons.OPERATIONAL_OTHER,
+                    note: 'x'.repeat(1001),
+                },
+            ],
+        }),
+        DeliveryRunExecutionErrorCodes.EXCEPTION_INVALID,
+    );
+    await assertExecutionError(
+        recordDeliveryRunStopExceptions({
+            ...base,
+            clientOperationId: 'mismatched-cancellation-shape',
+            exceptions: [
+                {
+                    stopId: currentStop.id,
+                    outcome: DeliveryRunExceptionOutcomes.CANCELLED,
+                    reason: DeliveryRunExceptionReasons.OPERATIONAL_OTHER,
+                },
+            ],
+        }),
+        DeliveryRunExecutionErrorCodes.EXCEPTION_INVALID,
+    );
+    await assertExecutionError(
+        recordDeliveryRunStopExceptions({
+            ...base,
+            clientOperationId: 'future-checkpoint',
+            exceptions: [
+                {
+                    stopId: futureStop.id,
+                    outcome: DeliveryRunExceptionOutcomes.FAILED,
+                    reason: DeliveryRunExceptionReasons.OPERATIONAL_OTHER,
+                },
+            ],
+        }),
+        DeliveryRunExecutionErrorCodes.ROUTE_ORDER,
+    );
+    assert.deepEqual(
+        (await getDeliveryRun(run.id))?.stops.map((stop) => stop.state),
+        [DeliveryRunStopStates.PENDING, DeliveryRunStopStates.PENDING],
+    );
+    assert.equal(
+        (
+            await storage()
+                .select()
+                .from(deliveryRunExceptionOperations)
+                .where(eq(deliveryRunExceptionOperations.runId, run.id))
+        ).length,
+        0,
+    );
+});
+
+test('database constraints reject mismatched cancellation outcomes and reasons', async () => {
+    const fixture = await createDeliveryRunFixture();
+    const driverUserId = fixture.driverUserIds[0];
+    assert.ok(driverUserId);
+    const run = await createRun({
+        fixture,
+        driverUserId,
+        requestIds: fixture.requestIds,
+    });
+    const [stop] = run.stops;
+    assert.ok(stop);
+    const exceptionFields = {
+        exceptionOccurredAt: new Date('2026-07-13T09:00:00.000Z'),
+        exceptionRecordedByUserId: driverUserId,
+    };
+
+    await assert.rejects(
+        storage()
+            .update(deliveryRunStops)
+            .set({
+                state: DeliveryRunStopStates.FAILED,
+                exceptionReason: DeliveryRunExceptionReasons.OPERATIONAL_OTHER,
+            })
+            .where(eq(deliveryRunStops.id, stop.id)),
+        (error) =>
+            error instanceof Error &&
+            error.cause instanceof Error &&
+            error.cause.message.includes('outcome_shape_check'),
+    );
+
+    for (const invalid of [
+        {
+            state: DeliveryRunStopStates.CANCELLED,
+            exceptionReason: DeliveryRunExceptionReasons.OPERATIONAL_OTHER,
+        },
+        {
+            state: DeliveryRunStopStates.FAILED,
+            exceptionReason: DeliveryRunExceptionReasons.CANCELLATION,
+        },
+    ]) {
+        await assert.rejects(
+            storage()
+                .update(deliveryRunStops)
+                .set({ ...invalid, ...exceptionFields })
+                .where(eq(deliveryRunStops.id, stop.id)),
+            (error) =>
+                error instanceof Error &&
+                error.cause instanceof Error &&
+                error.cause.message.includes('cancellation_pair_check'),
+        );
+    }
 });
