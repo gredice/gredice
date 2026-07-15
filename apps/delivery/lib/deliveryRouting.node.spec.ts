@@ -7,6 +7,7 @@ import {
     formatDeliveryDestinationAddress,
     formatDeliveryGeocodingAddress,
     haversineDistanceMeters,
+    maximumDeliveryRouteStops,
     nearestNeighborStopOrder,
     orderDeliveryStopsByTimeWindow,
     planDeliveryRoute,
@@ -436,28 +437,100 @@ test('waits for a future delivery window and rejects an expired one', () => {
                 departureTime: new Date('2026-07-13T10:01:00.000Z'),
                 optimize: false,
             }),
-        DeliveryRoutePlanningError,
+        (error: unknown) => {
+            assert.ok(error instanceof DeliveryRoutePlanningError);
+            assert.equal(error.code, 'arrival-window-infeasible');
+            assert.equal(error.deliveryRequestId, 'scheduled');
+            assert.match(error.message, /Scheduled/);
+            return true;
+        },
     );
 });
 
-test('rejects selected time windows that span more than one route day', async () => {
+test('reports the first delivery beyond the physical stop limit', async () => {
+    const candidates = Array.from(
+        { length: maximumDeliveryRouteStops + 1 },
+        (_value, index) => ({
+            deliveryRequestId: `delivery-${index}`,
+            formattedAddress: `Adresa ${index + 1}`,
+            windowStartAt: new Date('2026-07-13T08:00:00.000Z'),
+            windowEndAt: new Date('2026-07-13T10:00:00.000Z'),
+        }),
+    );
+
+    await assert.rejects(
+        planDeliveryRoute({ candidates }),
+        (error: unknown) => {
+            assert.ok(error instanceof DeliveryRoutePlanningError);
+            assert.equal(error.code, 'route-stop-limit-exceeded');
+            assert.equal(
+                error.deliveryRequestId,
+                `delivery-${maximumDeliveryRouteStops}`,
+            );
+            assert.match(
+                error.message,
+                new RegExp(`Adresa ${maximumDeliveryRouteStops + 1}`),
+            );
+            return true;
+        },
+    );
+});
+
+test('reports the delivery with an invalid window', async () => {
     await assert.rejects(
         planDeliveryRoute({
             candidates: [
                 {
-                    deliveryRequestId: 'first',
-                    formattedAddress: 'First',
-                    windowStartAt: new Date('2026-07-13T08:00:00.000Z'),
-                    windowEndAt: new Date('2026-07-13T10:00:00.000Z'),
-                },
-                {
-                    deliveryRequestId: 'second',
-                    formattedAddress: 'Second',
-                    windowStartAt: new Date('2026-07-14T10:00:01.000Z'),
-                    windowEndAt: new Date('2026-07-14T12:00:01.000Z'),
+                    deliveryRequestId: 'invalid-window',
+                    formattedAddress: 'Ilica 99, Zagreb',
+                    windowStartAt: new Date('2026-07-13T10:00:00.000Z'),
+                    windowEndAt: new Date('2026-07-13T09:00:00.000Z'),
                 },
             ],
         }),
-        DeliveryRoutePlanningError,
+        (error: unknown) => {
+            assert.ok(error instanceof DeliveryRoutePlanningError);
+            assert.equal(error.code, 'delivery-window-invalid');
+            assert.equal(error.deliveryRequestId, 'invalid-window');
+            assert.match(error.message, /Ilica 99/);
+            return true;
+        },
     );
+});
+
+test('reports a deterministic delivery when selected windows span more than one route day', async () => {
+    const first = {
+        deliveryRequestId: 'first',
+        formattedAddress: 'First',
+        windowStartAt: new Date('2026-07-13T08:00:00.000Z'),
+        windowEndAt: new Date('2026-07-13T10:00:00.000Z'),
+    };
+    const lateA = {
+        deliveryRequestId: 'late-a',
+        formattedAddress: 'Late A',
+        windowStartAt: new Date('2026-07-14T10:00:01.000Z'),
+        windowEndAt: new Date('2026-07-14T12:00:01.000Z'),
+    };
+    const lateZ = {
+        deliveryRequestId: 'late-z',
+        formattedAddress: 'Late Z',
+        windowStartAt: new Date('2026-07-14T10:00:01.000Z'),
+        windowEndAt: new Date('2026-07-14T12:00:01.000Z'),
+    };
+
+    for (const candidates of [
+        [lateZ, first, lateA],
+        [lateA, first, lateZ],
+    ]) {
+        await assert.rejects(
+            planDeliveryRoute({ candidates }),
+            (error: unknown) => {
+                assert.ok(error instanceof DeliveryRoutePlanningError);
+                assert.equal(error.code, 'route-window-span-exceeded');
+                assert.equal(error.deliveryRequestId, 'late-a');
+                assert.match(error.message, /Late A/);
+                return true;
+            },
+        );
+    }
 });

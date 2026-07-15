@@ -39,6 +39,11 @@ type ScanHistoryItem = {
     message: string;
 };
 
+type PickupRouteConflict = Extract<
+    HarvestTraceSelectionResult,
+    { status: 'route-conflict' }
+>;
+
 function scanHistoryItem(
     id: number,
     result: HarvestTraceSelectionResult | HarvestTraceVerificationResult,
@@ -62,6 +67,12 @@ function scanHistoryItem(
                 color: 'warning',
                 message:
                     'Dosegnut je najveći broj fizičkih stanica za jednu rutu.',
+            };
+        case 'route-conflict':
+            return {
+                id,
+                color: 'warning',
+                message: result.message,
             };
         case 'ambiguous':
             return {
@@ -140,6 +151,7 @@ export function HarvestTraceScanner({
     disabled,
     completedTraceCount,
     onScan,
+    onReplacePickupSelection,
 }: {
     variant: 'pickup' | 'verification';
     availableTraceCount: number;
@@ -148,6 +160,7 @@ export function HarvestTraceScanner({
     onScan: (
         value: string,
     ) => HarvestTraceSelectionResult | HarvestTraceVerificationResult;
+    onReplacePickupSelection?: (requestIds: string[]) => boolean;
 }) {
     const [open, setOpen] = useState(false);
     const [cameraState, setCameraState] = useState<CameraState>(
@@ -156,10 +169,13 @@ export function HarvestTraceScanner({
     const [cameraError, setCameraError] = useState<string | null>(null);
     const [manualValue, setManualValue] = useState('');
     const [history, setHistory] = useState<ScanHistoryItem[]>([]);
+    const [pickupRouteConflict, setPickupRouteConflict] =
+        useState<PickupRouteConflict | null>(null);
     const [uniqueScanCount, setUniqueScanCount] = useState(0);
     const videoRef = useRef<HTMLVideoElement>(null);
     const readerRef = useRef<BrowserQRCodeReader | null>(null);
     const seenValuesRef = useRef(new Set<string>());
+    const pickupRouteConflictScanValueRef = useRef<string | null>(null);
     const historyIdRef = useRef(0);
     const onScanRef = useRef(onScan);
 
@@ -194,6 +210,28 @@ export function HarvestTraceScanner({
             setUniqueScanCount(seenValuesRef.current.size);
             historyIdRef.current += 1;
             const result = onScanRef.current(normalizedValue);
+            if (result.status === 'route-conflict') {
+                const displacedConflictScanValue =
+                    pickupRouteConflictScanValueRef.current;
+                if (
+                    displacedConflictScanValue &&
+                    displacedConflictScanValue !== normalizedValue
+                ) {
+                    seenValuesRef.current.delete(displacedConflictScanValue);
+                    setUniqueScanCount(seenValuesRef.current.size);
+                }
+                pickupRouteConflictScanValueRef.current = normalizedValue;
+                setPickupRouteConflict(result);
+            } else if (result.status === 'selected') {
+                const resolvedConflictScanValue =
+                    pickupRouteConflictScanValueRef.current;
+                if (resolvedConflictScanValue) {
+                    seenValuesRef.current.delete(resolvedConflictScanValue);
+                    setUniqueScanCount(seenValuesRef.current.size);
+                }
+                pickupRouteConflictScanValueRef.current = null;
+                setPickupRouteConflict(null);
+            }
             setHistory((current) => [
                 scanHistoryItem(historyIdRef.current, result),
                 ...current.slice(0, 3),
@@ -306,8 +344,10 @@ export function HarvestTraceScanner({
 
     function openScanner() {
         seenValuesRef.current.clear();
+        pickupRouteConflictScanValueRef.current = null;
         historyIdRef.current = 0;
         setHistory([]);
+        setPickupRouteConflict(null);
         setUniqueScanCount(0);
         setManualValue('');
         setCameraError(null);
@@ -319,6 +359,26 @@ export function HarvestTraceScanner({
         event.preventDefault();
         processScan(manualValue, 'manual');
         setManualValue('');
+    }
+
+    function replacePickupSelection(requestIds: string[]) {
+        if (onReplacePickupSelection?.(requestIds)) {
+            pickupRouteConflictScanValueRef.current = null;
+            setPickupRouteConflict(null);
+            return;
+        }
+        const failedScanValue = pickupRouteConflictScanValueRef.current;
+        if (failedScanValue) {
+            seenValuesRef.current.delete(failedScanValue);
+            setUniqueScanCount(seenValuesRef.current.size);
+        }
+        pickupRouteConflictScanValueRef.current = null;
+        setPickupRouteConflict(null);
+        pushHistory({
+            color: 'warning',
+            message:
+                'Dostave su se u međuvremenu promijenile. Osvježi odabir i skeniraj dostupni QR ponovno.',
+        });
     }
 
     const verificationMode = variant === 'verification';
@@ -424,6 +484,52 @@ export function HarvestTraceScanner({
                             startDecorator={<Warning className="size-5" />}
                         >
                             {cameraError}
+                        </Alert>
+                    ) : null}
+
+                    {pickupRouteConflict && onReplacePickupSelection ? (
+                        <Alert
+                            color="warning"
+                            startDecorator={<Warning className="size-5" />}
+                        >
+                            <div className="space-y-3">
+                                <span className="block">
+                                    {pickupRouteConflict.message}
+                                </span>
+                                <div className="flex flex-wrap gap-2">
+                                    {pickupRouteConflict.conflictingRequestIds
+                                        .length > 0 ? (
+                                        <Button
+                                            size="sm"
+                                            variant="outlined"
+                                            onClick={() =>
+                                                replacePickupSelection(
+                                                    pickupRouteConflict.conflictingRequestIds,
+                                                )
+                                            }
+                                        >
+                                            {pickupRouteConflict.code ===
+                                            'mixed-pickup-locations'
+                                                ? 'Prebaci na skeniranu lokaciju'
+                                                : 'Prebaci na skenirani termin'}
+                                        </Button>
+                                    ) : null}
+                                    {pickupRouteConflict.separateRouteRequestIds
+                                        .length > 0 ? (
+                                        <Button
+                                            size="sm"
+                                            variant="plain"
+                                            onClick={() =>
+                                                replacePickupSelection(
+                                                    pickupRouteConflict.separateRouteRequestIds,
+                                                )
+                                            }
+                                        >
+                                            Zadrži trenutačni odabir
+                                        </Button>
+                                    ) : null}
+                                </div>
+                            </div>
                         </Alert>
                     ) : null}
 

@@ -2,6 +2,7 @@ import type {
     DeliveryRouteOrderSummary,
     DeliveryStopDeliverySummary,
 } from './deliveryDashboardTypes';
+import type { DeliveryRouteSelectionConflict } from './deliveryRouteSelection';
 
 const harvestTraceTokenPattern = /^[A-Za-z0-9_-]{16,96}$/;
 const harvestTraceBaseUrl = 'https://www.gredice.com';
@@ -68,6 +69,13 @@ export type HarvestTraceSelectionResult =
       }
     | ({ status: 'already-selected' } & HarvestTraceSelectionContext)
     | ({ status: 'limit-reached' } & HarvestTraceSelectionContext)
+    | ({
+          status: 'route-conflict';
+          message: string;
+          code: DeliveryRouteSelectionConflict['code'];
+          conflictingRequestIds: string[];
+          separateRouteRequestIds: string[];
+      } & HarvestTraceSelectionContext)
     | ({
           status: 'selected';
           nextSelectedRequestIds: string[];

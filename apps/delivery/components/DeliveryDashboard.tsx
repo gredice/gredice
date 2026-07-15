@@ -73,6 +73,7 @@ async function postAction(path: string, body?: object) {
                 : 'Radnju nije moguće dovršiti.';
         throw new Error(message);
     }
+    return data;
 }
 
 export function DeliveryDashboard() {
@@ -100,6 +101,25 @@ export function DeliveryDashboard() {
                 error instanceof Error
                     ? error.message
                     : 'Radnju nije moguće dovršiti.',
+            );
+        } finally {
+            setPendingAction(null);
+        }
+    };
+
+    const startRun = async (deliveryRequestIds: string[]) => {
+        setPendingAction('start-route');
+        setActionError(null);
+        try {
+            const body = { deliveryRequestIds };
+            await postAction('/api/driver/runs/preflight', body);
+            await postAction('/api/driver/runs', body);
+            await query.refetch();
+        } catch (error) {
+            setActionError(
+                error instanceof Error
+                    ? error.message
+                    : 'Rutu nije moguće pokrenuti.',
             );
         } finally {
             setPendingAction(null);
@@ -161,10 +181,9 @@ export function DeliveryDashboard() {
                     dashboard={dashboard}
                     trackingState={trackingState}
                     pendingAction={pendingAction}
+                    onSelectionChange={() => setActionError(null)}
                     onStartRun={(deliveryRequestIds) =>
-                        void perform('start-route', '/api/driver/runs', {
-                            deliveryRequestIds,
-                        })
+                        void startRun(deliveryRequestIds)
                     }
                     onArrive={(runId, stopId) =>
                         void perform(

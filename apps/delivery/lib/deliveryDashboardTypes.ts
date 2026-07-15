@@ -67,6 +67,7 @@ export type DeliveryBatchSummary = {
     slotId: number;
     startAt: string;
     endAt: string;
+    pickupLocationId: number;
     pickupLocationName: string | null;
     pickupAddress: string | null;
     deliveryCount: number;

@@ -23,6 +23,11 @@ import {
     formatDistance,
     formatTravelDuration,
 } from '../lib/deliveryFormatting';
+import {
+    applyDeliveryRouteSelection,
+    deliveryRouteSelectionCandidatesFromBatches,
+    inspectDeliveryRouteSelection,
+} from '../lib/deliveryRouteSelection';
 import { groupByDeliveryStop } from '../lib/deliveryStopGrouping';
 import { selectDeliveryStopFromHarvestTrace } from '../lib/harvestTraceScan';
 import { DeliveryAppHeader } from './DeliveryAppHeader';
@@ -52,6 +57,7 @@ export function DriverDashboard({
     dashboard,
     trackingState,
     pendingAction,
+    onSelectionChange,
     onStartRun,
     onArrive,
     onDeliver,
@@ -59,6 +65,7 @@ export function DriverDashboard({
     dashboard: DriverDeliveryDashboard;
     trackingState: DriverTrackingState;
     pendingAction: string | null;
+    onSelectionChange: () => void;
     onStartRun: (deliveryRequestIds: string[]) => void;
     onArrive: (runId: string, stopId: number) => void;
     onDeliver: (runId: string, stopId: number, notes?: string) => void;
@@ -68,6 +75,10 @@ export function DriverDashboard({
     const [selectedRequestIds, setSelectedRequestIdsState] = useState<string[]>(
         [],
     );
+    const [rejectedSelectionAttempt, setRejectedSelectionAttempt] = useState<{
+        currentRequestIds: string[];
+        nextRequestIds: string[];
+    } | null>(null);
     const selectedRequestIdsRef = useRef<string[]>([]);
     const availableOrders = dashboard.batches.flatMap((batch) => batch.orders);
     const selectableOrders = availableOrders.filter(
@@ -81,6 +92,9 @@ export function DriverDashboard({
         availableOrders.map((order) => [order.requestId, order]),
     );
     const availableStopGroups = groupByDeliveryStop(selectableOrders);
+    const selectionCandidates = deliveryRouteSelectionCandidatesFromBatches(
+        dashboard.batches,
+    );
     const effectiveSelectedRequestIds = selectedRequestIds.filter((requestId) =>
         availableRequestIdSet.has(requestId),
     );
@@ -91,11 +105,45 @@ export function DriverDashboard({
             return order ? [order.stopKey] : [];
         }),
     );
+    const selectionInspection = inspectDeliveryRouteSelection({
+        candidates: selectionCandidates,
+        requestIds: effectiveSelectedRequestIds,
+        maximumRouteStops: dashboard.maximumRouteStops,
+        maximumRouteWindowHours: dashboard.maximumRouteWindowHours,
+    });
     const selectionLimitReached =
-        selectedStopKeys.size >= dashboard.maximumRouteStops;
-    const selectedSlotCount = dashboard.batches.filter((batch) =>
-        batch.orders.some((order) => selectedRequestIdSet.has(order.requestId)),
-    ).length;
+        selectionInspection.summary.stopCount >= dashboard.maximumRouteStops;
+    const selectedSlotCount = selectionInspection.summary.slots.length;
+    const selectedPickupLocationCount =
+        selectionInspection.summary.pickupLocations.length;
+    const selectedWindowSpanHours = Math.ceil(
+        selectionInspection.summary.windowSpanMinutes / 60,
+    );
+    const reconciledRejectedSelection = rejectedSelectionAttempt
+        ? applyDeliveryRouteSelection({
+              candidates: selectionCandidates,
+              currentRequestIds: rejectedSelectionAttempt.currentRequestIds,
+              nextRequestIds: rejectedSelectionAttempt.nextRequestIds,
+              maximumRouteStops: dashboard.maximumRouteStops,
+              maximumRouteWindowHours: dashboard.maximumRouteWindowHours,
+          })
+        : null;
+    const activeSelectionConflict =
+        reconciledRejectedSelection?.status === 'rejected'
+            ? reconciledRejectedSelection.conflict
+            : selectionInspection.conflict;
+    const separateRouteLocation =
+        activeSelectionConflict?.pickupLocations.find((location) =>
+            location.requestIds.some((requestId) =>
+                activeSelectionConflict.separateRouteRequestIds.includes(
+                    requestId,
+                ),
+            ),
+        ) ?? null;
+    const separateRouteLocationLabel =
+        separateRouteLocation?.name ??
+        separateRouteLocation?.address ??
+        'odabranu lokaciju';
     const availableTraceCount = new Set(
         selectableOrders.flatMap((order) =>
             order.harvest.tracePath ? [order.harvest.tracePath] : [],
@@ -107,11 +155,34 @@ export function DriverDashboard({
         setSelectedRequestIdsState(requestIds);
     };
 
+    const applySelectedRequestIds = (requestIds: string[]) => {
+        onSelectionChange();
+        const currentRequestIds = selectedRequestIdsRef.current;
+        const result = applyDeliveryRouteSelection({
+            candidates: selectionCandidates,
+            currentRequestIds,
+            nextRequestIds: requestIds,
+            maximumRouteStops: dashboard.maximumRouteStops,
+            maximumRouteWindowHours: dashboard.maximumRouteWindowHours,
+        });
+        if (result.status === 'rejected') {
+            setRejectedSelectionAttempt({
+                currentRequestIds,
+                nextRequestIds: requestIds,
+            });
+            return result;
+        }
+
+        setRejectedSelectionAttempt(null);
+        replaceSelectedRequestIds(result.requestIds);
+        return result;
+    };
+
     const updateSelectedRequestIds = (
         update: (current: string[]) => string[],
     ) => {
         const nextRequestIds = update(selectedRequestIdsRef.current);
-        replaceSelectedRequestIds(nextRequestIds);
+        return applySelectedRequestIds(nextRequestIds);
     };
 
     const toggleOrder = (requestId: string, checked: boolean) => {
@@ -189,7 +260,7 @@ export function DriverDashboard({
     };
 
     const selectAllAvailable = () => {
-        replaceSelectedRequestIds(
+        applySelectedRequestIds(
             availableStopGroups
                 .slice(0, dashboard.maximumRouteStops)
                 .flatMap((group) =>
@@ -207,7 +278,21 @@ export function DriverDashboard({
         });
 
         if (result.status === 'selected') {
-            replaceSelectedRequestIds(result.nextSelectedRequestIds);
+            const selectionResult = applySelectedRequestIds(
+                result.nextSelectedRequestIds,
+            );
+            if (selectionResult.status === 'rejected') {
+                return {
+                    ...result,
+                    status: 'route-conflict' as const,
+                    message: selectionResult.conflict.message,
+                    code: selectionResult.conflict.code,
+                    conflictingRequestIds:
+                        selectionResult.conflict.conflictingRequestIds,
+                    separateRouteRequestIds:
+                        selectionResult.conflict.separateRouteRequestIds,
+                };
+            }
         }
 
         return result;
@@ -415,6 +500,27 @@ export function DriverDashboard({
                                                         ? 'termin'
                                                         : 'termina'}
                                                 </Chip>
+                                                <Chip color="neutral" size="sm">
+                                                    {
+                                                        selectedPickupLocationCount
+                                                    }{' '}
+                                                    {selectedPickupLocationCount ===
+                                                    1
+                                                        ? 'lokacija preuzimanja'
+                                                        : 'lokacije preuzimanja'}
+                                                </Chip>
+                                                {effectiveSelectedRequestIds.length >
+                                                0 ? (
+                                                    <Chip
+                                                        color="neutral"
+                                                        size="sm"
+                                                    >
+                                                        {
+                                                            selectedWindowSpanHours
+                                                        }{' '}
+                                                        h raspon termina
+                                                    </Chip>
+                                                ) : null}
                                             </div>
                                             <Typography
                                                 level="body3"
@@ -431,7 +537,10 @@ export function DriverDashboard({
                                                     dashboard.maximumRouteWindowHours
                                                 }{' '}
                                                 sata i poštuju se pri izračunu
-                                                dolazaka. Urodi koji se još
+                                                dolazaka. Dok povezane lokacije
+                                                preuzimanja nisu dio plana,
+                                                jedna ruta kreće s jedne
+                                                lokacije. Urodi koji se još
                                                 pripremaju ostaju vidljivi, ali
                                                 ih nije moguće odabrati.
                                             </Typography>
@@ -451,6 +560,20 @@ export function DriverDashboard({
                                                     effectiveSelectedRequestIds.length
                                                 }
                                                 onScan={scanHarvestTrace}
+                                                onReplacePickupSelection={(
+                                                    requestIds,
+                                                ) => {
+                                                    const result =
+                                                        applySelectedRequestIds(
+                                                            requestIds,
+                                                        );
+                                                    return (
+                                                        result.status ===
+                                                            'accepted' &&
+                                                        result.requestIds
+                                                            .length > 0
+                                                    );
+                                                }}
                                             />
                                             <Button
                                                 variant="outlined"
@@ -471,9 +594,7 @@ export function DriverDashboard({
                                                         0
                                                 }
                                                 onClick={() =>
-                                                    replaceSelectedRequestIds(
-                                                        [],
-                                                    )
+                                                    applySelectedRequestIds([])
                                                 }
                                                 startDecorator={
                                                     <Reset className="size-4" />
@@ -489,7 +610,10 @@ export function DriverDashboard({
                                                 disabled={
                                                     Boolean(pendingAction) ||
                                                     effectiveSelectedRequestIds.length ===
-                                                        0
+                                                        0 ||
+                                                    Boolean(
+                                                        selectionInspection.conflict,
+                                                    )
                                                 }
                                                 onClick={() =>
                                                     onStartRun(
@@ -513,6 +637,54 @@ export function DriverDashboard({
                                         </div>
                                     </CardContent>
                                 </Card>
+
+                                {activeSelectionConflict ? (
+                                    <Alert
+                                        color="warning"
+                                        startDecorator={
+                                            <Warning className="size-5" />
+                                        }
+                                    >
+                                        <div className="space-y-3">
+                                            <span className="block">
+                                                {
+                                                    activeSelectionConflict.message
+                                                }
+                                            </span>
+                                            <div className="flex flex-wrap gap-2">
+                                                {activeSelectionConflict
+                                                    .separateRouteRequestIds
+                                                    .length > 0 ? (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outlined"
+                                                        onClick={() =>
+                                                            applySelectedRequestIds(
+                                                                activeSelectionConflict.separateRouteRequestIds,
+                                                            )
+                                                        }
+                                                    >
+                                                        {activeSelectionConflict.code ===
+                                                        'mixed-pickup-locations'
+                                                            ? `Zadrži samo ${separateRouteLocationLabel}`
+                                                            : 'Zadrži kompatibilan odabir'}
+                                                    </Button>
+                                                ) : null}
+                                                <Button
+                                                    size="sm"
+                                                    variant="plain"
+                                                    onClick={() =>
+                                                        applySelectedRequestIds(
+                                                            [],
+                                                        )
+                                                    }
+                                                >
+                                                    Poništi odabir
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </Alert>
+                                ) : null}
 
                                 {selectionLimitReached &&
                                 availableStopGroups.length >
