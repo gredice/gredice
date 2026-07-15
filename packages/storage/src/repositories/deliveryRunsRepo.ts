@@ -11,19 +11,27 @@ import {
     DeliveryRequestStates,
     type DeliveryRunEstimateSource,
     DeliveryRunEstimateSources,
+    type DeliveryRunManifestItemState,
+    DeliveryRunManifestItemStates,
+    DeliveryRunManifestStates,
+    DeliveryRunPickupOperationKinds,
+    type DeliveryRunPickupOperationStoredResult,
     type DeliveryRunPreparationPlanPayload,
     type DeliveryRunPreparationPlanPayloadV1,
     type DeliveryRunPreparationPlanPayloadV2,
+    type DeliveryRunPreparationPlanPayloadV3,
     DeliveryRunStates,
     DeliveryRunStopStates,
     deliveryAddresses,
     deliveryRequests,
     deliveryRunPickupNodes,
+    deliveryRunPickupOperations,
     deliveryRunPreparations,
     deliveryRunSlots,
     deliveryRunStops,
     deliveryRuns,
     events,
+    harvestTraceLinks,
     operations,
     type PreparedDeliveryRunEstimateSource,
     pickupLocations,
@@ -40,6 +48,7 @@ import {
     fulfillDeliveryRequest,
     getDeliveryRequestDispatchSnapshots,
 } from './deliveryRequestsRepo';
+import { normalizeHarvestTraceToken } from './harvestTraceLinksRepo';
 
 type StorageClient = ReturnType<typeof storage>;
 type TransactionClient = Parameters<
@@ -131,6 +140,13 @@ export type CreatePreparedDeliveryRunStopInput = CreateDeliveryRunStopInput & {
     deliveryAddressUpdatedAt: Date;
 };
 
+export type CreatePreparedDeliveryRunManifestItemInput = {
+    deliveryRequestId: string;
+    timeSlotId: number;
+    harvestTraceLinkId?: number;
+    traceToken?: string;
+};
+
 export type CreatePreparedDeliveryRunInput = Omit<
     CreateDeliveryRunInput,
     | 'totalDistanceMeters'
@@ -148,6 +164,7 @@ export type CreatePreparedDeliveryRunInput = Omit<
     pickupNodes: CreatePreparedDeliveryRunPickupNodeInput[];
     runSlots: CreateDeliveryRunSlotInput[];
     stops: CreatePreparedDeliveryRunStopInput[];
+    manifestItems: CreatePreparedDeliveryRunManifestItemInput[];
 };
 
 export type DeliveryRunRequestSnapshotInput = {
@@ -224,6 +241,76 @@ export class DeliveryRunPersistenceError extends Error {
         return this.context.activeRunId;
     }
 }
+
+export const DeliveryRunExecutionErrorCodes = {
+    ACTIVE_RUN_NOT_FOUND: 'active-run-not-found',
+    PICKUP_NOT_CURRENT: 'pickup-not-current',
+    PICKUP_TRACE_INVALID: 'pickup-trace-invalid',
+    PICKUP_ITEM_NOT_FOUND: 'pickup-item-not-found',
+    PICKUP_ITEM_STATE_INVALID: 'pickup-item-state-invalid',
+    PICKUP_MANIFEST_NOT_FOUND: 'pickup-manifest-not-found',
+    PICKUP_MANIFEST_INCOMPLETE: 'pickup-manifest-incomplete',
+    PICKUP_OPERATION_CONFLICT: 'pickup-operation-conflict',
+    PICKUP_DEPENDENCY_PENDING: 'pickup-dependency-pending',
+    ROUTE_ORDER: 'route-order',
+} as const;
+
+export type DeliveryRunExecutionErrorCode =
+    (typeof DeliveryRunExecutionErrorCodes)[keyof typeof DeliveryRunExecutionErrorCodes];
+
+export class DeliveryRunExecutionError extends Error {
+    override name = 'DeliveryRunExecutionError';
+
+    constructor(
+        readonly code: DeliveryRunExecutionErrorCode,
+        message: string,
+    ) {
+        super(message);
+    }
+}
+
+export type DeliveryRunExecutionStep =
+    | {
+          kind: 'pickup';
+          pickupNodeId: string;
+          itinerarySequence: number;
+          manifestIds: string[];
+          state: 'completed' | 'current' | 'upcoming';
+      }
+    | {
+          kind: 'delivery';
+          itinerarySequence: number;
+          stopKey: string | null;
+          stopIds: number[];
+          pickupConfirmed: boolean;
+          state: 'completed' | 'current' | 'upcoming';
+      };
+
+type DeliveryRunPickupMutationBase = {
+    clientOperationId: string;
+    occurredAt: Date;
+};
+
+export type DeliveryRunPickupMutation =
+    | (DeliveryRunPickupMutationBase & {
+          kind: 'scan';
+          traceToken: string;
+      })
+    | (DeliveryRunPickupMutationBase & {
+          kind: 'mark-item';
+          stopId: number;
+          outcome: Exclude<DeliveryRunManifestItemState, 'scanned'>;
+      })
+    | (DeliveryRunPickupMutationBase & {
+          kind: 'confirm-manifest';
+          manifestId: string;
+      });
+
+export type DeliveryRunPickupMutationResult = {
+    clientOperationId: string;
+    replayed: boolean;
+    result: DeliveryRunPickupOperationStoredResult;
+};
 
 export type SaveDeliveryRunPreparationInput = {
     dispatchRevision: number;
@@ -348,7 +435,7 @@ function normalizePreparationPlan({
     selectionRequestIds,
     createRunInput,
     requestSnapshots,
-}: SaveDeliveryRunPreparationInput): DeliveryRunPreparationPlanPayload {
+}: SaveDeliveryRunPreparationInput): DeliveryRunPreparationPlanPayloadV3 {
     if (!Number.isInteger(dispatchRevision) || dispatchRevision < 0) {
         throw new DeliveryRunPersistenceError(
             DeliveryRunPersistenceErrorCodes.INVALID_PLAN,
@@ -369,11 +456,13 @@ function normalizePreparationPlan({
     }
     const pickupNodes = createRunInput.pickupNodes;
     const runSlots = createRunInput.runSlots;
+    const manifestItems = createRunInput.manifestItems;
     if (
         !pickupNodes?.length ||
         !runSlots?.length ||
         createRunInput.stops.length === 0 ||
-        requestSnapshots.length !== createRunInput.stops.length
+        requestSnapshots.length !== createRunInput.stops.length ||
+        manifestItems.length !== createRunInput.stops.length
     ) {
         throw new DeliveryRunPersistenceError(
             DeliveryRunPersistenceErrorCodes.INVALID_PLAN,
@@ -760,8 +849,59 @@ function normalizePreparationPlan({
         );
     }
 
+    const stopsByRequestId = new Map(
+        normalizedStops.map((stop) => [stop.deliveryRequestId, stop]),
+    );
+    const manifestRequestIds = new Set<string>();
+    const normalizedManifestItems = manifestItems.map((item) => {
+        const stop = stopsByRequestId.get(item.deliveryRequestId);
+        const hasTraceLinkId = item.harvestTraceLinkId !== undefined;
+        const normalizedTraceToken = item.traceToken
+            ? normalizeHarvestTraceToken(item.traceToken)
+            : null;
+        const hasTraceToken = normalizedTraceToken !== null;
+        if (
+            !stop ||
+            manifestRequestIds.has(item.deliveryRequestId) ||
+            item.timeSlotId !== stop.timeSlotId ||
+            hasTraceLinkId !== hasTraceToken ||
+            (hasTraceLinkId &&
+                (!Number.isInteger(item.harvestTraceLinkId) ||
+                    Number(item.harvestTraceLinkId) <= 0)) ||
+            (item.traceToken !== undefined && !normalizedTraceToken)
+        ) {
+            throw new DeliveryRunPersistenceError(
+                DeliveryRunPersistenceErrorCodes.INVALID_PLAN,
+                'Delivery pickup manifest items are invalid',
+                { deliveryRequestId: item.deliveryRequestId },
+            );
+        }
+        manifestRequestIds.add(item.deliveryRequestId);
+        return {
+            deliveryRequestId: item.deliveryRequestId,
+            timeSlotId: item.timeSlotId,
+            ...(item.harvestTraceLinkId !== undefined && normalizedTraceToken
+                ? {
+                      harvestTraceLinkId: item.harvestTraceLinkId,
+                      traceToken: normalizedTraceToken,
+                  }
+                : {}),
+        };
+    });
+    if (
+        stopRequestIds.size !== manifestRequestIds.size ||
+        Array.from(stopRequestIds).some(
+            (requestId) => !manifestRequestIds.has(requestId),
+        )
+    ) {
+        throw new DeliveryRunPersistenceError(
+            DeliveryRunPersistenceErrorCodes.INVALID_PLAN,
+            'Delivery pickup manifest must contain every delivery exactly once',
+        );
+    }
+
     return {
-        formatVersion: 2,
+        formatVersion: 3,
         dispatchRevision,
         selectionRequestIds: [...selectionRequestIds],
         createRunInput: {
@@ -781,6 +921,7 @@ function normalizePreparationPlan({
             })),
             runSlots: normalizedSlots,
             stops: normalizedStops,
+            manifestItems: normalizedManifestItems,
         },
         requestSnapshots: requestSnapshots.map((snapshot) => ({
             deliveryRequestId: snapshot.deliveryRequestId,
@@ -806,6 +947,62 @@ function normalizePreparationPlan({
 }
 
 function normalizePersistedV2Plan(plan: DeliveryRunPreparationPlanPayloadV2) {
+    const normalized = normalizePreparationPlan({
+        dispatchRevision: plan.dispatchRevision,
+        selectionRequestIds: plan.selectionRequestIds,
+        createRunInput: {
+            ...plan.createRunInput,
+            manifestItems: plan.createRunInput.stops.map((stop) => ({
+                deliveryRequestId: stop.deliveryRequestId,
+                timeSlotId: stop.timeSlotId,
+            })),
+            pickupNodes: plan.createRunInput.pickupNodes.map((node) => ({
+                ...node,
+                sourceUpdatedAt: new Date(node.sourceUpdatedAt),
+                estimatedArrivalAt: new Date(node.estimatedArrivalAt),
+            })),
+            runSlots: plan.createRunInput.runSlots.map((slot) => ({
+                ...slot,
+                windowStartAt: new Date(slot.windowStartAt),
+                windowEndAt: new Date(slot.windowEndAt),
+                sourceUpdatedAt: new Date(slot.sourceUpdatedAt),
+            })),
+            stops: plan.createRunInput.stops.map((stop) => ({
+                ...stop,
+                estimatedArrivalAt: new Date(stop.estimatedArrivalAt),
+                deliveryAddressUpdatedAt: new Date(
+                    stop.deliveryAddressUpdatedAt,
+                ),
+            })),
+        },
+        requestSnapshots: plan.requestSnapshots.map((snapshot) => ({
+            ...snapshot,
+            address: {
+                ...snapshot.address,
+                updatedAt: new Date(snapshot.address.updatedAt),
+            },
+            slot: {
+                ...snapshot.slot,
+                updatedAt: new Date(snapshot.slot.updatedAt),
+                startAt: new Date(snapshot.slot.startAt),
+                endAt: new Date(snapshot.slot.endAt),
+            },
+            pickupLocation: {
+                ...snapshot.pickupLocation,
+                updatedAt: new Date(snapshot.pickupLocation.updatedAt),
+            },
+        })),
+    });
+    const { manifestItems: _manifestItems, ...createRunInput } =
+        normalized.createRunInput;
+    return {
+        ...normalized,
+        formatVersion: 2,
+        createRunInput,
+    } satisfies DeliveryRunPreparationPlanPayloadV2;
+}
+
+function normalizePersistedV3Plan(plan: DeliveryRunPreparationPlanPayloadV3) {
     return normalizePreparationPlan({
         dispatchRevision: plan.dispatchRevision,
         selectionRequestIds: plan.selectionRequestIds,
@@ -828,6 +1025,9 @@ function normalizePersistedV2Plan(plan: DeliveryRunPreparationPlanPayloadV2) {
                 deliveryAddressUpdatedAt: new Date(
                     stop.deliveryAddressUpdatedAt,
                 ),
+            })),
+            manifestItems: plan.createRunInput.manifestItems.map((item) => ({
+                ...item,
             })),
         },
         requestSnapshots: plan.requestSnapshots.map((snapshot) => ({
@@ -875,6 +1075,151 @@ function sourceTextEqual(
     expected: string | null | undefined,
 ) {
     return (current ?? null) === (expected ?? null);
+}
+
+type DeliveryRunTraceSource = {
+    id: number;
+    publicToken: string;
+    harvestOperationId: number;
+    raisedBedFieldId: number;
+};
+
+function resolveDeliveryRunTraceSource({
+    operationId,
+    raisedBedFieldId,
+    links,
+}: {
+    operationId: number;
+    raisedBedFieldId: number | null;
+    links: readonly DeliveryRunTraceSource[];
+}) {
+    const operationLinks = links.filter(
+        (link) => link.harvestOperationId === operationId,
+    );
+    if (raisedBedFieldId !== null) {
+        const exact = operationLinks.find(
+            (link) => link.raisedBedFieldId === raisedBedFieldId,
+        );
+        if (exact) return exact;
+    }
+    return operationLinks.length === 1 ? operationLinks[0] : null;
+}
+
+async function lockAndReadDeliveryRunTraceSources({
+    requestIds,
+    db,
+}: {
+    requestIds: readonly string[];
+    db: TransactionClient;
+}) {
+    const initialRequestSources = await db
+        .select({
+            deliveryRequestId: deliveryRequests.id,
+            operationId: deliveryRequests.operationId,
+            raisedBedFieldId: operations.raisedBedFieldId,
+        })
+        .from(deliveryRequests)
+        .innerJoin(operations, eq(deliveryRequests.operationId, operations.id))
+        .where(inArray(deliveryRequests.id, [...requestIds]));
+    const operationIds = Array.from(
+        new Set(initialRequestSources.map((source) => source.operationId)),
+    ).sort((first, second) => first - second);
+
+    for (const operationId of operationIds) {
+        await db.execute(
+            sql`select ${operations.id} from ${operations} where ${operations.id} = ${operationId} for update`,
+        );
+    }
+
+    const requestSources = await db
+        .select({
+            deliveryRequestId: deliveryRequests.id,
+            operationId: deliveryRequests.operationId,
+            raisedBedFieldId: operations.raisedBedFieldId,
+        })
+        .from(deliveryRequests)
+        .innerJoin(operations, eq(deliveryRequests.operationId, operations.id))
+        .where(inArray(deliveryRequests.id, [...requestIds]));
+    for (const operationId of operationIds) {
+        await db.execute(
+            sql`select ${harvestTraceLinks.id} from ${harvestTraceLinks} where ${harvestTraceLinks.harvestOperationId} = ${operationId} for update`,
+        );
+    }
+
+    const activeLinks =
+        operationIds.length > 0
+            ? await db.query.harvestTraceLinks.findMany({
+                  columns: {
+                      id: true,
+                      publicToken: true,
+                      harvestOperationId: true,
+                      raisedBedFieldId: true,
+                  },
+                  where: and(
+                      inArray(
+                          harvestTraceLinks.harvestOperationId,
+                          operationIds,
+                      ),
+                      eq(harvestTraceLinks.status, 'active'),
+                  ),
+              })
+            : [];
+
+    return { activeLinks, requestSources };
+}
+
+async function validateDeliveryRunTraceSources(
+    plan: DeliveryRunPreparationPlanPayloadV3,
+    db: TransactionClient,
+) {
+    const requestIds = plan.requestSnapshots.map(
+        (snapshot) => snapshot.deliveryRequestId,
+    );
+    const { activeLinks, requestSources } =
+        await lockAndReadDeliveryRunTraceSources({ requestIds, db });
+    const sourcesByRequestId = new Map(
+        requestSources.map((source) => [source.deliveryRequestId, source]),
+    );
+    const manifestItemsByRequestId = new Map(
+        plan.createRunInput.manifestItems.map((item) => [
+            item.deliveryRequestId,
+            item,
+        ]),
+    );
+
+    for (const snapshot of plan.requestSnapshots) {
+        const source = sourcesByRequestId.get(snapshot.deliveryRequestId);
+        const manifestItem = manifestItemsByRequestId.get(
+            snapshot.deliveryRequestId,
+        );
+        const currentTrace = source
+            ? resolveDeliveryRunTraceSource({
+                  operationId: source.operationId,
+                  raisedBedFieldId: source.raisedBedFieldId,
+                  links: activeLinks,
+              })
+            : null;
+        const expectedTrace =
+            manifestItem?.harvestTraceLinkId !== undefined &&
+            manifestItem.traceToken !== undefined
+                ? {
+                      id: manifestItem.harvestTraceLinkId,
+                      publicToken: manifestItem.traceToken,
+                  }
+                : null;
+        if (
+            !source ||
+            !manifestItem ||
+            currentTrace?.id !== expectedTrace?.id ||
+            currentTrace?.publicToken !== expectedTrace?.publicToken
+        ) {
+            throw new DeliveryRunPersistenceError(
+                DeliveryRunPersistenceErrorCodes.SOURCE_CHANGED,
+                'Delivery harvest trace changed after route preparation',
+                { deliveryRequestId: snapshot.deliveryRequestId },
+            );
+        }
+    }
 }
 
 async function lockPreparationSources(
@@ -988,6 +1333,9 @@ async function validatePreparationSnapshot(
                 { deliveryRequestId: expected.deliveryRequestId },
             );
         }
+    }
+    if (plan.formatVersion === 3) {
+        await validateDeliveryRunTraceSources(plan, db);
     }
 }
 
@@ -1156,11 +1504,11 @@ async function insertPreparedDeliveryRun(
         totalDistanceMeters: plan.createRunInput.totalDistanceMeters,
         totalDurationSeconds: plan.createRunInput.totalDurationSeconds,
         routePlanVersion:
-            plan.formatVersion === 2 ? plan.createRunInput.routePlanVersion : 1,
+            plan.formatVersion === 1 ? 1 : plan.createRunInput.routePlanVersion,
         estimateSource:
-            plan.formatVersion === 2
-                ? plan.createRunInput.estimateSource
-                : DeliveryRunEstimateSources.LEGACY,
+            plan.formatVersion === 1
+                ? DeliveryRunEstimateSources.LEGACY
+                : plan.createRunInput.estimateSource,
         estimatesUpdatedAt: new Date(),
     });
 
@@ -1188,7 +1536,7 @@ async function insertPreparedDeliveryRun(
         };
     };
     const pickupNodeRows =
-        plan.formatVersion === 2
+        plan.formatVersion !== 1
             ? plan.createRunInput.pickupNodes.map((node) => ({
                   ...createPickupNodeRow(node),
                   itinerarySequence: node.itinerarySequence,
@@ -1220,6 +1568,10 @@ async function insertPreparedDeliveryRun(
             timeSlotId: slot.timeSlotId,
             sequence: slot.sequence,
             manifestId: slot.manifestId,
+            manifestState:
+                plan.formatVersion === 3
+                    ? DeliveryRunManifestStates.PENDING
+                    : DeliveryRunManifestStates.CONFIRMED,
             windowStartAt: new Date(slot.windowStartAt),
             windowEndAt: new Date(slot.windowEndAt),
             sourceUpdatedAt: new Date(slot.sourceUpdatedAt),
@@ -1233,6 +1585,14 @@ async function insertPreparedDeliveryRun(
             snapshot,
         ]),
     );
+    const manifestItemsByRequestId = new Map(
+        plan.formatVersion === 3
+            ? plan.createRunInput.manifestItems.map((item) => [
+                  item.deliveryRequestId,
+                  item,
+              ])
+            : [],
+    );
     const createStopRow = (
         stop: DeliveryRunPreparationPlanPayloadV1['createRunInput']['stops'][number],
     ) => {
@@ -1242,6 +1602,16 @@ async function insertPreparedDeliveryRun(
             throw new DeliveryRunPersistenceError(
                 DeliveryRunPersistenceErrorCodes.INVALID_PLAN,
                 'Delivery stop has no persisted slot or request snapshot',
+                { deliveryRequestId: stop.deliveryRequestId },
+            );
+        }
+        const manifestItem = manifestItemsByRequestId.get(
+            stop.deliveryRequestId,
+        );
+        if (plan.formatVersion === 3 && !manifestItem) {
+            throw new DeliveryRunPersistenceError(
+                DeliveryRunPersistenceErrorCodes.INVALID_PLAN,
+                'Delivery stop has no persisted pickup manifest item',
                 { deliveryRequestId: stop.deliveryRequestId },
             );
         }
@@ -1262,6 +1632,13 @@ async function insertPreparedDeliveryRun(
             deliveryCity: snapshot.address.city,
             deliveryPostalCode: snapshot.address.postalCode,
             deliveryCountryCode: snapshot.address.countryCode,
+            ...(manifestItem
+                ? {
+                      pickupItemState: DeliveryRunManifestItemStates.READY,
+                      pickupTraceLinkId: manifestItem.harvestTraceLinkId,
+                      pickupTraceToken: manifestItem.traceToken,
+                  }
+                : {}),
             latitude: stop.latitude,
             longitude: stop.longitude,
             formattedAddress: stop.formattedAddress,
@@ -1273,7 +1650,7 @@ async function insertPreparedDeliveryRun(
         };
     };
     const stopRows =
-        plan.formatVersion === 2
+        plan.formatVersion !== 1
             ? plan.createRunInput.stops.map((stop) => ({
                   ...createStopRow(stop),
                   itinerarySequence: stop.itinerarySequence,
@@ -1354,7 +1731,8 @@ export async function consumeDeliveryRunPreparation({
         }
         if (
             (preparation.plan.formatVersion !== 1 &&
-                preparation.plan.formatVersion !== 2) ||
+                preparation.plan.formatVersion !== 2 &&
+                preparation.plan.formatVersion !== 3) ||
             preparation.plan.createRunInput.driverUserId !== driverUserId
         ) {
             throw new DeliveryRunPersistenceError(
@@ -1364,9 +1742,11 @@ export async function consumeDeliveryRunPreparation({
         }
 
         const plan =
-            preparation.plan.formatVersion === 2
-                ? normalizePersistedV2Plan(preparation.plan)
-                : preparation.plan;
+            preparation.plan.formatVersion === 3
+                ? normalizePersistedV3Plan(preparation.plan)
+                : preparation.plan.formatVersion === 2
+                  ? normalizePersistedV2Plan(preparation.plan)
+                  : preparation.plan;
 
         await ensurePreparationCanCreateRun(plan, tx);
         await validatePreparationSnapshot(plan, tx);
@@ -1480,6 +1860,643 @@ export function getActiveDeliveryRunForDriver(driverUserId: string) {
     });
 }
 
+async function getDeliveryRunExecutionSource(
+    runId: string,
+    db: DatabaseClient,
+) {
+    return await db.query.deliveryRuns.findFirst({
+        where: eq(deliveryRuns.id, runId),
+        with: {
+            pickupNodes: {
+                orderBy: [asc(deliveryRunPickupNodes.sequence)],
+            },
+            runSlots: {
+                orderBy: [asc(deliveryRunSlots.sequence)],
+            },
+            stops: {
+                orderBy: [asc(deliveryRunStops.sequence)],
+            },
+        },
+    });
+}
+
+async function getDeliveryRunExecutionProgressFromDb(
+    runId: string,
+    db: DatabaseClient,
+): Promise<DeliveryRunExecutionStep[]> {
+    const run = await getDeliveryRunExecutionSource(runId, db);
+    if (!run) return [];
+
+    type PendingExecutionStep =
+        | (Omit<
+              Extract<DeliveryRunExecutionStep, { kind: 'pickup' }>,
+              'state'
+          > & { completed: boolean })
+        | (Omit<
+              Extract<DeliveryRunExecutionStep, { kind: 'delivery' }>,
+              'state'
+          > & { completed: boolean });
+    const pendingSteps: PendingExecutionStep[] = [];
+    if (run.routePlanVersion < 2) {
+        for (const stop of run.stops) {
+            pendingSteps.push({
+                kind: 'delivery',
+                itinerarySequence: stop.sequence,
+                stopKey: stop.stopKey,
+                stopIds: [stop.id],
+                pickupConfirmed: true,
+                completed: stop.state === DeliveryRunStopStates.DELIVERED,
+            });
+        }
+    } else {
+        const slotsByPickupNodeId = new Map<string, typeof run.runSlots>();
+        const slotsById = new Map(run.runSlots.map((slot) => [slot.id, slot]));
+        for (const slot of run.runSlots) {
+            const slots = slotsByPickupNodeId.get(slot.pickupNodeId) ?? [];
+            slots.push(slot);
+            slotsByPickupNodeId.set(slot.pickupNodeId, slots);
+        }
+        for (const pickupNode of run.pickupNodes) {
+            if (pickupNode.itinerarySequence === null) continue;
+            const slots = slotsByPickupNodeId.get(pickupNode.id) ?? [];
+            pendingSteps.push({
+                kind: 'pickup',
+                pickupNodeId: pickupNode.id,
+                itinerarySequence: pickupNode.itinerarySequence,
+                manifestIds: slots.map((slot) => slot.manifestId),
+                completed:
+                    slots.length > 0 &&
+                    slots.every(
+                        (slot) =>
+                            slot.manifestState ===
+                            DeliveryRunManifestStates.CONFIRMED,
+                    ),
+            });
+        }
+
+        const stopsByItinerarySequence = new Map<number, typeof run.stops>();
+        for (const stop of run.stops) {
+            if (stop.itinerarySequence === null) continue;
+            const stops =
+                stopsByItinerarySequence.get(stop.itinerarySequence) ?? [];
+            stops.push(stop);
+            stopsByItinerarySequence.set(stop.itinerarySequence, stops);
+        }
+        for (const [itinerarySequence, stops] of stopsByItinerarySequence) {
+            pendingSteps.push({
+                kind: 'delivery',
+                itinerarySequence,
+                stopKey: stops[0]?.stopKey ?? null,
+                stopIds: stops.map((stop) => stop.id),
+                pickupConfirmed: stops.every((stop) => {
+                    const slot = stop.runSlotId
+                        ? slotsById.get(stop.runSlotId)
+                        : undefined;
+                    return (
+                        slot?.manifestState ===
+                        DeliveryRunManifestStates.CONFIRMED
+                    );
+                }),
+                completed: stops.every(
+                    (stop) => stop.state === DeliveryRunStopStates.DELIVERED,
+                ),
+            });
+        }
+    }
+
+    pendingSteps.sort(
+        (first, second) => first.itinerarySequence - second.itinerarySequence,
+    );
+    const currentIndex = pendingSteps.findIndex((step) => !step.completed);
+    return pendingSteps.map(({ completed, ...step }, index) => ({
+        ...step,
+        state: completed
+            ? 'completed'
+            : index === currentIndex
+              ? 'current'
+              : 'upcoming',
+    }));
+}
+
+export function getDeliveryRunExecutionProgress(runId: string) {
+    return getDeliveryRunExecutionProgressFromDb(runId, storage());
+}
+
+function normalizeDeliveryPickupTrace(value: string) {
+    const trimmed = value.trim();
+    const pathMatch = /^\/trag\/([^/?#]+)\/?$/.exec(trimmed);
+    return normalizeHarvestTraceToken(pathMatch?.[1] ?? trimmed);
+}
+
+function pickupMutationPayloadHash(
+    pickupNodeId: string,
+    mutation: DeliveryRunPickupMutation,
+) {
+    if (mutation.kind === DeliveryRunPickupOperationKinds.SCAN) {
+        const traceToken = normalizeDeliveryPickupTrace(mutation.traceToken);
+        if (!traceToken) {
+            throw new DeliveryRunExecutionError(
+                DeliveryRunExecutionErrorCodes.PICKUP_TRACE_INVALID,
+                'Pickup trace is invalid',
+            );
+        }
+        return {
+            payloadHash: hashValue(
+                [
+                    pickupNodeId,
+                    mutation.kind,
+                    mutation.clientOperationId,
+                    mutation.occurredAt.toISOString(),
+                    traceToken,
+                ].join('\n'),
+            ),
+            mutation: { ...mutation, traceToken },
+        };
+    }
+    if (mutation.kind === DeliveryRunPickupOperationKinds.MARK_ITEM) {
+        return {
+            payloadHash: hashValue(
+                [
+                    pickupNodeId,
+                    mutation.kind,
+                    mutation.clientOperationId,
+                    mutation.occurredAt.toISOString(),
+                    mutation.stopId,
+                    mutation.outcome,
+                ].join('\n'),
+            ),
+            mutation,
+        };
+    }
+    return {
+        payloadHash: hashValue(
+            [
+                pickupNodeId,
+                mutation.kind,
+                mutation.clientOperationId,
+                mutation.occurredAt.toISOString(),
+                mutation.manifestId,
+            ].join('\n'),
+        ),
+        mutation,
+    };
+}
+
+function ensurePickupMutationShape(mutation: DeliveryRunPickupMutation) {
+    if (
+        !mutation.clientOperationId.trim() ||
+        mutation.clientOperationId.length > 128 ||
+        !(mutation.occurredAt instanceof Date) ||
+        !Number.isFinite(mutation.occurredAt.getTime())
+    ) {
+        throw new DeliveryRunExecutionError(
+            DeliveryRunExecutionErrorCodes.PICKUP_ITEM_STATE_INVALID,
+            'Pickup operation is invalid',
+        );
+    }
+    if (
+        mutation.kind === DeliveryRunPickupOperationKinds.MARK_ITEM &&
+        (mutation.stopId <= 0 ||
+            !Number.isInteger(mutation.stopId) ||
+            ![
+                DeliveryRunManifestItemStates.READY,
+                DeliveryRunManifestItemStates.MISSING_LABEL,
+                DeliveryRunManifestItemStates.NOT_READY,
+            ].includes(mutation.outcome))
+    ) {
+        throw new DeliveryRunExecutionError(
+            DeliveryRunExecutionErrorCodes.PICKUP_ITEM_STATE_INVALID,
+            'Pickup item outcome is invalid',
+        );
+    }
+}
+
+async function ensureCurrentPickupNode({
+    runId,
+    pickupNodeId,
+    db,
+}: {
+    runId: string;
+    pickupNodeId: string;
+    db: DatabaseClient;
+}) {
+    const progress = await getDeliveryRunExecutionProgressFromDb(runId, db);
+    const current = progress.find((step) => step.state === 'current');
+    if (current?.kind !== 'pickup' || current.pickupNodeId !== pickupNodeId) {
+        throw new DeliveryRunExecutionError(
+            DeliveryRunExecutionErrorCodes.PICKUP_NOT_CURRENT,
+            'Pickup checkpoint is not current',
+        );
+    }
+}
+
+async function applyPickupScan({
+    runId,
+    pickupNodeId,
+    driverUserId,
+    traceToken,
+    db,
+}: {
+    runId: string;
+    pickupNodeId: string;
+    driverUserId: string;
+    traceToken: string;
+    db: TransactionClient;
+}): Promise<DeliveryRunPickupOperationStoredResult> {
+    const rows = await db
+        .select({ stop: deliveryRunStops })
+        .from(deliveryRunStops)
+        .innerJoin(
+            deliveryRunSlots,
+            and(
+                eq(deliveryRunStops.runId, deliveryRunSlots.runId),
+                eq(deliveryRunStops.runSlotId, deliveryRunSlots.id),
+            ),
+        )
+        .where(
+            and(
+                eq(deliveryRunStops.runId, runId),
+                eq(deliveryRunSlots.pickupNodeId, pickupNodeId),
+                eq(deliveryRunStops.pickupTraceToken, traceToken),
+            ),
+        )
+        .orderBy(asc(deliveryRunStops.sequence));
+    if (rows.length === 0) {
+        return {
+            kind: DeliveryRunPickupOperationKinds.SCAN,
+            outcome: 'not-found',
+            affectedStopIds: [],
+        };
+    }
+    const { activeLinks, requestSources } =
+        await lockAndReadDeliveryRunTraceSources({
+            requestIds: rows.map(({ stop }) => stop.deliveryRequestId),
+            db,
+        });
+    const sourcesByRequestId = new Map(
+        requestSources.map((source) => [source.deliveryRequestId, source]),
+    );
+    const hasInvalidProvenance = rows.some(({ stop }) => {
+        const source = sourcesByRequestId.get(stop.deliveryRequestId);
+        const currentTrace = source
+            ? resolveDeliveryRunTraceSource({
+                  operationId: source.operationId,
+                  raisedBedFieldId: source.raisedBedFieldId,
+                  links: activeLinks,
+              })
+            : null;
+        return (
+            currentTrace?.id !== stop.pickupTraceLinkId ||
+            currentTrace?.publicToken !== stop.pickupTraceToken
+        );
+    });
+    if (hasInvalidProvenance) {
+        return {
+            kind: DeliveryRunPickupOperationKinds.SCAN,
+            outcome: 'not-found',
+            affectedStopIds: [],
+        };
+    }
+    const stopKeys = new Set(rows.map(({ stop }) => stop.stopKey));
+    if (stopKeys.size > 1) {
+        return {
+            kind: DeliveryRunPickupOperationKinds.SCAN,
+            outcome: 'ambiguous',
+            affectedStopIds: [],
+        };
+    }
+
+    const affectedStopIds = rows.map(({ stop }) => stop.id);
+    const toScan = rows.filter(
+        ({ stop }) =>
+            stop.pickupItemState !== DeliveryRunManifestItemStates.SCANNED,
+    );
+    if (toScan.length > 0) {
+        await db
+            .update(deliveryRunStops)
+            .set({
+                pickupItemState: DeliveryRunManifestItemStates.SCANNED,
+                pickupResolvedAt: new Date(),
+                pickupResolvedByUserId: driverUserId,
+            })
+            .where(
+                inArray(
+                    deliveryRunStops.id,
+                    toScan.map(({ stop }) => stop.id),
+                ),
+            );
+    }
+    return {
+        kind: DeliveryRunPickupOperationKinds.SCAN,
+        outcome: toScan.length > 0 ? 'applied' : 'already-applied',
+        affectedStopIds,
+        itemState: DeliveryRunManifestItemStates.SCANNED,
+    };
+}
+
+async function applyPickupItemOutcome({
+    runId,
+    pickupNodeId,
+    driverUserId,
+    stopId,
+    outcome,
+    db,
+}: {
+    runId: string;
+    pickupNodeId: string;
+    driverUserId: string;
+    stopId: number;
+    outcome: Exclude<DeliveryRunManifestItemState, 'scanned'>;
+    db: TransactionClient;
+}): Promise<DeliveryRunPickupOperationStoredResult> {
+    const rows = await db
+        .select({ stop: deliveryRunStops })
+        .from(deliveryRunStops)
+        .innerJoin(
+            deliveryRunSlots,
+            and(
+                eq(deliveryRunStops.runId, deliveryRunSlots.runId),
+                eq(deliveryRunStops.runSlotId, deliveryRunSlots.id),
+            ),
+        )
+        .where(
+            and(
+                eq(deliveryRunStops.runId, runId),
+                eq(deliveryRunStops.id, stopId),
+                eq(deliveryRunSlots.pickupNodeId, pickupNodeId),
+            ),
+        );
+    const stop = rows[0]?.stop;
+    if (!stop || stop.pickupItemState === null) {
+        throw new DeliveryRunExecutionError(
+            DeliveryRunExecutionErrorCodes.PICKUP_ITEM_NOT_FOUND,
+            'Pickup manifest item was not found',
+        );
+    }
+    if (
+        (stop.pickupItemState === DeliveryRunManifestItemStates.SCANNED ||
+            stop.pickupItemState ===
+                DeliveryRunManifestItemStates.MISSING_LABEL) &&
+        stop.pickupItemState !== outcome
+    ) {
+        throw new DeliveryRunExecutionError(
+            DeliveryRunExecutionErrorCodes.PICKUP_ITEM_STATE_INVALID,
+            'Collected pickup item cannot be changed',
+        );
+    }
+    if (stop.pickupItemState === outcome) {
+        return {
+            kind: DeliveryRunPickupOperationKinds.MARK_ITEM,
+            outcome: 'already-applied',
+            affectedStopIds: [stop.id],
+            itemState: outcome,
+        };
+    }
+
+    await db
+        .update(deliveryRunStops)
+        .set(
+            outcome === DeliveryRunManifestItemStates.READY
+                ? {
+                      pickupItemState: outcome,
+                      pickupResolvedAt: null,
+                      pickupResolvedByUserId: null,
+                  }
+                : {
+                      pickupItemState: outcome,
+                      pickupResolvedAt: new Date(),
+                      pickupResolvedByUserId: driverUserId,
+                  },
+        )
+        .where(eq(deliveryRunStops.id, stop.id));
+    return {
+        kind: DeliveryRunPickupOperationKinds.MARK_ITEM,
+        outcome: 'applied',
+        affectedStopIds: [stop.id],
+        itemState: outcome,
+    };
+}
+
+async function applyPickupManifestConfirmation({
+    runId,
+    pickupNodeId,
+    driverUserId,
+    manifestId,
+    db,
+}: {
+    runId: string;
+    pickupNodeId: string;
+    driverUserId: string;
+    manifestId: string;
+    db: TransactionClient;
+}): Promise<DeliveryRunPickupOperationStoredResult> {
+    const slot = await db.query.deliveryRunSlots.findFirst({
+        where: and(
+            eq(deliveryRunSlots.runId, runId),
+            eq(deliveryRunSlots.pickupNodeId, pickupNodeId),
+            eq(deliveryRunSlots.manifestId, manifestId),
+        ),
+    });
+    if (!slot) {
+        throw new DeliveryRunExecutionError(
+            DeliveryRunExecutionErrorCodes.PICKUP_MANIFEST_NOT_FOUND,
+            'Pickup manifest was not found',
+        );
+    }
+    if (slot.manifestState === DeliveryRunManifestStates.CONFIRMED) {
+        return {
+            kind: DeliveryRunPickupOperationKinds.CONFIRM_MANIFEST,
+            outcome: 'already-applied',
+            affectedStopIds: [],
+            manifestId,
+            manifestState: DeliveryRunManifestStates.CONFIRMED,
+        };
+    }
+
+    const items = await db.query.deliveryRunStops.findMany({
+        columns: { id: true, pickupItemState: true },
+        where: and(
+            eq(deliveryRunStops.runId, runId),
+            eq(deliveryRunStops.runSlotId, slot.id),
+        ),
+    });
+    const isCollected = (state: DeliveryRunManifestItemState | null) =>
+        state === DeliveryRunManifestItemStates.SCANNED ||
+        state === DeliveryRunManifestItemStates.MISSING_LABEL;
+    if (
+        items.length === 0 ||
+        items.some((item) => !isCollected(item.pickupItemState))
+    ) {
+        throw new DeliveryRunExecutionError(
+            DeliveryRunExecutionErrorCodes.PICKUP_MANIFEST_INCOMPLETE,
+            'Pickup manifest is incomplete',
+        );
+    }
+    await db
+        .update(deliveryRunSlots)
+        .set({
+            manifestState: DeliveryRunManifestStates.CONFIRMED,
+            confirmedAt: new Date(),
+            confirmedByUserId: driverUserId,
+        })
+        .where(eq(deliveryRunSlots.id, slot.id));
+    return {
+        kind: DeliveryRunPickupOperationKinds.CONFIRM_MANIFEST,
+        outcome: 'applied',
+        affectedStopIds: items.map((item) => item.id),
+        manifestId,
+        manifestState: DeliveryRunManifestStates.CONFIRMED,
+    };
+}
+
+async function pickupManifestIsAlreadyConfirmed({
+    runId,
+    pickupNodeId,
+    manifestId,
+    db,
+}: {
+    runId: string;
+    pickupNodeId: string;
+    manifestId: string;
+    db: DatabaseClient;
+}) {
+    const slot = await db.query.deliveryRunSlots.findFirst({
+        columns: { manifestState: true },
+        where: and(
+            eq(deliveryRunSlots.runId, runId),
+            eq(deliveryRunSlots.pickupNodeId, pickupNodeId),
+            eq(deliveryRunSlots.manifestId, manifestId),
+        ),
+    });
+    return slot?.manifestState === DeliveryRunManifestStates.CONFIRMED;
+}
+
+export async function applyDeliveryRunPickupMutations({
+    driverUserId,
+    runId,
+    pickupNodeId,
+    mutations,
+}: {
+    driverUserId: string;
+    runId: string;
+    pickupNodeId: string;
+    mutations: DeliveryRunPickupMutation[];
+}): Promise<DeliveryRunPickupMutationResult[]> {
+    if (mutations.length === 0) return [];
+
+    return await storage().transaction(async (tx) => {
+        await tx.execute(
+            sql`select ${deliveryRuns.id} from ${deliveryRuns} where ${deliveryRuns.id} = ${runId} for update`,
+        );
+        const run = await tx.query.deliveryRuns.findFirst({
+            where: and(
+                eq(deliveryRuns.id, runId),
+                eq(deliveryRuns.driverUserId, driverUserId),
+            ),
+        });
+        if (!run) {
+            throw new DeliveryRunExecutionError(
+                DeliveryRunExecutionErrorCodes.ACTIVE_RUN_NOT_FOUND,
+                'Active delivery run was not found',
+            );
+        }
+
+        const results: DeliveryRunPickupMutationResult[] = [];
+        for (const inputMutation of mutations) {
+            ensurePickupMutationShape(inputMutation);
+            const { payloadHash, mutation } = pickupMutationPayloadHash(
+                pickupNodeId,
+                inputMutation,
+            );
+            const receipt =
+                await tx.query.deliveryRunPickupOperations.findFirst({
+                    where: and(
+                        eq(deliveryRunPickupOperations.runId, runId),
+                        eq(
+                            deliveryRunPickupOperations.clientOperationId,
+                            mutation.clientOperationId,
+                        ),
+                    ),
+                });
+            if (receipt) {
+                if (receipt.payloadHash !== payloadHash) {
+                    throw new DeliveryRunExecutionError(
+                        DeliveryRunExecutionErrorCodes.PICKUP_OPERATION_CONFLICT,
+                        'Pickup operation ID was reused with different content',
+                    );
+                }
+                results.push({
+                    clientOperationId: mutation.clientOperationId,
+                    replayed: true,
+                    result: receipt.result,
+                });
+                continue;
+            }
+            if (run.state !== DeliveryRunStates.ACTIVE) {
+                throw new DeliveryRunExecutionError(
+                    DeliveryRunExecutionErrorCodes.ACTIVE_RUN_NOT_FOUND,
+                    'Active delivery run was not found',
+                );
+            }
+            const alreadyConfirmed =
+                mutation.kind ===
+                    DeliveryRunPickupOperationKinds.CONFIRM_MANIFEST &&
+                (await pickupManifestIsAlreadyConfirmed({
+                    runId,
+                    pickupNodeId,
+                    manifestId: mutation.manifestId,
+                    db: tx,
+                }));
+            if (!alreadyConfirmed) {
+                await ensureCurrentPickupNode({ runId, pickupNodeId, db: tx });
+            }
+
+            const result =
+                mutation.kind === DeliveryRunPickupOperationKinds.SCAN
+                    ? await applyPickupScan({
+                          runId,
+                          pickupNodeId,
+                          driverUserId,
+                          traceToken: mutation.traceToken,
+                          db: tx,
+                      })
+                    : mutation.kind ===
+                        DeliveryRunPickupOperationKinds.MARK_ITEM
+                      ? await applyPickupItemOutcome({
+                            runId,
+                            pickupNodeId,
+                            driverUserId,
+                            stopId: mutation.stopId,
+                            outcome: mutation.outcome,
+                            db: tx,
+                        })
+                      : await applyPickupManifestConfirmation({
+                            runId,
+                            pickupNodeId,
+                            driverUserId,
+                            manifestId: mutation.manifestId,
+                            db: tx,
+                        });
+            await tx.insert(deliveryRunPickupOperations).values({
+                runId,
+                pickupNodeId,
+                driverUserId,
+                clientOperationId: mutation.clientOperationId,
+                kind: mutation.kind,
+                payloadHash,
+                result,
+                occurredAt: mutation.occurredAt,
+            });
+            results.push({
+                clientOperationId: mutation.clientOperationId,
+                replayed: false,
+                result,
+            });
+        }
+        return results;
+    });
+}
+
 export function getDeliveryRunStop(stopId: number) {
     return storage().query.deliveryRunStops.findFirst({
         where: eq(deliveryRunStops.id, stopId),
@@ -1544,8 +2561,13 @@ export async function accountCanTrackDeliveryRun({
     accountId: string;
     runId: string;
 }) {
+    const progress = await getDeliveryRunExecutionProgress(runId);
+    const current = progress.find((step) => step.state === 'current');
+    if (current?.kind !== 'delivery' || !current.pickupConfirmed) {
+        return false;
+    }
     const rows = await storage()
-        .select({ accountId: operations.accountId })
+        .selectDistinct({ accountId: operations.accountId })
         .from(deliveryRunStops)
         .innerJoin(deliveryRuns, eq(deliveryRunStops.runId, deliveryRuns.id))
         .innerJoin(
@@ -1557,13 +2579,12 @@ export async function accountCanTrackDeliveryRun({
             and(
                 eq(deliveryRunStops.runId, runId),
                 eq(deliveryRuns.state, DeliveryRunStates.ACTIVE),
+                inArray(deliveryRunStops.id, current.stopIds),
                 ne(deliveryRunStops.state, DeliveryRunStopStates.DELIVERED),
             ),
-        )
-        .orderBy(asc(deliveryRunStops.sequence))
-        .limit(1);
+        );
 
-    return rows[0]?.accountId === accountId;
+    return rows.some((row) => row.accountId === accountId);
 }
 
 export async function updateDeliveryRunLocation({
@@ -1673,17 +2694,24 @@ async function ensureOwnedDeliveryRunStops({
     driverUserId,
     runId,
     stopIds,
-    db = storage(),
+    db,
 }: {
     driverUserId: string;
     runId: string;
     stopIds: number[];
-    db?: DatabaseClient;
+    db: TransactionClient;
 }) {
     const uniqueStopIds = Array.from(new Set(stopIds));
     if (uniqueStopIds.length === 0) {
         throw new Error('Active delivery stop not found');
     }
+
+    // Serialize every arrival/delivery transition for this run before reading
+    // stop state. Without this lock, a late arrival write can overwrite a
+    // concurrently committed delivered state.
+    await db.execute(
+        sql`select ${deliveryRuns.id} from ${deliveryRuns} where ${deliveryRuns.id} = ${runId} for update`,
+    );
 
     const stops = await db.query.deliveryRunStops.findMany({
         where: and(
@@ -1708,16 +2736,55 @@ async function ensureOwnedDeliveryRunStops({
         (stop) => stop.state !== DeliveryRunStopStates.DELIVERED,
     );
     if (hasUndeliveredStops) {
-        const currentStop = await db.query.deliveryRunStops.findFirst({
-            columns: { id: true },
-            where: and(
-                eq(deliveryRunStops.runId, runId),
-                ne(deliveryRunStops.state, DeliveryRunStopStates.DELIVERED),
-            ),
-            orderBy: [asc(deliveryRunStops.sequence)],
-        });
-        if (currentStop && !uniqueStopIds.includes(currentStop.id)) {
-            throw new Error('Delivery stops must be completed in route order');
+        if (run.routePlanVersion >= 2) {
+            const progress = await getDeliveryRunExecutionProgressFromDb(
+                runId,
+                db,
+            );
+            const current = progress.find((step) => step.state === 'current');
+            if (current?.kind === 'pickup') {
+                throw new DeliveryRunExecutionError(
+                    DeliveryRunExecutionErrorCodes.PICKUP_DEPENDENCY_PENDING,
+                    'Delivery pickup dependency is pending',
+                );
+            }
+            if (current?.kind !== 'delivery') {
+                throw new DeliveryRunExecutionError(
+                    DeliveryRunExecutionErrorCodes.ROUTE_ORDER,
+                    'Delivery stops must be completed in route order',
+                );
+            }
+            if (!current.pickupConfirmed) {
+                throw new DeliveryRunExecutionError(
+                    DeliveryRunExecutionErrorCodes.PICKUP_DEPENDENCY_PENDING,
+                    'Delivery pickup dependency is pending',
+                );
+            }
+            const currentStopIds = new Set(current.stopIds);
+            if (
+                currentStopIds.size !== uniqueStopIds.length ||
+                uniqueStopIds.some((stopId) => !currentStopIds.has(stopId))
+            ) {
+                throw new DeliveryRunExecutionError(
+                    DeliveryRunExecutionErrorCodes.ROUTE_ORDER,
+                    'Bulk delivery stops must be completed atomically in route order',
+                );
+            }
+        } else {
+            const currentStop = await db.query.deliveryRunStops.findFirst({
+                columns: { id: true },
+                where: and(
+                    eq(deliveryRunStops.runId, runId),
+                    ne(deliveryRunStops.state, DeliveryRunStopStates.DELIVERED),
+                ),
+                orderBy: [asc(deliveryRunStops.sequence)],
+            });
+            if (currentStop && !uniqueStopIds.includes(currentStop.id)) {
+                throw new DeliveryRunExecutionError(
+                    DeliveryRunExecutionErrorCodes.ROUTE_ORDER,
+                    'Delivery stops must be completed in route order',
+                );
+            }
         }
     }
 
@@ -1752,7 +2819,15 @@ export async function markDeliveryRunStopsArrived({
                     state: DeliveryRunStopStates.ARRIVED,
                     arrivedAt: stop.arrivedAt ?? now,
                 })
-                .where(eq(deliveryRunStops.id, stop.id));
+                .where(
+                    and(
+                        eq(deliveryRunStops.id, stop.id),
+                        ne(
+                            deliveryRunStops.state,
+                            DeliveryRunStopStates.DELIVERED,
+                        ),
+                    ),
+                );
         }
 
         return stops;
@@ -1805,7 +2880,7 @@ async function markDeliveryRunStopsDeliveredInDatabase({
     driverUserId: string;
     runId: string;
     stopIds: number[];
-    db: DatabaseClient;
+    db: TransactionClient;
 }) {
     const stops = await ensureOwnedDeliveryRunStops({
         driverUserId,

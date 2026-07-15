@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
     accountCanTrackDeliveryRun,
+    applyDeliveryRunPickupMutations,
     type CreatePreparedDeliveryRunInput,
     cancelDeliveryRequest,
     changeDeliveryRequestSlot,
@@ -10,28 +11,43 @@ import {
     createDeliveryAddress,
     createDeliveryRun,
     createEvent,
+    DeliveryRunExecutionError,
+    DeliveryRunExecutionErrorCodes,
+    DeliveryRunManifestItemStates,
+    DeliveryRunManifestStates,
     DeliveryRunPersistenceError,
     DeliveryRunPersistenceErrorCodes,
     type DeliveryRunPreparationPlanPayloadV1,
     type DeliveryRunPreparationPlanPayloadV2,
+    type DeliveryRunPreparationPlanPayloadV3,
     type DeliveryRunRequestSnapshotInput,
+    DeliveryRunStates,
+    DeliveryRunStopStates,
     deliveryRequests,
     deliveryRunPickupNodes,
+    deliveryRunPickupOperations,
     deliveryRunPreparations,
     deliveryRunStops,
     deliveryRuns,
+    events,
+    farms,
     fulfillDeliveryRunStop,
     fulfillDeliveryRunStops,
+    gardens,
     getDeliveryDispatchRevision,
     getDeliveryRequest,
     getDeliveryRequestDispatchSnapshots,
     getDeliveryRun,
+    getDeliveryRunExecutionProgress,
     getDeliveryRunStopsForRequestIds,
+    harvestTraceLinks,
     knownEvents,
     markDeliveryRunStopArrived,
     markDeliveryRunStopsArrived,
     operations,
     pickupLocations,
+    raisedBedFields,
+    raisedBeds,
     saveDeliveryRunPreparation,
     storage,
     timeSlots,
@@ -249,6 +265,85 @@ async function createPreparedRunFixture({
     assert.ok(firstOperationId);
     assert.ok(secondOperationId);
 
+    const deliveryOperationIds = [firstOperationId, secondOperationId];
+    const [farm] = await storage()
+        .insert(farms)
+        .values({
+            name: `Delivery trace farm ${randomUUID()}`,
+            latitude: 45.8,
+            longitude: 15.97,
+        })
+        .returning();
+    assert.ok(farm);
+    const [garden] = await storage()
+        .insert(gardens)
+        .values({
+            accountId,
+            farmId: farm.id,
+            name: `Delivery trace garden ${randomUUID()}`,
+        })
+        .returning();
+    assert.ok(garden);
+    const [raisedBed] = await storage()
+        .insert(raisedBeds)
+        .values({
+            accountId,
+            gardenId: garden.id,
+            name: `Delivery trace bed ${randomUUID()}`,
+        })
+        .returning();
+    assert.ok(raisedBed);
+    const traceLinksByOperationId = new Map<
+        number,
+        typeof harvestTraceLinks.$inferSelect
+    >();
+    for (const [index, operationId] of Array.from(
+        new Set(deliveryOperationIds),
+    ).entries()) {
+        const [field] = await storage()
+            .insert(raisedBedFields)
+            .values({ raisedBedId: raisedBed.id, positionIndex: index })
+            .returning();
+        assert.ok(field);
+        const [plantPlaceEvent] = await storage()
+            .insert(events)
+            .values({
+                type: 'test.delivery.harvest-trace',
+                version: 1,
+                aggregateId: `delivery-trace-${randomUUID()}`,
+                data: {},
+            })
+            .returning({ id: events.id });
+        assert.ok(plantPlaceEvent);
+        await storage()
+            .update(operations)
+            .set({
+                farmId: farm.id,
+                gardenId: garden.id,
+                raisedBedId: raisedBed.id,
+                raisedBedFieldId: field.id,
+            })
+            .where(eq(operations.id, operationId));
+        const publicToken = `${bulk ? 'bulk' : 'route'}-trace-${randomUUID()}`;
+        const [traceLink] = await storage()
+            .insert(harvestTraceLinks)
+            .values({
+                publicToken,
+                accountId,
+                gardenId: garden.id,
+                raisedBedId: raisedBed.id,
+                raisedBedFieldId: field.id,
+                fieldPositionIndex: field.positionIndex,
+                fieldLabel: `Polje ${index + 1}`,
+                plantPlaceEventId: plantPlaceEvent.id,
+                harvestOperationId: operationId,
+                tracePath: `/trag/${publicToken}`,
+            })
+            .returning();
+        assert.ok(traceLink);
+        traceLinksByOperationId.set(operationId, traceLink);
+    }
+
     const firstLocation = await storage().query.pickupLocations.findFirst({
         where: eq(pickupLocations.id, fixture.locationId),
     });
@@ -295,7 +390,7 @@ async function createPreparedRunFixture({
     );
     const slotIds = [firstSlot.id, secondSlot.id];
     for (const [index, requestId] of fixture.requestIds.entries()) {
-        const operationId = fixture.operationIds[index];
+        const operationId = deliveryOperationIds[index];
         const addressId = addressIds[bulk ? 0 : index];
         const slotId = slotIds[bulk ? 0 : index];
         assert.ok(operationId);
@@ -430,6 +525,19 @@ async function createPreparedRunFixture({
                 deliveryAddressUpdatedAt: snapshot.address.updatedAt,
             };
         }),
+        manifestItems: fixture.requestIds.map((deliveryRequestId, index) => {
+            const operationId = deliveryOperationIds[index];
+            const traceLink = operationId
+                ? traceLinksByOperationId.get(operationId)
+                : undefined;
+            assert.ok(traceLink);
+            return {
+                deliveryRequestId,
+                timeSlotId: slotIds[bulk ? 0 : index] ?? firstSlot.id,
+                harvestTraceLinkId: traceLink.id,
+                traceToken: traceLink.publicToken,
+            };
+        }),
     };
 
     return {
@@ -437,6 +545,7 @@ async function createPreparedRunFixture({
         addressIds,
         createRunInput,
         requestSnapshots,
+        traceLinks: Array.from(traceLinksByOperationId.values()),
         selectionRequestIds: [...fixture.requestIds],
         dispatchRevision: await getDeliveryDispatchRevision(),
     };
@@ -488,6 +597,26 @@ async function assertPersistenceError(promise: Promise<unknown>, code: string) {
         (error) =>
             error instanceof DeliveryRunPersistenceError && error.code === code,
     );
+}
+
+async function assertExecutionError(promise: Promise<unknown>, code: string) {
+    await assert.rejects(
+        promise,
+        (error) =>
+            error instanceof DeliveryRunExecutionError && error.code === code,
+    );
+}
+
+function asV2PreparationPlan(
+    plan: DeliveryRunPreparationPlanPayloadV3,
+): DeliveryRunPreparationPlanPayloadV2 {
+    const { manifestItems: _manifestItems, ...createRunInput } =
+        plan.createRunInput;
+    return {
+        ...plan,
+        formatVersion: 2,
+        createRunInput,
+    };
 }
 
 function asLegacyPreparationPlan(
@@ -689,6 +818,49 @@ test('delivery run fulfills a current bulk stop atomically and preserves route o
     });
     assert.notEqual(nextRun.id, run.id);
     assert.equal(nextRun.state, 'active');
+});
+
+test('concurrent arrival and delivery never regress a delivered stop', async () => {
+    const fixture = await createDeliveryRunFixture();
+    const [driverUserId] = fixture.driverUserIds;
+    const [requestId] = fixture.requestIds;
+    assert.ok(driverUserId);
+    assert.ok(requestId);
+
+    const run = await createRun({
+        fixture,
+        driverUserId,
+        requestIds: [requestId],
+    });
+    const [stop] = run.stops;
+    assert.ok(stop);
+
+    const [arrival, delivery] = await Promise.allSettled([
+        markDeliveryRunStopArrived({
+            driverUserId,
+            runId: run.id,
+            stopId: stop.id,
+        }),
+        fulfillDeliveryRunStop({
+            driverUserId,
+            runId: run.id,
+            stopId: stop.id,
+        }),
+    ]);
+
+    assert.equal(delivery.status, 'fulfilled');
+    assert.ok(
+        arrival.status === 'fulfilled' ||
+            (arrival.reason instanceof Error &&
+                /Active delivery stop not found/.test(arrival.reason.message)),
+    );
+    const completedRun = await getDeliveryRun(run.id);
+    assert.equal(completedRun?.state, DeliveryRunStates.COMPLETED);
+    assert.equal(
+        completedRun?.stops[0]?.state,
+        DeliveryRunStopStates.DELIVERED,
+    );
+    assert.ok(completedRun?.stops[0]?.deliveredAt);
 });
 
 test('same-driver route creation replays the active run and ignores a new selection', async () => {
@@ -1024,6 +1196,17 @@ test('prepared run persists multiple pickup locations, slots, manifests, and sta
     assert.equal(run.pickupNodes.length, 2);
     assert.equal(run.runSlots.length, 2);
     assert.equal(new Set(run.runSlots.map((slot) => slot.manifestId)).size, 2);
+    assert.ok(
+        run.runSlots.every(
+            (slot) => slot.manifestState === DeliveryRunManifestStates.PENDING,
+        ),
+    );
+    assert.ok(
+        run.stops.every(
+            (stop) =>
+                stop.pickupItemState === DeliveryRunManifestItemStates.READY,
+        ),
+    );
     assert.deepEqual(
         run.stops.map((stop) => stop.runSlot?.id),
         run.runSlots.map((slot) => slot.id),
@@ -1065,7 +1248,7 @@ test('prepared run persists multiple pickup locations, slots, manifests, and sta
         await storage().query.deliveryRunPreparations.findFirst({
             where: eq(deliveryRunPreparations.id, saved.preparationId),
         });
-    assert.equal(savedPreparation?.plan.formatVersion, 2);
+    assert.equal(savedPreparation?.plan.formatVersion, 3);
 
     const [firstAddressId] = prepared.addressIds;
     const [firstNode] = run.pickupNodes;
@@ -1110,6 +1293,129 @@ test('prepared run persists multiple pickup locations, slots, manifests, and sta
     assert.equal(requestRows[0]?.stop.runSlot?.id, firstRunSlot.id);
 });
 
+test('preparation rejects a manifest trace that is not the request current active trace', async () => {
+    const prepared = await createPreparedRunFixture();
+    const [firstItem, secondItem] = prepared.createRunInput.manifestItems;
+    assert.ok(firstItem);
+    assert.ok(secondItem?.traceToken);
+
+    await assertPersistenceError(
+        saveDeliveryRunPreparation({
+            ...prepared,
+            createRunInput: {
+                ...prepared.createRunInput,
+                manifestItems: [
+                    { ...firstItem, traceToken: secondItem.traceToken },
+                    secondItem,
+                ],
+            },
+        }),
+        DeliveryRunPersistenceErrorCodes.SOURCE_CHANGED,
+    );
+});
+
+test('preparation consumption rejects revoked or newly activated trace provenance', async () => {
+    const revokedPrepared = await createPreparedRunFixture();
+    const revokedDriverUserId = revokedPrepared.fixture.driverUserIds[0];
+    const [revokedTrace] = revokedPrepared.traceLinks;
+    assert.ok(revokedDriverUserId);
+    assert.ok(revokedTrace);
+    const revokedSaved = await saveDeliveryRunPreparation(revokedPrepared);
+    await storage()
+        .update(harvestTraceLinks)
+        .set({ status: 'revoked', revokedAt: new Date() })
+        .where(eq(harvestTraceLinks.id, revokedTrace.id));
+    await assertPersistenceError(
+        consumeDeliveryRunPreparation({
+            preparationToken: revokedSaved.preparationToken,
+            driverUserId: revokedDriverUserId,
+            deliveryRequestIds: revokedPrepared.fixture.requestIds,
+        }),
+        DeliveryRunPersistenceErrorCodes.SOURCE_CHANGED,
+    );
+
+    const activatedPrepared = await createPreparedRunFixture();
+    const activatedDriverUserId = activatedPrepared.fixture.driverUserIds[0];
+    const [activatedTrace] = activatedPrepared.traceLinks;
+    const [firstItem, ...remainingItems] =
+        activatedPrepared.createRunInput.manifestItems;
+    assert.ok(activatedDriverUserId);
+    assert.ok(activatedTrace);
+    assert.ok(firstItem);
+    await storage()
+        .update(harvestTraceLinks)
+        .set({ status: 'revoked', revokedAt: new Date() })
+        .where(eq(harvestTraceLinks.id, activatedTrace.id));
+    const preparedWithoutTrace = {
+        ...activatedPrepared,
+        createRunInput: {
+            ...activatedPrepared.createRunInput,
+            manifestItems: [
+                {
+                    deliveryRequestId: firstItem.deliveryRequestId,
+                    timeSlotId: firstItem.timeSlotId,
+                },
+                ...remainingItems,
+            ],
+        },
+    };
+    const activatedSaved =
+        await saveDeliveryRunPreparation(preparedWithoutTrace);
+    await storage()
+        .update(harvestTraceLinks)
+        .set({ status: 'active', revokedAt: null })
+        .where(eq(harvestTraceLinks.id, activatedTrace.id));
+    await assertPersistenceError(
+        consumeDeliveryRunPreparation({
+            preparationToken: activatedSaved.preparationToken,
+            driverUserId: activatedDriverUserId,
+            deliveryRequestIds: activatedPrepared.fixture.requestIds,
+        }),
+        DeliveryRunPersistenceErrorCodes.SOURCE_CHANGED,
+    );
+});
+
+test('pickup scan rejects trace provenance revoked after route creation', async () => {
+    const prepared = await createPreparedRunFixture();
+    const driverUserId = prepared.fixture.driverUserIds[0];
+    const [trace] = prepared.traceLinks;
+    assert.ok(driverUserId);
+    assert.ok(trace);
+    const saved = await saveDeliveryRunPreparation(prepared);
+    const run = await consumeDeliveryRunPreparation({
+        preparationToken: saved.preparationToken,
+        driverUserId,
+        deliveryRequestIds: prepared.fixture.requestIds,
+    });
+    const [pickup] = run.pickupNodes;
+    const [stop] = run.stops;
+    assert.ok(pickup);
+    assert.ok(stop);
+    await storage()
+        .update(harvestTraceLinks)
+        .set({ status: 'revoked', revokedAt: new Date() })
+        .where(eq(harvestTraceLinks.id, trace.id));
+
+    const [result] = await applyDeliveryRunPickupMutations({
+        driverUserId,
+        runId: run.id,
+        pickupNodeId: pickup.id,
+        mutations: [
+            {
+                clientOperationId: 'scan-revoked-trace',
+                occurredAt: new Date('2026-07-13T08:01:00.000Z'),
+                kind: 'scan',
+                traceToken: trace.publicToken,
+            },
+        ],
+    });
+    assert.equal(result?.result.outcome, 'not-found');
+    assert.equal(
+        (await getDeliveryRun(run.id))?.stops[0]?.pickupItemState,
+        DeliveryRunManifestItemStates.READY,
+    );
+});
+
 test('original selection can consume a preparation expanded with bulk siblings', async () => {
     const prepared = await createPreparedRunFixture({ bulk: true });
     const [driverUserId, selectedRequestId] = [
@@ -1138,6 +1444,521 @@ test('original selection can consume a preparation expanded with bulk siblings',
         [2, 2],
     );
     assert.equal(new Set(run.stops.map((stop) => stop.stopKey)).size, 1);
+});
+
+test('pickup mutations persist, replay safely, and activate a multi-location itinerary in order', async () => {
+    const prepared = await createPreparedRunFixture();
+    const driverUserId = prepared.fixture.driverUserIds[0];
+    const accountId = prepared.fixture.accountIds[0];
+    assert.ok(driverUserId);
+    assert.ok(accountId);
+    const saved = await saveDeliveryRunPreparation(prepared);
+    const run = await consumeDeliveryRunPreparation({
+        preparationToken: saved.preparationToken,
+        driverUserId,
+        deliveryRequestIds: prepared.fixture.requestIds,
+    });
+    const [firstPickup, secondPickup] = run.pickupNodes;
+    const [firstManifest, secondManifest] = run.runSlots;
+    const [firstStop, secondStop] = run.stops;
+    const [firstTrace, secondTrace] = prepared.traceLinks;
+    assert.ok(firstPickup);
+    assert.ok(secondPickup);
+    assert.ok(firstManifest);
+    assert.ok(secondManifest);
+    assert.ok(firstStop);
+    assert.ok(secondStop);
+    assert.ok(firstTrace);
+    assert.ok(secondTrace);
+
+    assert.deepEqual(
+        (await getDeliveryRunExecutionProgress(run.id)).map((step) => ({
+            kind: step.kind,
+            sequence: step.itinerarySequence,
+            state: step.state,
+        })),
+        [
+            { kind: 'pickup', sequence: 1, state: 'current' },
+            { kind: 'delivery', sequence: 2, state: 'upcoming' },
+            { kind: 'pickup', sequence: 3, state: 'upcoming' },
+            { kind: 'delivery', sequence: 4, state: 'upcoming' },
+        ],
+    );
+    assert.equal(
+        await accountCanTrackDeliveryRun({ accountId, runId: run.id }),
+        false,
+    );
+    await assertExecutionError(
+        markDeliveryRunStopArrived({
+            driverUserId,
+            runId: run.id,
+            stopId: firstStop.id,
+        }),
+        DeliveryRunExecutionErrorCodes.PICKUP_DEPENDENCY_PENDING,
+    );
+
+    const scanOccurredAt = new Date('2026-07-13T08:01:00.000Z');
+    const [scanResult] = await applyDeliveryRunPickupMutations({
+        driverUserId,
+        runId: run.id,
+        pickupNodeId: firstPickup.id,
+        mutations: [
+            {
+                clientOperationId: 'scan-first-pickup',
+                occurredAt: scanOccurredAt,
+                kind: 'scan',
+                traceToken: `/trag/${firstTrace.publicToken}`,
+            },
+        ],
+    });
+    assert.equal(scanResult?.replayed, false);
+    assert.deepEqual(scanResult?.result.affectedStopIds, [firstStop.id]);
+    assert.equal(scanResult?.result.itemState, 'scanned');
+
+    const [replayResult] = await applyDeliveryRunPickupMutations({
+        driverUserId,
+        runId: run.id,
+        pickupNodeId: firstPickup.id,
+        mutations: [
+            {
+                clientOperationId: 'scan-first-pickup',
+                occurredAt: scanOccurredAt,
+                kind: 'scan',
+                traceToken: firstTrace.publicToken,
+            },
+        ],
+    });
+    assert.equal(replayResult?.replayed, true);
+    await assertExecutionError(
+        applyDeliveryRunPickupMutations({
+            driverUserId,
+            runId: run.id,
+            pickupNodeId: firstPickup.id,
+            mutations: [
+                {
+                    clientOperationId: 'scan-first-pickup',
+                    occurredAt: scanOccurredAt,
+                    kind: 'scan',
+                    traceToken: secondTrace.publicToken,
+                },
+            ],
+        }),
+        DeliveryRunExecutionErrorCodes.PICKUP_OPERATION_CONFLICT,
+    );
+
+    const [receipt] = await storage()
+        .select()
+        .from(deliveryRunPickupOperations)
+        .where(eq(deliveryRunPickupOperations.runId, run.id));
+    assert.ok(receipt);
+    assert.match(receipt.payloadHash, /^[a-f0-9]{64}$/);
+    assert.ok(!JSON.stringify(receipt).includes(firstTrace.publicToken));
+
+    await applyDeliveryRunPickupMutations({
+        driverUserId,
+        runId: run.id,
+        pickupNodeId: firstPickup.id,
+        mutations: [
+            {
+                clientOperationId: 'confirm-first-manifest',
+                occurredAt: new Date('2026-07-13T08:02:00.000Z'),
+                kind: 'confirm-manifest',
+                manifestId: firstManifest.manifestId,
+            },
+        ],
+    });
+    const [semanticConfirmationReplay] = await applyDeliveryRunPickupMutations({
+        driverUserId,
+        runId: run.id,
+        pickupNodeId: firstPickup.id,
+        mutations: [
+            {
+                clientOperationId: 'confirm-first-manifest-again',
+                occurredAt: new Date('2026-07-13T08:02:30.000Z'),
+                kind: 'confirm-manifest',
+                manifestId: firstManifest.manifestId,
+            },
+        ],
+    });
+    assert.equal(semanticConfirmationReplay?.replayed, false);
+    assert.equal(semanticConfirmationReplay?.result.outcome, 'already-applied');
+    assert.equal(
+        await accountCanTrackDeliveryRun({ accountId, runId: run.id }),
+        true,
+    );
+    await assertExecutionError(
+        applyDeliveryRunPickupMutations({
+            driverUserId,
+            runId: run.id,
+            pickupNodeId: secondPickup.id,
+            mutations: [
+                {
+                    clientOperationId: 'future-pickup-change',
+                    occurredAt: new Date('2026-07-13T08:03:00.000Z'),
+                    kind: 'mark-item',
+                    stopId: secondStop.id,
+                    outcome: 'not-ready',
+                },
+            ],
+        }),
+        DeliveryRunExecutionErrorCodes.PICKUP_NOT_CURRENT,
+    );
+
+    await markDeliveryRunStopArrived({
+        driverUserId,
+        runId: run.id,
+        stopId: firstStop.id,
+    });
+    await fulfillDeliveryRunStop({
+        driverUserId,
+        runId: run.id,
+        stopId: firstStop.id,
+    });
+    assert.equal(
+        (await getDeliveryRunExecutionProgress(run.id)).find(
+            (step) => step.state === 'current',
+        )?.kind,
+        'pickup',
+    );
+    await assertExecutionError(
+        applyDeliveryRunPickupMutations({
+            driverUserId,
+            runId: run.id,
+            pickupNodeId: secondPickup.id,
+            mutations: [
+                {
+                    clientOperationId: 'scan-first-pickup',
+                    occurredAt: scanOccurredAt,
+                    kind: 'scan',
+                    traceToken: firstTrace.publicToken,
+                },
+            ],
+        }),
+        DeliveryRunExecutionErrorCodes.PICKUP_OPERATION_CONFLICT,
+    );
+
+    await applyDeliveryRunPickupMutations({
+        driverUserId,
+        runId: run.id,
+        pickupNodeId: secondPickup.id,
+        mutations: [
+            {
+                clientOperationId: 'second-not-ready',
+                occurredAt: new Date('2026-07-13T10:00:00.000Z'),
+                kind: 'mark-item',
+                stopId: secondStop.id,
+                outcome: 'not-ready',
+            },
+        ],
+    });
+    await assertExecutionError(
+        applyDeliveryRunPickupMutations({
+            driverUserId,
+            runId: run.id,
+            pickupNodeId: secondPickup.id,
+            mutations: [
+                {
+                    clientOperationId: 'confirm-incomplete-second',
+                    occurredAt: new Date('2026-07-13T10:01:00.000Z'),
+                    kind: 'confirm-manifest',
+                    manifestId: secondManifest.manifestId,
+                },
+            ],
+        }),
+        DeliveryRunExecutionErrorCodes.PICKUP_MANIFEST_INCOMPLETE,
+    );
+    await applyDeliveryRunPickupMutations({
+        driverUserId,
+        runId: run.id,
+        pickupNodeId: secondPickup.id,
+        mutations: [
+            {
+                clientOperationId: 'second-missing-label',
+                occurredAt: new Date('2026-07-13T10:02:00.000Z'),
+                kind: 'mark-item',
+                stopId: secondStop.id,
+                outcome: 'missing-label',
+            },
+            {
+                clientOperationId: 'confirm-second-manifest',
+                occurredAt: new Date('2026-07-13T10:03:00.000Z'),
+                kind: 'confirm-manifest',
+                manifestId: secondManifest.manifestId,
+            },
+        ],
+    });
+    const current = (await getDeliveryRunExecutionProgress(run.id)).find(
+        (step) => step.state === 'current',
+    );
+    assert.equal(current?.kind, 'delivery');
+    assert.deepEqual(current?.kind === 'delivery' ? current.stopIds : [], [
+        secondStop.id,
+    ]);
+});
+
+test('bulk pickup scans and customer completion remain atomic', async () => {
+    const prepared = await createPreparedRunFixture({ bulk: true });
+    const driverUserId = prepared.fixture.driverUserIds[0];
+    assert.ok(driverUserId);
+    const saved = await saveDeliveryRunPreparation(prepared);
+    const run = await consumeDeliveryRunPreparation({
+        preparationToken: saved.preparationToken,
+        driverUserId,
+        deliveryRequestIds: prepared.fixture.requestIds,
+    });
+    const [pickup] = run.pickupNodes;
+    const [manifest] = run.runSlots;
+    const [firstStop, secondStop] = run.stops;
+    const [firstTrace, secondTrace] = prepared.traceLinks;
+    assert.ok(pickup);
+    assert.ok(manifest);
+    assert.ok(firstStop);
+    assert.ok(secondStop);
+    assert.ok(firstTrace);
+    assert.ok(secondTrace);
+
+    const scans = await applyDeliveryRunPickupMutations({
+        driverUserId,
+        runId: run.id,
+        pickupNodeId: pickup.id,
+        mutations: [
+            {
+                clientOperationId: 'scan-first-bulk-label',
+                occurredAt: new Date('2026-07-13T08:01:00.000Z'),
+                kind: 'scan',
+                traceToken: firstTrace.publicToken,
+            },
+            {
+                clientOperationId: 'scan-second-bulk-label',
+                occurredAt: new Date('2026-07-13T08:01:05.000Z'),
+                kind: 'scan',
+                traceToken: secondTrace.publicToken,
+            },
+        ],
+    });
+    assert.deepEqual(
+        scans.map((scan) => scan.result.affectedStopIds),
+        [[firstStop.id], [secondStop.id]],
+    );
+    await applyDeliveryRunPickupMutations({
+        driverUserId,
+        runId: run.id,
+        pickupNodeId: pickup.id,
+        mutations: [
+            {
+                clientOperationId: 'confirm-bulk-manifest',
+                occurredAt: new Date('2026-07-13T08:02:00.000Z'),
+                kind: 'confirm-manifest',
+                manifestId: manifest.manifestId,
+            },
+        ],
+    });
+    await assertExecutionError(
+        fulfillDeliveryRunStop({
+            driverUserId,
+            runId: run.id,
+            stopId: firstStop.id,
+        }),
+        DeliveryRunExecutionErrorCodes.ROUTE_ORDER,
+    );
+    await fulfillDeliveryRunStops({
+        driverUserId,
+        runId: run.id,
+        stopIds: [firstStop.id, secondStop.id],
+    });
+    assert.equal((await getDeliveryRun(run.id))?.state, 'completed');
+});
+
+test('a valid pickup scan promotes missing-label state and persists a matching receipt', async () => {
+    const prepared = await createPreparedRunFixture();
+    const driverUserId = prepared.fixture.driverUserIds[0];
+    const [trace] = prepared.traceLinks;
+    assert.ok(driverUserId);
+    assert.ok(trace);
+    const saved = await saveDeliveryRunPreparation(prepared);
+    const run = await consumeDeliveryRunPreparation({
+        preparationToken: saved.preparationToken,
+        driverUserId,
+        deliveryRequestIds: prepared.fixture.requestIds,
+    });
+    const [pickup] = run.pickupNodes;
+    const [stop] = run.stops;
+    assert.ok(pickup);
+    assert.ok(stop);
+
+    await applyDeliveryRunPickupMutations({
+        driverUserId,
+        runId: run.id,
+        pickupNodeId: pickup.id,
+        mutations: [
+            {
+                clientOperationId: 'mark-missing-before-scan',
+                occurredAt: new Date('2026-07-13T08:00:00.000Z'),
+                kind: 'mark-item',
+                stopId: stop.id,
+                outcome: 'missing-label',
+            },
+        ],
+    });
+    assert.equal(
+        (await getDeliveryRun(run.id))?.stops[0]?.pickupItemState,
+        DeliveryRunManifestItemStates.MISSING_LABEL,
+    );
+
+    const [scanResult] = await applyDeliveryRunPickupMutations({
+        driverUserId,
+        runId: run.id,
+        pickupNodeId: pickup.id,
+        mutations: [
+            {
+                clientOperationId: 'scan-after-missing-label',
+                occurredAt: new Date('2026-07-13T08:01:00.000Z'),
+                kind: 'scan',
+                traceToken: trace.publicToken,
+            },
+        ],
+    });
+    assert.equal(scanResult?.result.outcome, 'applied');
+    assert.equal(
+        scanResult?.result.itemState,
+        DeliveryRunManifestItemStates.SCANNED,
+    );
+    assert.equal(
+        (await getDeliveryRun(run.id))?.stops[0]?.pickupItemState,
+        DeliveryRunManifestItemStates.SCANNED,
+    );
+
+    const receipts = await storage()
+        .select()
+        .from(deliveryRunPickupOperations)
+        .where(eq(deliveryRunPickupOperations.runId, run.id));
+    const scanReceipt = receipts.find(
+        (receipt) => receipt.clientOperationId === 'scan-after-missing-label',
+    );
+    assert.equal(
+        scanReceipt?.result.itemState,
+        DeliveryRunManifestItemStates.SCANNED,
+    );
+});
+
+test('partial manifests remain pending until every item is scanned or marked missing-label', async () => {
+    const prepared = await createPreparedRunFixture({ bulk: true });
+    const [firstTrace] = prepared.traceLinks;
+    assert.ok(firstTrace);
+    const driverUserId = prepared.fixture.driverUserIds[0];
+    assert.ok(driverUserId);
+    const saved = await saveDeliveryRunPreparation(prepared);
+    const run = await consumeDeliveryRunPreparation({
+        preparationToken: saved.preparationToken,
+        driverUserId,
+        deliveryRequestIds: prepared.fixture.requestIds,
+    });
+    const [pickup] = run.pickupNodes;
+    const [manifest] = run.runSlots;
+    const [firstStop, secondStop] = run.stops;
+    assert.ok(pickup);
+    assert.ok(manifest);
+    assert.ok(firstStop);
+    assert.ok(secondStop);
+
+    await assertExecutionError(
+        applyDeliveryRunPickupMutations({
+            driverUserId,
+            runId: run.id,
+            pickupNodeId: pickup.id,
+            mutations: [
+                {
+                    clientOperationId: 'rolled-back-manual-item',
+                    occurredAt: new Date('2026-07-13T08:00:00.000Z'),
+                    kind: 'mark-item',
+                    stopId: firstStop.id,
+                    outcome: 'missing-label',
+                },
+                {
+                    clientOperationId: 'rolled-back-confirm',
+                    occurredAt: new Date('2026-07-13T08:00:30.000Z'),
+                    kind: 'confirm-manifest',
+                    manifestId: manifest.manifestId,
+                },
+            ],
+        }),
+        DeliveryRunExecutionErrorCodes.PICKUP_MANIFEST_INCOMPLETE,
+    );
+    const afterRollback = await getDeliveryRun(run.id);
+    assert.ok(
+        afterRollback?.stops.every(
+            (stop) =>
+                stop.pickupItemState === DeliveryRunManifestItemStates.READY,
+        ),
+    );
+    assert.equal(
+        (
+            await storage()
+                .select()
+                .from(deliveryRunPickupOperations)
+                .where(eq(deliveryRunPickupOperations.runId, run.id))
+        ).length,
+        0,
+    );
+
+    await applyDeliveryRunPickupMutations({
+        driverUserId,
+        runId: run.id,
+        pickupNodeId: pickup.id,
+        mutations: [
+            {
+                clientOperationId: 'scan-one-of-two',
+                occurredAt: new Date('2026-07-13T08:01:00.000Z'),
+                kind: 'scan',
+                traceToken: firstTrace.publicToken,
+            },
+        ],
+    });
+    await assertExecutionError(
+        applyDeliveryRunPickupMutations({
+            driverUserId,
+            runId: run.id,
+            pickupNodeId: pickup.id,
+            mutations: [
+                {
+                    clientOperationId: 'confirm-partial',
+                    occurredAt: new Date('2026-07-13T08:02:00.000Z'),
+                    kind: 'confirm-manifest',
+                    manifestId: manifest.manifestId,
+                },
+            ],
+        }),
+        DeliveryRunExecutionErrorCodes.PICKUP_MANIFEST_INCOMPLETE,
+    );
+    assert.equal(
+        (await getDeliveryRun(run.id))?.runSlots[0]?.manifestState,
+        DeliveryRunManifestStates.PENDING,
+    );
+
+    await applyDeliveryRunPickupMutations({
+        driverUserId,
+        runId: run.id,
+        pickupNodeId: pickup.id,
+        mutations: [
+            {
+                clientOperationId: 'manual-missing-label',
+                occurredAt: new Date('2026-07-13T08:03:00.000Z'),
+                kind: 'mark-item',
+                stopId: secondStop.id,
+                outcome: 'missing-label',
+            },
+            {
+                clientOperationId: 'confirm-complete',
+                occurredAt: new Date('2026-07-13T08:04:00.000Z'),
+                kind: 'confirm-manifest',
+                manifestId: manifest.manifestId,
+            },
+        ],
+    });
+    assert.equal(
+        (await getDeliveryRun(run.id))?.runSlots[0]?.manifestState,
+        DeliveryRunManifestStates.CONFIRMED,
+    );
 });
 
 test('tampered pickup-node and run-slot snapshots are rejected', async () => {
@@ -1290,7 +2111,7 @@ test('v2 itinerary gaps, dependency violations, bulk splits, and invalid provena
     );
 });
 
-test('persisted v2 itinerary tampering is rejected before run creation', async () => {
+test('persisted v3 itinerary tampering is rejected before run creation', async () => {
     const prepared = await createPreparedRunFixture();
     const driverUserId = prepared.fixture.driverUserIds[0];
     assert.ok(driverUserId);
@@ -1300,9 +2121,9 @@ test('persisted v2 itinerary tampering is rejected before run creation', async (
             where: eq(deliveryRunPreparations.id, saved.preparationId),
         },
     );
-    assert.equal(preparation?.plan.formatVersion, 2);
-    if (preparation?.plan.formatVersion !== 2) {
-        assert.fail('Expected a v2 delivery run preparation');
+    assert.equal(preparation?.plan.formatVersion, 3);
+    if (preparation?.plan.formatVersion !== 3) {
+        assert.fail('Expected a v3 delivery run preparation');
     }
     const [firstStop, ...remainingStops] =
         preparation.plan.createRunInput.stops;
@@ -1349,12 +2170,16 @@ test('existing v1 preparation tokens remain consumable as legacy routes', async 
             where: eq(deliveryRunPreparations.id, saved.preparationId),
         },
     );
-    if (preparation?.plan.formatVersion !== 2) {
-        assert.fail('Expected a v2 delivery run preparation');
+    if (preparation?.plan.formatVersion !== 3) {
+        assert.fail('Expected a v3 delivery run preparation');
     }
     await storage()
         .update(deliveryRunPreparations)
-        .set({ plan: asLegacyPreparationPlan(preparation.plan) })
+        .set({
+            plan: asLegacyPreparationPlan(
+                asV2PreparationPlan(preparation.plan),
+            ),
+        })
         .where(eq(deliveryRunPreparations.id, saved.preparationId));
 
     const run = await consumeDeliveryRunPreparation({
@@ -1381,6 +2206,50 @@ test('existing v1 preparation tokens remain consumable as legacy routes', async 
                 stop.serviceDurationSeconds === null,
         ),
     );
+});
+
+test('existing v2 preparation tokens remain consumable with confirmed pickup dependencies', async () => {
+    const prepared = await createPreparedRunFixture();
+    const driverUserId = prepared.fixture.driverUserIds[0];
+    assert.ok(driverUserId);
+    const saved = await saveDeliveryRunPreparation(prepared);
+    const preparation = await storage().query.deliveryRunPreparations.findFirst(
+        {
+            where: eq(deliveryRunPreparations.id, saved.preparationId),
+        },
+    );
+    if (preparation?.plan.formatVersion !== 3) {
+        assert.fail('Expected a v3 delivery run preparation');
+    }
+    await storage()
+        .update(deliveryRunPreparations)
+        .set({ plan: asV2PreparationPlan(preparation.plan) })
+        .where(eq(deliveryRunPreparations.id, saved.preparationId));
+
+    const run = await consumeDeliveryRunPreparation({
+        preparationToken: saved.preparationToken,
+        driverUserId,
+        deliveryRequestIds: prepared.fixture.requestIds,
+    });
+    assert.equal(run.routePlanVersion, 2);
+    assert.ok(
+        run.runSlots.every(
+            (slot) =>
+                slot.manifestState === DeliveryRunManifestStates.CONFIRMED,
+        ),
+    );
+    assert.ok(run.stops.every((stop) => stop.pickupItemState === null));
+    const current = (await getDeliveryRunExecutionProgress(run.id)).find(
+        (step) => step.state === 'current',
+    );
+    assert.equal(current?.kind, 'delivery');
+    const firstStop = run.stops[0];
+    assert.ok(firstStop);
+    await markDeliveryRunStopArrived({
+        driverUserId,
+        runId: run.id,
+        stopId: firstStop.id,
+    });
 });
 
 test('preparation rejects wrong owner or selection and expires without creating a run', async () => {

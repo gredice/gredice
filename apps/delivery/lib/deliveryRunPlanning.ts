@@ -58,9 +58,14 @@ type DeliveryRunPlanningPickupLocation = {
 
 export type DeliveryRunPlanningRequest = {
     id: string;
+    operationId?: number;
     routeRevision: number;
     mode?: string;
     state: string;
+    trace?: {
+        id: number;
+        publicToken: string;
+    } | null;
     address?: DeliveryRunPlanningAddress;
     slot?: {
         id: number;
@@ -375,6 +380,29 @@ function createRunSlotInputs(
                 sourceUpdatedAt: slot.updatedAt,
             };
         });
+}
+
+function createManifestItemInputs(
+    requests: readonly DeliveryRunPlanningRequest[],
+): CreatePreparedDeliveryRunInput['manifestItems'] {
+    return requests.map((request) => {
+        if (!request.slot) {
+            throw new DeliveryRunPreparationError(
+                'Dostava nema valjani termin za manifest preuzimanja.',
+                requestConflict('delivery-slot-invalid', request),
+            );
+        }
+        return {
+            deliveryRequestId: request.id,
+            timeSlotId: request.slot.id,
+            ...(request.trace
+                ? {
+                      harvestTraceLinkId: request.trace.id,
+                      traceToken: request.trace.publicToken,
+                  }
+                : {}),
+        };
+    });
 }
 
 function requestConflict(
@@ -706,6 +734,7 @@ export async function prepareDeliveryRun(
             pickupNodes: createPickupNodeInputs(candidates, plan.pickupNodes),
             runSlots: createRunSlotInputs(candidates),
             stops: storedStops,
+            manifestItems: createManifestItemInputs(candidates),
         },
         summary: {
             ...inspection.summary,

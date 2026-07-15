@@ -498,6 +498,13 @@
       "when": 1784087489488,
       "tag": "0070_open_rawhide_kid",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1784108556188,
+      "tag": "0071_omniscient_rhino",
+      "breakpoints": true
     }
   ]
 }

@@ -6,11 +6,30 @@ import { Card, CardContent } from '@gredice/ui/Card';
 import { LoaderSpinner, Reset, Warning } from '@gredice/ui/icons';
 import { Typography } from '@gredice/ui/Typography';
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useDriverTracking } from '../hooks/useDriverTracking';
-import type { DeliveryDashboard as DeliveryDashboardData } from '../lib/deliveryDashboardTypes';
+import { usePickupManifestSync } from '../hooks/usePickupManifestSync';
+import type {
+    DeliveryDashboard as DeliveryDashboardData,
+    DriverDeliveryDashboard,
+} from '../lib/deliveryDashboardTypes';
+import {
+    clearPickupManifestQueueScope,
+    createWebStoragePickupManifestQueuePersistence,
+} from '../lib/pickupManifestQueue';
 import { CustomerDashboard } from './CustomerDashboard';
 import { DriverDashboard } from './DriverDashboard';
+
+async function clearStoredPickupQueues(userId: string) {
+    try {
+        await clearPickupManifestQueueScope(
+            createWebStoragePickupManifestQueuePersistence(window.localStorage),
+            { userId },
+        );
+    } catch {
+        // Storage may be unavailable in private/restricted browser contexts.
+    }
+}
 
 async function readDashboard() {
     const response = await fetch('/api/dashboard', { cache: 'no-store' });
@@ -45,7 +64,9 @@ function isDeliveryDashboard(value: unknown): value is DeliveryDashboardData {
     }
 
     return value.kind === 'driver'
-        ? 'batches' in value &&
+        ? 'activeRun' in value &&
+              isSafeActiveRun(value.activeRun) &&
+              'batches' in value &&
               Array.isArray(value.batches) &&
               'maximumRouteStops' in value &&
               typeof value.maximumRouteStops === 'number' &&
@@ -54,6 +75,44 @@ function isDeliveryDashboard(value: unknown): value is DeliveryDashboardData {
         : value.kind === 'customer' &&
               'deliveries' in value &&
               Array.isArray(value.deliveries);
+}
+
+function isSafeActiveRun(value: unknown) {
+    if (value === null) return true;
+    if (typeof value !== 'object') return false;
+
+    return (
+        'stops' in value &&
+        Array.isArray(value.stops) &&
+        'routeSteps' in value &&
+        Array.isArray(value.routeSteps) &&
+        value.routeSteps.every((step) => {
+            if (
+                typeof step !== 'object' ||
+                step === null ||
+                !('kind' in step)
+            ) {
+                return false;
+            }
+            if (step.kind === 'pickup') {
+                return (
+                    'pickup' in step &&
+                    typeof step.pickup === 'object' &&
+                    step.pickup !== null &&
+                    'manifests' in step.pickup &&
+                    Array.isArray(step.pickup.manifests)
+                );
+            }
+            return (
+                step.kind === 'delivery' &&
+                'stop' in step &&
+                typeof step.stop === 'object' &&
+                step.stop !== null &&
+                'deliveries' in step.stop &&
+                Array.isArray(step.stop.deliveries)
+            );
+        })
+    );
 }
 
 async function postAction(path: string, body?: object) {
@@ -115,6 +174,136 @@ const refreshPreparationCodes = new Set([
     'preparation-not-found',
 ]);
 
+function DriverDashboardWithPickupSync({
+    dashboard,
+    trackingState,
+    pendingAction,
+    onSelectionChange,
+    onStartRun,
+    onArrive,
+    onDeliver,
+    onPickupError,
+    onPickupAcknowledged,
+}: {
+    dashboard: DriverDeliveryDashboard;
+    trackingState: ReturnType<typeof useDriverTracking>;
+    pendingAction: string | null;
+    onSelectionChange: () => void;
+    onStartRun: (deliveryRequestIds: string[]) => void;
+    onArrive: (runId: string, stopId: number) => void;
+    onDeliver: (runId: string, stopId: number, notes?: string) => void;
+    onPickupError: (error: unknown) => void;
+    onPickupAcknowledged: () => void | Promise<void>;
+}) {
+    const activeRun = dashboard.activeRun;
+    if (!activeRun) {
+        return (
+            <DriverDashboard
+                dashboard={dashboard}
+                trackingState={trackingState}
+                pendingAction={pendingAction}
+                onSelectionChange={onSelectionChange}
+                onStartRun={onStartRun}
+                onArrive={onArrive}
+                onDeliver={onDeliver}
+                pickupQueue={null}
+                onPickupScan={() => undefined}
+                onPickupItemState={() => undefined}
+                onConfirmPickupManifest={() => undefined}
+                onRetryPickupSync={() => undefined}
+                onDiscardPickupSync={() => undefined}
+            />
+        );
+    }
+
+    return (
+        <ActiveDriverDashboardWithPickupSync
+            dashboard={dashboard}
+            activeRunId={activeRun.id}
+            trackingState={trackingState}
+            pendingAction={pendingAction}
+            onSelectionChange={onSelectionChange}
+            onStartRun={onStartRun}
+            onArrive={onArrive}
+            onDeliver={onDeliver}
+            onPickupError={onPickupError}
+            onPickupAcknowledged={onPickupAcknowledged}
+        />
+    );
+}
+
+function ActiveDriverDashboardWithPickupSync({
+    dashboard,
+    activeRunId,
+    trackingState,
+    pendingAction,
+    onSelectionChange,
+    onStartRun,
+    onArrive,
+    onDeliver,
+    onPickupError,
+    onPickupAcknowledged,
+}: {
+    dashboard: DriverDeliveryDashboard;
+    activeRunId: string;
+    trackingState: ReturnType<typeof useDriverTracking>;
+    pendingAction: string | null;
+    onSelectionChange: () => void;
+    onStartRun: (deliveryRequestIds: string[]) => void;
+    onArrive: (runId: string, stopId: number) => void;
+    onDeliver: (runId: string, stopId: number, notes?: string) => void;
+    onPickupError: (error: unknown) => void;
+    onPickupAcknowledged: () => void | Promise<void>;
+}) {
+    const pickupSync = usePickupManifestSync({
+        userId: dashboard.user.id,
+        runId: activeRunId,
+        onAcknowledged: onPickupAcknowledged,
+    });
+    const report = async (action: Promise<unknown>) => {
+        try {
+            await action;
+        } catch (error) {
+            onPickupError(error);
+        }
+    };
+
+    return (
+        <DriverDashboard
+            dashboard={dashboard}
+            trackingState={trackingState}
+            pendingAction={pendingAction}
+            onSelectionChange={onSelectionChange}
+            onStartRun={onStartRun}
+            onArrive={onArrive}
+            onDeliver={onDeliver}
+            pickupQueue={pickupSync.snapshot}
+            onPickupScan={(pickupNodeId, scanValue) =>
+                report(pickupSync.enqueueScan(pickupNodeId, scanValue))
+            }
+            onPickupItemState={(pickupNodeId, manifestId, stopId, outcome) =>
+                report(
+                    pickupSync.enqueueItemOutcome({
+                        pickupNodeId,
+                        manifestId,
+                        stopId,
+                        outcome,
+                    }),
+                )
+            }
+            onConfirmPickupManifest={(pickupNodeId, manifestId) =>
+                report(pickupSync.enqueueConfirm(pickupNodeId, manifestId))
+            }
+            onRetryPickupSync={(operationId) =>
+                report(pickupSync.retryEntry(operationId))
+            }
+            onDiscardPickupSync={(operationId) =>
+                report(pickupSync.discardEntry(operationId))
+            }
+        />
+    );
+}
+
 export function DeliveryDashboard() {
     const [pendingAction, setPendingAction] = useState<string | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
@@ -128,6 +317,26 @@ export function DeliveryDashboard() {
             ? (query.data.activeRun?.id ?? null)
             : null;
     const trackingState = useDriverTracking(activeRunId);
+    const driverWithoutActiveRun =
+        query.data?.kind === 'driver' && !query.data.activeRun
+            ? query.data.user.id
+            : null;
+    const currentDriverUserId =
+        query.data?.kind === 'driver' ? query.data.user.id : null;
+    const previousDriverUserIdRef = useRef<string | null>(null);
+
+    useEffect(() => {
+        if (!driverWithoutActiveRun) return;
+        void clearStoredPickupQueues(driverWithoutActiveRun);
+    }, [driverWithoutActiveRun]);
+
+    useEffect(() => {
+        const previousUserId = previousDriverUserIdRef.current;
+        if (previousUserId && previousUserId !== currentDriverUserId) {
+            void clearStoredPickupQueues(previousUserId);
+        }
+        previousDriverUserIdRef.current = currentDriverUserId;
+    }, [currentDriverUserId]);
 
     const perform = async (key: string, path: string, body?: object) => {
         setPendingAction(key);
@@ -257,7 +466,7 @@ export function DeliveryDashboard() {
                 </div>
             ) : null}
             {dashboard.kind === 'driver' ? (
-                <DriverDashboard
+                <DriverDashboardWithPickupSync
                     dashboard={dashboard}
                     trackingState={trackingState}
                     pendingAction={pendingAction}
@@ -278,6 +487,16 @@ export function DeliveryDashboard() {
                             { notes },
                         )
                     }
+                    onPickupError={(error) =>
+                        setActionError(
+                            error instanceof Error
+                                ? error.message
+                                : 'Promjenu preuzimanja nije moguće spremiti.',
+                        )
+                    }
+                    onPickupAcknowledged={async () => {
+                        await query.refetch();
+                    }}
                 />
             ) : (
                 <CustomerDashboard dashboard={dashboard} />

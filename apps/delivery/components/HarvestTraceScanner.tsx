@@ -44,9 +44,33 @@ type PickupRouteConflict = Extract<
     { status: 'route-conflict' }
 >;
 
+export type PickupManifestScanResult =
+    | { status: 'pickup-invalid' }
+    | { status: 'pickup-not-at-location'; tracePath: string }
+    | { status: 'pickup-ambiguous'; tracePath: string }
+    | {
+          status: 'pickup-already-collected';
+          tracePath: string;
+          plantName: string;
+      }
+    | {
+          status: 'pickup-not-ready';
+          tracePath: string;
+          plantName: string;
+      }
+    | {
+          status: 'pickup-queued';
+          tracePath: string;
+          plantName: string;
+          matchedCount: number;
+      };
+
 function scanHistoryItem(
     id: number,
-    result: HarvestTraceSelectionResult | HarvestTraceVerificationResult,
+    result:
+        | HarvestTraceSelectionResult
+        | HarvestTraceVerificationResult
+        | PickupManifestScanResult,
 ): ScanHistoryItem {
     switch (result.status) {
         case 'selected':
@@ -125,6 +149,44 @@ function scanHistoryItem(
                 color: 'danger',
                 message: 'Kod nije valjana Gredice poveznica traga uroda.',
             };
+        case 'pickup-queued':
+            return {
+                id,
+                color: 'success',
+                message: `${result.plantName} · očitano ${result.matchedCount === 1 ? 'za manifest' : `za ${result.matchedCount} povezana uroda`}.`,
+            };
+        case 'pickup-already-collected':
+            return {
+                id,
+                color: 'info',
+                message: `${result.plantName} već je potvrđen na ovoj lokaciji preuzimanja.`,
+            };
+        case 'pickup-not-ready':
+            return {
+                id,
+                color: 'warning',
+                message: `${result.plantName} je označen kao nespreman i ostaje u manifestu.`,
+            };
+        case 'pickup-not-at-location':
+            return {
+                id,
+                color: 'warning',
+                message:
+                    'Ovaj QR kod nije na manifestu trenutačne lokacije preuzimanja.',
+            };
+        case 'pickup-ambiguous':
+            return {
+                id,
+                color: 'warning',
+                message:
+                    'Ovaj QR kod pripada različitim skupnim stanicama. Provjeri urode ručno.',
+            };
+        case 'pickup-invalid':
+            return {
+                id,
+                color: 'danger',
+                message: 'Kod nije valjana Gredice poveznica traga uroda.',
+            };
     }
 }
 
@@ -153,13 +215,16 @@ export function HarvestTraceScanner({
     onScan,
     onReplacePickupSelection,
 }: {
-    variant: 'pickup' | 'verification';
+    variant: 'pickup' | 'manifest' | 'verification';
     availableTraceCount: number;
     disabled: boolean;
     completedTraceCount: number;
     onScan: (
         value: string,
-    ) => HarvestTraceSelectionResult | HarvestTraceVerificationResult;
+    ) =>
+        | HarvestTraceSelectionResult
+        | HarvestTraceVerificationResult
+        | PickupManifestScanResult;
     onReplacePickupSelection?: (requestIds: string[]) => boolean;
 }) {
     const [open, setOpen] = useState(false);
@@ -183,6 +248,10 @@ export function HarvestTraceScanner({
         onScanRef.current = onScan;
     }, [onScan]);
 
+    useEffect(() => {
+        if (disabled) setOpen(false);
+    }, [disabled]);
+
     const pushHistory = useCallback((item: Omit<ScanHistoryItem, 'id'>) => {
         historyIdRef.current += 1;
         setHistory((current) => [
@@ -193,6 +262,7 @@ export function HarvestTraceScanner({
 
     const processScan = useCallback(
         (value: string, source: 'camera' | 'manual') => {
+            if (disabled) return;
             const normalizedValue = value.trim();
             if (!normalizedValue) return;
 
@@ -237,15 +307,19 @@ export function HarvestTraceScanner({
                 ...current.slice(0, 3),
             ]);
 
-            if (result.status === 'selected' || result.status === 'verified') {
+            if (
+                result.status === 'selected' ||
+                result.status === 'verified' ||
+                result.status === 'pickup-queued'
+            ) {
                 navigator.vibrate?.(80);
             }
         },
-        [pushHistory],
+        [disabled, pushHistory],
     );
 
     useEffect(() => {
-        if (!open) return;
+        if (!open || disabled) return;
 
         if (!navigator.mediaDevices?.getUserMedia) {
             setCameraState('unsupported');
@@ -340,7 +414,7 @@ export function HarvestTraceScanner({
                 video.srcObject = null;
             }
         };
-    }, [open, processScan]);
+    }, [disabled, open, processScan]);
 
     function openScanner() {
         seenValuesRef.current.clear();
@@ -382,6 +456,7 @@ export function HarvestTraceScanner({
     }
 
     const verificationMode = variant === 'verification';
+    const manifestMode = variant === 'manifest';
 
     return (
         <>
@@ -391,7 +466,11 @@ export function HarvestTraceScanner({
                 onClick={openScanner}
                 startDecorator={<Camera className="size-4" />}
             >
-                {verificationMode ? 'Provjeri QR kodove' : 'Skeniraj QR kodove'}
+                {verificationMode
+                    ? 'Provjeri QR kodove'
+                    : manifestMode
+                      ? 'Skeniraj urode'
+                      : 'Skeniraj QR kodove'}
             </Button>
             <Modal
                 open={open}
@@ -399,12 +478,16 @@ export function HarvestTraceScanner({
                 title={
                     verificationMode
                         ? 'Provjera uroda za dostavu'
-                        : 'Skeniranje tragova uroda'
+                        : manifestMode
+                          ? 'Preuzimanje uroda'
+                          : 'Skeniranje tragova uroda'
                 }
                 description={
                     verificationMode
                         ? 'Skeniranje je pomoćna provjera i nikada ne blokira potvrdu dostave.'
-                        : 'Kamera ostaje aktivna kako bi se više QR kodova moglo očitati bez zatvaranja skenera.'
+                        : manifestMode
+                          ? 'Kamera ostaje aktivna za brzo skeniranje svih uroda na trenutačnoj lokaciji.'
+                          : 'Kamera ostaje aktivna kako bi se više QR kodova moglo očitati bez zatvaranja skenera.'
                 }
                 className="md:max-w-xl"
             >
@@ -413,7 +496,9 @@ export function HarvestTraceScanner({
                         <Typography level="h3" semiBold>
                             {verificationMode
                                 ? 'Provjeri urode na stanici'
-                                : 'Skeniraj tragove uroda'}
+                                : manifestMode
+                                  ? 'Skeniraj manifest preuzimanja'
+                                  : 'Skeniraj tragove uroda'}
                         </Typography>
                         <Typography
                             level="body3"
@@ -421,7 +506,9 @@ export function HarvestTraceScanner({
                         >
                             {verificationMode
                                 ? 'Kamera ostaje uključena. Skeniraj etikete uroda koje predaješ korisniku.'
-                                : 'Kamera ostaje uključena. Svaki novi QR automatski odabire cijelu skupnu stanicu dostave.'}
+                                : manifestMode
+                                  ? 'Kamera ostaje uključena. Svaki očitani QR potvrđuje odgovarajući urod na ovoj lokaciji.'
+                                  : 'Kamera ostaje uključena. Svaki novi QR automatski odabire cijelu skupnu stanicu dostave.'}
                         </Typography>
                     </div>
 
@@ -433,13 +520,19 @@ export function HarvestTraceScanner({
                         <Chip color="success" size="sm">
                             <Check className="mr-1 size-4" />
                             {completedTraceCount}{' '}
-                            {verificationMode ? 'provjereno' : 'odabrano'}
+                            {verificationMode
+                                ? 'provjereno'
+                                : manifestMode
+                                  ? 'preuzeto'
+                                  : 'odabrano'}
                         </Chip>
                         <Chip color="neutral" size="sm">
                             {availableTraceCount}{' '}
                             {verificationMode
                                 ? 'očekivanih QR kodova'
-                                : 'dostupnih QR kodova'}
+                                : manifestMode
+                                  ? 'uroda u manifestu'
+                                  : 'dostupnih QR kodova'}
                         </Chip>
                     </div>
 
@@ -508,10 +601,7 @@ export function HarvestTraceScanner({
                                                 )
                                             }
                                         >
-                                            {pickupRouteConflict.code ===
-                                            'mixed-pickup-locations'
-                                                ? 'Prebaci na skeniranu lokaciju'
-                                                : 'Prebaci na skenirani termin'}
+                                            Odaberi izdvojenu skupinu
                                         </Button>
                                     ) : null}
                                     {pickupRouteConflict.separateRouteRequestIds

@@ -30,7 +30,6 @@ export type DeliveryRouteSelectionSlot = {
 export type DeliveryRouteSelectionConflict = {
     code:
         | 'delivery-window-invalid'
-        | 'mixed-pickup-locations'
         | 'route-stop-limit-exceeded'
         | 'route-window-span-exceeded';
     message: string;
@@ -45,6 +44,7 @@ export type DeliveryRouteSelectionSummary = {
     requestIds: string[];
     deliveryCount: number;
     stopCount: number;
+    routeNodeCount: number;
     pickupLocations: DeliveryRouteSelectionPickupLocation[];
     slots: DeliveryRouteSelectionSlot[];
     windowStartAt: string | null;
@@ -69,14 +69,6 @@ export type DeliveryRouteSelectionChange =
           summary: DeliveryRouteSelectionSummary;
           conflict: DeliveryRouteSelectionConflict;
       };
-
-function pickupLocationLabel(location: DeliveryRouteSelectionPickupLocation) {
-    return (
-        location.name?.trim() ||
-        location.address?.trim() ||
-        `Lokacija preuzimanja ${location.id}`
-    );
-}
 
 function formatSlotDateTime(value: number) {
     return new Intl.DateTimeFormat('hr-HR', {
@@ -160,13 +152,16 @@ function buildSummary(
         timestamps.length > 0
             ? Math.max(...timestamps.map(({ endAt }) => endAt))
             : null;
+    const selectedPickupLocations = pickupLocations(candidates);
+    const stopCount = new Set(candidates.map((candidate) => candidate.stopKey))
+        .size;
 
     return {
         requestIds: candidates.map((candidate) => candidate.requestId),
         deliveryCount: candidates.length,
-        stopCount: new Set(candidates.map((candidate) => candidate.stopKey))
-            .size,
-        pickupLocations: pickupLocations(candidates),
+        stopCount,
+        routeNodeCount: stopCount + selectedPickupLocations.length,
+        pickupLocations: selectedPickupLocations,
         slots: slots(candidates),
         windowStartAt:
             windowStart === null ? null : new Date(windowStart).toISOString(),
@@ -210,40 +205,38 @@ function findConflict({
         };
     }
 
-    if (selectedPickupLocations.length > 1) {
-        const [firstLocation, secondLocation] = selectedPickupLocations;
-        if (firstLocation && secondLocation) {
-            return {
-                code: 'mixed-pickup-locations',
-                message: `Odabrani urodi čekaju na više lokacija preuzimanja: ${pickupLocationLabel(firstLocation)} i ${pickupLocationLabel(secondLocation)}. Pokreni zasebnu rutu za svaku lokaciju.`,
-                conflictingRequestIds: secondLocation.requestIds,
-                pickupLocations: selectedPickupLocations,
-                slots: selectedSlots,
-                deliveryAddress: null,
-            };
-        }
-    }
-
     const stopGroups = new Map<string, DeliveryRouteSelectionCandidate[]>();
     for (const candidate of candidates) {
         const group = stopGroups.get(candidate.stopKey);
         if (group) group.push(candidate);
         else stopGroups.set(candidate.stopKey, [candidate]);
     }
-    if (stopGroups.size > maximumRouteStops) {
-        const conflictingGroup = Array.from(stopGroups.values())[
-            maximumRouteStops
-        ];
-        const conflictingCandidate = conflictingGroup?.[0];
-        return {
-            code: 'route-stop-limit-exceeded',
-            message: `Jedna ruta može sadržavati najviše ${maximumRouteStops} fizičkih stanica. Adresu ${conflictingCandidate?.deliveryAddress ?? 'sljedeće dostave'} ostavi za zasebnu rutu.`,
-            conflictingRequestIds:
-                conflictingGroup?.map((candidate) => candidate.requestId) ?? [],
-            pickupLocations: selectedPickupLocations,
-            slots: selectedSlots,
-            deliveryAddress: conflictingCandidate?.deliveryAddress ?? null,
-        };
+    const maximumRouteNodes = maximumRouteStops + 1;
+    const acceptedCandidates: DeliveryRouteSelectionCandidate[] = [];
+    let acceptedStopCount = 0;
+    for (const group of stopGroups.values()) {
+        const proposedCandidates = [...acceptedCandidates, ...group];
+        const proposedPickupLocationCount = new Set(
+            proposedCandidates.map((candidate) => candidate.pickupLocationId),
+        ).size;
+        if (
+            acceptedStopCount + 1 + proposedPickupLocationCount >
+            maximumRouteNodes
+        ) {
+            const conflictingCandidate = group[0];
+            return {
+                code: 'route-stop-limit-exceeded',
+                message: `Jedna ruta može sadržavati najviše ${maximumRouteNodes} fizičkih lokacija, uključujući preuzimanja. Adresu ${conflictingCandidate?.deliveryAddress ?? 'sljedeće dostave'} ostavi za zasebnu rutu.`,
+                conflictingRequestIds: group.map(
+                    (candidate) => candidate.requestId,
+                ),
+                pickupLocations: selectedPickupLocations,
+                slots: selectedSlots,
+                deliveryAddress: conflictingCandidate?.deliveryAddress ?? null,
+            };
+        }
+        acceptedCandidates.push(...group);
+        acceptedStopCount += 1;
     }
 
     const timestamps = candidates.map((candidate) => ({

@@ -1,5 +1,6 @@
 import { withAuth } from '../../../../../../../../lib/auth/auth';
 import { deliverDeliveryStop } from '../../../../../../../../lib/deliveryDashboard';
+import { deliveryRunExecutionErrorDetails } from '../../../../../../../../lib/deliveryRunExecutionError';
 
 export async function POST(
     request: Request,
@@ -32,14 +33,26 @@ export async function POST(
             });
             return Response.json({ success: true });
         } catch (error) {
-            console.error('Failed to deliver stop', {
-                error,
-                runId,
-                stopId,
-                userId,
-            });
+            const executionError = deliveryRunExecutionErrorDetails(error);
+            const logContext = { runId, stopId, userId };
+            if (executionError) {
+                console.warn('Delivery stop completion rejected', {
+                    ...logContext,
+                    code: executionError.code,
+                });
+            } else {
+                console.error('Failed to deliver stop', {
+                    ...logContext,
+                    error,
+                });
+            }
             return Response.json(
-                { error: 'Dostavu nije moguće potvrditi.' },
+                {
+                    error:
+                        executionError?.message ??
+                        'Dostavu trenutačno nije moguće potvrditi.',
+                    code: executionError?.code,
+                },
                 { status: 409 },
             );
         }

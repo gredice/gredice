@@ -217,7 +217,7 @@ test('accumulates delivery stops across consecutive live scans', () => {
     ]);
 });
 
-test('keeps the current QR selection when a live scan belongs to another pickup location', () => {
+test('accumulates live QR scans across pickup locations', () => {
     const orders = [
         order({ requestId: 'one', stopKey: 'slot:1', token: firstToken }),
         order({ requestId: 'two', stopKey: 'slot:2', token: secondToken }),
@@ -282,13 +282,14 @@ test('keeps the current QR selection when a live scan belongs to another pickup 
         maximumRouteWindowHours: 24,
     });
 
-    assert.equal(secondSelection.status, 'rejected');
-    if (secondSelection.status !== 'rejected') return;
-    assert.equal(secondSelection.conflict.code, 'mixed-pickup-locations');
-    assert.deepEqual(secondSelection.requestIds, ['one']);
+    assert.equal(secondSelection.status, 'accepted');
+    if (secondSelection.status !== 'accepted') return;
+    assert.deepEqual(secondSelection.requestIds, ['one', 'two']);
+    assert.equal(secondSelection.summary.pickupLocations.length, 2);
+    assert.equal(secondSelection.summary.routeNodeCount, 4);
 });
 
-test('reports duplicate, unavailable, ambiguous, and route-limit scans', () => {
+test('reports duplicate, unavailable, and ambiguous scans without pre-empting route validation', () => {
     const orders = [
         order({ requestId: 'one', stopKey: 'slot:1', token: firstToken }),
         order({ requestId: 'two', stopKey: 'slot:2', token: secondToken }),
@@ -312,15 +313,15 @@ test('reports duplicate, unavailable, ambiguous, and route-limit scans', () => {
         }).status,
         'not-found',
     );
-    assert.equal(
-        selectDeliveryStopFromHarvestTrace({
-            orders,
-            selectedRequestIds: ['one'],
-            maximumRouteStops: 1,
-            scanValue: secondToken,
-        }).status,
-        'limit-reached',
-    );
+    const nextStop = selectDeliveryStopFromHarvestTrace({
+        orders,
+        selectedRequestIds: ['one'],
+        maximumRouteStops: 1,
+        scanValue: secondToken,
+    });
+    assert.equal(nextStop.status, 'selected');
+    if (nextStop.status !== 'selected') return;
+    assert.deepEqual(nextStop.nextSelectedRequestIds, ['one', 'two']);
 
     const ambiguousOrders = [
         order({ requestId: 'one', stopKey: 'slot:1', token: firstToken }),

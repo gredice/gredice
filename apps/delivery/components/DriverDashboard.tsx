@@ -19,6 +19,8 @@ import { useRef, useState } from 'react';
 import type { DriverTrackingState } from '../hooks/useDriverTracking';
 import type {
     ActiveDeliveryRunSummary,
+    DeliveryPickupStepSummary,
+    DeliveryRouteOrderSummary,
     DriverDeliveryDashboard,
 } from '../lib/deliveryDashboardTypes';
 import {
@@ -32,17 +34,28 @@ import {
     inspectDeliveryRouteSelection,
 } from '../lib/deliveryRouteSelection';
 import { groupByDeliveryStop } from '../lib/deliveryStopGrouping';
-import { selectDeliveryStopFromHarvestTrace } from '../lib/harvestTraceScan';
+import {
+    normalizeHarvestTraceScanValue,
+    selectDeliveryStopFromHarvestTrace,
+} from '../lib/harvestTraceScan';
+import type {
+    PickupManifestQueueEntry,
+    PickupManifestQueueSnapshot,
+} from '../lib/pickupManifestQueue';
 import { DeliveryAppHeader } from './DeliveryAppHeader';
 import { DeliveryBatchCard } from './DeliveryBatchCard';
 import { DeliveryMap } from './DeliveryMap';
+import {
+    DeliveryPickupCard,
+    type PickupManifestSyncSummary,
+} from './DeliveryPickupCard';
 import { DeliveryStopCard } from './DeliveryStopCard';
 import { HarvestTraceScanner } from './HarvestTraceScanner';
 
 function trackingMessage(state: DriverTrackingState) {
     switch (state) {
         case 'active':
-            return 'GPS praćenje je aktivno. Korisnici vide tvoju zadnju lokaciju dok je ruta otvorena.';
+            return 'GPS praćenje je aktivno. Lokaciju vidi samo korisnik trenutačne dostavne stanice kada je ona na redu.';
         case 'requesting':
             return 'Čeka se dopuštenje za GPS lokaciju…';
         case 'denied':
@@ -69,6 +82,172 @@ function routeEstimateSourceLabel(
     }
 }
 
+function queuedPickup(
+    pickup: DeliveryPickupStepSummary,
+    entries: readonly PickupManifestQueueEntry[],
+) {
+    const applicableEntries = entries.filter(
+        (entry) =>
+            entry.command.pickupNodeId === pickup.id &&
+            entry.state !== 'conflicted',
+    );
+    if (applicableEntries.length === 0) return pickup;
+
+    const manifests = pickup.manifests.map((manifest) => ({
+        ...manifest,
+        items: manifest.items.map((item) => ({ ...item })),
+    }));
+    for (const entry of applicableEntries) {
+        const command = entry.command;
+        if (command.kind === 'scan') {
+            for (const manifest of manifests) {
+                for (const item of manifest.items) {
+                    if (
+                        item.tracePath === command.tracePath &&
+                        item.state !== 'scanned' &&
+                        item.state !== 'missing-label'
+                    ) {
+                        item.state = 'scanned';
+                    }
+                }
+            }
+            continue;
+        }
+        if (command.kind === 'manual-outcome') {
+            const manifest = manifests.find(
+                (candidate) => candidate.id === command.manifestId,
+            );
+            const item = manifest?.items.find(
+                (candidate) => candidate.stopId === command.stopId,
+            );
+            if (item) item.state = command.outcome;
+        }
+    }
+
+    const summarizedManifests = manifests.map((manifest) => {
+        const scannedCount = manifest.items.filter(
+            (item) => item.state === 'scanned',
+        ).length;
+        const missingLabelCount = manifest.items.filter(
+            (item) => item.state === 'missing-label',
+        ).length;
+        const notReadyCount = manifest.items.filter(
+            (item) => item.state === 'not-ready',
+        ).length;
+        return {
+            ...manifest,
+            scannedCount,
+            missingLabelCount,
+            notReadyCount,
+            remainingCount:
+                manifest.expectedCount - scannedCount - missingLabelCount,
+        };
+    });
+    return {
+        ...pickup,
+        manifests: summarizedManifests,
+        scannedCount: summarizedManifests.reduce(
+            (count, manifest) => count + manifest.scannedCount,
+            0,
+        ),
+        missingLabelCount: summarizedManifests.reduce(
+            (count, manifest) => count + manifest.missingLabelCount,
+            0,
+        ),
+        notReadyCount: summarizedManifests.reduce(
+            (count, manifest) => count + manifest.notReadyCount,
+            0,
+        ),
+        remainingCount: summarizedManifests.reduce(
+            (count, manifest) => count + manifest.remainingCount,
+            0,
+        ),
+    };
+}
+
+function pickupSyncSummary(
+    pickupNodeId: string,
+    snapshot: PickupManifestQueueSnapshot | null,
+): PickupManifestSyncSummary {
+    const entries =
+        snapshot?.entries.filter(
+            (entry) => entry.command.pickupNodeId === pickupNodeId,
+        ) ?? [];
+    const coordination = snapshot?.coordination ?? 'coordinated';
+    const pendingEntries = entries.filter((entry) => entry.state !== 'synced');
+    const conflicted = pendingEntries.find(
+        (entry) => entry.state === 'conflicted',
+    );
+    if (conflicted) {
+        return {
+            state: 'conflicted',
+            pendingCount: pendingEntries.length,
+            durability: snapshot?.durability ?? 'durable',
+            coordination,
+            blockingOperationId: conflicted.command.operationId,
+            message: pickupQueueErrorMessage(conflicted.errorCode, false),
+        };
+    }
+    const failed = pendingEntries.find((entry) => entry.state === 'failed');
+    if (failed) {
+        return {
+            state: 'failed',
+            pendingCount: pendingEntries.length,
+            durability: snapshot?.durability ?? 'durable',
+            coordination,
+            blockingOperationId: failed.command.operationId,
+            message: pickupQueueErrorMessage(failed.errorCode, true),
+        };
+    }
+    if (pendingEntries.some((entry) => entry.state === 'sending')) {
+        return {
+            state: 'sending',
+            pendingCount: pendingEntries.length,
+            durability: snapshot?.durability ?? 'durable',
+            coordination,
+            blockingOperationId: null,
+        };
+    }
+    if (pendingEntries.length > 0) {
+        return {
+            state: 'queued',
+            pendingCount: pendingEntries.length,
+            durability: snapshot?.durability ?? 'durable',
+            coordination,
+            blockingOperationId: null,
+        };
+    }
+    return {
+        state: 'idle',
+        pendingCount: 0,
+        durability: snapshot?.durability ?? 'durable',
+        coordination,
+        blockingOperationId: null,
+    };
+}
+
+function pickupQueueErrorMessage(code: string | undefined, retryable: boolean) {
+    switch (code) {
+        case 'pickup-trace-not-found':
+            return 'Očitani QR nije pronađen na ovom manifestu. Provjeri etiketu ili odbaci očitanje.';
+        case 'pickup-trace-ambiguous':
+            return 'Očitani QR pripada različitim skupnim stanicama. Provjeri urode ručno i odbaci očitanje.';
+        case 'pickup-operation-conflict':
+            return 'Promjena je već poslana s drugim podacima. Odbaci lokalnu kopiju i osvježi manifest.';
+        case 'pickup-not-current':
+        case 'route-order':
+        case 'pickup-dependency-pending':
+            return 'Ruta se promijenila. Odbaci lokalnu promjenu i učitaj trenutačni korak.';
+        case 'offline':
+        case 'transport-error':
+            return 'Promjena je spremljena na uređaju. Provjeri vezu i pokušaj ponovno.';
+        default:
+            return retryable
+                ? 'Promjena čeka provjeru. Pokušaj ponovno nakon provjere veze.'
+                : 'Promjenu nije moguće ponovno poslati. Odbaci je i provjeri trenutačni manifest.';
+    }
+}
+
 export function DriverDashboard({
     dashboard,
     trackingState,
@@ -77,6 +256,12 @@ export function DriverDashboard({
     onStartRun,
     onArrive,
     onDeliver,
+    pickupQueue,
+    onPickupScan,
+    onPickupItemState,
+    onConfirmPickupManifest,
+    onRetryPickupSync,
+    onDiscardPickupSync,
 }: {
     dashboard: DriverDeliveryDashboard;
     trackingState: DriverTrackingState;
@@ -85,6 +270,20 @@ export function DriverDashboard({
     onStartRun: (deliveryRequestIds: string[]) => void;
     onArrive: (runId: string, stopId: number) => void;
     onDeliver: (runId: string, stopId: number, notes?: string) => void;
+    pickupQueue: PickupManifestQueueSnapshot | null;
+    onPickupScan: (pickupNodeId: string, scanValue: string) => void;
+    onPickupItemState: (
+        pickupNodeId: string,
+        manifestId: string,
+        stopId: number,
+        outcome: 'ready' | 'missing-label' | 'not-ready',
+    ) => void;
+    onConfirmPickupManifest: (
+        pickupNodeId: string,
+        manifestId: string,
+    ) => void | Promise<void>;
+    onRetryPickupSync: (operationId: string) => void | Promise<void>;
+    onDiscardPickupSync: (operationId: string) => void | Promise<void>;
 }) {
     const run = dashboard.activeRun;
     const locationMessage = trackingMessage(trackingState);
@@ -128,7 +327,8 @@ export function DriverDashboard({
         maximumRouteWindowHours: dashboard.maximumRouteWindowHours,
     });
     const selectionLimitReached =
-        selectionInspection.summary.stopCount >= dashboard.maximumRouteStops;
+        selectionInspection.summary.routeNodeCount >=
+        dashboard.maximumRouteStops + 1;
     const selectedSlotCount = selectionInspection.summary.slots.length;
     const selectedPickupLocationCount =
         selectionInspection.summary.pickupLocations.length;
@@ -148,18 +348,6 @@ export function DriverDashboard({
         reconciledRejectedSelection?.status === 'rejected'
             ? reconciledRejectedSelection.conflict
             : selectionInspection.conflict;
-    const separateRouteLocation =
-        activeSelectionConflict?.pickupLocations.find((location) =>
-            location.requestIds.some((requestId) =>
-                activeSelectionConflict.separateRouteRequestIds.includes(
-                    requestId,
-                ),
-            ),
-        ) ?? null;
-    const separateRouteLocationLabel =
-        separateRouteLocation?.name ??
-        separateRouteLocation?.address ??
-        'odabranu lokaciju';
     const availableTraceCount = new Set(
         selectableOrders.flatMap((order) =>
             order.harvest.tracePath ? [order.harvest.tracePath] : [],
@@ -201,6 +389,32 @@ export function DriverDashboard({
         return applySelectedRequestIds(nextRequestIds);
     };
 
+    const appendCompatibleStopGroups = (
+        currentRequestIds: string[],
+        groups: Array<{
+            stopKey: string;
+            items: DeliveryRouteOrderSummary[];
+        }>,
+    ) => {
+        let acceptedRequestIds = currentRequestIds;
+        for (const group of groups) {
+            const result = applyDeliveryRouteSelection({
+                candidates: selectionCandidates,
+                currentRequestIds: acceptedRequestIds,
+                nextRequestIds: [
+                    ...acceptedRequestIds,
+                    ...group.items.map((order) => order.requestId),
+                ],
+                maximumRouteStops: dashboard.maximumRouteStops,
+                maximumRouteWindowHours: dashboard.maximumRouteWindowHours,
+            });
+            if (result.status === 'accepted') {
+                acceptedRequestIds = result.requestIds;
+            }
+        }
+        return acceptedRequestIds;
+    };
+
     const toggleOrder = (requestId: string, checked: boolean) => {
         const order = ordersByRequestId.get(requestId);
         if (!order?.readyForPickup) return;
@@ -216,18 +430,6 @@ export function DriverDashboard({
                 return availableCurrent.filter(
                     (id) => !groupedRequestIdSet.has(id),
                 );
-            }
-            const currentStopKeys = new Set(
-                availableCurrent.flatMap((id) => {
-                    const currentOrder = ordersByRequestId.get(id);
-                    return currentOrder ? [currentOrder.stopKey] : [];
-                }),
-            );
-            if (
-                !currentStopKeys.has(order.stopKey) &&
-                currentStopKeys.size >= dashboard.maximumRouteStops
-            ) {
-                return availableCurrent;
             }
             return Array.from(
                 new Set([...availableCurrent, ...groupedRequestIds]),
@@ -253,35 +455,16 @@ export function DriverDashboard({
                 return availableCurrent.filter((id) => !batchIds.has(id));
             }
 
-            const next = new Set(availableCurrent);
-            const nextStopKeys = new Set(
-                availableCurrent.flatMap((id) => {
-                    const order = ordersByRequestId.get(id);
-                    return order ? [order.stopKey] : [];
-                }),
+            return appendCompatibleStopGroups(
+                availableCurrent,
+                groupByDeliveryStop(readyBatchOrders),
             );
-            for (const group of groupByDeliveryStop(readyBatchOrders)) {
-                if (!nextStopKeys.has(group.stopKey)) {
-                    if (nextStopKeys.size >= dashboard.maximumRouteStops) {
-                        continue;
-                    }
-                    nextStopKeys.add(group.stopKey);
-                }
-                for (const order of group.items) {
-                    next.add(order.requestId);
-                }
-            }
-            return Array.from(next);
         });
     };
 
     const selectAllAvailable = () => {
         applySelectedRequestIds(
-            availableStopGroups
-                .slice(0, dashboard.maximumRouteStops)
-                .flatMap((group) =>
-                    group.items.map((order) => order.requestId),
-                ),
+            appendCompatibleStopGroups([], availableStopGroups),
         );
     };
 
@@ -465,35 +648,207 @@ export function DriverDashboard({
                             <div className="flex items-center gap-2">
                                 <MapPin className="size-5 text-primary" />
                                 <Typography level="h3" semiBold>
-                                    Stanice rute
+                                    Tijek rute
                                 </Typography>
                             </div>
                             <div className="grid gap-3 lg:grid-cols-2">
-                                {run.stops.map((stop) => (
-                                    <DeliveryStopCard
-                                        key={stop.id ?? stop.requestId}
-                                        stop={stop}
-                                        mode="driver"
-                                        pendingAction={
-                                            pendingAction?.startsWith(
-                                                `${stop.id}:`,
-                                            )
-                                                ? pendingAction.endsWith(
-                                                      ':arrive',
-                                                  )
-                                                    ? 'arrive'
-                                                    : 'deliver'
-                                                : null
-                                        }
-                                        onArrive={() =>
-                                            stop.id && onArrive(run.id, stop.id)
-                                        }
-                                        onDeliver={(notes) =>
-                                            stop.id &&
-                                            onDeliver(run.id, stop.id, notes)
-                                        }
-                                    />
-                                ))}
+                                {run.routeSteps.map((step) => {
+                                    if (step.kind === 'pickup') {
+                                        const pickup = queuedPickup(
+                                            step.pickup,
+                                            pickupQueue?.entries ?? [],
+                                        );
+                                        return (
+                                            <DeliveryPickupCard
+                                                key={`pickup:${pickup.id}`}
+                                                pickup={pickup}
+                                                actionState={step.actionState}
+                                                pendingAction={pendingAction}
+                                                sync={pickupSyncSummary(
+                                                    pickup.id,
+                                                    pickupQueue,
+                                                )}
+                                                onScan={(scanValue) => {
+                                                    const tracePath =
+                                                        normalizeHarvestTraceScanValue(
+                                                            scanValue,
+                                                        );
+                                                    if (!tracePath) {
+                                                        return {
+                                                            status: 'pickup-invalid',
+                                                        };
+                                                    }
+                                                    const matchingItems =
+                                                        pickup.manifests.flatMap(
+                                                            (manifest) =>
+                                                                manifest.items.filter(
+                                                                    (item) =>
+                                                                        item.tracePath ===
+                                                                        tracePath,
+                                                                ),
+                                                        );
+                                                    if (
+                                                        matchingItems.length ===
+                                                        0
+                                                    ) {
+                                                        return {
+                                                            status: 'pickup-not-at-location',
+                                                            tracePath,
+                                                        };
+                                                    }
+                                                    if (
+                                                        new Set(
+                                                            matchingItems.map(
+                                                                (item) =>
+                                                                    item.stopKey,
+                                                            ),
+                                                        ).size > 1
+                                                    ) {
+                                                        return {
+                                                            status: 'pickup-ambiguous',
+                                                            tracePath,
+                                                        };
+                                                    }
+                                                    const pendingItems =
+                                                        matchingItems.filter(
+                                                            (item) =>
+                                                                item.state ===
+                                                                    'ready' ||
+                                                                item.state ===
+                                                                    'not-ready',
+                                                        );
+                                                    const firstItem =
+                                                        matchingItems[0];
+                                                    if (!firstItem) {
+                                                        return {
+                                                            status: 'pickup-not-at-location',
+                                                            tracePath,
+                                                        };
+                                                    }
+                                                    if (
+                                                        pendingItems.length >
+                                                            0 &&
+                                                        pendingItems.every(
+                                                            (item) =>
+                                                                item.state ===
+                                                                'not-ready',
+                                                        )
+                                                    ) {
+                                                        return {
+                                                            status: 'pickup-not-ready',
+                                                            tracePath,
+                                                            plantName:
+                                                                firstItem
+                                                                    .harvest
+                                                                    .plantName,
+                                                        };
+                                                    }
+                                                    if (
+                                                        pendingItems.length ===
+                                                        0
+                                                    ) {
+                                                        return {
+                                                            status: 'pickup-already-collected',
+                                                            tracePath,
+                                                            plantName:
+                                                                firstItem
+                                                                    .harvest
+                                                                    .plantName,
+                                                        };
+                                                    }
+                                                    onPickupScan(
+                                                        pickup.id,
+                                                        tracePath,
+                                                    );
+                                                    return {
+                                                        status: 'pickup-queued',
+                                                        tracePath,
+                                                        plantName:
+                                                            firstItem.harvest
+                                                                .plantName,
+                                                        matchedCount:
+                                                            pendingItems.length,
+                                                    };
+                                                }}
+                                                onSetItemState={(
+                                                    pickupNodeId,
+                                                    manifestId,
+                                                    stopId,
+                                                    outcome,
+                                                ) =>
+                                                    onPickupItemState(
+                                                        pickupNodeId,
+                                                        manifestId,
+                                                        stopId,
+                                                        outcome,
+                                                    )
+                                                }
+                                                onResolveRemaining={(
+                                                    pickupNodeId,
+                                                    manifest,
+                                                ) => {
+                                                    for (const item of manifest.items) {
+                                                        if (
+                                                            item.state ===
+                                                            'ready'
+                                                        ) {
+                                                            onPickupItemState(
+                                                                pickupNodeId,
+                                                                manifest.id,
+                                                                item.stopId,
+                                                                'missing-label',
+                                                            );
+                                                        }
+                                                    }
+                                                }}
+                                                onConfirmManifest={
+                                                    onConfirmPickupManifest
+                                                }
+                                                onRetrySync={onRetryPickupSync}
+                                                onDiscardSync={
+                                                    onDiscardPickupSync
+                                                }
+                                            />
+                                        );
+                                    }
+                                    const stop = {
+                                        ...step.stop,
+                                        actionState: step.actionState,
+                                        lockedReason: step.lockedReason,
+                                        isCurrent:
+                                            step.actionState === 'current',
+                                    };
+                                    return (
+                                        <DeliveryStopCard
+                                            key={`delivery:${stop.id ?? stop.requestId}`}
+                                            stop={stop}
+                                            mode="driver"
+                                            pendingAction={
+                                                pendingAction?.startsWith(
+                                                    `${stop.id}:`,
+                                                )
+                                                    ? pendingAction.endsWith(
+                                                          ':arrive',
+                                                      )
+                                                        ? 'arrive'
+                                                        : 'deliver'
+                                                    : null
+                                            }
+                                            onArrive={() =>
+                                                stop.id &&
+                                                onArrive(run.id, stop.id)
+                                            }
+                                            onDeliver={(notes) =>
+                                                stop.id &&
+                                                onDeliver(
+                                                    run.id,
+                                                    stop.id,
+                                                    notes,
+                                                )
+                                            }
+                                        />
+                                    );
+                                })}
                             </div>
                         </section>
                     </>
@@ -521,13 +876,12 @@ export function DriverDashboard({
                                                         : 'uroda'}
                                                 </Chip>
                                                 <Chip color="neutral" size="sm">
-                                                    {selectedStopKeys.size}{' '}
-                                                    {selectedStopKeys.size === 1
-                                                        ? 'stanica'
-                                                        : selectedStopKeys.size <
-                                                            5
-                                                          ? 'stanice'
-                                                          : 'stanica'}
+                                                    {
+                                                        selectionInspection
+                                                            .summary
+                                                            .routeNodeCount
+                                                    }{' '}
+                                                    fizičkih lokacija
                                                 </Chip>
                                                 <Chip color="neutral" size="sm">
                                                     {selectedSlotCount}{' '}
@@ -562,8 +916,10 @@ export function DriverDashboard({
                                                 className="mt-2 text-muted-foreground"
                                             >
                                                 Najviše{' '}
-                                                {dashboard.maximumRouteStops}{' '}
-                                                fizičkih stanica po ruti. Svi
+                                                {dashboard.maximumRouteStops +
+                                                    1}{' '}
+                                                fizičkih lokacija po ruti,
+                                                uključujući preuzimanja. Svi
                                                 urodi za istu adresu u istom
                                                 terminu računaju se kao jedna
                                                 skupna stanica. Termini moraju
@@ -572,10 +928,7 @@ export function DriverDashboard({
                                                     dashboard.maximumRouteWindowHours
                                                 }{' '}
                                                 sata i poštuju se pri izračunu
-                                                dolazaka. Dok povezane lokacije
-                                                preuzimanja nisu dio plana,
-                                                jedna ruta kreće s jedne
-                                                lokacije. Urodi koji se još
+                                                dolazaka. Urodi koji se još
                                                 pripremaju ostaju vidljivi, ali
                                                 ih nije moguće odabrati.
                                             </Typography>
@@ -659,7 +1012,7 @@ export function DriverDashboard({
                                                     <Play className="size-4" />
                                                 }
                                             >
-                                                Preuzmi{' '}
+                                                Pokreni rutu s{' '}
                                                 {
                                                     effectiveSelectedRequestIds.length
                                                 }{' '}
@@ -699,10 +1052,8 @@ export function DriverDashboard({
                                                             )
                                                         }
                                                     >
-                                                        {activeSelectionConflict.code ===
-                                                        'mixed-pickup-locations'
-                                                            ? `Zadrži samo ${separateRouteLocationLabel}`
-                                                            : 'Zadrži kompatibilan odabir'}
+                                                        Zadrži kompatibilan
+                                                        odabir
                                                     </Button>
                                                 ) : null}
                                                 <Button
@@ -722,8 +1073,8 @@ export function DriverDashboard({
                                 ) : null}
 
                                 {selectionLimitReached &&
-                                availableStopGroups.length >
-                                    dashboard.maximumRouteStops ? (
+                                selectionInspection.summary.routeNodeCount >=
+                                    dashboard.maximumRouteStops + 1 ? (
                                     <Alert
                                         color="info"
                                         startDecorator={
@@ -731,9 +1082,10 @@ export function DriverDashboard({
                                         }
                                     >
                                         Dosegnut je najveći broj fizičkih
-                                        stanica za jednu rutu. Urodi na već
-                                        odabranoj adresi i u istom terminu i
-                                        dalje se dodaju skupno.
+                                        lokacija za jednu rutu, uključujući
+                                        preuzimanja. Urodi na već odabranoj
+                                        adresi i u istom terminu i dalje se
+                                        dodaju skupno.
                                     </Alert>
                                 ) : null}
 
