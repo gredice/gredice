@@ -1,3 +1,5 @@
+import type { DeliveryRunEstimateSource } from '@gredice/storage';
+
 export type DeliveryTrackingLocation = {
     latitude: number;
     longitude: number;
@@ -94,6 +96,8 @@ export type ActiveDeliveryRunSummary = {
     completedAt: string | null;
     totalDistanceMeters: number | null;
     totalDurationSeconds: number | null;
+    routePlanVersion: number;
+    estimateSource: DeliveryRunEstimateSource;
     location: DeliveryTrackingLocation | null;
     estimatesUpdatedAt: string | null;
     mapUrl: string;

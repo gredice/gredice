@@ -9,7 +9,11 @@ import 'server-only';
 import {
     accountUsers,
     DeliveryRequestStates,
+    type DeliveryRunEstimateSource,
+    DeliveryRunEstimateSources,
     type DeliveryRunPreparationPlanPayload,
+    type DeliveryRunPreparationPlanPayloadV1,
+    type DeliveryRunPreparationPlanPayloadV2,
     DeliveryRunStates,
     DeliveryRunStopStates,
     deliveryAddresses,
@@ -21,6 +25,7 @@ import {
     deliveryRuns,
     events,
     operations,
+    type PreparedDeliveryRunEstimateSource,
     pickupLocations,
     timeSlots,
     users,
@@ -51,6 +56,8 @@ export type CreateDeliveryRunStopInput = {
     estimatedArrivalAt?: Date;
     estimatedTravelSeconds?: number;
     estimatedDistanceMeters?: number;
+    itinerarySequence?: number;
+    serviceDurationSeconds?: number;
     timeSlotId?: number;
     stopKey?: string;
     requestDispatchEventId?: number;
@@ -70,6 +77,11 @@ export type CreateDeliveryRunPickupNodeInput = {
     sourceUpdatedAt: Date;
     latitude?: number;
     longitude?: number;
+    itinerarySequence?: number;
+    estimatedArrivalAt?: Date;
+    incomingTravelSeconds?: number;
+    incomingDistanceMeters?: number;
+    serviceDurationSeconds?: number;
 };
 
 export type CreateDeliveryRunSlotInput = {
@@ -88,9 +100,54 @@ export type CreateDeliveryRunInput = {
     encodedPolyline?: string;
     totalDistanceMeters?: number;
     totalDurationSeconds?: number;
+    routePlanVersion?: number;
+    estimateSource?: DeliveryRunEstimateSource;
     pickupNodes?: CreateDeliveryRunPickupNodeInput[];
     runSlots?: CreateDeliveryRunSlotInput[];
     stops: CreateDeliveryRunStopInput[];
+};
+
+export type CreatePreparedDeliveryRunPickupNodeInput =
+    CreateDeliveryRunPickupNodeInput & {
+        latitude: number;
+        longitude: number;
+        itinerarySequence: number;
+        estimatedArrivalAt: Date;
+        incomingTravelSeconds: number;
+        incomingDistanceMeters: number;
+        serviceDurationSeconds: number;
+    };
+
+export type CreatePreparedDeliveryRunStopInput = CreateDeliveryRunStopInput & {
+    estimatedArrivalAt: Date;
+    estimatedTravelSeconds: number;
+    estimatedDistanceMeters: number;
+    itinerarySequence: number;
+    serviceDurationSeconds: number;
+    timeSlotId: number;
+    stopKey: string;
+    requestDispatchEventId: number;
+    deliveryAddressId: number;
+    deliveryAddressUpdatedAt: Date;
+};
+
+export type CreatePreparedDeliveryRunInput = Omit<
+    CreateDeliveryRunInput,
+    | 'totalDistanceMeters'
+    | 'totalDurationSeconds'
+    | 'routePlanVersion'
+    | 'estimateSource'
+    | 'pickupNodes'
+    | 'runSlots'
+    | 'stops'
+> & {
+    totalDistanceMeters: number;
+    totalDurationSeconds: number;
+    routePlanVersion: number;
+    estimateSource: PreparedDeliveryRunEstimateSource;
+    pickupNodes: CreatePreparedDeliveryRunPickupNodeInput[];
+    runSlots: CreateDeliveryRunSlotInput[];
+    stops: CreatePreparedDeliveryRunStopInput[];
 };
 
 export type DeliveryRunRequestSnapshotInput = {
@@ -171,7 +228,7 @@ export class DeliveryRunPersistenceError extends Error {
 export type SaveDeliveryRunPreparationInput = {
     dispatchRevision: number;
     selectionRequestIds: string[];
-    createRunInput: CreateDeliveryRunInput;
+    createRunInput: CreatePreparedDeliveryRunInput;
     requestSnapshots: DeliveryRunRequestSnapshotInput[];
 };
 
@@ -273,6 +330,19 @@ function stopKey(slotId: number, address: Parameters<typeof formatAddress>[0]) {
     return `${slotId}:${normalizedAddress}`;
 }
 
+function isNonnegativeInteger(value: unknown): value is number {
+    return Number.isInteger(value) && Number(value) >= 0;
+}
+
+function isPreparedEstimateSource(
+    value: DeliveryRunEstimateSource | undefined,
+): value is PreparedDeliveryRunEstimateSource {
+    return (
+        value === DeliveryRunEstimateSources.GOOGLE ||
+        value === DeliveryRunEstimateSources.LOCAL
+    );
+}
+
 function normalizePreparationPlan({
     dispatchRevision,
     selectionRequestIds,
@@ -283,6 +353,18 @@ function normalizePreparationPlan({
         throw new DeliveryRunPersistenceError(
             DeliveryRunPersistenceErrorCodes.INVALID_PLAN,
             'Delivery dispatch revision is invalid',
+        );
+    }
+    if (
+        !Number.isInteger(createRunInput.routePlanVersion) ||
+        createRunInput.routePlanVersion < 2 ||
+        !isPreparedEstimateSource(createRunInput.estimateSource) ||
+        !isNonnegativeInteger(createRunInput.totalDistanceMeters) ||
+        !isNonnegativeInteger(createRunInput.totalDurationSeconds)
+    ) {
+        throw new DeliveryRunPersistenceError(
+            DeliveryRunPersistenceErrorCodes.INVALID_PLAN,
+            'Delivery route plan provenance is invalid',
         );
     }
     const pickupNodes = createRunInput.pickupNodes;
@@ -311,24 +393,51 @@ function normalizePreparationPlan({
 
     const pickupLocationIds = new Set<number>();
     const pickupSequences = new Set<number>();
+    const pickupItinerarySequences = new Map<number, number>();
     for (const node of pickupNodes) {
         if (
             !Number.isInteger(node.sequence) ||
             node.sequence <= 0 ||
             pickupLocationIds.has(node.pickupLocationId) ||
             pickupSequences.has(node.sequence) ||
-            (node.latitude === undefined) !== (node.longitude === undefined)
+            !Number.isInteger(node.itinerarySequence) ||
+            node.itinerarySequence <= 0 ||
+            Array.from(pickupItinerarySequences.values()).includes(
+                node.itinerarySequence,
+            ) ||
+            !isNonnegativeInteger(node.incomingTravelSeconds) ||
+            !isNonnegativeInteger(node.incomingDistanceMeters) ||
+            !isNonnegativeInteger(node.serviceDurationSeconds) ||
+            (node.itinerarySequence === 1 &&
+                (node.incomingTravelSeconds !== 0 ||
+                    node.incomingDistanceMeters !== 0))
         ) {
             throw new DeliveryRunPersistenceError(
                 DeliveryRunPersistenceErrorCodes.INVALID_PLAN,
                 'Delivery pickup nodes are invalid',
             );
         }
-        if (node.latitude !== undefined && node.longitude !== undefined) {
-            ensureCoordinates(node.latitude, node.longitude);
-        }
+        ensureCoordinates(node.latitude, node.longitude);
+        iso(node.estimatedArrivalAt);
         pickupLocationIds.add(node.pickupLocationId);
         pickupSequences.add(node.sequence);
+        pickupItinerarySequences.set(
+            node.pickupLocationId,
+            node.itinerarySequence,
+        );
+    }
+    const pickupNodesByItinerary = [...pickupNodes].sort(
+        (first, second) => first.itinerarySequence - second.itinerarySequence,
+    );
+    if (
+        pickupNodesByItinerary.some(
+            (node, index) => node.sequence !== index + 1,
+        )
+    ) {
+        throw new DeliveryRunPersistenceError(
+            DeliveryRunPersistenceErrorCodes.INVALID_PLAN,
+            'Pickup node sequence must follow pickup itinerary order',
+        );
     }
 
     const timeSlotIds = new Set<number>();
@@ -467,19 +576,45 @@ function normalizePreparationPlan({
     }
     const stopRequestIds = new Set<string>();
     const stopSequences = new Set<number>();
+    const physicalStopsByStopKey = new Map<
+        string,
+        {
+            itinerarySequence: number;
+            latitude: number;
+            longitude: number;
+            formattedAddress: string;
+            estimatedArrivalAt: string;
+            estimatedTravelSeconds: number;
+            estimatedDistanceMeters: number;
+            serviceDurationSeconds: number;
+            sequences: number[];
+        }
+    >();
     const normalizedStops = createRunInput.stops.map((stop) => {
         ensureCoordinates(stop.latitude, stop.longitude);
         const snapshot = snapshotsByRequestId.get(stop.deliveryRequestId);
+        const estimatedArrivalAt = iso(stop.estimatedArrivalAt);
+        const pickupItinerarySequence = snapshot
+            ? pickupItinerarySequences.get(snapshot.slot.locationId)
+            : undefined;
         if (
             !snapshot ||
             !Number.isInteger(stop.sequence) ||
             stop.sequence <= 0 ||
+            !Number.isInteger(stop.itinerarySequence) ||
+            stop.itinerarySequence <= 0 ||
+            pickupItinerarySequence === undefined ||
+            stop.itinerarySequence <= pickupItinerarySequence ||
+            !isNonnegativeInteger(stop.estimatedTravelSeconds) ||
+            !isNonnegativeInteger(stop.estimatedDistanceMeters) ||
+            !isNonnegativeInteger(stop.serviceDurationSeconds) ||
             stopRequestIds.has(stop.deliveryRequestId) ||
             stopSequences.has(stop.sequence) ||
             stop.timeSlotId === undefined ||
             !timeSlotIds.has(stop.timeSlotId) ||
             stop.timeSlotId !== snapshot.slot.id ||
             stop.stopKey !== snapshot.stopKey ||
+            stop.formattedAddress !== formatAddress(snapshot.address) ||
             stop.requestDispatchEventId !== snapshot.requestDispatchEventId ||
             stop.deliveryAddressId !== snapshot.address.id ||
             !stop.deliveryAddressUpdatedAt ||
@@ -492,6 +627,42 @@ function normalizePreparationPlan({
                 { deliveryRequestId: stop.deliveryRequestId },
             );
         }
+        const physicalStop = physicalStopsByStopKey.get(stop.stopKey);
+        if (
+            physicalStop &&
+            (physicalStop.itinerarySequence !== stop.itinerarySequence ||
+                physicalStop.latitude !== stop.latitude ||
+                physicalStop.longitude !== stop.longitude ||
+                physicalStop.formattedAddress !== stop.formattedAddress ||
+                physicalStop.estimatedArrivalAt !== estimatedArrivalAt ||
+                physicalStop.estimatedTravelSeconds !==
+                    stop.estimatedTravelSeconds ||
+                physicalStop.estimatedDistanceMeters !==
+                    stop.estimatedDistanceMeters ||
+                physicalStop.serviceDurationSeconds !==
+                    stop.serviceDurationSeconds)
+        ) {
+            throw new DeliveryRunPersistenceError(
+                DeliveryRunPersistenceErrorCodes.INVALID_PLAN,
+                'Bulk delivery rows must share one physical itinerary stop',
+                { deliveryRequestId: stop.deliveryRequestId },
+            );
+        }
+        if (physicalStop) {
+            physicalStop.sequences.push(stop.sequence);
+        } else {
+            physicalStopsByStopKey.set(stop.stopKey, {
+                itinerarySequence: stop.itinerarySequence,
+                latitude: stop.latitude,
+                longitude: stop.longitude,
+                formattedAddress: stop.formattedAddress,
+                estimatedArrivalAt,
+                estimatedTravelSeconds: stop.estimatedTravelSeconds,
+                estimatedDistanceMeters: stop.estimatedDistanceMeters,
+                serviceDurationSeconds: stop.serviceDurationSeconds,
+                sequences: [stop.sequence],
+            });
+        }
         stopRequestIds.add(stop.deliveryRequestId);
         stopSequences.add(stop.sequence);
         return {
@@ -500,15 +671,11 @@ function normalizePreparationPlan({
             latitude: stop.latitude,
             longitude: stop.longitude,
             formattedAddress: stop.formattedAddress,
-            ...(stop.estimatedArrivalAt
-                ? { estimatedArrivalAt: iso(stop.estimatedArrivalAt) }
-                : {}),
-            ...(stop.estimatedTravelSeconds !== undefined
-                ? { estimatedTravelSeconds: stop.estimatedTravelSeconds }
-                : {}),
-            ...(stop.estimatedDistanceMeters !== undefined
-                ? { estimatedDistanceMeters: stop.estimatedDistanceMeters }
-                : {}),
+            estimatedArrivalAt,
+            estimatedTravelSeconds: stop.estimatedTravelSeconds,
+            estimatedDistanceMeters: stop.estimatedDistanceMeters,
+            itinerarySequence: stop.itinerarySequence,
+            serviceDurationSeconds: stop.serviceDurationSeconds,
             timeSlotId: stop.timeSlotId,
             stopKey: stop.stopKey,
             requestDispatchEventId: stop.requestDispatchEventId,
@@ -517,8 +684,84 @@ function normalizePreparationPlan({
         };
     });
 
+    const orderedStopSequences = Array.from(stopSequences).sort(
+        (first, second) => first - second,
+    );
+    if (
+        orderedStopSequences.some((sequence, index) => sequence !== index + 1)
+    ) {
+        throw new DeliveryRunPersistenceError(
+            DeliveryRunPersistenceErrorCodes.INVALID_PLAN,
+            'Delivery stop sequence must be contiguous',
+        );
+    }
+    const physicalStops = Array.from(physicalStopsByStopKey.values());
+    if (
+        physicalStops.some((physicalStop) => {
+            const sequences = [...physicalStop.sequences].sort(
+                (first, second) => first - second,
+            );
+            const firstSequence = sequences[0];
+            return (
+                firstSequence === undefined ||
+                sequences.some(
+                    (sequence, index) => sequence !== firstSequence + index,
+                )
+            );
+        })
+    ) {
+        throw new DeliveryRunPersistenceError(
+            DeliveryRunPersistenceErrorCodes.INVALID_PLAN,
+            'Bulk delivery rows must be contiguous in stop order',
+        );
+    }
+    const physicalStopsByRowOrder = physicalStops.sort(
+        (first, second) =>
+            Math.min(...first.sequences) - Math.min(...second.sequences),
+    );
+    if (
+        physicalStopsByRowOrder.some(
+            (physicalStop, index) =>
+                index > 0 &&
+                physicalStop.itinerarySequence <=
+                    (physicalStopsByRowOrder[index - 1]?.itinerarySequence ??
+                        0),
+        )
+    ) {
+        throw new DeliveryRunPersistenceError(
+            DeliveryRunPersistenceErrorCodes.INVALID_PLAN,
+            'Delivery stop sequence must follow physical itinerary order',
+        );
+    }
+
+    const itineraryNodeKinds = new Map<number, 'customer' | 'pickup'>();
+    for (const node of pickupNodes) {
+        itineraryNodeKinds.set(node.itinerarySequence, 'pickup');
+    }
+    for (const physicalStop of physicalStopsByStopKey.values()) {
+        if (itineraryNodeKinds.has(physicalStop.itinerarySequence)) {
+            throw new DeliveryRunPersistenceError(
+                DeliveryRunPersistenceErrorCodes.INVALID_PLAN,
+                'Physical itinerary nodes must have unique sequences',
+            );
+        }
+        itineraryNodeKinds.set(physicalStop.itinerarySequence, 'customer');
+    }
+    const itinerarySequences = Array.from(itineraryNodeKinds.keys()).sort(
+        (first, second) => first - second,
+    );
+    if (
+        itineraryNodeKinds.get(1) !== 'pickup' ||
+        itinerarySequences.some((sequence, index) => sequence !== index + 1)
+    ) {
+        throw new DeliveryRunPersistenceError(
+            DeliveryRunPersistenceErrorCodes.INVALID_PLAN,
+            'Delivery itinerary must be contiguous and start at a pickup',
+        );
+    }
+
     return {
-        formatVersion: 1,
+        formatVersion: 2,
         dispatchRevision,
         selectionRequestIds: [...selectionRequestIds],
         createRunInput: {
@@ -527,15 +770,14 @@ function normalizePreparationPlan({
             ...(createRunInput.encodedPolyline
                 ? { encodedPolyline: createRunInput.encodedPolyline }
                 : {}),
-            ...(createRunInput.totalDistanceMeters !== undefined
-                ? { totalDistanceMeters: createRunInput.totalDistanceMeters }
-                : {}),
-            ...(createRunInput.totalDurationSeconds !== undefined
-                ? { totalDurationSeconds: createRunInput.totalDurationSeconds }
-                : {}),
+            totalDistanceMeters: createRunInput.totalDistanceMeters,
+            totalDurationSeconds: createRunInput.totalDurationSeconds,
+            routePlanVersion: createRunInput.routePlanVersion,
+            estimateSource: createRunInput.estimateSource,
             pickupNodes: pickupNodes.map((node) => ({
                 ...node,
                 sourceUpdatedAt: iso(node.sourceUpdatedAt),
+                estimatedArrivalAt: iso(node.estimatedArrivalAt),
             })),
             runSlots: normalizedSlots,
             stops: normalizedStops,
@@ -561,6 +803,51 @@ function normalizePreparationPlan({
             },
         })),
     };
+}
+
+function normalizePersistedV2Plan(plan: DeliveryRunPreparationPlanPayloadV2) {
+    return normalizePreparationPlan({
+        dispatchRevision: plan.dispatchRevision,
+        selectionRequestIds: plan.selectionRequestIds,
+        createRunInput: {
+            ...plan.createRunInput,
+            pickupNodes: plan.createRunInput.pickupNodes.map((node) => ({
+                ...node,
+                sourceUpdatedAt: new Date(node.sourceUpdatedAt),
+                estimatedArrivalAt: new Date(node.estimatedArrivalAt),
+            })),
+            runSlots: plan.createRunInput.runSlots.map((slot) => ({
+                ...slot,
+                windowStartAt: new Date(slot.windowStartAt),
+                windowEndAt: new Date(slot.windowEndAt),
+                sourceUpdatedAt: new Date(slot.sourceUpdatedAt),
+            })),
+            stops: plan.createRunInput.stops.map((stop) => ({
+                ...stop,
+                estimatedArrivalAt: new Date(stop.estimatedArrivalAt),
+                deliveryAddressUpdatedAt: new Date(
+                    stop.deliveryAddressUpdatedAt,
+                ),
+            })),
+        },
+        requestSnapshots: plan.requestSnapshots.map((snapshot) => ({
+            ...snapshot,
+            address: {
+                ...snapshot.address,
+                updatedAt: new Date(snapshot.address.updatedAt),
+            },
+            slot: {
+                ...snapshot.slot,
+                updatedAt: new Date(snapshot.slot.updatedAt),
+                startAt: new Date(snapshot.slot.startAt),
+                endAt: new Date(snapshot.slot.endAt),
+            },
+            pickupLocation: {
+                ...snapshot.pickupLocation,
+                updatedAt: new Date(snapshot.pickupLocation.updatedAt),
+            },
+        })),
+    });
 }
 
 export type DeliveryRunStopEstimate = {
@@ -868,11 +1155,19 @@ async function insertPreparedDeliveryRun(
         encodedPolyline: plan.createRunInput.encodedPolyline,
         totalDistanceMeters: plan.createRunInput.totalDistanceMeters,
         totalDurationSeconds: plan.createRunInput.totalDurationSeconds,
+        routePlanVersion:
+            plan.formatVersion === 2 ? plan.createRunInput.routePlanVersion : 1,
+        estimateSource:
+            plan.formatVersion === 2
+                ? plan.createRunInput.estimateSource
+                : DeliveryRunEstimateSources.LEGACY,
         estimatesUpdatedAt: new Date(),
     });
 
     const pickupNodeIdsByLocationId = new Map<number, string>();
-    const pickupNodeRows = plan.createRunInput.pickupNodes.map((node) => {
+    const createPickupNodeRow = (
+        node: DeliveryRunPreparationPlanPayloadV1['createRunInput']['pickupNodes'][number],
+    ) => {
         const id = randomUUID();
         pickupNodeIdsByLocationId.set(node.pickupLocationId, id);
         return {
@@ -891,7 +1186,18 @@ async function insertPreparedDeliveryRun(
             latitude: node.latitude,
             longitude: node.longitude,
         };
-    });
+    };
+    const pickupNodeRows =
+        plan.formatVersion === 2
+            ? plan.createRunInput.pickupNodes.map((node) => ({
+                  ...createPickupNodeRow(node),
+                  itinerarySequence: node.itinerarySequence,
+                  estimatedArrivalAt: new Date(node.estimatedArrivalAt),
+                  incomingTravelSeconds: node.incomingTravelSeconds,
+                  incomingDistanceMeters: node.incomingDistanceMeters,
+                  serviceDurationSeconds: node.serviceDurationSeconds,
+              }))
+            : plan.createRunInput.pickupNodes.map(createPickupNodeRow);
     await db.insert(deliveryRunPickupNodes).values(pickupNodeRows);
 
     const runSlotIdsByTimeSlotId = new Map<number, string>();
@@ -927,45 +1233,54 @@ async function insertPreparedDeliveryRun(
             snapshot,
         ]),
     );
-    await db.insert(deliveryRunStops).values(
-        plan.createRunInput.stops.map((stop) => {
-            const runSlotId = runSlotIdsByTimeSlotId.get(stop.timeSlotId);
-            const snapshot = snapshotsByRequestId.get(stop.deliveryRequestId);
-            if (!runSlotId || !snapshot) {
-                throw new DeliveryRunPersistenceError(
-                    DeliveryRunPersistenceErrorCodes.INVALID_PLAN,
-                    'Delivery stop has no persisted slot or request snapshot',
-                    { deliveryRequestId: stop.deliveryRequestId },
-                );
-            }
-            return {
-                runId,
-                runSlotId,
-                deliveryRequestId: stop.deliveryRequestId,
-                sequence: stop.sequence,
-                stopKey: stop.stopKey,
-                requestDispatchEventId: stop.requestDispatchEventId,
-                deliveryAddressId: snapshot.address.id,
-                deliveryAddressUpdatedAt: new Date(snapshot.address.updatedAt),
-                deliveryAddressLabel: snapshot.address.label,
-                deliveryContactName: snapshot.address.contactName,
-                deliveryPhone: snapshot.address.phone,
-                deliveryStreet1: snapshot.address.street1,
-                deliveryStreet2: snapshot.address.street2,
-                deliveryCity: snapshot.address.city,
-                deliveryPostalCode: snapshot.address.postalCode,
-                deliveryCountryCode: snapshot.address.countryCode,
-                latitude: stop.latitude,
-                longitude: stop.longitude,
-                formattedAddress: stop.formattedAddress,
-                estimatedArrivalAt: stop.estimatedArrivalAt
-                    ? new Date(stop.estimatedArrivalAt)
-                    : undefined,
-                estimatedTravelSeconds: stop.estimatedTravelSeconds,
-                estimatedDistanceMeters: stop.estimatedDistanceMeters,
-            };
-        }),
-    );
+    const createStopRow = (
+        stop: DeliveryRunPreparationPlanPayloadV1['createRunInput']['stops'][number],
+    ) => {
+        const runSlotId = runSlotIdsByTimeSlotId.get(stop.timeSlotId);
+        const snapshot = snapshotsByRequestId.get(stop.deliveryRequestId);
+        if (!runSlotId || !snapshot) {
+            throw new DeliveryRunPersistenceError(
+                DeliveryRunPersistenceErrorCodes.INVALID_PLAN,
+                'Delivery stop has no persisted slot or request snapshot',
+                { deliveryRequestId: stop.deliveryRequestId },
+            );
+        }
+        return {
+            runId,
+            runSlotId,
+            deliveryRequestId: stop.deliveryRequestId,
+            sequence: stop.sequence,
+            stopKey: stop.stopKey,
+            requestDispatchEventId: stop.requestDispatchEventId,
+            deliveryAddressId: snapshot.address.id,
+            deliveryAddressUpdatedAt: new Date(snapshot.address.updatedAt),
+            deliveryAddressLabel: snapshot.address.label,
+            deliveryContactName: snapshot.address.contactName,
+            deliveryPhone: snapshot.address.phone,
+            deliveryStreet1: snapshot.address.street1,
+            deliveryStreet2: snapshot.address.street2,
+            deliveryCity: snapshot.address.city,
+            deliveryPostalCode: snapshot.address.postalCode,
+            deliveryCountryCode: snapshot.address.countryCode,
+            latitude: stop.latitude,
+            longitude: stop.longitude,
+            formattedAddress: stop.formattedAddress,
+            estimatedArrivalAt: stop.estimatedArrivalAt
+                ? new Date(stop.estimatedArrivalAt)
+                : undefined,
+            estimatedTravelSeconds: stop.estimatedTravelSeconds,
+            estimatedDistanceMeters: stop.estimatedDistanceMeters,
+        };
+    };
+    const stopRows =
+        plan.formatVersion === 2
+            ? plan.createRunInput.stops.map((stop) => ({
+                  ...createStopRow(stop),
+                  itinerarySequence: stop.itinerarySequence,
+                  serviceDurationSeconds: stop.serviceDurationSeconds,
+              }))
+            : plan.createRunInput.stops.map(createStopRow);
+    await db.insert(deliveryRunStops).values(stopRows);
     await db
         .update(deliveryRunPreparations)
         .set({
@@ -1038,7 +1353,8 @@ export async function consumeDeliveryRunPreparation({
             );
         }
         if (
-            preparation.plan.formatVersion !== 1 ||
+            (preparation.plan.formatVersion !== 1 &&
+                preparation.plan.formatVersion !== 2) ||
             preparation.plan.createRunInput.driverUserId !== driverUserId
         ) {
             throw new DeliveryRunPersistenceError(
@@ -1047,14 +1363,15 @@ export async function consumeDeliveryRunPreparation({
             );
         }
 
-        await ensurePreparationCanCreateRun(preparation.plan, tx);
-        await validatePreparationSnapshot(preparation.plan, tx);
-        await validatePreparedBulkMembership(preparation.plan, tx);
-        return await insertPreparedDeliveryRun(
-            preparation.plan,
-            preparationId,
-            tx,
-        );
+        const plan =
+            preparation.plan.formatVersion === 2
+                ? normalizePersistedV2Plan(preparation.plan)
+                : preparation.plan;
+
+        await ensurePreparationCanCreateRun(plan, tx);
+        await validatePreparationSnapshot(plan, tx);
+        await validatePreparedBulkMembership(plan, tx);
+        return await insertPreparedDeliveryRun(plan, preparationId, tx);
     });
 
     const run = await getDeliveryRun(runId);

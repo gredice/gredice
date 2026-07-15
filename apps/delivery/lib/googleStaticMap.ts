@@ -3,6 +3,7 @@ import 'server-only';
 import type { DeliveryCoordinates } from './deliveryRouting';
 
 type StaticMapStop = DeliveryCoordinates & { sequence?: number };
+const maximumStaticMapUrlLength = 16_384;
 
 function markerValue(
     color: string,
@@ -30,13 +31,22 @@ function decodeSigningSecret(secret: string) {
     return Buffer.from(`${standard}${padding}`, 'base64');
 }
 
+function signStaticMapUrl(url: URL, signingSecret: string) {
+    const signature = createHmac('sha1', decodeSigningSecret(signingSecret))
+        .update(`${url.pathname}${url.search}`)
+        .digest();
+    url.searchParams.set('signature', urlSafeBase64(signature));
+}
+
 export function buildGoogleStaticMapUrl({
     driverLocation,
+    pickupNodes = [],
     stops,
     encodedPolyline,
     customerView,
 }: {
     driverLocation?: DeliveryCoordinates | null;
+    pickupNodes?: DeliveryCoordinates[];
     stops: StaticMapStop[];
     encodedPolyline?: string | null;
     customerView: boolean;
@@ -59,6 +69,14 @@ export function buildGoogleStaticMapUrl({
             markerValue('0x1d4ed8', 'V', driverLocation),
         );
     }
+    if (!customerView) {
+        for (const pickupNode of pickupNodes) {
+            url.searchParams.append(
+                'markers',
+                markerValue('0xf59e0b', 'P', pickupNode),
+            );
+        }
+    }
     for (const stop of stops) {
         const label = customerView
             ? 'C'
@@ -78,13 +96,21 @@ export function buildGoogleStaticMapUrl({
     const signingSecret =
         process.env.GREDICE_GOOGLE_MAPS_URL_SIGNING_SECRET?.trim();
     if (signingSecret) {
-        const signature = createHmac('sha1', decodeSigningSecret(signingSecret))
-            .update(`${url.pathname}${url.search}`)
-            .digest();
-        url.searchParams.set('signature', urlSafeBase64(signature));
+        signStaticMapUrl(url, signingSecret);
     }
 
-    return url;
+    if (
+        url.toString().length > maximumStaticMapUrlLength &&
+        url.searchParams.has('path')
+    ) {
+        url.searchParams.delete('path');
+        if (signingSecret) {
+            url.searchParams.delete('signature');
+            signStaticMapUrl(url, signingSecret);
+        }
+    }
+
+    return url.toString().length <= maximumStaticMapUrlLength ? url : null;
 }
 
 export function unavailableMapSvg(message = 'Karta trenutačno nije dostupna') {

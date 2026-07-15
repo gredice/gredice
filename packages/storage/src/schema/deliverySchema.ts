@@ -159,6 +159,20 @@ export const deliveryRequestsRelations = relations(
     }),
 );
 
+export const DeliveryRunEstimateSources = {
+    LEGACY: 'legacy',
+    GOOGLE: 'google',
+    LOCAL: 'local',
+} as const;
+
+export type DeliveryRunEstimateSource =
+    (typeof DeliveryRunEstimateSources)[keyof typeof DeliveryRunEstimateSources];
+
+export type PreparedDeliveryRunEstimateSource = Exclude<
+    DeliveryRunEstimateSource,
+    typeof DeliveryRunEstimateSources.LEGACY
+>;
+
 // Delivery Runs - one optimized route picked up and driven by a driver/admin.
 export const deliveryRuns = pgTable(
     'delivery_runs',
@@ -174,6 +188,11 @@ export const deliveryRuns = pgTable(
         encodedPolyline: text('encoded_polyline'),
         totalDistanceMeters: integer('total_distance_meters'),
         totalDurationSeconds: integer('total_duration_seconds'),
+        routePlanVersion: integer('route_plan_version').notNull().default(1),
+        estimateSource: text('estimate_source')
+            .$type<DeliveryRunEstimateSource>()
+            .notNull()
+            .default(DeliveryRunEstimateSources.LEGACY),
         currentLatitude: doublePrecision('current_latitude'),
         currentLongitude: doublePrecision('current_longitude'),
         currentLocationAccuracy: doublePrecision('current_location_accuracy'),
@@ -192,6 +211,16 @@ export const deliveryRuns = pgTable(
         index('delivery_runs_driver_user_id_idx').on(table.driverUserId),
         index('delivery_runs_time_slot_id_idx').on(table.timeSlotId),
         index('delivery_runs_state_idx').on(table.state),
+        check(
+            'delivery_runs_route_plan_provenance_check',
+            sql`(
+                ${table.routePlanVersion} = 1
+                and ${table.estimateSource} = 'legacy'
+            ) or (
+                ${table.routePlanVersion} >= 2
+                and ${table.estimateSource} in ('google', 'local')
+            )`,
+        ),
         uniqueIndex('delivery_runs_driver_active_unique')
             .on(table.driverUserId)
             .where(sql`${table.state} = 'active'`),
@@ -201,7 +230,83 @@ export const deliveryRuns = pgTable(
     ],
 );
 
-export type DeliveryRunPreparationPlanPayload = {
+type DeliveryRunPreparationPickupNodePayloadV1 = {
+    pickupLocationId: number;
+    sequence: number;
+    name: string;
+    street1: string;
+    street2?: string | null;
+    city: string;
+    postalCode: string;
+    countryCode: string;
+    sourceUpdatedAt: string;
+    latitude?: number;
+    longitude?: number;
+};
+
+type DeliveryRunPreparationSlotPayload = {
+    timeSlotId: number;
+    pickupLocationId: number;
+    sequence: number;
+    manifestId: string;
+    windowStartAt: string;
+    windowEndAt: string;
+    sourceUpdatedAt: string;
+};
+
+type DeliveryRunPreparationStopPayloadV1 = {
+    deliveryRequestId: string;
+    sequence: number;
+    latitude: number;
+    longitude: number;
+    formattedAddress: string;
+    estimatedArrivalAt?: string;
+    estimatedTravelSeconds?: number;
+    estimatedDistanceMeters?: number;
+    timeSlotId: number;
+    stopKey: string;
+    requestDispatchEventId: number;
+    deliveryAddressId: number;
+    deliveryAddressUpdatedAt: string;
+};
+
+type DeliveryRunPreparationRequestSnapshotPayload = {
+    deliveryRequestId: string;
+    requestDispatchEventId: number;
+    state: string;
+    stopKey: string;
+    address: {
+        id: number;
+        updatedAt: string;
+        label: string;
+        contactName: string;
+        phone: string;
+        street1: string;
+        street2?: string | null;
+        city: string;
+        postalCode: string;
+        countryCode: string;
+    };
+    slot: {
+        id: number;
+        updatedAt: string;
+        locationId: number;
+        startAt: string;
+        endAt: string;
+    };
+    pickupLocation: {
+        id: number;
+        updatedAt: string;
+        name: string;
+        street1: string;
+        street2?: string | null;
+        city: string;
+        postalCode: string;
+        countryCode: string;
+    };
+};
+
+export type DeliveryRunPreparationPlanPayloadV1 = {
     formatVersion: 1;
     dispatchRevision: number;
     selectionRequestIds: string[];
@@ -211,80 +316,53 @@ export type DeliveryRunPreparationPlanPayload = {
         encodedPolyline?: string;
         totalDistanceMeters?: number;
         totalDurationSeconds?: number;
-        pickupNodes: Array<{
-            pickupLocationId: number;
-            sequence: number;
-            name: string;
-            street1: string;
-            street2?: string | null;
-            city: string;
-            postalCode: string;
-            countryCode: string;
-            sourceUpdatedAt: string;
-            latitude?: number;
-            longitude?: number;
-        }>;
-        runSlots: Array<{
-            timeSlotId: number;
-            pickupLocationId: number;
-            sequence: number;
-            manifestId: string;
-            windowStartAt: string;
-            windowEndAt: string;
-            sourceUpdatedAt: string;
-        }>;
-        stops: Array<{
-            deliveryRequestId: string;
-            sequence: number;
-            latitude: number;
-            longitude: number;
-            formattedAddress: string;
-            estimatedArrivalAt?: string;
-            estimatedTravelSeconds?: number;
-            estimatedDistanceMeters?: number;
-            timeSlotId: number;
-            stopKey: string;
-            requestDispatchEventId: number;
-            deliveryAddressId: number;
-            deliveryAddressUpdatedAt: string;
-        }>;
+        pickupNodes: DeliveryRunPreparationPickupNodePayloadV1[];
+        runSlots: DeliveryRunPreparationSlotPayload[];
+        stops: DeliveryRunPreparationStopPayloadV1[];
     };
-    requestSnapshots: Array<{
-        deliveryRequestId: string;
-        requestDispatchEventId: number;
-        state: string;
-        stopKey: string;
-        address: {
-            id: number;
-            updatedAt: string;
-            label: string;
-            contactName: string;
-            phone: string;
-            street1: string;
-            street2?: string | null;
-            city: string;
-            postalCode: string;
-            countryCode: string;
-        };
-        slot: {
-            id: number;
-            updatedAt: string;
-            locationId: number;
-            startAt: string;
-            endAt: string;
-        };
-        pickupLocation: {
-            id: number;
-            updatedAt: string;
-            name: string;
-            street1: string;
-            street2?: string | null;
-            city: string;
-            postalCode: string;
-            countryCode: string;
-        };
-    }>;
+    requestSnapshots: DeliveryRunPreparationRequestSnapshotPayload[];
 };
+
+export type DeliveryRunPreparationPlanPayloadV2 = {
+    formatVersion: 2;
+    dispatchRevision: number;
+    selectionRequestIds: string[];
+    createRunInput: {
+        driverUserId: string;
+        timeSlotId: number;
+        encodedPolyline?: string;
+        totalDistanceMeters: number;
+        totalDurationSeconds: number;
+        routePlanVersion: number;
+        estimateSource: PreparedDeliveryRunEstimateSource;
+        pickupNodes: Array<
+            DeliveryRunPreparationPickupNodePayloadV1 & {
+                latitude: number;
+                longitude: number;
+                itinerarySequence: number;
+                estimatedArrivalAt: string;
+                incomingTravelSeconds: number;
+                incomingDistanceMeters: number;
+                serviceDurationSeconds: number;
+            }
+        >;
+        runSlots: DeliveryRunPreparationSlotPayload[];
+        stops: Array<
+            DeliveryRunPreparationStopPayloadV1 & {
+                estimatedArrivalAt: string;
+                estimatedTravelSeconds: number;
+                estimatedDistanceMeters: number;
+                itinerarySequence: number;
+                serviceDurationSeconds: number;
+            }
+        >;
+    };
+    requestSnapshots: DeliveryRunPreparationRequestSnapshotPayload[];
+};
+
+export type DeliveryRunPreparationPlanPayload =
+    | DeliveryRunPreparationPlanPayloadV1
+    | DeliveryRunPreparationPlanPayloadV2;
 
 // Private, short-lived route plans. Only a hash of the bearer secret is stored.
 export const deliveryRunPreparations = pgTable(
@@ -338,6 +416,11 @@ export const deliveryRunPickupNodes = pgTable(
             { onDelete: 'set null' },
         ),
         sequence: integer('sequence').notNull(),
+        itinerarySequence: integer('itinerary_sequence'),
+        estimatedArrivalAt: timestamp('estimated_arrival_at'),
+        incomingTravelSeconds: integer('incoming_travel_seconds'),
+        incomingDistanceMeters: integer('incoming_distance_meters'),
+        serviceDurationSeconds: integer('service_duration_seconds'),
         name: text('name').notNull(),
         street1: text('street1').notNull(),
         street2: text('street2'),
@@ -365,6 +448,29 @@ export const deliveryRunPickupNodes = pgTable(
         uniqueIndex('delivery_run_pickup_nodes_run_id_id_unique').on(
             table.runId,
             table.id,
+        ),
+        uniqueIndex('delivery_run_pickup_nodes_run_itinerary_sequence_unique')
+            .on(table.runId, table.itinerarySequence)
+            .where(sql`${table.itinerarySequence} is not null`),
+        check(
+            'delivery_run_pickup_nodes_itinerary_shape_check',
+            sql`(
+                ${table.itinerarySequence} is null
+                and ${table.estimatedArrivalAt} is null
+                and ${table.incomingTravelSeconds} is null
+                and ${table.incomingDistanceMeters} is null
+                and ${table.serviceDurationSeconds} is null
+            ) or (
+                ${table.itinerarySequence} is not null
+                and ${table.itinerarySequence} > 0
+                and ${table.estimatedArrivalAt} is not null
+                and ${table.incomingTravelSeconds} is not null
+                and ${table.incomingTravelSeconds} >= 0
+                and ${table.incomingDistanceMeters} is not null
+                and ${table.incomingDistanceMeters} >= 0
+                and ${table.serviceDurationSeconds} is not null
+                and ${table.serviceDurationSeconds} >= 0
+            )`,
         ),
         index('delivery_run_pickup_nodes_run_id_idx').on(table.runId),
     ],
@@ -434,6 +540,8 @@ export const deliveryRunStops = pgTable(
             .references(() => deliveryRequests.id),
         runSlotId: text('run_slot_id'),
         sequence: integer('sequence').notNull(),
+        itinerarySequence: integer('itinerary_sequence'),
+        serviceDurationSeconds: integer('service_duration_seconds'),
         stopKey: text('stop_key'),
         requestDispatchEventId: integer('request_dispatch_event_id'),
         deliveryAddressId: integer('delivery_address_id'),
@@ -497,6 +605,18 @@ export const deliveryRunStops = pgTable(
                 and ${table.deliveryCountryCode} is not null
             )`,
         ),
+        check(
+            'delivery_run_stops_itinerary_shape_check',
+            sql`(
+                ${table.itinerarySequence} is null
+                and ${table.serviceDurationSeconds} is null
+            ) or (
+                ${table.itinerarySequence} is not null
+                and ${table.itinerarySequence} > 0
+                and ${table.serviceDurationSeconds} is not null
+                and ${table.serviceDurationSeconds} >= 0
+            )`,
+        ),
         uniqueIndex('delivery_run_stops_delivery_request_id_unique').on(
             table.deliveryRequestId,
         ),
@@ -505,6 +625,10 @@ export const deliveryRunStops = pgTable(
             table.sequence,
         ),
         index('delivery_run_stops_run_id_idx').on(table.runId),
+        index('delivery_run_stops_run_itinerary_sequence_idx').on(
+            table.runId,
+            table.itinerarySequence,
+        ),
         index('delivery_run_stops_run_slot_id_idx').on(table.runSlotId),
         index('delivery_run_stops_state_idx').on(table.state),
     ],
