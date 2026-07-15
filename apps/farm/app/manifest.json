@@ -1,9 +1,11 @@
 {
     "name": "Gredice Farm",
     "short_name": "Farm",
-    "description": "Tvoja farma u jednom kliku",
+    "description": "Upravljaj dnevnim zadacima, gredicama i obavijestima na farmi.",
     "lang": "hr",
     "dir": "ltr",
+    "id": "/",
+    "scope": "/",
     "start_url": "/",
     "display": "standalone",
     "theme_color": "#8B5E34",
@@ -23,16 +25,38 @@
     ],
     "screenshots": [
         {
-            "src": "/Screenshot-20250105-vrt-gredice-com.png",
-            "sizes": "1024x768",
-            "type": "image/png"
+            "src": "/screenshots/farm-today-390x844.png",
+            "sizes": "390x844",
+            "type": "image/png",
+            "form_factor": "narrow",
+            "label": "Dnevni zadaci i sažetak rada u mobilnom prikazu"
+        },
+        {
+            "src": "/screenshots/farm-today-1280x720.png",
+            "sizes": "1280x720",
+            "type": "image/png",
+            "form_factor": "wide",
+            "label": "Dnevni zadaci i navigacija u širokom prikazu"
         }
     ],
     "shortcuts": [
         {
-            "name": "Postavke",
-            "url": "/?pregled=generalno",
-            "description": "Pregled postavki"
+            "name": "Raspored",
+            "short_name": "Raspored",
+            "url": "/schedule",
+            "description": "Otvori raspored poslova na farmi"
+        },
+        {
+            "name": "Gredice",
+            "short_name": "Gredice",
+            "url": "/raised-beds",
+            "description": "Otvori pregled gredica"
+        },
+        {
+            "name": "Obavijesti",
+            "short_name": "Obavijesti",
+            "url": "/notifications",
+            "description": "Otvori obavijesti farme"
         }
     ]
 }
