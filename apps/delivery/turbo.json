@@ -12,6 +12,7 @@
                 "GREDICE_JWT_SIGN_SECRET",
                 "NEXT_PUBLIC_GREDICE_API_ORIGIN",
                 "NEXT_PUBLIC_GREDICE_DELIVERY_ORIGIN",
+                "NEXT_PUBLIC_GREDICE_GOOGLE_MAPS_API_KEY",
                 "POSTGRES_DATABASE",
                 "POSTGRES_HOST",
                 "POSTGRES_PASSWORD",

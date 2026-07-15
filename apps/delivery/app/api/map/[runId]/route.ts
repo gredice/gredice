@@ -4,6 +4,7 @@ import {
     accountCanTrackDeliveryRun,
     resolveDeliveryRunStopGroups,
 } from '../../../../lib/deliveryDashboard';
+import { buildDeliveryMapData } from '../../../../lib/deliveryMapData';
 import { driverDeliveryTrackingLocation } from '../../../../lib/deliveryTracking';
 import {
     buildGoogleStaticMapUrl,
@@ -23,7 +24,7 @@ function unavailableMapResponse() {
 }
 
 export async function GET(
-    _request: Request,
+    request: Request,
     { params }: { params: Promise<{ runId: string }> },
 ) {
     return await withAuth(
@@ -78,7 +79,7 @@ export async function GET(
                     },
                 ];
             });
-            const url = buildGoogleStaticMapUrl({
+            const mapData = buildDeliveryMapData({
                 driverLocation: location
                     ? {
                           latitude: location.latitude,
@@ -100,6 +101,17 @@ export async function GET(
                     : [],
                 stops,
                 encodedPolyline: run.encodedPolyline,
+                customerView,
+            });
+            if (new URL(request.url).searchParams.get('format') === 'json') {
+                return Response.json(mapData, {
+                    status: 200,
+                    headers: noStoreHeaders,
+                });
+            }
+
+            const url = buildGoogleStaticMapUrl({
+                ...mapData,
                 customerView,
             });
             if (!url) return unavailableMapResponse();
