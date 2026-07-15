@@ -2,11 +2,10 @@
 
 import { IconButton } from '@gredice/ui/IconButton';
 import { LogOut } from '@gredice/ui/icons';
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { performDeliveryLogout } from '../../lib/deliveryLogout';
 
-export function LogoutButton() {
-    const router = useRouter();
+export function LogoutButton({ userId }: { userId: string }) {
     const [loading, setLoading] = useState(false);
     return (
         <IconButton
@@ -16,8 +15,7 @@ export function LogoutButton() {
             onClick={async () => {
                 setLoading(true);
                 try {
-                    await fetch('/api/logout', { method: 'POST' });
-                    router.refresh();
+                    await performDeliveryLogout(userId);
                 } finally {
                     setLoading(false);
                 }

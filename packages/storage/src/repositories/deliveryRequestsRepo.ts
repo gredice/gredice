@@ -74,6 +74,25 @@ type DeliveryRaisedBedField = Partial<
     Pick<RaisedBedFieldWithEvents, 'plantCycles' | 'plantSortId'>
 >;
 
+export const DeliveryRequestFulfillmentErrorCodes = {
+    NOT_FOUND: 'delivery-request-not-found',
+    STATE_CONFLICT: 'delivery-request-state-conflict',
+} as const;
+
+export type DeliveryRequestFulfillmentErrorCode =
+    (typeof DeliveryRequestFulfillmentErrorCodes)[keyof typeof DeliveryRequestFulfillmentErrorCodes];
+
+export class DeliveryRequestFulfillmentError extends Error {
+    override name = 'DeliveryRequestFulfillmentError';
+
+    constructor(
+        readonly code: DeliveryRequestFulfillmentErrorCode,
+        message: string,
+    ) {
+        super(message);
+    }
+}
+
 // TODO: Should use types from union of payloads for delivery events
 interface DeliveryEventData {
     slotId?: number;
@@ -1776,7 +1795,10 @@ export async function fulfillDeliveryRequest(
     const request = await getDeliveryRequest(requestId, db);
 
     if (!request) {
-        throw new Error('Delivery request not found');
+        throw new DeliveryRequestFulfillmentError(
+            DeliveryRequestFulfillmentErrorCodes.NOT_FOUND,
+            'Delivery request not found',
+        );
     }
 
     if (request.state === DeliveryRequestStates.FULFILLED) {
@@ -1785,13 +1807,17 @@ export async function fulfillDeliveryRequest(
     }
 
     if (request.state === DeliveryRequestStates.CANCELLED) {
-        throw new Error('Cannot fulfill a cancelled delivery request');
+        throw new DeliveryRequestFulfillmentError(
+            DeliveryRequestFulfillmentErrorCodes.STATE_CONFLICT,
+            'Cannot fulfill a cancelled delivery request',
+        );
     }
     if (
         request.state === DeliveryRequestStates.DEFERRED ||
         request.state === DeliveryRequestStates.FAILED
     ) {
-        throw new Error(
+        throw new DeliveryRequestFulfillmentError(
+            DeliveryRequestFulfillmentErrorCodes.STATE_CONFLICT,
             'Cannot fulfill a delivery request with an exception outcome',
         );
     }

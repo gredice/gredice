@@ -20,6 +20,8 @@ import {
 } from '@gredice/ui/icons';
 import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
+import { deliveryActionPermanentFailureMessage } from '../lib/deliveryActionPresentation';
+import type { DeliveryActionQueueEntry } from '../lib/deliveryActionQueue';
 import type { DeliveryStopSummary } from '../lib/deliveryDashboardTypes';
 import {
     actionableDeliveryExceptionItems,
@@ -66,6 +68,12 @@ export function DeliveryStopCard({
     onArrive,
     onDeliver,
     onException,
+    syncEntry,
+    verifiedTracePaths = [],
+    onVerificationScan,
+    onRetrySync,
+    onDiscardSync,
+    routeSyncBlocked = false,
 }: {
     stop: DeliveryStopSummary;
     mode: 'driver' | 'customer';
@@ -77,8 +85,15 @@ export function DeliveryStopCard({
     onException?: (
         mutation: DeliveryExceptionMutation,
     ) => Promise<DeliveryExceptionSubmitResult>;
+    syncEntry?: DeliveryActionQueueEntry | null;
+    verifiedTracePaths?: string[];
+    onVerificationScan?: (tracePath: string) => void;
+    onRetrySync?: (operationId: string) => void | Promise<void>;
+    onDiscardSync?: (operationId: string) => void | Promise<void>;
+    routeSyncBlocked?: boolean;
 }) {
     const [notes, setNotes] = useState('');
+    const [syncRecoveryPending, setSyncRecoveryPending] = useState(false);
     const navigationUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(stop.address)}`;
     const driverMode = mode === 'driver';
     const delivered = stop.statusLabel === 'Dostavljeno';
@@ -86,6 +101,20 @@ export function DeliveryStopCard({
         stop.actionState ??
         (delivered ? 'completed' : stop.isCurrent ? 'current' : 'upcoming');
     const customerActionAvailable = driverActionState === 'current';
+    const acknowledgedOfflineArrival =
+        syncEntry?.command.kind === 'arrive' && syncEntry.state === 'synced';
+    const pendingOfflineArrival =
+        syncEntry?.command.kind === 'arrive' &&
+        syncEntry.state !== 'conflicted' &&
+        syncEntry.state !== 'synced';
+    const pendingOfflineCompletion =
+        syncEntry?.command.kind === 'deliver' ||
+        syncEntry?.command.kind === 'exception';
+    const offlineConflict = syncEntry?.state === 'conflicted';
+    const routeCommandBlocking =
+        routeSyncBlocked ||
+        Boolean(pendingOfflineCompletion) ||
+        Boolean(offlineConflict);
     const actionableDeliveries = actionableDeliveryExceptionItems(
         stop.deliveries,
     );
@@ -103,6 +132,17 @@ export function DeliveryStopCard({
             stop.slotEndAt &&
             new Date(stop.estimatedArrivalAt) > new Date(stop.slotEndAt),
     );
+    const runSyncRecovery = async (
+        action: (() => void | Promise<void>) | undefined,
+    ) => {
+        if (!action || syncRecoveryPending) return;
+        setSyncRecoveryPending(true);
+        try {
+            await action();
+        } finally {
+            setSyncRecoveryPending(false);
+        }
+    };
     const completedDriverException =
         driverMode &&
         driverActionState === 'completed' &&
@@ -256,7 +296,11 @@ export function DeliveryStopCard({
                         <Button
                             color="warning"
                             loading={pendingAction === 'retry'}
-                            disabled={Boolean(pendingAction)}
+                            disabled={
+                                Boolean(pendingAction) ||
+                                routeSyncBlocked ||
+                                stop.reroutePending
+                            }
                             onClick={onRetry}
                             startDecorator={<Reset className="size-4" />}
                         >
@@ -271,15 +315,29 @@ export function DeliveryStopCard({
                 stop.stopState !== 'deferred' ? (
                     <div className="space-y-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
                         <div className="flex flex-wrap gap-2">
-                            <Button
-                                href={navigationUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                variant="outlined"
-                                startDecorator={<Navigate className="size-4" />}
-                            >
-                                Navigacija
-                            </Button>
+                            {routeSyncBlocked || stop.reroutePending ? (
+                                <Button
+                                    disabled
+                                    variant="outlined"
+                                    startDecorator={
+                                        <Navigate className="size-4" />
+                                    }
+                                >
+                                    Navigacija čeka novi plan
+                                </Button>
+                            ) : (
+                                <Button
+                                    href={navigationUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    variant="outlined"
+                                    startDecorator={
+                                        <Navigate className="size-4" />
+                                    }
+                                >
+                                    Navigacija
+                                </Button>
+                            )}
                             {stop.runId &&
                             routeRevision !== undefined &&
                             onException ? (
@@ -287,15 +345,24 @@ export function DeliveryStopCard({
                                     runId={stop.runId}
                                     routeRevision={routeRevision}
                                     stop={stop}
-                                    disabled={Boolean(pendingAction)}
+                                    disabled={
+                                        Boolean(pendingAction) ||
+                                        routeCommandBlocking
+                                    }
                                     onSubmit={onException}
                                 />
                             ) : null}
                         </div>
-                        {stop.stopState === 'arrived' ? (
+                        {stop.stopState === 'arrived' ||
+                        pendingOfflineArrival ? (
                             <DeliveryHarvestVerification
                                 deliveries={actionableDeliveries}
-                                disabled={Boolean(pendingAction)}
+                                disabled={
+                                    Boolean(pendingAction) ||
+                                    routeCommandBlocking
+                                }
+                                verifiedTracePaths={verifiedTracePaths}
+                                onVerifiedTrace={onVerificationScan}
                             />
                         ) : (
                             <Typography
@@ -321,38 +388,124 @@ export function DeliveryStopCard({
                             rows={2}
                             maxLength={1_000}
                             placeholder="Npr. predano članu kućanstva"
-                            className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                            disabled={routeCommandBlocking}
+                            className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
                         />
+                        {syncEntry ? (
+                            <Alert
+                                color={
+                                    syncEntry.state === 'conflicted'
+                                        ? 'danger'
+                                        : syncEntry.state === 'failed'
+                                          ? 'warning'
+                                          : 'info'
+                                }
+                                startDecorator={<Warning className="size-5" />}
+                            >
+                                <div className="space-y-2">
+                                    <Typography level="body3" semiBold>
+                                        {syncEntry.state === 'conflicted'
+                                            ? deliveryActionPermanentFailureMessage(
+                                                  syncEntry.errorCode,
+                                                  'stop',
+                                              )
+                                            : syncEntry.state === 'failed'
+                                              ? 'Radnja je spremljena na uređaju, ali slanje nije uspjelo.'
+                                              : syncEntry.state ===
+                                                  'reconciling'
+                                                ? 'Problem je potvrđen, ali novi plan rute još nije učitan.'
+                                                : syncEntry.state === 'sending'
+                                                  ? 'Radnja se šalje i još nije potvrđena.'
+                                                  : syncEntry.state === 'synced'
+                                                    ? 'Poslužitelj je potvrdio radnju. Čeka se osvježeno stanje rute.'
+                                                    : 'Radnja je spremljena na uređaju i čeka potvrdu.'}
+                                    </Typography>
+                                    {syncEntry.state === 'failed' ? (
+                                        <Button
+                                            size="sm"
+                                            color="warning"
+                                            loading={syncRecoveryPending}
+                                            disabled={syncRecoveryPending}
+                                            onClick={() =>
+                                                void runSyncRecovery(() =>
+                                                    onRetrySync?.(
+                                                        syncEntry.command
+                                                            .operationId,
+                                                    ),
+                                                )
+                                            }
+                                        >
+                                            Pokušaj ponovno
+                                        </Button>
+                                    ) : null}
+                                    {syncEntry.state === 'conflicted' ? (
+                                        <Button
+                                            size="sm"
+                                            color="danger"
+                                            variant="outlined"
+                                            loading={syncRecoveryPending}
+                                            disabled={syncRecoveryPending}
+                                            onClick={() =>
+                                                void runSyncRecovery(() =>
+                                                    onDiscardSync?.(
+                                                        syncEntry.command
+                                                            .operationId,
+                                                    ),
+                                                )
+                                            }
+                                        >
+                                            Učitaj stanje poslužitelja
+                                        </Button>
+                                    ) : null}
+                                </div>
+                            </Alert>
+                        ) : null}
                         <div className="grid gap-2 sm:grid-cols-2">
                             <Button
                                 variant="outlined"
                                 loading={pendingAction === 'arrive'}
                                 disabled={
                                     Boolean(pendingAction) ||
-                                    stop.stopState === 'arrived'
+                                    stop.stopState === 'arrived' ||
+                                    acknowledgedOfflineArrival ||
+                                    pendingOfflineArrival ||
+                                    routeCommandBlocking
                                 }
                                 onClick={onArrive}
                                 startDecorator={
                                     <MyLocation className="size-4" />
                                 }
                             >
-                                {stop.stopState === 'arrived'
-                                    ? 'Dolazak potvrđen'
-                                    : 'Stigao sam'}
+                                {pendingOfflineArrival
+                                    ? 'Dolazak čeka potvrdu'
+                                    : stop.stopState === 'arrived' ||
+                                        acknowledgedOfflineArrival
+                                      ? 'Dolazak potvrđen'
+                                      : 'Stigao sam'}
                             </Button>
                             <Button
                                 color="success"
                                 loading={pendingAction === 'deliver'}
                                 disabled={
                                     Boolean(pendingAction) ||
-                                    actionableDeliveries.length === 0
+                                    routeCommandBlocking ||
+                                    actionableDeliveries.length === 0 ||
+                                    !(
+                                        stop.stopState === 'arrived' ||
+                                        pendingOfflineArrival ||
+                                        acknowledgedOfflineArrival
+                                    )
                                 }
                                 onClick={() => onDeliver?.(notes || undefined)}
                                 startDecorator={<Approved className="size-4" />}
                             >
-                                {groupedDelivery
-                                    ? `Dostavi ${actionableDeliveries.length} ${actionableDeliveries.length === 1 ? 'urod' : 'uroda'} · dalje`
-                                    : 'Dostavljeno · dalje'}
+                                {syncEntry?.command.kind === 'deliver'
+                                    ? syncEntry.state === 'synced'
+                                        ? 'Dostava potvrđena'
+                                        : 'Dostava čeka potvrdu'
+                                    : groupedDelivery
+                                      ? `Dostavi ${actionableDeliveries.length} ${actionableDeliveries.length === 1 ? 'urod' : 'uroda'} · dalje`
+                                      : 'Dostavljeno · dalje'}
                             </Button>
                         </div>
                     </div>

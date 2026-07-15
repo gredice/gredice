@@ -16,6 +16,19 @@ import {
 import { Typography } from '@gredice/ui/Typography';
 import { useRef, useState } from 'react';
 import type { DriverTrackingState } from '../hooks/useDriverTracking';
+import {
+    deliveryActionAcknowledgementBlocksRoute,
+    deliveryActionCompletionMessage,
+    deliveryActionLocallyCompletesStop,
+    deliveryActionPermanentFailureMessage,
+    deliveryRouteStepsWithLocalActions,
+} from '../lib/deliveryActionPresentation';
+import {
+    type DeliveryActionQueueEntry,
+    type DeliveryActionQueueSnapshot,
+    deliveryActionPendingEntryForStop,
+    deliveryActionVerifiedTracePaths,
+} from '../lib/deliveryActionQueue';
 import type {
     ActiveDeliveryRunSummary,
     DeliveryPickupStepSummary,
@@ -236,6 +249,151 @@ function pickupQueueErrorMessage(code: string | undefined, retryable: boolean) {
     }
 }
 
+export function DeliveryActionSyncStatus({
+    snapshot,
+    onRetry,
+    onRecoverConflict,
+    onReconcile,
+}: {
+    snapshot: DeliveryActionQueueSnapshot | null;
+    onRetry: (operationId: string) => void | Promise<void>;
+    onRecoverConflict: (operationId: string) => void | Promise<void>;
+    onReconcile: () => void | Promise<void>;
+}) {
+    const [pendingRecovery, setPendingRecovery] = useState<string | null>(null);
+    const pendingEntries =
+        snapshot?.entries.filter(
+            (entry) =>
+                entry.command.kind !== 'verification-scan' &&
+                entry.state !== 'synced',
+        ) ?? [];
+    const blockingEntry: DeliveryActionQueueEntry | undefined =
+        pendingEntries.find(
+            (entry) =>
+                entry.state === 'conflicted' ||
+                entry.state === 'failed' ||
+                entry.state === 'reconciling',
+        ) ?? snapshot?.entries.find(deliveryActionAcknowledgementBlocksRoute);
+    const completedRunAcknowledged =
+        blockingEntry?.acknowledgement?.kind === 'server' &&
+        blockingEntry.acknowledgement.runCompleted === true;
+    const waitingForReroute =
+        blockingEntry?.acknowledgement?.kind === 'server' &&
+        blockingEntry.acknowledgement.reroutePending === true;
+    const runRecovery = async (
+        key: string,
+        action: () => void | Promise<void>,
+    ) => {
+        if (pendingRecovery) return;
+        setPendingRecovery(key);
+        try {
+            await action();
+        } finally {
+            setPendingRecovery(null);
+        }
+    };
+    return (
+        <div className="space-y-3">
+            {snapshot?.durability === 'memory' ? (
+                <Alert
+                    color="warning"
+                    startDecorator={<Warning className="size-5" />}
+                >
+                    Preglednik ne dopušta trajnu pohranu. Radnje su spremljene
+                    samo dok je ova stranica otvorena; nemoj je zatvarati prije
+                    sinkronizacije.
+                </Alert>
+            ) : null}
+            {snapshot?.coordination === 'best-effort' ? (
+                <Alert color="info">
+                    Sinkronizacija između više kartica nije podržana u ovom
+                    pregledniku. Drži dostavnu rutu otvorenu u samo jednoj
+                    kartici.
+                </Alert>
+            ) : null}
+            {blockingEntry ? (
+                <Alert
+                    color={
+                        blockingEntry.state === 'conflicted'
+                            ? 'danger'
+                            : 'warning'
+                    }
+                    startDecorator={<Warning className="size-5" />}
+                >
+                    <div className="space-y-2">
+                        <Typography level="body3" semiBold>
+                            {completedRunAcknowledged
+                                ? 'Poslužitelj je potvrdio završetak rute. Sigurno lokalno čišćenje još nije dovršeno.'
+                                : waitingForReroute
+                                  ? 'Poslužitelj je potvrdio radnju, ali novi plan rute još nije sigurno učitan.'
+                                  : blockingEntry.state === 'conflicted'
+                                    ? deliveryActionPermanentFailureMessage(
+                                          blockingEntry.errorCode,
+                                          'global',
+                                      )
+                                    : blockingEntry.state === 'reconciling'
+                                      ? 'Problem je potvrđen, ali novi plan rute još nije sigurno učitan.'
+                                      : 'Prva nesinkronizirana radnja nije poslana. Kasnije radnje čekaju iza nje.'}
+                        </Typography>
+                        {blockingEntry.state === 'failed' ? (
+                            <Button
+                                size="sm"
+                                color="warning"
+                                loading={pendingRecovery === 'retry'}
+                                disabled={pendingRecovery !== null}
+                                onClick={() =>
+                                    void runRecovery('retry', () =>
+                                        onRetry(
+                                            blockingEntry.command.operationId,
+                                        ),
+                                    )
+                                }
+                            >
+                                Pokušaj ponovno
+                            </Button>
+                        ) : null}
+                        {blockingEntry.state === 'conflicted' ? (
+                            <Button
+                                size="sm"
+                                color="danger"
+                                variant="outlined"
+                                loading={pendingRecovery === 'conflict'}
+                                disabled={pendingRecovery !== null}
+                                onClick={() =>
+                                    void runRecovery('conflict', () =>
+                                        onRecoverConflict(
+                                            blockingEntry.command.operationId,
+                                        ),
+                                    )
+                                }
+                            >
+                                Učitaj stanje poslužitelja
+                            </Button>
+                        ) : null}
+                        {blockingEntry.state === 'reconciling' ||
+                        completedRunAcknowledged ||
+                        waitingForReroute ? (
+                            <Button
+                                size="sm"
+                                color="warning"
+                                loading={pendingRecovery === 'reconcile'}
+                                disabled={pendingRecovery !== null}
+                                onClick={() =>
+                                    void runRecovery('reconcile', onReconcile)
+                                }
+                            >
+                                {completedRunAcknowledged
+                                    ? 'Pokušaj ponovno očistiti podatke'
+                                    : 'Osvježi novi plan'}
+                            </Button>
+                        ) : null}
+                    </div>
+                </Alert>
+            ) : null}
+        </div>
+    );
+}
+
 export function DriverDashboard({
     dashboard,
     trackingState,
@@ -247,11 +405,16 @@ export function DriverDashboard({
     onDeliver,
     onException,
     pickupQueue,
+    deliveryQueue,
     onPickupScan,
     onPickupItemState,
     onConfirmPickupManifest,
     onRetryPickupSync,
     onDiscardPickupSync,
+    onVerificationScan,
+    onRetryDeliverySync,
+    onDiscardDeliverySync,
+    onReconcileDeliverySync,
 }: {
     dashboard: DriverDeliveryDashboard;
     trackingState: DriverTrackingState;
@@ -280,6 +443,7 @@ export function DriverDashboard({
         mutation: DeliveryExceptionMutation,
     ) => Promise<DeliveryExceptionSubmitResult>;
     pickupQueue: PickupManifestQueueSnapshot | null;
+    deliveryQueue: DeliveryActionQueueSnapshot | null;
     onPickupScan: (pickupNodeId: string, scanValue: string) => void;
     onPickupItemState: (
         pickupNodeId: string,
@@ -293,8 +457,25 @@ export function DriverDashboard({
     ) => void | Promise<void>;
     onRetryPickupSync: (operationId: string) => void | Promise<void>;
     onDiscardPickupSync: (operationId: string) => void | Promise<void>;
+    onVerificationScan: (stopId: number, tracePath: string) => void;
+    onRetryDeliverySync: (operationId: string) => void | Promise<void>;
+    onDiscardDeliverySync: (operationId: string) => void | Promise<void>;
+    onReconcileDeliverySync: () => void | Promise<void>;
 }) {
     const run = dashboard.activeRun;
+    const displayedRouteSteps = run
+        ? deliveryRouteStepsWithLocalActions(run.routeSteps, deliveryQueue)
+        : [];
+    const deliveryRouteSyncBlocked = Boolean(
+        run?.reroutePending ||
+            deliveryQueue?.entries.some(
+                (entry) =>
+                    entry.state === 'failed' ||
+                    entry.state === 'conflicted' ||
+                    entry.state === 'reconciling' ||
+                    deliveryActionAcknowledgementBlocksRoute(entry),
+            ),
+    );
     const [selectedRequestIds, setSelectedRequestIdsState] = useState<string[]>(
         [],
     );
@@ -508,6 +689,7 @@ export function DriverDashboard({
     return (
         <div className="min-h-[100dvh] bg-background">
             <DeliveryAppHeader
+                userId={dashboard.user.id}
                 displayName={dashboard.user.displayName}
                 role={dashboard.user.role}
             />
@@ -526,6 +708,12 @@ export function DriverDashboard({
                 {run ? (
                     <>
                         <DriverTrackingStatus tracking={trackingState} />
+                        <DeliveryActionSyncStatus
+                            snapshot={deliveryQueue}
+                            onRetry={onRetryDeliverySync}
+                            onRecoverConflict={onDiscardDeliverySync}
+                            onReconcile={onReconcileDeliverySync}
+                        />
                         {run.reroutePending ? (
                             <Alert
                                 color="warning"
@@ -649,7 +837,7 @@ export function DriverDashboard({
                                 </Typography>
                             </div>
                             <div className="grid gap-3 lg:grid-cols-2">
-                                {run.routeSteps.map((step) => {
+                                {displayedRouteSteps.map((step, stepIndex) => {
                                     if (step.kind === 'pickup') {
                                         const pickup = queuedPickup(
                                             step.pickup,
@@ -815,6 +1003,12 @@ export function DriverDashboard({
                                         isCurrent:
                                             step.actionState === 'current',
                                     };
+                                    const deliverySyncEntry = stop.id
+                                        ? deliveryActionPendingEntryForStop(
+                                              deliveryQueue,
+                                              stop.id,
+                                          )
+                                        : undefined;
                                     return (
                                         <div
                                             key={`delivery:${stop.id ?? stop.requestId}`}
@@ -828,6 +1022,26 @@ export function DriverDashboard({
                                                         ? ` · pokušaj ${step.retryAttempt}`
                                                         : null}
                                                 </Chip>
+                                            ) : null}
+                                            {deliveryActionLocallyCompletesStop(
+                                                deliverySyncEntry,
+                                            ) ? (
+                                                <Alert color="info">
+                                                    {deliveryActionCompletionMessage(
+                                                        deliverySyncEntry,
+                                                        !deliveryRouteSyncBlocked &&
+                                                            displayedRouteSteps.some(
+                                                                (
+                                                                    candidate,
+                                                                    candidateIndex,
+                                                                ) =>
+                                                                    candidateIndex >
+                                                                        stepIndex &&
+                                                                    candidate.actionState ===
+                                                                        'current',
+                                                            ),
+                                                    )}
+                                                </Alert>
                                             ) : null}
                                             <DeliveryStopCard
                                                 stop={stop}
@@ -891,6 +1105,33 @@ export function DriverDashboard({
                                                               message:
                                                                   'Stanica više nije dostupna. Osvježi rutu i provjeri odabir.',
                                                           })
+                                                }
+                                                syncEntry={deliverySyncEntry}
+                                                verifiedTracePaths={
+                                                    stop.id
+                                                        ? deliveryActionVerifiedTracePaths(
+                                                              deliveryQueue,
+                                                              stop.id,
+                                                          )
+                                                        : []
+                                                }
+                                                onVerificationScan={(
+                                                    tracePath,
+                                                ) =>
+                                                    stop.id &&
+                                                    onVerificationScan(
+                                                        stop.id,
+                                                        tracePath,
+                                                    )
+                                                }
+                                                onRetrySync={
+                                                    onRetryDeliverySync
+                                                }
+                                                onDiscardSync={
+                                                    onDiscardDeliverySync
+                                                }
+                                                routeSyncBlocked={
+                                                    deliveryRouteSyncBlocked
                                                 }
                                             />
                                         </div>

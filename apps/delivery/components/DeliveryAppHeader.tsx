@@ -4,9 +4,11 @@ import { Typography } from '@gredice/ui/Typography';
 import { LogoutButton } from './auth/LogoutButton';
 
 export function DeliveryAppHeader({
+    userId,
     displayName,
     role,
 }: {
+    userId: string;
     displayName: string;
     role: string;
 }) {
@@ -50,7 +52,7 @@ export function DeliveryAppHeader({
                               ? 'Vozač'
                               : 'Korisnik'}
                     </Chip>
-                    <LogoutButton />
+                    <LogoutButton userId={userId} />
                 </div>
             </div>
         </header>

@@ -244,6 +244,23 @@ export type DeliveryRunExceptionOperationStoredResult = {
     reroutePending: boolean;
 };
 
+export const DeliveryRunStopOperationKinds = {
+    ARRIVE: 'arrive',
+    DELIVER: 'deliver',
+} as const;
+
+export type DeliveryRunStopOperationKind =
+    (typeof DeliveryRunStopOperationKinds)[keyof typeof DeliveryRunStopOperationKinds];
+
+export type DeliveryRunStopOperationStoredResult = {
+    kind: DeliveryRunStopOperationKind;
+    targetStopId: number;
+    affectedStopIds: number[];
+    routeRevision: number;
+    reroutePending: boolean;
+    runCompleted: boolean;
+};
+
 // Delivery Runs - one optimized route picked up and driven by a driver/admin.
 export const deliveryRuns = pgTable(
     'delivery_runs',
@@ -838,6 +855,10 @@ export const deliveryRunStops = pgTable(
             table.runId,
             table.sequence,
         ),
+        uniqueIndex('delivery_run_stops_run_id_id_unique').on(
+            table.runId,
+            table.id,
+        ),
         index('delivery_run_stops_run_id_idx').on(table.runId),
         index('delivery_run_stops_run_itinerary_sequence_idx').on(
             table.runId,
@@ -937,6 +958,52 @@ export const deliveryRunExceptionOperations = pgTable(
     ],
 );
 
+// Durable, data-minimized receipts for arrival and delivery commands.
+// Customer details are excluded; notes are represented only by the payload digest.
+export const deliveryRunStopOperations = pgTable(
+    'delivery_run_stop_operations',
+    {
+        id: serial('id').primaryKey(),
+        runId: text('run_id')
+            .notNull()
+            .references(() => deliveryRuns.id, { onDelete: 'cascade' }),
+        targetStopId: integer('target_stop_id').notNull(),
+        driverUserId: text('driver_user_id')
+            .notNull()
+            .references(() => users.id),
+        clientOperationId: text('client_operation_id').notNull(),
+        kind: text('kind').$type<DeliveryRunStopOperationKind>().notNull(),
+        payloadHash: text('payload_hash').notNull(),
+        result: jsonb('result')
+            .$type<DeliveryRunStopOperationStoredResult>()
+            .notNull(),
+        occurredAt: timestamp('occurred_at').notNull(),
+        appliedAt: timestamp('applied_at').notNull().defaultNow(),
+    },
+    (table) => [
+        foreignKey({
+            columns: [table.runId, table.targetStopId],
+            foreignColumns: [deliveryRunStops.runId, deliveryRunStops.id],
+            name: 'delivery_run_stop_operations_run_target_stop_fk',
+        }).onDelete('cascade'),
+        uniqueIndex('delivery_run_stop_operations_run_client_unique').on(
+            table.runId,
+            table.clientOperationId,
+        ),
+        check(
+            'delivery_run_stop_operations_kind_check',
+            sql`${table.kind} in ('arrive', 'deliver')`,
+        ),
+        index('delivery_run_stop_operations_run_id_idx').on(table.runId),
+        index('delivery_run_stop_operations_target_stop_id_idx').on(
+            table.targetStopId,
+        ),
+        index('delivery_run_stop_operations_driver_user_id_idx').on(
+            table.driverUserId,
+        ),
+    ],
+);
+
 export const deliveryRunsRelations = relations(
     deliveryRuns,
     ({ many, one }) => ({
@@ -967,6 +1034,9 @@ export const deliveryRunsRelations = relations(
         }),
         exceptionOperations: many(deliveryRunExceptionOperations, {
             relationName: 'deliveryRunExceptionOperations',
+        }),
+        stopOperations: many(deliveryRunStopOperations, {
+            relationName: 'deliveryRunStopOperations',
         }),
     }),
 );
@@ -1038,7 +1108,7 @@ export const deliveryRunSlotsRelations = relations(
 
 export const deliveryRunStopsRelations = relations(
     deliveryRunStops,
-    ({ one }) => ({
+    ({ many, one }) => ({
         run: one(deliveryRuns, {
             fields: [deliveryRunStops.runId],
             references: [deliveryRuns.id],
@@ -1053,6 +1123,9 @@ export const deliveryRunStopsRelations = relations(
             fields: [deliveryRunStops.runId, deliveryRunStops.runSlotId],
             references: [deliveryRunSlots.runId, deliveryRunSlots.id],
             relationName: 'deliveryRunSlotStops',
+        }),
+        operations: many(deliveryRunStopOperations, {
+            relationName: 'deliveryRunStopOperationsTarget',
         }),
     }),
 );
@@ -1096,6 +1169,27 @@ export const deliveryRunExceptionOperationsRelations = relations(
             fields: [deliveryRunExceptionOperations.driverUserId],
             references: [users.id],
             relationName: 'driverDeliveryRunExceptionOperations',
+        }),
+    }),
+);
+
+export const deliveryRunStopOperationsRelations = relations(
+    deliveryRunStopOperations,
+    ({ one }) => ({
+        run: one(deliveryRuns, {
+            fields: [deliveryRunStopOperations.runId],
+            references: [deliveryRuns.id],
+            relationName: 'deliveryRunStopOperations',
+        }),
+        targetStop: one(deliveryRunStops, {
+            fields: [deliveryRunStopOperations.targetStopId],
+            references: [deliveryRunStops.id],
+            relationName: 'deliveryRunStopOperationsTarget',
+        }),
+        driver: one(users, {
+            fields: [deliveryRunStopOperations.driverUserId],
+            references: [users.id],
+            relationName: 'driverDeliveryRunStopOperations',
         }),
     }),
 );
@@ -1154,6 +1248,8 @@ export type SelectDeliveryRunPickupOperation =
     typeof deliveryRunPickupOperations.$inferSelect;
 export type SelectDeliveryRunExceptionOperation =
     typeof deliveryRunExceptionOperations.$inferSelect;
+export type SelectDeliveryRunStopOperation =
+    typeof deliveryRunStopOperations.$inferSelect;
 
 // Enums for type safety
 export const DeliveryModes = {

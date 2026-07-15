@@ -3,6 +3,8 @@ import {
     DeliveryRunExceptionOutcomes,
     type DeliveryRunExceptionReason,
     DeliveryRunExceptionReasons,
+    type DeliveryRunStopOperationKind,
+    DeliveryRunStopOperationKinds,
 } from '@gredice/storage';
 
 export class DeliveryMutationRequestError extends Error {
@@ -25,6 +27,75 @@ export function expectedRouteRevision(value: unknown) {
         );
     }
     return value.expectedRouteRevision;
+}
+
+export function parseDeliveryStopMutation(
+    value: unknown,
+    kind: DeliveryRunStopOperationKind,
+) {
+    if (!isRecord(value)) {
+        throw new DeliveryMutationRequestError('Neispravna promjena dostave.');
+    }
+    const routeRevision = expectedRouteRevision(value);
+    if (
+        typeof value.clientOperationId !== 'string' ||
+        value.clientOperationId.trim().length === 0 ||
+        value.clientOperationId.trim().length > 128
+    ) {
+        throw new DeliveryMutationRequestError(
+            'Nedostaje identifikator promjene.',
+        );
+    }
+    if (typeof value.occurredAt !== 'string') {
+        throw new DeliveryMutationRequestError('Nedostaje vrijeme promjene.');
+    }
+    const occurredAt = new Date(value.occurredAt);
+    if (!Number.isFinite(occurredAt.getTime())) {
+        throw new DeliveryMutationRequestError(
+            'Vrijeme promjene nije valjano.',
+        );
+    }
+    if (
+        kind !== DeliveryRunStopOperationKinds.ARRIVE &&
+        kind !== DeliveryRunStopOperationKinds.DELIVER
+    ) {
+        throw new DeliveryMutationRequestError('Neispravna vrsta promjene.');
+    }
+    const allowedKeys = new Set([
+        'clientOperationId',
+        'expectedRouteRevision',
+        'occurredAt',
+        ...(kind === DeliveryRunStopOperationKinds.DELIVER ? ['notes'] : []),
+    ]);
+    if (Object.keys(value).some((key) => !allowedKeys.has(key))) {
+        throw new DeliveryMutationRequestError(
+            'Promjena dostave sadrži nepodržane podatke.',
+        );
+    }
+    if (kind === DeliveryRunStopOperationKinds.ARRIVE && 'notes' in value) {
+        throw new DeliveryMutationRequestError(
+            'Napomena nije dopuštena za potvrdu dolaska.',
+        );
+    }
+    let notes: string | undefined;
+    if (kind === DeliveryRunStopOperationKinds.DELIVER && 'notes' in value) {
+        if (typeof value.notes !== 'string') {
+            throw new DeliveryMutationRequestError('Napomena nije valjana.');
+        }
+        notes = value.notes.trim() || undefined;
+        if (notes && notes.length > 1_000) {
+            throw new DeliveryMutationRequestError(
+                'Napomena smije imati najviše 1000 znakova.',
+            );
+        }
+    }
+    return {
+        kind,
+        expectedRouteRevision: routeRevision,
+        clientOperationId: value.clientOperationId.trim(),
+        occurredAt,
+        ...(notes ? { notes } : {}),
+    };
 }
 
 function exceptionOutcome(value: unknown): DeliveryRunExceptionOutcome {

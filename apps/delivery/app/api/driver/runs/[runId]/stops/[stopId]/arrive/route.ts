@@ -1,10 +1,14 @@
+import { DeliveryRunStopOperationKinds } from '@gredice/storage';
 import { withAuth } from '../../../../../../../../lib/auth/auth';
 import { arriveAtDeliveryStop } from '../../../../../../../../lib/deliveryDashboard';
 import {
     DeliveryMutationRequestError,
-    expectedRouteRevision,
+    parseDeliveryStopMutation,
 } from '../../../../../../../../lib/deliveryMutationRequest';
-import { deliveryRunExecutionErrorDetails } from '../../../../../../../../lib/deliveryRunExecutionError';
+import {
+    deliveryRunExecutionErrorDetails,
+    deliveryRunExecutionErrorStatus,
+} from '../../../../../../../../lib/deliveryRunExecutionError';
 
 const privateNoStore = { 'Cache-Control': 'private, no-store' };
 
@@ -15,16 +19,19 @@ export async function POST(
     return await withAuth(['driver', 'admin'], async ({ userId }) => {
         const { runId, stopId: stopIdValue } = await params;
         const stopId = Number(stopIdValue);
-        if (!Number.isInteger(stopId)) {
+        if (!Number.isInteger(stopId) || stopId <= 0) {
             return Response.json(
                 { error: 'Neispravna stanica.' },
                 { status: 400, headers: privateNoStore },
             );
         }
         const body: unknown = await request.json().catch(() => null);
-        let routeRevision: number;
+        let mutation: ReturnType<typeof parseDeliveryStopMutation>;
         try {
-            routeRevision = expectedRouteRevision(body);
+            mutation = parseDeliveryStopMutation(
+                body,
+                DeliveryRunStopOperationKinds.ARRIVE,
+            );
         } catch (error) {
             return Response.json(
                 {
@@ -42,12 +49,11 @@ export async function POST(
                 driverUserId: userId,
                 runId,
                 stopId,
-                expectedRouteRevision: routeRevision,
+                expectedRouteRevision: mutation.expectedRouteRevision,
+                clientOperationId: mutation.clientOperationId,
+                occurredAt: mutation.occurredAt,
             });
-            return Response.json(
-                { success: true, ...result },
-                { headers: privateNoStore },
-            );
+            return Response.json(result, { headers: privateNoStore });
         } catch (error) {
             const executionError = deliveryRunExecutionErrorDetails(error);
             const logContext = { runId, stopId, userId };
@@ -68,9 +74,12 @@ export async function POST(
                     error:
                         executionError?.message ??
                         'Dolazak trenutačno nije moguće potvrditi.',
-                    code: executionError?.code,
+                    code: executionError?.code ?? 'delivery-mutation-failed',
                 },
-                { status: 409, headers: privateNoStore },
+                {
+                    status: deliveryRunExecutionErrorStatus(error),
+                    headers: privateNoStore,
+                },
             );
         }
     });

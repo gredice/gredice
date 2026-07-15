@@ -45,10 +45,32 @@ export function deliveryRunExecutionErrorDetails(
                 message:
                     'Stanje odabranog uroda promijenilo se. Provjeri osvježenu rutu i ponovno potvrdi odabir.',
             };
+        case 'stop-operation-conflict':
+            return {
+                code: error.code,
+                message:
+                    'Ova potvrda dostave već je korištena s drugim podacima. Osvježi rutu i pokušaj ponovno.',
+            };
+        case 'stop-operation-invalid':
+            return {
+                code: error.code,
+                message:
+                    'Vrijeme ili podaci potvrde dostave nisu valjani. Osvježi rutu i pokušaj ponovno.',
+            };
+        case 'stop-operation-state-conflict':
+            return {
+                code: error.code,
+                message:
+                    'Stanje dostave promijenilo se. Osvježi rutu prije nastavka.',
+            };
         default:
             return {
                 code: error.code,
                 message: 'Radnju nije moguće primijeniti na trenutačnu rutu.',
             };
     }
+}
+
+export function deliveryRunExecutionErrorStatus(error: unknown): 409 | 500 {
+    return error instanceof DeliveryRunExecutionError ? 409 : 500;
 }

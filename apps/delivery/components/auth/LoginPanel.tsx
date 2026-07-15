@@ -13,11 +13,10 @@ import { Input } from '@gredice/ui/Input';
 import { Mail, Truck, Warning } from '@gredice/ui/icons';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import { useRouter } from 'next/navigation';
 import { useActionState, useCallback, useState } from 'react';
+import { publishDeliverySessionResumed } from '../../lib/deliveryOfflineEvents';
 
 export function LoginPanel() {
-    const router = useRouter();
     const [emailExpanded, setEmailExpanded] = useState(false);
     const fetchLastLogin = useCallback(
         () => fetch('/api/gredice/api/auth/last-login'),
@@ -42,7 +41,8 @@ export function LoginPanel() {
             if (!response.ok) {
                 return 'Prijava nije uspjela. Provjeri podatke i pokušaj ponovno.';
             }
-            router.refresh();
+            publishDeliverySessionResumed();
+            window.location.replace('/');
             return null;
         } catch {
             return 'Aplikacija za prijavu trenutačno nije dostupna.';

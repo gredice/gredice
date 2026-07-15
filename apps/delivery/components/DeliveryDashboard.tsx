@@ -5,43 +5,95 @@ import { Button } from '@gredice/ui/Button';
 import { Card, CardContent } from '@gredice/ui/Card';
 import { LoaderSpinner, Reset, Warning } from '@gredice/ui/icons';
 import { Typography } from '@gredice/ui/Typography';
-import { useQuery } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+    type DeliveryServerStateExpectation,
+    useDeliveryActionSync,
+} from '../hooks/useDeliveryActionSync';
 import { useDriverTracking } from '../hooks/useDriverTracking';
+import { useOfflineRouteCache } from '../hooks/useOfflineRouteCache';
 import { usePickupManifestSync } from '../hooks/usePickupManifestSync';
+import {
+    clearOtherDeliveryActionQueueScopes,
+    createBrowserDeliveryActionQueuePersistence,
+} from '../lib/deliveryActionQueue';
 import type {
     DeliveryDashboard as DeliveryDashboardData,
     DriverDeliveryDashboard,
 } from '../lib/deliveryDashboardTypes';
+import { performDeliveryLogout } from '../lib/deliveryLogout';
 import {
-    type DeliveryExceptionMutation,
-    type DeliveryExceptionSubmitResult,
-    deliveryExceptionConfirmation,
-} from '../lib/deliveryExceptionPresentation';
+    assertDeliveryOfflineWritesAllowed,
+    deliveryLogoutCompletedEvent,
+    deliveryLogoutEvent,
+    deliveryLogoutFailedEvent,
+    deliveryOfflineWriteBlockReason,
+    deliveryRunCompletedEvent,
+    subscribeToRemoteDeliveryLogout,
+} from '../lib/deliveryOfflineEvents';
 import {
-    clearPickupManifestQueueScope,
+    clearDeliveryUserStoredState,
+    createBrowserDeliveryUserStoredState,
+} from '../lib/deliveryRunStoredState';
+import {
+    clearOtherOfflineRouteCacheScopes,
+    createBrowserOfflineRouteCachePersistence,
+} from '../lib/offlineRouteCache';
+import {
+    clearOtherPickupManifestQueueScopes,
     createWebStoragePickupManifestQueuePersistence,
 } from '../lib/pickupManifestQueue';
 import { CustomerDashboard } from './CustomerDashboard';
 import { DriverDashboard } from './DriverDashboard';
+import { OfflineRouteRecovery } from './OfflineRouteRecovery';
 
-async function clearStoredPickupQueues(userId: string) {
+async function clearStoredDriverState(userId: string, runId?: string) {
     try {
-        await clearPickupManifestQueueScope(
-            createWebStoragePickupManifestQueuePersistence(window.localStorage),
-            { userId },
+        await clearDeliveryUserStoredState(
+            createBrowserDeliveryUserStoredState(),
+            { userId, runId },
         );
+        return true;
     } catch {
         // Storage may be unavailable in private/restricted browser contexts.
+        return false;
     }
 }
 
-async function readDashboard() {
-    const response = await fetch('/api/dashboard', { cache: 'no-store' });
+async function clearOtherStoredDriverRuns(userId: string, activeRunId: string) {
+    try {
+        await clearOtherOfflineRouteCacheScopes(
+            createBrowserOfflineRouteCachePersistence(),
+            { userId, activeRunId },
+        );
+        await clearOtherPickupManifestQueueScopes(
+            createWebStoragePickupManifestQueuePersistence(window.localStorage),
+            { userId, activeRunId },
+        );
+        await clearOtherDeliveryActionQueueScopes(
+            createBrowserDeliveryActionQueuePersistence(),
+            { userId, activeRunId },
+        );
+        return true;
+    } catch {
+        // A completion marker is retained when supporting cleanup is uncertain.
+        return false;
+    }
+}
+
+async function readDashboard({ signal }: { signal: AbortSignal }) {
+    assertDeliveryOfflineWritesAllowed();
+    const response = await fetch('/api/dashboard', {
+        cache: 'no-store',
+        signal,
+    });
+    const data: unknown = await response.json().catch(() => null);
+    assertDeliveryOfflineWritesAllowed();
     if (!response.ok) {
         throw new Error('Podatke o dostavama trenutačno nije moguće učitati.');
     }
-    const data: unknown = await response.json();
     if (!isDeliveryDashboard(data)) {
         throw new Error(
             'Poslužitelj je vratio neispravne podatke o dostavama.',
@@ -136,12 +188,14 @@ function isSafeActiveRun(value: unknown) {
 }
 
 async function postAction(path: string, body?: object) {
+    assertDeliveryOfflineWritesAllowed();
     const response = await fetch(path, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body ?? {}),
     });
     const data: unknown = await response.json().catch(() => null);
+    assertDeliveryOfflineWritesAllowed();
     if (!response.ok) {
         const message =
             typeof data === 'object' &&
@@ -194,12 +248,6 @@ const refreshPreparationCodes = new Set([
     'preparation-not-found',
 ]);
 
-type DeliveryExceptionAction = (
-    runId: string,
-    stopId: number,
-    mutation: DeliveryExceptionMutation,
-) => Promise<DeliveryExceptionSubmitResult>;
-
 type DeliveryActionResult =
     | { status: 'saved' }
     | {
@@ -216,11 +264,9 @@ function DriverDashboardWithPickupSync({
     onSelectionChange,
     onStartRun,
     onRetry,
-    onArrive,
-    onDeliver,
-    onException,
-    onPickupError,
-    onPickupAcknowledged,
+    onActionError,
+    onActionQueued,
+    onServerStateChanged,
 }: {
     dashboard: DriverDeliveryDashboard;
     trackingState: ReturnType<typeof useDriverTracking>;
@@ -232,20 +278,11 @@ function DriverDashboardWithPickupSync({
         stopId: number,
         expectedRouteRevision: number,
     ) => void;
-    onArrive: (
-        runId: string,
-        stopId: number,
-        expectedRouteRevision: number,
-    ) => void;
-    onDeliver: (
-        runId: string,
-        stopId: number,
-        expectedRouteRevision: number,
-        notes?: string,
-    ) => void;
-    onException: DeliveryExceptionAction;
-    onPickupError: (error: unknown) => void;
-    onPickupAcknowledged: () => void | Promise<void>;
+    onActionError: (error: unknown) => void;
+    onActionQueued: (message: string) => void;
+    onServerStateChanged: (
+        expectation?: DeliveryServerStateExpectation,
+    ) => Promise<boolean>;
 }) {
     const activeRun = dashboard.activeRun;
     if (!activeRun) {
@@ -257,15 +294,23 @@ function DriverDashboardWithPickupSync({
                 onSelectionChange={onSelectionChange}
                 onStartRun={onStartRun}
                 onRetry={onRetry}
-                onArrive={onArrive}
-                onDeliver={onDeliver}
-                onException={onException}
+                onArrive={() => undefined}
+                onDeliver={() => undefined}
+                onException={async () => ({
+                    status: 'review-required',
+                    message: 'Nema aktivne rute.',
+                })}
                 pickupQueue={null}
+                deliveryQueue={null}
                 onPickupScan={() => undefined}
                 onPickupItemState={() => undefined}
                 onConfirmPickupManifest={() => undefined}
                 onRetryPickupSync={() => undefined}
                 onDiscardPickupSync={() => undefined}
+                onVerificationScan={() => undefined}
+                onRetryDeliverySync={() => undefined}
+                onDiscardDeliverySync={() => undefined}
+                onReconcileDeliverySync={() => undefined}
             />
         );
     }
@@ -279,11 +324,9 @@ function DriverDashboardWithPickupSync({
             onSelectionChange={onSelectionChange}
             onStartRun={onStartRun}
             onRetry={onRetry}
-            onArrive={onArrive}
-            onDeliver={onDeliver}
-            onException={onException}
-            onPickupError={onPickupError}
-            onPickupAcknowledged={onPickupAcknowledged}
+            onActionError={onActionError}
+            onActionQueued={onActionQueued}
+            onServerStateChanged={onServerStateChanged}
         />
     );
 }
@@ -296,11 +339,9 @@ function ActiveDriverDashboardWithPickupSync({
     onSelectionChange,
     onStartRun,
     onRetry,
-    onArrive,
-    onDeliver,
-    onException,
-    onPickupError,
-    onPickupAcknowledged,
+    onActionError,
+    onActionQueued,
+    onServerStateChanged,
 }: {
     dashboard: DriverDeliveryDashboard;
     activeRunId: string;
@@ -313,31 +354,76 @@ function ActiveDriverDashboardWithPickupSync({
         stopId: number,
         expectedRouteRevision: number,
     ) => void;
-    onArrive: (
-        runId: string,
-        stopId: number,
-        expectedRouteRevision: number,
-    ) => void;
-    onDeliver: (
-        runId: string,
-        stopId: number,
-        expectedRouteRevision: number,
-        notes?: string,
-    ) => void;
-    onException: DeliveryExceptionAction;
-    onPickupError: (error: unknown) => void;
-    onPickupAcknowledged: () => void | Promise<void>;
+    onActionError: (error: unknown) => void;
+    onActionQueued: (message: string) => void;
+    onServerStateChanged: (
+        expectation?: DeliveryServerStateExpectation,
+    ) => Promise<boolean>;
 }) {
     const pickupSync = usePickupManifestSync({
         userId: dashboard.user.id,
         runId: activeRunId,
-        onAcknowledged: onPickupAcknowledged,
+        onAcknowledged: async () => {
+            await onServerStateChanged();
+        },
     });
+    const deliverySync = useDeliveryActionSync({
+        userId: dashboard.user.id,
+        runId: activeRunId,
+        refreshServerState: onServerStateChanged,
+    });
+    const serverAcknowledgementCount = deliverySync.snapshot.entries.filter(
+        (entry) =>
+            entry.command.kind !== 'verification-scan' &&
+            entry.acknowledgement?.kind === 'server',
+    ).length;
+    const minimumAcknowledgedRouteRevision = Math.max(
+        -1,
+        ...deliverySync.snapshot.entries.flatMap((entry) =>
+            entry.acknowledgement?.kind === 'server' &&
+            entry.acknowledgement.routeRevision !== undefined
+                ? [entry.acknowledgement.routeRevision]
+                : [],
+        ),
+    );
+    const reconcileDeliveryServerState =
+        deliverySync.reconcilePendingServerState;
+    useEffect(() => {
+        if (
+            dashboard.activeRun?.id !== activeRunId ||
+            dashboard.activeRun.reroutePending ||
+            dashboard.activeRun.routeRevision <
+                minimumAcknowledgedRouteRevision ||
+            serverAcknowledgementCount === 0
+        ) {
+            return;
+        }
+        void reconcileDeliveryServerState().catch(() => undefined);
+    }, [
+        activeRunId,
+        dashboard.activeRun?.id,
+        dashboard.activeRun?.reroutePending,
+        dashboard.activeRun?.routeRevision,
+        minimumAcknowledgedRouteRevision,
+        reconcileDeliveryServerState,
+        serverAcknowledgementCount,
+    ]);
     const report = async (action: Promise<unknown>) => {
         try {
             await action;
         } catch (error) {
-            onPickupError(error);
+            onActionError(error);
+        }
+    };
+    const reportQueued = async (
+        action: Promise<unknown>,
+        confirmation: string,
+    ) => {
+        try {
+            await action;
+            onActionQueued(confirmation);
+        } catch (error) {
+            onActionError(error);
         }
     };
 
@@ -349,10 +435,51 @@ function ActiveDriverDashboardWithPickupSync({
             onSelectionChange={onSelectionChange}
             onStartRun={onStartRun}
             onRetry={onRetry}
-            onArrive={onArrive}
-            onDeliver={onDeliver}
-            onException={onException}
+            onArrive={(runId, stopId, routeRevision) => {
+                if (runId !== activeRunId) return;
+                void reportQueued(
+                    deliverySync.enqueueArrive(stopId, routeRevision),
+                    'Dolazak je spremljen. Oznaka čekanja nestat će nakon potvrde poslužitelja.',
+                );
+            }}
+            onDeliver={(runId, stopId, routeRevision, notes) => {
+                if (runId !== activeRunId) return;
+                void reportQueued(
+                    deliverySync.enqueueDelivery(stopId, routeRevision, notes),
+                    'Dostava je spremljena. Oznaka čekanja nestat će nakon potvrde poslužitelja.',
+                );
+            }}
+            onException={async (runId, stopId, mutation) => {
+                if (runId !== activeRunId) {
+                    return {
+                        status: 'review-required',
+                        message:
+                            'Aktivna ruta se promijenila. Provjeri stanicu.',
+                    };
+                }
+                try {
+                    await deliverySync.enqueueException(stopId, mutation);
+                    onActionQueued(
+                        'Problem je spremljen na uređaju. Ruta se neće nastaviti dok poslužitelj ne potvrdi novi plan.',
+                    );
+                    return { status: 'saved' };
+                } catch (error) {
+                    onActionError(error);
+                    return deliverySync.isBarrierError(error)
+                        ? {
+                              status: 'review-required',
+                              message:
+                                  'Prethodni problem još čeka sinkronizaciju. Pričekaj potvrdu nove rute.',
+                          }
+                        : {
+                              status: 'retryable',
+                              message:
+                                  'Promjenu nije moguće sigurno spremiti na uređaj. Provjeri prostor i pokušaj ponovno.',
+                          };
+                }
+            }}
             pickupQueue={pickupSync.snapshot}
+            deliveryQueue={deliverySync.snapshot}
             onPickupScan={(pickupNodeId, scanValue) =>
                 report(pickupSync.enqueueScan(pickupNodeId, scanValue))
             }
@@ -375,32 +502,139 @@ function ActiveDriverDashboardWithPickupSync({
             onDiscardPickupSync={(operationId) =>
                 report(pickupSync.discardEntry(operationId))
             }
+            onVerificationScan={(stopId, tracePath) =>
+                void report(
+                    deliverySync.enqueueVerificationScan(stopId, tracePath),
+                )
+            }
+            onRetryDeliverySync={(operationId) =>
+                report(deliverySync.retry(operationId))
+            }
+            onDiscardDeliverySync={(operationId) =>
+                report(
+                    deliverySync
+                        .recoverConflict(operationId)
+                        .then((changed) => {
+                            if (!changed) {
+                                throw new Error(
+                                    'Novo stanje rute nije moguće potvrditi. Lokalna radnja ostaje spremljena.',
+                                );
+                            }
+                        }),
+                )
+            }
+            onReconcileDeliverySync={() =>
+                report(
+                    deliverySync
+                        .reconcilePendingServerState()
+                        .then((reconciled) => {
+                            if (!reconciled) {
+                                throw new Error(
+                                    'Novi plan rute još nije moguće potvrditi. Iznimka ostaje blokirajuća.',
+                                );
+                            }
+                        }),
+                )
+            }
         />
     );
 }
 
-export function DeliveryDashboard() {
+export function DeliveryDashboard({
+    authenticatedUserId,
+    authenticatedRole,
+}: {
+    authenticatedUserId: string;
+    authenticatedRole: string;
+}) {
+    const router = useRouter();
+    const queryClient = useQueryClient();
     const [pendingAction, setPendingAction] = useState<string | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
     const [actionConfirmation, setActionConfirmation] = useState<string | null>(
         null,
     );
+    const [networkOnline, setNetworkOnline] = useState(true);
+    const [offlineFallbackReady, setOfflineFallbackReady] = useState(false);
+    const [logoutState, setLogoutState] = useState<
+        'idle' | 'pending' | 'failed'
+    >('idle');
+    const [completedRunId, setCompletedRunId] = useState<string | null>(null);
+    const [offlineSessionUserId, setOfflineSessionUserId] = useState<
+        string | null
+    >(null);
+    const offlineSessionReady = offlineSessionUserId === authenticatedUserId;
+    const sessionOperational = offlineSessionReady && logoutState === 'idle';
     const query = useQuery({
         queryKey: ['delivery-dashboard'],
         queryFn: readDashboard,
+        enabled: sessionOperational,
         refetchInterval: 10_000,
     });
+    const refetchDashboard = query.refetch;
     const dashboardData = query.data;
+    const driverDashboard: DriverDeliveryDashboard | null =
+        dashboardData?.kind === 'driver' ? dashboardData : null;
+    const authenticatedDriverUserId =
+        authenticatedRole === 'driver' || authenticatedRole === 'admin'
+            ? authenticatedUserId
+            : null;
+    const verifyOfflineSession = useCallback(() => {
+        const blockReason = deliveryOfflineWriteBlockReason();
+        if (blockReason === 'stale-session') {
+            window.location.reload();
+            return false;
+        }
+        if (blockReason === 'logout') {
+            setOfflineSessionUserId(null);
+            setLogoutState((current) =>
+                current === 'pending' ? current : 'failed',
+            );
+            queryClient.removeQueries({ queryKey: ['delivery-dashboard'] });
+            return false;
+        }
+        setOfflineSessionUserId(authenticatedUserId);
+        return true;
+    }, [authenticatedUserId, queryClient]);
+    useEffect(() => {
+        const verify = () => void verifyOfflineSession();
+        const verifyVisibleSession = () => {
+            if (document.visibilityState === 'visible') verify();
+        };
+        verify();
+        window.addEventListener('focus', verify);
+        window.addEventListener('pageshow', verify);
+        document.addEventListener('visibilitychange', verifyVisibleSession);
+        return () => {
+            window.removeEventListener('focus', verify);
+            window.removeEventListener('pageshow', verify);
+            document.removeEventListener(
+                'visibilitychange',
+                verifyVisibleSession,
+            );
+        };
+    }, [verifyOfflineSession]);
+    useEffect(() => {
+        if (query.isError) verifyOfflineSession();
+    }, [query.isError, verifyOfflineSession]);
+    const offlineRoute = useOfflineRouteCache(
+        sessionOperational ? authenticatedDriverUserId : null,
+        sessionOperational ? driverDashboard : null,
+    );
     const activeRun =
         dashboardData && 'activeRun' in dashboardData
             ? dashboardData.activeRun
             : null;
     const activeRunId = activeRun?.id ?? null;
     const trackingState = useDriverTracking({
-        runId: activeRunId,
-        serverTracking: activeRun?.tracking ?? null,
+        runId: sessionOperational ? activeRunId : null,
+        serverTracking: sessionOperational
+            ? (activeRun?.tracking ?? null)
+            : null,
         dashboardRefreshedAt:
-            dashboardData?.kind === 'driver' ? dashboardData.refreshedAt : null,
+            sessionOperational && dashboardData?.kind === 'driver'
+                ? dashboardData.refreshedAt
+                : null,
         onDashboardRefresh: async () => {
             await query.refetch();
         },
@@ -411,20 +645,203 @@ export function DeliveryDashboard() {
             : null;
     const currentDriverUserId =
         query.data?.kind === 'driver' ? query.data.user.id : null;
+    const currentDriverRunId = driverDashboard?.activeRun?.id ?? null;
     const previousDriverUserIdRef = useRef<string | null>(null);
+    const previousDriverRunScopeRef = useRef<{
+        userId: string;
+        runId: string;
+    } | null>(null);
+    const prunedDriverRunScopeRef = useRef<string | null>(null);
+
+    useEffect(() => {
+        const timeout = window.setTimeout(
+            () => setOfflineFallbackReady(true),
+            1_500,
+        );
+        return () => window.clearTimeout(timeout);
+    }, []);
+
+    useEffect(() => {
+        const update = () => setNetworkOnline(navigator.onLine);
+        update();
+        window.addEventListener('online', update);
+        window.addEventListener('offline', update);
+        return () => {
+            window.removeEventListener('online', update);
+            window.removeEventListener('offline', update);
+        };
+    }, []);
+
+    useEffect(() => {
+        const clearVisibleSession = () => {
+            setLogoutState('pending');
+            queryClient.removeQueries({ queryKey: ['delivery-dashboard'] });
+        };
+        const handleLocalLogout = () => clearVisibleSession();
+        const handleLogoutCompleted = () => router.refresh();
+        const handleLogoutFailed = () => setLogoutState('failed');
+        window.addEventListener(deliveryLogoutEvent, handleLocalLogout);
+        window.addEventListener(
+            deliveryLogoutCompletedEvent,
+            handleLogoutCompleted,
+        );
+        window.addEventListener(deliveryLogoutFailedEvent, handleLogoutFailed);
+        const unsubscribeRemote = subscribeToRemoteDeliveryLogout({
+            onLogout: () =>
+                window.dispatchEvent(new Event(deliveryLogoutEvent)),
+            onCompleted: () =>
+                window.dispatchEvent(new Event(deliveryLogoutCompletedEvent)),
+            onFailed: () =>
+                window.dispatchEvent(new Event(deliveryLogoutFailedEvent)),
+            onResumed: () => window.location.reload(),
+        });
+        return () => {
+            window.removeEventListener(deliveryLogoutEvent, handleLocalLogout);
+            window.removeEventListener(
+                deliveryLogoutCompletedEvent,
+                handleLogoutCompleted,
+            );
+            window.removeEventListener(
+                deliveryLogoutFailedEvent,
+                handleLogoutFailed,
+            );
+            unsubscribeRemote();
+        };
+    }, [queryClient, router]);
+
+    useEffect(() => {
+        const handleRunCompleted = (event: Event) => {
+            if (!(event instanceof CustomEvent)) return;
+            const detail: unknown = event.detail;
+            if (
+                typeof detail !== 'object' ||
+                detail === null ||
+                !('userId' in detail) ||
+                detail.userId !== authenticatedUserId ||
+                !('runId' in detail) ||
+                typeof detail.runId !== 'string'
+            ) {
+                return;
+            }
+            setCompletedRunId(detail.runId);
+            queryClient.removeQueries({ queryKey: ['delivery-dashboard'] });
+            void refetchDashboard();
+        };
+        window.addEventListener(deliveryRunCompletedEvent, handleRunCompleted);
+        return () =>
+            window.removeEventListener(
+                deliveryRunCompletedEvent,
+                handleRunCompleted,
+            );
+    }, [authenticatedUserId, queryClient, refetchDashboard]);
+
+    useEffect(() => {
+        if (!completedRunId || query.data?.kind !== 'driver') return;
+        if (query.data.activeRun?.id !== completedRunId) {
+            setCompletedRunId(null);
+        }
+    }, [completedRunId, query.data]);
+
+    useEffect(() => {
+        if (authenticatedDriverUserId) return;
+        void clearStoredDriverState(authenticatedUserId);
+    }, [authenticatedDriverUserId, authenticatedUserId]);
 
     useEffect(() => {
         if (!driverWithoutActiveRun) return;
-        void clearStoredPickupQueues(driverWithoutActiveRun);
+        let active = true;
+        let running = false;
+        let retryTimer: number | null = null;
+        const cleanup = async () => {
+            if (running) return;
+            if (retryTimer) {
+                window.clearTimeout(retryTimer);
+                retryTimer = null;
+            }
+            running = true;
+            const cleared = await clearStoredDriverState(
+                driverWithoutActiveRun,
+            );
+            running = false;
+            if (active && !cleared) {
+                retryTimer = window.setTimeout(() => void cleanup(), 10_000);
+            }
+        };
+        const handleOnline = () => void cleanup();
+        void cleanup();
+        window.addEventListener('online', handleOnline);
+        return () => {
+            active = false;
+            if (retryTimer) window.clearTimeout(retryTimer);
+            window.removeEventListener('online', handleOnline);
+        };
     }, [driverWithoutActiveRun]);
 
     useEffect(() => {
         const previousUserId = previousDriverUserIdRef.current;
         if (previousUserId && previousUserId !== currentDriverUserId) {
-            void clearStoredPickupQueues(previousUserId);
+            void clearStoredDriverState(previousUserId);
         }
         previousDriverUserIdRef.current = currentDriverUserId;
     }, [currentDriverUserId]);
+
+    useEffect(() => {
+        const currentScope =
+            currentDriverRunId && currentDriverUserId
+                ? {
+                      userId: currentDriverUserId,
+                      runId: currentDriverRunId,
+                  }
+                : null;
+        const previousScope = previousDriverRunScopeRef.current;
+        if (
+            previousScope &&
+            (!currentScope ||
+                previousScope.userId !== currentScope.userId ||
+                previousScope.runId !== currentScope.runId)
+        ) {
+            void clearStoredDriverState(
+                previousScope.userId,
+                previousScope.runId,
+            );
+        }
+        previousDriverRunScopeRef.current = currentScope;
+        if (!currentScope) return;
+
+        const scopeKey = `${currentScope.userId}\u0000${currentScope.runId}`;
+        if (prunedDriverRunScopeRef.current === scopeKey) return;
+
+        let active = true;
+        let running = false;
+        let retryTimer: number | null = null;
+        const prune = async () => {
+            if (running || prunedDriverRunScopeRef.current === scopeKey) return;
+            if (retryTimer) {
+                window.clearTimeout(retryTimer);
+                retryTimer = null;
+            }
+            running = true;
+            const cleared = await clearOtherStoredDriverRuns(
+                currentScope.userId,
+                currentScope.runId,
+            );
+            running = false;
+            if (!active) return;
+            if (cleared) {
+                prunedDriverRunScopeRef.current = scopeKey;
+                return;
+            }
+            retryTimer = window.setTimeout(() => void prune(), 10_000);
+        };
+        const handleOnline = () => void prune();
+        void prune();
+        window.addEventListener('online', handleOnline);
+        return () => {
+            active = false;
+            if (retryTimer) window.clearTimeout(retryTimer);
+            window.removeEventListener('online', handleOnline);
+        };
+    }, [currentDriverRunId, currentDriverUserId]);
 
     const perform = async (
         key: string,
@@ -457,6 +874,32 @@ export function DeliveryDashboard() {
         } finally {
             setPendingAction(null);
         }
+    };
+
+    const refreshDriverServerState = async (
+        expectation?: DeliveryServerStateExpectation,
+    ) => {
+        const refreshed = await query.refetch();
+        if (!refreshed.isSuccess || refreshed.data?.kind !== 'driver') {
+            return false;
+        }
+        if (!expectation) {
+            setActionConfirmation(null);
+            return true;
+        }
+        const refreshedRun = refreshed.data.activeRun;
+        if (!refreshedRun || refreshedRun.id !== expectation.runId) {
+            setActionConfirmation(null);
+            return true;
+        }
+        if (expectation.runCompleted) return false;
+        const minimumRouteRevision = expectation.minimumRouteRevision;
+        const reconciled =
+            !refreshedRun.reroutePending &&
+            (minimumRouteRevision === undefined ||
+                refreshedRun.routeRevision >= minimumRouteRevision);
+        if (reconciled) setActionConfirmation(null);
+        return reconciled;
     };
 
     const startRun = async (deliveryRequestIds: string[]) => {
@@ -520,7 +963,99 @@ export function DeliveryDashboard() {
         }
     };
 
-    if (query.isPending) {
+    if (logoutState !== 'idle') {
+        return (
+            <main className="flex min-h-[100dvh] items-center justify-center bg-background p-4">
+                {logoutState === 'pending' ? (
+                    <div
+                        className="flex items-center gap-3 text-muted-foreground"
+                        role="status"
+                    >
+                        <LoaderSpinner className="size-5 animate-spin" />
+                        <Typography>Odjava…</Typography>
+                    </div>
+                ) : (
+                    <Card
+                        aria-atomic="true"
+                        className="w-full max-w-md"
+                        role="alert"
+                    >
+                        <CardContent
+                            noHeader
+                            className="space-y-4 p-6 text-center"
+                        >
+                            <Warning className="mx-auto size-9 text-warning" />
+                            <Typography level="h3" semiBold>
+                                Odjava nije potvrđena
+                            </Typography>
+                            <Typography className="text-muted-foreground">
+                                Sigurno brisanje lokalnih podataka ili odjava na
+                                poslužitelju nije potvrđena. Provjeri vezu i
+                                pokušaj ponovno.
+                            </Typography>
+                            <Button
+                                onClick={() =>
+                                    void performDeliveryLogout(
+                                        authenticatedUserId,
+                                    )
+                                }
+                            >
+                                Pokušaj odjavu ponovno
+                            </Button>
+                        </CardContent>
+                    </Card>
+                )}
+            </main>
+        );
+    }
+
+    if (completedRunId) {
+        return (
+            <main className="flex min-h-[100dvh] items-center justify-center bg-background p-4">
+                <Card
+                    aria-atomic="true"
+                    aria-live="polite"
+                    className="w-full max-w-md"
+                    role="status"
+                >
+                    <CardContent noHeader className="space-y-4 p-6 text-center">
+                        <Typography level="h3" semiBold>
+                            Ruta je završena
+                        </Typography>
+                        <Typography className="text-muted-foreground">
+                            Završena ruta uklonjena je s ovog uređaja. Novo
+                            stanje prikazat će se nakon potvrde poslužitelja.
+                        </Typography>
+                        <Button
+                            startDecorator={<Reset className="size-4" />}
+                            onClick={() => void refetchDashboard()}
+                        >
+                            Učitaj novo stanje
+                        </Button>
+                    </CardContent>
+                </Card>
+            </main>
+        );
+    }
+
+    if (!offlineSessionReady) {
+        return (
+            <main className="flex min-h-[100dvh] items-center justify-center bg-background p-4">
+                <div
+                    className="flex items-center gap-3 text-muted-foreground"
+                    role="status"
+                >
+                    <LoaderSpinner className="size-5 animate-spin" />
+                    <Typography>Učitavanje dostava…</Typography>
+                </div>
+            </main>
+        );
+    }
+
+    if (
+        query.isPending &&
+        !(offlineRoute && (!networkOnline || offlineFallbackReady))
+    ) {
         return (
             <main className="flex min-h-[100dvh] items-center justify-center bg-background p-4">
                 <div className="flex items-center gap-3 text-muted-foreground">
@@ -531,7 +1066,17 @@ export function DeliveryDashboard() {
         );
     }
 
-    if (query.isError || !query.data) {
+    if (!query.data) {
+        if (offlineRoute && authenticatedDriverUserId) {
+            return (
+                <OfflineRouteRecovery
+                    snapshot={offlineRoute}
+                    authenticatedUserId={authenticatedDriverUserId}
+                    authenticatedRole={authenticatedRole}
+                    refreshServerState={refreshDriverServerState}
+                />
+            );
+        }
         return (
             <main className="flex min-h-[100dvh] items-center justify-center bg-background p-4">
                 <Card className="w-full max-w-md">
@@ -560,8 +1105,19 @@ export function DeliveryDashboard() {
     const dashboard = query.data;
     return (
         <>
+            {!networkOnline || query.isError ? (
+                <div className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-50 mx-auto max-w-xl">
+                    <Alert
+                        color="warning"
+                        startDecorator={<Warning className="size-5" />}
+                    >
+                        Veza nije dostupna. Trenutačni i sljedeći korak ostaju
+                        na uređaju, a spremljene radnje čekaju potvrdu.
+                    </Alert>
+                </div>
+            ) : null}
             {actionError ? (
-                <div className="fixed inset-x-4 top-4 z-50 mx-auto max-w-xl">
+                <div className="fixed inset-x-4 top-[max(1rem,env(safe-area-inset-top))] z-50 mx-auto max-w-xl">
                     <Alert
                         color="danger"
                         startDecorator={<Warning className="size-5" />}
@@ -571,13 +1127,13 @@ export function DeliveryDashboard() {
                 </div>
             ) : null}
             {actionConfirmation ? (
-                <div className="fixed inset-x-4 top-4 z-50 mx-auto max-w-xl">
+                <div className="fixed inset-x-4 top-[max(1rem,env(safe-area-inset-top))] z-50 mx-auto max-w-xl">
                     <Alert
-                        color="success"
+                        color="info"
                         endDecorator={
                             <Button
                                 aria-label="Zatvori potvrdu"
-                                color="success"
+                                color="info"
                                 size="sm"
                                 variant="plain"
                                 onClick={() => setActionConfirmation(null)}
@@ -609,63 +1165,26 @@ export function DeliveryDashboard() {
                             { expectedRouteRevision },
                         )
                     }
-                    onArrive={(runId, stopId, expectedRouteRevision) =>
-                        void perform(
-                            `${stopId}:arrive`,
-                            `/api/driver/runs/${runId}/stops/${stopId}/arrive`,
-                            {
-                                expectedRouteRevision,
-                            },
-                        )
-                    }
-                    onDeliver={(runId, stopId, expectedRouteRevision, notes) =>
-                        void perform(
-                            `${stopId}:deliver`,
-                            `/api/driver/runs/${runId}/stops/${stopId}/deliver`,
-                            {
-                                notes,
-                                expectedRouteRevision,
-                            },
-                        )
-                    }
-                    onException={async (runId, stopId, mutation) => {
-                        const result = await perform(
-                            `${stopId}:exception`,
-                            `/api/driver/runs/${runId}/exceptions`,
-                            mutation,
-                            deliveryExceptionConfirmation(mutation),
-                        );
-                        if (result.status === 'saved') {
-                            return result;
-                        }
-                        if (result.statusCode === 409) {
-                            return {
-                                status: 'review-required',
-                                message:
-                                    'Ruta ili odabrani urodi promijenili su se. Provjeri osvježeni odabir i ponovno potvrdi spremanje.',
-                            };
-                        }
-                        return {
-                            status: 'retryable',
-                            message:
-                                'Promjena možda nije potvrđena. Provjeri vezu i pokušaj ponovno bez izmjene odabira.',
-                        };
-                    }}
-                    onPickupError={(error) => {
+                    onActionError={(error) => {
                         setActionConfirmation(null);
                         setActionError(
                             error instanceof Error
                                 ? error.message
-                                : 'Promjenu preuzimanja nije moguće spremiti.',
+                                : 'Promjenu dostave nije moguće spremiti.',
                         );
                     }}
-                    onPickupAcknowledged={async () => {
-                        await query.refetch();
+                    onActionQueued={(message) => {
+                        setActionError(null);
+                        setActionConfirmation(message);
                     }}
+                    onServerStateChanged={refreshDriverServerState}
                 />
             ) : (
                 <CustomerDashboard dashboard={dashboard} />
             )}
+            {!networkOnline || query.isError ? (
+                <div aria-hidden="true" className="h-32 sm:h-24" />
+            ) : null}
         </>
     );
 }

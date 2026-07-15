@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DeliveryTrackingFreshnessSummary } from '../lib/deliveryDashboardTypes';
+import { assertDeliveryOfflineWritesAllowed } from '../lib/deliveryOfflineEvents';
 import {
     classifyDriverLocationResponse,
     type DriverLocationAcknowledgement,
@@ -330,6 +331,7 @@ export function useDriverTracking({
                 driverTrackingUploadTimeoutMs,
             );
             try {
+                assertDeliveryOfflineWritesAllowed();
                 const response = await fetch(
                     `/api/driver/runs/${runId}/location`,
                     {
@@ -347,6 +349,7 @@ export function useDriverTracking({
                     },
                 );
                 const body: unknown = await response.json().catch(() => null);
+                assertDeliveryOfflineWritesAllowed();
                 result = classifyDriverLocationResponse({
                     status: response.status,
                     body,

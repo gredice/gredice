@@ -33,7 +33,7 @@ export function DeliveryExceptionSheet({
 }: {
     runId: string;
     routeRevision: number;
-    stop: DeliveryStopSummary;
+    stop: Pick<DeliveryStopSummary, 'id' | 'requestId' | 'deliveries'>;
     disabled: boolean;
     onSubmit: (
         mutation: DeliveryExceptionMutation,
