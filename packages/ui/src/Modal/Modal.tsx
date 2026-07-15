@@ -4,7 +4,9 @@ import * as DialogPrimitive from '@radix-ui/react-dialog';
 import {
     type HTMLAttributes,
     type ReactNode,
+    useEffect,
     useLayoutEffect,
+    useRef,
     useState,
 } from 'react';
 import { Drawer } from 'vaul';
@@ -169,6 +171,7 @@ function MobileModal({
     ...rest
 }: Omit<ModalProps, 'disableMobile' | 'hideClose' | 'mobileOverride'>) {
     const hasDescription = hasAccessibleDescription(description);
+    const drawerRef = useMobileDrawerKeyboardRecovery();
 
     return (
         <Drawer.Root
@@ -176,7 +179,6 @@ function MobileModal({
             modal={modal}
             onOpenChange={onOpenChange}
             open={open}
-            repositionInputs={false}
             shouldScaleBackground
         >
             {trigger ? (
@@ -197,6 +199,7 @@ function MobileModal({
                         'fixed inset-x-0 bottom-0 z-50 mt-4 flex max-h-[calc(100dvh-1rem)] w-full max-w-full min-w-0 flex-col overflow-hidden rounded-t-[10px] border bg-background',
                         className,
                     )}
+                    ref={drawerRef}
                     {...rest}
                 >
                     <Drawer.Title className="sr-only">{title}</Drawer.Title>
@@ -213,6 +216,80 @@ function MobileModal({
             </Drawer.Portal>
         </Drawer.Root>
     );
+}
+
+const MOBILE_KEYBOARD_HEIGHT_THRESHOLD = 150;
+
+function useMobileDrawerKeyboardRecovery() {
+    const drawerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const viewport = window.visualViewport;
+        if (!viewport) {
+            return;
+        }
+
+        let maximumViewportHeight = viewport.height;
+        let minimumViewportHeight = viewport.height;
+        let keyboardRepositionedDrawer = false;
+        let resetFrame: number | undefined;
+
+        function handleViewportResize() {
+            const viewportHeight = viewport?.height;
+            if (viewportHeight === undefined) {
+                return;
+            }
+
+            maximumViewportHeight = Math.max(
+                maximumViewportHeight,
+                viewportHeight,
+            );
+            minimumViewportHeight = Math.min(
+                minimumViewportHeight,
+                viewportHeight,
+            );
+
+            const viewportReduction = maximumViewportHeight - viewportHeight;
+            if (viewportReduction >= MOBILE_KEYBOARD_HEIGHT_THRESHOLD) {
+                keyboardRepositionedDrawer = true;
+                return;
+            }
+
+            const viewportRecovery = viewportHeight - minimumViewportHeight;
+            if (
+                !keyboardRepositionedDrawer ||
+                viewportRecovery < MOBILE_KEYBOARD_HEIGHT_THRESHOLD
+            ) {
+                return;
+            }
+
+            if (resetFrame !== undefined) {
+                window.cancelAnimationFrame(resetFrame);
+            }
+
+            resetFrame = window.requestAnimationFrame(() => {
+                // Vaul keeps focused inputs visible with inline offsets. Some
+                // mobile browsers retain a smaller visual viewport after the
+                // keyboard closes, so clear those offsets after recovery.
+                drawerRef.current?.style.removeProperty('bottom');
+                drawerRef.current?.style.removeProperty('height');
+                keyboardRepositionedDrawer = false;
+                maximumViewportHeight = viewportHeight;
+                minimumViewportHeight = viewportHeight;
+                resetFrame = undefined;
+            });
+        }
+
+        viewport.addEventListener('resize', handleViewportResize);
+        return () => {
+            viewport.removeEventListener('resize', handleViewportResize);
+            if (resetFrame !== undefined) {
+                window.cancelAnimationFrame(resetFrame);
+            }
+        };
+    }, []);
+
+    return drawerRef;
 }
 
 function useViewport() {
