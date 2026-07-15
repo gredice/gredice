@@ -8,6 +8,7 @@ import type {
     FarmTodayDataStatus,
     FarmTodayViewedProperties,
 } from '../components/analytics/farmAnalytics';
+import { useFarmAnalytics } from '../components/analytics/farmAnalyticsContext';
 
 type FarmAnalyticsHarnessProps = {
     dataStatus?: FarmTodayDataStatus;
@@ -15,6 +16,30 @@ type FarmAnalyticsHarnessProps = {
     todayMountKey?: string;
     workState?: FarmTodayViewedProperties['work_state'];
 };
+
+function CompletionSyncAnalyticsControl() {
+    const analytics = useFarmAnalytics();
+
+    return (
+        <button
+            data-private-note="PRIVATE_SYNC_NOTE_SENTINEL"
+            data-testid="completion-sync-analytics"
+            onClick={() =>
+                analytics?.captureCompletionSyncState({
+                    age_bucket: 'under_1h',
+                    attempt_bucket: 'two',
+                    failure_code: 'network',
+                    queue_size_bucket: 'two_to_five',
+                    state: 'failed',
+                    trigger: 'online',
+                })
+            }
+            type="button"
+        >
+            PRIVATE_SYNC_NOTE_SENTINEL
+        </button>
+    );
+}
 
 export function FarmAnalyticsHarness({
     dataStatus = 'ready',
@@ -45,6 +70,8 @@ export function FarmAnalyticsHarness({
             <button data-testid="plain-action" type="button">
                 Radnja bez analitike
             </button>
+
+            <CompletionSyncAnalyticsControl />
 
             <a
                 data-farm-analytics="today_task"

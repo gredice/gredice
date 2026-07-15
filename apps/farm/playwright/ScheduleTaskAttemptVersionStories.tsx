@@ -4,6 +4,10 @@ import type { ComponentProps } from 'react';
 import { CompleteOperationModal as CompleteOperationModalComponent } from '../app/schedule/CompleteOperationModal';
 import { CompletePlantingModal as CompletePlantingModalComponent } from '../app/schedule/CompletePlantingModal';
 import { ScheduleTaskBlockerModal as ScheduleTaskBlockerModalComponent } from '../app/schedule/ScheduleTaskBlockerModal';
+import {
+    OperationCompletionSyncContext,
+    type OperationCompletionSyncContextValue,
+} from '../components/offline/OperationCompletionSyncContext';
 
 export const expectedTaskVersionEventId = 81;
 export const expectedPlantCycleVersionEventId = 802;
@@ -25,6 +29,29 @@ export function CompleteOperationModalAttemptStory(
             userId="user-test"
             {...props}
         />
+    );
+}
+
+export function OfflineQueueCompleteOperationModalStory({
+    syncContext,
+    ...props
+}: Parameters<typeof CompleteOperationModalAttemptStory>[0] & {
+    syncContext?: Partial<OperationCompletionSyncContextValue>;
+}) {
+    const contextValue: OperationCompletionSyncContextValue = {
+        discard: async () => true,
+        isStorageAvailable: true,
+        items: [],
+        mode: 'enabled',
+        retry: async () => undefined,
+        retryAll: async () => undefined,
+        ...syncContext,
+    };
+
+    return (
+        <OperationCompletionSyncContext.Provider value={contextValue}>
+            <CompleteOperationModalAttemptStory {...props} />
+        </OperationCompletionSyncContext.Provider>
     );
 }
 

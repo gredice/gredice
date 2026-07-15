@@ -322,8 +322,12 @@ export type OperationAssignPayload =
 
 export type OperationCompletePayload = {
     completedBy: string;
+    expectedAccountId?: string;
+    expectedEntityId?: number;
+    expectedTaskVersionEventId?: number;
     images?: string[];
     notes?: string;
+    submissionId?: string;
 };
 
 export type OperationBlockPayload = ScheduleTaskBlockPayload;

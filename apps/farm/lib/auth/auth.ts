@@ -148,8 +148,12 @@ export async function auth(...args: Parameters<typeof baseAuth>) {
     };
 }
 
-export async function withAuth(...args: Parameters<typeof baseWithAuth>) {
-    const [roles, handler] = args;
+type FarmAuthContext = Awaited<ReturnType<typeof authFromToken>>;
+
+export async function withAuth(
+    roles: string[],
+    handler: (context: FarmAuthContext) => Promise<Response> | Response,
+) {
     const accessToken = await refreshSessionIfNeeded();
     if (accessToken) {
         try {
@@ -160,5 +164,12 @@ export async function withAuth(...args: Parameters<typeof baseWithAuth>) {
         }
     }
 
-    return await baseWithAuth(...args);
+    return await baseWithAuth(roles, async (context) => {
+        return await handler({
+            ...context,
+            sessionIncarnation: await getSessionIncarnation(
+                await getRequestToken(),
+            ),
+        });
+    });
 }

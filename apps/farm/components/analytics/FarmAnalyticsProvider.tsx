@@ -11,6 +11,7 @@ import {
 import {
     type FarmAnalyticsCapture,
     type FarmAnalyticsEvent,
+    type FarmCompletionSyncStateChangedProperties,
     type FarmNavigationSelectedProperties,
     type FarmTodayFirstActionProperties,
     type FarmTodayTaskOpenedProperties,
@@ -146,6 +147,16 @@ export function FarmAnalyticsProvider({
         [captureEvent],
     );
 
+    const captureCompletionSyncState = useCallback(
+        (properties: FarmCompletionSyncStateChangedProperties) => {
+            captureEvent({
+                name: 'farm_completion_sync_state_changed',
+                properties,
+            });
+        },
+        [captureEvent],
+    );
+
     const handleClickCapture = useCallback(
         (event: MouseEvent<HTMLDivElement>) => {
             const element = getAnalyticsElement(event);
@@ -219,8 +230,12 @@ export function FarmAnalyticsProvider({
     }, []);
 
     const contextValue = useMemo<FarmAnalyticsContextValue>(
-        () => ({ mountTodayView, unmountTodayView }),
-        [mountTodayView, unmountTodayView],
+        () => ({
+            captureCompletionSyncState,
+            mountTodayView,
+            unmountTodayView,
+        }),
+        [captureCompletionSyncState, mountTodayView, unmountTodayView],
     );
 
     return (

@@ -1,14 +1,17 @@
 'use client';
 
 export const FARM_OFFLINE_DATABASE_NAME = 'gredice-farm-offline';
-export const FARM_OFFLINE_DATABASE_VERSION = 1;
+export const FARM_OFFLINE_DATABASE_VERSION = 2;
 export const OPERATION_COMPLETION_DRAFT_STORE_NAME =
     'operation-completion-drafts';
+export const OPERATION_COMPLETION_QUEUE_STORE_NAME =
+    'operation-completion-queue';
 export const OPERATION_COMPLETION_DRAFT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 export const OPERATION_COMPLETION_DRAFT_MAX_COUNT = 5;
 export const OPERATION_COMPLETION_DRAFT_MAX_BYTES = 100 * 1024 * 1024;
 
 const OPERATION_COMPLETION_DRAFT_SCHEMA_VERSION = 1;
+const OPERATION_COMPLETION_QUEUE_SCHEMA_VERSION = 1;
 const OPERATION_COMPLETION_DRAFT_GENERATION_KIND =
     'operation-completion-draft-generation';
 const OPERATION_COMPLETION_DRAFT_REVOCATION_KIND =
@@ -179,6 +182,23 @@ function operationCompletionDraftKey({
     ]);
 }
 
+export function operationCompletionQueueRecordKey({
+    accountId,
+    operationId,
+    userId,
+}: Pick<
+    OperationCompletionDraftScope,
+    'accountId' | 'operationId' | 'userId'
+>) {
+    return JSON.stringify([
+        'operation-completion-queue',
+        OPERATION_COMPLETION_QUEUE_SCHEMA_VERSION,
+        userId,
+        accountId,
+        operationId,
+    ]);
+}
+
 function operationCompletionDraftGenerationKey(userId: string) {
     return JSON.stringify([
         OPERATION_COMPLETION_DRAFT_GENERATION_KIND,
@@ -278,7 +298,7 @@ function isOperationCompletionDraftPhoto(
     );
 }
 
-function isOperationCompletionDraft(
+export function isOperationCompletionDraftRecord(
     value: unknown,
 ): value is OperationCompletionDraft {
     if (!isObject(value)) {
@@ -308,7 +328,7 @@ function isOperationCompletionDraft(
     );
 }
 
-function isCompatibleDraft(
+export function isCompatibleOperationCompletionDraft(
     draft: OperationCompletionDraft,
     scope: OperationCompletionDraftScope,
 ) {
@@ -320,6 +340,81 @@ function isCompatibleDraft(
         draft.expectedTaskVersionEventId === scope.expectedTaskVersionEventId &&
         draft.requirementsFingerprint === scope.requirementsFingerprint
     );
+}
+
+type OperationCompletionQueueRecordForDraftStore = {
+    accountId: string;
+    attachments: Array<{ blob: Blob; size: number }>;
+    contentDiscardedAt: number | null;
+    expiresAt: number;
+    key: string;
+    notes: string;
+    operationId: number;
+    schemaVersion: 1;
+    userId: string;
+    writerGeneration: string;
+};
+
+function isOperationCompletionQueueRecordForDraftStore(
+    value: unknown,
+): value is OperationCompletionQueueRecordForDraftStore {
+    if (!isObject(value)) {
+        return false;
+    }
+
+    return (
+        value.schemaVersion === OPERATION_COMPLETION_QUEUE_SCHEMA_VERSION &&
+        typeof value.accountId === 'string' &&
+        Array.isArray(value.attachments) &&
+        value.attachments.every(
+            (attachment) =>
+                isObject(attachment) &&
+                attachment.blob instanceof Blob &&
+                isFiniteNumber(attachment.size) &&
+                attachment.size === attachment.blob.size,
+        ) &&
+        (value.contentDiscardedAt === null ||
+            isFiniteNumber(value.contentDiscardedAt)) &&
+        isFiniteNumber(value.expiresAt) &&
+        typeof value.key === 'string' &&
+        typeof value.notes === 'string' &&
+        isFiniteNumber(value.operationId) &&
+        typeof value.userId === 'string' &&
+        typeof value.writerGeneration === 'string'
+    );
+}
+
+function operationCompletionQueueByteSizeForDraftStore(
+    item: OperationCompletionQueueRecordForDraftStore,
+) {
+    const notesBytes = new TextEncoder().encode(item.notes).byteLength;
+    return item.attachments.reduce(
+        (bytes, attachment) => bytes + attachment.blob.size,
+        notesBytes,
+    );
+}
+
+function scrubExpiredOperationCompletionQueueRecordForDraftStore(
+    item: OperationCompletionQueueRecordForDraftStore,
+    now: number,
+) {
+    return {
+        ...item,
+        attachments: [],
+        claim: null,
+        contentDiscardedAt: now,
+        expiresAt: now + OPERATION_COMPLETION_DRAFT_MAX_AGE_MS,
+        failureCode: 'expired',
+        nextAttemptAt: null,
+        notes: '',
+        operationLabel: '',
+        revisionId: newDraftId(),
+        scheduleDateKey: null,
+        serverConfirmedAt: null,
+        serverState: null,
+        state: 'failed',
+        updatedAt: now,
+    };
 }
 
 function getIndexedDb() {
@@ -542,7 +637,18 @@ export function subscribeToOperationCompletionDraftLogout(
     };
 }
 
-function requestResult<Result>(request: IDBRequest<Result>) {
+export function operationCompletionDraftRecordKey(
+    scope: Pick<
+        OperationCompletionDraftScope,
+        'accountId' | 'operationId' | 'userId'
+    >,
+) {
+    return operationCompletionDraftKey(scope);
+}
+
+export function requestOperationCompletionStoreResult<Result>(
+    request: IDBRequest<Result>,
+) {
     return new Promise<Result>((resolve, reject) => {
         request.addEventListener('success', () => resolve(request.result), {
             once: true,
@@ -582,7 +688,7 @@ function transactionComplete(transaction: IDBTransaction) {
     });
 }
 
-function openFarmOfflineDatabase() {
+export function openFarmOfflineDatabase() {
     const indexedDb = getIndexedDb();
     if (!indexedDb) {
         return Promise.reject(new Error('IndexedDB unavailable'));
@@ -604,6 +710,16 @@ function openFarmOfflineDatabase() {
                 ) {
                     database.createObjectStore(
                         OPERATION_COMPLETION_DRAFT_STORE_NAME,
+                        { keyPath: 'key' },
+                    );
+                }
+                if (
+                    !database.objectStoreNames.contains(
+                        OPERATION_COMPLETION_QUEUE_STORE_NAME,
+                    )
+                ) {
+                    database.createObjectStore(
+                        OPERATION_COMPLETION_QUEUE_STORE_NAME,
                         { keyPath: 'key' },
                     );
                 }
@@ -657,7 +773,51 @@ async function withDraftStore<Result>(
     }
 }
 
-function draftByteSize(draft: OperationCompletionDraft) {
+export async function withOperationCompletionOfflineStores<Result>(
+    mode: IDBTransactionMode,
+    runWithStores: (stores: {
+        drafts: IDBObjectStore;
+        queue: IDBObjectStore;
+    }) => Promise<Result>,
+) {
+    const database = await openFarmOfflineDatabase();
+    try {
+        const transaction = database.transaction(
+            [
+                OPERATION_COMPLETION_DRAFT_STORE_NAME,
+                OPERATION_COMPLETION_QUEUE_STORE_NAME,
+            ],
+            mode,
+        );
+        const completion = transactionComplete(transaction);
+        try {
+            const result = await runWithStores({
+                drafts: transaction.objectStore(
+                    OPERATION_COMPLETION_DRAFT_STORE_NAME,
+                ),
+                queue: transaction.objectStore(
+                    OPERATION_COMPLETION_QUEUE_STORE_NAME,
+                ),
+            });
+            await completion;
+            return result;
+        } catch (error) {
+            try {
+                transaction.abort();
+            } catch {
+                // The transaction may already be complete or aborted.
+            }
+            await completion.catch(() => undefined);
+            throw error;
+        }
+    } finally {
+        database.close();
+    }
+}
+
+export function operationCompletionDraftByteSize(
+    draft: OperationCompletionDraft,
+) {
     const notesBytes = new TextEncoder().encode(draft.notes).byteLength;
     return draft.photos.reduce(
         (bytes, photo) => bytes + photo.blob.size,
@@ -684,22 +844,24 @@ async function operationCompletionDraftSessionIsRevoked(
         userId,
         sessionIncarnation,
     );
-    const storedValue: unknown = await requestResult(store.get(key));
+    const storedValue: unknown = await requestOperationCompletionStoreResult(
+        store.get(key),
+    );
     if (storedValue === undefined) {
         return false;
     }
     if (!isOperationCompletionDraftRevocation(storedValue)) {
-        await requestResult(store.delete(key));
+        await requestOperationCompletionStoreResult(store.delete(key));
         return false;
     }
     if (storedValue.expiresAt <= Date.now()) {
-        await requestResult(store.delete(key));
+        await requestOperationCompletionStoreResult(store.delete(key));
         return false;
     }
     return true;
 }
 
-async function operationCompletionDraftLeaseMatches(
+export async function operationCompletionDraftLeaseMatches(
     store: IDBObjectStore,
     lease: OperationCompletionDraftLease,
 ) {
@@ -715,7 +877,7 @@ async function operationCompletionDraftLeaseMatches(
     ) {
         return false;
     }
-    const storedValue: unknown = await requestResult(
+    const storedValue: unknown = await requestOperationCompletionStoreResult(
         store.get(operationCompletionDraftGenerationKey(lease.userId)),
     );
     return (
@@ -748,14 +910,15 @@ export async function acquireOperationCompletionDraftLease(
     try {
         for (let attempt = 0; attempt < 3; attempt++) {
             const result =
-                await withDraftStore<AcquireOperationCompletionDraftLeaseAttempt>(
+                await withOperationCompletionOfflineStores<AcquireOperationCompletionDraftLeaseAttempt>(
                     'readwrite',
-                    async (store) => {
+                    async ({ drafts, queue }) => {
                         const key =
                             operationCompletionDraftGenerationKey(userId);
-                        const storedValue: unknown = await requestResult(
-                            store.get(key),
-                        );
+                        const storedValue: unknown =
+                            await requestOperationCompletionStoreResult(
+                                drafts.get(key),
+                            );
                         const latestLogoutNonce =
                             readOperationCompletionDraftLogoutNonce(userId);
                         if (
@@ -770,7 +933,7 @@ export async function acquireOperationCompletionDraftLease(
                                 sessionIncarnation,
                             ) ||
                             (await operationCompletionDraftSessionIsRevoked(
-                                store,
+                                drafts,
                                 userId,
                                 sessionIncarnation,
                             ))
@@ -795,25 +958,39 @@ export async function acquireOperationCompletionDraftLease(
                         }
 
                         const generation = newDraftId();
-                        const storedValues: unknown[] = await requestResult(
-                            store.getAll(),
-                        );
-                        for (const value of storedValues) {
+                        const storedDraftValues: unknown[] =
+                            await requestOperationCompletionStoreResult(
+                                drafts.getAll(),
+                            );
+                        const storedQueueValues: unknown[] =
+                            await requestOperationCompletionStoreResult(
+                                queue.getAll(),
+                            );
+                        for (const value of storedDraftValues) {
                             if (isOperationCompletionDraftRevocation(value)) {
                                 if (value.expiresAt <= Date.now()) {
-                                    store.delete(value.key);
+                                    drafts.delete(value.key);
                                 }
                                 continue;
                             }
                             if (
-                                isOperationCompletionDraft(value) &&
+                                isOperationCompletionDraftRecord(value) &&
                                 value.userId === userId
                             ) {
-                                store.delete(value.key);
+                                drafts.delete(value.key);
                             }
                         }
-                        await requestResult(
-                            store.put({
+                        for (const value of storedQueueValues) {
+                            if (
+                                isObject(value) &&
+                                value.userId === userId &&
+                                typeof value.key === 'string'
+                            ) {
+                                queue.delete(value.key);
+                            }
+                        }
+                        await requestOperationCompletionStoreResult(
+                            drafts.put({
                                 generation,
                                 key,
                                 kind: OPERATION_COMPLETION_DRAFT_GENERATION_KIND,
@@ -896,50 +1073,65 @@ export async function loadOperationCompletionDraft(
         return { status: leaseResult.status };
     }
     try {
-        return await withDraftStore('readwrite', async (store) => {
-            if (
-                !(await operationCompletionDraftLeaseMatches(
-                    store,
-                    leaseResult.lease,
-                ))
-            ) {
-                return {
-                    status: 'session_changed',
-                } satisfies LoadOperationCompletionDraftResult;
-            }
-            const key = operationCompletionDraftKey(scope);
-            const storedValue: unknown = await requestResult(store.get(key));
-            if (storedValue === undefined) {
-                return { reason: 'not_found', status: 'missing' };
-            }
-            if (!isOperationCompletionDraft(storedValue)) {
-                await requestResult(store.delete(key));
-                return { reason: 'invalid_record', status: 'missing' };
-            }
-            if (storedValue.expiresAt <= Date.now()) {
-                await requestResult(store.delete(key));
+        return await withOperationCompletionOfflineStores(
+            'readwrite',
+            async ({ drafts }) => {
+                if (
+                    !(await operationCompletionDraftLeaseMatches(
+                        drafts,
+                        leaseResult.lease,
+                    ))
+                ) {
+                    return {
+                        status: 'session_changed',
+                    } satisfies LoadOperationCompletionDraftResult;
+                }
+                const key = operationCompletionDraftKey(scope);
+                const storedValue: unknown =
+                    await requestOperationCompletionStoreResult(
+                        drafts.get(key),
+                    );
+                if (storedValue === undefined) {
+                    return { reason: 'not_found', status: 'missing' };
+                }
+                if (!isOperationCompletionDraftRecord(storedValue)) {
+                    await requestOperationCompletionStoreResult(
+                        drafts.delete(key),
+                    );
+                    return { reason: 'invalid_record', status: 'missing' };
+                }
+                if (storedValue.expiresAt <= Date.now()) {
+                    await requestOperationCompletionStoreResult(
+                        drafts.delete(key),
+                    );
+                    if (storedValue.serverConfirmedAt !== null) {
+                        return { reason: 'not_found', status: 'missing' };
+                    }
+                    return { status: 'expired' };
+                }
+                if (
+                    storedValue.writerGeneration !==
+                    leaseResult.lease.generation
+                ) {
+                    await requestOperationCompletionStoreResult(
+                        drafts.delete(key),
+                    );
+                    return { reason: 'not_found', status: 'missing' };
+                }
                 if (storedValue.serverConfirmedAt !== null) {
                     return { reason: 'not_found', status: 'missing' };
                 }
-                return { status: 'expired' };
-            }
-            if (storedValue.writerGeneration !== leaseResult.lease.generation) {
-                await requestResult(store.delete(key));
-                return { reason: 'not_found', status: 'missing' };
-            }
-            if (storedValue.serverConfirmedAt !== null) {
-                return { reason: 'not_found', status: 'missing' };
-            }
-            if (!isCompatibleDraft(storedValue, scope)) {
-                return {
-                    reason: 'incompatible',
-                    revisionId: storedValue.revisionId,
-                    status: 'missing',
-                };
-            }
+                if (!isCompatibleOperationCompletionDraft(storedValue, scope)) {
+                    return {
+                        reason: 'incompatible',
+                        revisionId: storedValue.revisionId,
+                        status: 'missing',
+                    };
+                }
 
-            return { draft: storedValue, status: 'found' };
-        });
+                return { draft: storedValue, status: 'found' };
+            },
+        );
     } catch {
         return { status: 'unavailable' };
     }
@@ -963,35 +1155,119 @@ export async function saveOperationCompletionDraft(
         };
     }
     try {
-        return await withDraftStore('readwrite', async (store) => {
-            if (
-                !(await operationCompletionDraftLeaseMatches(
-                    store,
-                    leaseResult.lease,
-                ))
-            ) {
-                return { reason: 'session_changed', status: 'error' };
-            }
-            const now = Date.now();
-            const key = operationCompletionDraftKey(scope);
-
-            if (!notes.trim() && photos.length === 0) {
-                const storedValue: unknown = await requestResult(
-                    store.get(key),
-                );
-                if (storedValue === undefined) {
-                    return {
-                        action: 'discarded',
-                        draftId: null,
-                        revisionId: null,
-                        status: 'ok',
-                    };
+        return await withOperationCompletionOfflineStores(
+            'readwrite',
+            async ({ drafts: draftStore, queue: queueStore }) => {
+                if (
+                    !(await operationCompletionDraftLeaseMatches(
+                        draftStore,
+                        leaseResult.lease,
+                    ))
+                ) {
+                    return { reason: 'session_changed', status: 'error' };
                 }
-                if (!isOperationCompletionDraft(storedValue)) {
-                    if (expectedRevisionId !== undefined) {
+                const now = Date.now();
+                const key = operationCompletionDraftKey(scope);
+                const queuedValue: unknown =
+                    await requestOperationCompletionStoreResult(
+                        queueStore.get(
+                            operationCompletionQueueRecordKey(scope),
+                        ),
+                    );
+                if (queuedValue !== undefined) {
+                    if (
+                        !isOperationCompletionQueueRecordForDraftStore(
+                            queuedValue,
+                        )
+                    ) {
+                        return { reason: 'incompatible', status: 'error' };
+                    }
+                    if (
+                        queuedValue.writerGeneration !==
+                        leaseResult.lease.generation
+                    ) {
+                        await requestOperationCompletionStoreResult(
+                            queueStore.delete(queuedValue.key),
+                        );
+                    } else if (queuedValue.expiresAt <= now) {
+                        if (queuedValue.contentDiscardedAt !== null) {
+                            await requestOperationCompletionStoreResult(
+                                queueStore.delete(queuedValue.key),
+                            );
+                        } else {
+                            await requestOperationCompletionStoreResult(
+                                queueStore.put(
+                                    scrubExpiredOperationCompletionQueueRecordForDraftStore(
+                                        queuedValue,
+                                        now,
+                                    ),
+                                ),
+                            );
+                            return { reason: 'incompatible', status: 'error' };
+                        }
+                    } else {
+                        return { reason: 'incompatible', status: 'error' };
+                    }
+                }
+
+                if (!notes.trim() && photos.length === 0) {
+                    const storedValue: unknown =
+                        await requestOperationCompletionStoreResult(
+                            draftStore.get(key),
+                        );
+                    if (storedValue === undefined) {
+                        return {
+                            action: 'discarded',
+                            draftId: null,
+                            revisionId: null,
+                            status: 'ok',
+                        };
+                    }
+                    if (!isOperationCompletionDraftRecord(storedValue)) {
+                        if (expectedRevisionId !== undefined) {
+                            return { reason: 'draft_changed', status: 'error' };
+                        }
+                        await requestOperationCompletionStoreResult(
+                            draftStore.delete(key),
+                        );
+                        return {
+                            action: 'discarded',
+                            draftId: null,
+                            revisionId: null,
+                            status: 'ok',
+                        };
+                    }
+                    if (storedValue.expiresAt <= now) {
+                        await requestOperationCompletionStoreResult(
+                            draftStore.delete(key),
+                        );
+                        return {
+                            action: 'discarded',
+                            draftId: null,
+                            revisionId: null,
+                            status: 'ok',
+                        };
+                    }
+                    if (
+                        storedValue.serverConfirmedAt !== null ||
+                        storedValue.writerGeneration !==
+                            leaseResult.lease.generation ||
+                        !isCompatibleOperationCompletionDraft(
+                            storedValue,
+                            scope,
+                        )
+                    ) {
+                        return { reason: 'incompatible', status: 'error' };
+                    }
+                    if (
+                        expectedRevisionId !== undefined &&
+                        expectedRevisionId !== storedValue.revisionId
+                    ) {
                         return { reason: 'draft_changed', status: 'error' };
                     }
-                    await requestResult(store.delete(key));
+                    await requestOperationCompletionStoreResult(
+                        draftStore.delete(key),
+                    );
                     return {
                         action: 'discarded',
                         draftId: null,
@@ -999,149 +1275,181 @@ export async function saveOperationCompletionDraft(
                         status: 'ok',
                     };
                 }
-                if (storedValue.expiresAt <= now) {
-                    await requestResult(store.delete(key));
-                    return {
-                        action: 'discarded',
-                        draftId: null,
-                        revisionId: null,
-                        status: 'ok',
-                    };
+
+                const storedValues: unknown[] =
+                    await requestOperationCompletionStoreResult(
+                        draftStore.getAll(),
+                    );
+                const storedQueueValues: unknown[] =
+                    await requestOperationCompletionStoreResult(
+                        queueStore.getAll(),
+                    );
+                const drafts: OperationCompletionDraft[] = [];
+                const ownerQueueItems: OperationCompletionQueueRecordForDraftStore[] =
+                    [];
+                const serverConfirmedKeys = new Set<string>();
+
+                for (const storedValue of storedValues) {
+                    if (!isOperationCompletionDraftRecord(storedValue)) {
+                        if (isOperationCompletionDraftGeneration(storedValue)) {
+                            continue;
+                        }
+                        if (isOperationCompletionDraftRevocation(storedValue)) {
+                            if (storedValue.expiresAt <= now) {
+                                draftStore.delete(storedValue.key);
+                            }
+                            continue;
+                        }
+                        if (
+                            isObject(storedValue) &&
+                            typeof storedValue.key === 'string'
+                        ) {
+                            draftStore.delete(storedValue.key);
+                        }
+                        continue;
+                    }
+                    if (storedValue.expiresAt <= now) {
+                        draftStore.delete(storedValue.key);
+                        continue;
+                    }
+                    if (
+                        storedValue.userId === scope.userId &&
+                        storedValue.writerGeneration !==
+                            leaseResult.lease.generation
+                    ) {
+                        draftStore.delete(storedValue.key);
+                        continue;
+                    }
+                    if (storedValue.serverConfirmedAt !== null) {
+                        serverConfirmedKeys.add(storedValue.key);
+                        continue;
+                    }
+                    drafts.push(storedValue);
                 }
+
+                for (const storedValue of storedQueueValues) {
+                    if (
+                        !isOperationCompletionQueueRecordForDraftStore(
+                            storedValue,
+                        )
+                    ) {
+                        continue;
+                    }
+                    if (storedValue.expiresAt <= now) {
+                        if (storedValue.contentDiscardedAt !== null) {
+                            queueStore.delete(storedValue.key);
+                        } else {
+                            queueStore.put(
+                                scrubExpiredOperationCompletionQueueRecordForDraftStore(
+                                    storedValue,
+                                    now,
+                                ),
+                            );
+                        }
+                        continue;
+                    }
+                    if (
+                        storedValue.userId === scope.userId &&
+                        storedValue.writerGeneration !==
+                            leaseResult.lease.generation
+                    ) {
+                        queueStore.delete(storedValue.key);
+                        continue;
+                    }
+                    if (
+                        storedValue.userId === scope.userId &&
+                        storedValue.accountId === scope.accountId &&
+                        storedValue.contentDiscardedAt === null
+                    ) {
+                        ownerQueueItems.push(storedValue);
+                    }
+                }
+
+                if (serverConfirmedKeys.has(key)) {
+                    return { reason: 'incompatible', status: 'error' };
+                }
+                const existingDraft = drafts.find((draft) => draft.key === key);
                 if (
-                    storedValue.serverConfirmedAt !== null ||
-                    storedValue.writerGeneration !==
-                        leaseResult.lease.generation ||
-                    !isCompatibleDraft(storedValue, scope)
+                    existingDraft &&
+                    !isCompatibleOperationCompletionDraft(existingDraft, scope)
                 ) {
                     return { reason: 'incompatible', status: 'error' };
                 }
                 if (
                     expectedRevisionId !== undefined &&
-                    expectedRevisionId !== storedValue.revisionId
+                    (existingDraft?.revisionId ?? null) !== expectedRevisionId
                 ) {
                     return { reason: 'draft_changed', status: 'error' };
                 }
-                await requestResult(store.delete(key));
+
+                const ownerDrafts = drafts.filter(
+                    (draft) =>
+                        draft.userId === scope.userId &&
+                        draft.accountId === scope.accountId,
+                );
+                if (
+                    !existingDraft &&
+                    ownerDrafts.length + ownerQueueItems.length >=
+                        OPERATION_COMPLETION_DRAFT_MAX_COUNT
+                ) {
+                    return { reason: 'draft_count_limit', status: 'error' };
+                }
+
+                const draft: OperationCompletionDraft = {
+                    ...scope,
+                    createdAt: existingDraft?.createdAt ?? now,
+                    draftId: existingDraft?.draftId ?? newDraftId(),
+                    expiresAt: now + OPERATION_COMPLETION_DRAFT_MAX_AGE_MS,
+                    key,
+                    notes,
+                    photos: photos.map(({ file, id }) => ({
+                        blob: file,
+                        id,
+                        lastModified: file.lastModified,
+                        name: file.name,
+                        size: file.size,
+                        type: file.type,
+                    })),
+                    revisionId: newDraftId(),
+                    schemaVersion: OPERATION_COMPLETION_DRAFT_SCHEMA_VERSION,
+                    serverConfirmedAt: null,
+                    updatedAt: now,
+                    writerGeneration: leaseResult.lease.generation,
+                };
+                const otherOwnerBytes = ownerDrafts.reduce(
+                    (bytes, ownerDraft) =>
+                        ownerDraft.key === key
+                            ? bytes
+                            : bytes +
+                              operationCompletionDraftByteSize(ownerDraft),
+                    0,
+                );
+                const ownerQueueBytes = ownerQueueItems.reduce(
+                    (bytes, item) =>
+                        bytes +
+                        operationCompletionQueueByteSizeForDraftStore(item),
+                    0,
+                );
+                if (
+                    otherOwnerBytes +
+                        ownerQueueBytes +
+                        operationCompletionDraftByteSize(draft) >
+                    OPERATION_COMPLETION_DRAFT_MAX_BYTES
+                ) {
+                    return { reason: 'draft_size_limit', status: 'error' };
+                }
+
+                await requestOperationCompletionStoreResult(
+                    draftStore.put(draft),
+                );
                 return {
-                    action: 'discarded',
-                    draftId: null,
-                    revisionId: null,
+                    action: 'saved',
+                    draftId: draft.draftId,
+                    revisionId: draft.revisionId,
                     status: 'ok',
                 };
-            }
-
-            const storedValues: unknown[] = await requestResult(store.getAll());
-            const drafts: OperationCompletionDraft[] = [];
-            const serverConfirmedKeys = new Set<string>();
-
-            for (const storedValue of storedValues) {
-                if (!isOperationCompletionDraft(storedValue)) {
-                    if (isOperationCompletionDraftGeneration(storedValue)) {
-                        continue;
-                    }
-                    if (isOperationCompletionDraftRevocation(storedValue)) {
-                        if (storedValue.expiresAt <= now) {
-                            store.delete(storedValue.key);
-                        }
-                        continue;
-                    }
-                    if (
-                        isObject(storedValue) &&
-                        typeof storedValue.key === 'string'
-                    ) {
-                        store.delete(storedValue.key);
-                    }
-                    continue;
-                }
-                if (storedValue.expiresAt <= now) {
-                    store.delete(storedValue.key);
-                    continue;
-                }
-                if (
-                    storedValue.userId === scope.userId &&
-                    storedValue.writerGeneration !==
-                        leaseResult.lease.generation
-                ) {
-                    store.delete(storedValue.key);
-                    continue;
-                }
-                if (storedValue.serverConfirmedAt !== null) {
-                    serverConfirmedKeys.add(storedValue.key);
-                    continue;
-                }
-                drafts.push(storedValue);
-            }
-
-            if (serverConfirmedKeys.has(key)) {
-                return { reason: 'incompatible', status: 'error' };
-            }
-            const existingDraft = drafts.find((draft) => draft.key === key);
-            if (existingDraft && !isCompatibleDraft(existingDraft, scope)) {
-                return { reason: 'incompatible', status: 'error' };
-            }
-            if (
-                expectedRevisionId !== undefined &&
-                (existingDraft?.revisionId ?? null) !== expectedRevisionId
-            ) {
-                return { reason: 'draft_changed', status: 'error' };
-            }
-
-            const ownerDrafts = drafts.filter(
-                (draft) =>
-                    draft.userId === scope.userId &&
-                    draft.accountId === scope.accountId,
-            );
-            if (
-                !existingDraft &&
-                ownerDrafts.length >= OPERATION_COMPLETION_DRAFT_MAX_COUNT
-            ) {
-                return { reason: 'draft_count_limit', status: 'error' };
-            }
-
-            const draft: OperationCompletionDraft = {
-                ...scope,
-                createdAt: existingDraft?.createdAt ?? now,
-                draftId: existingDraft?.draftId ?? newDraftId(),
-                expiresAt: now + OPERATION_COMPLETION_DRAFT_MAX_AGE_MS,
-                key,
-                notes,
-                photos: photos.map(({ file, id }) => ({
-                    blob: file,
-                    id,
-                    lastModified: file.lastModified,
-                    name: file.name,
-                    size: file.size,
-                    type: file.type,
-                })),
-                revisionId: newDraftId(),
-                schemaVersion: OPERATION_COMPLETION_DRAFT_SCHEMA_VERSION,
-                serverConfirmedAt: null,
-                updatedAt: now,
-                writerGeneration: leaseResult.lease.generation,
-            };
-            const otherOwnerBytes = ownerDrafts.reduce(
-                (bytes, ownerDraft) =>
-                    ownerDraft.key === key
-                        ? bytes
-                        : bytes + draftByteSize(ownerDraft),
-                0,
-            );
-            if (
-                otherOwnerBytes + draftByteSize(draft) >
-                OPERATION_COMPLETION_DRAFT_MAX_BYTES
-            ) {
-                return { reason: 'draft_size_limit', status: 'error' };
-            }
-
-            await requestResult(store.put(draft));
-            return {
-                action: 'saved',
-                draftId: draft.draftId,
-                revisionId: draft.revisionId,
-                status: 'ok',
-            };
-        });
+            },
+        );
     } catch (error) {
         return {
             reason: isQuotaExceeded(error)
@@ -1179,15 +1487,16 @@ export async function discardOperationCompletionDraft(
                 } satisfies OperationCompletionDraftMutationResult;
             }
             const key = operationCompletionDraftKey(scope);
-            const storedValue: unknown = await requestResult(store.get(key));
+            const storedValue: unknown =
+                await requestOperationCompletionStoreResult(store.get(key));
             if (storedValue === undefined) {
                 return;
             }
-            if (!isOperationCompletionDraft(storedValue)) {
+            if (!isOperationCompletionDraftRecord(storedValue)) {
                 if (expectedRevisionId !== undefined) {
                     throw new OperationCompletionDraftConflictError();
                 }
-                await requestResult(store.delete(key));
+                await requestOperationCompletionStoreResult(store.delete(key));
                 return;
             }
             if (storedValue.writerGeneration !== leaseResult.lease.generation) {
@@ -1205,7 +1514,7 @@ export async function discardOperationCompletionDraft(
             ) {
                 throw new OperationCompletionDraftConflictError();
             }
-            await requestResult(store.delete(key));
+            await requestOperationCompletionStoreResult(store.delete(key));
         });
         if (result?.status === 'session_changed') {
             return result;
@@ -1231,41 +1540,62 @@ export async function markOperationCompletionDraftServerConfirmed(
         return { status: leaseResult.status };
     }
     try {
-        const result = await withDraftStore('readwrite', async (store) => {
-            if (
-                !(await operationCompletionDraftLeaseMatches(
-                    store,
-                    leaseResult.lease,
-                ))
-            ) {
-                return {
-                    status: 'session_changed',
-                } satisfies OperationCompletionDraftMutationResult;
-            }
-            const key = operationCompletionDraftKey(scope);
-            const storedValue: unknown = await requestResult(store.get(key));
-            const now = Date.now();
-            const existingDraft = isOperationCompletionDraft(storedValue)
-                ? storedValue
-                : null;
-            await requestResult(
-                store.put({
-                    ...scope,
-                    createdAt: existingDraft?.createdAt ?? now,
-                    draftId: existingDraft?.draftId ?? newDraftId(),
-                    expiresAt: now + OPERATION_COMPLETION_DRAFT_MAX_AGE_MS,
-                    key,
-                    notes: '',
-                    photos: [],
-                    revisionId: newDraftId(),
-                    schemaVersion: OPERATION_COMPLETION_DRAFT_SCHEMA_VERSION,
-                    serverConfirmedAt: now,
-                    updatedAt: now,
-                    writerGeneration: leaseResult.lease.generation,
-                }),
-            );
-        });
+        const result = await withOperationCompletionOfflineStores(
+            'readwrite',
+            async ({ drafts, queue }) => {
+                if (
+                    !(await operationCompletionDraftLeaseMatches(
+                        drafts,
+                        leaseResult.lease,
+                    ))
+                ) {
+                    return {
+                        status: 'session_changed',
+                    } satisfies OperationCompletionDraftMutationResult;
+                }
+                const queuedValue: unknown =
+                    await requestOperationCompletionStoreResult(
+                        queue.get(operationCompletionQueueRecordKey(scope)),
+                    );
+                if (queuedValue !== undefined) {
+                    return {
+                        status: 'conflict',
+                    } satisfies OperationCompletionDraftMutationResult;
+                }
+                const key = operationCompletionDraftKey(scope);
+                const storedValue: unknown =
+                    await requestOperationCompletionStoreResult(
+                        drafts.get(key),
+                    );
+                const now = Date.now();
+                const existingDraft = isOperationCompletionDraftRecord(
+                    storedValue,
+                )
+                    ? storedValue
+                    : null;
+                await requestOperationCompletionStoreResult(
+                    drafts.put({
+                        ...scope,
+                        createdAt: existingDraft?.createdAt ?? now,
+                        draftId: existingDraft?.draftId ?? newDraftId(),
+                        expiresAt: now + OPERATION_COMPLETION_DRAFT_MAX_AGE_MS,
+                        key,
+                        notes: '',
+                        photos: [],
+                        revisionId: newDraftId(),
+                        schemaVersion:
+                            OPERATION_COMPLETION_DRAFT_SCHEMA_VERSION,
+                        serverConfirmedAt: now,
+                        updatedAt: now,
+                        writerGeneration: leaseResult.lease.generation,
+                    }),
+                );
+            },
+        );
         if (result?.status === 'session_changed') {
+            return result;
+        }
+        if (result?.status === 'conflict') {
             return result;
         }
         return { status: 'ok' };
@@ -1283,14 +1613,17 @@ export async function purgeOperationCompletionDraftsForUser(
     recordOperationCompletionDraftLoggedOutSession(userId, sessionIncarnation);
     broadcastOperationCompletionDraftLogout(userId, sessionIncarnation);
     try {
-        const deletedCount = await withDraftStore(
+        const deletedCount = await withOperationCompletionOfflineStores(
             'readwrite',
-            async (store) => {
-                const storedValues: unknown[] = await requestResult(
-                    store.getAll(),
-                );
+            async ({ drafts, queue }) => {
+                const storedDraftValues: unknown[] =
+                    await requestOperationCompletionStoreResult(
+                        drafts.getAll(),
+                    );
+                const storedQueueValues: unknown[] =
+                    await requestOperationCompletionStoreResult(queue.getAll());
                 const now = Date.now();
-                const activeDifferentSession = storedValues.find(
+                const activeDifferentSession = storedDraftValues.find(
                     (
                         storedValue,
                     ): storedValue is OperationCompletionDraftGeneration =>
@@ -1301,7 +1634,7 @@ export async function purgeOperationCompletionDraftsForUser(
                 );
                 const currentGeneration =
                     activeDifferentSession &&
-                    !storedValues.some(
+                    !storedDraftValues.some(
                         (storedValue) =>
                             isOperationCompletionDraftRevocation(storedValue) &&
                             storedValue.userId === userId &&
@@ -1312,7 +1645,7 @@ export async function purgeOperationCompletionDraftsForUser(
                         ? activeDifferentSession
                         : null;
                 let count = 0;
-                for (const storedValue of storedValues) {
+                for (const storedValue of storedDraftValues) {
                     if (
                         isOperationCompletionDraftGeneration(storedValue) &&
                         storedValue.userId === userId
@@ -1321,7 +1654,7 @@ export async function purgeOperationCompletionDraftsForUser(
                     }
                     if (isOperationCompletionDraftRevocation(storedValue)) {
                         if (storedValue.expiresAt <= now) {
-                            store.delete(storedValue.key);
+                            drafts.delete(storedValue.key);
                         }
                         continue;
                     }
@@ -1332,18 +1665,36 @@ export async function purgeOperationCompletionDraftsForUser(
                     ) {
                         if (
                             currentGeneration &&
-                            isOperationCompletionDraft(storedValue) &&
+                            isOperationCompletionDraftRecord(storedValue) &&
                             storedValue.writerGeneration ===
                                 currentGeneration.generation
                         ) {
                             continue;
                         }
-                        store.delete(storedValue.key);
+                        drafts.delete(storedValue.key);
                         count += 1;
                     }
                 }
-                await requestResult(
-                    store.put({
+                for (const storedValue of storedQueueValues) {
+                    if (
+                        !isObject(storedValue) ||
+                        storedValue.userId !== userId ||
+                        typeof storedValue.key !== 'string'
+                    ) {
+                        continue;
+                    }
+                    if (
+                        currentGeneration &&
+                        storedValue.writerGeneration ===
+                            currentGeneration.generation
+                    ) {
+                        continue;
+                    }
+                    queue.delete(storedValue.key);
+                    count += 1;
+                }
+                await requestOperationCompletionStoreResult(
+                    drafts.put({
                         expiresAt:
                             now +
                             OPERATION_COMPLETION_DRAFT_REVOCATION_MAX_AGE_MS,
@@ -1362,8 +1713,8 @@ export async function purgeOperationCompletionDraftsForUser(
                 if (!currentGeneration) {
                     const logoutNonce =
                         rotateOperationCompletionDraftLogoutNonce(userId);
-                    await requestResult(
-                        store.put({
+                    await requestOperationCompletionStoreResult(
+                        drafts.put({
                             generation: newDraftId(),
                             key: operationCompletionDraftGenerationKey(userId),
                             kind: OPERATION_COMPLETION_DRAFT_GENERATION_KIND,

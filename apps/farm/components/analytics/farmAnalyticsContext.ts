@@ -1,9 +1,15 @@
 'use client';
 
 import { createContext, useContext } from 'react';
-import type { FarmTodayViewedProperties } from './farmAnalytics';
+import type {
+    FarmCompletionSyncStateChangedProperties,
+    FarmTodayViewedProperties,
+} from './farmAnalytics';
 
 export type FarmAnalyticsContextValue = {
+    captureCompletionSyncState: (
+        properties: FarmCompletionSyncStateChangedProperties,
+    ) => void;
     mountTodayView: (
         properties: FarmTodayViewedProperties,
         captureView: boolean,

@@ -346,6 +346,47 @@ test('captures one first recognized action per Today mount without leaking priva
     }
 });
 
+test('captures only bounded completion synchronization properties', async ({
+    mount,
+    page,
+}) => {
+    const analyticsEvents = await captureFarmAnalyticsEvents(page);
+    const component = await mount(<FarmAnalyticsHarness />);
+
+    await component.getByTestId('completion-sync-analytics').click();
+    await expect
+        .poll(
+            () =>
+                eventsNamed(
+                    analyticsEvents,
+                    'farm_completion_sync_state_changed',
+                ).length,
+        )
+        .toBe(1);
+
+    const syncEvent = eventsNamed(
+        analyticsEvents,
+        'farm_completion_sync_state_changed',
+    )[0];
+    expect(syncEvent).toBeDefined();
+    if (!syncEvent) {
+        return;
+    }
+
+    expectExactProperties(syncEvent, {
+        age_bucket: 'under_1h',
+        attempt_bucket: 'two',
+        failure_code: 'network',
+        queue_size_bucket: 'two_to_five',
+        state: 'failed',
+        surface: 'farm',
+        trigger: 'online',
+    });
+    expect(JSON.stringify(syncEvent)).not.toContain(
+        'PRIVATE_SYNC_NOTE_SENTINEL',
+    );
+});
+
 test('marks actual Today focus, queue, and attention task links with safe analytics attributes', async ({
     mount,
 }) => {

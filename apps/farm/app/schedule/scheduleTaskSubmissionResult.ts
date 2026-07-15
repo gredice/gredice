@@ -9,6 +9,7 @@ export type ScheduleTaskSubmissionFailureCode =
     | 'invalid_status'
     | 'not_authorized'
     | 'not_found'
+    | 'submission_conflict'
     | 'task_changed';
 
 export type ScheduleTaskSubmissionSuccess = {

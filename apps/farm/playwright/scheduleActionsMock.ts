@@ -7,7 +7,10 @@ type ScheduleActionTestState = {
         expectedEntityId: number;
         expectedRequirementsFingerprint: string;
         expectedTaskVersionEventId: number;
+        imageUrls?: string[];
+        notes?: string;
         operationId: number;
+        submissionId?: string;
     };
     lastPlantingSubmission?: {
         expectedPlantCycleEventId: number;
@@ -30,6 +33,7 @@ type ScheduleActionTestState = {
             | 'invalid_status'
             | 'not_authorized'
             | 'not_found'
+            | 'submission_conflict'
             | 'task_changed';
         message: string;
         retryImageUrls?: string[];
@@ -43,6 +47,7 @@ type ScheduleActionTestState = {
             | 'invalid_status'
             | 'not_authorized'
             | 'not_found'
+            | 'submission_conflict'
             | 'task_changed';
         message: string;
         success: false;
@@ -127,6 +132,9 @@ export async function completeFarmOperation(
     expectedEntityId: number,
     expectedTaskVersionEventId: number,
     expectedRequirementsFingerprint: string,
+    imageUrls?: string[],
+    notes?: string,
+    submissionId?: string,
 ) {
     const state = getTestState();
     state.operationCalls += 1;
@@ -135,6 +143,7 @@ export async function completeFarmOperation(
         expectedRequirementsFingerprint,
         expectedTaskVersionEventId,
         operationId,
+        ...(submissionId ? { imageUrls, notes, submissionId } : {}),
     };
     await waitForRelease(state);
     failWhenRequested(state, 'operationFailuresRemaining');
@@ -146,6 +155,9 @@ export async function completeFarmOperationWithImageUrls(
     expectedEntityId: number,
     expectedTaskVersionEventId: number,
     expectedRequirementsFingerprint: string,
+    imageUrls: string[],
+    notes?: string,
+    submissionId?: string,
 ) {
     const state = getTestState();
     state.operationCalls += 1;
@@ -154,10 +166,15 @@ export async function completeFarmOperationWithImageUrls(
         expectedRequirementsFingerprint,
         expectedTaskVersionEventId,
         operationId,
+        ...(submissionId ? { imageUrls, notes, submissionId } : {}),
     };
     await waitForRelease(state);
     failWhenRequested(state, 'operationFailuresRemaining');
     return takeSubmissionFailure(state) ?? success('pendingVerification');
+}
+
+export async function recoverFarmOperationCompletionImage() {
+    return { imageUrl: null, success: true as const };
 }
 
 export async function completeFarmPlanting(

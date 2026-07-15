@@ -63,6 +63,7 @@ export function assertScheduleTaskUploadTarget(
 
 export async function validateScheduleOperationUploadTarget({
     actor,
+    expectedAccountId,
     expectedEntityId,
     expectedRequirementsFingerprint,
     expectedTaskVersionEventId,
@@ -70,6 +71,7 @@ export async function validateScheduleOperationUploadTarget({
     purpose,
 }: {
     actor: ScheduleTaskUploadActor;
+    expectedAccountId?: string;
     expectedEntityId: number;
     expectedRequirementsFingerprint?: ScheduleOperationCompletionRequirementsFingerprint;
     expectedTaskVersionEventId: number;
@@ -85,6 +87,15 @@ export async function validateScheduleOperationUploadTarget({
         return uploadTargetFailure(
             'not_authorized',
             'Više nemaš pristup ovom zadatku. Osvježi zadatke za aktualno stanje.',
+        );
+    }
+    if (
+        expectedAccountId !== undefined &&
+        operation.accountId !== expectedAccountId
+    ) {
+        return uploadTargetFailure(
+            'not_authorized',
+            'Ovaj zadatak više ne pripada odabranom računu. Osvježi zadatke za aktualno stanje.',
         );
     }
     if (operation.entityId !== expectedEntityId) {
