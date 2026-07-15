@@ -120,6 +120,7 @@ import {
     hashGardenVisitSummaryFacts,
 } from '../../../lib/garden/gardenVisitSummaryService';
 import { isBlockPurchaseAvailableNow } from '../../../lib/garden/nightOnlyBlockPurchases';
+import { isPlantStatusEffectiveDateAllowed } from '../../../lib/garden/plantStatusChronology';
 import {
     countPublicGardenActivePlants,
     serializePublicRaisedBedField,
@@ -4012,7 +4013,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         if (
                             createdAt &&
                             activePlantCycle &&
-                            createdAt < activePlantCycle.endedAt
+                            !isPlantStatusEffectiveDateAllowed({
+                                effectiveDate: createdAt,
+                                plantCycleStartedAt: activePlantCycle.startedAt,
+                                previousStatusChangedAt:
+                                    field.plantStatusChangedAt,
+                            })
                         ) {
                             return context.json(
                                 {
