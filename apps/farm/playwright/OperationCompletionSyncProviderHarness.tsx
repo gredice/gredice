@@ -31,9 +31,17 @@ const router = {
 } satisfies AppRouterInstance;
 
 export function OperationCompletionSyncProviderHarness({
+    accountId = 'account-test',
+    enabled = true,
     mode = 'enabled',
+    sessionIncarnation = 'session-test',
+    userId = 'user-test',
 }: {
+    accountId?: string;
+    enabled?: boolean;
     mode?: FarmOperationCompletionSyncMode;
+    sessionIncarnation?: string;
+    userId?: string;
 }) {
     const capture = useCallback<FarmAnalyticsCapture>(
         (eventName, properties) => {
@@ -50,10 +58,11 @@ export function OperationCompletionSyncProviderHarness({
         <AppRouterContext.Provider value={router}>
             <FarmAnalyticsProvider capture={capture}>
                 <OperationCompletionSyncProvider
-                    accountId="account-test"
+                    accountId={accountId}
+                    enabled={enabled}
                     mode={mode}
-                    sessionIncarnation="session-test"
-                    userId="user-test"
+                    sessionIncarnation={sessionIncarnation}
+                    userId={userId}
                 >
                     <OperationCompletionSyncBanner />
                     <main className="mx-auto w-full max-w-xl p-3">

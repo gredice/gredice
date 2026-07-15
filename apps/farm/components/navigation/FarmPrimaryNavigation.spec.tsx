@@ -471,7 +471,11 @@ test('does not remount or recount Today when authentication resolves', async ({
     await page.route('**/api/gredice/api/notifications**', async (route) => {
         await route.fulfill({ json: [], status: 200 });
     });
-    const component = await mount(<FarmShellAuthTransitionHarness />);
+    const component = await mount(
+        <AppRouterContext.Provider value={nextNavigationRouter}>
+            <FarmShellAuthTransitionHarness />
+        </AppRouterContext.Provider>,
+    );
     const mountProbe = component.locator('[data-today-mount-marker]');
     const viewCount = component.locator('[data-today-view-count]');
 
@@ -480,6 +484,10 @@ test('does not remount or recount Today when authentication resolves', async ({
     const mountMarker = await mountProbe.getAttribute(
         'data-today-mount-marker',
     );
+    await page.waitForFunction(
+        () => typeof window.__resolveFarmShellAuth === 'function',
+    );
+    await page.evaluate(() => window.__resolveFarmShellAuth?.());
     await expect(visibleNavigation(component)).toBeVisible();
 
     await expect(mountProbe).toHaveAttribute(
@@ -495,9 +503,15 @@ test('keeps the farm shell hidden from signed-in users without a farm role', asy
 }) => {
     await page.setViewportSize(phoneViewports[0]);
     const component = await mount(
-        <FarmShellAuthTransitionHarness userRole="customer" />,
+        <AppRouterContext.Provider value={nextNavigationRouter}>
+            <FarmShellAuthTransitionHarness userRole="customer" />
+        </AppRouterContext.Provider>,
     );
 
+    await page.waitForFunction(
+        () => typeof window.__resolveFarmShellAuth === 'function',
+    );
+    await page.evaluate(() => window.__resolveFarmShellAuth?.());
     await expect(component.locator('[data-auth-resolution]')).toHaveText(
         'resolved',
     );

@@ -41,11 +41,25 @@ import {
 
 const QUEUE_LOCK_NAME_PREFIX = 'gredice:farm:operation-completion-queue:v1';
 const QUEUE_CLAIM_RENEW_INTERVAL_MS = 30_000;
+const EMPTY_QUEUE_ITEMS: OperationCompletionQueueSummary[] = [];
 
 type SyncItem = typeof syncClaimedOperationCompletionQueueItem;
+type DrainPromise = {
+    identityKey: string;
+    promise: Promise<void>;
+};
+type QueueSnapshot = {
+    identityKey: string;
+    items: OperationCompletionQueueSummary[];
+};
+type StorageSnapshot = {
+    available: boolean;
+    identityKey: string;
+};
 
 type OperationCompletionSyncProviderProps = PropsWithChildren<{
     accountId: string;
+    enabled?: boolean;
     mode: FarmOperationCompletionSyncMode;
     sessionIncarnation: string;
     syncItem?: SyncItem;
@@ -168,6 +182,7 @@ function canDrainInForeground(mode: FarmOperationCompletionSyncMode) {
 export function OperationCompletionSyncProvider({
     accountId,
     children,
+    enabled = true,
     mode,
     sessionIncarnation,
     syncItem = syncClaimedOperationCompletionQueueItem,
@@ -175,10 +190,35 @@ export function OperationCompletionSyncProvider({
 }: OperationCompletionSyncProviderProps) {
     const analytics = useFarmAnalytics();
     const router = useRouter();
-    const [items, setItems] = useState<OperationCompletionQueueSummary[]>([]);
-    const [isStorageAvailable, setIsStorageAvailable] = useState(true);
+    const durableIdentityKey = enabled
+        ? JSON.stringify([userId, accountId, sessionIncarnation])
+        : null;
+    const previousDurableIdentityKeyRef = useRef<string | null>(null);
+    const identityEpochRef = useRef(0);
+    if (previousDurableIdentityKeyRef.current !== durableIdentityKey) {
+        previousDurableIdentityKeyRef.current = durableIdentityKey;
+        identityEpochRef.current += 1;
+    }
+    const identityKey = durableIdentityKey
+        ? `${identityEpochRef.current.toString()}:${durableIdentityKey}`
+        : null;
+    const identityRef = useRef(identityKey);
+    identityRef.current = identityKey;
+    const [queueSnapshot, setQueueSnapshot] = useState<QueueSnapshot | null>(
+        null,
+    );
+    const [storageSnapshot, setStorageSnapshot] =
+        useState<StorageSnapshot | null>(null);
+    const items =
+        queueSnapshot?.identityKey === identityKey
+            ? queueSnapshot.items
+            : EMPTY_QUEUE_ITEMS;
+    const isStorageAvailable =
+        storageSnapshot?.identityKey === identityKey
+            ? storageSnapshot.available
+            : true;
     const activeRef = useRef(false);
-    const drainPromiseRef = useRef<Promise<void> | null>(null);
+    const drainPromiseRef = useRef<DrainPromise | null>(null);
     const pendingDrainTriggerRef = useRef<FarmCompletionSyncTrigger | null>(
         null,
     );
@@ -192,7 +232,29 @@ export function OperationCompletionSyncProvider({
         (trigger: FarmCompletionSyncTrigger) => Promise<void>
     >(async () => undefined);
 
-    modeRef.current = mode;
+    modeRef.current = enabled ? mode : 'off';
+
+    const deactivateCurrentIdentity = useCallback(() => {
+        if (!identityKey || identityRef.current !== identityKey) {
+            return;
+        }
+        activeRef.current = false;
+        leaseRef.current = null;
+        drainPromiseRef.current = null;
+        pendingDrainTriggerRef.current = null;
+        previousStatesRef.current.clear();
+        setQueueSnapshot(null);
+        setStorageSnapshot(null);
+    }, [identityKey]);
+
+    const setCurrentStorageAvailability = useCallback(
+        (available: boolean) => {
+            if (identityKey && identityRef.current === identityKey) {
+                setStorageSnapshot({ available, identityKey });
+            }
+        },
+        [identityKey],
+    );
 
     const captureChangedStates = useCallback(
         (
@@ -230,64 +292,82 @@ export function OperationCompletionSyncProvider({
     const refreshItems = useCallback(
         async (trigger: FarmCompletionSyncTrigger) => {
             const lease = leaseRef.current;
-            if (!lease || !activeRef.current) {
+            if (
+                !identityKey ||
+                identityRef.current !== identityKey ||
+                !lease ||
+                !activeRef.current
+            ) {
                 return;
             }
             const result = await listOperationCompletionQueueItems(
                 { accountId, userId },
                 lease,
             );
-            if (!activeRef.current) {
+            if (identityRef.current !== identityKey || !activeRef.current) {
                 return;
             }
             if (result.status === 'session_changed') {
-                activeRef.current = false;
-                leaseRef.current = null;
-                setItems([]);
+                deactivateCurrentIdentity();
                 return;
             }
             if (result.status === 'unavailable') {
-                setIsStorageAvailable(false);
+                setCurrentStorageAvailability(false);
                 return;
             }
-            setIsStorageAvailable(true);
-            setItems(result.items);
+            setCurrentStorageAvailability(true);
+            setQueueSnapshot({ identityKey, items: result.items });
             captureChangedStates(result.items, trigger);
         },
-        [accountId, captureChangedStates, userId],
+        [
+            accountId,
+            captureChangedStates,
+            deactivateCurrentIdentity,
+            identityKey,
+            setCurrentStorageAvailability,
+            userId,
+        ],
     );
     refreshItemsRef.current = refreshItems;
 
     const drainOwnedQueue = useCallback(
         async (trigger: FarmCompletionSyncTrigger) => {
             const lease = leaseRef.current;
-            if (
-                !lease ||
-                !activeRef.current ||
-                !canDrainInForeground(modeRef.current)
-            ) {
+            const providerIsActive = () =>
+                Boolean(identityKey) &&
+                identityRef.current === identityKey &&
+                activeRef.current &&
+                leaseRef.current === lease &&
+                leaseRef.current?.generation === lease?.generation &&
+                leaseRef.current?.sessionIncarnation === sessionIncarnation;
+            if (!lease || !providerIsActive()) {
+                return;
+            }
+            if (!canDrainInForeground(modeRef.current)) {
                 await refreshItemsRef.current(trigger);
                 return;
             }
 
-            while (activeRef.current && canDrainInForeground(modeRef.current)) {
+            while (
+                providerIsActive() &&
+                canDrainInForeground(modeRef.current)
+            ) {
                 const claim = await claimNextOperationCompletionQueueItem(
                     { accountId, userId },
                     { claimId: crypto.randomUUID(), lease },
                 );
-                if (!activeRef.current) {
+                if (!providerIsActive()) {
                     return;
                 }
                 if (claim.status !== 'claimed') {
                     if (claim.status === 'session_changed') {
-                        activeRef.current = false;
-                        leaseRef.current = null;
+                        deactivateCurrentIdentity();
                     } else if (claim.status === 'unavailable') {
-                        setIsStorageAvailable(false);
+                        setCurrentStorageAvailability(false);
                     }
                     break;
                 }
-                setIsStorageAvailable(true);
+                setCurrentStorageAvailability(true);
                 await refreshItemsRef.current(trigger);
                 const claimId = claim.item.claim?.claimId;
                 if (!claimId) {
@@ -295,10 +375,6 @@ export function OperationCompletionSyncProvider({
                 }
                 let claimIsOwned = true;
                 let renewalInFlight = false;
-                const providerIsActive = () =>
-                    activeRef.current &&
-                    leaseRef.current?.generation === lease.generation &&
-                    leaseRef.current.sessionIncarnation === sessionIncarnation;
                 const renewClaim = async () => {
                     if (
                         renewalInFlight ||
@@ -317,13 +393,16 @@ export function OperationCompletionSyncProvider({
                             },
                             lease,
                         );
+                        if (!providerIsActive()) {
+                            claimIsOwned = false;
+                            return;
+                        }
                         if (result.status !== 'ok') {
                             claimIsOwned = false;
                             if (result.status === 'session_changed') {
-                                activeRef.current = false;
-                                leaseRef.current = null;
+                                deactivateCurrentIdentity();
                             } else if (result.status === 'unavailable') {
-                                setIsStorageAvailable(false);
+                                setCurrentStorageAvailability(false);
                             }
                         }
                     } finally {
@@ -339,25 +418,44 @@ export function OperationCompletionSyncProvider({
                     lease,
                     () => claimIsOwned && providerIsActive(),
                 ).finally(() => window.clearInterval(heartbeat));
+                if (!providerIsActive()) {
+                    return;
+                }
                 if (outcome.status === 'confirmed') {
                     router.refresh();
-                }
-                if (outcome.status === 'abandoned' && !activeRef.current) {
-                    return;
                 }
                 await refreshItemsRef.current(trigger);
             }
         },
-        [accountId, router, sessionIncarnation, syncItem, userId],
+        [
+            accountId,
+            deactivateCurrentIdentity,
+            identityKey,
+            router,
+            sessionIncarnation,
+            setCurrentStorageAvailability,
+            syncItem,
+            userId,
+        ],
     );
 
     const requestDrain = useCallback(
         (trigger: FarmCompletionSyncTrigger): Promise<void> => {
-            if (drainPromiseRef.current) {
+            if (!identityKey || identityRef.current !== identityKey) {
+                return Promise.resolve();
+            }
+            if (drainPromiseRef.current?.identityKey === identityKey) {
                 pendingDrainTriggerRef.current = trigger;
-                return drainPromiseRef.current;
+                return drainPromiseRef.current.promise;
+            }
+            if (drainPromiseRef.current) {
+                drainPromiseRef.current = null;
+                pendingDrainTriggerRef.current = null;
             }
             const run = async () => {
+                if (identityRef.current !== identityKey) {
+                    return;
+                }
                 const locks = navigator.locks;
                 if (!locks) {
                     await drainOwnedQueue(trigger);
@@ -367,6 +465,9 @@ export function OperationCompletionSyncProvider({
                     `${QUEUE_LOCK_NAME_PREFIX}:${userId}:${accountId}`,
                     { ifAvailable: true },
                     async (lock) => {
+                        if (identityRef.current !== identityKey) {
+                            return;
+                        }
                         if (lock) {
                             await drainOwnedQueue(trigger);
                         } else {
@@ -375,29 +476,45 @@ export function OperationCompletionSyncProvider({
                     },
                 );
             };
+            let drain: DrainPromise;
             const promise = run().finally(() => {
-                if (drainPromiseRef.current === promise) {
+                if (drainPromiseRef.current === drain) {
                     drainPromiseRef.current = null;
                     const pendingTrigger = pendingDrainTriggerRef.current;
                     pendingDrainTriggerRef.current = null;
-                    if (pendingTrigger) {
+                    if (pendingTrigger && identityRef.current === identityKey) {
                         void requestDrainRef.current(pendingTrigger);
                     }
                 }
             });
-            drainPromiseRef.current = promise;
+            drain = { identityKey, promise };
+            drainPromiseRef.current = drain;
             return promise;
         },
-        [accountId, drainOwnedQueue, userId],
+        [accountId, drainOwnedQueue, identityKey, userId],
     );
     requestDrainRef.current = requestDrain;
 
     useEffect(() => {
+        if (!enabled || !identityKey) {
+            activeRef.current = false;
+            leaseRef.current = null;
+            drainPromiseRef.current = null;
+            pendingDrainTriggerRef.current = null;
+            previousStatesRef.current.clear();
+            setQueueSnapshot(null);
+            setStorageSnapshot(null);
+            return;
+        }
+
         let cancelled = false;
         activeRef.current = true;
         leaseRef.current = null;
+        drainPromiseRef.current = null;
+        pendingDrainTriggerRef.current = null;
         previousStatesRef.current.clear();
-        setItems([]);
+        setQueueSnapshot(null);
+        setStorageSnapshot(null);
         const capturedLogoutNonce =
             captureOperationCompletionDraftLogoutNonce(userId);
 
@@ -405,9 +522,7 @@ export function OperationCompletionSyncProvider({
             userId,
             sessionIncarnation,
             () => {
-                activeRef.current = false;
-                leaseRef.current = null;
-                setItems([]);
+                deactivateCurrentIdentity();
             },
         );
         const unsubscribeQueue = subscribeToOperationCompletionQueueChanges(
@@ -427,19 +542,23 @@ export function OperationCompletionSyncProvider({
             capturedLogoutNonce,
             sessionIncarnation,
         ).then((result) => {
-            if (cancelled || !activeRef.current) {
+            if (
+                cancelled ||
+                identityRef.current !== identityKey ||
+                !activeRef.current
+            ) {
                 return;
             }
             if (result.status !== 'ready') {
                 if (result.status === 'unavailable') {
-                    setIsStorageAvailable(false);
+                    setCurrentStorageAvailability(false);
                 } else {
-                    activeRef.current = false;
+                    deactivateCurrentIdentity();
                 }
                 return;
             }
             leaseRef.current = result.lease;
-            setIsStorageAvailable(true);
+            setCurrentStorageAvailability(true);
             void refreshItemsRef.current('auth_mount').then(() => {
                 if (modeRef.current !== 'off') {
                     void requestDrain('auth_mount');
@@ -451,11 +570,23 @@ export function OperationCompletionSyncProvider({
             cancelled = true;
             activeRef.current = false;
             leaseRef.current = null;
+            if (drainPromiseRef.current?.identityKey === identityKey) {
+                drainPromiseRef.current = null;
+            }
             pendingDrainTriggerRef.current = null;
             unsubscribeLogout();
             unsubscribeQueue();
         };
-    }, [accountId, requestDrain, sessionIncarnation, userId]);
+    }, [
+        accountId,
+        deactivateCurrentIdentity,
+        enabled,
+        identityKey,
+        requestDrain,
+        sessionIncarnation,
+        setCurrentStorageAvailability,
+        userId,
+    ]);
 
     useEffect(() => {
         const handleOnline = () => void requestDrain('online');
@@ -509,6 +640,10 @@ export function OperationCompletionSyncProvider({
             const lease = leaseRef.current;
             const item = items.find((candidate) => candidate.key === key);
             if (
+                !enabled ||
+                !identityKey ||
+                identityRef.current !== identityKey ||
+                !activeRef.current ||
                 !lease ||
                 !item ||
                 modeRef.current === 'off' ||
@@ -516,14 +651,25 @@ export function OperationCompletionSyncProvider({
             ) {
                 return;
             }
-            await retryOperationCompletionQueueItem(
+            const result = await retryOperationCompletionQueueItem(
                 { key: item.key, submissionId: item.submissionId },
                 lease,
             );
+            if (
+                identityRef.current !== identityKey ||
+                !activeRef.current ||
+                leaseRef.current !== lease
+            ) {
+                return;
+            }
+            if (result.status === 'session_changed') {
+                deactivateCurrentIdentity();
+                return;
+            }
             await refreshItemsRef.current('manual');
             await requestDrain('manual');
         },
-        [items, requestDrain],
+        [deactivateCurrentIdentity, enabled, identityKey, items, requestDrain],
     );
 
     const retryAll = useCallback(async () => {
@@ -541,17 +687,36 @@ export function OperationCompletionSyncProvider({
         async (key: string) => {
             const lease = leaseRef.current;
             const item = items.find((candidate) => candidate.key === key);
-            if (!lease || !item || item.state === 'syncing') {
+            if (
+                !enabled ||
+                !identityKey ||
+                identityRef.current !== identityKey ||
+                !activeRef.current ||
+                !lease ||
+                !item ||
+                item.state === 'syncing'
+            ) {
                 return false;
             }
             const result = await discardOperationCompletionQueueItem(
                 { key: item.key, submissionId: item.submissionId },
                 lease,
             );
+            if (
+                identityRef.current !== identityKey ||
+                !activeRef.current ||
+                leaseRef.current !== lease
+            ) {
+                return false;
+            }
+            if (result.status === 'session_changed') {
+                deactivateCurrentIdentity();
+                return false;
+            }
             await refreshItemsRef.current('manual');
             return result.status === 'ok';
         },
-        [items],
+        [deactivateCurrentIdentity, enabled, identityKey, items],
     );
 
     const value = useMemo<OperationCompletionSyncContextValue>(
@@ -559,11 +724,11 @@ export function OperationCompletionSyncProvider({
             discard,
             isStorageAvailable,
             items: items.map(publicItem),
-            mode,
+            mode: enabled ? mode : 'off',
             retry,
             retryAll,
         }),
-        [discard, isStorageAvailable, items, mode, retry, retryAll],
+        [discard, enabled, isStorageAvailable, items, mode, retry, retryAll],
     );
 
     return (

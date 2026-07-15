@@ -21,6 +21,7 @@ type ScheduleActionTestState = {
     };
     operationCalls: number;
     operationFailuresRemaining?: number;
+    operationResolutions?: number;
     plantingCalls: number;
     plantingFailuresRemaining?: number;
     refreshCalls?: number;
@@ -146,6 +147,7 @@ export async function completeFarmOperation(
         ...(submissionId ? { imageUrls, notes, submissionId } : {}),
     };
     await waitForRelease(state);
+    state.operationResolutions = (state.operationResolutions ?? 0) + 1;
     failWhenRequested(state, 'operationFailuresRemaining');
     return takeSubmissionFailure(state) ?? success('pendingVerification');
 }
@@ -169,6 +171,7 @@ export async function completeFarmOperationWithImageUrls(
         ...(submissionId ? { imageUrls, notes, submissionId } : {}),
     };
     await waitForRelease(state);
+    state.operationResolutions = (state.operationResolutions ?? 0) + 1;
     failWhenRequested(state, 'operationFailuresRemaining');
     return takeSubmissionFailure(state) ?? success('pendingVerification');
 }

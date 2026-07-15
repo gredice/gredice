@@ -309,3 +309,105 @@ test('keeps queued phone work visible without promising a send while rollback mo
         )
         .toBe(0);
 });
+
+test('hides queued private work immediately while auth is disabled and restores it only after the same session is authenticated again', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.evaluate(() => {
+        window.__farmScheduleActionTestState = {
+            blockerCalls: 0,
+            hold: false,
+            operationCalls: 0,
+            plantingCalls: 0,
+        };
+    });
+    await seedQueuedCompletion({ mount, operationId: 348, page });
+
+    const component = await mount(
+        <OperationCompletionSyncProviderHarness mode="off" />,
+    );
+    const privateLabel = component.getByText(
+        'Privatna radnja za sinkronizaciju',
+    );
+    await expect(privateLabel).toBeVisible();
+
+    await component.update(
+        <OperationCompletionSyncProviderHarness enabled={false} mode="off" />,
+    );
+    await expect(privateLabel).toHaveCount(0);
+    await expect(
+        component.locator('[data-operation-completion-sync-banner]'),
+    ).toHaveCount(0);
+    await expect(component.locator('#sinkronizacija-radnji')).toHaveCount(0);
+
+    await component.update(
+        <OperationCompletionSyncProviderHarness mode="off" />,
+    );
+    await expect(privateLabel).toBeVisible();
+    await expect(
+        component.locator('[data-operation-completion-sync-banner]'),
+    ).toContainText('1 radnja čeka dok je slanje pauzirano');
+});
+
+test('prevents an old in-flight session from refreshing the next auth boundary', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.evaluate(() => {
+        window.__farmScheduleActionTestState = {
+            blockerCalls: 0,
+            hold: false,
+            operationCalls: 0,
+            plantingCalls: 0,
+        };
+        window.__farmSyncRouterRefreshes = 0;
+    });
+    await seedQueuedCompletion({ mount, operationId: 349, page });
+    await page.evaluate(() => {
+        if (window.__farmScheduleActionTestState) {
+            window.__farmScheduleActionTestState.hold = true;
+        }
+    });
+
+    const component = await mount(<OperationCompletionSyncProviderHarness />);
+    await expect(
+        component.locator('[data-operation-completion-sync-banner]'),
+    ).toContainText('radnja se šalje');
+    await expect
+        .poll(() =>
+            page.evaluate(
+                () => window.__farmScheduleActionTestState?.operationCalls ?? 0,
+            ),
+        )
+        .toBe(1);
+
+    await component.update(
+        <OperationCompletionSyncProviderHarness enabled={false} />,
+    );
+    await expect(
+        component.getByText('Privatna radnja za sinkronizaciju'),
+    ).toHaveCount(0);
+    await component.update(<OperationCompletionSyncProviderHarness />);
+
+    await page.evaluate(() => {
+        window.__farmScheduleActionTestState?.release?.();
+    });
+    await expect
+        .poll(() =>
+            page.evaluate(
+                () =>
+                    window.__farmScheduleActionTestState
+                        ?.operationResolutions ?? 0,
+            ),
+        )
+        .toBe(1);
+    expect(
+        await page.evaluate(() => window.__farmSyncRouterRefreshes ?? 0),
+    ).toBe(0);
+    await expect(
+        component.getByText('Privatna radnja za sinkronizaciju'),
+    ).toBeVisible();
+});

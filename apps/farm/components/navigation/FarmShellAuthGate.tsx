@@ -29,16 +29,15 @@ export function FarmShellAuthGate({
         </FarmAuthenticatedShell>
     );
 
-    return user && authenticated ? (
+    return (
         <OperationCompletionSyncProvider
-            accountId={user.accountId}
-            mode={user.operationCompletionSyncMode}
-            sessionIncarnation={user.sessionIncarnation}
-            userId={user.id}
+            accountId={user?.accountId ?? ''}
+            enabled={authenticated}
+            mode={user?.operationCompletionSyncMode ?? 'off'}
+            sessionIncarnation={user?.sessionIncarnation ?? ''}
+            userId={user?.id ?? ''}
         >
             {shell}
         </OperationCompletionSyncProvider>
-    ) : (
-        shell
     );
 }
