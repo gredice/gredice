@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import {
+    assertScheduleOperationTaskAvailableToUser,
     getScheduleOperationTaskAssignment,
     getSchedulePlantingTaskAssignment,
 } from './scheduleTaskAssignment';
@@ -35,6 +36,27 @@ test('keeps the operation primary assignee authoritative and supports array-only
             userId,
         ),
     ).toBe('shared');
+});
+
+test('uses the same assignment policy for completion proof uploads', () => {
+    expect(() =>
+        assertScheduleOperationTaskAvailableToUser(
+            { assignedUserId: null, assignedUserIds: [otherUserId] },
+            userId,
+        ),
+    ).toThrow('dodijeljena drugom korisniku');
+    expect(() =>
+        assertScheduleOperationTaskAvailableToUser(
+            { assignedUserId: null, assignedUserIds: [userId] },
+            userId,
+        ),
+    ).not.toThrow();
+    expect(() =>
+        assertScheduleOperationTaskAvailableToUser(
+            { assignedUserId: null, assignedUserIds: [] },
+            userId,
+        ),
+    ).not.toThrow();
 });
 
 test('uses planting assignment arrays before the legacy primary assignee', () => {

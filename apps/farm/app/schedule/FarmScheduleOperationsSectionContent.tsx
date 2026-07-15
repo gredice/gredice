@@ -14,6 +14,7 @@ interface FarmScheduleOperationsSectionContentProps {
         typeof import('./scheduleData').getFarmScheduleRaisedBedPhotoPreviewsForDay
     >;
     mode: FarmScheduleOperationsMode;
+    selectedDateKey: string;
     userId: string;
 }
 
@@ -23,6 +24,7 @@ export async function FarmScheduleOperationsSectionContent({
     operationsDataPromise,
     raisedBedPhotoPreviewByIdPromise,
     mode,
+    selectedDateKey,
     userId,
 }: FarmScheduleOperationsSectionContentProps) {
     const { raisedBeds, scheduledOperations } = await dayDataPromise;
@@ -44,6 +46,7 @@ export async function FarmScheduleOperationsSectionContent({
             operationsData={operationsData}
             raisedBedPhotoPreviewByIdPromise={raisedBedPhotoPreviewByIdPromise}
             mode={mode}
+            selectedDateKey={selectedDateKey}
             userId={userId}
         />
     );

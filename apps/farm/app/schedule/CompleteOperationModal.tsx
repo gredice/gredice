@@ -12,7 +12,13 @@ import {
     completeFarmOperation,
     completeFarmOperationWithImageUrls,
 } from './actions';
+import { MAX_FARM_OPERATION_COMPLETION_IMAGE_COUNT } from './operationCompletionProof';
 import { ScheduleTaskCompletionButton } from './ScheduleTaskCompletionButton';
+import {
+    getScheduleOperationCompletionRequirements,
+    isScheduleOperationRequirementVisible,
+} from './scheduleOperationRequirements';
+import { getScheduleOperationProofRequirementsId } from './scheduleTaskIds';
 
 type UploadItemStatus = 'pending' | 'uploading' | 'uploaded' | 'failed';
 
@@ -103,30 +109,36 @@ export function CompleteOperationModal({
     const [notes, setNotes] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [imageSelectionMessage, setImageSelectionMessage] = useState<
+        string | null
+    >(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const cameraInputRef = useRef<HTMLInputElement>(null);
     const submissionInFlightRef = useRef(false);
 
-    const attachImages = Boolean(
-        conditions?.completionAttachImages ||
-            conditions?.completionAttachImagesRequired,
+    const requirements = getScheduleOperationCompletionRequirements({
+        conditions,
+    });
+    const attachImages = isScheduleOperationRequirementVisible(
+        requirements.images,
     );
-    const attachImagesRequired = Boolean(
-        conditions?.completionAttachImagesRequired,
+    const attachImagesRequired = requirements.images === 'required';
+    const attachNotes = isScheduleOperationRequirementVisible(
+        requirements.notes,
     );
-    const attachNotes = Boolean(
-        conditions?.completionAttachNotes ||
-            conditions?.completionAttachNotesRequired,
-    );
-    const attachNotesRequired = Boolean(
-        conditions?.completionAttachNotesRequired,
-    );
+    const attachNotesRequired = requirements.notes === 'required';
+    const proofRequirementsId =
+        attachImages || attachNotes
+            ? getScheduleOperationProofRequirementsId(operationId)
+            : undefined;
     const trimmedNotes = notes.trim();
     const notesRequiredMissing =
         attachNotesRequired && trimmedNotes.length === 0;
     const hasFailedUploads = uploadItems.some(
         (uploadItem) => uploadItem.status === 'failed',
     );
+    const imageLimitReached =
+        uploadItems.length >= MAX_FARM_OPERATION_COMPLETION_IMAGE_COUNT;
 
     const handleOpenChange = (open: boolean) => {
         if (!open && submissionInFlightRef.current) {
@@ -135,6 +147,7 @@ export function CompleteOperationModal({
 
         setIsOpen(open);
         setErrorMessage(null);
+        setImageSelectionMessage(null);
         if (!open) {
             setUploadItems([]);
             setNotes('');
@@ -145,17 +158,43 @@ export function CompleteOperationModal({
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         if (event.target.files) {
-            const nextUploadItems = Array.from(event.target.files).map(
-                createUploadItem,
+            const selectedFiles = Array.from(event.target.files);
+            const availableSlots = Math.max(
+                0,
+                MAX_FARM_OPERATION_COMPLETION_IMAGE_COUNT - uploadItems.length,
             );
-            setUploadItems((currentUploadItems) => [
-                ...currentUploadItems,
-                ...nextUploadItems,
-            ]);
+            setUploadItems((currentUploadItems) => {
+                const remainingSlots = Math.max(
+                    0,
+                    MAX_FARM_OPERATION_COMPLETION_IMAGE_COUNT -
+                        currentUploadItems.length,
+                );
+                return [
+                    ...currentUploadItems,
+                    ...selectedFiles
+                        .slice(0, remainingSlots)
+                        .map(createUploadItem),
+                ];
+            });
+            setImageSelectionMessage(
+                selectedFiles.length > availableSlots
+                    ? `Možeš dodati najviše ${MAX_FARM_OPERATION_COMPLETION_IMAGE_COUNT} fotografija. Višak nije dodan.`
+                    : null,
+            );
             setErrorMessage(null);
         }
         if (fileInputRef.current) fileInputRef.current.value = '';
         if (cameraInputRef.current) cameraInputRef.current.value = '';
+    };
+
+    const removeUploadItem = (uploadItemId: string) => {
+        setUploadItems((currentUploadItems) =>
+            currentUploadItems.filter(
+                (uploadItem) => uploadItem.id !== uploadItemId,
+            ),
+        );
+        setImageSelectionMessage(null);
+        setErrorMessage(null);
     };
 
     const updateUploadItem = (
@@ -334,6 +373,7 @@ export function CompleteOperationModal({
             trigger={
                 <ScheduleTaskCompletionButton
                     actionLabel="Dovrši radnju"
+                    aria-describedby={proofRequirementsId}
                     label={label}
                 />
             }
@@ -370,7 +410,7 @@ export function CompleteOperationModal({
                             variant="outlined"
                             type="button"
                             onClick={() => cameraInputRef.current?.click()}
-                            disabled={isSubmitting}
+                            disabled={isSubmitting || imageLimitReached}
                             size="lg"
                         >
                             Uslikaj fotografiju
@@ -379,7 +419,7 @@ export function CompleteOperationModal({
                             variant="outlined"
                             type="button"
                             onClick={() => fileInputRef.current?.click()}
-                            disabled={isSubmitting}
+                            disabled={isSubmitting || imageLimitReached}
                             size="lg"
                         >
                             {uploadItems.length > 0
@@ -388,13 +428,26 @@ export function CompleteOperationModal({
                         </Button>
                         {uploadItems.length > 0 && (
                             <Typography level="body2">
-                                Odabrano {uploadItems.length}{' '}
-                                {uploadItems.length === 1 ? 'slika' : 'slike'}
+                                Odabrano {uploadItems.length} od najviše{' '}
+                                {MAX_FARM_OPERATION_COMPLETION_IMAGE_COUNT}{' '}
+                                fotografija
+                            </Typography>
+                        )}
+                        {imageSelectionMessage && (
+                            <Typography
+                                aria-live="assertive"
+                                className="text-amber-700 dark:text-amber-300"
+                                data-image-selection-message
+                                level="body2"
+                                role="alert"
+                            >
+                                {imageSelectionMessage}
                             </Typography>
                         )}
                         {uploadItems.length > 0 && (
                             <Stack spacing={2}>
-                                {uploadItems.map((uploadItem) => {
+                                {uploadItems.map((uploadItem, index) => {
+                                    const ordinal = index + 1;
                                     const progress =
                                         uploadItem.status === 'uploaded'
                                             ? 100
@@ -404,14 +457,25 @@ export function CompleteOperationModal({
 
                                     return (
                                         <div
+                                            data-operation-upload-item
                                             key={uploadItem.id}
                                             className="rounded-md border px-3 py-2"
                                         >
                                             <div className="flex items-start justify-between gap-3">
                                                 <div className="min-w-0 flex-1">
                                                     <Typography
+                                                        className="text-foreground"
+                                                        level="body2"
+                                                        semiBold
+                                                    >
+                                                        Fotografija {ordinal}
+                                                    </Typography>
+                                                    <Typography
                                                         level="body2"
                                                         className="truncate"
+                                                        title={
+                                                            uploadItem.file.name
+                                                        }
                                                     >
                                                         {uploadItem.file.name}
                                                     </Typography>
@@ -456,6 +520,23 @@ export function CompleteOperationModal({
                                                         </Button>
                                                     </div>
                                                 )}
+                                            {!isSubmitting && (
+                                                <div className="mt-2">
+                                                    <Button
+                                                        aria-label={`Ukloni fotografiju ${ordinal}: ${uploadItem.file.name}`}
+                                                        onClick={() =>
+                                                            removeUploadItem(
+                                                                uploadItem.id,
+                                                            )
+                                                        }
+                                                        size="lg"
+                                                        type="button"
+                                                        variant="plain"
+                                                    >
+                                                        Ukloni
+                                                    </Button>
+                                                </div>
+                                            )}
                                         </div>
                                     );
                                 })}

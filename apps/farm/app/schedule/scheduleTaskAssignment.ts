@@ -42,6 +42,15 @@ export function getScheduleOperationTaskAssignment(
     );
 }
 
+export function assertScheduleOperationTaskAvailableToUser(
+    task: ScheduleTaskAssignmentInput,
+    userId: string,
+) {
+    if (getScheduleOperationTaskAssignment(task, userId) === 'other') {
+        throw new Error('Ova radnja je dodijeljena drugom korisniku.');
+    }
+}
+
 export function getSchedulePlantingTaskAssignment(
     task: ScheduleTaskAssignmentInput,
     userId: string,

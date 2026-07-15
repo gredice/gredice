@@ -4,6 +4,8 @@ import {
 } from '@gredice/storage';
 import { handleUpload } from '@vercel/blob/client';
 import { withAuth } from '../../../../../lib/auth/auth';
+import { assertScheduleOperationTaskAvailableToUser } from '../../../../schedule/scheduleTaskAssignment';
+import { assertPositiveSafeInteger } from '../../../../schedule/scheduleTaskInput';
 
 const MAX_OPERATION_IMAGE_SIZE_BYTES = 25 * 1024 * 1024;
 
@@ -24,15 +26,10 @@ function getOperationIdFromClientPayload(clientPayload: string | null) {
     }
 
     const operationId = Reflect.get(parsedPayload, 'operationId');
-    if (
-        typeof operationId !== 'number' ||
-        !Number.isInteger(operationId) ||
-        operationId <= 0
-    ) {
-        throw new Error('Invalid operation upload payload');
-    }
-
-    return operationId;
+    return assertPositiveSafeInteger(
+        operationId,
+        'Invalid operation upload payload',
+    );
 }
 
 function getOperationPathPrefix(operationId: number) {
@@ -53,12 +50,8 @@ async function getAuthorizedOperation(
         throw new Error('Operation not found');
     }
 
-    if (
-        role !== 'admin' &&
-        operation.assignedUserId &&
-        operation.assignedUserId !== userId
-    ) {
-        throw new Error('Ova radnja je dodijeljena drugom korisniku.');
+    if (role !== 'admin') {
+        assertScheduleOperationTaskAvailableToUser(operation, userId);
     }
 
     return operation;

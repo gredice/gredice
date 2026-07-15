@@ -90,6 +90,7 @@ async function FarmScheduleContent({
         >
             <FarmScheduleDay
                 key={selectedDateKey}
+                selectedDateKey={selectedDateKey}
                 dayDataPromise={dayDataPromise}
                 plantingsDayDataPromise={plantingsDayDataPromise}
                 operationsDayDataPromise={operationsDayDataPromise}

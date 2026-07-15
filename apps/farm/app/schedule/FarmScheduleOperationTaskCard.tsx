@@ -6,7 +6,7 @@ import { UserAvatar } from '@gredice/ui/UserAvatar';
 import { cx } from '@gredice/ui/utils';
 import type { ReactNode } from 'react';
 import { OperationCompletionAttachments } from './OperationCompletionAttachments';
-import { OperationRequirementIcons } from './OperationRequirementIcons';
+import { OperationProofRequirements } from './OperationProofRequirements';
 import { ScheduleTaskAgeIndicatorChip } from './ScheduleTaskAgeIndicatorChip';
 import { ScheduleTaskDateChip } from './ScheduleTaskDateChip';
 import { ScheduleTaskDetailsLink } from './ScheduleTaskDetailsLink';
@@ -16,9 +16,15 @@ import { ScheduleTaskStatusChip } from './ScheduleTaskStatusChip';
 import type { FarmScheduleDayData } from './scheduleData';
 import {
     getScheduleOperationCompletionRequirements,
-    isScheduleOperationRequirementVisible,
+    hasVisibleScheduleOperationCompletionRequirements,
 } from './scheduleOperationRequirements';
 import { getScheduleOperationTaskAssignment } from './scheduleTaskAssignment';
+import {
+    getScheduleOperationProofRequirementsId,
+    getScheduleTaskAnchorId,
+    getScheduleTaskLabelId,
+} from './scheduleTaskIds';
+import { buildScheduleTaskGuidanceHref } from './scheduleTaskNavigation';
 import {
     getOperationTaskState,
     getScheduleTaskPresentation,
@@ -46,6 +52,7 @@ type FarmScheduleOperationTaskCardProps = {
     completionAction?: ReactNode;
     operation: FarmOperationCardData;
     operationData: EntityStandardized | undefined;
+    selectedDateKey: string;
     userId: string;
 };
 
@@ -53,26 +60,33 @@ export function FarmScheduleOperationTaskCard({
     completionAction,
     operation,
     operationData,
+    selectedDateKey,
     userId,
 }: FarmScheduleOperationTaskCardProps) {
     const taskState = getOperationTaskState(operation.status);
     const taskPresentation = getScheduleTaskPresentation(taskState);
     const assignment = getScheduleOperationTaskAssignment(operation, userId);
     const canComplete =
-        taskPresentation.showCompletionControl && assignment !== 'other';
+        taskPresentation.showCompletionControl &&
+        assignment !== 'other' &&
+        Boolean(operationData);
     const requirements =
         getScheduleOperationCompletionRequirements(operationData);
-    const attachImages = isScheduleOperationRequirementVisible(
-        requirements.images,
-    );
-    const attachImagesRequired = requirements.images === 'required';
-    const attachNotes = isScheduleOperationRequirementVisible(
-        requirements.notes,
-    );
-    const attachNotesRequired = requirements.notes === 'required';
-    const showRequirementIcons =
+    const showProofRequirements =
         taskPresentation.showRequirementIndicators &&
-        (attachImages || attachNotes);
+        hasVisibleScheduleOperationCompletionRequirements(requirements);
+    const proofRequirementsId = getScheduleOperationProofRequirementsId(
+        operation.id,
+    );
+    const taskAnchorId = getScheduleTaskAnchorId('operation', operation.id);
+    const taskLabelId = getScheduleTaskLabelId('operation', operation.id);
+    const guidanceHref = operationData
+        ? buildScheduleTaskGuidanceHref({
+              dateKey: selectedDateKey,
+              guidancePath: `/operations/${operation.entityId}`,
+              taskId: operation.id,
+          })
+        : null;
     const hasCompletionAttachments =
         taskPresentation.showCompletionAttachments &&
         (Boolean(operation.completionNotes?.trim()) ||
@@ -81,6 +95,7 @@ export function FarmScheduleOperationTaskCard({
         <Row spacing={2} className="min-w-0 items-start justify-between gap-3">
             <Stack spacing={1} className="min-w-0 grow">
                 <Typography
+                    id={taskLabelId}
                     className={
                         taskPresentation.isCompleted
                             ? 'line-through text-muted-foreground [overflow-wrap:anywhere]'
@@ -104,48 +119,39 @@ export function FarmScheduleOperationTaskCard({
                     )}
                 </Row>
             </Stack>
-            {(showRequirementIcons || operation.assignedUser) && (
-                <Row spacing={1} className="shrink-0 items-center">
-                    {showRequirementIcons && (
-                        <OperationRequirementIcons
-                            attachImages={attachImages}
-                            attachImagesRequired={attachImagesRequired}
-                            attachNotes={attachNotes}
-                            attachNotesRequired={attachNotesRequired}
-                        />
-                    )}
-                    {operation.assignedUser && (
-                        <div
-                            className="shrink-0"
-                            title={`Dodijeljeno: ${operation.assignedUser.displayName ?? operation.assignedUser.userName}`}
-                        >
-                            <UserAvatar
-                                avatarUrl={operation.assignedUser.avatarUrl}
-                                displayName={
-                                    operation.assignedUser.displayName ??
-                                    operation.assignedUser.userName
-                                }
-                                className="size-7 rounded-full"
-                            />
-                        </div>
-                    )}
-                </Row>
+            {operation.assignedUser && (
+                <div
+                    className="shrink-0"
+                    title={`Dodijeljeno: ${operation.assignedUser.displayName ?? operation.assignedUser.userName}`}
+                >
+                    <UserAvatar
+                        avatarUrl={operation.assignedUser.avatarUrl}
+                        displayName={
+                            operation.assignedUser.displayName ??
+                            operation.assignedUser.userName
+                        }
+                        className="size-7 rounded-full"
+                    />
+                </div>
             )}
         </Row>
     );
 
     return (
-        <div
+        <article
+            aria-labelledby={taskLabelId}
+            id={taskAnchorId}
+            tabIndex={-1}
             data-task-state={taskState}
             className={cx(
-                'rounded-lg border px-3 py-2',
+                'scroll-mt-4 rounded-lg border px-3 py-2 outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 [&[data-schedule-task-restored]]:ring-2 [&[data-schedule-task-restored]]:ring-primary [&[data-schedule-task-restored]]:ring-offset-2',
                 taskPresentation.isCompleted ? 'bg-muted/30' : 'bg-white',
             )}
         >
-            {operationData ? (
+            {guidanceHref ? (
                 <ScheduleTaskDetailsLink
                     actionLabel="Otvori upute"
-                    href={`/operations/${operation.entityId}`}
+                    href={guidanceHref}
                 >
                     {detailsContent}
                 </ScheduleTaskDetailsLink>
@@ -156,9 +162,22 @@ export function FarmScheduleOperationTaskCard({
                         className="mt-1.5 text-muted-foreground"
                         level="body2"
                     >
-                        Upute trenutno nisu dostupne.
+                        Upute za radnju trenutno nisu dostupne.
+                    </Typography>
+                    <Typography
+                        className="mt-1 text-muted-foreground"
+                        level="body2"
+                    >
+                        Zahtjevi za dovršetak trenutno nisu dostupni.
                     </Typography>
                 </div>
+            )}
+            {showProofRequirements && (
+                <OperationProofRequirements
+                    className="mt-2"
+                    id={proofRequirementsId}
+                    requirements={requirements}
+                />
             )}
             {hasCompletionAttachments && (
                 <OperationCompletionAttachments
@@ -173,8 +192,12 @@ export function FarmScheduleOperationTaskCard({
                 actionLabel="Dovrši radnju"
                 label={operation.label}
                 state={taskState}
-                unavailableTitle="Radnja je dodijeljena drugom korisniku."
+                unavailableTitle={
+                    operationData
+                        ? 'Radnja je dodijeljena drugom korisniku.'
+                        : 'Radnja se ne može dovršiti dok zahtjevi za dovršetak nisu dostupni.'
+                }
             />
-        </div>
+        </article>
     );
 }

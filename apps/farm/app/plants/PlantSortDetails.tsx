@@ -29,6 +29,7 @@ import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { ReactNode } from 'react';
+import { handbookMarkdownClassName } from '../handbookMarkdown';
 import { getPlantSortLabel, getPlantSortPlant } from './plantUtils';
 
 interface PlantSortDetailsProps {
@@ -48,9 +49,6 @@ type TextCardData = {
     text: string;
     icon: typeof Info;
 };
-
-const manualMarkdownClassName =
-    'text-base leading-8 text-foreground prose-base prose-p:text-base prose-p:leading-8 prose-p:text-foreground prose-li:text-base prose-li:leading-8 prose-li:text-foreground prose-strong:text-foreground prose-a:text-primary prose-ul:my-3 prose-ol:my-3 prose-li:my-1';
 
 const monthNames = [
     'siječanj',
@@ -308,7 +306,7 @@ function TextCard({ card }: { card: TextCardData }) {
     return (
         <DetailCard title={card.title} icon={card.icon}>
             <Markdown
-                className={`${manualMarkdownClassName} prose-p:first:mt-0 prose-p:last:mb-0`}
+                className={`${handbookMarkdownClassName} prose-p:first:mt-0 prose-p:last:mb-0`}
             >
                 {card.text}
             </Markdown>
