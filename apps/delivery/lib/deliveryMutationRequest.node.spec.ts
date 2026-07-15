@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { DeliveryRunStopOperationKinds } from '@gredice/storage';
 import {
     DeliveryMutationRequestError,
     expectedRouteRevision,
     parseDeliveryExceptionMutation,
+    parseDeliveryStopMutation,
 } from './deliveryMutationRequest';
 
 test('requires a nonnegative integer route revision on delivery mutations', () => {
@@ -56,4 +58,79 @@ test('parses a deterministic bulk delivery exception mutation', () => {
             reason: 'harvest-damaged',
         },
     ]);
+});
+
+test('parses strict arrive and deliver stop operation payloads', () => {
+    const arrived = parseDeliveryStopMutation(
+        {
+            expectedRouteRevision: 8,
+            clientOperationId: ' arrive-1 ',
+            occurredAt: '2026-07-15T10:00:00.000Z',
+        },
+        DeliveryRunStopOperationKinds.ARRIVE,
+    );
+    assert.deepEqual(arrived, {
+        kind: DeliveryRunStopOperationKinds.ARRIVE,
+        expectedRouteRevision: 8,
+        clientOperationId: 'arrive-1',
+        occurredAt: new Date('2026-07-15T10:00:00.000Z'),
+    });
+
+    const delivered = parseDeliveryStopMutation(
+        {
+            expectedRouteRevision: 9,
+            clientOperationId: ' deliver-1 ',
+            occurredAt: '2026-07-15T10:05:00.000Z',
+            notes: '  Predano susjedu  ',
+        },
+        DeliveryRunStopOperationKinds.DELIVER,
+    );
+    assert.deepEqual(delivered, {
+        kind: DeliveryRunStopOperationKinds.DELIVER,
+        expectedRouteRevision: 9,
+        clientOperationId: 'deliver-1',
+        occurredAt: new Date('2026-07-15T10:05:00.000Z'),
+        notes: 'Predano susjedu',
+    });
+});
+
+test('rejects incomplete or unsupported stop operation payloads', () => {
+    const valid = {
+        expectedRouteRevision: 8,
+        clientOperationId: 'operation-1',
+        occurredAt: '2026-07-15T10:00:00.000Z',
+    };
+    for (const value of [
+        null,
+        { ...valid, expectedRouteRevision: undefined },
+        { ...valid, clientOperationId: '' },
+        { ...valid, clientOperationId: 'x'.repeat(129) },
+        { ...valid, occurredAt: 'not-a-date' },
+        { ...valid, extra: true },
+        { ...valid, notes: 'not allowed' },
+    ]) {
+        assert.throws(
+            () =>
+                parseDeliveryStopMutation(
+                    value,
+                    DeliveryRunStopOperationKinds.ARRIVE,
+                ),
+            DeliveryMutationRequestError,
+        );
+    }
+
+    for (const value of [
+        { ...valid, notes: 42 },
+        { ...valid, notes: 'x'.repeat(1_001) },
+        { ...valid, unexpected: 'field' },
+    ]) {
+        assert.throws(
+            () =>
+                parseDeliveryStopMutation(
+                    value,
+                    DeliveryRunStopOperationKinds.DELIVER,
+                ),
+            DeliveryMutationRequestError,
+        );
+    }
 });

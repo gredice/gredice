@@ -6,8 +6,8 @@ import {
     DeliveryRunManifestItemStates,
     DeliveryRunManifestStates,
     DeliveryRunStates,
+    DeliveryRunStopOperationKinds,
     DeliveryRunStopStates,
-    fulfillDeliveryRunStops,
     getActiveDeliveryRunForDriver,
     getActiveDeliveryRunStopsForRequestIds,
     getDeliveryRequest,
@@ -18,10 +18,10 @@ import {
     getUser,
     isDeliveryRunStopActionable,
     isDeliveryRunStopTerminal,
-    markDeliveryRunStopsArrived,
     type RecordDeliveryRunStopExceptionsInput,
     reassignDeliveryRun,
     recordDeliveryRunStopExceptions,
+    recordDeliveryRunStopOperation,
     recoverDeliveryRunStop,
     retryDeliveryRunStop,
     updateDeliveryRunEstimates,
@@ -1123,80 +1123,30 @@ export async function arriveAtDeliveryStop({
     runId,
     stopId,
     expectedRouteRevision,
+    clientOperationId,
+    occurredAt,
 }: {
     driverUserId: string;
     runId: string;
     stopId: number;
     expectedRouteRevision: number;
+    clientOperationId: string;
+    occurredAt: Date;
 }) {
-    const group = await getOwnedDeliveryRunStopGroup({
+    const recorded = await recordDeliveryRunStopOperation({
+        kind: DeliveryRunStopOperationKinds.ARRIVE,
         driverUserId,
         runId,
-        stopId,
-    });
-    await markDeliveryRunStopsArrived({
-        driverUserId,
-        runId,
-        stopIds: group.items.map(({ stop }) => stop.id),
+        targetStopId: stopId,
         expectedRouteRevision,
+        clientOperationId,
+        occurredAt,
     });
-    return await currentDeliveryRunMutationResult({
-        runId,
-        fallbackRouteRevision: expectedRouteRevision + 1,
-    });
-}
-
-async function getOwnedDeliveryRunStopGroup({
-    driverUserId,
-    runId,
-    stopId,
-}: {
-    driverUserId: string;
-    runId: string;
-    stopId: number;
-}) {
-    const run = await getDeliveryRun(runId);
-    if (!run || run.driverUserId !== driverUserId) {
-        throw new Error('Aktivna dostava nije pronađena.');
-    }
-    const groups = await resolveDeliveryRunStopGroups(run);
-    const targetGroup = groups.find((group) =>
-        group.items.some(({ stop }) => stop.id === stopId),
-    );
-    if (!targetGroup) {
-        throw new Error('Aktivna dostava nije pronađena.');
-    }
-    const targetIsDelivered = targetGroup.items.every(
-        ({ stop }) => stop.state === DeliveryRunStopStates.DELIVERED,
-    );
-    if (targetIsDelivered) {
-        return targetGroup;
-    }
-    if (
-        targetGroup.items.every(({ stop }) =>
-            isDeliveryRunStopTerminal(stop.state),
-        )
-    ) {
-        throw new Error('Dostava ima zabilježen završni ishod.');
-    }
-    if (run.state !== DeliveryRunStates.ACTIVE) {
-        throw new Error('Aktivna dostava nije pronađena.');
-    }
-    if (run.routePlanVersion < 2) {
-        const currentGroup = groups.find((group) =>
-            group.items.some(
-                ({ stop }) => !isDeliveryRunStopTerminal(stop.state),
-            ),
-        );
-        if (currentGroup?.executionKey !== targetGroup.executionKey) {
-            throw new Error('Dostave se moraju završiti redoslijedom rute.');
-        }
-    }
-    if (targetGroup.items.some(({ request }) => !request)) {
-        throw new Error('Dostava u ruti nije pronađena.');
-    }
-
-    return targetGroup;
+    return {
+        clientOperationId: recorded.clientOperationId,
+        replayed: recorded.replayed,
+        result: recorded.result,
+    };
 }
 
 export async function deliverDeliveryStop({
@@ -1205,37 +1155,44 @@ export async function deliverDeliveryStop({
     stopId,
     notes,
     expectedRouteRevision,
+    clientOperationId,
+    occurredAt,
 }: {
     driverUserId: string;
     runId: string;
     stopId: number;
     notes?: string;
     expectedRouteRevision: number;
+    clientOperationId: string;
+    occurredAt: Date;
 }) {
-    const group = await getOwnedDeliveryRunStopGroup({
+    const recorded = await recordDeliveryRunStopOperation({
+        kind: DeliveryRunStopOperationKinds.DELIVER,
         driverUserId,
         runId,
-        stopId,
-    });
-    const requestIds = await fulfillDeliveryRunStops({
-        driverUserId,
-        runId,
-        stopIds: group.items.map(({ stop }) => stop.id),
+        targetStopId: stopId,
         deliveryNotes: notes,
         expectedRouteRevision,
+        clientOperationId,
+        occurredAt,
     });
-    await Promise.all(
-        requestIds.map((requestId) =>
-            notifyDeliveryRequestEvent(requestId, 'updated', {
-                status: DeliveryRequestStates.FULFILLED,
-                note: notes,
-            }),
-        ),
-    );
-    return await currentDeliveryRunMutationResult({
-        runId,
-        fallbackRouteRevision: expectedRouteRevision + 1,
-    });
+    if (!recorded.replayed) {
+        // Receipts suppress replay duplicates; a post-commit crash can still
+        // lose this notification until delivery notifications use an outbox.
+        await Promise.all(
+            recorded.newlyFulfilledRequestIds.map((requestId) =>
+                notifyDeliveryRequestEvent(requestId, 'updated', {
+                    status: DeliveryRequestStates.FULFILLED,
+                    note: notes,
+                }),
+            ),
+        );
+    }
+    return {
+        clientOperationId: recorded.clientOperationId,
+        replayed: recorded.replayed,
+        result: recorded.result,
+    };
 }
 
 async function currentDeliveryRunMutationResult({

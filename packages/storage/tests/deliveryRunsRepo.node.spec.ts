@@ -33,6 +33,7 @@ import {
     type DeliveryRunPreparationPlanPayloadV3,
     type DeliveryRunRequestSnapshotInput,
     DeliveryRunStates,
+    DeliveryRunStopOperationKinds,
     DeliveryRunStopStates,
     deleteDeliveryAddress,
     deliveryRequests,
@@ -42,6 +43,8 @@ import {
     deliveryRunPickupOperations,
     deliveryRunPreparations,
     deliveryRunRerouteLeaseMs,
+    deliveryRunStopOperationOccurredAtIsAcceptable,
+    deliveryRunStopOperations,
     deliveryRunStops,
     deliveryRunStopsAllowCompletion,
     deliveryRuns,
@@ -70,6 +73,7 @@ import {
     readyDeliveryRequest,
     reassignDeliveryRun,
     recordDeliveryRunStopExceptions,
+    recordDeliveryRunStopOperation,
     recoverDeliveryRunStop,
     retryDeliveryRunStop,
     saveDeliveryRunPreparation,
@@ -4993,5 +4997,393 @@ test('a partially cancelled stop is released for explicit admin reactivation', a
             ])
         )[0]?.run.id,
         nextRun.id,
+    );
+});
+
+test('stop operation receipts replay exact bulk arrival and delivery results after completion', async () => {
+    const { run, driverUserId } =
+        await startPreparedBulkRunWithConfirmedPickup();
+    const initialRun = await getDeliveryRun(run.id);
+    const [firstStop, secondStop] = run.stops;
+    assert.ok(initialRun);
+    assert.ok(firstStop);
+    assert.ok(secondStop);
+
+    const arrivalOccurredAt = new Date(Date.now() - 2_000);
+    const arrivalInput = {
+        kind: DeliveryRunStopOperationKinds.ARRIVE,
+        driverUserId,
+        runId: run.id,
+        targetStopId: firstStop.id,
+        expectedRouteRevision: initialRun.routeRevision,
+        clientOperationId: 'offline-bulk-arrival',
+        occurredAt: arrivalOccurredAt,
+    } as const;
+    const arrival = await recordDeliveryRunStopOperation(arrivalInput);
+    assert.equal(arrival.replayed, false);
+    assert.deepEqual(arrival.result, {
+        kind: DeliveryRunStopOperationKinds.ARRIVE,
+        targetStopId: firstStop.id,
+        affectedStopIds: [firstStop.id, secondStop.id],
+        routeRevision: initialRun.routeRevision + 1,
+        reroutePending: false,
+        runCompleted: false,
+    });
+    const arrivedRun = await getDeliveryRun(run.id);
+    assert.deepEqual(
+        arrivedRun?.stops.map((stop) => stop.state),
+        [DeliveryRunStopStates.ARRIVED, DeliveryRunStopStates.ARRIVED],
+    );
+    assert.ok(
+        arrivedRun?.stops.every(
+            (stop) => stop.arrivedAt?.getTime() === arrivalOccurredAt.getTime(),
+        ),
+    );
+
+    const deliveryOccurredAt = new Date(Date.now() - 1_000);
+    const privateNote = 'Kupac je preuzeo obje gredice na stražnjem ulazu.';
+    const deliveryInput = {
+        kind: DeliveryRunStopOperationKinds.DELIVER,
+        driverUserId,
+        runId: run.id,
+        targetStopId: secondStop.id,
+        expectedRouteRevision: arrival.result.routeRevision,
+        clientOperationId: 'offline-bulk-delivery',
+        occurredAt: deliveryOccurredAt,
+        deliveryNotes: privateNote,
+    } as const;
+    const deliveryAttempts = await Promise.all([
+        recordDeliveryRunStopOperation(deliveryInput),
+        recordDeliveryRunStopOperation(deliveryInput),
+    ]);
+    assert.deepEqual(
+        deliveryAttempts.map((attempt) => attempt.replayed).sort(),
+        [false, true],
+    );
+    const appliedDelivery = deliveryAttempts.find(
+        (attempt) => !attempt.replayed,
+    );
+    const concurrentReplay = deliveryAttempts.find(
+        (attempt) => attempt.replayed,
+    );
+    assert.ok(appliedDelivery);
+    assert.ok(concurrentReplay);
+    assert.deepEqual(concurrentReplay.result, appliedDelivery.result);
+    assert.deepEqual(
+        [...appliedDelivery.newlyFulfilledRequestIds].sort(),
+        [firstStop.deliveryRequestId, secondStop.deliveryRequestId].sort(),
+    );
+    assert.deepEqual(concurrentReplay.newlyFulfilledRequestIds, []);
+    assert.deepEqual(appliedDelivery.result, {
+        kind: DeliveryRunStopOperationKinds.DELIVER,
+        targetStopId: secondStop.id,
+        affectedStopIds: [firstStop.id, secondStop.id],
+        routeRevision: arrival.result.routeRevision + 1,
+        reroutePending: false,
+        runCompleted: true,
+    });
+
+    const completedRun = await getDeliveryRun(run.id);
+    assert.equal(completedRun?.state, DeliveryRunStates.COMPLETED);
+    assert.ok(
+        completedRun?.stops.every(
+            (stop) =>
+                stop.state === DeliveryRunStopStates.DELIVERED &&
+                stop.deliveredAt?.getTime() === deliveryOccurredAt.getTime(),
+        ),
+    );
+    assert.ok(
+        completedRun?.completedAt &&
+            completedRun.completedAt.getTime() >= deliveryOccurredAt.getTime(),
+    );
+
+    const fulfillmentEventsBeforeReplay = await storage()
+        .select({ aggregateId: events.aggregateId })
+        .from(events)
+        .where(
+            and(
+                eq(events.type, knownEventTypes.delivery.requestFulfilled),
+                inArray(events.aggregateId, [
+                    firstStop.deliveryRequestId,
+                    secondStop.deliveryRequestId,
+                ]),
+            ),
+        );
+    assert.equal(fulfillmentEventsBeforeReplay.length, 2);
+
+    const arrivalReplay = await recordDeliveryRunStopOperation(arrivalInput);
+    const deliveryReplay = await recordDeliveryRunStopOperation(deliveryInput);
+    assert.equal(arrivalReplay.replayed, true);
+    assert.equal(deliveryReplay.replayed, true);
+    assert.deepEqual(arrivalReplay.result, arrival.result);
+    assert.deepEqual(deliveryReplay.result, appliedDelivery.result);
+    assert.deepEqual(deliveryReplay.newlyFulfilledRequestIds, []);
+
+    const fulfillmentEventsAfterReplay = await storage()
+        .select({ aggregateId: events.aggregateId })
+        .from(events)
+        .where(
+            and(
+                eq(events.type, knownEventTypes.delivery.requestFulfilled),
+                inArray(events.aggregateId, [
+                    firstStop.deliveryRequestId,
+                    secondStop.deliveryRequestId,
+                ]),
+            ),
+        );
+    assert.deepEqual(
+        fulfillmentEventsAfterReplay,
+        fulfillmentEventsBeforeReplay,
+    );
+    const receipts = await storage()
+        .select()
+        .from(deliveryRunStopOperations)
+        .where(eq(deliveryRunStopOperations.runId, run.id));
+    assert.equal(receipts.length, 2);
+    assert.ok(!JSON.stringify(receipts).includes(privateNote));
+});
+
+test('stop operation IDs reject changed payloads and stale new commands without side effects', async () => {
+    const { prepared, run, driverUserId } =
+        await startPreparedBulkRunWithConfirmedPickup({ driverCount: 2 });
+    const [targetStop] = run.stops;
+    const otherDriverUserId = prepared.fixture.driverUserIds[1];
+    assert.ok(targetStop);
+    assert.ok(otherDriverUserId);
+    const occurredAt = new Date(Date.now() - 1_000);
+    const input = {
+        kind: DeliveryRunStopOperationKinds.ARRIVE,
+        driverUserId,
+        runId: run.id,
+        targetStopId: targetStop.id,
+        expectedRouteRevision: run.routeRevision,
+        clientOperationId: 'conflict-checked-arrival',
+        occurredAt,
+    } as const;
+    const applied = await recordDeliveryRunStopOperation(input);
+    assert.equal(applied.replayed, false);
+
+    await assertExecutionError(
+        recordDeliveryRunStopOperation({
+            ...input,
+            occurredAt: new Date(occurredAt.getTime() + 1),
+        }),
+        DeliveryRunExecutionErrorCodes.STOP_OPERATION_CONFLICT,
+    );
+    await assertExecutionError(
+        recordDeliveryRunStopOperation({
+            ...input,
+            kind: DeliveryRunStopOperationKinds.DELIVER,
+            deliveryNotes: 'Promijenjen sadržaj',
+        }),
+        DeliveryRunExecutionErrorCodes.STOP_OPERATION_CONFLICT,
+    );
+    await assertExecutionError(
+        recordDeliveryRunStopOperation({
+            ...input,
+            driverUserId: otherDriverUserId,
+        }),
+        DeliveryRunExecutionErrorCodes.STOP_OPERATION_CONFLICT,
+    );
+    await assertExecutionError(
+        recordDeliveryRunStopOperation({
+            ...input,
+            clientOperationId: 'stale-new-arrival',
+        }),
+        DeliveryRunExecutionErrorCodes.ROUTE_REVISION_CONFLICT,
+    );
+    await assertExecutionError(
+        recordDeliveryRunStopOperation({
+            ...input,
+            clientOperationId: 'future-new-arrival',
+            expectedRouteRevision: applied.result.routeRevision,
+            occurredAt: new Date(Date.now() + 5 * 60 * 1_000 + 1_000),
+        }),
+        DeliveryRunExecutionErrorCodes.STOP_OPERATION_INVALID,
+    );
+    await assertExecutionError(
+        recordDeliveryRunStopOperation({
+            ...input,
+            kind: DeliveryRunStopOperationKinds.DELIVER,
+            clientOperationId: 'delivery-before-arrival',
+            expectedRouteRevision: applied.result.routeRevision,
+            occurredAt: new Date(occurredAt.getTime() - 1),
+        }),
+        DeliveryRunExecutionErrorCodes.STOP_OPERATION_INVALID,
+    );
+
+    assert.equal(
+        (
+            await storage()
+                .select()
+                .from(deliveryRunStopOperations)
+                .where(eq(deliveryRunStopOperations.runId, run.id))
+        ).length,
+        1,
+    );
+    const persisted = await getDeliveryRun(run.id);
+    assert.equal(persisted?.routeRevision, applied.result.routeRevision);
+    assert.ok(
+        persisted?.stops.every(
+            (stop) => stop.state === DeliveryRunStopStates.ARRIVED,
+        ),
+    );
+});
+
+test('bulk delivery command rolls back fulfillment events, stop state, and receipt together', async () => {
+    const fixture = await createDeliveryRunFixture({
+        accountIndexes: [0, 0, 0],
+    });
+    await createRequestEvents(fixture);
+    const [driverUserId] = fixture.driverUserIds;
+    const [firstRequestId, secondRequestId] = fixture.requestIds;
+    assert.ok(driverUserId);
+    assert.ok(firstRequestId);
+    assert.ok(secondRequestId);
+    await cancelDeliveryRequest(
+        secondRequestId,
+        'admin',
+        'Otkazano prije skupne dostave',
+    );
+    const run = await createRun({
+        fixture,
+        driverUserId,
+        requestIds: fixture.requestIds,
+    });
+    const [firstStop] = run.stops;
+    assert.ok(firstStop);
+
+    await assert.rejects(
+        recordDeliveryRunStopOperation({
+            kind: DeliveryRunStopOperationKinds.DELIVER,
+            driverUserId,
+            runId: run.id,
+            targetStopId: firstStop.id,
+            expectedRouteRevision: run.routeRevision,
+            clientOperationId: 'rollback-bulk-delivery',
+            occurredAt: new Date(),
+        }),
+        /Cannot fulfill a cancelled delivery request/,
+    );
+
+    const unchangedRun = await getDeliveryRun(run.id);
+    assert.deepEqual(
+        unchangedRun?.stops.map((stop) => stop.state),
+        [
+            DeliveryRunStopStates.PENDING,
+            DeliveryRunStopStates.PENDING,
+            DeliveryRunStopStates.PENDING,
+        ],
+    );
+    assert.equal(
+        (
+            await storage()
+                .select()
+                .from(deliveryRunStopOperations)
+                .where(eq(deliveryRunStopOperations.runId, run.id))
+        ).length,
+        0,
+    );
+    assert.equal(
+        (
+            await storage()
+                .select()
+                .from(events)
+                .where(
+                    and(
+                        eq(
+                            events.type,
+                            knownEventTypes.delivery.requestFulfilled,
+                        ),
+                        eq(events.aggregateId, firstRequestId),
+                    ),
+                )
+        ).length,
+        0,
+    );
+    assert.notEqual(
+        (await getDeliveryRequest(firstRequestId))?.state,
+        'fulfilled',
+    );
+});
+
+test('stop operation occurrence bounds and run-target integrity are enforced', async () => {
+    const appliedAt = new Date('2026-07-15T12:00:00.000Z');
+    assert.equal(
+        deliveryRunStopOperationOccurredAtIsAcceptable(
+            new Date(appliedAt.getTime() - 36 * 60 * 60 * 1_000),
+            appliedAt,
+        ),
+        true,
+    );
+    assert.equal(
+        deliveryRunStopOperationOccurredAtIsAcceptable(
+            new Date(appliedAt.getTime() - 36 * 60 * 60 * 1_000 - 1),
+            appliedAt,
+        ),
+        false,
+    );
+    assert.equal(
+        deliveryRunStopOperationOccurredAtIsAcceptable(
+            new Date(appliedAt.getTime() + 5 * 60 * 1_000),
+            appliedAt,
+        ),
+        true,
+    );
+    assert.equal(
+        deliveryRunStopOperationOccurredAtIsAcceptable(
+            new Date(appliedAt.getTime() + 5 * 60 * 1_000 + 1),
+            appliedAt,
+        ),
+        false,
+    );
+
+    const fixture = await createDeliveryRunFixture({
+        accountIndexes: [0, 0],
+        driverCount: 2,
+    });
+    const [firstDriverUserId, secondDriverUserId] = fixture.driverUserIds;
+    const [firstRequestId, secondRequestId] = fixture.requestIds;
+    assert.ok(firstDriverUserId);
+    assert.ok(secondDriverUserId);
+    assert.ok(firstRequestId);
+    assert.ok(secondRequestId);
+    const firstRun = await createRun({
+        fixture,
+        driverUserId: firstDriverUserId,
+        requestIds: [firstRequestId],
+    });
+    const secondRun = await createRun({
+        fixture,
+        driverUserId: secondDriverUserId,
+        requestIds: [secondRequestId],
+    });
+    const [foreignTargetStop] = secondRun.stops;
+    assert.ok(foreignTargetStop);
+    await assert.rejects(
+        storage()
+            .insert(deliveryRunStopOperations)
+            .values({
+                runId: firstRun.id,
+                targetStopId: foreignTargetStop.id,
+                driverUserId: firstDriverUserId,
+                clientOperationId: 'cross-run-target',
+                kind: DeliveryRunStopOperationKinds.ARRIVE,
+                payloadHash: '0'.repeat(64),
+                result: {
+                    kind: DeliveryRunStopOperationKinds.ARRIVE,
+                    targetStopId: foreignTargetStop.id,
+                    affectedStopIds: [foreignTargetStop.id],
+                    routeRevision: 0,
+                    reroutePending: false,
+                    runCompleted: false,
+                },
+                occurredAt: new Date(),
+            }),
+        (error) =>
+            error instanceof Error &&
+            `${error.message} ${
+                error.cause instanceof Error ? error.cause.message : ''
+            }`.includes('delivery_run_stop_operations_run_target_stop_fk'),
     );
 });

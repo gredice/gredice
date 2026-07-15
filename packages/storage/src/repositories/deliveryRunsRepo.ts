@@ -39,6 +39,9 @@ import {
     type DeliveryRunPreparationPlanPayloadV2,
     type DeliveryRunPreparationPlanPayloadV3,
     DeliveryRunStates,
+    type DeliveryRunStopOperationKind,
+    DeliveryRunStopOperationKinds,
+    type DeliveryRunStopOperationStoredResult,
     type DeliveryRunStopState,
     DeliveryRunStopStates,
     deliveryAddresses,
@@ -48,6 +51,7 @@ import {
     deliveryRunPickupOperations,
     deliveryRunPreparations,
     deliveryRunSlots,
+    deliveryRunStopOperations,
     deliveryRunStops,
     deliveryRuns,
     events,
@@ -282,6 +286,8 @@ export const DeliveryRunExecutionErrorCodes = {
     EXCEPTION_OPERATION_CONFLICT: 'exception-operation-conflict',
     EXCEPTION_INVALID: 'exception-invalid',
     EXCEPTION_TRANSITION_INVALID: 'exception-transition-invalid',
+    STOP_OPERATION_CONFLICT: 'stop-operation-conflict',
+    STOP_OPERATION_INVALID: 'stop-operation-invalid',
     RUN_DRIVER_CONFLICT: 'run-driver-conflict',
     RUN_MUTATION_INVALID: 'run-mutation-invalid',
     LOCATION_CONFLICT: 'location-conflict',
@@ -371,6 +377,30 @@ export type RecordDeliveryRunStopExceptionsResult = {
     clientOperationId: string;
     replayed: boolean;
     result: DeliveryRunExceptionOperationStoredResult;
+};
+
+type RecordDeliveryRunStopOperationBase = {
+    driverUserId: string;
+    runId: string;
+    targetStopId: number;
+    expectedRouteRevision: number;
+    clientOperationId: string;
+    occurredAt: Date;
+};
+
+export type RecordDeliveryRunStopOperationInput =
+    | (RecordDeliveryRunStopOperationBase & {
+          kind: 'arrive';
+      })
+    | (RecordDeliveryRunStopOperationBase & {
+          kind: 'deliver';
+          deliveryNotes?: string;
+      });
+
+export type RecordDeliveryRunStopOperationResult = {
+    clientOperationId: string;
+    replayed: boolean;
+    result: DeliveryRunStopOperationStoredResult;
 };
 
 export type SaveDeliveryRunPreparationInput = {
@@ -4628,17 +4658,127 @@ export async function updateDeliveryRunEstimates({
     });
 }
 
+const deliveryRunStopOperationMaximumAgeMs = 36 * 60 * 60 * 1000;
+const deliveryRunStopOperationMaximumFutureSkewMs = 5 * 60 * 1000;
+
+type NormalizedRecordDeliveryRunStopOperationInput =
+    RecordDeliveryRunStopOperationBase & {
+        kind: DeliveryRunStopOperationKind;
+        deliveryNotes?: string;
+    };
+
+function invalidDeliveryRunStopOperation(message: string): never {
+    throw new DeliveryRunExecutionError(
+        DeliveryRunExecutionErrorCodes.STOP_OPERATION_INVALID,
+        message,
+    );
+}
+
+export function deliveryRunStopOperationOccurredAtIsAcceptable(
+    occurredAt: Date,
+    appliedAt = new Date(),
+) {
+    const occurredAtMs = occurredAt.getTime();
+    const appliedAtMs = appliedAt.getTime();
+    if (!Number.isFinite(occurredAtMs) || !Number.isFinite(appliedAtMs)) {
+        return false;
+    }
+    const ageMs = appliedAtMs - occurredAtMs;
+    return (
+        ageMs <= deliveryRunStopOperationMaximumAgeMs &&
+        ageMs >= -deliveryRunStopOperationMaximumFutureSkewMs
+    );
+}
+
+function normalizeDeliveryRunStopOperationInput(
+    input: RecordDeliveryRunStopOperationInput,
+): NormalizedRecordDeliveryRunStopOperationInput {
+    const clientOperationId = input.clientOperationId.trim();
+    if (clientOperationId.length === 0 || clientOperationId.length > 128) {
+        invalidDeliveryRunStopOperation(
+            'Delivery stop operation ID must contain 1 to 128 characters',
+        );
+    }
+    if (
+        input.kind !== DeliveryRunStopOperationKinds.ARRIVE &&
+        input.kind !== DeliveryRunStopOperationKinds.DELIVER
+    ) {
+        invalidDeliveryRunStopOperation(
+            'Delivery stop operation kind is invalid',
+        );
+    }
+    if (!Number.isInteger(input.targetStopId) || input.targetStopId <= 0) {
+        invalidDeliveryRunStopOperation('Delivery stop selection is invalid');
+    }
+    if (
+        !Number.isInteger(input.expectedRouteRevision) ||
+        input.expectedRouteRevision < 0
+    ) {
+        invalidDeliveryRunStopOperation('Delivery route revision is invalid');
+    }
+    if (
+        !(input.occurredAt instanceof Date) ||
+        !Number.isFinite(input.occurredAt.getTime())
+    ) {
+        invalidDeliveryRunStopOperation(
+            'Delivery stop operation occurrence time is invalid',
+        );
+    }
+    const deliveryNotes =
+        input.kind === DeliveryRunStopOperationKinds.DELIVER
+            ? input.deliveryNotes?.trim()
+            : undefined;
+    if (deliveryNotes && deliveryNotes.length > 1_000) {
+        invalidDeliveryRunStopOperation(
+            'Delivery notes must not exceed 1000 characters',
+        );
+    }
+    return {
+        driverUserId: input.driverUserId,
+        runId: input.runId,
+        targetStopId: input.targetStopId,
+        expectedRouteRevision: input.expectedRouteRevision,
+        clientOperationId,
+        occurredAt: input.occurredAt,
+        kind: input.kind,
+        ...(deliveryNotes ? { deliveryNotes } : {}),
+    };
+}
+
+function deliveryRunStopOperationPayloadHash(
+    input: NormalizedRecordDeliveryRunStopOperationInput,
+) {
+    return hashValue(
+        JSON.stringify({
+            clientOperationId: input.clientOperationId,
+            kind: input.kind,
+            targetStopId: input.targetStopId,
+            expectedRouteRevision: input.expectedRouteRevision,
+            occurredAt: input.occurredAt.toISOString(),
+            deliveryNotes: input.deliveryNotes ?? null,
+        }),
+    );
+}
+
+async function lockDeliveryRun(runId: string, db: TransactionClient) {
+    await db.execute(
+        sql`select ${deliveryRuns.id} from ${deliveryRuns} where ${deliveryRuns.id} = ${runId} for update`,
+    );
+}
+
 async function ensureOwnedDeliveryRunStops({
     driverUserId,
     runId,
     stopIds,
     expectedRouteRevision,
+    runAlreadyLocked = false,
     db,
 }: {
     driverUserId: string;
     runId: string;
     stopIds: number[];
     expectedRouteRevision?: number;
+    runAlreadyLocked?: boolean;
     db: TransactionClient;
 }) {
     const uniqueStopIds = Array.from(new Set(stopIds));
@@ -4649,9 +4789,7 @@ async function ensureOwnedDeliveryRunStops({
     // Serialize every arrival/delivery transition for this run before reading
     // stop state. Without this lock, a late arrival write can overwrite a
     // concurrently committed delivered state.
-    await db.execute(
-        sql`select ${deliveryRuns.id} from ${deliveryRuns} where ${deliveryRuns.id} = ${runId} for update`,
-    );
+    if (!runAlreadyLocked) await lockDeliveryRun(runId, db);
 
     const stops = await db.query.deliveryRunStops.findMany({
         where: and(
@@ -4762,6 +4900,64 @@ async function ensureOwnedDeliveryRunStops({
     return stops;
 }
 
+async function applyDeliveryRunStopsArrivedInDatabase({
+    runId,
+    stops,
+    occurredAt,
+    db,
+}: {
+    runId: string;
+    stops: Awaited<ReturnType<typeof ensureOwnedDeliveryRunStops>>;
+    occurredAt: Date;
+    db: TransactionClient;
+}) {
+    const advancesExecution = stops.some(
+        (stop) => stop.state === DeliveryRunStopStates.PENDING,
+    );
+
+    for (const stop of stops) {
+        if (!isDeliveryRunStopActionable(stop.state)) continue;
+        const [updatedStop] = await db
+            .update(deliveryRunStops)
+            .set({
+                state: DeliveryRunStopStates.ARRIVED,
+                arrivedAt: stop.arrivedAt ?? occurredAt,
+            })
+            .where(
+                and(
+                    eq(deliveryRunStops.id, stop.id),
+                    inArray(deliveryRunStops.state, [
+                        DeliveryRunStopStates.PENDING,
+                        DeliveryRunStopStates.ARRIVED,
+                    ]),
+                ),
+            )
+            .returning({ id: deliveryRunStops.id });
+        if (!updatedStop) {
+            throw new DeliveryRunExecutionError(
+                DeliveryRunExecutionErrorCodes.EXCEPTION_TRANSITION_INVALID,
+                `Delivery stop ${stop.id} changed before arrival could be recorded`,
+            );
+        }
+    }
+
+    if (advancesExecution) {
+        await db
+            .update(deliveryRuns)
+            .set({
+                routeRevision: sql`${deliveryRuns.routeRevision} + 1`,
+                rerouteAttemptedAt: null,
+            })
+            .where(
+                and(
+                    eq(deliveryRuns.id, runId),
+                    eq(deliveryRuns.state, DeliveryRunStates.ACTIVE),
+                ),
+            );
+    }
+    return stops;
+}
+
 export async function markDeliveryRunStopsArrived({
     driverUserId,
     runId,
@@ -4781,55 +4977,12 @@ export async function markDeliveryRunStopsArrived({
             expectedRouteRevision,
             db: tx,
         });
-        const now = new Date();
-        const advancesExecution = stops.some(
-            (stop) => stop.state === DeliveryRunStopStates.PENDING,
-        );
-
-        for (const stop of stops) {
-            if (!isDeliveryRunStopActionable(stop.state)) {
-                continue;
-            }
-            const [updatedStop] = await tx
-                .update(deliveryRunStops)
-                .set({
-                    state: DeliveryRunStopStates.ARRIVED,
-                    arrivedAt: stop.arrivedAt ?? now,
-                })
-                .where(
-                    and(
-                        eq(deliveryRunStops.id, stop.id),
-                        inArray(deliveryRunStops.state, [
-                            DeliveryRunStopStates.PENDING,
-                            DeliveryRunStopStates.ARRIVED,
-                        ]),
-                    ),
-                )
-                .returning({ id: deliveryRunStops.id });
-            if (!updatedStop) {
-                throw new DeliveryRunExecutionError(
-                    DeliveryRunExecutionErrorCodes.EXCEPTION_TRANSITION_INVALID,
-                    `Delivery stop ${stop.id} changed before arrival could be recorded`,
-                );
-            }
-        }
-
-        if (advancesExecution) {
-            await tx
-                .update(deliveryRuns)
-                .set({
-                    routeRevision: sql`${deliveryRuns.routeRevision} + 1`,
-                    rerouteAttemptedAt: null,
-                })
-                .where(
-                    and(
-                        eq(deliveryRuns.id, runId),
-                        eq(deliveryRuns.state, DeliveryRunStates.ACTIVE),
-                    ),
-                );
-        }
-
-        return stops;
+        return await applyDeliveryRunStopsArrivedInDatabase({
+            runId,
+            stops,
+            occurredAt: new Date(),
+            db: tx,
+        });
     });
 }
 
@@ -4897,6 +5050,28 @@ async function markDeliveryRunStopsDeliveredInDatabase({
         db,
     });
     const now = new Date();
+    return await applyDeliveryRunStopsDeliveredInDatabase({
+        runId,
+        stops,
+        occurredAt: now,
+        appliedAt: now,
+        db,
+    });
+}
+
+async function applyDeliveryRunStopsDeliveredInDatabase({
+    runId,
+    stops,
+    occurredAt,
+    appliedAt,
+    db,
+}: {
+    runId: string;
+    stops: Awaited<ReturnType<typeof ensureOwnedDeliveryRunStops>>;
+    occurredAt: Date;
+    appliedAt: Date;
+    db: TransactionClient;
+}) {
     const advancesExecution = stops.some((stop) =>
         isDeliveryRunStopActionable(stop.state),
     );
@@ -4909,8 +5084,8 @@ async function markDeliveryRunStopsDeliveredInDatabase({
             .update(deliveryRunStops)
             .set({
                 state: DeliveryRunStopStates.DELIVERED,
-                arrivedAt: stop.arrivedAt ?? now,
-                deliveredAt: now,
+                arrivedAt: stop.arrivedAt ?? occurredAt,
+                deliveredAt: occurredAt,
             })
             .where(
                 and(
@@ -4946,7 +5121,11 @@ async function markDeliveryRunStopsDeliveredInDatabase({
             );
     }
 
-    await completeDeliveryRunIfEligible({ runId, completedAt: now, db });
+    await completeDeliveryRunIfEligible({
+        runId,
+        completedAt: appliedAt,
+        db,
+    });
 
     return stops.flatMap((stop) =>
         stop.state === DeliveryRunStopStates.DELIVERED ||
@@ -4985,11 +5164,12 @@ export async function fulfillDeliveryRunStops({
                 tx,
             );
         }
-        return await markDeliveryRunStopsDeliveredInDatabase({
-            driverUserId,
+        const appliedAt = new Date();
+        return await applyDeliveryRunStopsDeliveredInDatabase({
             runId,
-            stopIds,
-            expectedRouteRevision,
+            stops,
+            occurredAt: appliedAt,
+            appliedAt,
             db: tx,
         });
     });
@@ -5016,4 +5196,255 @@ export async function fulfillDeliveryRunStop({
         expectedRouteRevision,
     });
     return requestIds[0];
+}
+
+async function currentDeliveryRunStopIdsForOperation({
+    driverUserId,
+    runId,
+    targetStopId,
+    expectedRouteRevision,
+    db,
+}: {
+    driverUserId: string;
+    runId: string;
+    targetStopId: number;
+    expectedRouteRevision: number;
+    db: TransactionClient;
+}) {
+    const run = await db.query.deliveryRuns.findFirst({
+        where: eq(deliveryRuns.id, runId),
+    });
+    if (
+        !run ||
+        run.driverUserId !== driverUserId ||
+        run.state !== DeliveryRunStates.ACTIVE
+    ) {
+        throw new DeliveryRunExecutionError(
+            DeliveryRunExecutionErrorCodes.ACTIVE_RUN_NOT_FOUND,
+            'Active delivery run was not found',
+        );
+    }
+    if (run.routeRevision !== expectedRouteRevision) {
+        throw new DeliveryRunExecutionError(
+            DeliveryRunExecutionErrorCodes.ROUTE_REVISION_CONFLICT,
+            'Delivery route changed. Refresh the active run and retry.',
+        );
+    }
+
+    const progress = await getDeliveryRunExecutionProgressFromDb(runId, db);
+    const current = progress.find((step) => step.state === 'current');
+    if (current?.kind === 'pickup') {
+        throw new DeliveryRunExecutionError(
+            DeliveryRunExecutionErrorCodes.PICKUP_DEPENDENCY_PENDING,
+            'Delivery pickup dependency is pending',
+        );
+    }
+    if (
+        current?.kind !== 'delivery' ||
+        !current.stopIds.includes(targetStopId)
+    ) {
+        throw new DeliveryRunExecutionError(
+            DeliveryRunExecutionErrorCodes.ROUTE_ORDER,
+            'Delivery operation must target the current delivery checkpoint',
+        );
+    }
+    if (!current.pickupConfirmed) {
+        throw new DeliveryRunExecutionError(
+            DeliveryRunExecutionErrorCodes.PICKUP_DEPENDENCY_PENDING,
+            'Delivery pickup dependency is pending',
+        );
+    }
+    return current.stopIds;
+}
+
+function deliveryRunStopOperationReceiptResult({
+    receipt,
+    driverUserId,
+    payloadHash,
+}: {
+    receipt: typeof deliveryRunStopOperations.$inferSelect;
+    driverUserId: string;
+    payloadHash: string;
+}): RecordDeliveryRunStopOperationResult & {
+    newlyFulfilledRequestIds: string[];
+} {
+    if (
+        receipt.driverUserId !== driverUserId ||
+        receipt.payloadHash !== payloadHash
+    ) {
+        throw new DeliveryRunExecutionError(
+            DeliveryRunExecutionErrorCodes.STOP_OPERATION_CONFLICT,
+            'Delivery stop operation ID was reused with different content',
+        );
+    }
+    return {
+        clientOperationId: receipt.clientOperationId,
+        replayed: true,
+        result: receipt.result,
+        newlyFulfilledRequestIds: [],
+    };
+}
+
+async function recordDeliveryRunStopOperationInDatabase(
+    input: NormalizedRecordDeliveryRunStopOperationInput,
+    db: TransactionClient,
+): Promise<
+    RecordDeliveryRunStopOperationResult & {
+        newlyFulfilledRequestIds: string[];
+    }
+> {
+    const payloadHash = deliveryRunStopOperationPayloadHash(input);
+    const existingReceipt = await db.query.deliveryRunStopOperations.findFirst({
+        where: and(
+            eq(deliveryRunStopOperations.runId, input.runId),
+            eq(
+                deliveryRunStopOperations.clientOperationId,
+                input.clientOperationId,
+            ),
+        ),
+    });
+    if (existingReceipt) {
+        return deliveryRunStopOperationReceiptResult({
+            receipt: existingReceipt,
+            driverUserId: input.driverUserId,
+            payloadHash,
+        });
+    }
+
+    await lockDeliveryRun(input.runId, db);
+    const receiptAfterLock = await db.query.deliveryRunStopOperations.findFirst(
+        {
+            where: and(
+                eq(deliveryRunStopOperations.runId, input.runId),
+                eq(
+                    deliveryRunStopOperations.clientOperationId,
+                    input.clientOperationId,
+                ),
+            ),
+        },
+    );
+    if (receiptAfterLock) {
+        return deliveryRunStopOperationReceiptResult({
+            receipt: receiptAfterLock,
+            driverUserId: input.driverUserId,
+            payloadHash,
+        });
+    }
+
+    const appliedAt = new Date();
+    if (
+        !deliveryRunStopOperationOccurredAtIsAcceptable(
+            input.occurredAt,
+            appliedAt,
+        )
+    ) {
+        invalidDeliveryRunStopOperation(
+            'Delivery stop operation occurrence time is outside the accepted range',
+        );
+    }
+    const stopIds = await currentDeliveryRunStopIdsForOperation({
+        driverUserId: input.driverUserId,
+        runId: input.runId,
+        targetStopId: input.targetStopId,
+        expectedRouteRevision: input.expectedRouteRevision,
+        db,
+    });
+    const stops = await ensureOwnedDeliveryRunStops({
+        driverUserId: input.driverUserId,
+        runId: input.runId,
+        stopIds,
+        expectedRouteRevision: input.expectedRouteRevision,
+        runAlreadyLocked: true,
+        db,
+    });
+    if (
+        input.kind === DeliveryRunStopOperationKinds.DELIVER &&
+        stops.some(
+            (stop) =>
+                isDeliveryRunStopActionable(stop.state) &&
+                stop.arrivedAt &&
+                stop.arrivedAt > input.occurredAt,
+        )
+    ) {
+        invalidDeliveryRunStopOperation(
+            'Delivery cannot occur before the recorded arrival',
+        );
+    }
+
+    const newlyFulfilledRequestIds =
+        input.kind === DeliveryRunStopOperationKinds.DELIVER
+            ? stops
+                  .filter((stop) => isDeliveryRunStopActionable(stop.state))
+                  .map((stop) => stop.deliveryRequestId)
+            : [];
+    if (input.kind === DeliveryRunStopOperationKinds.DELIVER) {
+        for (const requestId of newlyFulfilledRequestIds) {
+            await fulfillDeliveryRequest(requestId, input.deliveryNotes, db);
+        }
+        await applyDeliveryRunStopsDeliveredInDatabase({
+            runId: input.runId,
+            stops,
+            occurredAt: input.occurredAt,
+            appliedAt,
+            db,
+        });
+    } else {
+        await applyDeliveryRunStopsArrivedInDatabase({
+            runId: input.runId,
+            stops,
+            occurredAt: input.occurredAt,
+            db,
+        });
+    }
+
+    const runAfterMutation = await db.query.deliveryRuns.findFirst({
+        columns: {
+            routeRevision: true,
+            rerouteRequiredAt: true,
+            state: true,
+        },
+        where: eq(deliveryRuns.id, input.runId),
+    });
+    if (!runAfterMutation) {
+        throw new DeliveryRunExecutionError(
+            DeliveryRunExecutionErrorCodes.ACTIVE_RUN_NOT_FOUND,
+            'Delivery run was not found after applying the operation',
+        );
+    }
+    const runCompleted = runAfterMutation.state === DeliveryRunStates.COMPLETED;
+    const result: DeliveryRunStopOperationStoredResult = {
+        kind: input.kind,
+        targetStopId: input.targetStopId,
+        affectedStopIds: stops.map((stop) => stop.id),
+        routeRevision: runAfterMutation.routeRevision,
+        reroutePending:
+            !runCompleted && Boolean(runAfterMutation.rerouteRequiredAt),
+        runCompleted,
+    };
+    await db.insert(deliveryRunStopOperations).values({
+        runId: input.runId,
+        targetStopId: input.targetStopId,
+        driverUserId: input.driverUserId,
+        clientOperationId: input.clientOperationId,
+        kind: input.kind,
+        payloadHash,
+        result,
+        occurredAt: input.occurredAt,
+        appliedAt,
+    });
+    return {
+        clientOperationId: input.clientOperationId,
+        replayed: false,
+        result,
+        newlyFulfilledRequestIds,
+    };
+}
+
+export async function recordDeliveryRunStopOperation(
+    input: RecordDeliveryRunStopOperationInput,
+) {
+    const normalized = normalizeDeliveryRunStopOperationInput(input);
+    return await withDeliveryDispatchTransaction(async (tx) =>
+        recordDeliveryRunStopOperationInDatabase(normalized, tx),
+    );
 }
