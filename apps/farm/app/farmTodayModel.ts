@@ -74,6 +74,7 @@ export type FarmTodayPlantingsSourceData = {
 };
 
 export type FarmTodayOperationsSourceData = {
+    authorizationScope: 'farmMembership';
     pendingOperations: FarmTodayOperationInput[];
     pendingOperationsComplete: boolean;
     raisedBeds: FarmTodayRaisedBedInput[];
@@ -382,6 +383,7 @@ function isOperationAuthorized(
     operation: FarmTodayOperationInput,
     activeFarmIds: Set<number>,
     authorizedRaisedBedFarmIds: Map<number, number>,
+    authorizationScope: FarmTodayOperationsSourceData['authorizationScope'],
     raisedBedsComplete: boolean,
 ) {
     if (
@@ -406,10 +408,9 @@ function isOperationAuthorized(
             return false;
         }
 
-        return (
-            typeof operation.farmId === 'number' &&
-            activeFarmIds.has(operation.farmId)
-        );
+        return operation.farmId === null
+            ? authorizationScope === 'farmMembership'
+            : activeFarmIds.has(operation.farmId);
     }
 
     return (
@@ -480,6 +481,7 @@ function buildOperationCandidates({
                 operation,
                 activeFarmIds,
                 authorizedRaisedBedFarmIds,
+                source.authorizationScope,
                 source.raisedBedsComplete,
             )
         ) {
