@@ -3,7 +3,31 @@ import {
     assertScheduleOperationCompletionProof,
     assertScheduleOperationCompletionRequirementsAvailable,
     getScheduleOperationCompletionRequirements,
+    getScheduleOperationCompletionRequirementsFingerprint,
+    parseScheduleOperationCompletionRequirementsFingerprint,
 } from './scheduleOperationRequirements';
+
+test('round-trips a stable completion-requirements fingerprint', () => {
+    const fingerprint = getScheduleOperationCompletionRequirementsFingerprint({
+        images: 'required',
+        notes: 'optional',
+    });
+
+    expect(fingerprint).toBe('required:optional');
+    expect(
+        parseScheduleOperationCompletionRequirementsFingerprint(fingerprint),
+    ).toBe(fingerprint);
+    expect(() =>
+        parseScheduleOperationCompletionRequirementsFingerprint(
+            'required:optional:forged',
+        ),
+    ).toThrow();
+    expect(() =>
+        parseScheduleOperationCompletionRequirementsFingerprint(
+            'required:unsupported',
+        ),
+    ).toThrow();
+});
 
 test('fails closed when operation completion requirements are unavailable', () => {
     expect(() =>

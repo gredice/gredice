@@ -2,7 +2,6 @@
 
 export { buildRaisedBedFieldPlantUpdatePayload } from './buildRaisedBedFieldPlantUpdatePayload';
 export { knownEvents } from './knownEvents';
-
 // Constants
 export { knownEventTypes } from './knownEventTypes';
 export type {
@@ -21,6 +20,7 @@ export {
     getAiAnalysisTotals,
     getAllEvents,
     getEventAggregateIdsByAggregateIdPrefix,
+    getEventById,
     getEvents,
     getLastBirthdayRewardEvent,
     getLatestEvents,
@@ -30,6 +30,18 @@ export {
     getSunflowersDailyTotals,
     updateEventCreatedAt,
 } from './queries';
+export type {
+    ScheduleTaskBlockDetails,
+    ScheduleTaskBlockPayload,
+    ScheduleTaskBlockReasonCode,
+    ScheduleTaskBlockReasonLabel,
+} from './scheduleTaskBlock';
+export {
+    getScheduleTaskBlockReason,
+    isScheduleTaskBlockReasonCode,
+    scheduleTaskBlockDetailsFromEvent,
+    scheduleTaskBlockReasons,
+} from './scheduleTaskBlock';
 export type {
     // Account
     AccountAiRequestPayload,
@@ -63,9 +75,12 @@ export type {
     InvoiceCreatePayload,
     InvoicePaidPayload,
     InvoiceUpdatePayload,
+    OperationAcceptancePayload,
     OperationAssignPayload,
+    OperationBlockPayload,
     OperationCancelPayload,
     OperationCompletePayload,
+    OperationEntityChangePayload,
     OperationEventsAnyPayload,
     OperationEventsPayload,
     OperationFailPayload,
@@ -78,6 +93,7 @@ export type {
     RaisedBedFieldAiAnalysisPayload,
     // Raised bed field
     RaisedBedFieldCreatePayload,
+    RaisedBedFieldPlantBlockPayload,
     RaisedBedFieldPlantEventsAnyPayload,
     RaisedBedFieldPlantEventsPayload,
     RaisedBedFieldPlantPlacePayload,

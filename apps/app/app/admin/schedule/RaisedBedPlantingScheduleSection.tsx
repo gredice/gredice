@@ -40,9 +40,12 @@ import { RescheduleRaisedBedFieldModal } from './RescheduleRaisedBedFieldModal';
 import { SchedulePlantVisual } from './ScheduleTaskVisual';
 import { parseScheduledDateInput } from './scheduleOptimisticHelpers';
 import {
+    activePlantCycleEventId,
+    activePlantCycleVersionEventId,
     formatMinutes,
     getScheduleTaskRowClassName,
     isFieldApproved,
+    isFieldBlocked,
     isFieldCompleted,
     isFieldPendingVerification,
     isSameScheduleDay,
@@ -81,6 +84,26 @@ function getSowingTaskLabel({
     totalPlants: number;
 }) {
     return `${physicalPositionIndex} - ${getSowingTaskName(sowingLocation)}: ${totalPlants} ${plantName}`;
+}
+
+function getPlantingTaskIdentity(field: RaisedBedField) {
+    const expectedPlantCycleEventId = activePlantCycleEventId(field);
+    const expectedPlantCycleVersionEventId =
+        activePlantCycleVersionEventId(field);
+    const expectedPlantSortId = field.plantSortId;
+    if (
+        !expectedPlantCycleEventId ||
+        !expectedPlantCycleVersionEventId ||
+        !expectedPlantSortId
+    ) {
+        return null;
+    }
+
+    return {
+        expectedPlantCycleEventId,
+        expectedPlantCycleVersionEventId,
+        expectedPlantSortId,
+    };
 }
 
 export function RaisedBedPlantingScheduleSection({
@@ -148,6 +171,7 @@ export function RaisedBedPlantingScheduleSection({
             }),
             approved:
                 isFieldApproved(field.plantStatus) &&
+                !isFieldBlocked(field.plantStatus) &&
                 !isFieldPendingVerification(field.plantStatus) &&
                 !isFieldCompleted(field.plantStatus),
         };
@@ -156,12 +180,17 @@ export function RaisedBedPlantingScheduleSection({
     const fieldsToApprove = dayFields
         .filter(
             (field) =>
+                !isFieldBlocked(field.plantStatus) &&
                 !isFieldApproved(field.plantStatus) &&
                 !isFieldPendingVerification(field.plantStatus) &&
                 !isFieldCompleted(field.plantStatus) &&
                 !!field.assignedUserId,
         )
-        .map((field) => {
+        .flatMap((field) => {
+            const taskIdentity = getPlantingTaskIdentity(field);
+            if (!taskIdentity) {
+                return [];
+            }
             const sortData = plantSorts?.find(
                 (plantSort) => plantSort.id === field.plantSortId,
             );
@@ -176,6 +205,7 @@ export function RaisedBedPlantingScheduleSection({
                 id: field.id,
                 raisedBedId: field.raisedBedId,
                 positionIndex: field.positionIndex,
+                ...taskIdentity,
                 label: getSowingTaskLabel({
                     physicalPositionIndex: field.physicalPositionIndex,
                     plantName: field.plantSortId
@@ -193,33 +223,61 @@ export function RaisedBedPlantingScheduleSection({
                 !isFieldPendingVerification(field.plantStatus) &&
                 !isFieldCompleted(field.plantStatus),
         )
-        .map((field) => ({
-            id: field.id,
-            raisedBedId: field.raisedBedId,
-            positionIndex: field.positionIndex,
-        }));
+        .flatMap((field) => {
+            const taskIdentity = getPlantingTaskIdentity(field);
+            return taskIdentity
+                ? [
+                      {
+                          id: field.id,
+                          raisedBedId: field.raisedBedId,
+                          positionIndex: field.positionIndex,
+                          ...taskIdentity,
+                      },
+                  ]
+                : [];
+        });
     const fieldsToAssign = dayFields
         .filter(
             (field) =>
+                !isFieldBlocked(field.plantStatus) &&
                 !isFieldCompleted(field.plantStatus) &&
                 !isFieldPendingVerification(field.plantStatus),
         )
-        .map((field) => ({
-            id: field.id,
-            farmUsers: assignableFarmUsersByRaisedBedFieldId[field.id] ?? [],
-        }));
+        .flatMap((field) => {
+            const taskIdentity = getPlantingTaskIdentity(field);
+            return taskIdentity
+                ? [
+                      {
+                          id: field.id,
+                          ...taskIdentity,
+                          farmUsers:
+                              assignableFarmUsersByRaisedBedFieldId[field.id] ??
+                              [],
+                      },
+                  ]
+                : [];
+        });
     const fieldsToCancel = dayFields
         .filter(
             (field) =>
+                !isFieldBlocked(field.plantStatus) &&
                 !isFieldCompleted(field.plantStatus) &&
                 !isFieldPendingVerification(field.plantStatus),
         )
-        .map((field) => ({
-            id: field.id,
-            raisedBedId: field.raisedBedId,
-            positionIndex: field.positionIndex,
-            label: `${field.positionIndex + 1}`,
-        }));
+        .flatMap((field) => {
+            const taskIdentity = getPlantingTaskIdentity(field);
+            return taskIdentity
+                ? [
+                      {
+                          id: field.id,
+                          raisedBedId: field.raisedBedId,
+                          positionIndex: field.positionIndex,
+                          label: `${field.positionIndex + 1}`,
+                          ...taskIdentity,
+                      },
+                  ]
+                : [];
+        });
 
     const durations = dayFields.reduce(
         (acc, field) => {
@@ -283,6 +341,9 @@ export function RaisedBedPlantingScheduleSection({
                                             acceptRaisedBedFieldAction(
                                                 field.raisedBedId,
                                                 field.positionIndex,
+                                                field.expectedPlantCycleEventId,
+                                                field.expectedPlantSortId,
+                                                field.expectedPlantCycleVersionEventId,
                                             ),
                                         ),
                                     ),
@@ -316,6 +377,9 @@ export function RaisedBedPlantingScheduleSection({
                                         fieldsToAssign.map((field) =>
                                             assignRaisedBedFieldUserAction(
                                                 field.id,
+                                                field.expectedPlantCycleEventId,
+                                                field.expectedPlantSortId,
+                                                field.expectedPlantCycleVersionEventId,
                                                 assignedUserIds,
                                             ),
                                         ),
@@ -355,6 +419,18 @@ export function RaisedBedPlantingScheduleSection({
                                             formData.set(
                                                 'positionIndex',
                                                 field.positionIndex.toString(),
+                                            );
+                                            formData.set(
+                                                'expectedPlantCycleEventId',
+                                                field.expectedPlantCycleEventId.toString(),
+                                            );
+                                            formData.set(
+                                                'expectedPlantCycleVersionEventId',
+                                                field.expectedPlantCycleVersionEventId.toString(),
+                                            );
+                                            formData.set(
+                                                'expectedPlantSortId',
+                                                field.expectedPlantSortId.toString(),
                                             );
                                             formData.set(
                                                 'scheduledDate',
@@ -418,10 +494,10 @@ export function RaisedBedPlantingScheduleSection({
                                 (sortData?.information?.plant?.attributes
                                     ?.seedingDistance || FIELD_SIZE_CM),
                         ) ** 2;
+                    const taskIdentity = getPlantingTaskIdentity(field);
 
                     const handlePlantConfirm = async () => {
-                        const plantSortId = field.plantSortId;
-                        if (!plantSortId) return;
+                        if (!taskIdentity) return;
                         runOptimisticAction({
                             fieldPatches: [
                                 {
@@ -433,7 +509,9 @@ export function RaisedBedPlantingScheduleSection({
                                 raisedBedPlanted(
                                     field.raisedBedId,
                                     field.positionIndex,
-                                    plantSortId,
+                                    taskIdentity.expectedPlantCycleEventId,
+                                    taskIdentity.expectedPlantSortId,
+                                    taskIdentity.expectedPlantCycleVersionEventId,
                                 ),
                             errorLogMessage: 'Error completing planting:',
                             errorAlertMessage:
@@ -451,6 +529,7 @@ export function RaisedBedPlantingScheduleSection({
                     });
                     const fieldStatus = field.plantStatus;
                     const fieldCompleted = isFieldCompleted(fieldStatus);
+                    const fieldBlocked = isFieldBlocked(fieldStatus);
                     const fieldPendingVerification =
                         isFieldPendingVerification(fieldStatus);
                     const fieldApproved = isFieldApproved(fieldStatus);
@@ -459,20 +538,26 @@ export function RaisedBedPlantingScheduleSection({
                     const nextSowingLocation = greenhouseSowing
                         ? 'direct'
                         : 'greenhouse';
-                    const fieldStatusText = fieldPendingVerification
-                        ? 'Čeka verifikaciju'
-                        : fieldApproved || fieldCompleted
-                          ? null
-                          : 'Nije potvrđeno';
+                    const fieldStatusText = fieldBlocked
+                        ? 'Blokirano'
+                        : fieldPendingVerification
+                          ? 'Čeka verifikaciju'
+                          : fieldApproved || fieldCompleted
+                            ? null
+                            : 'Nije potvrđeno';
                     const fieldStatusClassName = fieldCompleted
                         ? 'text-green-600'
-                        : fieldPendingVerification
-                          ? 'text-amber-600'
-                          : fieldApproved
-                            ? 'text-green-600'
-                            : 'text-muted-foreground';
+                        : fieldBlocked
+                          ? 'text-red-700 dark:text-red-300'
+                          : fieldPendingVerification
+                            ? 'text-amber-600'
+                            : fieldApproved
+                              ? 'text-green-600'
+                              : 'text-muted-foreground';
                     const fieldLocked =
-                        fieldCompleted || fieldPendingVerification;
+                        fieldCompleted ||
+                        fieldPendingVerification ||
+                        fieldBlocked;
                     const fieldApprovedActive = fieldApproved && !fieldLocked;
                     const fieldPendingAcceptance =
                         !fieldApproved && !fieldLocked;
@@ -496,10 +581,12 @@ export function RaisedBedPlantingScheduleSection({
                                 <Row className="min-w-0 flex-1 flex-nowrap gap-1 md:gap-2">
                                     {fieldCompleted ? (
                                         <Checkbox checked disabled />
-                                    ) : fieldPendingVerification ? (
+                                    ) : fieldPendingVerification &&
+                                      taskIdentity ? (
                                         <VerifyPlantingModal
                                             raisedBedId={field.raisedBedId}
                                             positionIndex={field.positionIndex}
+                                            {...taskIdentity}
                                             label={fieldLabel}
                                             onConfirm={() =>
                                                 runOptimisticAction({
@@ -516,6 +603,9 @@ export function RaisedBedPlantingScheduleSection({
                                                         verifyRaisedBedPlantingAction(
                                                             field.raisedBedId,
                                                             field.positionIndex,
+                                                            taskIdentity.expectedPlantCycleEventId,
+                                                            taskIdentity.expectedPlantSortId,
+                                                            taskIdentity.expectedPlantCycleVersionEventId,
                                                         ),
                                                     errorLogMessage:
                                                         'Error verifying planting:',
@@ -524,10 +614,15 @@ export function RaisedBedPlantingScheduleSection({
                                                 })
                                             }
                                         />
-                                    ) : field.plantSortId && !fieldApproved ? (
+                                    ) : fieldPendingVerification ? (
+                                        <Checkbox disabled />
+                                    ) : fieldBlocked ? (
+                                        <Checkbox disabled />
+                                    ) : taskIdentity && !fieldApproved ? (
                                         <AcceptRaisedBedFieldModal
                                             raisedBedId={field.raisedBedId}
                                             positionIndex={field.positionIndex}
+                                            {...taskIdentity}
                                             label={fieldLabel}
                                             raisedBedPhysicalId={physicalId}
                                             disabled={!field.assignedUserId}
@@ -546,6 +641,9 @@ export function RaisedBedPlantingScheduleSection({
                                                         acceptRaisedBedFieldAction(
                                                             field.raisedBedId,
                                                             field.positionIndex,
+                                                            taskIdentity.expectedPlantCycleEventId,
+                                                            taskIdentity.expectedPlantSortId,
+                                                            taskIdentity.expectedPlantCycleVersionEventId,
                                                         ),
                                                     errorLogMessage:
                                                         'Error accepting field request:',
@@ -554,12 +652,14 @@ export function RaisedBedPlantingScheduleSection({
                                                 })
                                             }
                                         />
-                                    ) : (
+                                    ) : taskIdentity ? (
                                         <CompletePlantingModal
                                             label={fieldLabel}
                                             raisedBedPhysicalId={physicalId}
                                             onConfirm={handlePlantConfirm}
                                         />
+                                    ) : (
+                                        <Checkbox disabled />
                                     )}
                                     <SchedulePlantVisual
                                         plantSort={sortData}
@@ -580,6 +680,11 @@ export function RaisedBedPlantingScheduleSection({
                                         <Typography
                                             level="body2"
                                             className={`shrink-0 italic ${fieldStatusClassName}`}
+                                            title={
+                                                fieldBlocked
+                                                    ? field.blockReasonLabel
+                                                    : undefined
+                                            }
                                         >
                                             {fieldStatusText}
                                         </Typography>
@@ -654,6 +759,12 @@ export function RaisedBedPlantingScheduleSection({
                                                     setRaisedBedFieldSowingLocationAction(
                                                         field.raisedBedId,
                                                         field.positionIndex,
+                                                        taskIdentity?.expectedPlantCycleEventId ??
+                                                            0,
+                                                        taskIdentity?.expectedPlantSortId ??
+                                                            0,
+                                                        taskIdentity?.expectedPlantCycleVersionEventId ??
+                                                            0,
                                                         nextSowingLocation,
                                                     ),
                                                 errorLogMessage:
@@ -662,6 +773,7 @@ export function RaisedBedPlantingScheduleSection({
                                                     'Promjena lokacije sijanja nije uspjela. Promjena je vraćena.',
                                             })
                                         }
+                                        disabled={fieldLocked || !taskIdentity}
                                     >
                                         {greenhouseSowing
                                             ? 'Staklenik'
@@ -669,133 +781,157 @@ export function RaisedBedPlantingScheduleSection({
                                     </Button>
                                 </Row>
                                 <Row spacing={0} className="ml-auto shrink-0">
-                                    <AssignRaisedBedFieldModal
-                                        raisedBedFieldId={field.id}
-                                        label={fieldLabel}
-                                        farmUsers={
-                                            assignableFarmUsersByRaisedBedFieldId[
-                                                field.id
-                                            ] ?? []
-                                        }
-                                        assignedUserIds={field.assignedUserIds}
-                                        disabled={fieldLocked}
-                                        onSubmit={(assignedUserIds) =>
-                                            runOptimisticAction({
-                                                fieldPatches: [
-                                                    {
-                                                        id: field.id,
-                                                        patch: {
-                                                            assignedUserId:
-                                                                assignedUserIds[0] ??
-                                                                null,
+                                    {taskIdentity ? (
+                                        <AssignRaisedBedFieldModal
+                                            raisedBedFieldId={field.id}
+                                            {...taskIdentity}
+                                            label={fieldLabel}
+                                            farmUsers={
+                                                assignableFarmUsersByRaisedBedFieldId[
+                                                    field.id
+                                                ] ?? []
+                                            }
+                                            assignedUserIds={
+                                                field.assignedUserIds
+                                            }
+                                            disabled={fieldLocked}
+                                            onSubmit={(assignedUserIds) =>
+                                                runOptimisticAction({
+                                                    fieldPatches: [
+                                                        {
+                                                            id: field.id,
+                                                            patch: {
+                                                                assignedUserId:
+                                                                    assignedUserIds[0] ??
+                                                                    null,
+                                                                assignedUserIds,
+                                                            },
+                                                        },
+                                                    ],
+                                                    action: () =>
+                                                        assignRaisedBedFieldUserAction(
+                                                            field.id,
+                                                            taskIdentity.expectedPlantCycleEventId,
+                                                            taskIdentity.expectedPlantSortId,
+                                                            taskIdentity.expectedPlantCycleVersionEventId,
                                                             assignedUserIds,
+                                                        ),
+                                                    errorLogMessage:
+                                                        'Error assigning planting user:',
+                                                    errorAlertMessage:
+                                                        'Dodjela sijanja nije uspjela. Promjena je vraćena.',
+                                                })
+                                            }
+                                        />
+                                    ) : null}
+                                    {taskIdentity ? (
+                                        <RescheduleRaisedBedFieldModal
+                                            field={{
+                                                raisedBedId: field.raisedBedId,
+                                                positionIndex:
+                                                    field.positionIndex,
+                                                ...taskIdentity,
+                                                plantScheduledDate:
+                                                    field.plantScheduledDate,
+                                            }}
+                                            fieldLabel={
+                                                sortData?.information?.name ??
+                                                field.plantSortId?.toString() ??
+                                                '?'
+                                            }
+                                            onSubmit={(formData) => {
+                                                const scheduledDate =
+                                                    formData.get(
+                                                        'scheduledDate',
+                                                    );
+                                                runOptimisticAction({
+                                                    fieldPatches: [
+                                                        {
+                                                            id: field.id,
+                                                            patch: {
+                                                                plantScheduledDate:
+                                                                    typeof scheduledDate ===
+                                                                    'string'
+                                                                        ? parseScheduledDateInput(
+                                                                              scheduledDate,
+                                                                          )
+                                                                        : undefined,
+                                                            },
                                                         },
-                                                    },
-                                                ],
-                                                action: () =>
-                                                    assignRaisedBedFieldUserAction(
-                                                        field.id,
-                                                        assignedUserIds,
-                                                    ),
-                                                errorLogMessage:
-                                                    'Error assigning planting user:',
-                                                errorAlertMessage:
-                                                    'Dodjela sijanja nije uspjela. Promjena je vraćena.',
-                                            })
-                                        }
-                                    />
-                                    <RescheduleRaisedBedFieldModal
-                                        field={{
-                                            raisedBedId: field.raisedBedId,
-                                            positionIndex: field.positionIndex,
-                                            plantScheduledDate:
-                                                field.plantScheduledDate,
-                                        }}
-                                        fieldLabel={
-                                            sortData?.information?.name ??
-                                            field.plantSortId?.toString() ??
-                                            '?'
-                                        }
-                                        onSubmit={(formData) => {
-                                            const scheduledDate =
-                                                formData.get('scheduledDate');
-                                            runOptimisticAction({
-                                                fieldPatches: [
-                                                    {
-                                                        id: field.id,
-                                                        patch: {
-                                                            plantScheduledDate:
-                                                                typeof scheduledDate ===
-                                                                'string'
-                                                                    ? parseScheduledDateInput(
-                                                                          scheduledDate,
-                                                                      )
-                                                                    : undefined,
+                                                    ],
+                                                    action: () =>
+                                                        rescheduleRaisedBedFieldAction(
+                                                            formData,
+                                                        ),
+                                                    errorLogMessage:
+                                                        'Error rescheduling planting:',
+                                                    errorAlertMessage:
+                                                        'Zakazivanje sijanja nije uspjelo. Promjena je vraćena.',
+                                                });
+                                            }}
+                                            trigger={
+                                                <IconButton
+                                                    variant="plain"
+                                                    size="xs"
+                                                    title={
+                                                        field.plantScheduledDate
+                                                            ? 'Prerasporedi sijanje'
+                                                            : 'Zakaži sijanje'
+                                                    }
+                                                    disabled={
+                                                        fieldLocked &&
+                                                        !fieldBlocked
+                                                    }
+                                                >
+                                                    <Calendar className="size-4 shrink-0" />
+                                                </IconButton>
+                                            }
+                                        />
+                                    ) : null}
+                                    {taskIdentity ? (
+                                        <CancelRaisedBedFieldModal
+                                            field={{
+                                                raisedBedId: field.raisedBedId,
+                                                positionIndex:
+                                                    field.positionIndex,
+                                                ...taskIdentity,
+                                            }}
+                                            fieldLabel={fieldLabel}
+                                            onSubmit={(formData) =>
+                                                runOptimisticAction({
+                                                    fieldPatches: [
+                                                        {
+                                                            id: field.id,
+                                                            patch: {
+                                                                isDeleted: true,
+                                                            },
                                                         },
-                                                    },
-                                                ],
-                                                action: () =>
-                                                    rescheduleRaisedBedFieldAction(
-                                                        formData,
-                                                    ),
-                                                errorLogMessage:
-                                                    'Error rescheduling planting:',
-                                                errorAlertMessage:
-                                                    'Zakazivanje sijanja nije uspjelo. Promjena je vraćena.',
-                                            });
-                                        }}
-                                        trigger={
-                                            <IconButton
-                                                variant="plain"
-                                                size="xs"
-                                                title={
-                                                    field.plantScheduledDate
-                                                        ? 'Prerasporedi sijanje'
-                                                        : 'Zakaži sijanje'
-                                                }
-                                                disabled={fieldLocked}
-                                            >
-                                                <Calendar className="size-4 shrink-0" />
-                                            </IconButton>
-                                        }
-                                    />
-                                    <CancelRaisedBedFieldModal
-                                        field={{
-                                            raisedBedId: field.raisedBedId,
-                                            positionIndex: field.positionIndex,
-                                        }}
-                                        fieldLabel={fieldLabel}
-                                        onSubmit={(formData) =>
-                                            runOptimisticAction({
-                                                fieldPatches: [
-                                                    {
-                                                        id: field.id,
-                                                        patch: {
-                                                            isDeleted: true,
-                                                        },
-                                                    },
-                                                ],
-                                                action: () =>
-                                                    cancelRaisedBedFieldAction(
-                                                        formData,
-                                                    ),
-                                                errorLogMessage:
-                                                    'Error canceling planting:',
-                                                errorAlertMessage:
-                                                    'Otkazivanje sijanja nije uspjelo. Promjena je vraćena.',
-                                            })
-                                        }
-                                        trigger={
-                                            <IconButton
-                                                variant="plain"
-                                                size="xs"
-                                                title="Otkaži sijanje"
-                                                disabled={fieldLocked}
-                                            >
-                                                <Close className="size-4 shrink-0" />
-                                            </IconButton>
-                                        }
-                                    />
+                                                    ],
+                                                    action: () =>
+                                                        cancelRaisedBedFieldAction(
+                                                            formData,
+                                                        ),
+                                                    errorLogMessage:
+                                                        'Error canceling planting:',
+                                                    errorAlertMessage:
+                                                        'Otkazivanje sijanja nije uspjelo. Promjena je vraćena.',
+                                                })
+                                            }
+                                            trigger={
+                                                <IconButton
+                                                    variant="plain"
+                                                    size="xs"
+                                                    title="Otkaži sijanje"
+                                                    disabled={
+                                                        fieldLocked &&
+                                                        !fieldBlocked
+                                                    }
+                                                >
+                                                    <Close className="size-4 shrink-0" />
+                                                </IconButton>
+                                            }
+                                        />
+                                    ) : null}
                                 </Row>
                             </Row>
                         </div>

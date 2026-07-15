@@ -439,10 +439,13 @@ function RaisedBedFieldTile({
             />
         ) : undefined;
     const locationControl =
-        field?.active && field.plantSortId ? (
+        field?.active && field.plantSortId && activePlantCycle ? (
             <RaisedBedFieldLocationSelector
                 raisedBedId={raisedBedId}
                 positionIndex={positionIndex}
+                expectedPlantCycleEventId={activePlantCycle.plantPlaceEventId}
+                expectedPlantCycleVersionEventId={activePlantCycle.endedEventId}
+                expectedPlantSortId={field.plantSortId}
                 sowingLocation={field.sowingLocation}
                 currentLocation={getCurrentLocation(field)}
                 greenhouseCurrentLocationEligible={canFieldCurrentlyBeInGreenhouse(
@@ -482,17 +485,25 @@ function RaisedBedFieldTile({
             positionIndex={positionIndex}
             status={field?.plantStatus ?? null}
             plantSortId={field?.plantSortId}
+            expectedPlantCycleEventId={activePlantCycle?.plantPlaceEventId}
+            expectedPlantCycleVersionEventId={activePlantCycle?.endedEventId}
             plantSorts={plantSorts}
             variant="plain"
             className={raisedBedFieldCardSelectClassName}
         />
     );
     const statusControl =
-        field?.active && field.plantStatus ? (
+        field?.active &&
+        field.plantStatus &&
+        field.plantSortId &&
+        activePlantCycle ? (
             <RaisedBedFieldStatusDateChip
                 raisedBedId={raisedBedId}
                 positionIndex={positionIndex}
                 status={field.plantStatus}
+                expectedPlantCycleEventId={activePlantCycle.plantPlaceEventId}
+                expectedPlantCycleVersionEventId={activePlantCycle.endedEventId}
+                expectedPlantSortId={field.plantSortId}
                 date={dateItems.find((item) => item.current)?.value ?? null}
                 dateItems={dateItems}
                 className={raisedBedFieldCardButtonClassName}

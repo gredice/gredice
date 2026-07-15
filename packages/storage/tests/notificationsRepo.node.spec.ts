@@ -8,7 +8,9 @@ import {
     cleanupNotificationRetention,
     createNotification,
     createNotificationCampaign,
+    createNotificationWithStatus,
     createUserWithPassword,
+    deliverNotificationOperatorAlert,
     enqueueNotificationCampaign,
     enqueuePushDeliveryAttemptsForNotification,
     gardens,
@@ -54,6 +56,268 @@ test('createNotification and getNotificationsByAccount basic usage', async () =>
     );
     assert.ok(Array.isArray(notifications));
     assert.ok(notifications.some((n) => n.id === notificationId));
+});
+
+test('createNotificationWithStatus reports only the first idempotent insert as created', async () => {
+    createTestDb();
+    const accountId = await createTestAccount();
+    const idempotencyKey = `checkout-fulfillment:${randomUUID()}`;
+    const notification = {
+        accountId,
+        header: 'Checkout fulfillment incident',
+        content: 'Operator action is required',
+        timestamp: new Date('2026-07-15T08:00:00.000Z'),
+    };
+
+    const first = await createNotificationWithStatus(notification, {
+        idempotencyKey,
+        routeDelivery: false,
+    });
+    const retry = await createNotificationWithStatus(notification, {
+        idempotencyKey,
+        routeDelivery: false,
+    });
+
+    assert.equal(first.created, true);
+    assert.equal(retry.created, false);
+    assert.equal(retry.notificationId, first.notificationId);
+    const matchingNotifications = await storage()
+        .select({ id: notifications.id })
+        .from(notifications)
+        .where(eq(notifications.id, first.notificationId));
+    assert.deepEqual(matchingNotifications, [{ id: first.notificationId }]);
+});
+
+test('operator alert delivery retries a failure and skips after success', async () => {
+    createTestDb();
+    const accountId = await createTestAccount();
+    const notificationId = await createNotification(
+        {
+            accountId,
+            header: 'Checkout fulfillment incident',
+            content: 'Operator action is required',
+            timestamp: new Date('2026-07-15T08:00:00.000Z'),
+        },
+        {
+            idempotencyKey: `checkout-fulfillment:${randomUUID()}`,
+            routeDelivery: false,
+        },
+    );
+    let deliveryCalls = 0;
+
+    const failed = await deliverNotificationOperatorAlert(
+        notificationId,
+        async () => {
+            deliveryCalls += 1;
+            throw new Error('transient Slack failure');
+        },
+    );
+    assert.equal(failed.status, 'failed');
+
+    const retried = await deliverNotificationOperatorAlert(
+        notificationId,
+        async () => {
+            deliveryCalls += 1;
+        },
+    );
+    assert.equal(retried.status, 'sent');
+
+    const repeated = await deliverNotificationOperatorAlert(
+        notificationId,
+        async () => {
+            deliveryCalls += 1;
+            throw new Error('successful delivery must not run again');
+        },
+    );
+    assert.deepEqual(repeated, {
+        attempted: false,
+        status: 'already_sent',
+    });
+    assert.equal(deliveryCalls, 2);
+
+    const [notification] = await storage()
+        .select({ metadata: notifications.metadata })
+        .from(notifications)
+        .where(eq(notifications.id, notificationId));
+    assert.ok(notification);
+    const operatorAlertDelivery = notification.metadata.operatorAlertDelivery;
+    assert.ok(
+        operatorAlertDelivery && typeof operatorAlertDelivery === 'object',
+    );
+    assert.equal('attemptCount' in operatorAlertDelivery, true);
+    assert.equal(operatorAlertDelivery.attemptCount, 2);
+    assert.equal('lastAttemptAt' in operatorAlertDelivery, true);
+    assert.equal(typeof operatorAlertDelivery.lastAttemptAt, 'string');
+    assert.equal('sentAt' in operatorAlertDelivery, true);
+    assert.equal(typeof operatorAlertDelivery.sentAt, 'string');
+    assert.equal('status' in operatorAlertDelivery, true);
+    assert.equal(operatorAlertDelivery.status, 'sent');
+});
+
+test('createNotification resumes an interrupted idempotent delivery without duplicates', async () => {
+    createTestDb();
+    const accountId = await createTestAccount();
+    const idempotencyKey = `schedule-task:operation-completed:${randomUUID()}`;
+    const notification = {
+        accountId,
+        header: 'Task completed',
+        content: 'A completed task notification',
+        timestamp: new Date('2026-07-15T08:00:00.000Z'),
+    };
+
+    // Model a request interrupted after the durable notification row was
+    // written but before delivery routing completed.
+    const interruptedNotificationId = await createNotification(notification, {
+        idempotencyKey,
+        routeDelivery: false,
+    });
+    const retryNotificationId = await createNotification(notification, {
+        idempotencyKey,
+    });
+    const repeatedRetryNotificationId = await createNotification(notification, {
+        idempotencyKey,
+    });
+
+    assert.equal(retryNotificationId, interruptedNotificationId);
+    assert.equal(repeatedRetryNotificationId, interruptedNotificationId);
+
+    const matchingNotifications = await storage()
+        .select({ id: notifications.id })
+        .from(notifications)
+        .where(eq(notifications.id, interruptedNotificationId));
+    assert.deepEqual(matchingNotifications, [
+        { id: interruptedNotificationId },
+    ]);
+
+    const attempts = await storage()
+        .select({
+            channel: notificationDeliveryAttempts.channel,
+            provider: notificationDeliveryAttempts.provider,
+            userId: notificationDeliveryAttempts.userId,
+        })
+        .from(notificationDeliveryAttempts)
+        .where(
+            eq(
+                notificationDeliveryAttempts.notificationId,
+                interruptedNotificationId,
+            ),
+        );
+    assert.equal(
+        attempts.filter((attempt) => attempt.provider === 'router').length,
+        3,
+    );
+    assert.equal(
+        new Set(
+            attempts.map(
+                (attempt) =>
+                    `${attempt.userId ?? 'account'}:${attempt.channel}:${attempt.provider}`,
+            ),
+        ).size,
+        attempts.length,
+    );
+});
+
+test('createNotification rejects an explicitly empty idempotency key', async () => {
+    createTestDb();
+    const accountId = await createTestAccount();
+
+    await assert.rejects(
+        createNotification(
+            {
+                accountId,
+                header: 'Invalid idempotency key',
+                content: 'This notification must not be created',
+                timestamp: new Date(),
+            },
+            { idempotencyKey: '   ' },
+        ),
+        /idempotency key cannot be empty/i,
+    );
+});
+
+test('createNotification serializes concurrent idempotent routing and push queueing', async () => {
+    createTestDb();
+    await ensureFarmId();
+    const userId = await createUserWithPassword(
+        `push-idempotency-${randomUUID()}@example.com`,
+        'password',
+    );
+    const user = await getUser(userId);
+    assert.ok(user);
+    const accountId = user.accounts[0]?.accountId;
+    assert.ok(accountId);
+
+    const subscriptionId = randomUUID();
+    await storage()
+        .insert(webPushSubscriptions)
+        .values({
+            id: subscriptionId,
+            accountId,
+            userId,
+            endpoint: `https://example.com/idempotency-${subscriptionId}`,
+            p256dh: 'k',
+            auth: 'a',
+            enabled: true,
+            permissionState: 'granted',
+        });
+
+    const idempotencyKey = `schedule-task:planting-completed:${randomUUID()}`;
+    const notification = {
+        accountId,
+        userId,
+        header: 'Concurrent task completion',
+        content: 'One notification and one queued push are expected',
+        timestamp: new Date('2026-07-15T09:00:00.000Z'),
+    };
+    const notificationIds = await Promise.all(
+        Array.from({ length: 8 }, () =>
+            createNotification(notification, { idempotencyKey }),
+        ),
+    );
+    assert.equal(new Set(notificationIds).size, 1);
+    const [notificationId] = notificationIds;
+    assert.ok(notificationId);
+
+    const matchingNotifications = await storage()
+        .select({ id: notifications.id })
+        .from(notifications)
+        .where(eq(notifications.id, notificationId));
+    assert.deepEqual(matchingNotifications, [{ id: notificationId }]);
+
+    const attempts = await storage()
+        .select({
+            channel: notificationDeliveryAttempts.channel,
+            provider: notificationDeliveryAttempts.provider,
+            pushSubscriptionId: notificationDeliveryAttempts.pushSubscriptionId,
+            userId: notificationDeliveryAttempts.userId,
+        })
+        .from(notificationDeliveryAttempts)
+        .where(eq(notificationDeliveryAttempts.notificationId, notificationId));
+    const routerAttempts = attempts.filter(
+        (attempt) => attempt.provider === 'router',
+    );
+    assert.deepEqual(
+        routerAttempts
+            .map((attempt) => `${attempt.userId}:${attempt.channel}`)
+            .sort(),
+        [`${userId}:email`, `${userId}:in_app`, `${userId}:push`],
+    );
+    assert.deepEqual(
+        attempts
+            .filter((attempt) => attempt.provider === 'web_push_queue')
+            .map((attempt) => ({
+                channel: attempt.channel,
+                pushSubscriptionId: attempt.pushSubscriptionId,
+                userId: attempt.userId,
+            })),
+        [
+            {
+                channel: 'push',
+                pushSubscriptionId: subscriptionId,
+                userId,
+            },
+        ],
+    );
 });
 
 test('createNotification routes and queues deliverable push by default', async () => {

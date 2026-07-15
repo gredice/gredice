@@ -92,6 +92,10 @@ function requirementLabel(
 }
 
 function ProofRequirements({ task }: { task: FarmTodayTask }) {
+    if (task.state === 'blocked') {
+        return null;
+    }
+
     const { images, notes } = task.proofRequirements;
     const imageLabel = requirementLabel('images', images);
     const notesLabel = requirementLabel('notes', notes);
@@ -154,6 +158,17 @@ export function FarmTodayTaskLink({
 }: FarmTodayTaskLinkProps) {
     const destinationLabel =
         task.kind === 'operation' ? 'Otvori upute' : 'Otvori gredicu';
+    const blockerTimestamp = task.blocker?.occurredAt
+        ? new Date(task.blocker.occurredAt)
+        : null;
+    const blockerTimestampLabel =
+        blockerTimestamp && Number.isFinite(blockerTimestamp.getTime())
+            ? new Intl.DateTimeFormat('hr-HR', {
+                  dateStyle: 'medium',
+                  timeStyle: 'short',
+                  timeZone: 'Europe/Zagreb',
+              }).format(blockerTimestamp)
+            : null;
 
     return (
         <NextLink
@@ -202,6 +217,26 @@ export function FarmTodayTaskLink({
                         )}
                     </div>
                     <ProofRequirements task={task} />
+                    {task.blocker ? (
+                        <div className="rounded-md bg-amber-50 px-2 py-1.5 text-xs text-amber-950 dark:bg-amber-950/40 dark:text-amber-100 [overflow-wrap:anywhere]">
+                            <div className="font-semibold">
+                                Prijavljeno administratorima
+                            </div>
+                            <div>
+                                {task.blocker.reason ||
+                                    'Zadatak nije bilo moguće dovršiti.'}
+                            </div>
+                            {blockerTimestampLabel ? (
+                                <time
+                                    dateTime={
+                                        task.blocker.occurredAt ?? undefined
+                                    }
+                                >
+                                    {blockerTimestampLabel}
+                                </time>
+                            ) : null}
+                        </div>
+                    ) : null}
                     <span className="inline-flex min-h-6 items-center gap-1 text-xs font-semibold text-primary">
                         {destinationLabel}
                         <Navigate aria-hidden className="size-3.5" />

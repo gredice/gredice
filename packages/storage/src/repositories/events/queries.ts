@@ -88,9 +88,12 @@ const aiPlantStatusReviewModuleKey =
     'action.createPlantStatusRequestsFromImageAnalysis';
 
 const scheduleInvalidatingEventTypes = new Set<string>([
+    knownEventTypes.operations.acceptance,
     knownEventTypes.operations.assign,
+    knownEventTypes.operations.entityChange,
     knownEventTypes.operations.schedule,
     knownEventTypes.operations.complete,
+    knownEventTypes.operations.block,
     knownEventTypes.operations.completionEvidenceUpdate,
     knownEventTypes.operations.verify,
     knownEventTypes.operations.fail,
@@ -103,6 +106,7 @@ const scheduleInvalidatingEventTypes = new Set<string>([
     knownEventTypes.raisedBedFields.plantPlace,
     knownEventTypes.raisedBedFields.plantSchedule,
     knownEventTypes.raisedBedFields.plantUpdate,
+    knownEventTypes.raisedBedFields.plantBlock,
     knownEventTypes.raisedBedFields.plantReplaceSort,
 ]);
 
@@ -301,6 +305,15 @@ export function getLatestEvents(
         orderBy: [desc(events.createdAt), desc(events.id)],
         offset,
         limit,
+    });
+}
+
+export async function getEventById(
+    eventId: number,
+    db: DatabaseClient = storage(),
+) {
+    return db.query.events.findFirst({
+        where: eq(events.id, eventId),
     });
 }
 
@@ -685,26 +698,25 @@ export async function getSunflowersDailyTotals(filter?: {
 }
 
 export async function deleteEventById(eventId: number) {
-    const event = await storage().query.events.findFirst({
-        where: eq(events.id, eventId),
-    });
+    const event = await getEventById(eventId);
     await storage().delete(events).where(eq(events.id, eventId));
     if (event) {
         await bustReadModelCachesForEvent(event);
     }
 }
 
-export async function updateEventCreatedAt(eventId: number, createdAt: Date) {
-    const event = await storage().query.events.findFirst({
+export async function updateEventCreatedAt(
+    eventId: number,
+    createdAt: Date,
+    db: DatabaseClient = storage(),
+) {
+    const event = await db.query.events.findFirst({
         where: eq(events.id, eventId),
     });
     if (!event) {
         return;
     }
-    await storage()
-        .update(events)
-        .set({ createdAt })
-        .where(eq(events.id, eventId));
+    await db.update(events).set({ createdAt }).where(eq(events.id, eventId));
     await bustReadModelCachesForEvent(event);
 }
 

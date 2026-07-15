@@ -5,6 +5,7 @@ interface RescheduleOperationModalProps {
     operation: {
         id: number;
         entityId: number;
+        taskVersionEventId: number;
         scheduledDate?: Date;
     };
     operationLabel: string;
@@ -25,7 +26,23 @@ export function RescheduleOperationModal({
             trigger={trigger}
             onSubmit={onSubmit ?? rescheduleOperationAction}
             hiddenFields={
-                <input type="hidden" name="operationId" value={operation.id} />
+                <>
+                    <input
+                        type="hidden"
+                        name="operationId"
+                        value={operation.id}
+                    />
+                    <input
+                        type="hidden"
+                        name="expectedEntityId"
+                        value={operation.entityId}
+                    />
+                    <input
+                        type="hidden"
+                        name="expectedTaskVersionEventId"
+                        value={operation.taskVersionEventId}
+                    />
+                </>
             }
         />
     );

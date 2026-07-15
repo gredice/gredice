@@ -8,6 +8,8 @@ import type { ReactNode } from 'react';
 import { OperationCompletionAttachments } from './OperationCompletionAttachments';
 import { OperationProofRequirements } from './OperationProofRequirements';
 import { ScheduleTaskAgeIndicatorChip } from './ScheduleTaskAgeIndicatorChip';
+import { ScheduleTaskBlockedDetails } from './ScheduleTaskBlockedDetails';
+import { ScheduleTaskBlockerModal } from './ScheduleTaskBlockerModal';
 import { ScheduleTaskDateChip } from './ScheduleTaskDateChip';
 import { ScheduleTaskDetailsLink } from './ScheduleTaskDetailsLink';
 import { ScheduleTaskDurationChip } from './ScheduleTaskDurationChip';
@@ -43,10 +45,17 @@ export type FarmOperationCardData = Pick<
     | 'imageUrls'
     | 'scheduledDate'
     | 'status'
-> & {
-    durationMinutes: number;
-    label: string;
-};
+    | 'taskVersionEventId'
+> &
+    Partial<
+        Pick<
+            FarmOperation,
+            'blockedAt' | 'blockImageUrls' | 'blockNote' | 'blockReasonLabel'
+        >
+    > & {
+        durationMinutes: number;
+        label: string;
+    };
 
 type FarmScheduleOperationTaskCardProps = {
     completionAction?: ReactNode;
@@ -70,6 +79,8 @@ export function FarmScheduleOperationTaskCard({
         taskPresentation.showCompletionControl &&
         assignment !== 'other' &&
         Boolean(operationData);
+    const canReportBlocker =
+        taskPresentation.showCompletionControl && assignment !== 'other';
     const requirements =
         getScheduleOperationCompletionRequirements(operationData);
     const showProofRequirements =
@@ -187,9 +198,32 @@ export function FarmScheduleOperationTaskCard({
                     imageUrls={operation.imageUrls}
                 />
             )}
+            {taskState === 'blocked' && (
+                <ScheduleTaskBlockedDetails
+                    blockedAt={operation.blockedAt}
+                    imageUrls={operation.blockImageUrls}
+                    note={operation.blockNote}
+                    reason={operation.blockReasonLabel}
+                    taskKey={`operation-${operation.id}`}
+                />
+            )}
             <ScheduleTaskStateControl
                 action={canComplete ? completionAction : undefined}
                 actionLabel="Dovrši radnju"
+                blockerAction={
+                    canReportBlocker ? (
+                        <ScheduleTaskBlockerModal
+                            label={operation.label}
+                            target={{
+                                expectedEntityId: operation.entityId,
+                                expectedTaskVersionEventId:
+                                    operation.taskVersionEventId,
+                                kind: 'operation',
+                                operationId: operation.id,
+                            }}
+                        />
+                    ) : undefined
+                }
                 label={operation.label}
                 state={taskState}
                 unavailableTitle={

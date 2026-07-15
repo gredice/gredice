@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import {
     and,
     asc,
@@ -35,6 +35,12 @@ import {
     webPushSubscriptions,
 } from '../schema';
 
+type StorageClient = ReturnType<typeof storage>;
+type TransactionClient = Parameters<
+    Parameters<StorageClient['transaction']>[0]
+>[0];
+type DatabaseClient = StorageClient | TransactionClient;
+
 type DeliveryChannel = 'email' | 'in_app' | 'push';
 type DeliveryOutcome = 'immediate' | 'digest' | 'suppressed' | 'required';
 type DeliveryAttemptStatus = 'accepted' | 'queued' | 'dropped';
@@ -44,6 +50,9 @@ type NotificationCampaignExplicitRecipient = Extract<
     NotificationCampaignAudience,
     { type: 'explicit' }
 >['recipients'][number];
+
+const notificationIdempotencyAdvisoryLockNamespace = 707_417;
+const notificationOperatorAlertAdvisoryLockNamespace = 707_418;
 
 // Croatian fallback label for legacy web-push subscriptions without client device metadata.
 export const notificationRolloutDefaultDeviceLabel = 'Web preglednik';
@@ -120,8 +129,21 @@ export type NotificationRolloutDiagnostics = {
 };
 
 export type CreateNotificationOptions = {
+    idempotencyKey?: string;
     routeDelivery?: boolean;
 };
+
+function notificationIdFromIdempotencyKey(idempotencyKey: string) {
+    const normalizedKey = idempotencyKey.trim();
+    if (!normalizedKey) {
+        throw new Error('Notification idempotency key cannot be empty.');
+    }
+
+    const digest = createHash('sha256')
+        .update(`gredice:notification:${normalizedKey}`)
+        .digest('hex');
+    return `${digest.slice(0, 8)}-${digest.slice(8, 12)}-5${digest.slice(13, 16)}-a${digest.slice(17, 20)}-${digest.slice(20, 32)}`;
+}
 
 type NotificationRolloutPreferenceDefault = {
     category: string;
@@ -1190,13 +1212,20 @@ export async function cancelNotificationCampaign({
     return result[0];
 }
 
-export async function getNotification(
+async function getNotificationUsing(
+    database: DatabaseClient,
     id: string,
 ): Promise<SelectNotification | undefined> {
-    const result = await storage().query.notifications.findFirst({
+    const result = await database.query.notifications.findFirst({
         where: eq(notifications.id, id),
     });
     return result;
+}
+
+export async function getNotification(
+    id: string,
+): Promise<SelectNotification | undefined> {
+    return getNotificationUsing(storage(), id);
 }
 
 function shouldQueuePushDelivery(decisions: NotificationDeliveryDecision[]) {
@@ -1224,18 +1253,191 @@ function queueablePushDeliveryUserIds(
     );
 }
 
+export async function createNotificationWithStatus(
+    notification: InsertNotification,
+    options: CreateNotificationOptions & { idempotencyKey: string },
+) {
+    const notificationId = notificationIdFromIdempotencyKey(
+        options.idempotencyKey,
+    );
+
+    return storage().transaction(async (transaction) => {
+        await transaction.execute(
+            sql`select pg_advisory_xact_lock(${notificationIdempotencyAdvisoryLockNamespace}, hashtext(${notificationId}));`,
+        );
+        const inserted = await transaction
+            .insert(notifications)
+            .values({
+                ...notification,
+                id: notificationId,
+            })
+            .onConflictDoNothing({ target: notifications.id })
+            .returning({ id: notifications.id });
+
+        if (options.routeDelivery !== false) {
+            const decisions = await routeNotificationDeliveryUsing(
+                transaction,
+                notificationId,
+            );
+            const pushUserIds = queueablePushDeliveryUserIds(decisions);
+            if (pushUserIds.length > 0) {
+                await enqueuePushDeliveryAttemptsUsing(transaction, {
+                    notificationId,
+                    userIds: pushUserIds,
+                });
+            }
+        }
+
+        return {
+            notificationId,
+            created: inserted.length > 0,
+        };
+    });
+}
+
+export type NotificationOperatorAlertDeliveryResult =
+    | {
+          attempted: false;
+          status: 'already_sent';
+      }
+    | {
+          attempted: true;
+          status: 'failed';
+          error: unknown;
+      }
+    | {
+          attempted: true;
+          status: 'sent';
+      };
+
+function operatorAlertAttemptCount(metadata: Record<string, unknown>) {
+    const delivery = metadata.operatorAlertDelivery;
+    if (
+        delivery &&
+        typeof delivery === 'object' &&
+        'attemptCount' in delivery &&
+        typeof delivery.attemptCount === 'number'
+    ) {
+        return delivery.attemptCount;
+    }
+    return 0;
+}
+
+function operatorAlertAlreadySent(metadata: Record<string, unknown>) {
+    const delivery = metadata.operatorAlertDelivery;
+    return (
+        delivery !== null &&
+        typeof delivery === 'object' &&
+        'status' in delivery &&
+        delivery.status === 'sent'
+    );
+}
+
+function notificationDeliveryFailureReason(error: unknown) {
+    return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * Delivers an operator alert under a per-notification transaction lock and
+ * records its outcome in notification metadata. Failed alerts remain
+ * retryable; a successful alert is skipped by later checkout webhook retries.
+ */
+export async function deliverNotificationOperatorAlert(
+    notificationId: string,
+    deliver: () => Promise<void>,
+): Promise<NotificationOperatorAlertDeliveryResult> {
+    return storage().transaction(async (transaction) => {
+        await transaction.execute(
+            sql`select pg_advisory_xact_lock(${notificationOperatorAlertAdvisoryLockNamespace}, hashtext(${notificationId}));`,
+        );
+        const notification = await getNotificationUsing(
+            transaction,
+            notificationId,
+        );
+        if (!notification) {
+            throw new Error('Notification operator alert target not found.');
+        }
+        if (operatorAlertAlreadySent(notification.metadata)) {
+            return {
+                attempted: false,
+                status: 'already_sent',
+            };
+        }
+
+        const attemptCount =
+            operatorAlertAttemptCount(notification.metadata) + 1;
+        const attemptedAt = new Date();
+        try {
+            await deliver();
+        } catch (error) {
+            await transaction
+                .update(notifications)
+                .set({
+                    metadata: {
+                        ...notification.metadata,
+                        operatorAlertDelivery: {
+                            attemptCount,
+                            lastAttemptAt: attemptedAt.toISOString(),
+                            lastFailureReason:
+                                notificationDeliveryFailureReason(error),
+                            status: 'failed',
+                        },
+                    },
+                })
+                .where(eq(notifications.id, notificationId));
+            return {
+                attempted: true,
+                status: 'failed',
+                error,
+            };
+        }
+
+        await transaction
+            .update(notifications)
+            .set({
+                metadata: {
+                    ...notification.metadata,
+                    operatorAlertDelivery: {
+                        attemptCount,
+                        lastAttemptAt: attemptedAt.toISOString(),
+                        sentAt: new Date().toISOString(),
+                        status: 'sent',
+                    },
+                },
+            })
+            .where(eq(notifications.id, notificationId));
+        return {
+            attempted: true,
+            status: 'sent',
+        };
+    });
+}
+
 export async function createNotification(
     notification: InsertNotification,
     options: CreateNotificationOptions = {},
 ) {
-    const result = await storage()
+    const { idempotencyKey } = options;
+    const hasIdempotencyKey = idempotencyKey !== undefined;
+    const notificationId = hasIdempotencyKey
+        ? notificationIdFromIdempotencyKey(idempotencyKey)
+        : randomUUID();
+
+    if (hasIdempotencyKey) {
+        return (
+            await createNotificationWithStatus(notification, {
+                ...options,
+                idempotencyKey,
+            })
+        ).notificationId;
+    }
+
+    await storage()
         .insert(notifications)
         .values({
-            id: randomUUID(),
+            id: notificationId,
             ...notification,
-        })
-        .returning({ id: notifications.id });
-    const notificationId = result[0].id;
+        });
 
     if (options.routeDelivery !== false) {
         const decisions = await routeNotificationDelivery(notificationId);
@@ -1251,27 +1453,37 @@ export async function createNotification(
     return notificationId;
 }
 
-export async function enqueuePushDeliveryAttemptsForNotification({
-    notificationId,
-    batchSize = 100,
-    userIds,
-}: {
+type EnqueuePushDeliveryAttemptsInput = {
     notificationId: string;
     batchSize?: number;
     userIds?: string[];
-}) {
-    const notification = await getNotification(notificationId);
+};
+
+async function enqueuePushDeliveryAttemptsUsing(
+    database: DatabaseClient,
+    {
+        notificationId,
+        batchSize = 100,
+        userIds,
+    }: EnqueuePushDeliveryAttemptsInput,
+) {
+    const notification = await getNotificationUsing(database, notificationId);
     if (!notification) return { queued: 0, skipped: 0 };
     const targetUserIds = userIds
         ? uniqueStrings(userIds)
         : uniqueStrings(
-              (await getNotificationDeliveryRecipients(notification)).flatMap(
-                  (recipient) => (recipient.userId ? [recipient.userId] : []),
+              (
+                  await getNotificationDeliveryRecipients(
+                      database,
+                      notification,
+                  )
+              ).flatMap((recipient) =>
+                  recipient.userId ? [recipient.userId] : [],
               ),
           );
     if (targetUserIds.length === 0) return { queued: 0, skipped: 0 };
 
-    const subscriptions = await storage().query.webPushSubscriptions.findMany({
+    const subscriptions = await database.query.webPushSubscriptions.findMany({
         where: and(
             eq(webPushSubscriptions.enabled, true),
             eq(webPushSubscriptions.permissionState, 'granted'),
@@ -1284,7 +1496,7 @@ export async function enqueuePushDeliveryAttemptsForNotification({
 
     if (!subscriptions.length) return { queued: 0, skipped: 0 };
 
-    const existing = await storage()
+    const existing = await database
         .select({
             pushSubscriptionId: notificationDeliveryAttempts.pushSubscriptionId,
         })
@@ -1324,7 +1536,7 @@ export async function enqueuePushDeliveryAttemptsForNotification({
             providerResponseCode: 'queued_background',
         }));
 
-    await storage()
+    await database
         .insert(notificationDeliveryAttempts)
         .values(deliveryAttempts);
 
@@ -1332,6 +1544,18 @@ export async function enqueuePushDeliveryAttemptsForNotification({
         queued: pending.length,
         skipped: subscriptions.length - pending.length,
     };
+}
+
+export async function enqueuePushDeliveryAttemptsForNotification({
+    notificationId,
+    batchSize = 100,
+    userIds,
+}: EnqueuePushDeliveryAttemptsInput) {
+    return enqueuePushDeliveryAttemptsUsing(storage(), {
+        notificationId,
+        batchSize,
+        userIds,
+    });
 }
 
 function hasPushSubscriptionUserId(
@@ -1343,6 +1567,7 @@ function hasPushSubscriptionUserId(
 }
 
 async function getNotificationDeliveryRecipients(
+    database: DatabaseClient,
     notification: Pick<SelectNotification, 'accountId' | 'userId'>,
 ): Promise<NotificationDeliveryRecipient[]> {
     if (notification.userId) {
@@ -1354,7 +1579,7 @@ async function getNotificationDeliveryRecipients(
         ];
     }
 
-    const rows = await storage()
+    const rows = await database
         .select({ userId: accountUsers.userId })
         .from(accountUsers)
         .where(eq(accountUsers.accountId, notification.accountId));
@@ -1381,12 +1606,18 @@ function notificationDeliveryRoutingKey(decision: {
     return `${decision.userId ?? 'account'}:${decision.channel}`;
 }
 
-export async function routeNotificationDelivery(notificationId: string) {
-    const notification = await getNotification(notificationId);
+async function routeNotificationDeliveryUsing(
+    database: DatabaseClient,
+    notificationId: string,
+) {
+    const notification = await getNotificationUsing(database, notificationId);
     if (!notification) return [];
     const now = new Date();
     const targetChannels: DeliveryChannel[] = ['in_app', 'email', 'push'];
-    const recipients = await getNotificationDeliveryRecipients(notification);
+    const recipients = await getNotificationDeliveryRecipients(
+        database,
+        notification,
+    );
     const recipientUserIds = uniqueStrings(
         recipients.flatMap((recipient) =>
             recipient.userId ? [recipient.userId] : [],
@@ -1394,18 +1625,16 @@ export async function routeNotificationDelivery(notificationId: string) {
     );
     const preferences =
         recipientUserIds.length > 0
-            ? await storage().query.notificationUserChannelPreferences.findMany(
-                  {
-                      where: inArray(
-                          notificationUserChannelPreferences.userId,
-                          recipientUserIds,
-                      ),
-                  },
-              )
+            ? await database.query.notificationUserChannelPreferences.findMany({
+                  where: inArray(
+                      notificationUserChannelPreferences.userId,
+                      recipientUserIds,
+                  ),
+              })
             : [];
     const pushSubscriptionRows =
         recipientUserIds.length > 0
-            ? await storage()
+            ? await database
                   .select({ userId: webPushSubscriptions.userId })
                   .from(webPushSubscriptions)
                   .where(
@@ -1470,7 +1699,7 @@ export async function routeNotificationDelivery(notificationId: string) {
     );
 
     if (notification.userId || notification.accountId) {
-        const existingRouterAttempts = await storage()
+        const existingRouterAttempts = await database
             .select({
                 channel: notificationDeliveryAttempts.channel,
                 userId: notificationDeliveryAttempts.userId,
@@ -1494,25 +1723,25 @@ export async function routeNotificationDelivery(notificationId: string) {
         );
 
         if (unroutedDecisions.length > 0) {
-            await storage()
-                .insert(notificationDeliveryAttempts)
-                .values(
-                    unroutedDecisions.map((decision) => ({
-                        notificationId,
-                        userId: decision.userId,
-                        accountId: decision.accountId,
-                        channel: decision.channel,
-                        status: deliveryAttemptStatusForOutcome(
-                            decision.outcome,
-                        ),
-                        provider: 'router',
-                        providerResponseCode: decision.reason,
-                    })),
-                );
+            await database.insert(notificationDeliveryAttempts).values(
+                unroutedDecisions.map((decision) => ({
+                    notificationId,
+                    userId: decision.userId,
+                    accountId: decision.accountId,
+                    channel: decision.channel,
+                    status: deliveryAttemptStatusForOutcome(decision.outcome),
+                    provider: 'router',
+                    providerResponseCode: decision.reason,
+                })),
+            );
         }
     }
 
     return decisions;
+}
+
+export async function routeNotificationDelivery(notificationId: string) {
+    return routeNotificationDeliveryUsing(storage(), notificationId);
 }
 
 export async function recordNotificationDeliveryEvent({

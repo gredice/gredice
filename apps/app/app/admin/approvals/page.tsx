@@ -229,6 +229,8 @@ export default async function AdminApprovalsPage() {
                                                             action={approveScheduleOperationTaskAction.bind(
                                                                 null,
                                                                 task.operationId,
+                                                                task.expectedEntityId,
+                                                                task.expectedTaskVersionEventId,
                                                             )}
                                                         >
                                                             <Button
@@ -245,6 +247,9 @@ export default async function AdminApprovalsPage() {
                                                             null,
                                                             task.raisedBedId,
                                                             task.positionIndex,
+                                                            task.expectedPlantCycleEventId,
+                                                            task.expectedPlantSortId,
+                                                            task.expectedPlantCycleVersionEventId,
                                                         )}
                                                     >
                                                         <Button

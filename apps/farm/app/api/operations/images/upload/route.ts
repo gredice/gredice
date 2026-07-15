@@ -1,15 +1,20 @@
-import {
-    getFarmUserAcceptedOperationById,
-    getOperationById,
-} from '@gredice/storage';
 import { handleUpload } from '@vercel/blob/client';
 import { withAuth } from '../../../../../lib/auth/auth';
-import { assertScheduleOperationTaskAvailableToUser } from '../../../../schedule/scheduleTaskAssignment';
-import { assertPositiveSafeInteger } from '../../../../schedule/scheduleTaskInput';
+import { getFarmOperationCompletionImagePathPrefix } from '../../../../schedule/operationCompletionProof';
+import { parseScheduleOperationCompletionRequirementsFingerprint } from '../../../../schedule/scheduleOperationRequirements';
+import {
+    assertNonNegativeSafeInteger,
+    assertPositiveSafeInteger,
+} from '../../../../schedule/scheduleTaskInput';
+import {
+    assertScheduleTaskUploadTarget,
+    ScheduleTaskUploadTargetError,
+    validateScheduleOperationUploadTarget,
+} from '../../../../schedule/scheduleTaskUploadValidation';
 
 const MAX_OPERATION_IMAGE_SIZE_BYTES = 25 * 1024 * 1024;
 
-function getOperationIdFromClientPayload(clientPayload: string | null) {
+function getOperationTargetFromClientPayload(clientPayload: string | null) {
     if (!clientPayload) {
         throw new Error('Operation upload payload is required');
     }
@@ -25,36 +30,24 @@ function getOperationIdFromClientPayload(clientPayload: string | null) {
         throw new Error('Invalid operation upload payload');
     }
 
-    const operationId = Reflect.get(parsedPayload, 'operationId');
-    return assertPositiveSafeInteger(
-        operationId,
-        'Invalid operation upload payload',
-    );
-}
-
-function getOperationPathPrefix(operationId: number) {
-    return `operations/${operationId}/`;
-}
-
-async function getAuthorizedOperation(
-    operationId: number,
-    userId: string,
-    role: string,
-) {
-    const operation =
-        role === 'admin'
-            ? await getOperationById(operationId)
-            : await getFarmUserAcceptedOperationById(userId, operationId);
-
-    if (!operation) {
-        throw new Error('Operation not found');
-    }
-
-    if (role !== 'admin') {
-        assertScheduleOperationTaskAvailableToUser(operation, userId);
-    }
-
-    return operation;
+    return {
+        expectedEntityId: assertPositiveSafeInteger(
+            Reflect.get(parsedPayload, 'expectedEntityId'),
+            'Invalid operation upload payload',
+        ),
+        expectedRequirementsFingerprint:
+            parseScheduleOperationCompletionRequirementsFingerprint(
+                Reflect.get(parsedPayload, 'expectedRequirementsFingerprint'),
+            ),
+        expectedTaskVersionEventId: assertNonNegativeSafeInteger(
+            Reflect.get(parsedPayload, 'expectedTaskVersionEventId'),
+            'Invalid operation upload payload',
+        ),
+        operationId: assertPositiveSafeInteger(
+            Reflect.get(parsedPayload, 'operationId'),
+            'Invalid operation upload payload',
+        ),
+    };
 }
 
 export async function POST(request: Request) {
@@ -65,17 +58,30 @@ export async function POST(request: Request) {
                 request,
                 body,
                 onBeforeGenerateToken: async (pathname, clientPayload) => {
-                    const operationId =
-                        getOperationIdFromClientPayload(clientPayload);
-                    await getAuthorizedOperation(
+                    const {
+                        expectedEntityId,
+                        expectedRequirementsFingerprint,
+                        expectedTaskVersionEventId,
                         operationId,
-                        userId,
-                        user.role,
+                    } = getOperationTargetFromClientPayload(clientPayload);
+                    assertScheduleTaskUploadTarget(
+                        await validateScheduleOperationUploadTarget({
+                            actor: { role: user.role, userId },
+                            expectedEntityId,
+                            expectedRequirementsFingerprint,
+                            expectedTaskVersionEventId,
+                            operationId,
+                            purpose: 'completion',
+                        }),
                     );
 
                     if (
                         !pathname.startsWith(
-                            getOperationPathPrefix(operationId),
+                            getFarmOperationCompletionImagePathPrefix(
+                                operationId,
+                                expectedEntityId,
+                                expectedTaskVersionEventId,
+                            ),
                         )
                     ) {
                         throw new Error('Invalid upload path');
@@ -91,12 +97,29 @@ export async function POST(request: Request) {
 
             return Response.json(json);
         } catch (error) {
+            if (error instanceof ScheduleTaskUploadTargetError) {
+                return Response.json(
+                    {
+                        canRetry: error.canRetry,
+                        code: error.code,
+                        error: error.message,
+                    },
+                    { status: 409 },
+                );
+            }
             const message =
                 error instanceof Error
                     ? error.message
                     : 'Unable to prepare image upload';
 
-            return Response.json({ error: message }, { status: 400 });
+            return Response.json(
+                {
+                    canRetry: false,
+                    code: 'invalid_input',
+                    error: message,
+                },
+                { status: 400 },
+            );
         }
     });
 }

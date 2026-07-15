@@ -17,6 +17,11 @@ import { Typography } from '@gredice/ui/Typography';
 import type { ReactNode } from 'react';
 import { updateRaisedBedEventDateAction } from '../../app/(actions)/raisedBedEventsActions';
 import { KnownPages } from '../../src/KnownPages';
+import {
+    canMutateRaisedBedHistoryEvent,
+    raisedBedFieldHistoryEventTypes,
+    raisedBedHistoryEventTypes,
+} from '../../src/raisedBedEventMutationPolicy';
 import { EventDateEditButton } from '../shared/events/EventDateEditButton';
 import { EventsTable } from '../shared/events/EventsTable';
 import { NoDataPlaceholder } from '../shared/placeholders/NoDataPlaceholder';
@@ -41,24 +46,6 @@ const RAISED_BED_EVENTS_PAGE_PARAM = 'eventsPage';
 const RAISED_BED_EVENTS_PAGE_SIZE = 25;
 const DEFAULT_RAISED_BED_EVENTS_SCOPE: RaisedBedEventsScope = 'plants';
 
-const RAISED_BED_EVENT_TYPES = [
-    knownEventTypes.raisedBeds.create,
-    knownEventTypes.raisedBeds.place,
-    knownEventTypes.raisedBeds.delete,
-    knownEventTypes.raisedBeds.abandon,
-    knownEventTypes.raisedBeds.aiAnalysis,
-];
-
-const PLANT_EVENT_TYPES = [
-    knownEventTypes.raisedBedFields.create,
-    knownEventTypes.raisedBedFields.delete,
-    knownEventTypes.raisedBedFields.plantPlace,
-    knownEventTypes.raisedBedFields.plantSchedule,
-    knownEventTypes.raisedBedFields.plantUpdate,
-    knownEventTypes.raisedBedFields.plantReplaceSort,
-    knownEventTypes.raisedBedFields.aiAnalysis,
-];
-
 const EVENT_TYPE_LABELS: Record<string, string> = {
     [knownEventTypes.raisedBeds.create]: 'Gredica stvorena',
     [knownEventTypes.raisedBeds.place]: 'Gredica postavljena',
@@ -70,6 +57,7 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
     [knownEventTypes.raisedBedFields.plantPlace]: 'Biljka postavljena',
     [knownEventTypes.raisedBedFields.plantSchedule]: 'Biljka planirana',
     [knownEventTypes.raisedBedFields.plantUpdate]: 'Biljka ažurirana',
+    [knownEventTypes.raisedBedFields.plantBlock]: 'Sijanje blokirano',
     [knownEventTypes.raisedBedFields.plantReplaceSort]: 'Biljka promijenjena',
     [knownEventTypes.raisedBedFields.aiAnalysis]: 'Analiza biljke',
 };
@@ -370,7 +358,7 @@ export async function RaisedBedEventsTable({
     const fieldEventAggregateIds =
         scope === 'plants'
             ? await getEventAggregateIdsByAggregateIdPrefix(
-                  PLANT_EVENT_TYPES,
+                  raisedBedFieldHistoryEventTypes,
                   fieldAggregatePrefix,
               )
             : [];
@@ -387,20 +375,20 @@ export async function RaisedBedEventsTable({
     const eventsPage =
         scope === 'raisedBed'
             ? await getLatestEvents(
-                  RAISED_BED_EVENT_TYPES,
+                  raisedBedHistoryEventTypes,
                   [raisedBedId.toString()],
                   offset,
                   RAISED_BED_EVENTS_PAGE_SIZE + 1,
               )
             : typeof selectedPositionIndex === 'number'
               ? await getLatestEvents(
-                    PLANT_EVENT_TYPES,
+                    raisedBedFieldHistoryEventTypes,
                     [fieldAggregateId(raisedBedId, selectedPositionIndex)],
                     offset,
                     RAISED_BED_EVENTS_PAGE_SIZE + 1,
                 )
               : await getLatestEventsByAggregateIdPrefix(
-                    PLANT_EVENT_TYPES,
+                    raisedBedFieldHistoryEventTypes,
                     fieldAggregatePrefix,
                     offset,
                     RAISED_BED_EVENTS_PAGE_SIZE + 1,
@@ -533,26 +521,39 @@ export async function RaisedBedEventsTable({
                 <EventsTable
                     actionsColumnClassName="w-32 text-right"
                     events={events}
-                    renderActions={(event) => (
-                        <RaisedBedEventDeleteButton
-                            eventId={event.id}
-                            raisedBedId={raisedBedId}
-                        />
-                    )}
+                    renderActions={(event) =>
+                        canMutateRaisedBedHistoryEvent(event, raisedBedId) ? (
+                            <RaisedBedEventDeleteButton
+                                eventId={event.id}
+                                raisedBedId={raisedBedId}
+                            />
+                        ) : (
+                            <Typography
+                                level="body3"
+                                className="text-muted-foreground"
+                            >
+                                Samo čitanje
+                            </Typography>
+                        )
+                    }
                     renderDetails={(event) => renderEventDetails(event)}
                     renderLocation={(event) =>
                         getEventLocationLabel(event.aggregateId, raisedBedId)
                     }
-                    renderTime={(event) => (
-                        <EventDateEditButton
-                            date={event.createdAt}
-                            onSave={updateRaisedBedEventDateAction.bind(
-                                null,
-                                event.id,
-                                raisedBedId,
-                            )}
-                        />
-                    )}
+                    renderTime={(event) =>
+                        canMutateRaisedBedHistoryEvent(event, raisedBedId) ? (
+                            <EventDateEditButton
+                                date={event.createdAt}
+                                onSave={updateRaisedBedEventDateAction.bind(
+                                    null,
+                                    event.id,
+                                    raisedBedId,
+                                )}
+                            />
+                        ) : (
+                            <LocalDateTime>{event.createdAt}</LocalDateTime>
+                        )
+                    }
                     renderType={(event) =>
                         EVENT_TYPE_LABELS[event.type] ?? event.type
                     }

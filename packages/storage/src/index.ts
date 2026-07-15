@@ -72,6 +72,8 @@ export * from './repositories/raisedBedFieldsRepo';
 export * from './repositories/raisedBedsRepo';
 export * from './repositories/referralsRepo';
 export * from './repositories/refreshTokensRepo';
+export * from './repositories/scheduleTaskSubmissionsRepo';
+export * from './repositories/scheduleTaskTransactionsRepo';
 export * from './repositories/seasonalOffersRepo';
 export * from './repositories/settingsRepo';
 export * from './repositories/shoppingCartRepo';

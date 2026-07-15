@@ -260,6 +260,9 @@ export default async function GreenhousePage() {
                                     plantSort,
                                     field.plantSortId,
                                 );
+                                const activePlantCycle = field.plantCycles.find(
+                                    (plantCycle) => plantCycle.active,
+                                );
 
                                 return (
                                     <li
@@ -346,18 +349,31 @@ export default async function GreenhousePage() {
                                                     >
                                                         Proklijalo
                                                     </Typography>
-                                                    <SproutedDateQuickAction
-                                                        raisedBedId={
-                                                            raisedBed.id
-                                                        }
-                                                        positionIndex={
-                                                            field.positionIndex
-                                                        }
-                                                        sproutedDate={
-                                                            field.plantGrowthDate ??
-                                                            null
-                                                        }
-                                                    />
+                                                    {activePlantCycle ? (
+                                                        <SproutedDateQuickAction
+                                                            raisedBedId={
+                                                                raisedBed.id
+                                                            }
+                                                            positionIndex={
+                                                                field.positionIndex
+                                                            }
+                                                            expectedPlantCycleEventId={
+                                                                activePlantCycle.plantPlaceEventId
+                                                            }
+                                                            expectedPlantCycleVersionEventId={
+                                                                activePlantCycle.endedEventId
+                                                            }
+                                                            expectedPlantSortId={
+                                                                field.plantSortId
+                                                            }
+                                                            sproutedDate={
+                                                                field.plantGrowthDate ??
+                                                                null
+                                                            }
+                                                        />
+                                                    ) : (
+                                                        '-'
+                                                    )}
                                                 </div>
                                                 <div className="min-w-0 space-y-1">
                                                     <Typography

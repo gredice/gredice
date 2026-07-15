@@ -6,6 +6,7 @@ import type { ScheduleTaskState } from './scheduleTaskState';
 const visibleStates: Exclude<ScheduleTaskState, 'actionable'>[] = [
     'pendingVerification',
     'completed',
+    'blocked',
     'failed',
     'canceled',
 ];
@@ -23,8 +24,12 @@ test('renders every terminal and review state with visible text', async ({
 
     await expect(component.getByText('Čeka potvrdu')).toBeVisible();
     await expect(component.getByText('Potvrđeno')).toBeVisible();
+    await expect(component.getByText('Blokirano')).toBeVisible();
     await expect(component.getByText('Neuspjelo')).toBeVisible();
     await expect(component.getByText('Otkazano')).toBeVisible();
+
+    const blocked = component.locator('[data-task-state="blocked"]');
+    await expect(blocked).toHaveText('Blokirano');
 });
 
 test('keeps the pending label visible at a phone viewport', async ({
@@ -42,6 +47,7 @@ test('keeps the pending label visible at a phone viewport', async ({
 
     const pending = component.getByText('Čeka potvrdu');
     await expect(pending).toBeVisible();
+    await expect(component.getByText('Blokirano')).toBeVisible();
     await expect(
         component.locator('[data-task-state="pendingVerification"]'),
     ).toHaveCount(1);

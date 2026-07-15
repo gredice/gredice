@@ -112,6 +112,7 @@ const taskKinds = new Set<string>(['operation', 'planting']);
 const taskSources = new Set<string>(['attention', 'next', 'queue']);
 const taskStates = new Set<string>([
     'actionable',
+    'blocked',
     'canceled',
     'completed',
     'failed',

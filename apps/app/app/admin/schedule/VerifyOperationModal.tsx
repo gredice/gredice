@@ -16,6 +16,7 @@ interface VerifyOperationModalTriggerProps {
 
 interface VerifyOperationModalBaseProps {
     operationId: number;
+    expectedTaskVersionEventId: number;
     label: string;
     onConfirm?: () => unknown | Promise<unknown>;
 }
@@ -36,6 +37,7 @@ type VerifyOperationModalProps = VerifyOperationModalBaseProps &
 
 export function VerifyOperationModal({
     operationId,
+    expectedTaskVersionEventId,
     label,
     onConfirm,
     trigger,
@@ -64,7 +66,10 @@ export function VerifyOperationModal({
             if (onConfirm) {
                 await onConfirm();
             } else {
-                await verifyOperationAction(operationId);
+                await verifyOperationAction(
+                    operationId,
+                    expectedTaskVersionEventId,
+                );
             }
             setOpen(false);
         } catch (error) {

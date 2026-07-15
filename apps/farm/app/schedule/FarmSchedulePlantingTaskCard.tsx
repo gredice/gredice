@@ -13,6 +13,8 @@ import { type ReactNode, Suspense } from 'react';
 import { PlantingAssignedUserAvatar } from './PlantingAssignedUserAvatar';
 import { SchedulePlantVisual } from './SchedulePlantVisual';
 import { ScheduleTaskAgeIndicatorChip } from './ScheduleTaskAgeIndicatorChip';
+import { ScheduleTaskBlockedDetails } from './ScheduleTaskBlockedDetails';
+import { ScheduleTaskBlockerModal } from './ScheduleTaskBlockerModal';
 import { ScheduleTaskDateChip } from './ScheduleTaskDateChip';
 import { ScheduleTaskDetailsLink } from './ScheduleTaskDetailsLink';
 import { ScheduleTaskDurationChip } from './ScheduleTaskDurationChip';
@@ -21,6 +23,7 @@ import { ScheduleTaskStatusChip } from './ScheduleTaskStatusChip';
 import type { FarmScheduleDayData } from './scheduleData';
 import { PLANTING_TASK_DURATION_MINUTES } from './scheduleShared';
 import { getSchedulePlantingTaskAssignment } from './scheduleTaskAssignment';
+import type { SchedulePlantingTaskIdentity } from './scheduleTaskIdentity';
 import {
     getScheduleTaskAnchorId,
     getScheduleTaskLabelId,
@@ -41,11 +44,18 @@ type FarmSchedulePlantingField = Pick<
     | 'positionIndex'
     | 'raisedBedId'
     | 'sowingLocation'
->;
+> &
+    Partial<
+        Pick<
+            FarmScheduleDayData['scheduledFields'][number],
+            'blockedAt' | 'blockImageUrls' | 'blockNote' | 'blockReasonLabel'
+        >
+    >;
 
 interface FarmSchedulePlantingTaskCardProps {
     field: FarmSchedulePlantingField;
     label: string;
+    plantingIdentity: SchedulePlantingTaskIdentity | null;
     plantSort: EntityStandardized | undefined;
     userId: string;
     completionAction?: ReactNode;
@@ -58,6 +68,7 @@ interface FarmSchedulePlantingTaskCardProps {
 export function FarmSchedulePlantingTaskCard({
     field,
     label,
+    plantingIdentity,
     plantSort,
     userId,
     completionAction,
@@ -74,7 +85,9 @@ export function FarmSchedulePlantingTaskCard({
         taskPresentation.showCompletionControl &&
         getSchedulePlantingTaskAssignment(field, userId) === 'other';
     const canComplete =
-        taskPresentation.showCompletionControl && !lockedByAssignment;
+        taskPresentation.showCompletionControl &&
+        !lockedByAssignment &&
+        Boolean(plantingIdentity);
     const greenhouseSowing = field.sowingLocation === 'greenhouse';
     const taskAnchorId = getScheduleTaskAnchorId('planting', field.id);
     const taskLabelId = getScheduleTaskLabelId('planting', field.id);
@@ -177,12 +190,38 @@ export function FarmSchedulePlantingTaskCard({
                     </Button>
                 </div>
             )}
+            {taskState === 'blocked' && (
+                <ScheduleTaskBlockedDetails
+                    blockedAt={field.blockedAt}
+                    imageUrls={field.blockImageUrls}
+                    note={field.blockNote}
+                    reason={field.blockReasonLabel}
+                    taskKey={`planting-${field.raisedBedId}-${field.positionIndex}`}
+                />
+            )}
             <ScheduleTaskStateControl
                 action={canComplete ? completionAction : undefined}
                 actionLabel="Dovrši sijanje"
+                blockerAction={
+                    canComplete && plantingIdentity ? (
+                        <ScheduleTaskBlockerModal
+                            label={label}
+                            target={{
+                                ...plantingIdentity,
+                                kind: 'planting',
+                                positionIndex: field.positionIndex,
+                                raisedBedId: field.raisedBedId,
+                            }}
+                        />
+                    ) : undefined
+                }
                 label={label}
                 state={taskState}
-                unavailableTitle="Sijanje je dodijeljeno drugom korisniku."
+                unavailableTitle={
+                    plantingIdentity
+                        ? 'Sijanje je dodijeljeno drugom korisniku.'
+                        : 'Sijanje se ne može dovršiti dok podaci zadatka nisu dostupni.'
+                }
             />
         </article>
     );

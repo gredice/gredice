@@ -22,16 +22,22 @@ import { useOptimisticScheduleActions } from './useOptimisticScheduleActions';
 
 type OperationApprovalTarget = {
     id: number;
+    entityId: number;
+    taskVersionEventId: number;
     label: string;
 };
 
 type OperationAssignmentTarget = {
     id: number;
+    expectedEntityId: number;
+    expectedTaskVersionEventId: number;
     farmUsers: OperationAssignableFarmUser[];
 };
 
 type OperationCancelTarget = {
     id: number;
+    entityId: number;
+    taskVersionEventId: number;
     label: string;
 };
 
@@ -79,7 +85,11 @@ export function ScheduleDayOperationsBulkActions({
                         action: () =>
                             Promise.all(
                                 visibleOperationsToApprove.map((operation) =>
-                                    acceptOperationAction(operation.id),
+                                    acceptOperationAction(
+                                        operation.id,
+                                        operation.entityId,
+                                        operation.taskVersionEventId,
+                                    ),
                                 ),
                             ),
                         errorLogMessage:
@@ -121,6 +131,8 @@ export function ScheduleDayOperationsBulkActions({
                                 visibleOperationsToAssign.map((operation) =>
                                     assignOperationUserAction(
                                         operation.id,
+                                        operation.expectedEntityId,
+                                        operation.expectedTaskVersionEventId,
                                         assignedUserIds,
                                     ),
                                 ),

@@ -16,6 +16,9 @@ import { setRaisedBedFieldSowingLocationAction } from '../../../(actions)/raised
 type RaisedBedFieldLocationSelectorProps = {
     raisedBedId: number;
     positionIndex: number;
+    expectedPlantCycleEventId: number;
+    expectedPlantCycleVersionEventId: number;
+    expectedPlantSortId: number;
     sowingLocation: RaisedBedFieldSowingLocation;
     currentLocation: 'greenhouse' | 'raisedBed';
     greenhouseCurrentLocationEligible: boolean;
@@ -39,6 +42,9 @@ function getOptimisticCurrentLocation(
 export function RaisedBedFieldLocationSelector({
     raisedBedId,
     positionIndex,
+    expectedPlantCycleEventId,
+    expectedPlantCycleVersionEventId,
+    expectedPlantSortId,
     sowingLocation,
     currentLocation,
     greenhouseCurrentLocationEligible,
@@ -71,6 +77,9 @@ export function RaisedBedFieldLocationSelector({
                 await setRaisedBedFieldSowingLocationAction(
                     raisedBedId,
                     positionIndex,
+                    expectedPlantCycleEventId,
+                    expectedPlantSortId,
+                    expectedPlantCycleVersionEventId,
                     nextLocation,
                 );
                 router.refresh();

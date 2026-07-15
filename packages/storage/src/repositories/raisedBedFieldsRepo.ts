@@ -16,6 +16,7 @@ import {
     type SelectRaisedBedField,
 } from '../schema/gardenSchema';
 import { normalizeAssignedUserIds } from './events/normalizeAssignedUserIds';
+import { scheduleTaskBlockDetailsFromEvent } from './events/scheduleTaskBlock';
 import {
     createEvent,
     getAllEvents,
@@ -28,6 +29,10 @@ import {
     type RaisedBedWeedStateSource,
     updateEventCreatedAt,
 } from './eventsRepo';
+import {
+    acquirePlantingScheduleTaskLock,
+    type ScheduleTaskTransaction,
+} from './scheduleTaskTransactionsRepo';
 
 export type { RaisedBedWeedStateSetPayload } from './eventsRepo';
 
@@ -36,6 +41,7 @@ const PLANT_CYCLE_EVENT_TYPES = [
     knownEventTypes.raisedBedFields.plantPlace,
     knownEventTypes.raisedBedFields.plantSchedule,
     knownEventTypes.raisedBedFields.plantUpdate,
+    knownEventTypes.raisedBedFields.plantBlock,
     knownEventTypes.raisedBedFields.plantReplaceSort,
     knownEventTypes.raisedBedFields.delete,
 ] as const;
@@ -46,6 +52,7 @@ const RAISED_BED_FIELD_EVENT_TYPES = [
     knownEventTypes.raisedBedFields.plantPlace,
     knownEventTypes.raisedBedFields.plantSchedule,
     knownEventTypes.raisedBedFields.plantUpdate,
+    knownEventTypes.raisedBedFields.plantBlock,
     knownEventTypes.raisedBedFields.plantReplaceSort,
     knownEventTypes.raisedBedFields.weedStateSet,
 ] as const;
@@ -54,6 +61,12 @@ type CanonicalRaisedBedField = {
     id: number;
     positionIndex: number;
 };
+
+type StorageClient = ReturnType<typeof storage>;
+type TransactionClient = Parameters<
+    Parameters<StorageClient['transaction']>[0]
+>[0];
+type DatabaseClient = StorageClient | TransactionClient;
 
 type RaisedBedFieldPlantCycleEvent = typeof events.$inferSelect;
 
@@ -81,6 +94,7 @@ export type RaisedBedFieldPlantCycle = {
     endedEventId: number;
     active: boolean;
     plantStatus?: string;
+    plantStatusEventId?: number;
     plantSortId?: number;
     plantScheduledDate?: Date;
     sowingLocation: RaisedBedFieldSowingLocation;
@@ -99,6 +113,13 @@ export type RaisedBedFieldPlantCycle = {
     assignedBy?: string | null;
     assignedAt?: Date;
     cancellationReason?: string;
+    blockedAt?: Date;
+    blockedBy?: string;
+    blockedEventId?: number;
+    blockReasonCode?: string;
+    blockReasonLabel?: string;
+    blockNote?: string;
+    blockImageUrls?: string[];
 };
 
 export type AssignableFarmUser = {
@@ -255,6 +276,7 @@ export async function getUniqueAssignableFarmUsersByGardenIds(
 
 export async function getAssignableFarmUsersByRaisedBedFieldIds(
     raisedBedFieldIds: number[],
+    db: DatabaseClient = storage(),
 ) {
     const uniqueRaisedBedFieldIds = Array.from(new Set(raisedBedFieldIds));
     if (uniqueRaisedBedFieldIds.length === 0) {
@@ -266,7 +288,7 @@ export async function getAssignableFarmUsersByRaisedBedFieldIds(
         return emptyAssignableFarmUsersByRaisedBedFieldId;
     }
 
-    const rows = await storage()
+    const rows = await db
         .selectDistinct({
             raisedBedFieldId: raisedBedFields.id,
             farmId: farmUsers.farmId,
@@ -767,6 +789,14 @@ function summarizePlantCycle(
     let assignedBy: string | null | undefined;
     let assignedAt: Date | undefined;
     let cancellationReason: string | undefined;
+    let plantStatusEventId: number | undefined;
+    let blockedAt: Date | undefined;
+    let blockedBy: string | undefined;
+    let blockedEventId: number | undefined;
+    let blockReasonCode: string | undefined;
+    let blockReasonLabel: string | undefined;
+    let blockNote: string | undefined;
+    let blockImageUrls: string[] | undefined;
 
     for (const plantCycleEvent of plantCycleEvents) {
         const data = plantCycleEvent.data as
@@ -808,6 +838,14 @@ function summarizePlantCycle(
             assignedBy = undefined;
             assignedAt = undefined;
             cancellationReason = undefined;
+            plantStatusEventId = undefined;
+            blockedAt = undefined;
+            blockedBy = undefined;
+            blockedEventId = undefined;
+            blockReasonCode = undefined;
+            blockReasonLabel = undefined;
+            blockNote = undefined;
+            blockImageUrls = undefined;
             continue;
         }
 
@@ -828,6 +866,26 @@ function summarizePlantCycle(
             }
             sowingLocation =
                 parseSowingLocation(data?.sowingLocation) ?? sowingLocation;
+            continue;
+        }
+
+        if (
+            plantCycleEvent.type === knownEventTypes.raisedBedFields.plantBlock
+        ) {
+            const details = scheduleTaskBlockDetailsFromEvent(plantCycleEvent);
+            plantStatus = 'blocked';
+            plantStatusEventId = plantCycleEvent.id;
+            statusChanges.push({
+                status: 'blocked',
+                occurredAt: plantCycleEvent.createdAt,
+            });
+            blockedAt = details?.blockedAt ?? plantCycleEvent.createdAt;
+            blockedBy = details?.blockedBy;
+            blockedEventId = plantCycleEvent.id;
+            blockReasonCode = details?.reasonCode;
+            blockReasonLabel = details?.reasonLabel;
+            blockNote = details?.note;
+            blockImageUrls = details?.images;
             continue;
         }
 
@@ -864,6 +922,16 @@ function summarizePlantCycle(
                 });
             }
             plantStatus = nextPlantStatus ?? plantStatus;
+            if (nextPlantStatus) {
+                plantStatusEventId = plantCycleEvent.id;
+                blockedAt = undefined;
+                blockedBy = undefined;
+                blockedEventId = undefined;
+                blockReasonCode = undefined;
+                blockReasonLabel = undefined;
+                blockNote = undefined;
+                blockImageUrls = undefined;
+            }
             if (hasAssignedUserIdUpdate) {
                 const nextAssignedUserId = extractAssignedUserId(
                     data?.assignedUserId,
@@ -970,6 +1038,7 @@ function summarizePlantCycle(
         endedEventId,
         active,
         plantStatus,
+        plantStatusEventId,
         plantSortId,
         plantScheduledDate,
         sowingLocation,
@@ -991,6 +1060,13 @@ function summarizePlantCycle(
         assignedBy,
         assignedAt,
         cancellationReason,
+        blockedAt,
+        blockedBy,
+        blockedEventId,
+        blockReasonCode,
+        blockReasonLabel,
+        blockNote,
+        blockImageUrls,
     };
 }
 
@@ -1082,16 +1158,19 @@ export async function updateActiveRaisedBedFieldPlantStatusEventCreatedAt({
     positionIndex,
     status,
     createdAt,
+    db = storage(),
 }: {
     raisedBedId: number;
     positionIndex: number;
     status: string;
     createdAt: Date;
+    db?: DatabaseClient;
 }) {
     const aggregateId = `${raisedBedId.toString()}|${positionIndex.toString()}`;
     const plantEvents = await getAllEvents(
         [...PLANT_CYCLE_EVENT_TYPES],
         [aggregateId],
+        { db },
     );
     const activePlantCycleEvents = splitPlantCycleEvents(plantEvents).find(
         (plantCycleEvents) => {
@@ -1130,7 +1209,7 @@ export async function updateActiveRaisedBedFieldPlantStatusEventCreatedAt({
         return false;
     }
 
-    await updateEventCreatedAt(targetEvent.id, createdAt);
+    await updateEventCreatedAt(targetEvent.id, createdAt, db);
     return true;
 }
 
@@ -1328,6 +1407,15 @@ function reduceRaisedBedFieldWithEvents(
     let assignedAt: Date | undefined;
     let weedState: RaisedBedWeedState | null = null;
     let cancellationReason: string | undefined;
+    let plantStatusEventId: number | undefined;
+    let plantStatusChangedAt: Date | undefined;
+    let blockedAt: Date | undefined;
+    let blockedBy: string | undefined;
+    let blockedEventId: number | undefined;
+    let blockReasonCode: string | undefined;
+    let blockReasonLabel: string | undefined;
+    let blockNote: string | undefined;
+    let blockImageUrls: string[] | undefined;
 
     for (const event of events) {
         const data = event.data as Record<string, unknown> | undefined;
@@ -1353,6 +1441,15 @@ function reduceRaisedBedFieldWithEvents(
             assignedBy = undefined;
             assignedAt = undefined;
             cancellationReason = undefined;
+            plantStatusEventId = undefined;
+            plantStatusChangedAt = undefined;
+            blockedAt = undefined;
+            blockedBy = undefined;
+            blockedEventId = undefined;
+            blockReasonCode = undefined;
+            blockReasonLabel = undefined;
+            blockNote = undefined;
+            blockImageUrls = undefined;
 
             // Parse plant sort ID if provided
             if (typeof data?.plantSortId === 'number') {
@@ -1411,6 +1508,17 @@ function reduceRaisedBedFieldWithEvents(
                 extractAssignedUserId(data?.assignedUserId) !== undefined;
             plantStatus =
                 typeof data?.status === 'string' ? data?.status : plantStatus;
+            if (typeof data?.status === 'string') {
+                plantStatusEventId = event.id;
+                plantStatusChangedAt = statusEventDate;
+                blockedAt = undefined;
+                blockedBy = undefined;
+                blockedEventId = undefined;
+                blockReasonCode = undefined;
+                blockReasonLabel = undefined;
+                blockNote = undefined;
+                blockImageUrls = undefined;
+            }
             if (hasAssignedUserIdUpdate) {
                 const nextAssignedUserId = extractAssignedUserId(
                     data?.assignedUserId,
@@ -1489,6 +1597,20 @@ function reduceRaisedBedFieldWithEvents(
                 stoppedDate = statusEventDate;
             }
         }
+        // Handle explicit task blockers without conflating them with completion.
+        else if (event.type === knownEventTypes.raisedBedFields.plantBlock) {
+            const details = scheduleTaskBlockDetailsFromEvent(event);
+            plantStatus = 'blocked';
+            plantStatusEventId = event.id;
+            blockedAt = details?.blockedAt ?? event.createdAt;
+            plantStatusChangedAt = blockedAt;
+            blockedBy = details?.blockedBy;
+            blockedEventId = event.id;
+            blockReasonCode = details?.reasonCode;
+            blockReasonLabel = details?.reasonLabel;
+            blockNote = details?.note;
+            blockImageUrls = details?.images;
+        }
         // Handle plant sort replace event
         else if (
             event.type === knownEventTypes.raisedBedFields.plantReplaceSort
@@ -1504,6 +1626,7 @@ function reduceRaisedBedFieldWithEvents(
         // Handle field deletion event
         else if (event.type === knownEventTypes.raisedBedFields.delete) {
             plantStatus = 'deleted';
+            plantStatusChangedAt = event.createdAt;
             plantSowDate = undefined;
             plantSortId = undefined;
             plantScheduledDate = undefined;
@@ -1532,6 +1655,8 @@ function reduceRaisedBedFieldWithEvents(
             ),
         ),
         plantStatus,
+        plantStatusEventId,
+        plantStatusChangedAt,
         plantSortId,
         plantScheduledDate,
         sowingLocation,
@@ -1553,6 +1678,13 @@ function reduceRaisedBedFieldWithEvents(
         assignedAt,
         cancellationReason,
         weedState,
+        blockedAt,
+        blockedBy,
+        blockedEventId,
+        blockReasonCode,
+        blockReasonLabel,
+        blockNote,
+        blockImageUrls,
     };
 }
 
@@ -1582,6 +1714,7 @@ function groupRaisedBedFieldEventsByAggregateId(
 
 export async function getRaisedBedFieldsWithEventsForBeds(
     raisedBedIds: number[],
+    db: DatabaseClient = storage(),
 ): Promise<Map<number, RaisedBedFieldWithEvents[]>> {
     const uniqueRaisedBedIds = Array.from(new Set(raisedBedIds));
     const fieldsByRaisedBedId = new Map<number, RaisedBedFieldWithEvents[]>();
@@ -1594,7 +1727,7 @@ export async function getRaisedBedFieldsWithEventsForBeds(
         return fieldsByRaisedBedId;
     }
 
-    const fields = await storage().query.raisedBedFields.findMany({
+    const fields = await db.query.raisedBedFields.findMany({
         where: and(
             inArray(raisedBedFields.raisedBedId, uniqueRaisedBedIds),
             eq(raisedBedFields.isDeleted, false),
@@ -1613,6 +1746,7 @@ export async function getRaisedBedFieldsWithEventsForBeds(
         fieldsEvents = await getAllEvents(
             [...RAISED_BED_FIELD_EVENT_TYPES],
             fieldAggregateIds,
+            { db },
         );
     }
 
@@ -1637,9 +1771,12 @@ export async function getRaisedBedFieldsWithEventsForBeds(
 }
 
 // New: Retrieve all raised bed fields for a single raised bed, with event-sourced info
-export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
+export async function getRaisedBedFieldsWithEvents(
+    raisedBedId: number,
+    db: DatabaseClient = storage(),
+) {
     return (
-        (await getRaisedBedFieldsWithEventsForBeds([raisedBedId])).get(
+        (await getRaisedBedFieldsWithEventsForBeds([raisedBedId], db)).get(
             raisedBedId,
         ) ?? []
     );
@@ -1650,24 +1787,32 @@ export async function upsertRaisedBedField(
         InsertRaisedBedField,
         'id' | 'createdAt' | 'updatedAt' | 'isDeleted'
     >,
+    db?: DatabaseClient,
 ) {
-    await storage().transaction(async (tx) => {
-        await syncRaisedBedFieldRow(tx, field);
-    });
+    if (db) {
+        await syncRaisedBedFieldRow(db, field);
+    } else {
+        await storage().transaction(async (transaction) => {
+            await syncRaisedBedFieldRow(transaction, field);
+        });
+    }
     await bustScheduleCache();
 }
 
-export async function moveRaisedBedFieldPlantHistory({
-    raisedBedId,
-    sourcePositionIndex,
-    targetPositionIndex,
-    sourcePlantPlaceEventId,
-}: {
-    raisedBedId: number;
-    sourcePositionIndex: number;
-    targetPositionIndex: number;
-    sourcePlantPlaceEventId: number;
-}) {
+export async function moveRaisedBedFieldPlantHistory(
+    {
+        raisedBedId,
+        sourcePositionIndex,
+        targetPositionIndex,
+        sourcePlantPlaceEventId,
+    }: {
+        raisedBedId: number;
+        sourcePositionIndex: number;
+        targetPositionIndex: number;
+        sourcePlantPlaceEventId: number;
+    },
+    transaction?: ScheduleTaskTransaction,
+) {
     if (sourcePositionIndex === targetPositionIndex) {
         throw new Error('Source and target field positions must be different');
     }
@@ -1679,7 +1824,19 @@ export async function moveRaisedBedFieldPlantHistory({
     const sourceAggregateId = `${raisedBedId.toString()}|${sourcePositionIndex.toString()}`;
     const targetAggregateId = `${raisedBedId.toString()}|${targetPositionIndex.toString()}`;
 
-    const result = await storage().transaction(async (tx) => {
+    const move = async (tx: ScheduleTaskTransaction) => {
+        const lockedPositionIndexes = [
+            sourcePositionIndex,
+            targetPositionIndex,
+        ].sort((left, right) => left - right);
+        for (const positionIndex of lockedPositionIndexes) {
+            await acquirePlantingScheduleTaskLock(
+                tx,
+                raisedBedId,
+                positionIndex,
+            );
+        }
+
         const sourceFieldRows = await getRaisedBedFieldRowsAtPosition(
             tx,
             raisedBedId,
@@ -1743,17 +1900,23 @@ export async function moveRaisedBedFieldPlantHistory({
         return {
             swapped: shouldSwap,
         };
-    });
-    await bustScheduleCache();
+    };
+    const result = transaction
+        ? await move(transaction)
+        : await storage().transaction(move);
+    if (!transaction) {
+        await bustScheduleCache();
+    }
     return result;
 }
 
 export async function deleteRaisedBedField(
     raisedBedId: number,
     positionIndex: number,
-    options: { preserveHistory?: boolean } = {},
+    options: { preserveHistory?: boolean; db?: DatabaseClient } = {},
 ) {
-    await storage()
+    const db = options.db ?? storage();
+    await db
         .update(raisedBedFields)
         .set(
             options.preserveHistory
@@ -1767,5 +1930,7 @@ export async function deleteRaisedBedField(
                 eq(raisedBedFields.isDeleted, false),
             ),
         );
-    await bustScheduleCache();
+    if (!options.db) {
+        await bustScheduleCache();
+    }
 }

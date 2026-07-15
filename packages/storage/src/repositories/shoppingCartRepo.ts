@@ -44,6 +44,7 @@ function parsePositiveInteger(value: unknown) {
  */
 export async function getRaisedBedFieldSunflowerRefundAmount({
     accountId,
+    db = storage(),
     fallbackAmount = 0,
     plantCycleStartedAt,
     positionIndex,
@@ -51,6 +52,7 @@ export async function getRaisedBedFieldSunflowerRefundAmount({
     raisedBedId,
 }: {
     accountId: string;
+    db?: DatabaseClient;
     fallbackAmount?: number;
     plantCycleStartedAt: Date;
     positionIndex: number;
@@ -73,7 +75,7 @@ export async function getRaisedBedFieldSunflowerRefundAmount({
     const windowEnd = new Date(
         plantCycleStartedAt.getTime() + raisedBedFieldPurchaseMatchWindowMs,
     );
-    const [matchedCartItem] = await storage()
+    const [matchedCartItem] = await db
         .select({
             cartItemId: shoppingCartItems.id,
             currency: shoppingCartItems.currency,
@@ -105,6 +107,7 @@ export async function getRaisedBedFieldSunflowerRefundAmount({
 
     const outletReservation = await getOutletOfferReservationForCartItem(
         matchedCartItem.cartItemId,
+        db,
     );
     const outletAmount = parsePositiveInteger(
         (outletReservation?.heldOutletPriceCents ?? 0) * 10,
@@ -114,7 +117,7 @@ export async function getRaisedBedFieldSunflowerRefundAmount({
     }
 
     if (matchedCartItem.currency === 'sunflower') {
-        const paymentEvent = await storage().query.events.findFirst({
+        const paymentEvent = await db.query.events.findFirst({
             where: and(
                 eq(events.aggregateId, accountId),
                 eq(events.type, knownEventTypes.accounts.spendSunflowers),

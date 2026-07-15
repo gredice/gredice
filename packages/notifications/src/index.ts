@@ -47,6 +47,15 @@ interface PurchaseNotificationDetails {
     }[];
 }
 
+export type CheckoutFulfillmentIncidentDetails = {
+    accountId: string;
+    cartItemId: number;
+    checkoutSessionId: string;
+    incidentId: string;
+    positionIndex: number;
+    raisedBedId: number;
+};
+
 interface OperationContext {
     operationName: string;
     farmName?: string;
@@ -202,6 +211,7 @@ async function sendSlackMessage(channel: string | undefined, text: string) {
             console.error('Failed to send Slack notification', result);
         }
     }
+    return result;
 }
 
 async function getSlackChannelId(
@@ -507,4 +517,35 @@ export async function notifyPurchase(details: PurchaseNotificationDetails) {
     }
 
     await sendSlackMessage(channel, lines.filter(Boolean).join('\n'));
+}
+
+export async function notifyCheckoutFulfillmentIncident(
+    details: CheckoutFulfillmentIncidentDetails,
+) {
+    const channel = await getSlackChannelId(
+        NotificationSettingKeys.SlackShoppingChannel,
+    );
+    if (!channel) {
+        throw new Error(
+            'Checkout fulfillment incident Slack notification requires the shopping channel.',
+        );
+    }
+
+    const result = await sendSlackMessage(
+        channel,
+        [
+            ':rotating_light: *Plaćena sadnja nije isporučena*',
+            '• Potrebna je ručna provjera, postavljanje ili povrat sredstava.',
+            `• Incident: ${details.incidentId}`,
+            `• Checkout ID: ${details.checkoutSessionId}`,
+            `• Stavka košarice: ${details.cartItemId.toString()}`,
+            `• Račun: ${details.accountId}`,
+            `• Gredica/polje: ${details.raisedBedId.toString()}/${(details.positionIndex + 1).toString()}`,
+        ].join('\n'),
+    );
+    if (!result.ok) {
+        throw new Error(
+            `Checkout fulfillment incident Slack notification failed: ${result.error ?? result.skipped ?? 'unknown_error'}`,
+        );
+    }
 }
