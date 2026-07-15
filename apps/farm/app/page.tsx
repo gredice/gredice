@@ -1,4 +1,4 @@
-import { getFarms, getUser } from '@gredice/storage';
+import { getFarmsForUser, getUser } from '@gredice/storage';
 import { AuthProtectedSection, SignedOut } from '@gredice/ui/auth/server';
 import { Button } from '@gredice/ui/Button';
 import {
@@ -71,7 +71,10 @@ function formatCoordinate(value?: number | null) {
 
 async function FarmerDashboard() {
     const { userId } = await auth(['farmer', 'admin']);
-    const [dbUser, farms] = await Promise.all([getUser(userId), getFarms()]);
+    const [dbUser, farms] = await Promise.all([
+        getUser(userId),
+        getFarmsForUser(userId),
+    ]);
 
     if (!dbUser) {
         return (
@@ -229,7 +232,7 @@ async function FarmerDashboard() {
                         <Stack spacing={2}>
                             <CardTitle>Moje farme</CardTitle>
                             <Typography className="text-sm text-muted-foreground">
-                                Pregled aktivnih farmi u Gredice sustavu.
+                                Pregled farmi koje su ti dodijeljene.
                             </Typography>
                         </Stack>
                     </CardHeader>
@@ -265,9 +268,8 @@ async function FarmerDashboard() {
                             </Table>
                         ) : (
                             <div className="p-6 text-sm text-muted-foreground">
-                                Još nema dodanih farmi. Kontaktiraj
-                                administratora kako bi dodali tvoju prvu
-                                lokaciju.
+                                Nema dodijeljenih farmi. Kontaktiraj
+                                administratora kako bi ti dodijelio farmu.
                             </div>
                         )}
                     </CardOverflow>
