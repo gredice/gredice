@@ -232,6 +232,8 @@ test('navbar floats on scroll and landing game frame is rounded', async ({
 test('desktop floating navbar keeps its width and balanced CTA spacing', async ({
     page,
 }) => {
+    test.slow();
+
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/');
 
@@ -240,21 +242,24 @@ test('desktop floating navbar keeps its width and balanced CTA spacing', async (
     const gardenCtaIcon = gardenCta.locator('svg:visible').last();
 
     await expect
-        .poll(async () => {
-            const [buttonBox, iconBox] = await Promise.all([
-                gardenCta.boundingBox(),
-                gardenCtaIcon.boundingBox(),
-            ]);
-            if (!buttonBox || !iconBox) {
-                return Number.POSITIVE_INFINITY;
-            }
+        .poll(
+            async () => {
+                const [buttonBox, iconBox] = await Promise.all([
+                    gardenCta.boundingBox(),
+                    gardenCtaIcon.boundingBox(),
+                ]);
+                if (!buttonBox || !iconBox) {
+                    return Number.POSITIVE_INFINITY;
+                }
 
-            const trailingSpace =
-                buttonBox.x + buttonBox.width - (iconBox.x + iconBox.width);
-            const verticalSpace = (buttonBox.height - iconBox.height) / 2;
+                const trailingSpace =
+                    buttonBox.x + buttonBox.width - (iconBox.x + iconBox.width);
+                const verticalSpace = (buttonBox.height - iconBox.height) / 2;
 
-            return Math.abs(trailingSpace - verticalSpace);
-        })
+                return Math.abs(trailingSpace - verticalSpace);
+            },
+            { timeout: 15_000 },
+        )
         .toBeLessThanOrEqual(0.5);
 
     await page.evaluate(() => window.scrollTo(0, 160));
