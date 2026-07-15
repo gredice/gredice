@@ -316,10 +316,39 @@ test.describe('Authentication Flow', () => {
     });
 
     test.describe('OAuth Callback Flow', () => {
-        test('should POST tokens to /api/oauth-callback endpoint', async ({
+        test('starts OAuth on the API origin with the current internal route', async ({
             page,
         }) => {
-            // Track requests to the oauth-callback endpoint
+            await page.route('**/api/auth/google**', (route) =>
+                route.fulfill({ status: 204 }),
+            );
+            await page.goto('/notifications?filter=unread');
+            const farmOrigin = new URL(page.url()).origin;
+            const providerRequestPromise = page.waitForRequest((request) => {
+                const requestUrl = new URL(request.url());
+                return requestUrl.pathname === '/api/auth/google';
+            });
+
+            await page.getByRole('button', { name: 'Google prijava' }).click();
+            const providerRequest = await providerRequestPromise;
+            const authUrl = new URL(providerRequest.url());
+            const callbackUrl = new URL(
+                authUrl.searchParams.get('redirect') ?? '',
+            );
+
+            expect(authUrl.origin).not.toBe(farmOrigin);
+            expect(callbackUrl.origin).toBe(farmOrigin);
+            expect(callbackUrl.pathname).toBe(
+                '/prijava/google-prijava/povratak',
+            );
+            expect(callbackUrl.searchParams.get('returnTo')).toBe(
+                '/notifications?filter=unread',
+            );
+        });
+
+        test('posts tokens and returns to the intended internal route', async ({
+            page,
+        }) => {
             const callbackRequests: Array<{
                 method: string;
                 body: { token?: string; refreshToken?: string };
@@ -340,19 +369,24 @@ test.describe('Authentication Flow', () => {
                 });
             });
 
-            // Navigate to callback page with tokens in hash
-            // Wait for the response (not just the request) to ensure route handler has completed
             const responsePromise = page.waitForResponse(
                 (response) =>
                     response.url().includes('/api/oauth-callback') &&
                     response.request().method() === 'POST',
             );
+            const returnTo = '/notifications?filter=unread#notification-7';
             await page.goto(
-                '/prijava/google-prijava/povratak#token=test-access-token&refreshToken=test-refresh-token',
+                `/prijava/google-prijava/povratak?returnTo=${encodeURIComponent(returnTo)}#token=test-access-token&refreshToken=test-refresh-token`,
             );
             await responsePromise;
+            await page.waitForURL((url) => {
+                return (
+                    url.pathname === '/notifications' &&
+                    url.searchParams.get('filter') === 'unread' &&
+                    url.hash === '#notification-7'
+                );
+            });
 
-            // Verify that the POST request was made with correct data
             const callbackRequest = callbackRequests[0];
             expect(callbackRequest).toBeDefined();
             if (!callbackRequest) {
@@ -366,63 +400,190 @@ test.describe('Authentication Flow', () => {
             expect(callbackRequest.headers['content-type']).toContain(
                 'application/json',
             );
+            expect(page.url()).not.toContain('test-access-token');
+            expect(page.url()).not.toContain('test-refresh-token');
         });
 
-        test('should clear tokens from URL after processing', async ({
+        test('clears token fragments before the cookie exchange completes', async ({
             page,
         }) => {
-            // Navigate to callback page with tokens in hash and wait for redirect
+            let releaseExchange: (() => void) | undefined;
+            let markExchangeStarted: (() => void) | undefined;
+            const exchangeStarted = new Promise<void>((resolve) => {
+                markExchangeStarted = resolve;
+            });
+            const exchangeGate = new Promise<void>((resolve) => {
+                releaseExchange = resolve;
+            });
+            await page.route('**/api/oauth-callback', async (route) => {
+                markExchangeStarted?.();
+                await exchangeGate;
+                await route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ success: true }),
+                });
+            });
+
             await page.goto(
                 '/prijava/google-prijava/povratak#token=test-token&refreshToken=test-refresh',
             );
+            await exchangeStarted;
 
-            // Wait for URL to change (redirect to home)
-            await page.waitForURL((url) => !url.hash && url.pathname === '/');
+            expect(new URL(page.url()).hash).toBe('');
+            expect(page.url()).not.toContain('test-token');
+            await expect(
+                page.getByText('Prijava u tijeku…', { exact: true }),
+            ).toBeVisible();
 
-            // Verify URL no longer contains the tokens in hash
-            const currentUrl = page.url();
-            expect(currentUrl).not.toContain('token=');
-            expect(currentUrl).not.toContain('refreshToken=');
-            expect(currentUrl).not.toContain('#');
-        });
-
-        test('should handle missing token gracefully', async ({ page }) => {
-            // Navigate to callback page without tokens and wait for redirect
-            await page.goto('/prijava/google-prijava/povratak');
+            releaseExchange?.();
             await page.waitForURL((url) => url.pathname === '/');
-
-            // Should redirect to home without errors
-            const currentUrl = page.url();
-            expect(currentUrl).toContain('/');
-            expect(currentUrl).not.toContain('/prijava/');
         });
 
-        test('should handle callback endpoint errors', async ({ page }) => {
-            // Mock the callback endpoint to return an error
-            await page.route('/api/oauth-callback', (route) => {
+        test('shows a recoverable error when the token is missing', async ({
+            page,
+        }) => {
+            await page.setViewportSize({ width: 320, height: 568 });
+            await page.goto(
+                `/prijava/google-prijava/povratak?returnTo=${encodeURIComponent('/notifications')}`,
+            );
+
+            await expect(
+                page.locator('[data-farm-sign-in-panel]').getByRole('alert'),
+            ).toContainText('Nedostaju podaci za prijavu');
+            const retryButton = page.getByRole('button', {
+                name: 'Pokušaj ponovno',
+            });
+            await expectMinimumTouchTarget(retryButton);
+            const backButton = page.getByRole('button', {
+                name: 'Natrag na prijavu',
+            });
+            await expectMinimumTouchTarget(backButton);
+            expect(
+                await page.evaluate(
+                    () =>
+                        document.documentElement.scrollWidth <=
+                        document.documentElement.clientWidth,
+                ),
+            ).toBe(true);
+            await backButton.click();
+            await page.waitForURL((url) => url.pathname === '/notifications');
+        });
+
+        for (const callbackError of [
+            { code: 'canceled', title: 'Prijava je otkazana' },
+            { code: 'state_invalid', title: 'Prijavu treba ponoviti' },
+            {
+                code: 'provider_error',
+                title: 'Pružatelj prijave nije dostupan',
+            },
+            { code: 'callback_error', title: 'Prijava nije završena' },
+        ]) {
+            test(`shows bounded ${callbackError.code} recovery`, async ({
+                page,
+            }) => {
+                await page.goto(
+                    `/prijava/facebook-prijava/povratak?error=${callbackError.code}&returnTo=${encodeURIComponent('/schedule?date=2026-07-15')}`,
+                );
+
+                await expect(
+                    page
+                        .locator('[data-farm-sign-in-panel]')
+                        .getByRole('alert'),
+                ).toContainText(callbackError.title);
+                await expect(
+                    page.getByRole('button', { name: 'Pokušaj ponovno' }),
+                ).toBeVisible();
+                await expect(
+                    page.getByRole('button', { name: 'Natrag na prijavu' }),
+                ).toBeVisible();
+                expect(new URL(page.url()).pathname).toBe(
+                    '/prijava/facebook-prijava/povratak',
+                );
+            });
+        }
+
+        test('retries cancellation with the same safe internal return path', async ({
+            page,
+        }) => {
+            await page.route('**/api/auth/facebook**', (route) =>
+                route.fulfill({ status: 204 }),
+            );
+            await page.goto(
+                `/prijava/facebook-prijava/povratak?error=canceled&returnTo=${encodeURIComponent('/schedule?date=2026-07-15')}`,
+            );
+            const providerRequestPromise = page.waitForRequest((request) => {
+                return new URL(request.url()).pathname === '/api/auth/facebook';
+            });
+
+            await page.getByRole('button', { name: 'Pokušaj ponovno' }).click();
+            const providerRequest = await providerRequestPromise;
+            const callbackUrl = new URL(
+                new URL(providerRequest.url()).searchParams.get('redirect') ??
+                    '',
+            );
+            expect(callbackUrl.searchParams.get('returnTo')).toBe(
+                '/schedule?date=2026-07-15',
+            );
+        });
+
+        test('shows cookie exchange failures without retaining token fragments', async ({
+            page,
+        }) => {
+            await page.route('**/api/oauth-callback', (route) => {
                 route.fulfill({
                     status: 500,
                     body: JSON.stringify({ error: 'Internal server error' }),
                 });
             });
 
-            // Navigate to callback page with tokens and wait for redirect
             await page.goto(
                 '/prijava/google-prijava/povratak#token=test-token&refreshToken=test-refresh',
             );
-            await page.waitForURL((url) => url.pathname === '/');
 
-            // Should redirect to home despite error
-            const currentUrl = page.url();
-            expect(currentUrl).toContain('/');
-            expect(currentUrl).not.toContain('/prijava/');
-
-            // Cookie should either not exist or not have the test token value
+            await expect(
+                page.locator('[data-farm-sign-in-panel]').getByRole('alert'),
+            ).toContainText('Prijava nije spremljena');
+            expect(new URL(page.url()).hash).toBe('');
             const cookies = await page.context().cookies();
             const sessionCookie = cookies.find(
                 (c) => c.name === 'gredice_session',
             );
             expect(sessionCookie?.value).not.toBe('test-token');
+        });
+
+        test('falls back to Farm home for a malicious return target', async ({
+            page,
+        }) => {
+            await page.route('**/api/oauth-callback', (route) =>
+                route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ success: true }),
+                }),
+            );
+            await page.goto(
+                `/prijava/google-prijava/povratak?returnTo=${encodeURIComponent('https://example.com/steal')}#token=test-token`,
+            );
+
+            await page.waitForURL((url) => url.pathname === '/');
+            expect(new URL(page.url()).origin).not.toBe('https://example.com');
+        });
+
+        test('maps unknown provider errors to the bounded callback failure', async ({
+            page,
+        }) => {
+            await page.goto(
+                '/prijava/google-prijava/povratak?error=raw_provider_detail',
+            );
+
+            const callbackAlert = page
+                .locator('[data-farm-sign-in-panel]')
+                .getByRole('alert');
+            await expect(callbackAlert).toContainText('Prijava nije završena');
+            await expect(callbackAlert).not.toContainText(
+                'raw_provider_detail',
+            );
         });
     });
 });

@@ -1,5 +1,6 @@
 'use client';
 
+import { getBrowserGrediceAppOrigin } from '@gredice/client';
 import { Alert } from '@gredice/ui/Alert';
 import {
     authCurrentUserQueryKeys,
@@ -15,10 +16,12 @@ import { Typography } from '@gredice/ui/Typography';
 import { usePostHog } from '@posthog/next';
 import { useRouter } from 'next/navigation';
 import { useActionState, useCallback, useState } from 'react';
+import {
+    type FarmOAuthProvider,
+    getFarmOAuthStartUrl,
+} from '../../lib/auth/safeFarmReturnPath';
 import { queryClient } from '../providers/ClientAppProvider';
 import { FarmSignInShell } from './FarmSignInShell';
-
-type OAuthProvider = 'google' | 'facebook';
 
 export function LoginDialog() {
     const posthog = usePostHog();
@@ -96,23 +99,17 @@ export function LoginDialog() {
             return 'Dogodila se neočekivana greška. Pokušaj ponovno kasnije.';
         }
     }, null);
-    const handleOAuthLogin = (provider: OAuthProvider) => {
+    const handleOAuthLogin = (provider: FarmOAuthProvider) => {
         posthog?.capture('user_oauth_started', {
             provider,
             surface: 'farm',
         });
-        const callbackPath =
-            provider === 'google'
-                ? '/prijava/google-prijava/povratak'
-                : '/prijava/facebook-prijava/povratak';
-        const redirectUrl = `${window.location.origin}${callbackPath}`;
-        // Use proxy path instead of direct API URL
-        const authUrl = new URL(
-            `/api/gredice/api/auth/${provider}`,
-            window.location.origin,
-        );
-        authUrl.searchParams.set('redirect', redirectUrl);
-        window.location.href = authUrl.toString();
+        window.location.href = getFarmOAuthStartUrl({
+            apiOrigin: getBrowserGrediceAppOrigin('api'),
+            farmOrigin: window.location.origin,
+            provider,
+            returnTo: `${window.location.pathname}${window.location.search}${window.location.hash}`,
+        });
     };
 
     return (
