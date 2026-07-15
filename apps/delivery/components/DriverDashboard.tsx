@@ -7,7 +7,6 @@ import { Chip } from '@gredice/ui/Chip';
 import {
     Map as MapIcon,
     MapPin,
-    MyLocation,
     Play,
     Reset,
     Timer,
@@ -55,24 +54,8 @@ import {
     type PickupManifestSyncSummary,
 } from './DeliveryPickupCard';
 import { DeliveryStopCard } from './DeliveryStopCard';
+import { DriverTrackingStatus } from './DriverTrackingStatus';
 import { HarvestTraceScanner } from './HarvestTraceScanner';
-
-function trackingMessage(state: DriverTrackingState) {
-    switch (state) {
-        case 'active':
-            return 'GPS praćenje je aktivno. Lokaciju vidi samo korisnik trenutačne dostavne stanice kada je ona na redu.';
-        case 'requesting':
-            return 'Čeka se dopuštenje za GPS lokaciju…';
-        case 'denied':
-            return 'Dopusti pristup lokaciji u pregledniku kako bi korisnici mogli pratiti dostavu.';
-        case 'unavailable':
-            return 'Ovaj uređaj ne podržava GPS praćenje u pregledniku.';
-        case 'error':
-            return 'Lokaciju trenutačno nije moguće poslati. Provjeri vezu i GPS postavke.';
-        default:
-            return null;
-    }
-}
 
 function routeEstimateSourceLabel(
     source: ActiveDeliveryRunSummary['estimateSource'],
@@ -312,7 +295,6 @@ export function DriverDashboard({
     onDiscardPickupSync: (operationId: string) => void | Promise<void>;
 }) {
     const run = dashboard.activeRun;
-    const locationMessage = trackingMessage(trackingState);
     const [selectedRequestIds, setSelectedRequestIdsState] = useState<string[]>(
         [],
     );
@@ -543,26 +525,7 @@ export function DriverDashboard({
 
                 {run ? (
                     <>
-                        {locationMessage ? (
-                            <Alert
-                                color={
-                                    trackingState === 'active'
-                                        ? 'success'
-                                        : trackingState === 'requesting'
-                                          ? 'info'
-                                          : 'warning'
-                                }
-                                startDecorator={
-                                    trackingState === 'active' ? (
-                                        <MyLocation className="size-5" />
-                                    ) : (
-                                        <Warning className="size-5" />
-                                    )
-                                }
-                            >
-                                {locationMessage}
-                            </Alert>
-                        ) : null}
+                        <DriverTrackingStatus tracking={trackingState} />
                         {run.reroutePending ? (
                             <Alert
                                 color="warning"
