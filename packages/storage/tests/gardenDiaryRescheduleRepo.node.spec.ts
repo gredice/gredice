@@ -1199,6 +1199,10 @@ test('raised bed diary entries display and order completed operations by complet
         gardenId,
         raisedBedId,
     });
+    const scheduledOperationCompletedAt = new Date(Date.now() + 60_000);
+    const unscheduledOperationCompletedAt = new Date(
+        scheduledOperationCompletedAt.getTime() + 60_000,
+    );
 
     await createEvent({
         ...knownEvents.operations.completedV1(
@@ -1207,13 +1211,13 @@ test('raised bed diary entries display and order completed operations by complet
                 completedBy: 'test-user',
             },
         ),
-        createdAt: new Date('2026-07-15T08:00:00.000Z'),
+        createdAt: scheduledOperationCompletedAt,
     });
     await createEvent({
         ...knownEvents.operations.completedV1(completedOperationId.toString(), {
             completedBy: 'test-user',
         }),
-        createdAt: new Date('2026-07-16T08:00:00.000Z'),
+        createdAt: unscheduledOperationCompletedAt,
     });
 
     const raisedBedEntries = await getRaisedBedDiaryEntries(raisedBedId);
@@ -1221,7 +1225,7 @@ test('raised bed diary entries display and order completed operations by complet
         raisedBedEntries
             .find((entry) => entry.id === scheduledCompletedOperationId)
             ?.timestamp.toISOString(),
-        '2026-07-15T08:00:00.000Z',
+        scheduledOperationCompletedAt.toISOString(),
     );
     const operationEntryIds = raisedBedEntries
         .map((entry) => entry.id)
