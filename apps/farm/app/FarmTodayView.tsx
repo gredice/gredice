@@ -3,6 +3,7 @@ import { Warning } from '@gredice/ui/icons';
 import { List } from '@gredice/ui/List';
 import { Typography } from '@gredice/ui/Typography';
 import type { ReactNode } from 'react';
+import { FarmTodayViewTracker } from '../components/analytics/FarmTodayViewTracker';
 import {
     FarmTodayAvailableStatePanel,
     FarmTodayNoFarmState,
@@ -24,9 +25,24 @@ export function FarmTodayView({
     headerActions,
     heading,
 }: FarmTodayViewProps) {
+    const viewTracker =
+        data.status === 'ready' || data.status === 'partial' ? (
+            <FarmTodayViewTracker
+                dataStatus={data.status}
+                hasNextTask={data.focusQueue.length > 0}
+                workState={data.workState}
+            />
+        ) : (
+            <FarmTodayViewTracker
+                dataStatus={data.status}
+                hasNextTask={false}
+            />
+        );
+
     if (data.status === 'unavailable') {
         return (
             <main className="mx-auto w-full max-w-5xl space-y-3 px-3 py-3 sm:p-4">
+                {viewTracker}
                 <header className="flex min-h-11 min-w-0 items-start justify-between gap-2">
                     <div className="min-w-0">{heading}</div>
                     {headerActions ? (
@@ -44,6 +60,7 @@ export function FarmTodayView({
     if (data.status === 'noFarm') {
         return (
             <main className="mx-auto w-full max-w-5xl space-y-3 px-3 py-3 sm:p-4">
+                {viewTracker}
                 <header className="flex min-h-11 min-w-0 items-start justify-between gap-2">
                     <div className="min-w-0">{heading}</div>
                     {headerActions ? (
@@ -82,6 +99,7 @@ export function FarmTodayView({
 
     return (
         <main className="mx-auto w-full max-w-5xl min-w-0 space-y-3 px-3 py-3 sm:p-4">
+            {viewTracker}
             <header className="flex min-h-11 min-w-0 items-start justify-between gap-2">
                 <div className="min-w-0">{heading}</div>
                 {headerActions ? (
@@ -97,7 +115,11 @@ export function FarmTodayView({
                         Fokus
                     </h2>
                     <List variant="outlined">
-                        <FarmTodayTaskLink emphasis="next" task={nextTask} />
+                        <FarmTodayTaskLink
+                            emphasis="next"
+                            source="next"
+                            task={nextTask}
+                        />
                     </List>
                 </section>
             ) : null}
@@ -117,7 +139,11 @@ export function FarmTodayView({
                     </h2>
                     <List variant="outlined">
                         {remainingTasks.map((task) => (
-                            <FarmTodayTaskLink key={task.key} task={task} />
+                            <FarmTodayTaskLink
+                                key={task.key}
+                                source="queue"
+                                task={task}
+                            />
                         ))}
                     </List>
                 </section>
@@ -152,7 +178,11 @@ export function FarmTodayView({
                     </div>
                     <List variant="outlined">
                         {attentionItems.map(({ task }) => (
-                            <FarmTodayTaskLink key={task.key} task={task} />
+                            <FarmTodayTaskLink
+                                key={task.key}
+                                source="attention"
+                                task={task}
+                            />
                         ))}
                     </List>
                 </section>

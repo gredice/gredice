@@ -3,6 +3,7 @@
 import { authCurrentUserQueryKeys } from '@gredice/ui/auth';
 import { IconButton } from '@gredice/ui/IconButton';
 import { LogOut } from '@gredice/ui/icons';
+import { usePostHog } from '@posthog/next';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { queryClient } from '../providers/ClientAppProvider';
@@ -12,6 +13,7 @@ export function LogoutButton({
 }: {
     size?: 'xs' | 'sm' | 'md' | 'lg';
 }) {
+    const posthog = usePostHog();
     const router = useRouter();
     const [loading, setLoading] = useState(false);
 
@@ -27,6 +29,10 @@ export function LogoutButton({
             await queryClient.invalidateQueries({
                 queryKey: authCurrentUserQueryKeys,
             });
+            queryClient.removeQueries({
+                queryKey: ['farm', 'notifications'],
+            });
+            posthog?.reset();
             router.refresh();
         } catch (cause) {
             console.error('Logout request failed', cause);

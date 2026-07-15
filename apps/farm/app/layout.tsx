@@ -1,10 +1,13 @@
-import { PostHogPageView, PostHogProvider } from '@posthog/next';
-import { Analytics } from '@vercel/analytics/react';
 import { VercelToolbar } from '@vercel/toolbar/next';
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import Head from 'next/head';
 import type { ReactNode } from 'react';
+import { FarmAnalyticsProvider } from '../components/analytics/FarmAnalyticsProvider';
+import { FarmPageViewTracker } from '../components/analytics/FarmPageViewTracker';
+import { FarmPostHogProvider } from '../components/analytics/FarmPostHogProvider';
+import { FarmWebAnalytics } from '../components/analytics/FarmWebAnalytics';
+import { FarmAppShell } from '../components/navigation/FarmAppShell';
 import { AuthAppProvider } from '../components/providers/AuthAppProvider';
 import { ClientAppProvider } from '../components/providers/ClientAppProvider';
 
@@ -17,6 +20,7 @@ export function generateMetadata(): Metadata {
 
 export const viewport: Viewport = {
     initialScale: 1,
+    viewportFit: 'cover',
     width: 'device-width',
 };
 
@@ -38,9 +42,13 @@ export default function RootLayout({
     const content = (
         <>
             <ClientAppProvider>
-                <AuthAppProvider>{children}</AuthAppProvider>
+                <AuthAppProvider>
+                    <FarmAnalyticsProvider>
+                        <FarmAppShell>{children}</FarmAppShell>
+                    </FarmAnalyticsProvider>
+                </AuthAppProvider>
             </ClientAppProvider>
-            <Analytics />
+            <FarmWebAnalytics />
             {shouldInjectToolbar && <VercelToolbar />}
         </>
     );
@@ -57,19 +65,14 @@ export default function RootLayout({
             </Head>
             <body className="antialiased min-h-screen flex w-full min-w-0 overflow-x-hidden bg-background">
                 {postHogApiKey ? (
-                    <PostHogProvider
+                    <FarmPostHogProvider
                         apiKey={postHogApiKey}
-                        clientOptions={{
-                            api_host: postHogApiHost,
-                            capture_exceptions: true,
-                            debug: process.env.NODE_ENV === 'development',
-                            defaults: '2026-01-30',
-                            ui_host: postHogUiHost ?? null,
-                        }}
+                        apiHost={postHogApiHost}
+                        uiHost={postHogUiHost}
                     >
-                        <PostHogPageView />
+                        <FarmPageViewTracker />
                         {content}
-                    </PostHogProvider>
+                    </FarmPostHogProvider>
                 ) : (
                     content
                 )}

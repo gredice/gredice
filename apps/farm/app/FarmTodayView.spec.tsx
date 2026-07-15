@@ -17,6 +17,7 @@ type AvailableFarmTodayData = Extract<FarmTodayData, { focusQueue: unknown }>;
 
 const phoneViewports = [
     { width: 320, height: 568 },
+    { width: 375, height: 667 },
     { width: 390, height: 844 },
     { width: 430, height: 932 },
 ] as const;
