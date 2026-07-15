@@ -13,6 +13,7 @@ import {
     timestamp,
     uniqueIndex,
 } from 'drizzle-orm/pg-core';
+import { harvestTraceLinks } from './harvestTraceSchema';
 import { operations } from './operationsSchema';
 import { accounts, users } from './usersSchema';
 
@@ -173,6 +174,42 @@ export type PreparedDeliveryRunEstimateSource = Exclude<
     typeof DeliveryRunEstimateSources.LEGACY
 >;
 
+export const DeliveryRunManifestStates = {
+    PENDING: 'pending',
+    CONFIRMED: 'confirmed',
+} as const;
+
+export type DeliveryRunManifestState =
+    (typeof DeliveryRunManifestStates)[keyof typeof DeliveryRunManifestStates];
+
+export const DeliveryRunManifestItemStates = {
+    READY: 'ready',
+    SCANNED: 'scanned',
+    MISSING_LABEL: 'missing-label',
+    NOT_READY: 'not-ready',
+} as const;
+
+export type DeliveryRunManifestItemState =
+    (typeof DeliveryRunManifestItemStates)[keyof typeof DeliveryRunManifestItemStates];
+
+export const DeliveryRunPickupOperationKinds = {
+    SCAN: 'scan',
+    MARK_ITEM: 'mark-item',
+    CONFIRM_MANIFEST: 'confirm-manifest',
+} as const;
+
+export type DeliveryRunPickupOperationKind =
+    (typeof DeliveryRunPickupOperationKinds)[keyof typeof DeliveryRunPickupOperationKinds];
+
+export type DeliveryRunPickupOperationStoredResult = {
+    kind: DeliveryRunPickupOperationKind;
+    outcome: 'applied' | 'already-applied' | 'not-found' | 'ambiguous';
+    affectedStopIds: number[];
+    manifestId?: string;
+    itemState?: DeliveryRunManifestItemState;
+    manifestState?: DeliveryRunManifestState;
+};
+
 // Delivery Runs - one optimized route picked up and driven by a driver/admin.
 export const deliveryRuns = pgTable(
     'delivery_runs',
@@ -270,6 +307,13 @@ type DeliveryRunPreparationStopPayloadV1 = {
     deliveryAddressUpdatedAt: string;
 };
 
+type DeliveryRunPreparationManifestItemPayload = {
+    deliveryRequestId: string;
+    timeSlotId: number;
+    harvestTraceLinkId?: number;
+    traceToken?: string;
+};
+
 type DeliveryRunPreparationRequestSnapshotPayload = {
     deliveryRequestId: string;
     requestDispatchEventId: number;
@@ -360,9 +404,20 @@ export type DeliveryRunPreparationPlanPayloadV2 = {
     requestSnapshots: DeliveryRunPreparationRequestSnapshotPayload[];
 };
 
+export type DeliveryRunPreparationPlanPayloadV3 = Omit<
+    DeliveryRunPreparationPlanPayloadV2,
+    'formatVersion' | 'createRunInput'
+> & {
+    formatVersion: 3;
+    createRunInput: DeliveryRunPreparationPlanPayloadV2['createRunInput'] & {
+        manifestItems: DeliveryRunPreparationManifestItemPayload[];
+    };
+};
+
 export type DeliveryRunPreparationPlanPayload =
     | DeliveryRunPreparationPlanPayloadV1
-    | DeliveryRunPreparationPlanPayloadV2;
+    | DeliveryRunPreparationPlanPayloadV2
+    | DeliveryRunPreparationPlanPayloadV3;
 
 // Private, short-lived route plans. Only a hash of the bearer secret is stored.
 export const deliveryRunPreparations = pgTable(
@@ -490,6 +545,15 @@ export const deliveryRunSlots = pgTable(
         }),
         sequence: integer('sequence').notNull(),
         manifestId: text('manifest_id').notNull(),
+        manifestState: text('manifest_state')
+            .$type<DeliveryRunManifestState>()
+            .notNull()
+            .default(DeliveryRunManifestStates.CONFIRMED),
+        confirmedAt: timestamp('confirmed_at'),
+        confirmedByUserId: text('confirmed_by_user_id').references(
+            () => users.id,
+            { onDelete: 'set null' },
+        ),
         windowStartAt: timestamp('window_start_at').notNull(),
         windowEndAt: timestamp('window_end_at').notNull(),
         sourceUpdatedAt: timestamp('source_updated_at').notNull(),
@@ -521,6 +585,14 @@ export const deliveryRunSlots = pgTable(
         uniqueIndex('delivery_run_slots_run_id_id_unique').on(
             table.runId,
             table.id,
+        ),
+        check(
+            'delivery_run_slots_manifest_state_check',
+            sql`${table.manifestState} in ('pending', 'confirmed')`,
+        ),
+        check(
+            'delivery_run_slots_manifest_confirmation_shape_check',
+            sql`${table.manifestState} = 'confirmed' or (${table.confirmedAt} is null and ${table.confirmedByUserId} is null)`,
         ),
         index('delivery_run_slots_run_id_idx').on(table.runId),
         index('delivery_run_slots_pickup_node_id_idx').on(table.pickupNodeId),
@@ -554,6 +626,17 @@ export const deliveryRunStops = pgTable(
         deliveryCity: text('delivery_city'),
         deliveryPostalCode: text('delivery_postal_code'),
         deliveryCountryCode: text('delivery_country_code'),
+        pickupItemState:
+            text('pickup_item_state').$type<DeliveryRunManifestItemState>(),
+        pickupTraceLinkId: integer('pickup_trace_link_id').references(
+            () => harvestTraceLinks.id,
+        ),
+        pickupTraceToken: text('pickup_trace_token'),
+        pickupResolvedAt: timestamp('pickup_resolved_at'),
+        pickupResolvedByUserId: text('pickup_resolved_by_user_id').references(
+            () => users.id,
+            { onDelete: 'set null' },
+        ),
         state: text('state').notNull().default('pending'),
         latitude: doublePrecision('latitude').notNull(),
         longitude: doublePrecision('longitude').notNull(),
@@ -617,6 +700,27 @@ export const deliveryRunStops = pgTable(
                 and ${table.serviceDurationSeconds} >= 0
             )`,
         ),
+        check(
+            'delivery_run_stops_pickup_item_state_check',
+            sql`${table.pickupItemState} is null or ${table.pickupItemState} in ('ready', 'scanned', 'missing-label', 'not-ready')`,
+        ),
+        check(
+            'delivery_run_stops_pickup_item_resolution_shape_check',
+            sql`(
+                ${table.pickupItemState} is null
+                and ${table.pickupTraceLinkId} is null
+                and ${table.pickupTraceToken} is null
+                and ${table.pickupResolvedAt} is null
+                and ${table.pickupResolvedByUserId} is null
+            ) or (
+                ${table.pickupItemState} = 'ready'
+                and ${table.pickupResolvedAt} is null
+                and ${table.pickupResolvedByUserId} is null
+            ) or (
+                ${table.pickupItemState} in ('scanned', 'missing-label', 'not-ready')
+                and ${table.pickupResolvedAt} is not null
+            )`,
+        ),
         uniqueIndex('delivery_run_stops_delivery_request_id_unique').on(
             table.deliveryRequestId,
         ),
@@ -631,6 +735,58 @@ export const deliveryRunStops = pgTable(
         ),
         index('delivery_run_stops_run_slot_id_idx').on(table.runSlotId),
         index('delivery_run_stops_state_idx').on(table.state),
+        index('delivery_run_stops_pickup_trace_token_idx').on(
+            table.pickupTraceToken,
+        ),
+        index('delivery_run_stops_pickup_item_state_idx').on(
+            table.pickupItemState,
+        ),
+    ],
+);
+
+// Durable idempotency receipts for pickup actions queued by a driver's device.
+// The payload is represented only by a digest; raw QR values are never stored here.
+export const deliveryRunPickupOperations = pgTable(
+    'delivery_run_pickup_operations',
+    {
+        id: serial('id').primaryKey(),
+        runId: text('run_id')
+            .notNull()
+            .references(() => deliveryRuns.id, { onDelete: 'cascade' }),
+        pickupNodeId: text('pickup_node_id').notNull(),
+        driverUserId: text('driver_user_id')
+            .notNull()
+            .references(() => users.id),
+        clientOperationId: text('client_operation_id').notNull(),
+        kind: text('kind').$type<DeliveryRunPickupOperationKind>().notNull(),
+        payloadHash: text('payload_hash').notNull(),
+        result: jsonb('result')
+            .$type<DeliveryRunPickupOperationStoredResult>()
+            .notNull(),
+        occurredAt: timestamp('occurred_at').notNull(),
+        appliedAt: timestamp('applied_at').notNull().defaultNow(),
+    },
+    (table) => [
+        foreignKey({
+            columns: [table.runId, table.pickupNodeId],
+            foreignColumns: [
+                deliveryRunPickupNodes.runId,
+                deliveryRunPickupNodes.id,
+            ],
+            name: 'delivery_run_pickup_operations_run_pickup_node_fk',
+        }).onDelete('cascade'),
+        uniqueIndex('delivery_run_pickup_operations_run_client_unique').on(
+            table.runId,
+            table.clientOperationId,
+        ),
+        check(
+            'delivery_run_pickup_operations_kind_check',
+            sql`${table.kind} in ('scan', 'mark-item', 'confirm-manifest')`,
+        ),
+        index('delivery_run_pickup_operations_run_id_idx').on(table.runId),
+        index('delivery_run_pickup_operations_pickup_node_id_idx').on(
+            table.pickupNodeId,
+        ),
     ],
 );
 
@@ -658,6 +814,9 @@ export const deliveryRunsRelations = relations(
         }),
         preparations: many(deliveryRunPreparations, {
             relationName: 'deliveryRunPreparations',
+        }),
+        pickupOperations: many(deliveryRunPickupOperations, {
+            relationName: 'deliveryRunPickupOperations',
         }),
     }),
 );
@@ -693,6 +852,9 @@ export const deliveryRunPickupNodesRelations = relations(
         }),
         runSlots: many(deliveryRunSlots, {
             relationName: 'deliveryRunPickupNodeSlots',
+        }),
+        pickupOperations: many(deliveryRunPickupOperations, {
+            relationName: 'deliveryRunPickupNodeOperations',
         }),
     }),
 );
@@ -741,6 +903,33 @@ export const deliveryRunStopsRelations = relations(
             fields: [deliveryRunStops.runId, deliveryRunStops.runSlotId],
             references: [deliveryRunSlots.runId, deliveryRunSlots.id],
             relationName: 'deliveryRunSlotStops',
+        }),
+    }),
+);
+
+export const deliveryRunPickupOperationsRelations = relations(
+    deliveryRunPickupOperations,
+    ({ one }) => ({
+        run: one(deliveryRuns, {
+            fields: [deliveryRunPickupOperations.runId],
+            references: [deliveryRuns.id],
+            relationName: 'deliveryRunPickupOperations',
+        }),
+        pickupNode: one(deliveryRunPickupNodes, {
+            fields: [
+                deliveryRunPickupOperations.runId,
+                deliveryRunPickupOperations.pickupNodeId,
+            ],
+            references: [
+                deliveryRunPickupNodes.runId,
+                deliveryRunPickupNodes.id,
+            ],
+            relationName: 'deliveryRunPickupNodeOperations',
+        }),
+        driver: one(users, {
+            fields: [deliveryRunPickupOperations.driverUserId],
+            references: [users.id],
+            relationName: 'driverDeliveryRunPickupOperations',
         }),
     }),
 );
@@ -795,6 +984,8 @@ export type SelectDeliveryRunPickupNode =
     typeof deliveryRunPickupNodes.$inferSelect;
 export type SelectDeliveryRunSlot = typeof deliveryRunSlots.$inferSelect;
 export type SelectDeliveryRunStop = typeof deliveryRunStops.$inferSelect;
+export type SelectDeliveryRunPickupOperation =
+    typeof deliveryRunPickupOperations.$inferSelect;
 
 // Enums for type safety
 export const DeliveryModes = {

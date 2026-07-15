@@ -39,6 +39,8 @@ function request({
     slotEndAt = '2026-07-15T10:00:00.000Z',
     addressId = 100,
     street1 = 'Ilica 1',
+    traceToken,
+    traceLinkId = 900,
     withAddress = true,
     withSlot = true,
 }: {
@@ -52,6 +54,8 @@ function request({
     slotEndAt?: string;
     addressId?: number;
     street1?: string;
+    traceToken?: string;
+    traceLinkId?: number;
     withAddress?: boolean;
     withSlot?: boolean;
 }): DeliveryRunPlanningRequest {
@@ -60,6 +64,7 @@ function request({
         routeRevision,
         mode: 'delivery',
         state,
+        trace: traceToken ? { id: traceLinkId, publicToken: traceToken } : null,
         address: withAddress
             ? {
                   id: addressId,
@@ -202,7 +207,12 @@ async function preparationError(
 
 test('prepares a valid single-location run and expands every ready delivery at a bulk stop', async () => {
     const requests = [
-        request({ id: 'bulk-one', addressId: 100 }),
+        request({
+            id: 'bulk-one',
+            addressId: 100,
+            traceLinkId: 901,
+            traceToken: 'planning-trace-token-0001',
+        }),
         request({ id: 'bulk-two', addressId: 100 }),
         request({
             id: 'later-stop',
@@ -317,6 +327,16 @@ test('prepares a valid single-location run and expands every ready delivery at a
         prepared.createRunInput.stops.map((stop) => stop.timeSlotId),
         [1, 1, 2],
     );
+    assert.deepEqual(prepared.createRunInput.manifestItems, [
+        {
+            deliveryRequestId: 'bulk-one',
+            timeSlotId: 1,
+            harvestTraceLinkId: 901,
+            traceToken: 'planning-trace-token-0001',
+        },
+        { deliveryRequestId: 'bulk-two', timeSlotId: 1 },
+        { deliveryRequestId: 'later-stop', timeSlotId: 2 },
+    ]);
     assert.equal(
         prepared.createRunInput.stops[0]?.stopKey,
         prepared.createRunInput.stops[1]?.stopKey,
@@ -534,7 +554,7 @@ test('rejects unavailable selections before assignment checks or route planning'
     }
 });
 
-test('rejects mixed pickup locations through the shared policy before the planner', async () => {
+test('prepares mixed pickup locations with one manifest dependency per delivery', async () => {
     const requests = [
         request({ id: 'hq', locationId: 10, locationName: 'HQ Zagreb' }),
         request({
@@ -548,27 +568,32 @@ test('rejects mixed pickup locations through the shared policy before the planne
     ];
     const { dependencies, counters } = planningDependencies({ requests });
 
-    const error = await preparationError(
-        prepareDeliveryRun(
-            {
-                driverUserId: 'driver-one',
-                deliveryRequestIds: ['hq', 'east'],
-            },
-            dependencies,
-        ),
+    const prepared = await prepareDeliveryRun(
+        {
+            driverUserId: 'driver-one',
+            deliveryRequestIds: ['hq', 'east'],
+        },
+        dependencies,
     );
 
-    assert.equal(error.code, 'mixed-pickup-locations');
-    assert.equal(error.conflict.deliveryRequestId, 'east');
-    assert.deepEqual(error.conflict.selection?.conflictingRequestIds, ['east']);
     assert.deepEqual(
-        error.conflict.selection?.pickupLocations.map(
-            (location) => location.id,
+        prepared.createRunInput.pickupNodes.map(
+            (node) => node.pickupLocationId,
         ),
         [10, 20],
     );
-    assert.equal(counters.assignmentReads, 0);
-    assert.equal(counters.plannerCalls, 0);
+    assert.deepEqual(
+        prepared.createRunInput.manifestItems.map((item) => ({
+            deliveryRequestId: item.deliveryRequestId,
+            timeSlotId: item.timeSlotId,
+        })),
+        [
+            { deliveryRequestId: 'hq', timeSlotId: 1 },
+            { deliveryRequestId: 'east', timeSlotId: 2 },
+        ],
+    );
+    assert.equal(counters.assignmentReads, 1);
+    assert.equal(counters.plannerCalls, 1);
     assert.equal(counters.mutationCalls, 0);
 });
 

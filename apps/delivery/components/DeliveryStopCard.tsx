@@ -1,5 +1,6 @@
 'use client';
 
+import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
@@ -56,6 +57,10 @@ export function DeliveryStopCard({
     const navigationUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(stop.address)}`;
     const driverMode = mode === 'driver';
     const delivered = stop.statusLabel === 'Dostavljeno';
+    const driverActionState =
+        stop.actionState ??
+        (delivered ? 'completed' : stop.isCurrent ? 'current' : 'upcoming');
+    const customerActionAvailable = driverActionState === 'current';
     const estimatedOutsideWindow = Boolean(
         stop.estimatedArrivalAt &&
             stop.slotEndAt &&
@@ -151,23 +156,110 @@ export function DeliveryStopCard({
                     </div>
                 ) : null}
 
-                <div className="space-y-2 text-sm">
-                    {driverMode && stop.slotStartAt && stop.slotEndAt ? (
-                        <div className="flex items-start gap-2">
-                            <Calendar className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                            <span>
-                                Termin:{' '}
-                                {formatDeliveryDateTime(stop.slotStartAt)} –{' '}
-                                {formatDeliveryTime(stop.slotEndAt)}
-                            </span>
-                        </div>
-                    ) : null}
-                    {driverMode ? (
+                {driverMode ? (
+                    <div className="space-y-2 text-sm">
+                        {stop.slotStartAt && stop.slotEndAt ? (
+                            <div className="flex items-start gap-2">
+                                <Calendar className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                                <span>
+                                    Termin:{' '}
+                                    {formatDeliveryDateTime(stop.slotStartAt)} –{' '}
+                                    {formatDeliveryTime(stop.slotEndAt)}
+                                </span>
+                            </div>
+                        ) : null}
                         <div className="flex items-start gap-2">
                             <MapPin className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                             <span>{stop.address}</span>
                         </div>
-                    ) : null}
+                        {estimatedOutsideWindow && !delivered ? (
+                            <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-950 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
+                                <Warning className="mt-0.5 size-4 shrink-0" />
+                                <span>
+                                    Trenutačna procjena dolaska je nakon
+                                    završetka termina. Obavijesti korisnika o
+                                    kašnjenju.
+                                </span>
+                            </div>
+                        ) : null}
+                    </div>
+                ) : null}
+
+                {driverMode && customerActionAvailable && !delivered ? (
+                    <div className="space-y-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
+                        <Button
+                            href={navigationUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            variant="outlined"
+                            startDecorator={<Navigate className="size-4" />}
+                        >
+                            Navigacija
+                        </Button>
+                        {stop.stopState === 'arrived' ? (
+                            <DeliveryHarvestVerification
+                                deliveries={stop.deliveries}
+                                disabled={Boolean(pendingAction)}
+                            />
+                        ) : (
+                            <Typography
+                                level="body3"
+                                className="rounded-md bg-muted/70 p-3 text-muted-foreground"
+                            >
+                                Nakon potvrde dolaska možeš opcionalno skenirati
+                                QR etikete i provjeriti urode za ovu stanicu.
+                            </Typography>
+                        )}
+                        <label
+                            className="block text-sm font-medium"
+                            htmlFor={`notes-${stop.id}`}
+                        >
+                            {stop.deliveryCount > 1
+                                ? 'Napomena za skupnu dostavu'
+                                : 'Napomena o dostavi'}
+                        </label>
+                        <textarea
+                            id={`notes-${stop.id}`}
+                            value={notes}
+                            onChange={(event) => setNotes(event.target.value)}
+                            rows={2}
+                            maxLength={1_000}
+                            placeholder="Npr. predano članu kućanstva"
+                            className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                        />
+                        <div className="grid gap-2 sm:grid-cols-2">
+                            <Button
+                                variant="outlined"
+                                loading={pendingAction === 'arrive'}
+                                disabled={
+                                    Boolean(pendingAction) ||
+                                    stop.stopState === 'arrived'
+                                }
+                                onClick={onArrive}
+                                startDecorator={
+                                    <MyLocation className="size-4" />
+                                }
+                            >
+                                {stop.stopState === 'arrived'
+                                    ? 'Dolazak potvrđen'
+                                    : 'Stigao sam'}
+                            </Button>
+                            <Button
+                                color="success"
+                                loading={pendingAction === 'deliver'}
+                                disabled={Boolean(pendingAction)}
+                                onClick={() => onDeliver?.(notes || undefined)}
+                                startDecorator={<Approved className="size-4" />}
+                            >
+                                {stop.deliveryCount > 1
+                                    ? `Dostavi ${stop.deliveryCount} uroda · dalje`
+                                    : 'Dostavljeno · dalje'}
+                            </Button>
+                        </div>
+                    </div>
+                ) : null}
+
+                <div className="space-y-2 text-sm">
                     {driverMode ? (
                         <div className="space-y-2">
                             {stop.deliveries.map((delivery) => (
@@ -275,7 +367,7 @@ export function DeliveryStopCard({
                             ) : null}
                         </>
                     )}
-                    {estimatedOutsideWindow && !delivered ? (
+                    {!driverMode && estimatedOutsideWindow && !delivered ? (
                         <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-950 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
                             <Warning className="mt-0.5 size-4 shrink-0" />
                             <span>
@@ -286,19 +378,8 @@ export function DeliveryStopCard({
                     ) : null}
                 </div>
 
-                <div className="flex flex-wrap gap-2">
-                    {driverMode ? (
-                        <Button
-                            href={navigationUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            variant="outlined"
-                            startDecorator={<Navigate className="size-4" />}
-                        >
-                            Navigacija
-                        </Button>
-                    ) : null}
-                    {!driverMode && stop.harvest.tracePath ? (
+                {!driverMode && stop.harvest.tracePath ? (
+                    <div className="flex flex-wrap gap-2">
                         <Button
                             href={`https://www.gredice.com${stop.harvest.tracePath}`}
                             target="_blank"
@@ -308,68 +389,24 @@ export function DeliveryStopCard({
                         >
                             Trag uroda
                         </Button>
-                    ) : null}
-                </div>
-
-                {driverMode && stop.isCurrent && !delivered ? (
-                    <div className="space-y-3 border-t pt-4">
-                        {stop.stopState === 'arrived' ? (
-                            <DeliveryHarvestVerification
-                                deliveries={stop.deliveries}
-                                disabled={Boolean(pendingAction)}
-                            />
-                        ) : (
-                            <Typography
-                                level="body3"
-                                className="rounded-md bg-muted/70 p-3 text-muted-foreground"
-                            >
-                                Nakon potvrde dolaska možeš opcionalno skenirati
-                                QR etikete i provjeriti urode za ovu stanicu.
-                            </Typography>
-                        )}
-                        <label
-                            className="block text-sm font-medium"
-                            htmlFor={`notes-${stop.id}`}
-                        >
-                            {stop.deliveryCount > 1
-                                ? 'Napomena za skupnu dostavu'
-                                : 'Napomena o dostavi'}
-                        </label>
-                        <textarea
-                            id={`notes-${stop.id}`}
-                            value={notes}
-                            onChange={(event) => setNotes(event.target.value)}
-                            rows={2}
-                            maxLength={1_000}
-                            placeholder="Npr. predano članu kućanstva"
-                            className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-                        />
-                        <div className="grid gap-2 sm:grid-cols-2">
-                            <Button
-                                variant="outlined"
-                                loading={pendingAction === 'arrive'}
-                                disabled={stop.stopState === 'arrived'}
-                                onClick={onArrive}
-                                startDecorator={
-                                    <MyLocation className="size-4" />
-                                }
-                            >
-                                {stop.stopState === 'arrived'
-                                    ? 'Dolazak potvrđen'
-                                    : 'Stigao sam'}
-                            </Button>
-                            <Button
-                                color="success"
-                                loading={pendingAction === 'deliver'}
-                                onClick={() => onDeliver?.(notes || undefined)}
-                                startDecorator={<Approved className="size-4" />}
-                            >
-                                {stop.deliveryCount > 1
-                                    ? `Dostavi ${stop.deliveryCount} uroda · dalje`
-                                    : 'Dostavljeno · dalje'}
-                            </Button>
-                        </div>
                     </div>
+                ) : null}
+
+                {driverMode &&
+                (driverActionState === 'locked' ||
+                    driverActionState === 'upcoming') &&
+                !delivered ? (
+                    <Alert
+                        color={
+                            driverActionState === 'locked' ? 'warning' : 'info'
+                        }
+                        startDecorator={<Warning className="size-5" />}
+                    >
+                        {stop.lockedReason ??
+                            (driverActionState === 'locked'
+                                ? 'Dostava će se otključati nakon potvrde svih uroda za ovu stanicu.'
+                                : 'Ova je stanica spremna i otključat će se kada dođe na red rute.')}
+                    </Alert>
                 ) : null}
 
                 {stop.deliveredAt ? (

@@ -100,7 +100,7 @@ export type HarvestTraceVerificationResult =
 export function selectDeliveryStopFromHarvestTrace({
     orders,
     selectedRequestIds,
-    maximumRouteStops,
+    maximumRouteStops: _maximumRouteStops,
     scanValue,
 }: {
     orders: DeliveryRouteOrderSummary[];
@@ -177,22 +177,6 @@ export function selectDeliveryStopFromHarvestTrace({
         stopOrders.every((order) => selectedRequestIdSet.has(order.requestId))
     ) {
         return { status: 'already-selected', ...context };
-    }
-
-    const ordersByRequestId = new Map(
-        orders.map((order) => [order.requestId, order]),
-    );
-    const selectedStopKeys = new Set(
-        availableSelectedRequestIds.flatMap((requestId) => {
-            const order = ordersByRequestId.get(requestId);
-            return order ? [order.stopKey] : [];
-        }),
-    );
-    if (
-        !selectedStopKeys.has(matchedOrder.stopKey) &&
-        selectedStopKeys.size >= maximumRouteStops
-    ) {
-        return { status: 'limit-reached', ...context };
     }
 
     const newlySelectedCount = stopOrders.filter(

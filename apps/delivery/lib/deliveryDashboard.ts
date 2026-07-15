@@ -2,6 +2,8 @@ import { notifyDeliveryRequestEvent } from '@gredice/notifications';
 import {
     consumeDeliveryRunPreparation,
     DeliveryRequestStates,
+    DeliveryRunManifestItemStates,
+    DeliveryRunManifestStates,
     DeliveryRunStates,
     DeliveryRunStopStates,
     fulfillDeliveryRunStops,
@@ -10,6 +12,7 @@ import {
     getDeliveryRequest,
     getDeliveryRequestsWithEvents,
     getDeliveryRun,
+    getDeliveryRunExecutionProgress,
     getDeliveryRunStopsForRequestIds,
     getUser,
     markDeliveryRunStopsArrived,
@@ -22,7 +25,11 @@ import type {
     DeliveryContactSummary,
     DeliveryDashboard,
     DeliveryHarvestSummary,
+    DeliveryPickupManifestItemState,
+    DeliveryPickupManifestSummary,
+    DeliveryPickupStepSummary,
     DeliveryRouteOrderSummary,
+    DeliveryRouteStepSummary,
     DeliveryStopDeliverySummary,
     DeliveryStopSummary,
     DeliveryTrackingLocation,
@@ -56,6 +63,9 @@ export type DeliveryRun = NonNullable<
     Awaited<ReturnType<typeof getDeliveryRun>>
 >;
 type DeliveryRunStop = DeliveryRun['stops'][number];
+type DeliveryRunExecutionStep = Awaited<
+    ReturnType<typeof getDeliveryRunExecutionProgress>
+>[number];
 type DeliveryAccountContact = Awaited<
     ReturnType<typeof getDeliveryAccountContacts>
 >[number];
@@ -283,6 +293,8 @@ function deliveryStopSummary({
     contacts,
     includeTracking,
     sequence,
+    actionState,
+    lockedReason,
 }: {
     items: { request: DeliveryRequest; stop?: DeliveryRunStop | null }[];
     run?: DeliveryRunSnapshot | null;
@@ -290,6 +302,8 @@ function deliveryStopSummary({
     contacts: DeliveryAccountContact[];
     includeTracking: boolean;
     sequence?: number | null;
+    actionState?: DeliveryStopSummary['actionState'];
+    lockedReason?: string | null;
 }): DeliveryStopSummary {
     const primary = items[0];
     if (!primary) {
@@ -356,6 +370,164 @@ function deliveryStopSummary({
         deliveries: items.map((item) =>
             deliverySummaryItem(item.request, contacts, item.stop),
         ),
+        ...(actionState
+            ? { actionState, lockedReason: lockedReason ?? null }
+            : {}),
+    };
+}
+
+function deliveryManifestItemState(
+    state: DeliveryRunStop['pickupItemState'],
+    manifestConfirmed: boolean,
+): DeliveryPickupManifestItemState {
+    switch (state) {
+        case DeliveryRunManifestItemStates.READY:
+        case DeliveryRunManifestItemStates.SCANNED:
+        case DeliveryRunManifestItemStates.MISSING_LABEL:
+        case DeliveryRunManifestItemStates.NOT_READY:
+            return state;
+        default:
+            return manifestConfirmed
+                ? DeliveryRunManifestItemStates.SCANNED
+                : DeliveryRunManifestItemStates.READY;
+    }
+}
+
+export function pickupManifestTracePath(
+    pickupTraceToken: string | null | undefined,
+) {
+    return pickupTraceToken ? `/trag/${pickupTraceToken}` : null;
+}
+
+function pickupManifestSummary({
+    run,
+    slot,
+    requestsById,
+}: {
+    run: DeliveryRun;
+    slot: DeliveryRun['runSlots'][number];
+    requestsById: ReadonlyMap<string, DeliveryRequest>;
+}): DeliveryPickupManifestSummary {
+    const confirmed =
+        slot.manifestState === DeliveryRunManifestStates.CONFIRMED;
+    const items = run.stops
+        .filter((stop) => stop.runSlotId === slot.id)
+        .map((stop) => {
+            const request = requestsById.get(stop.deliveryRequestId);
+            const tracePath = pickupManifestTracePath(stop.pickupTraceToken);
+            return {
+                id: String(stop.id),
+                stopId: stop.id,
+                requestId: stop.deliveryRequestId,
+                stopKey:
+                    stop.stopKey ??
+                    (request
+                        ? deliveryRequestStopKey(request)
+                        : `request:${stop.deliveryRequestId}`),
+                state: deliveryManifestItemState(
+                    stop.pickupItemState,
+                    confirmed,
+                ),
+                resolvedAt: iso(stop.pickupResolvedAt),
+                tracePath,
+                harvest: request
+                    ? { ...harvestSummary(request), tracePath }
+                    : {
+                          plantName: 'Urod',
+                          operationName: null,
+                          raisedBedName: null,
+                          fieldName: null,
+                          tracePath: null,
+                      },
+            };
+        });
+    const scannedCount = items.filter(
+        (item) => item.state === DeliveryRunManifestItemStates.SCANNED,
+    ).length;
+    const missingLabelCount = items.filter(
+        (item) => item.state === DeliveryRunManifestItemStates.MISSING_LABEL,
+    ).length;
+    const notReadyCount = items.filter(
+        (item) => item.state === DeliveryRunManifestItemStates.NOT_READY,
+    ).length;
+
+    return {
+        id: slot.manifestId,
+        timeSlotId: slot.timeSlotId,
+        startAt: slot.windowStartAt.toISOString(),
+        endAt: slot.windowEndAt.toISOString(),
+        state: confirmed ? 'confirmed' : 'pending',
+        confirmedAt: iso(slot.confirmedAt),
+        expectedCount: items.length,
+        scannedCount,
+        missingLabelCount,
+        notReadyCount,
+        remainingCount: items.length - scannedCount - missingLabelCount,
+        items,
+    };
+}
+
+function pickupStepSummary({
+    run,
+    step,
+    requestsById,
+}: {
+    run: DeliveryRun;
+    step: Extract<DeliveryRunExecutionStep, { kind: 'pickup' }>;
+    requestsById: ReadonlyMap<string, DeliveryRequest>;
+}): DeliveryPickupStepSummary | null {
+    const pickupNode = run.pickupNodes.find(
+        (node) => node.id === step.pickupNodeId,
+    );
+    if (!pickupNode) return null;
+
+    const manifests = run.runSlots
+        .filter((slot) => slot.pickupNodeId === pickupNode.id)
+        .map((slot) => pickupManifestSummary({ run, slot, requestsById }));
+    const scannedCount = manifests.reduce(
+        (count, manifest) => count + manifest.scannedCount,
+        0,
+    );
+    const missingLabelCount = manifests.reduce(
+        (count, manifest) => count + manifest.missingLabelCount,
+        0,
+    );
+    const notReadyCount = manifests.reduce(
+        (count, manifest) => count + manifest.notReadyCount,
+        0,
+    );
+    const remainingCount = manifests.reduce(
+        (count, manifest) => count + manifest.remainingCount,
+        0,
+    );
+    const allConfirmed =
+        manifests.length > 0 &&
+        manifests.every((manifest) => manifest.state === 'confirmed');
+    const hasProgress =
+        scannedCount > 0 || missingLabelCount > 0 || notReadyCount > 0;
+
+    return {
+        id: pickupNode.id,
+        pickupLocationId: pickupNode.pickupLocationId,
+        sequence: pickupNode.sequence,
+        itinerarySequence: step.itinerarySequence,
+        name: pickupNode.name,
+        address: pickupNode.formattedAddress,
+        estimatedArrivalAt: iso(pickupNode.estimatedArrivalAt),
+        estimatedTravelSeconds: pickupNode.incomingTravelSeconds,
+        estimatedDistanceMeters: pickupNode.incomingDistanceMeters,
+        serviceDurationSeconds: pickupNode.serviceDurationSeconds,
+        state: allConfirmed ? 'confirmed' : hasProgress ? 'partial' : 'pending',
+        isCurrent: step.state === 'current',
+        expectedCount: manifests.reduce(
+            (count, manifest) => count + manifest.expectedCount,
+            0,
+        ),
+        scannedCount,
+        missingLabelCount,
+        notReadyCount,
+        remainingCount,
+        manifests,
     };
 }
 
@@ -366,6 +538,9 @@ async function activeRunSummary(
     const requests = groups.flatMap((group) =>
         group.items.flatMap((item) => (item.request ? [item.request] : [])),
     );
+    const requestsById = new Map(
+        requests.map((request) => [request.id, request]),
+    );
     const accountIds = Array.from(
         new Set(
             requests
@@ -373,28 +548,110 @@ async function activeRunSummary(
                 .filter((accountId): accountId is string => Boolean(accountId)),
         ),
     );
-    const contacts = await getDeliveryAccountContacts(accountIds);
-    const currentGroup = groups.find((group) =>
-        group.items.some(
-            ({ stop }) => stop.state !== DeliveryRunStopStates.DELIVERED,
-        ),
-    );
-    const stops: DeliveryStopSummary[] = [];
+    const [contacts, executionSteps] = await Promise.all([
+        getDeliveryAccountContacts(accountIds),
+        getDeliveryRunExecutionProgress(run.id),
+    ]);
+    const groupsByStopId = new Map<number, ResolvedDeliveryRunStopGroup>();
     for (const group of groups) {
+        for (const { stop } of group.items) {
+            groupsByStopId.set(stop.id, group);
+        }
+    }
+    const stops: DeliveryStopSummary[] = [];
+    const routeSteps: DeliveryRouteStepSummary[] = [];
+    const includedDeliveryGroups = new Set<string>();
+    for (const executionStep of executionSteps) {
+        if (executionStep.kind === 'pickup') {
+            const pickup = pickupStepSummary({
+                run,
+                step: executionStep,
+                requestsById,
+            });
+            if (!pickup) continue;
+            routeSteps.push({
+                kind: 'pickup',
+                itinerarySequence: executionStep.itinerarySequence,
+                actionState:
+                    executionStep.state === 'completed'
+                        ? 'completed'
+                        : executionStep.state === 'current'
+                          ? 'current'
+                          : 'locked',
+                pickup,
+            });
+            continue;
+        }
+
+        const group = executionStep.stopIds.flatMap((stopId) => {
+            const candidate = groupsByStopId.get(stopId);
+            return candidate ? [candidate] : [];
+        })[0];
+        if (!group || includedDeliveryGroups.has(group.stopKey)) continue;
+        includedDeliveryGroups.add(group.stopKey);
+
+        const groupStopIds = new Set(group.items.map(({ stop }) => stop.id));
+        const groupExecutionSteps = executionSteps.filter(
+            (
+                candidate,
+            ): candidate is Extract<
+                DeliveryRunExecutionStep,
+                { kind: 'delivery' }
+            > =>
+                candidate.kind === 'delivery' &&
+                candidate.stopIds.some((stopId) => groupStopIds.has(stopId)),
+        );
         const items = group.items.flatMap(({ request, stop }) =>
             request ? [{ request, stop }] : [],
         );
         if (items.length === 0) continue;
-        stops.push(
-            deliveryStopSummary({
-                items,
-                run,
-                isCurrent: currentGroup?.stopKey === group.stopKey,
-                contacts,
-                includeTracking: true,
-                sequence: stops.length + 1,
-            }),
+        const complete = group.items.every(
+            ({ stop }) => stop.state === DeliveryRunStopStates.DELIVERED,
         );
+        const dependencySatisfied = groupExecutionSteps.every(
+            (candidate) => candidate.pickupConfirmed,
+        );
+        const current = groupExecutionSteps.some(
+            (candidate) => candidate.state === 'current',
+        );
+        const actionState: NonNullable<DeliveryStopSummary['actionState']> =
+            complete
+                ? 'completed'
+                : !dependencySatisfied
+                  ? 'locked'
+                  : current
+                    ? 'current'
+                    : 'upcoming';
+        const itinerarySequence = Math.min(
+            ...groupExecutionSteps.map(
+                (candidate) => candidate.itinerarySequence,
+            ),
+        );
+        const stop = deliveryStopSummary({
+            items,
+            run,
+            isCurrent: actionState === 'current',
+            contacts,
+            includeTracking: true,
+            sequence: Number.isFinite(itinerarySequence)
+                ? itinerarySequence
+                : stops.length + 1,
+            actionState,
+            lockedReason:
+                actionState === 'locked'
+                    ? 'Najprije potvrdi preuzimanje svih uroda za ovu stanicu.'
+                    : null,
+        });
+        stops.push(stop);
+        routeSteps.push({
+            kind: 'delivery',
+            itinerarySequence: Number.isFinite(itinerarySequence)
+                ? itinerarySequence
+                : executionStep.itinerarySequence,
+            actionState,
+            lockedReason: stop.lockedReason ?? null,
+            stop,
+        });
     }
 
     return {
@@ -414,6 +671,7 @@ async function activeRunSummary(
             0,
         ),
         stops,
+        routeSteps,
     };
 }
 
@@ -558,21 +816,25 @@ async function customerDashboard({
         ),
     );
     const activeRuns = await Promise.all(activeRunIds.map(getDeliveryRun));
-    const currentStopIdsByRunId = new Map<string, Set<number>>();
+    const currentStopIdsByRunId = new Map<string, Set<number> | null>();
     for (const run of activeRuns) {
         if (!run) continue;
-        const groups = await resolveDeliveryRunStopGroups(run);
-        const currentGroup = groups.find((group) =>
-            group.items.some(
-                ({ stop }) => stop.state !== DeliveryRunStopStates.DELIVERED,
-            ),
-        );
-        if (currentGroup) {
-            currentStopIdsByRunId.set(
-                run.id,
-                new Set(currentGroup.items.map(({ stop }) => stop.id)),
-            );
+        const progress = await getDeliveryRunExecutionProgress(run.id);
+        const current = progress.find((step) => step.state === 'current');
+        if (current?.kind !== 'delivery' || !current.pickupConfirmed) {
+            currentStopIdsByRunId.set(run.id, null);
+            continue;
         }
+        const currentStopIds = new Set(current.stopIds);
+        currentStopIdsByRunId.set(
+            run.id,
+            run.routePlanVersion < 2
+                ? expandLegacyCurrentDeliveryStopIds({
+                      currentStopIds,
+                      groups: await resolveDeliveryRunStopGroups(run),
+                  })
+                : currentStopIds,
+        );
     }
 
     const deliveries = requests
@@ -609,6 +871,31 @@ async function customerDashboard({
         deliveries,
         refreshedAt: new Date().toISOString(),
     };
+}
+
+export function expandLegacyCurrentDeliveryStopIds({
+    currentStopIds,
+    groups,
+}: {
+    currentStopIds: ReadonlySet<number>;
+    groups: ReadonlyArray<{
+        items: ReadonlyArray<{ stop: { id?: number } }>;
+    }>;
+}) {
+    const currentGroup = groups.find((group) =>
+        group.items.some(
+            ({ stop }) => stop.id !== undefined && currentStopIds.has(stop.id),
+        ),
+    );
+    if (!currentGroup) {
+        return new Set(currentStopIds);
+    }
+
+    return new Set(
+        currentGroup.items.flatMap(({ stop }) =>
+            stop.id === undefined ? [] : [stop.id],
+        ),
+    );
 }
 
 export async function getDeliveryDashboard({
@@ -715,13 +1002,15 @@ async function getOwnedDeliveryRunStopGroup({
     if (run.state !== DeliveryRunStates.ACTIVE) {
         throw new Error('Aktivna dostava nije pronađena.');
     }
-    const currentGroup = groups.find((group) =>
-        group.items.some(
-            ({ stop }) => stop.state !== DeliveryRunStopStates.DELIVERED,
-        ),
-    );
-    if (currentGroup?.stopKey !== targetGroup.stopKey) {
-        throw new Error('Dostave se moraju završiti redoslijedom rute.');
+    if (run.routePlanVersion < 2) {
+        const currentGroup = groups.find((group) =>
+            group.items.some(
+                ({ stop }) => stop.state !== DeliveryRunStopStates.DELIVERED,
+            ),
+        );
+        if (currentGroup?.stopKey !== targetGroup.stopKey) {
+            throw new Error('Dostave se moraju završiti redoslijedom rute.');
+        }
     }
     if (targetGroup.items.some(({ request }) => !request)) {
         throw new Error('Dostava u ruti nije pronađena.');
@@ -773,11 +1062,19 @@ export async function accountCanTrackDeliveryRun({
     if (!run || run.state !== DeliveryRunStates.ACTIVE) {
         return false;
     }
-    const groups = await resolveDeliveryRunStopGroups(run);
+    const [groups, progress] = await Promise.all([
+        resolveDeliveryRunStopGroups(run),
+        getDeliveryRunExecutionProgress(run.id),
+    ]);
+    const current = progress.find((step) => step.state === 'current');
     return accountCanTrackCurrentDeliveryGroup({
         accountId,
         runState: run.state,
         groups,
+        currentDeliveryStopIds:
+            current?.kind === 'delivery' && current.pickupConfirmed
+                ? new Set(current.stopIds)
+                : null,
     });
 }
 
@@ -785,24 +1082,38 @@ export function accountCanTrackCurrentDeliveryGroup({
     accountId,
     runState,
     groups,
+    currentDeliveryStopIds,
 }: {
     accountId: string;
     runState: string;
     groups: ReadonlyArray<{
         items: ReadonlyArray<{
-            stop: { state: string };
+            stop: { id?: number; state: string };
             request?: { accountId?: string | null };
         }>;
     }>;
+    currentDeliveryStopIds?: ReadonlySet<number> | null;
 }) {
     if (runState !== DeliveryRunStates.ACTIVE) {
         return false;
     }
-    const currentGroup = groups.find((group) =>
-        group.items.some(
-            ({ stop }) => stop.state !== DeliveryRunStopStates.DELIVERED,
-        ),
-    );
+    const currentGroup =
+        currentDeliveryStopIds === undefined
+            ? groups.find((group) =>
+                  group.items.some(
+                      ({ stop }) =>
+                          stop.state !== DeliveryRunStopStates.DELIVERED,
+                  ),
+              )
+            : currentDeliveryStopIds === null
+              ? undefined
+              : groups.find((group) =>
+                    group.items.some(
+                        ({ stop }) =>
+                            stop.id !== undefined &&
+                            currentDeliveryStopIds.has(stop.id),
+                    ),
+                );
 
     return Boolean(
         currentGroup?.items.some(
@@ -849,6 +1160,11 @@ export async function recordDriverLocation({
         run.estimatesUpdatedAt &&
         Date.now() - run.estimatesUpdatedAt.getTime() < etaRefreshIntervalMs;
     if (estimatesAreFresh) {
+        return;
+    }
+    // Pickup-aware plans contain interleaved pickup and delivery checkpoints.
+    // Rebuilding only the customer portion would corrupt their itinerary.
+    if (run.routePlanVersion >= 2) {
         return;
     }
 

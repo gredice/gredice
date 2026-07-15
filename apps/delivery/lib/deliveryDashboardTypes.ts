@@ -63,7 +63,77 @@ export type DeliveryStopSummary = {
     runId: string | null;
     deliveryCount: number;
     deliveries: DeliveryStopDeliverySummary[];
+    actionState?: 'locked' | 'upcoming' | 'current' | 'completed';
+    lockedReason?: string | null;
 };
+
+export type DeliveryPickupManifestItemState =
+    | 'ready'
+    | 'scanned'
+    | 'missing-label'
+    | 'not-ready';
+
+export type DeliveryPickupManifestItemSummary = {
+    id: string;
+    stopId: number;
+    requestId: string;
+    stopKey: string;
+    state: DeliveryPickupManifestItemState;
+    resolvedAt: string | null;
+    tracePath: string | null;
+    harvest: DeliveryHarvestSummary;
+};
+
+export type DeliveryPickupManifestSummary = {
+    id: string;
+    timeSlotId: number | null;
+    startAt: string;
+    endAt: string;
+    state: 'pending' | 'confirmed';
+    confirmedAt: string | null;
+    expectedCount: number;
+    scannedCount: number;
+    missingLabelCount: number;
+    notReadyCount: number;
+    remainingCount: number;
+    items: DeliveryPickupManifestItemSummary[];
+};
+
+export type DeliveryPickupStepSummary = {
+    id: string;
+    pickupLocationId: number | null;
+    sequence: number;
+    itinerarySequence: number;
+    name: string;
+    address: string;
+    estimatedArrivalAt: string | null;
+    estimatedTravelSeconds: number | null;
+    estimatedDistanceMeters: number | null;
+    serviceDurationSeconds: number | null;
+    state: 'pending' | 'partial' | 'confirmed';
+    isCurrent: boolean;
+    expectedCount: number;
+    scannedCount: number;
+    missingLabelCount: number;
+    notReadyCount: number;
+    remainingCount: number;
+    manifests: DeliveryPickupManifestSummary[];
+};
+
+export type DeliveryRouteStepSummary =
+    | {
+          kind: 'pickup';
+          itinerarySequence: number;
+          actionState: 'locked' | 'current' | 'completed';
+          pickup: DeliveryPickupStepSummary;
+      }
+    | {
+          kind: 'delivery';
+          itinerarySequence: number;
+          actionState: 'locked' | 'upcoming' | 'current' | 'completed';
+          lockedReason: string | null;
+          stop: DeliveryStopSummary;
+      };
 
 export type DeliveryBatchSummary = {
     slotId: number;
@@ -103,6 +173,7 @@ export type ActiveDeliveryRunSummary = {
     mapUrl: string;
     deliveryCount: number;
     stops: DeliveryStopSummary[];
+    routeSteps: DeliveryRouteStepSummary[];
 };
 
 export type DriverDeliveryDashboard = {
