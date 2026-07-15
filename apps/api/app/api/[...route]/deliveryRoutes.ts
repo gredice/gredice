@@ -1,6 +1,4 @@
-import { notifyDeliveryRequestEvent } from '@gredice/notifications';
 import {
-    cancelDeliveryRequest,
     createDeliveryAddress,
     createDeliveryRequest,
     deleteDeliveryAddress,
@@ -20,10 +18,8 @@ import {
 import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
-import {
-    createDeliveryRequestCalendarEvent,
-    deleteDeliveryRequestCalendarEvent,
-} from '../../../lib/delivery/calendarSync';
+import { createDeliveryRequestCalendarEvent } from '../../../lib/delivery/calendarSync';
+import { cancelDeliveryRequestForCurrentAccount } from '../../../lib/delivery/cancelDeliveryRequestForAccount';
 import { authSecurity, publicSecurity } from '../../../lib/docs/security';
 import {
     type AuthVariables,
@@ -113,7 +109,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const validationErrors = validateDeliveryAddress(data);
             if (validationErrors.length > 0) {
                 return context.json(
-                    { error: 'Validation failed', details: validationErrors },
+                    {
+                        error: 'Validation failed',
+                        details: validationErrors,
+                    },
                     400,
                 );
             }
@@ -157,7 +156,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const validationErrors = validateDeliveryAddress(data);
             if (validationErrors.length > 0) {
                 return context.json(
-                    { error: 'Validation failed', details: validationErrors },
+                    {
+                        error: 'Validation failed',
+                        details: validationErrors,
+                    },
                     400,
                 );
             }
@@ -293,13 +295,20 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ id: requestId }, 201);
             } catch (error) {
                 console.error('Failed to create delivery request:', error);
+                const errorMessage =
+                    error instanceof Error ? error.message : 'Unknown error';
+
+                if (errorMessage.endsWith('or access denied')) {
+                    return context.json(
+                        { error: 'Delivery resource not found' },
+                        404,
+                    );
+                }
+
                 return context.json(
                     {
                         error: 'Failed to create delivery request',
-                        details:
-                            error instanceof Error
-                                ? error.message
-                                : 'Unknown error',
+                        details: errorMessage,
                     },
                     500,
                 );
@@ -325,26 +334,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
             try {
                 // TODO: Move to service
                 // TODO: Add email notification for delivery cancellation
-                await cancelDeliveryRequest(
-                    id,
-                    'user',
+                await cancelDeliveryRequestForCurrentAccount({
+                    requestId: id,
+                    accountId,
                     cancelReason,
                     note,
-                    accountId,
-                );
-                await notifyDeliveryRequestEvent(id, 'cancelled', {
-                    reason: cancelReason,
-                    note,
                 });
-                (await getPostHogClient()).capture({
-                    distinctId: accountId,
-                    event: 'delivery_request_cancelled',
-                    properties: {
-                        request_id: id,
-                        cancel_reason: cancelReason,
-                    },
-                });
-                void deleteDeliveryRequestCalendarEvent(id);
                 return context.json({ success: true });
             } catch (error) {
                 console.error('Failed to cancel delivery request:', error);
@@ -354,8 +349,18 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 // Handle specific error cases
                 if (errorMessage.includes('cutoff time has passed')) {
                     return context.json(
-                        { error: 'CUTOFF_EXPIRED', message: errorMessage },
+                        {
+                            error: 'CUTOFF_EXPIRED',
+                            message: errorMessage,
+                        },
                         400,
+                    );
+                }
+
+                if (errorMessage === 'Delivery request not found') {
+                    return context.json(
+                        { error: 'Delivery request not found' },
+                        404,
                     );
                 }
 

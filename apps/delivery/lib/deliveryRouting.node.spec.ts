@@ -142,6 +142,89 @@ test('route planning retries the display address when the simplified address is 
     }
 });
 
+test('falls back to a local route estimate when Google Routes is unavailable', async () => {
+    const originalFetch = globalThis.fetch;
+    const originalWarn = console.warn;
+    const originalApiKey = process.env.GREDICE_GOOGLE_MAPS_SERVER_API_KEY;
+    const originalHqAddress = process.env.GREDICE_DELIVERY_HQ_ADDRESS;
+    let routesRequestCount = 0;
+    let fallbackWarningCount = 0;
+    process.env.GREDICE_GOOGLE_MAPS_SERVER_API_KEY = 'test-key';
+    process.env.GREDICE_DELIVERY_HQ_ADDRESS =
+        'Ulica Julija Knifera 3, 10000 Zagreb, HR';
+    globalThis.fetch = async (input) => {
+        const url = new URL(
+            typeof input === 'string'
+                ? input
+                : input instanceof URL
+                  ? input.toString()
+                  : input.url,
+        );
+        if (url.hostname === 'maps.googleapis.com') {
+            const address = url.searchParams.get('address') ?? '';
+            const location = address.startsWith('Ilica')
+                ? { lat: 45.813, lng: 15.977 }
+                : { lat: 45.776, lng: 15.963 };
+            return Response.json({
+                status: 'OK',
+                results: [{ geometry: { location } }],
+            });
+        }
+        if (url.hostname === 'routes.googleapis.com') {
+            routesRequestCount += 1;
+            return Response.json(
+                { error: { status: 'UNAVAILABLE' } },
+                { status: 503 },
+            );
+        }
+        return new Response(null, { status: 404 });
+    };
+    console.warn = (message) => {
+        if (
+            message === 'Google route optimization failed; using local fallback'
+        ) {
+            fallbackWarningCount += 1;
+        }
+    };
+
+    try {
+        const plan = await planDeliveryRoute({
+            candidates: [
+                {
+                    deliveryRequestId: 'delivery-1',
+                    formattedAddress: 'Ilica 1, 10000 Zagreb, HR',
+                    windowStartAt: new Date('2026-07-14T08:00:00.000Z'),
+                    windowEndAt: new Date('2026-07-14T10:00:00.000Z'),
+                },
+            ],
+            departureTime: new Date('2026-07-14T07:30:00.000Z'),
+        });
+
+        assert.equal(routesRequestCount, 1);
+        assert.equal(fallbackWarningCount, 1);
+        assert.equal(plan.encodedPolyline, undefined);
+        assert.ok(plan.totalDistanceMeters > 0);
+        assert.equal(plan.stops[0]?.deliveryRequestId, 'delivery-1');
+        assert.equal(
+            plan.stops[0]?.estimatedArrivalAt.toISOString(),
+            '2026-07-14T08:00:00.000Z',
+        );
+    } finally {
+        globalThis.fetch = originalFetch;
+        console.warn = originalWarn;
+        if (originalApiKey === undefined) {
+            delete process.env.GREDICE_GOOGLE_MAPS_SERVER_API_KEY;
+        } else {
+            process.env.GREDICE_GOOGLE_MAPS_SERVER_API_KEY = originalApiKey;
+        }
+        if (originalHqAddress === undefined) {
+            delete process.env.GREDICE_DELIVERY_HQ_ADDRESS;
+        } else {
+            process.env.GREDICE_DELIVERY_HQ_ADDRESS = originalHqAddress;
+        }
+    }
+});
+
 test('reports a server key restriction without exposing Google error details', async () => {
     const originalFetch = globalThis.fetch;
     const originalApiKey = process.env.GREDICE_GOOGLE_MAPS_SERVER_API_KEY;

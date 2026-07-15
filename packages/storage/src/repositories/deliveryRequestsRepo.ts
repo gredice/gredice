@@ -356,7 +356,7 @@ async function reconstructDeliveryRequestRows<
         createdAt: Date;
         updatedAt: Date;
     },
->(requests: TRequest[]) {
+>(requests: TRequest[], accountIdsByOperationId: ReadonlyMap<number, string>) {
     if (requests.length === 0) {
         return [];
     }
@@ -432,18 +432,44 @@ async function reconstructDeliveryRequestRows<
         locations.map((location) => [location.id, location]),
     );
 
-    return reconstructedRows.map((row) => ({
-        ...row,
-        slot: row.projection.slotId
-            ? slotsById.get(row.projection.slotId)
-            : undefined,
-        address: row.projection.addressId
+    return reconstructedRows.map((row) => {
+        const accountId = accountIdsByOperationId.get(row.request.operationId);
+        const address = row.projection.addressId
             ? addressesById.get(row.projection.addressId)
-            : undefined,
-        location: row.projection.locationId
-            ? locationsById.get(row.projection.locationId)
-            : undefined,
-    }));
+            : undefined;
+
+        return {
+            ...row,
+            accountId,
+            slot: row.projection.slotId
+                ? slotsById.get(row.projection.slotId)
+                : undefined,
+            address:
+                accountId && address?.accountId === accountId
+                    ? address
+                    : undefined,
+            location: row.projection.locationId
+                ? locationsById.get(row.projection.locationId)
+                : undefined,
+        };
+    });
+}
+
+function getOperationAccountIds(
+    requests: Array<{
+        operationId: number;
+        operation?: {
+            accountId: string | null;
+        } | null;
+    }>,
+) {
+    const accountIds = new Map<number, string>();
+    for (const request of requests) {
+        if (request.operation?.accountId) {
+            accountIds.set(request.operationId, request.operation.accountId);
+        }
+    }
+    return accountIds;
 }
 
 function filterDeliveryRequestRows<
@@ -507,18 +533,21 @@ async function reconstructDeliveryRequestFromEvents(
         cancelReason,
         requestNotes,
         deliveryNotes,
-        accountId,
         surveySent,
     } = reconstructDeliveryRequestState(request.createdAt, events);
 
-    // Fetch slot, address, location, and operation in parallel
-    const [slot, address, location, operation] = await Promise.all([
+    const operation = await getOperationById(request.operationId);
+    if (!operation.accountId) {
+        throw new Error('Delivery request owner not found');
+    }
+    const accountId = operation.accountId;
+
+    // The operation owner is authoritative for request ownership. Event data
+    // is historical input and must not grant access to another account.
+    const [slot, address, location] = await Promise.all([
         slotId ? getTimeSlot(slotId) : undefined,
-        addressId && accountId
-            ? getDeliveryAddress(addressId, accountId)
-            : undefined,
+        addressId ? getDeliveryAddress(addressId, accountId) : undefined,
         locationId ? getPickupLocation(locationId) : undefined,
-        getOperationById(request.operationId),
     ]);
 
     const [operationEntity, raisedBed, fields, traceLinks] = await Promise.all([
@@ -676,8 +705,18 @@ async function getDeliveryRequestsSummaryUncached(
     const requests = await storage().query.deliveryRequests.findMany({
         where: whereConditions.length > 0 ? and(...whereConditions) : undefined,
         orderBy: [desc(deliveryRequests.createdAt)],
+        with: {
+            operation: {
+                columns: {
+                    accountId: true,
+                },
+            },
+        },
     });
-    const reconstructedRows = await reconstructDeliveryRequestRows(requests);
+    const reconstructedRows = await reconstructDeliveryRequestRows(
+        requests,
+        getOperationAccountIds(requests),
+    );
     const filteredRows = filterDeliveryRequestRows(reconstructedRows, {
         state,
         slotId,
@@ -686,7 +725,7 @@ async function getDeliveryRequestsSummaryUncached(
     });
 
     return filteredRows.map(
-        ({ request, projection, slot, address, location }) => ({
+        ({ request, projection, accountId, slot, address, location }) => ({
             id: request.id,
             operationId: request.operationId,
             state: projection.state,
@@ -700,7 +739,7 @@ async function getDeliveryRequestsSummaryUncached(
             surveySent: projection.surveySent,
             createdAt: request.createdAt,
             updatedAt: request.updatedAt,
-            accountId: projection.accountId,
+            accountId,
         }),
     );
 }
@@ -734,7 +773,10 @@ export async function getDeliveryRequestsWithEvents(
             },
         },
     });
-    const reconstructedRows = await reconstructDeliveryRequestRows(requests);
+    const reconstructedRows = await reconstructDeliveryRequestRows(
+        requests,
+        getOperationAccountIds(requests),
+    );
     const filteredRows = filterDeliveryRequestRows(reconstructedRows, {
         state,
         slotId,
@@ -865,7 +907,7 @@ export async function getDeliveryRequestsWithEvents(
     );
 
     return filteredRows.map(
-        ({ request, projection, slot, address, location }) => {
+        ({ request, projection, accountId, slot, address, location }) => {
             const rawOperation = request.operation;
             const operation =
                 operationsById.get(request.operationId) ??
@@ -924,7 +966,7 @@ export async function getDeliveryRequestsWithEvents(
                     : null,
                 createdAt: request.createdAt,
                 updatedAt: request.updatedAt,
-                accountId: projection.accountId,
+                accountId,
             };
         },
     );
@@ -1042,6 +1084,31 @@ export async function createDeliveryRequest(data: {
 
     if (data.mode === 'pickup' && !data.locationId) {
         throw new Error('Location ID is required for pickup mode');
+    }
+
+    const operation = await storage().query.operations.findFirst({
+        columns: {
+            id: true,
+        },
+        where: and(
+            eq(operations.id, data.operationId),
+            eq(operations.accountId, data.accountId),
+            eq(operations.isDeleted, false),
+        ),
+    });
+
+    if (!operation) {
+        throw new Error('Operation not found or access denied');
+    }
+
+    if (data.mode === 'delivery' && data.addressId) {
+        const address = await getDeliveryAddress(
+            data.addressId,
+            data.accountId,
+        );
+        if (!address) {
+            throw new Error('Delivery address not found or access denied');
+        }
     }
 
     // Check if operation already has a delivery request
@@ -1170,6 +1237,32 @@ export async function cancelDeliveryRequest(
             note,
             cancelledBy: actorId,
         }),
+    );
+}
+
+export async function cancelDeliveryRequestForAccount({
+    requestId,
+    accountId,
+    cancelReason,
+    note,
+}: {
+    requestId: string;
+    accountId: string;
+    cancelReason: string;
+    note?: string;
+}): Promise<void> {
+    const request = await getDeliveryRequest(requestId);
+
+    if (!request || request.accountId !== accountId) {
+        throw new Error('Delivery request not found');
+    }
+
+    await cancelDeliveryRequest(
+        requestId,
+        'user',
+        cancelReason,
+        note,
+        accountId,
     );
 }
 
