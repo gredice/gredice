@@ -70,6 +70,7 @@ import {
     withDeliveryDispatchTransaction,
 } from './deliveryDispatchRepo';
 import {
+    DeliveryRequestFulfillmentError,
     deliveryDispatchEventTypes,
     fulfillDeliveryRequest,
     getDeliveryRequest,
@@ -288,6 +289,7 @@ export const DeliveryRunExecutionErrorCodes = {
     EXCEPTION_TRANSITION_INVALID: 'exception-transition-invalid',
     STOP_OPERATION_CONFLICT: 'stop-operation-conflict',
     STOP_OPERATION_INVALID: 'stop-operation-invalid',
+    STOP_OPERATION_STATE_CONFLICT: 'stop-operation-state-conflict',
     RUN_DRIVER_CONFLICT: 'run-driver-conflict',
     RUN_MUTATION_INVALID: 'run-mutation-invalid',
     LOCATION_CONFLICT: 'location-conflict',
@@ -5379,7 +5381,21 @@ async function recordDeliveryRunStopOperationInDatabase(
             : [];
     if (input.kind === DeliveryRunStopOperationKinds.DELIVER) {
         for (const requestId of newlyFulfilledRequestIds) {
-            await fulfillDeliveryRequest(requestId, input.deliveryNotes, db);
+            try {
+                await fulfillDeliveryRequest(
+                    requestId,
+                    input.deliveryNotes,
+                    db,
+                );
+            } catch (error) {
+                if (error instanceof DeliveryRequestFulfillmentError) {
+                    throw new DeliveryRunExecutionError(
+                        DeliveryRunExecutionErrorCodes.STOP_OPERATION_STATE_CONFLICT,
+                        'Delivery request state changed before stop completion',
+                    );
+                }
+                throw error;
+            }
         }
         await applyDeliveryRunStopsDeliveredInDatabase({
             runId: input.runId,

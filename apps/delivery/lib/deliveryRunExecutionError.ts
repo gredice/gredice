@@ -57,6 +57,12 @@ export function deliveryRunExecutionErrorDetails(
                 message:
                     'Vrijeme ili podaci potvrde dostave nisu valjani. Osvježi rutu i pokušaj ponovno.',
             };
+        case 'stop-operation-state-conflict':
+            return {
+                code: error.code,
+                message:
+                    'Stanje dostave promijenilo se. Osvježi rutu prije nastavka.',
+            };
         default:
             return {
                 code: error.code,

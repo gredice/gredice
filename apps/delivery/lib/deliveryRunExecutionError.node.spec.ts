@@ -13,6 +13,7 @@ test('maps typed stop operation failures to conflict responses', () => {
     for (const code of [
         DeliveryRunExecutionErrorCodes.STOP_OPERATION_CONFLICT,
         DeliveryRunExecutionErrorCodes.STOP_OPERATION_INVALID,
+        DeliveryRunExecutionErrorCodes.STOP_OPERATION_STATE_CONFLICT,
     ]) {
         const error = new DeliveryRunExecutionError(code, 'internal detail');
         const details = deliveryRunExecutionErrorDetails(error);

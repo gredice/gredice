@@ -5253,7 +5253,7 @@ test('bulk delivery command rolls back fulfillment events, stop state, and recei
     const [firstStop] = run.stops;
     assert.ok(firstStop);
 
-    await assert.rejects(
+    await assertExecutionError(
         recordDeliveryRunStopOperation({
             kind: DeliveryRunStopOperationKinds.DELIVER,
             driverUserId,
@@ -5263,7 +5263,7 @@ test('bulk delivery command rolls back fulfillment events, stop state, and recei
             clientOperationId: 'rollback-bulk-delivery',
             occurredAt: new Date(),
         }),
-        /Cannot fulfill a cancelled delivery request/,
+        DeliveryRunExecutionErrorCodes.STOP_OPERATION_STATE_CONFLICT,
     );
 
     const unchangedRun = await getDeliveryRun(run.id);
@@ -5305,6 +5305,93 @@ test('bulk delivery command rolls back fulfillment events, stop state, and recei
         (await getDeliveryRequest(firstRequestId))?.state,
         'fulfilled',
     );
+});
+
+test('bulk delivery command treats deferred and failed request races as state conflicts', async () => {
+    for (const outcome of [
+        DeliveryRunExceptionOutcomes.DEFERRED,
+        DeliveryRunExceptionOutcomes.FAILED,
+    ]) {
+        const fixture = await createDeliveryRunFixture({
+            accountIndexes: [0, 0, 0],
+        });
+        await createRequestEvents(fixture);
+        const [driverUserId] = fixture.driverUserIds;
+        const [firstRequestId, secondRequestId] = fixture.requestIds;
+        assert.ok(driverUserId);
+        assert.ok(firstRequestId);
+        assert.ok(secondRequestId);
+        const run = await createRun({
+            fixture,
+            driverUserId,
+            requestIds: fixture.requestIds,
+        });
+        const [firstStop, secondStop] = run.stops;
+        assert.ok(firstStop);
+        assert.ok(secondStop);
+        await createEvent(
+            knownEvents.delivery.requestExceptionRecordedV1(secondRequestId, {
+                runId: run.id,
+                stopId: secondStop.id,
+                clientOperationId: `external-${outcome}`,
+                outcome,
+                reason:
+                    outcome === DeliveryRunExceptionOutcomes.DEFERRED
+                        ? DeliveryRunExceptionReasons.CUSTOMER_UNAVAILABLE
+                        : DeliveryRunExceptionReasons.HARVEST_MISSING,
+                retryable: outcome === DeliveryRunExceptionOutcomes.DEFERRED,
+                occurredAt: new Date().toISOString(),
+                recordedByUserId: driverUserId,
+                routeRevision: run.routeRevision,
+            }),
+        );
+
+        await assertExecutionError(
+            recordDeliveryRunStopOperation({
+                kind: DeliveryRunStopOperationKinds.DELIVER,
+                driverUserId,
+                runId: run.id,
+                targetStopId: firstStop.id,
+                expectedRouteRevision: run.routeRevision,
+                clientOperationId: `rollback-bulk-${outcome}`,
+                occurredAt: new Date(),
+            }),
+            DeliveryRunExecutionErrorCodes.STOP_OPERATION_STATE_CONFLICT,
+        );
+
+        const unchangedRun = await getDeliveryRun(run.id);
+        assert.ok(
+            unchangedRun?.stops.every(
+                (stop) => stop.state === DeliveryRunStopStates.PENDING,
+            ),
+        );
+        assert.equal(
+            (
+                await storage()
+                    .select()
+                    .from(deliveryRunStopOperations)
+                    .where(eq(deliveryRunStopOperations.runId, run.id))
+            ).length,
+            0,
+        );
+        assert.equal(
+            (
+                await storage()
+                    .select()
+                    .from(events)
+                    .where(
+                        and(
+                            eq(
+                                events.type,
+                                knownEventTypes.delivery.requestFulfilled,
+                            ),
+                            eq(events.aggregateId, firstRequestId),
+                        ),
+                    )
+            ).length,
+            0,
+        );
+    }
 });
 
 test('stop operation occurrence bounds and run-target integrity are enforced', async () => {
