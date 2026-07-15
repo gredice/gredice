@@ -829,6 +829,28 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         expect(dragSensorErrors).toEqual([]);
     });
 
+    test('layer toggles stay borderless in light and dark modes', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldDndDialogStory scenario={emptyScenario()} />,
+        );
+
+        const layerToggles = page.locator('[data-raised-bed-layer-control]');
+        await expect(layerToggles).toHaveCount(2);
+
+        for (const isDarkMode of [false, true]) {
+            await page.evaluate((dark) => {
+                document.documentElement.classList.toggle('dark', dark);
+            }, isDarkMode);
+
+            for (const layerToggle of await layerToggles.all()) {
+                await expect(layerToggle).toHaveCSS('border-top-width', '0px');
+            }
+        }
+    });
+
     test('abandoned raised bed shows inactivity message instead of sowing grid', async ({
         mount,
         page,
